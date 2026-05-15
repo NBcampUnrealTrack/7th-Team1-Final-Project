@@ -4,7 +4,7 @@
 
 #include "NativeGameplayTags.h"
 
-namespace NSGAmeplayTags
+namespace NSGameplayTags
 {
 	// State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);

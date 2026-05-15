@@ -6,7 +6,13 @@
 
 namespace NSGameplayTags
 {
-	// Input
+	// Native Input
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Move);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Look);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Jump);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Sprint);
+	
+	// Ability Input
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_BaseAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_ActiveSkill1);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_ActiveSkill2);
