@@ -8,7 +8,44 @@ public class NeoSanctum : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			// Core
+			"Core", "CoreUObject", "Engine", 
+			
+			// Input
+			"InputCore", "EnhancedInput",
+			
+			// UI
+			"UMG", 
+			"Slate", 
+			"SlateCore", 
+			"CommonUI", 
+			"CommonInput",
+			
+			// GAS
+			"GameplayAbilities", 
+			"GameplayTags", 
+			"GameplayTasks",
+			
+			// AI
+			"AIModule", 
+			"GameplayStateTreeModule", 
+			"NavigationSystem",
+			
+			// Animation
+			"AnimGraphRuntime", 
+			"MotionWarping",
+			
+			// FX
+			"Niagara",
+			
+			// World
+			"PCG",
+			
+			// Physics / Trace
+			"PhysicsCore"
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
