@@ -1,0 +1,39 @@
+# Ignore all built, generated, and cache directories
+/Binaries/
+/Build/
+/DerivedDataCache/
+/Intermediate/
+/Saved/
+/Script/
+/.vs/
+
+# Ignore compiled binaries and modules
+*.dll
+*.exe
+*.target
+*.modules
+*.pdb
+*.exp
+*.lib
+
+# Ignore large project packages and visual assets (Claude cannot parse these)
+*.uasset
+*.umap
+*.upk
+
+# Ignore log files and auto-saved backups
+*.log
+*.backup
+*.autosave
+
+# Ignore specific build system and auto-generated code
+*.gen.cpp
+*.generated.h
+
+# Exclude third-party or engine source unless you are modifying it
+/Engine/
+
+# Ensure you can still read project setup and code files
+!/Config/
+!/Source/
+!*.uproject
