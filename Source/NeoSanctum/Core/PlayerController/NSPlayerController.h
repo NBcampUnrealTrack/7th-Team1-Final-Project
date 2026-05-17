@@ -25,6 +25,10 @@ public:
 	void SetInputRoute(ENSInputRoute NewInputRoute);
 	
 protected:
+	void BindInputActions();
+
+	void UnbindInputActions();
+
 	void Input_Move(const FInputActionValue& Value);
 	
 	void Input_Look(const FInputActionValue& Value);
@@ -42,4 +46,10 @@ protected:
 	
 	UPROPERTY(Transient)
 	ENSInputRoute CurrentInputRoute = ENSInputRoute::KeyboardMouse;
+
+	UPROPERTY(Transient)
+	TArray<uint32> NativeInputBindHandles;
+
+	UPROPERTY(Transient)
+	TArray<uint32> AbilityInputBindHandles;
 };

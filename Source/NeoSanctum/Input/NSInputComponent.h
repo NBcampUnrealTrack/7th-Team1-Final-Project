@@ -38,7 +38,8 @@ public:
 		ETriggerEvent TriggerEvent,
 		UserClass* Object,
 		FuncType Func,
-		bool bLogIfNotFound
+		bool bLogIfNotFound,
+		TArray<uint32>& BindHandles
 	);
 
 	template <class UserClass, typename PressedFuncType, typename ReleasedFuncType>
@@ -57,14 +58,15 @@ void UNSInputComponent::BindNativeAction(
 	const FGameplayTag& InputTag,
 	ETriggerEvent TriggerEvent,
 	UserClass* Object, FuncType Func,
-	bool bLogIfNotFound
+	bool bLogIfNotFound,
+	TArray<uint32>& BindHandles
 )
 {
 	check(InputConfig);
 
 	if (const UInputAction* IA = InputConfig->FindNativeInputActionForTag(InputTag, bLogIfNotFound))
 	{
-		BindAction(IA, TriggerEvent, Object, Func);
+		BindHandles.Add(BindAction(IA, TriggerEvent, Object, Func).GetHandle());
 	}
 }
 

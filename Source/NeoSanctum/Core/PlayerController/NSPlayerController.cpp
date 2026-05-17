@@ -14,7 +14,7 @@ ANSPlayerController::ANSPlayerController()
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	SetInputRoute(DefaultInputRoute);
 }
 
@@ -22,40 +22,54 @@ void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	UNSInputComponent* NSInputComponent = CastChecked<UNSInputComponent>(InputComponent);
-	if (!IsValid(NSInputComponent))
+	BindInputActions();
+}
+
+void ANSPlayerController::BindInputActions()
+{
+	UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent);
+	if (!NSInputComponent || !InputConfig)
 	{
 		return;
 	}
 
-	if (InputConfig)
+	UnbindInputActions();
+
+	NSInputComponent->BindNativeAction(
+		InputConfig,
+		NSGameplayTags::Input_Native_Move,
+		ETriggerEvent::Triggered,
+		this,
+		&ThisClass::Input_Move,
+		true,
+		NativeInputBindHandles
+	);
+
+	NSInputComponent->BindNativeAction(
+		InputConfig,
+		NSGameplayTags::Input_Native_Look,
+		ETriggerEvent::Triggered,
+		this,
+		&ThisClass::Input_Look,
+		true,
+		NativeInputBindHandles
+	);
+
+	NSInputComponent->BindAbilityActions(
+		InputConfig,
+		this,
+		&ThisClass::Input_AbilityPressed,
+		&ThisClass::Input_AbilityReleased,
+		AbilityInputBindHandles
+	);
+}
+
+void ANSPlayerController::UnbindInputActions()
+{
+	if (UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent))
 	{
-		NSInputComponent->BindNativeAction(
-			InputConfig,
-			NSGameplayTags::Input_Native_Move,
-			ETriggerEvent::Triggered,
-			this,
-			&ThisClass::Input_Move,
-			true
-		);
-
-		NSInputComponent->BindNativeAction(
-			InputConfig,
-			NSGameplayTags::Input_Native_Look,
-			ETriggerEvent::Triggered,
-			this,
-			&ThisClass::Input_Look,
-			true
-		);
-
-		TArray<uint32> BindHandles;
-		NSInputComponent->BindAbilityActions(
-			InputConfig,
-			this,
-			&ThisClass::Input_AbilityPressed,
-			&ThisClass::Input_AbilityReleased,
-			BindHandles
-		);
+		NSInputComponent->RemoveBinds(NativeInputBindHandles);
+		NSInputComponent->RemoveBinds(AbilityInputBindHandles);
 	}
 }
 
