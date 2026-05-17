@@ -15,7 +15,7 @@ void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	SetInputRoute(DefaultInputRoute);
+	SetInputConfig(DefaultInputConfig, DefaultInputRoute);
 }
 
 void ANSPlayerController::SetupInputComponent()
@@ -28,7 +28,7 @@ void ANSPlayerController::SetupInputComponent()
 void ANSPlayerController::BindInputActions()
 {
 	UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent);
-	if (!NSInputComponent || !InputConfig)
+	if (!NSInputComponent || !CurrentInputConfig)
 	{
 		return;
 	}
@@ -36,7 +36,7 @@ void ANSPlayerController::BindInputActions()
 	UnbindInputActions();
 
 	NSInputComponent->BindNativeAction(
-		InputConfig,
+		CurrentInputConfig,
 		NSGameplayTags::Input_Native_Move,
 		ETriggerEvent::Triggered,
 		this,
@@ -46,7 +46,7 @@ void ANSPlayerController::BindInputActions()
 	);
 
 	NSInputComponent->BindNativeAction(
-		InputConfig,
+		CurrentInputConfig,
 		NSGameplayTags::Input_Native_Look,
 		ETriggerEvent::Triggered,
 		this,
@@ -56,7 +56,7 @@ void ANSPlayerController::BindInputActions()
 	);
 
 	NSInputComponent->BindAbilityActions(
-		InputConfig,
+		CurrentInputConfig,
 		this,
 		&ThisClass::Input_AbilityPressed,
 		&ThisClass::Input_AbilityReleased,
@@ -75,7 +75,12 @@ void ANSPlayerController::UnbindInputActions()
 
 void ANSPlayerController::SetInputRoute(ENSInputRoute NewInputRoute)
 {
-	if (!InputConfig)
+	SetInputConfig(CurrentInputConfig, NewInputRoute);
+}
+
+void ANSPlayerController::SetInputConfig(UNSInputConfig* NewInputConfig, ENSInputRoute NewInputRoute)
+{
+	if (!IsLocalController())
 	{
 		return;
 	}
@@ -86,13 +91,48 @@ void ANSPlayerController::SetInputRoute(ENSInputRoute NewInputRoute)
 		return;
 	}
 
-	if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
-		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	if (!LocalPlayer)
 	{
-		NSInputComponent->RemoveInputMappingRoute(InputConfig, CurrentInputRoute, InputSubsystem);
-		NSInputComponent->AddInputMappingRoute(InputConfig, NewInputRoute, InputSubsystem);
-		CurrentInputRoute = NewInputRoute;
+		return;
 	}
+
+	UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(LocalPlayer);
+	if (!InputSubsystem)
+	{
+		return;
+	}
+
+	if (bHasAppliedInputConfig && CurrentInputConfig == NewInputConfig && CurrentInputRoute == NewInputRoute)
+	{
+		return;
+	}
+
+	if (NewInputConfig && !NewInputConfig->FindInputRoute(NewInputRoute))
+	{
+		return;
+	}
+
+	if (bHasAppliedInputConfig && CurrentInputConfig)
+	{
+		NSInputComponent->RemoveInputMappingRoute(CurrentInputConfig, CurrentInputRoute, InputSubsystem);
+	}
+
+	UnbindInputActions();
+
+	CurrentInputConfig = NewInputConfig;
+	CurrentInputRoute = NewInputRoute;
+
+	if (!CurrentInputConfig)
+	{
+		bHasAppliedInputConfig = false;
+		return;
+	}
+
+	NSInputComponent->AddInputMappingRoute(CurrentInputConfig, CurrentInputRoute, InputSubsystem);
+	BindInputActions();
+	bHasAppliedInputConfig = true;
 }
 
 void ANSPlayerController::Input_Move(const FInputActionValue& Value)

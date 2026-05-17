@@ -22,6 +22,8 @@ public:
 	virtual void SetupInputComponent() override;
 	
 public:
+	void SetInputConfig(UNSInputConfig* NewInputConfig, ENSInputRoute NewInputRoute);
+
 	void SetInputRoute(ENSInputRoute NewInputRoute);
 	
 protected:
@@ -39,13 +41,19 @@ protected:
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UNSInputConfig> InputConfig;
+	TObjectPtr<UNSInputConfig> DefaultInputConfig;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNSInputConfig> CurrentInputConfig;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	ENSInputRoute DefaultInputRoute = ENSInputRoute::KeyboardMouse;
 	
 	UPROPERTY(Transient)
 	ENSInputRoute CurrentInputRoute = ENSInputRoute::KeyboardMouse;
+
+	UPROPERTY(Transient)
+	bool bHasAppliedInputConfig = false;
 
 	UPROPERTY(Transient)
 	TArray<uint32> NativeInputBindHandles;
