@@ -5,11 +5,10 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/PlayerController.h"
+#include "NeoSanctum/Input/NSInputConfig.h"
 #include "NSPlayerController.generated.h"
 
 struct FInputActionValue;
-class UInputMappingContext;
-class UNSInputConfig;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -36,8 +35,8 @@ protected:
 	TObjectPtr<UNSInputConfig> InputConfig;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UInputMappingContext> DefaultIMC;
+	ENSInputRoute DefaultInputRoute = ENSInputRoute::KeyboardMouse;
 	
 	UPROPERTY(Transient)
-	TObjectPtr<UInputMappingContext> CurrentIMC;
+	ENSInputRoute CurrentInputRoute = ENSInputRoute::KeyboardMouse;
 };

@@ -3,6 +3,7 @@
 
 #include "NSPlayerController.h"
 
+#include "EnhancedInputSubsystems.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 
@@ -13,6 +14,24 @@ ANSPlayerController::ANSPlayerController()
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!InputConfig)
+	{
+		return;
+	}
+
+	UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent);
+	if (!NSInputComponent)
+	{
+		return;
+	}
+
+	if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		NSInputComponent->AddInputMappingRoute(InputConfig, DefaultInputRoute, InputSubsystem);
+		CurrentInputRoute = DefaultInputRoute;
+	}
 }
 
 void ANSPlayerController::SetupInputComponent()
