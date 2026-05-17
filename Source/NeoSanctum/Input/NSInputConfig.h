@@ -8,6 +8,39 @@
 #include "Engine/DataAsset.h"
 #include "NSInputConfig.generated.h"
 
+class UInputMappingContext;
+
+UENUM(BlueprintType)
+enum class ENSInputRoute : uint8
+{
+	KeyboardMouse,
+	Gamepad
+};
+
+USTRUCT(BlueprintType)
+struct FNSInputMappingContext
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<const UInputMappingContext> InputMappingContext = nullptr;
+	
+	UPROPERTY(EditDefaultsOnly)
+	int32 Priority = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FNSInputRoute
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditDefaultsOnly)
+	ENSInputRoute Route = ENSInputRoute::KeyboardMouse;
+	
+	UPROPERTY(EditDefaultsOnly)
+	TArray<FNSInputMappingContext> MappingContexts;
+};
+
 USTRUCT(BlueprintType)
 struct FNSInputAction
 {
@@ -34,13 +67,19 @@ class NEOSANCTUM_API UNSInputConfig : public UDataAsset
 public:
 	UNSInputConfig(const FObjectInitializer& ObjectInitializer);
 	
-	UFUNCTION(BlueprintCallable, Category = "Pawn")
+	UFUNCTION(BlueprintCallable, Category = "InputAction")
 	const UInputAction* FindNativeInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = true) const;
 	
-	UFUNCTION(BlueprintCallable, Category = "Pawn")
+	UFUNCTION(BlueprintCallable, Category = "InputAction")
 	const UInputAction* FindAbilityInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = true) const;
 
 public:
+	const FNSInputRoute* FindInputRoute(ENSInputRoute InputRoute, bool bLogNotFound = true) const;
+
+public:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "InputAction")
+	TArray<FNSInputRoute> InputRoutes;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
 	TArray<FNSInputAction> NativeInputActions;
 	
