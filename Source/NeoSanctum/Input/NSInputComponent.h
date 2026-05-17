@@ -18,16 +18,18 @@ class NEOSANCTUM_API UNSInputComponent : public UEnhancedInputComponent
 public:
 	UNSInputComponent(const FObjectInitializer& ObjectInitializer);
 
-	void AddInputMapping(
+	void AddInputMappingRoute(
 		const UNSInputConfig* InputConfig,
+		ENSInputRoute InputRoute,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem);
 
-	void RemoveInputMapping(
+	void RemoveInputMappingRoute(
 		const UNSInputConfig* InputConfig,
+		ENSInputRoute InputRoute,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem) const;
 
 	void RemoveBinds(TArray<uint32>& BindHandles);
-
+	
 public:
 	template <class UserClass, typename FuncType>
 	void BindNativeAction(
@@ -50,23 +52,32 @@ public:
 };
 
 template <class UserClass, typename FuncType>
-void UNSInputComponent::BindNativeAction(const UNSInputConfig* InputConfig, const FGameplayTag& InputTag,
-	ETriggerEvent TriggerEvent, UserClass* Object, FuncType Func, bool bLogIfNotFound)
+void UNSInputComponent::BindNativeAction(
+	const UNSInputConfig* InputConfig,
+	const FGameplayTag& InputTag,
+	ETriggerEvent TriggerEvent,
+	UserClass* Object, FuncType Func,
+	bool bLogIfNotFound
+)
 {
 	check(InputConfig);
-	
+
 	if (const UInputAction* IA = InputConfig->FindNativeInputActionForTag(InputTag, bLogIfNotFound))
 	{
-		BindAction(IA, TriggerEvent, Object, Func);	
+		BindAction(IA, TriggerEvent, Object, Func);
 	}
 }
 
 template <class UserClass, typename PressedFuncType, typename ReleasedFuncType>
-void UNSInputComponent::BindAbilityActions(const UNSInputConfig* InputConfig, UserClass* Object,
-	PressedFuncType PressedFunc, ReleasedFuncType ReleasedFunc, TArray<uint32>& BindHandles)
+void UNSInputComponent::BindAbilityActions(
+	const UNSInputConfig* InputConfig,
+	UserClass* Object,
+	PressedFuncType PressedFunc, ReleasedFuncType ReleasedFunc,
+	TArray<uint32>& BindHandles
+)
 {
 	check(InputConfig);
-	
+
 	for (const FNSInputAction& Action : InputConfig->AbilityInputActions)
 	{
 		if (Action.InputAction && Action.InputTag.IsValid())
@@ -77,15 +88,15 @@ void UNSInputComponent::BindAbilityActions(const UNSInputConfig* InputConfig, Us
 					Action.InputAction,
 					Action.PressedTriggerEvent,
 					Object,
-					PressedFunc, 
+					PressedFunc,
 					Action.InputTag
 				).GetHandle());
 			}
-			
+
 			if (ReleasedFunc)
 			{
 				BindHandles.Add(BindAction(
-					Action.InputAction, 
+					Action.InputAction,
 					Action.ReleasedTriggerEvent,
 					Object,
 					ReleasedFunc,
