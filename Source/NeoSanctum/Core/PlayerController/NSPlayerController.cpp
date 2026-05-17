@@ -14,24 +14,8 @@ ANSPlayerController::ANSPlayerController()
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (!InputConfig)
-	{
-		return;
-	}
-
-	UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent);
-	if (!NSInputComponent)
-	{
-		return;
-	}
-
-	if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
-		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
-	{
-		NSInputComponent->AddInputMappingRoute(InputConfig, DefaultInputRoute, InputSubsystem);
-		CurrentInputRoute = DefaultInputRoute;
-	}
+	
+	SetInputRoute(DefaultInputRoute);
 }
 
 void ANSPlayerController::SetupInputComponent()
@@ -72,6 +56,28 @@ void ANSPlayerController::SetupInputComponent()
 			&ThisClass::Input_AbilityReleased,
 			BindHandles
 		);
+	}
+}
+
+void ANSPlayerController::SetInputRoute(ENSInputRoute NewInputRoute)
+{
+	if (!InputConfig)
+	{
+		return;
+	}
+
+	UNSInputComponent* NSInputComponent = Cast<UNSInputComponent>(InputComponent);
+	if (!NSInputComponent)
+	{
+		return;
+	}
+
+	if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem =
+		ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(GetLocalPlayer()))
+	{
+		NSInputComponent->RemoveInputMappingRoute(InputConfig, CurrentInputRoute, InputSubsystem);
+		NSInputComponent->AddInputMappingRoute(InputConfig, NewInputRoute, InputSubsystem);
+		CurrentInputRoute = NewInputRoute;
 	}
 }
 

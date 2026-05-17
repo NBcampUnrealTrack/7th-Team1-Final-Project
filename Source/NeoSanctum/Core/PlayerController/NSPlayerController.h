@@ -21,6 +21,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
 	
+public:
+	void SetInputRoute(ENSInputRoute NewInputRoute);
+	
 protected:
 	void Input_Move(const FInputActionValue& Value);
 	
