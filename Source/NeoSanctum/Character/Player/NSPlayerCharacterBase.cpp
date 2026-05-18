@@ -4,6 +4,7 @@
 #include "NSPlayerCharacterBase.h"
 
 #include "Camera/CameraComponent.h"
+#include "CharacterTrajectoryComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
@@ -16,6 +17,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
+	
+	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 }
 
 void ANSPlayerCharacterBase::BeginPlay()
