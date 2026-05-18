@@ -4,6 +4,7 @@
 #include "NSPlayerController.h"
 
 #include "EnhancedInputSubsystems.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 
@@ -51,6 +52,16 @@ void ANSPlayerController::BindInputActions()
 		ETriggerEvent::Triggered,
 		this,
 		&ThisClass::Input_Look,
+		true,
+		NativeInputBindHandles
+	);
+
+	NSInputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Jump,
+		ETriggerEvent::Triggered,
+		this,
+		&ThisClass::Input_Jump,
 		true,
 		NativeInputBindHandles
 	);
@@ -159,6 +170,15 @@ void ANSPlayerController::Input_Look(const FInputActionValue& Value)
 
 	AddYawInput(LookValue.X);
 	AddPitchInput(LookValue.Y);
+}
+
+void ANSPlayerController::Input_Jump()
+{
+	ANSPlayerCharacterBase* NSCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	if (NSCharacter)
+	{
+		NSCharacter->Jump();
+	}
 }
 
 void ANSPlayerController::Input_AbilityPressed(FGameplayTag InputTag)

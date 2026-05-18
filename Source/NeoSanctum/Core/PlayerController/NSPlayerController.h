@@ -31,10 +31,14 @@ protected:
 
 	void UnbindInputActions();
 
+protected:
 	void Input_Move(const FInputActionValue& Value);
 	
 	void Input_Look(const FInputActionValue& Value);
 	
+	void Input_Jump();
+	
+protected:
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	
 	void Input_AbilityReleased(FGameplayTag InputTag);
