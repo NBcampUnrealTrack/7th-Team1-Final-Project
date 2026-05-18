@@ -20,6 +20,9 @@ public:
 	ANSBaseCompanionAI();
 
 protected:
+	virtual void BeginPlay() override;
+	
+protected:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UFloatingPawnMovement> MovementComp;
 	
