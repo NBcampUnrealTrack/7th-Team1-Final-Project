@@ -9,6 +9,7 @@
 class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
+class UNSInputBinderComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter
@@ -19,8 +20,11 @@ public:
 	ANSPlayerCharacterBase();
 	
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+public:
+	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
+	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player")
@@ -28,6 +32,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player")
 	TObjectPtr<UCameraComponent> CameraComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UNSInputBinderComponent> InputBinderComp;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation")
