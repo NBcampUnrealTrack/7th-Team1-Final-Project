@@ -3,8 +3,10 @@
 
 #include "NSPlayerController.h"
 
+#include "AbilitySystemInterface.h"
 #include "EnhancedInputSubsystems.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 
@@ -183,10 +185,22 @@ void ANSPlayerController::Input_Jump()
 
 void ANSPlayerController::Input_AbilityPressed(FGameplayTag InputTag)
 {
-	// ASC 추가 이후 구현
+	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
+	{
+		if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+		{
+			ASC->AbilityInputTagPressed(InputTag);
+		}
+	}
 }
 
 void ANSPlayerController::Input_AbilityReleased(FGameplayTag InputTag)
 {
-	// ASC 추가 이후 구현
+	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn()))
+	{
+		if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+		{
+			ASC->AbilityInputTagReleased(InputTag);
+		}
+	}
 }
