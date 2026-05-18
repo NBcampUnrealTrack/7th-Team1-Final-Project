@@ -18,14 +18,12 @@ class NEOSANCTUM_API UNSInputComponent : public UEnhancedInputComponent
 public:
 	UNSInputComponent(const FObjectInitializer& ObjectInitializer);
 
-	void AddInputMappingRoute(
+	void AddInputMappings(
 		const UNSInputConfig* InputConfig,
-		ENSInputRoute InputRoute,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem);
 
-	void RemoveInputMappingRoute(
+	void RemoveInputMappings(
 		const UNSInputConfig* InputConfig,
-		ENSInputRoute InputRoute,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem) const;
 
 	void RemoveBinds(TArray<uint32>& BindHandles);

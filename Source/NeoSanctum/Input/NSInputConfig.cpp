@@ -31,15 +31,3 @@ const UInputAction* UNSInputConfig::FindAbilityInputActionForTag(const FGameplay
 	return nullptr;
 }
 
-const FNSInputRoute* UNSInputConfig::FindInputRoute(ENSInputRoute InputRoute, bool bLogNotFound) const
-{
-	for (const FNSInputRoute& Route : InputRoutes)
-	{
-		if (Route.Route == InputRoute)
-		{
-			return &Route;
-		}
-	}
-
-	return nullptr;
-}

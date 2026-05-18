@@ -10,13 +10,6 @@
 
 class UInputMappingContext;
 
-UENUM(BlueprintType)
-enum class ENSInputRoute : uint8
-{
-	KeyboardMouse,
-	Gamepad
-};
-
 USTRUCT(BlueprintType)
 struct FNSInputMappingContext
 {
@@ -27,18 +20,6 @@ struct FNSInputMappingContext
 	
 	UPROPERTY(EditDefaultsOnly)
 	int32 Priority = 0;
-};
-
-USTRUCT(BlueprintType)
-struct FNSInputRoute
-{
-	GENERATED_BODY()
-	
-	UPROPERTY(EditDefaultsOnly)
-	ENSInputRoute Route = ENSInputRoute::KeyboardMouse;
-	
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FNSInputMappingContext> MappingContexts;
 };
 
 USTRUCT(BlueprintType)
@@ -74,11 +55,8 @@ public:
 	const UInputAction* FindAbilityInputActionForTag(const FGameplayTag& InputTag, bool bLogNotFound = true) const;
 
 public:
-	const FNSInputRoute* FindInputRoute(ENSInputRoute InputRoute, bool bLogNotFound = true) const;
-
-public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "InputAction")
-	TArray<FNSInputRoute> InputRoutes;
+	TArray<FNSInputMappingContext> MappingContexts;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
 	TArray<FNSInputAction> NativeInputActions;

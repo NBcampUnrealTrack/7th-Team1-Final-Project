@@ -8,21 +8,14 @@ UNSInputComponent::UNSInputComponent(const FObjectInitializer& ObjectInitializer
 {
 }
 
-void UNSInputComponent::AddInputMappingRoute(
+void UNSInputComponent::AddInputMappings(
 	const UNSInputConfig* InputConfig,
-	ENSInputRoute InputRoute,
 	UEnhancedInputLocalPlayerSubsystem* InputSubSystem)
 {
 	check(InputConfig);
 	check(InputSubSystem);
 
-	const FNSInputRoute* FoundRoute = InputConfig->FindInputRoute(InputRoute);
-	if (!FoundRoute)
-	{
-		return;
-	}
-
-	for (const FNSInputMappingContext& MappingContext : FoundRoute->MappingContexts)
+	for (const FNSInputMappingContext& MappingContext : InputConfig->MappingContexts)
 	{
 		if (MappingContext.InputMappingContext)
 		{
@@ -31,21 +24,14 @@ void UNSInputComponent::AddInputMappingRoute(
 	}
 }
 
-void UNSInputComponent::RemoveInputMappingRoute(
+void UNSInputComponent::RemoveInputMappings(
 	const UNSInputConfig* InputConfig,
-	ENSInputRoute InputRoute,
 	UEnhancedInputLocalPlayerSubsystem* InputSubSystem) const
 {
 	check(InputConfig);
 	check(InputSubSystem);
 
-	const FNSInputRoute* FoundRoute = InputConfig->FindInputRoute(InputRoute);
-	if (!FoundRoute)
-	{
-		return;
-	}
-
-	for (const FNSInputMappingContext& MappingContext : FoundRoute->MappingContexts)
+	for (const FNSInputMappingContext& MappingContext : InputConfig->MappingContexts)
 	{
 		if (MappingContext.InputMappingContext)
 		{
