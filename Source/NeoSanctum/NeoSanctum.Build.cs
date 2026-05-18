@@ -35,6 +35,9 @@ public class NeoSanctum : ModuleRules
 			
 			// Animation
 			"AnimGraphRuntime", 
+			"MotionTrajectory",
+			"PoseSearch",
+			"Chooser",
 			"MotionWarping",
 			
 			// FX
