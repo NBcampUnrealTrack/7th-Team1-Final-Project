@@ -7,8 +7,15 @@
 #include "NSOutGameMode.generated.h"
 
 
+
 UCLASS()
 class NEOSANCTUM_API ANSOutGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
+	
+public:
+	ANSOutGameMode();
+
+protected:
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 };
