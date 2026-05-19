@@ -6,8 +6,8 @@
 #include "GameFramework/Pawn.h"
 #include "NSBaseCompanionAI.generated.h"
 
-class UNSCompanionAttributeSet;
-class UNSCompanionAbilitySystemComponent;
+class UAttributeSet;
+class UAbilitySystemComponent;
 class UFloatingPawnMovement;
 class USceneComponent;
 
@@ -34,13 +34,13 @@ protected:
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AbilitySystemComponent")
-	TObjectPtr<UNSCompanionAbilitySystemComponent> CompanionAbilitySystemComponent;
+	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AbilitySystemComponent")
-	TObjectPtr<UNSCompanionAttributeSet> CompanionAttributeSet;
+	TObjectPtr<UAttributeSet> AttributeSet;
 	
 public:
-	FORCEINLINE UNSCompanionAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return CompanionAbilitySystemComponent;}
+	FORCEINLINE UAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return AbilitySystemComponent;}
 	
-	FORCEINLINE UNSCompanionAttributeSet* GetCompanionAttributeSet() const {return CompanionAttributeSet;}
+	FORCEINLINE UAttributeSet* GetCompanionAttributeSet() const {return AttributeSet;}
 };

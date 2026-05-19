@@ -20,18 +20,18 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 	MovementComp = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
 	MovementComp->UpdatedComponent = RootScene;
 	
-	CompanionAbilitySystemComponent = CreateDefaultSubobject<UNSCompanionAbilitySystemComponent>("AbilitySystemComponent");
+	AbilitySystemComponent = CreateDefaultSubobject<UNSCompanionAbilitySystemComponent>("AbilitySystemComponent");
 	
-	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
+	AttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
 }
 
 void ANSBaseCompanionAI::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (CompanionAbilitySystemComponent)
+	if (AbilitySystemComponent)
 	{
-		CompanionAbilitySystemComponent->InitAbilityActorInfo(this, this);
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	}
 }
 

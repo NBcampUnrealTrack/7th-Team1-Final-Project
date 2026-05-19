@@ -14,7 +14,7 @@ void ANSDroneAI::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (CompanionAbilitySystemComponent && CompanionAttributeSet)
+	if (AbilitySystemComponent && AttributeSet)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Green, TEXT("ASC And ATS Valid"));
 	}
