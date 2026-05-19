@@ -9,6 +9,8 @@ ANSOutGameMode::ANSOutGameMode()
 {
 	GameStateClass = ANSOutGameState::StaticClass();
 	PlayerControllerClass = ANSPlayerController::StaticClass();
+	
+	bUseSeamlessTravel = true;
 }
 
 void ANSOutGameMode::PostLogin(APlayerController* NewPlayer)

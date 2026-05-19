@@ -12,6 +12,8 @@ ANSRunGameMode::ANSRunGameMode()
 	GameStateClass = ANSRunGameState::StaticClass();
 	PlayerControllerClass = ANSPlayerController::StaticClass();
 	PlayerStateClass = ANSPlayerState::StaticClass();
+	
+	bUseSeamlessTravel = true;
 }
 
 void ANSRunGameMode::BeginPlay()
