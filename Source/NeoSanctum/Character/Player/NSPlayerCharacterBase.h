@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+struct FOnAttributeChangeData;
 class UGameplayAbility;
 class UNSPlayerAttributeSet;
 class UNSAbilitySystemComponent;
@@ -44,6 +45,7 @@ protected:
 protected:
 	void OnHealthChanged(const FOnAttributeChangeData& Data);
 	void OnShieldChanged(const FOnAttributeChangeData& Data);
+	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 	
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
@@ -70,9 +72,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 
 	// 카메라 방향 캐릭터 회전 설정들

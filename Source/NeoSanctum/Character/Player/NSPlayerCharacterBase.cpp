@@ -75,6 +75,7 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	Super::PossessedBy(EventController);
 	
 	InitializeAbilitySystem();
+	BindAttributeDelegates();
 	GiveDefaultAbilities();
 }
 
@@ -164,15 +165,21 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 		return;
 	}
 	
+	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetHealthAttribute()).RemoveAll(this);
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetShieldAttribute()).RemoveAll(this);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMoveSpeedAttribute()).RemoveAll(this);
 	
+	// 바인딩
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetHealthAttribute()).AddUObject(this, &ThisClass::OnHealthChanged);
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetShieldAttribute()).AddUObject(this, &ThisClass::OnShieldChanged);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
 }
 
 void ANSPlayerCharacterBase::GiveDefaultAbilities()
@@ -182,6 +189,7 @@ void ANSPlayerCharacterBase::GiveDefaultAbilities()
 		return;
 	}
 	
+	// 서버권한에서만 어빌리티 부여
 	if (!HasAuthority())
 	{
 		return;
@@ -212,4 +220,12 @@ void ANSPlayerCharacterBase::OnHealthChanged(const FOnAttributeChangeData& Data)
 void ANSPlayerCharacterBase::OnShieldChanged(const FOnAttributeChangeData& Data)
 {
 	
+}
+
+void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = Data.NewValue;
+	}
 }
