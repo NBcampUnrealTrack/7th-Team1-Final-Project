@@ -22,7 +22,7 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		RefreshOwningCharacter();
 	}
 
-	UpdateMovementData();
+	UpdateMovementData(DeltaSeconds);
 }
 
 void UNSCharacterAnimInstance::RefreshOwningCharacter()
@@ -32,7 +32,7 @@ void UNSCharacterAnimInstance::RefreshOwningCharacter()
 	CharacterTrajectoryComponent = OwnerCharacter ? OwnerCharacter->FindComponentByClass<UCharacterTrajectoryComponent>() : nullptr;
 }
 
-void UNSCharacterAnimInstance::UpdateMovementData()
+void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 {
 	if (!OwnerCharacter)
 	{
@@ -40,9 +40,14 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 		LocalVelocity = FVector::ZeroVector;
 		Acceleration = FVector::ZeroVector;
 		GroundSpeed = 0.f;
+		VerticalVelocity = 0.f;
 		bHasAcceleration = false;
 		bShouldMove = false;
 		bIsFalling = false;
+		bWasFalling = false;
+		bIsMovingUp = false;
+		bJustLanded = false;
+		TimeSinceLanded = 999.f;
 		return;
 	}
 
@@ -54,6 +59,8 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 	Velocity = OwnerCharacter->GetVelocity();
 	LocalVelocity = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(Velocity);
 	GroundSpeed = FVector(Velocity.X, Velocity.Y, 0.f).Size();
+	VerticalVelocity = Velocity.Z;
+	bWasFalling = bIsFalling;
 
 	if (CharacterMovement)
 	{
@@ -68,5 +75,16 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 		bIsFalling = false;
 	}
 
+	bIsMovingUp = bIsFalling && VerticalVelocity > 0.f;
+	if (bWasFalling && !bIsFalling)
+	{
+		TimeSinceLanded = 0.f;
+	}
+	else
+	{
+		TimeSinceLanded += DeltaSeconds;
+	}
+
+	bJustLanded = !bIsFalling && TimeSinceLanded < JustLandedDuration;
 	bShouldMove = GroundSpeed > 3.f && bHasAcceleration;
 }

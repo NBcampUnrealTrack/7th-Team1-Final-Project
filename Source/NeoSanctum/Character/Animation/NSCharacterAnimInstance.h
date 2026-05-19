@@ -29,7 +29,7 @@ public:
 
 protected:
 	void RefreshOwningCharacter();
-	void UpdateMovementData();
+	void UpdateMovementData(float DeltaSeconds);
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
@@ -54,6 +54,9 @@ protected:
 	float GroundSpeed = 0.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	float VerticalVelocity = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	bool bHasAcceleration = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
@@ -63,5 +66,20 @@ protected:
 	bool bIsFalling = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	bool bWasFalling = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	bool bIsMovingUp = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	bool bJustLanded = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	ENSAnimGait Gait = ENSAnimGait::Run;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
+	float JustLandedDuration = 0.2f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	float TimeSinceLanded = 999.f;
 };
