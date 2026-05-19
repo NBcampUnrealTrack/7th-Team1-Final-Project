@@ -31,17 +31,17 @@ protected:
 	virtual void BeginPlay() override;
 	
 private:
+	// 소유한 플레이어
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
 	TObjectPtr<ACharacter> TargetOwningCharacter;
 	
+	// 추적할 엑터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
 	TObjectPtr<AActor> TargetActor;
 	
+	// 도착 거리 반경
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
-	float AcceptanceRadius;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
-	bool bIsSucceeded;
+	float TargetRange;
 	
 	UPROPERTY()
 	AAIController* AIController;

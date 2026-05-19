@@ -12,10 +12,7 @@ ANSDroneAI::ANSDroneAI()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bIsMoving = false;
-	bIsSucceeded = false;
-	AcceptanceRadius = 50.f;
-	
-	
+	TargetRange = 50.f;
 }
 
 void ANSDroneAI::BeginPlay()
@@ -32,7 +29,6 @@ void ANSDroneAI::BeginPlay()
 		FindTargetOwninigCharacter(); 
 		StartMoving();
 	}
-	
 }
 
 void ANSDroneAI::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result)
@@ -41,7 +37,6 @@ void ANSDroneAI::OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::T
 	
 	if (Result == EPathFollowingResult::Success)
 	{
-		bIsSucceeded = !bIsSucceeded;
 		FTimerHandle TimerHandle;
 		GetWorldTimerManager().SetTimer(TimerHandle, this, &ANSDroneAI::MoveToTargetOwningCharacter, 0.5f, false);
 	}
@@ -95,7 +90,7 @@ void ANSDroneAI::MoveToTargetOwningCharacter()
 		
 		EPathFollowingRequestResult::Type MoveResult = AIController->MoveToActor(
 			TargetOwningCharacter,
-			AcceptanceRadius,
+			TargetRange,
 			true,
 			true,
 			false,
