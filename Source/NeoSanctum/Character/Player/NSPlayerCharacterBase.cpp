@@ -8,6 +8,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
@@ -21,6 +24,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
+	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 60.0f));
+	SpringArmComp->TargetArmLength = 165.0f;
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
@@ -38,6 +43,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
+	
+	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 }
 
 void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
@@ -63,6 +70,52 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	}
 }
 
+void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
+{
+	Super::PossessedBy(EventController);
+	
+	InitializeAbilitySystem();
+}
+
+void ANSPlayerCharacterBase::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	
+	InitializeAbilitySystem();
+}
+
+UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
+{
+	if (NSAbilitySystemComponent)
+	{
+		return NSAbilitySystemComponent;
+	}
+
+	if (const ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		return PS->GetAbilitySystemComponent();
+	}
+
+	return nullptr;
+}
+
+void ANSPlayerCharacterBase::InitializeAbilitySystem()
+{
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	
+	if (!PS)
+	{
+		return;
+	}
+	
+	NSAbilitySystemComponent = Cast<UNSAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+	PlayerAttributeSet = PS->GetPlayerAttributeSet();
+	
+	if (NSAbilitySystemComponent && PlayerAttributeSet)
+	{
+		NSAbilitySystemComponent->InitAbilityActorInfo(PS, this);
+	}
+}
 void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 {
 	if (!bUseCameraFacingRotation || !Controller)

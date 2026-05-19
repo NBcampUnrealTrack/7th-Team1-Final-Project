@@ -3,16 +3,19 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class UNSPlayerAttributeSet;
+class UNSAbilitySystemComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 
 UCLASS()
-class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter
+class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -22,10 +25,18 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-
+	virtual void PossessedBy(AController* EventController) override;
+	virtual void OnRep_PlayerState() override;
+	
+public:
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
+	
+protected:
+	void InitializeAbilitySystem();
 	
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
@@ -47,6 +58,13 @@ protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComp;
+	
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
+	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 
 	// 카메라 방향 캐릭터 회전 설정들
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation")
