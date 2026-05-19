@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "AttributeSet.h"
+#include "AbilitySystemComponent.h"
 #include "NSBaseCompanionAI.generated.h"
 
-class UAttributeSet;
-class UAbilitySystemComponent;
 class UFloatingPawnMovement;
 class USceneComponent;
 

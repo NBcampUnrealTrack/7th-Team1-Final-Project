@@ -3,8 +3,8 @@
 
 #include "NSBaseCompanionAI.h"
 #include "Components/SceneComponent.h"
-#include "NeoSanctum/GAS/NSCompanionAbilitySystemComponent.h"
-#include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
+#include "AbilitySystemComponent.h"
+#include "AttributeSet.h"
 #include "GameFramework/FloatingPawnMovement.h"
 
 // Sets default values
@@ -20,9 +20,9 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 	MovementComp = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
 	MovementComp->UpdatedComponent = RootScene;
 	
-	AbilitySystemComponent = CreateDefaultSubobject<UNSCompanionAbilitySystemComponent>("AbilitySystemComponent");
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
 	
-	AttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
+	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
 }
 
 void ANSBaseCompanionAI::BeginPlay()
