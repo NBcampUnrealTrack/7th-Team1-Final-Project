@@ -11,7 +11,7 @@ public class NeoSanctum : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			// Core
-			"Core", "CoreUObject", "Engine", 
+			"Core", "CoreUObject", "Engine", "OnlineSubsystem", "OnlineSubsystemUtils",
 			
 			// Input
 			"InputCore", "EnhancedInput",
