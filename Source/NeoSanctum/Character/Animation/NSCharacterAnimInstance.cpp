@@ -2,6 +2,7 @@
 
 #include "NSCharacterAnimInstance.h"
 
+#include "CharacterTrajectoryComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -28,6 +29,7 @@ void UNSCharacterAnimInstance::RefreshOwningCharacter()
 {
 	OwnerCharacter = Cast<ACharacter>(TryGetPawnOwner());
 	CharacterMovement = OwnerCharacter ? OwnerCharacter->GetCharacterMovement() : nullptr;
+	CharacterTrajectoryComponent = OwnerCharacter ? OwnerCharacter->FindComponentByClass<UCharacterTrajectoryComponent>() : nullptr;
 }
 
 void UNSCharacterAnimInstance::UpdateMovementData()

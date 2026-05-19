@@ -8,6 +8,7 @@
 
 class ACharacter;
 class UCharacterMovementComponent;
+class UCharacterTrajectoryComponent;
 
 UENUM(BlueprintType)
 enum class ENSAnimGait : uint8
@@ -36,6 +37,9 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
 	TObjectPtr<UCharacterMovementComponent> CharacterMovement;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
+	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComponent;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	FVector Velocity = FVector::ZeroVector;
