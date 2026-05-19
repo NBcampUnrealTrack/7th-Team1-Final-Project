@@ -23,8 +23,15 @@ public:
 	void ShowHUD();
 	//HUD 화면 숨김
 	void HideHUD();
+	//런 인 재화 UI갱신
+	void UpdateRunInGoods(int32 NewGoodsAmount);
+	//런 아웃 재화 UI 갱신
+	void UpdateRunOutGoods(int32 NewGoodsAmount);
+	//런 인 재화 초기화
+	void ResetRunInGoods();
 	//HUD 위젯 반환
-	UNSHUDWidget* GetHUDWidget();
+	UNSHUDWidget* GetHUDWidget() const;
+
 	
 private:
 	//생성된 HUD 보관
@@ -36,6 +43,4 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UNSHUDWidget> HUDWidgetClass;
 	
-};
-
-
+}; 
