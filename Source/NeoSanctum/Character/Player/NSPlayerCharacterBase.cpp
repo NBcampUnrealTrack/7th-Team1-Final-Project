@@ -75,6 +75,7 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	Super::PossessedBy(EventController);
 	
 	InitializeAbilitySystem();
+	GiveDefaultAbilities();
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -82,6 +83,7 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	
 	InitializeAbilitySystem();
+	BindAttributeDelegates();
 }
 
 UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
@@ -153,4 +155,61 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 		CameraFacingRotationSpeed);
 
 	SetActorRotation(NewRotation);
+}
+
+void ANSPlayerCharacterBase::BindAttributeDelegates()
+{
+	if (!NSAbilitySystemComponent || !PlayerAttributeSet)
+	{
+		return;
+	}
+	
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetHealthAttribute()).RemoveAll(this);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetShieldAttribute()).RemoveAll(this);
+	
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetHealthAttribute()).AddUObject(this, &ThisClass::OnHealthChanged);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetShieldAttribute()).AddUObject(this, &ThisClass::OnShieldChanged);
+}
+
+void ANSPlayerCharacterBase::GiveDefaultAbilities()
+{
+	if (!NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	for (TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbilities)
+	{
+		if (!AbilityClass)
+		{
+			continue;
+		}
+		
+		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityClass))
+		{
+			continue;
+		}
+		
+		FGameplayAbilitySpec AbilitySpec(AbilityClass, 1, INDEX_NONE, this);
+		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
+	}
+}
+
+void ANSPlayerCharacterBase::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	
+}
+
+void ANSPlayerCharacterBase::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	
 }
