@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "AIController.h"
 #include "NSDroneAI.generated.h"
 
 UCLASS()
@@ -14,7 +15,37 @@ class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 public:
 	ANSDroneAI();
 	
+	UFUNCTION()
+	void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
+	
+	UFUNCTION()
+	void MoveToTargetOwningCharacter();
+	
+	UFUNCTION()
+	void FindTargetOwninigCharacter();
+	
+	UFUNCTION()
+	void StartMoving();
+	
 protected:
 	virtual void BeginPlay() override;
 	
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
+	TObjectPtr<ACharacter> TargetOwningCharacter;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
+	TObjectPtr<AActor> TargetActor;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
+	float AcceptanceRadius;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
+	bool bIsSucceeded;
+	
+	UPROPERTY()
+	AAIController* AIController;
+	
+	UPROPERTY()
+	bool bIsMoving;
 };
