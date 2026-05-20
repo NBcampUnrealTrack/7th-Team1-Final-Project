@@ -24,10 +24,21 @@ public:
 	
 	UNSPlayerAttributeSet* GetPlayerAttributeSet() const;
 	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	bool IsReady() const { return bIsReady; }
+	
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_SetReady();
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSAbilitySystemComponent> AbilitySystemComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
+
+private:
+	UPROPERTY(Replicated)
+	bool bIsReady;
 };

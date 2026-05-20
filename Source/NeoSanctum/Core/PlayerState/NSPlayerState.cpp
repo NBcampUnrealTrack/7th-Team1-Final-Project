@@ -2,7 +2,7 @@
 
 
 #include "NSPlayerState.h"
-
+#include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
@@ -17,6 +17,15 @@ ANSPlayerState::ANSPlayerState()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 	
 	PlayerAttributeSet = CreateDefaultSubobject<UNSPlayerAttributeSet>(TEXT("PlayerAttributeSet"));
+	
+	bIsReady = false;
+}
+
+void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANSPlayerState, bIsReady);
 }
 
 UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
@@ -27,4 +36,9 @@ UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
 UNSPlayerAttributeSet* ANSPlayerState::GetPlayerAttributeSet() const
 {
 	return PlayerAttributeSet;
+}
+
+void ANSPlayerState::Server_SetReady_Implementation()
+{
+	bIsReady = !bIsReady;
 }
