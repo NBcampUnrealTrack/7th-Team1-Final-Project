@@ -5,12 +5,17 @@
 
 #include "Camera/CameraComponent.h"
 #include "CharacterTrajectoryComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
 	
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
@@ -18,6 +23,12 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
+	CameraComp->bUsePawnControlRotation = false;
+
+	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->bUseControllerDesiredRotation = false;
+	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
 
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	
