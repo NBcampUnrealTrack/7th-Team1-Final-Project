@@ -29,6 +29,12 @@ public:
 	void UpdateRunOutGoods(int32 NewGoodsAmount);
 	//런 인 재화 초기화
 	void ResetRunInGoods();
+	//조준점 표시
+	void ShowCrosshair();
+	//조준점 숨김
+	void HideCrosshair();
+	//조준점 색상 변경
+	void SetCrosshairColor(FLinearColor NewColor);
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
 

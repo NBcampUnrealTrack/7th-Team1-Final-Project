@@ -77,6 +77,36 @@ void UNSUIManagerSubsystem::ResetRunInGoods()
 	HUDWidget->ResetRunInGoods();
 }
 
+void UNSUIManagerSubsystem::ShowCrosshair()
+{
+	//조준점 표시 요청을 HUD로 전달한다
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->ShowCrosshair();
+}
+
+void UNSUIManagerSubsystem::HideCrosshair()
+{
+	//조준점 숨김 요청을 HUD로 전달
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->HideCrosshair();
+}
+
+void UNSUIManagerSubsystem::SetCrosshairColor(FLinearColor NewColor)
+{
+	//TODO(영웅): 오버크리티컬에 따라 색상 변경
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->SetCrosshairColor(NewColor);
+}
+
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;
