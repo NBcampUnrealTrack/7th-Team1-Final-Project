@@ -21,7 +21,7 @@ public:
 	UGA_SkillBase();
 	
 protected:
-	UNSAbilitySystemComponent* GetNSASC() const;
+	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
 	
 	ANSPlayerState* GetNSPlayerState() const;
 	

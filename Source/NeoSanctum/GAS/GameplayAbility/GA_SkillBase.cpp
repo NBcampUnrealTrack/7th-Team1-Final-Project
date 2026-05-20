@@ -16,7 +16,7 @@ UGA_SkillBase::UGA_SkillBase()
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 }
 
-UNSAbilitySystemComponent* UGA_SkillBase::GetNSASC() const
+UNSAbilitySystemComponent* UGA_SkillBase::GetNSAbilitySystemComponent() const
 {
 	return Cast<UNSAbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
 }
@@ -31,7 +31,7 @@ FString UGA_SkillBase::GetCurrentPredictionKeyStatus()
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	if (!ASC)
 	{
-		return TEXT("NSASC 없음");
+		return TEXT("NSAbilitySystemComponent 없음");
 	}
 	
 	return ASC->ScopedPredictionKey.ToString() + TEXT("예측키가 아직 열려 있나: ")
