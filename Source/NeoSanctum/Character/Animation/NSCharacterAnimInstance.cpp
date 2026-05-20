@@ -58,8 +58,10 @@ void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 		bIsMovingUp = false;
 		bHasLandRequest = false;
 		bIsHeavyLand = false;
-		AnimState = ENSAnimState::Grounded;
-		SelectedAnimState = ENSAnimState::Grounded;
+		PreviousGroundedAnimState = ENSAnimState::Idle;
+		CurrentGroundedAnimState = ENSAnimState::Idle;
+		AnimState = ENSAnimState::Idle;
+		SelectedAnimState = ENSAnimState::Idle;
 		SelectedPoseSearchDatabase = nullptr;
 		LandVelocity = 0.f;
 		PreviousVerticalVelocity = 0.f;
@@ -118,6 +120,53 @@ void UNSCharacterAnimInstance::UpdateAnimState()
 		return;
 	}
 
-	AnimState = Gait == ENSAnimGait::Sprint ? ENSAnimState::Sprint : ENSAnimState::Grounded;
+	PreviousGroundedAnimState = CurrentGroundedAnimState;
+
+	if (GroundSpeed < IdleSpeedThreshold)
+	{
+		CurrentGroundedAnimState = ENSAnimState::Idle;
+	}
+	else if (GroundSpeed < WalkSpeedThreshold)
+	{
+		CurrentGroundedAnimState = ENSAnimState::Walk;
+	}
+	else if (GroundSpeed < RunSpeedThreshold)
+	{
+		CurrentGroundedAnimState = ENSAnimState::Run;
+	}
+	else
+	{
+		CurrentGroundedAnimState = ENSAnimState::Sprint;
+	}
+
+	if (PreviousGroundedAnimState == ENSAnimState::Walk && CurrentGroundedAnimState == ENSAnimState::Run)
+	{
+		AnimState = ENSAnimState::WalkToRun;
+	}
+	else if (PreviousGroundedAnimState == ENSAnimState::Walk && CurrentGroundedAnimState == ENSAnimState::Sprint)
+	{
+		AnimState = ENSAnimState::WalkToSprint;
+	}
+	else if (PreviousGroundedAnimState == ENSAnimState::Run && CurrentGroundedAnimState == ENSAnimState::Walk)
+	{
+		AnimState = ENSAnimState::RunToWalk;
+	}
+	else if (PreviousGroundedAnimState == ENSAnimState::Run && CurrentGroundedAnimState == ENSAnimState::Sprint)
+	{
+		AnimState = ENSAnimState::RunToSprint;
+	}
+	else if (PreviousGroundedAnimState == ENSAnimState::Sprint && CurrentGroundedAnimState == ENSAnimState::Walk)
+	{
+		AnimState = ENSAnimState::SprintToWalk;
+	}
+	else if (PreviousGroundedAnimState == ENSAnimState::Sprint && CurrentGroundedAnimState == ENSAnimState::Run)
+	{
+		AnimState = ENSAnimState::SprintToRun;
+	}
+	else
+	{
+		AnimState = CurrentGroundedAnimState;
+	}
+
 	bIsHeavyLand = false;
 }
