@@ -7,6 +7,9 @@
 #include "AIController.h"
 #include "NSDroneAI.generated.h"
 
+class ANSDroneAIController;
+class UBlackboardComponent;
+
 UCLASS()
 class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 {
@@ -48,4 +51,8 @@ private:
 	
 	UPROPERTY()
 	bool bIsMoving;
+	
+	ANSDroneAIController* NSDroneAIController;
+	
+	UBlackboardComponent* BlackboardComponent;
 };
