@@ -32,6 +32,16 @@ void UNSCharacterAnimInstance::RefreshOwningCharacter()
 	CharacterTrajectoryComponent = OwnerCharacter ? OwnerCharacter->FindComponentByClass<UCharacterTrajectoryComponent>() : nullptr;
 }
 
+void UNSCharacterAnimInstance::SetSelectedAnimState(ENSAnimState NewSelectedAnimState)
+{
+	SelectedAnimState = NewSelectedAnimState;
+}
+
+void UNSCharacterAnimInstance::SetSelectedPoseSearchDatabase(UPoseSearchDatabase* NewSelectedPoseSearchDatabase)
+{
+	SelectedPoseSearchDatabase = NewSelectedPoseSearchDatabase;
+}
+
 void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 {
 	if (!OwnerCharacter)
@@ -46,8 +56,13 @@ void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 		bIsFalling = false;
 		bWasFalling = false;
 		bIsMovingUp = false;
-		bJustLanded = false;
-		TimeSinceLanded = 999.f;
+		bHasLandRequest = false;
+		bIsHeavyLand = false;
+		AnimState = ENSAnimState::Grounded;
+		SelectedAnimState = ENSAnimState::Grounded;
+		SelectedPoseSearchDatabase = nullptr;
+		LandVelocity = 0.f;
+		PreviousVerticalVelocity = 0.f;
 		return;
 	}
 
@@ -78,13 +93,31 @@ void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 	bIsMovingUp = bIsFalling && VerticalVelocity > 0.f;
 	if (bWasFalling && !bIsFalling)
 	{
-		TimeSinceLanded = 0.f;
-	}
-	else
-	{
-		TimeSinceLanded += DeltaSeconds;
+		LandVelocity = FMath::Abs(PreviousVerticalVelocity);
+		bIsHeavyLand = LandVelocity >= HeavyLandVelocityThreshold;
+		bHasLandRequest = true;
 	}
 
-	bJustLanded = !bIsFalling && TimeSinceLanded < JustLandedDuration;
 	bShouldMove = GroundSpeed > 3.f && bHasAcceleration;
+	UpdateAnimState();
+	PreviousVerticalVelocity = VerticalVelocity;
+}
+
+void UNSCharacterAnimInstance::UpdateAnimState()
+{
+	if (bHasLandRequest)
+	{
+		AnimState = bIsHeavyLand ? ENSAnimState::LandHeavy : ENSAnimState::LandLight;
+		bHasLandRequest = false;
+		return;
+	}
+
+	if (bIsFalling)
+	{
+		AnimState = bIsMovingUp ? ENSAnimState::JumpStart : ENSAnimState::FallLoop;
+		return;
+	}
+
+	AnimState = Gait == ENSAnimGait::Sprint ? ENSAnimState::Sprint : ENSAnimState::Grounded;
+	bIsHeavyLand = false;
 }
