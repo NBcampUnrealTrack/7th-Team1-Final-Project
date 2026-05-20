@@ -34,6 +34,7 @@ class NEOSANCTUM_API UNSSaveGameSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 
+	// 입력된 Data의 캐릭터 슬롯을 캐시된 전체 세이브에 머지한 뒤 영구 저장
 	void SavePermanent(UNSPermanentSaveGame* Data, FNSSaveComplete OnComplete);
 	void LoadPermanent(FNSLoadPermanentComplete OnComplete);
 
@@ -42,7 +43,11 @@ public:
 
 	// 초기 로드 완료 시 브로드캐스트
 	FNSOnPermanentDataLoaded OnPermanentDataLoaded;
+
 private:
+	// TODO : 영구 데이터 저장 슬롯명. 향후 캐릭터별 파일로 분리 시 슬롯 키를 캐릭터 ID로 바꿀 수 있음
+	static const FString PermanentSlotName;
+
 	// 구현한 인터페이스 객체를 담는 컨테이너
 	UPROPERTY()
 	TScriptInterface<INSSaveRepository> Repository;
