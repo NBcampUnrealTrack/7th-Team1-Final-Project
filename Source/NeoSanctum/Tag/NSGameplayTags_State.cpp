@@ -1,6 +1,6 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NSGAmeplayTags_State.h"
+#include "NSGameplayTags_State.h"
 
 namespace NSGameplayTags
 {

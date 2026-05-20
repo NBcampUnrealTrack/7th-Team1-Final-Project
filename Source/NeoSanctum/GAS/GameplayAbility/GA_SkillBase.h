@@ -1,0 +1,35 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Abilities/GameplayAbility.h"
+#include "GA_SkillBase.generated.h"
+
+class ANSPlayerState;
+class UNSAbilitySystemComponent;
+
+/**
+ * 플레이어 스킬 공통 베이스
+ */
+UCLASS(Abstract)
+class NEOSANCTUM_API UGA_SkillBase : public UGameplayAbility
+{
+	GENERATED_BODY()
+
+public:
+	UGA_SkillBase();
+	
+protected:
+	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
+	
+	ANSPlayerState* GetNSPlayerState() const;
+	
+	// 현재 Prediction Key 상태 확인하는 디버그용 함수
+	UFUNCTION(BlueprintCallable, Category = "GAS|Debug")
+	FString GetCurrentPredictionKeyStatus();
+	
+	// 현재 Prediction Key가 추가 예측에 유효한지 확인하는 함수
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "GAS|Debug")
+	bool IsPredictionKeyValidForMorePrediction() const;
+};
