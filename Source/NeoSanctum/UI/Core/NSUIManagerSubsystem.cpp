@@ -47,7 +47,37 @@ void UNSUIManagerSubsystem::HideHUD()
 	HUDWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
-UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget()
+void UNSUIManagerSubsystem::UpdateRunInGoods(int32 NewGoodsAmount)
+{
+	//TODO(영웅) 실제 런 내부 재화 데이터 연동
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateRunInGoods(NewGoodsAmount);
+}
+
+void UNSUIManagerSubsystem::UpdateRunOutGoods(int32 NewGoodsAmount)
+{
+	//TODO(영웅): 영구 재화 데이터 연동
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateRunOutGoods(NewGoodsAmount);
+}
+
+void UNSUIManagerSubsystem::ResetRunInGoods()
+{
+	//TODO(영웅): 런 시작시점에 호출
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->ResetRunInGoods();
+}
+
+UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;
 }

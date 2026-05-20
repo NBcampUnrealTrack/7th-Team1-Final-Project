@@ -3,6 +3,7 @@
 
 #include "NSHUDWidget.h"
 #include "NSHPShieldWidget.h"
+#include "NSGoodsWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -24,4 +25,37 @@ void UNSHUDWidget::UpdateHealthAndShield(
 	HPShieldWidget->SetShield(CurrentShield, MaxShield);
 }
 
+void UNSHUDWidget::UpdateRunInGoods(int32 NewGoodsAmount)
+{
+	//TODO(영웅): 인런 재화 변경 값
+	
+	//런 인 재화 갱신
+	if (!GoodsWidget)
+	{
+		return;
+	}
+	GoodsWidget->SetRunInGoodsAmount(NewGoodsAmount);
+}
 
+void UNSHUDWidget::UpdateRunOutGoods(int32 NewGoodsAmount)
+{
+	
+	//런 아웃 재화 갱신
+	if (!GoodsWidget)
+	{
+		return;
+	}
+	GoodsWidget->SetRunOutGoodsAmount(NewGoodsAmount);
+}
+
+void UNSHUDWidget::ResetRunInGoods()
+{
+	//TODO(영웅): 런 시작 지점 연결
+	
+	//런 인 재화 초기화
+	if (!GoodsWidget)
+	{
+		return;
+	}
+	GoodsWidget->ResetRunInGoodsAmount();
+}
