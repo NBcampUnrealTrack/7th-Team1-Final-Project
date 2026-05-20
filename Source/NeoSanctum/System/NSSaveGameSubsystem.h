@@ -42,7 +42,6 @@ public:
 
 	// 초기 로드 완료 시 브로드캐스트
 	FNSOnPermanentDataLoaded OnPermanentDataLoaded;
-
 private:
 	// 구현한 인터페이스 객체를 담는 컨테이너
 	UPROPERTY()
@@ -51,5 +50,4 @@ private:
 	// 마지막으로 로드된 세이브 데이터를 메모리에 캐싱, 추후에 세이브파일을 읽지않고 이 캐시데이터를 사용하면 됨
 	UPROPERTY()
 	TObjectPtr<UNSPermanentSaveGame> CachedData;
-
 };

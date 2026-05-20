@@ -20,5 +20,4 @@ public:
 
 	UPROPERTY(SaveGame)
 	TArray<FName> EquippedPartIds;
-
 };
