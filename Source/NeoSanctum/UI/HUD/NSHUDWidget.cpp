@@ -4,6 +4,7 @@
 #include "NSHUDWidget.h"
 #include "NSHPShieldWidget.h"
 #include "NSGoodsWidget.h"
+#include "NSCrosshairWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -58,4 +59,36 @@ void UNSHUDWidget::ResetRunInGoods()
 		return;
 	}
 	GoodsWidget->ResetRunInGoodsAmount();
+}
+
+void UNSHUDWidget::ShowCrosshair()
+{
+	//조준점이 필요할때 표사
+	if (!CrosshairWidget)
+	{
+		return;
+	}
+	CrosshairWidget->ShowCrosshair();
+}
+
+void UNSHUDWidget::HideCrosshair()
+{
+	//조준점이 필요없는 상황에 숨긴다
+	if (!CrosshairWidget)
+	{
+		return;
+	}
+	CrosshairWidget->HideCrosshair();
+}
+
+void UNSHUDWidget::SetCrosshairColor(FLinearColor NewColor)
+{
+	//상황에따른 조준점 색상 변경
+	//TODO(영웅): 오버 크리티컬에 따라 색상 변경
+	
+	if (!CrosshairWidget)
+	{
+		return;
+	}
+	CrosshairWidget->SetCrosshairColor(NewColor);
 }

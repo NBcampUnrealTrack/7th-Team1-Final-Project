@@ -8,6 +8,7 @@
 
 class UNSHPShieldWidget;
 class UNSGoodsWidget;
+class UNSCrosshairWidget;
 
 /**
  * 인게임 HUD 요소를 묶어서 관리하는 위젯
@@ -35,6 +36,16 @@ public:
 	//런 인 재화 초기화
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void ResetRunInGoods();
+	//조준점 표시
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void ShowCrosshair();
+	//조준점 숨김
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void HideCrosshair();
+	//조준점 색상 변경
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void SetCrosshairColor(FLinearColor NewColor);
+
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -42,4 +53,7 @@ private:
 	//재화 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSGoodsWidget> GoodsWidget;
+	//조준점 HUD 위젯
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UNSCrosshairWidget> CrosshairWidget;
 };
