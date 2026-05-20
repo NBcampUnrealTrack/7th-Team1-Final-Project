@@ -6,11 +6,12 @@
 #include "GameFramework/GameStateBase.h"
 #include "NSOutGameState.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class NEOSANCTUM_API ANSOutGameState : public AGameStateBase
 {
 	GENERATED_BODY()
+	
+public:
+	bool IsAllPlayersReady() const;
 };
