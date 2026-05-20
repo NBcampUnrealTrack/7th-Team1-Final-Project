@@ -13,9 +13,9 @@ class NEOSANCTUM_API UNSLocalSaveRepository : public UObject, public INSSaveRepo
 	GENERATED_BODY()
 
 public:
-	virtual void SaveBytesAsync(const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete) override;
-	virtual void LoadBytesAsync(FNSLoadBytesComplete OnComplete) override;
+	virtual void SaveBytesAsync(const FString& SlotName, const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete) override;
+	virtual void LoadBytesAsync(const FString& SlotName, FNSLoadBytesComplete OnComplete) override;
 
 private:
-	static const FString SavePath;
+	static FString GetSavePath(const FString& SlotName);
 };

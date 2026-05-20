@@ -5,14 +5,18 @@
 #include "Misc/Paths.h"
 #include "Async/Async.h"
 
-const FString UNSLocalSaveRepository::SavePath = FPaths::ProjectSavedDir() / TEXT("SaveGames/NS_Permanent.sav");
+FString UNSLocalSaveRepository::GetSavePath(const FString& SlotName)
+{
+	return FPaths::ProjectSavedDir() / TEXT("SaveGames") / FString::Printf(TEXT("NS_%s.sav"), *SlotName);
+}
 
-void UNSLocalSaveRepository::SaveBytesAsync(const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete)
+void UNSLocalSaveRepository::SaveBytesAsync(const FString& SlotName, const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete)
 {
 	TArray<uint8> DataCopy = Data;
-	Async(EAsyncExecution::ThreadPool, [DataCopy = MoveTemp(DataCopy), OnComplete]()
+	FString Path = GetSavePath(SlotName);
+	Async(EAsyncExecution::ThreadPool, [DataCopy = MoveTemp(DataCopy), Path = MoveTemp(Path), OnComplete]()
 	{
-		const bool bSuccess = FFileHelper::SaveArrayToFile(DataCopy, *SavePath);
+		const bool bSuccess = FFileHelper::SaveArrayToFile(DataCopy, *Path);
 		AsyncTask(ENamedThreads::GameThread, [bSuccess, OnComplete]()
 		{
 			OnComplete.ExecuteIfBound(bSuccess);
@@ -20,11 +24,12 @@ void UNSLocalSaveRepository::SaveBytesAsync(const TArray<uint8>& Data, FNSSaveBy
 	});
 }
 
-void UNSLocalSaveRepository::LoadBytesAsync(FNSLoadBytesComplete OnComplete)
+void UNSLocalSaveRepository::LoadBytesAsync(const FString& SlotName, FNSLoadBytesComplete OnComplete)
 {
-	Async(EAsyncExecution::ThreadPool, [OnComplete]()
+	FString Path = GetSavePath(SlotName);
+	Async(EAsyncExecution::ThreadPool, [Path = MoveTemp(Path), OnComplete]()
 	{
-		if (!FPaths::FileExists(SavePath))
+		if (!FPaths::FileExists(Path))
 		{
 			AsyncTask(ENamedThreads::GameThread, [OnComplete]()
 			{
@@ -34,7 +39,7 @@ void UNSLocalSaveRepository::LoadBytesAsync(FNSLoadBytesComplete OnComplete)
 		}
 
 		TArray<uint8> Bytes;
-		const bool bSuccess = FFileHelper::LoadFileToArray(Bytes, *SavePath);
+		const bool bSuccess = FFileHelper::LoadFileToArray(Bytes, *Path);
 		AsyncTask(ENamedThreads::GameThread, [bSuccess, Bytes = MoveTemp(Bytes), OnComplete]()
 		{
 			OnComplete.ExecuteIfBound(bSuccess, Bytes);
