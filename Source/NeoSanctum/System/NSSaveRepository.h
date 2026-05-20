@@ -27,6 +27,10 @@ class NEOSANCTUM_API INSSaveRepository
 	GENERATED_BODY()
 
 public:
-	virtual void SaveBytesAsync(const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete) = 0;
-	virtual void LoadBytesAsync(FNSLoadBytesComplete OnComplete) = 0;
+	/**
+	 * 저장/로드 비동기 순수가상함수
+	 * @param SlotName: 저장 단위 식별자. 동일 슬롯명은 덮어쓰기, 다른 슬롯명은 별개 파일로 취급
+	 */
+	virtual void SaveBytesAsync(const FString& SlotName, const TArray<uint8>& Data, FNSSaveBytesComplete OnComplete) = 0;
+	virtual void LoadBytesAsync(const FString& SlotName, FNSLoadBytesComplete OnComplete) = 0;
 };
