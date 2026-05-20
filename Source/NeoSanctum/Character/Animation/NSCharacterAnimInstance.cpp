@@ -102,6 +102,8 @@ void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 
 	bShouldMove = GroundSpeed > 3.f && bHasAcceleration;
 	UpdateAnimState();
+	UpdateAimData();
+	UpdateTurnInPlaceData();
 	PreviousVerticalVelocity = VerticalVelocity;
 }
 
@@ -169,4 +171,59 @@ void UNSCharacterAnimInstance::UpdateAnimState()
 	}
 
 	bIsHeavyLand = false;
+}
+
+void UNSCharacterAnimInstance::UpdateAimData()
+{
+	if (!OwnerCharacter)
+	{
+		AimYaw = 0.f;
+		AimPitch = 0.f;
+		AimOffsetAlpha = 0.f;
+		return;
+	}
+
+	const FRotator ActorRotation = OwnerCharacter->GetActorRotation();
+	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
+
+	AimYaw = FRotator::NormalizeAxis(AimRotation.Yaw - ActorRotation.Yaw);
+	AimPitch = FRotator::NormalizeAxis(AimRotation.Pitch);
+	AimOffsetAlpha = CharacterAnimType == ENSCharacterAnimType::Ranged
+		? RangedAimOffsetAlpha
+		: MeleeAimOffsetAlpha;
+}
+
+void UNSCharacterAnimInstance::UpdateTurnInPlaceData()
+{
+	if (!OwnerCharacter)
+	{
+		ViewYawDelta = 0.f;
+		RootYawOffset = 0.f;
+		bShouldTurnInPlace = false;
+		TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
+		return;
+	}
+
+	const FRotator ActorRotation = OwnerCharacter->GetActorRotation();
+	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
+
+	ViewYawDelta = FRotator::NormalizeAxis(AimRotation.Yaw - ActorRotation.Yaw);
+	RootYawOffset = ViewYawDelta;
+
+	const float AbsYawDelta = FMath::Abs(ViewYawDelta);
+	const bool bCanTurnInPlace = GroundSpeed < IdleSpeedThreshold && !bIsFalling;
+	if (!bCanTurnInPlace)
+	{
+		bShouldTurnInPlace = false;
+		TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
+		return;
+	}
+
+	bShouldTurnInPlace = bShouldTurnInPlace
+		? AbsYawDelta > TurnInPlaceStopAngle
+		: AbsYawDelta >= TurnInPlaceStartAngle;
+
+	TurnInPlaceDirection = bShouldTurnInPlace
+		? (ViewYawDelta < 0.f ? ENSTurnInPlaceDirection::Left : ENSTurnInPlaceDirection::Right)
+		: ENSTurnInPlaceDirection::None;
 }

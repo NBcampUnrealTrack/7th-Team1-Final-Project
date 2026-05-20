@@ -11,8 +11,6 @@ class UPoseSearchDatabase;
 class UCharacterMovementComponent;
 class UCharacterTrajectoryComponent;
 
-// Chooser Table이 읽는 최종 locomotion 상태입니다.
-// 지상 이동도 Idle/Walk/Run/Sprint로 나누어 PSD를 세분화할 수 있게 합니다.
 UENUM(BlueprintType)
 enum class ENSAnimState : uint8
 {
@@ -30,6 +28,21 @@ enum class ENSAnimState : uint8
 	FallLoop,
 	LandLight,
 	LandHeavy
+};
+
+UENUM(BlueprintType)
+enum class ENSTurnInPlaceDirection : uint8
+{
+	None,
+	Left,
+	Right
+};
+
+UENUM(BlueprintType)
+enum class ENSCharacterAnimType : uint8
+{
+	Melee,
+	Ranged
 };
 
 UCLASS()
@@ -52,9 +65,11 @@ protected:
 	void RefreshOwningCharacter();
 	void UpdateMovementData(float DeltaSeconds);
 	void UpdateAnimState();
+	void UpdateAimData();
+	void UpdateTurnInPlaceData();
 
 protected:
-	// 소유 캐릭터와 공통 컴포넌트 캐시입니다.
+	// Cached owner and shared components.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
 	TObjectPtr<ACharacter> OwnerCharacter;
 
@@ -64,7 +79,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComponent;
 
-	// CharacterMovement에서 가져온 현재 이동 값입니다.
+	// Movement values copied from CharacterMovement.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	FVector Velocity = FVector::ZeroVector;
 
@@ -95,7 +110,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	bool bIsMovingUp = false;
 
-	// 착지 프레임에 한 번 발생하는 Land DB 선택 요청입니다.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	bool bHasLandRequest = false;
 
@@ -108,25 +122,23 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	ENSAnimState CurrentGroundedAnimState = ENSAnimState::Idle;
 
-	// Chooser Table이 읽는 상태입니다. 이 값으로 검색할 Pose Search Database를 고릅니다.
+	// Main state read by Chooser Tables.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	ENSAnimState AnimState = ENSAnimState::Idle;
 
-	// OnUpdate에서 Chooser가 선택한 상태/DB를 디버깅하고 후속 확장에 활용하기 위한 캐시입니다.
+	// Cached Chooser result for debugging and later selection-aware transitions.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	ENSAnimState SelectedAnimState = ENSAnimState::Idle;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	TObjectPtr<UPoseSearchDatabase> SelectedPoseSearchDatabase;
 
-	// 착지 직전 수직 속도를 기반으로 Light/Heavy Land를 나누기 위한 값입니다.
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	float LandVelocity = 0.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	float PreviousVerticalVelocity = 0.f;
 
-	// 지상 이동 상태를 속도 기반으로 나누기 위한 기준값입니다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	float IdleSpeedThreshold = 10.f;
 
@@ -138,4 +150,42 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	float HeavyLandVelocityThreshold = 900.f;
+
+	// Character type controls how strongly the shared AimOffset is applied in the AnimBP.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	ENSCharacterAnimType CharacterAnimType = ENSCharacterAnimType::Melee;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimYaw = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimPitch = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MeleeAimOffsetAlpha = 0.4f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float RangedAimOffsetAlpha = 1.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimOffsetAlpha = 0.4f;
+
+	// Shared upper/lower-body separation and turn-in-place values.
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float ViewYawDelta = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float RootYawOffset = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	bool bShouldTurnInPlace = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	ENSTurnInPlaceDirection TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceStartAngle = 60.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceStopAngle = 10.f;
 };
