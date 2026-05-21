@@ -3,18 +3,18 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Engine/StreamableManager.h"
-#include "NSHubDataComponent.generated.h"
+#include "NSOutGameDataComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnNSHubDataReady);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnNSOutGameDataReady);
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
-class NEOSANCTUM_API UNSHubDataComponent : public UActorComponent
+class NEOSANCTUM_API UNSOutGameDataComponent : public UActorComponent
 {
     GENERATED_BODY()
 
 public:
-    UPROPERTY(BlueprintAssignable, Category = "NS|HubData")
-    FOnNSHubDataReady OnHubDataReady;
+    UPROPERTY(BlueprintAssignable, Category = "NS|OutGameData")
+    FOnNSOutGameDataReady OnOutGameDataReady;
 
     template<typename T>
     T* GetData(const FPrimaryAssetId& Id) const;
@@ -22,10 +22,10 @@ public:
     template<typename T>
     TArray<T*> GetAllDataOfType(const FPrimaryAssetType& AssetType) const;
 
-    UFUNCTION(BlueprintPure, Category = "NS|HubData", meta=(WorldContext="WorldContextObject"))
-    static UNSHubDataComponent* Get(const UObject* WorldContextObject);
+    UFUNCTION(BlueprintPure, Category = "NS|OutGameData", meta=(WorldContext="WorldContextObject"))
+    static UNSOutGameDataComponent* Get(const UObject* WorldContextObject);
 
-    UFUNCTION(BlueprintPure, Category = "NS|HubData")
+    UFUNCTION(BlueprintPure, Category = "NS|OutGameData")
     bool IsReady() const { return bIsReady; }
 
     static const FPrimaryAssetType HubAssetType;
@@ -48,14 +48,14 @@ private:
 };
 
 template<typename T>
-T* UNSHubDataComponent::GetData(const FPrimaryAssetId& Id) const
+T* UNSOutGameDataComponent::GetData(const FPrimaryAssetId& Id) const
 {
     const TObjectPtr<UObject>* Found = DataCache.Find(Id);
     return Found ? Cast<T>(*Found) : nullptr;
 }
 
 template<typename T>
-TArray<T*> UNSHubDataComponent::GetAllDataOfType(const FPrimaryAssetType& AssetType) const
+TArray<T*> UNSOutGameDataComponent::GetAllDataOfType(const FPrimaryAssetType& AssetType) const
 {
     TArray<T*> Result;
     for (const auto& Pair : DataCache)
