@@ -41,11 +41,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
-private:
-	void OnSaveDataLoaded(UNSPermanentSaveGame* Data);
-
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSPlayerProgressComponent> ProgressComponent;
+	
+private:
+	void OnSaveDataLoaded(UNSPermanentSaveGame* Data);
 
 	UPROPERTY(Replicated)
 	bool bIsReady;
