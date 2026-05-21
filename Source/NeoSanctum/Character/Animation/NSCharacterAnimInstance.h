@@ -33,6 +33,14 @@ enum class ENSAnimGait : uint8
 };
 
 UENUM(BlueprintType)
+enum class ENSAnimCombatType : uint8
+{
+	None,
+	Ranged,
+	Melee
+};
+
+UENUM(BlueprintType)
 enum class ENSTurnInPlaceDirection : uint8
 {
 	None,
@@ -51,6 +59,9 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
+	UFUNCTION(BlueprintCallable, Category = "Animation|Combat")
+	void SetCombatType(ENSAnimCombatType NewCombatType);
+
 protected:
 	void RefreshCachedReferences();
 	void ResetRuntimeData();
@@ -63,6 +74,7 @@ protected:
 	void UpdateLandingData(float DeltaSeconds);
 	void UpdatePivotData(float DeltaSeconds);
 	void UpdateSpinTransitionData();
+	void UpdateCombatData(float DeltaSeconds);
 	void UpdateAimData();
 	void UpdateTurnInPlaceData();
 	void UpdateTimeToLand();
@@ -154,6 +166,12 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
 	float TimeToLand = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
+	ENSAnimCombatType CombatType = ENSAnimCombatType::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
+	bool bUseUpperBodyLayer = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYaw = 0.f;
