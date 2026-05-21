@@ -30,6 +30,7 @@ public:
 
     static const FPrimaryAssetType MonsterAssetType;
     static const FPrimaryAssetType AugmentAssetType;
+    static const FPrimaryAssetType AugmentPoolAssetType;
     static const FPrimaryAssetType PartAssetType;
 
 protected:

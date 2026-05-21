@@ -3,9 +3,10 @@
 #include "GameFramework/GameStateBase.h"
 
 // Project Settings > Asset Manager 에 등록된 이름과 반드시 일치
-const FPrimaryAssetType UNSRunDataComponent::MonsterAssetType = TEXT("NSMonsterData");
-const FPrimaryAssetType UNSRunDataComponent::AugmentAssetType = TEXT("NSAugmentData");
-const FPrimaryAssetType UNSRunDataComponent::PartAssetType    = TEXT("NSPartData");
+const FPrimaryAssetType UNSRunDataComponent::MonsterAssetType     = TEXT("NSMonsterData");
+const FPrimaryAssetType UNSRunDataComponent::AugmentAssetType     = TEXT("NSAugmentData");
+const FPrimaryAssetType UNSRunDataComponent::AugmentPoolAssetType = TEXT("NSAugmentPool");
+const FPrimaryAssetType UNSRunDataComponent::PartAssetType        = TEXT("NSPartData");
 
 UNSRunDataComponent* UNSRunDataComponent::Get(const UObject* WorldContextObject)
 {
@@ -34,7 +35,7 @@ void UNSRunDataComponent::StartLoading()
     UAssetManager& AM = UAssetManager::Get();
 
     TArray<FSoftObjectPath> AllPaths;
-    for (const FPrimaryAssetType& Type : { MonsterAssetType, AugmentAssetType, PartAssetType })
+    for (const FPrimaryAssetType& Type : { MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType })
     {
         TArray<FAssetData> Assets;
         AM.GetPrimaryAssetDataList(Type, Assets);
@@ -58,7 +59,7 @@ void UNSRunDataComponent::OnAssetsLoaded()
 {
     UAssetManager& AM = UAssetManager::Get();
 
-    for (const FPrimaryAssetType& Type : { MonsterAssetType, AugmentAssetType, PartAssetType })
+    for (const FPrimaryAssetType& Type : { MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType })
     {
         TArray<FPrimaryAssetId> Ids;
         AM.GetPrimaryAssetIdList(Type, Ids);
