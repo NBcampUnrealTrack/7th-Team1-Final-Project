@@ -58,5 +58,7 @@ protected:
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
 private:
+	void ExecuteMuzzleFireCue();
+	
 	FTimerHandle AutoFireTimerHandle;
 };

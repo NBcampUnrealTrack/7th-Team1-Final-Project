@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 UGA_RangerAutoFire::UGA_RangerAutoFire()
 {
@@ -108,6 +109,7 @@ void UGA_RangerAutoFire::FireOnce()
 		return;
 	}
 	
+	ExecuteMuzzleFireCue();
 	PerformHitscan();
 }
 
@@ -181,4 +183,23 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+}
+
+void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	
+	if (!ASC || !AvatarActor)
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.Location = AvatarActor->GetActorLocation();
+	CueParameters.Normal = AvatarActor->GetActorForwardVector();
+	
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
 }
