@@ -90,8 +90,12 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
-#Content Paid
-Content/Assets/Paid/*
+#Content Asset
+Content/Assets/*
+Content/SubstrateMaterials/*
+
+#Tool
+Tool/*
 
 #Content TestSpace
 Content/TestSpace/*
