@@ -20,6 +20,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
 	SpringArmComp->bUsePawnControlRotation = true;
+	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);

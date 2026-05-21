@@ -7,78 +7,39 @@
 #include "NSCharacterAnimInstance.generated.h"
 
 class ACharacter;
-class UPoseSearchDatabase;
 class UCharacterMovementComponent;
 class UCharacterTrajectoryComponent;
 
 UENUM(BlueprintType)
-enum class ENSAnimState : uint8
+enum class ENSAnimMovementMode : uint8
 {
-	// 기존 Chooser Table 호환용 통합 상태
+	OnGround,
+	InAir
+};
+
+UENUM(BlueprintType)
+enum class ENSAnimMovementState : uint8
+{
 	Idle,
+	Moving
+};
+
+UENUM(BlueprintType)
+enum class ENSAnimGait : uint8
+{
 	Walk,
 	Run,
-	Sprint,
-	WalkToRun,
-	WalkToSprint,
-	RunToWalk,
-	RunToSprint,
-	SprintToWalk,
-	SprintToRun,
-	JumpStart,
-	FallLoop,
-	LandLight,
-	LandHeavy
+	Sprint
 };
 
 UENUM(BlueprintType)
-enum class ENSLocomotionState : uint8
+enum class ENSTurnInPlaceDirection : uint8
 {
-	// 지상 이동 상태
-	Idle,
-	Walk,
-	Run,
-	Sprint,
-
-	// 속도 전환 상태
-	WalkToRun,
-	WalkToSprint,
-	RunToWalk,
-	RunToSprint,
-	SprintToWalk,
-	SprintToRun
-};
-
-UENUM(BlueprintType)
-enum class ENSAirState : uint8
-{
-	// 공중/착지 상태
-	Grounded,
-	JumpStart,
-	FallLoop,
-	LandLight,
-	LandHeavy
-};
-
-UENUM(BlueprintType)
-enum class ENSTurnInPlaceState : uint8
-{
-	// 제자리 회전 상태
 	None,
 	Left90,
 	Right90,
 	Left180,
 	Right180
-};
-
-UENUM(BlueprintType)
-enum class ENSUpperBodyState : uint8
-{
-	// 상체 레이어 상태
-	None,
-	Aim,
-	Fire,
-	Reload
 };
 
 UCLASS()
@@ -90,148 +51,152 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
-public:
-	UFUNCTION(BlueprintCallable, Category = "Animation|State", meta = (BlueprintThreadSafe))
-	void SetSelectedAnimState(ENSAnimState NewSelectedAnimState);
+protected:
+	void RefreshCachedReferences();
+	void ResetRuntimeData();
 
-	UFUNCTION(BlueprintCallable, Category = "Animation|State", meta = (BlueprintThreadSafe))
-	void SetSelectedPoseSearchDatabase(UPoseSearchDatabase* NewSelectedPoseSearchDatabase);
-
-	UFUNCTION(BlueprintCallable, Category = "Animation|State", meta = (BlueprintThreadSafe))
-	void SetUpperBodyState(ENSUpperBodyState NewUpperBodyState);
+	void UpdateMovementData();
+	void UpdateMovementMode();
+	void UpdateMovementState();
+	void UpdateGait();
+	void UpdateStartStopData(float DeltaSeconds);
+	void UpdateLandingData(float DeltaSeconds);
+	void UpdatePivotData(float DeltaSeconds);
+	void UpdateSpinTransitionData();
+	void UpdateAimData();
+	void UpdateTurnInPlaceData();
+	void UpdateTimeToLand();
 
 protected:
-	// 캐릭터와 컴포넌트를 캐싱
-	void RefreshOwningCharacter();
-
-	// CharacterMovement 값을 애니메이션 변수로 복사
-	void UpdateMovementData(float DeltaSeconds);
-
-	// 이동 상태를 계산
-	void UpdateLocomotionState();
-
-	// 공중/착지 상태를 계산
-	void UpdateAirState();
-
-	// 제자리 회전 상태를 계산
-	void UpdateTurnInPlaceState();
-
-	// AimOffset 입력값을 계산
-	void UpdateAimData(float DeltaSeconds);
-
-	// 기존 Chooser Table이 읽는 상태를 갱신
-	void UpdateAnimState();
-
-protected:
-	// 캐릭터 / 컴포넌트 캐시
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|References")
 	TObjectPtr<ACharacter> OwnerCharacter;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|References")
 	TObjectPtr<UCharacterMovementComponent> CharacterMovement;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Owner")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|References")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComponent;
 
-	// 이동 입력 / 속도 값
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	FVector Velocity = FVector::ZeroVector;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	FVector LocalVelocity = FVector::ZeroVector;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	FVector Acceleration = FVector::ZeroVector;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	FVector LocalAcceleration = FVector::ZeroVector;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	float Speed2D = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	float GroundSpeed = 0.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	float PreviousSpeed2D = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	float StopSpeed2D = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	float VerticalVelocity = 0.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	float LocomotionAngle = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
+	float AccelerationAngle = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	bool bHasAcceleration = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	bool bShouldMove = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	bool bIsFalling = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimMovementMode MovementMode = ENSAnimMovementMode::OnGround;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	bool bWasFalling = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimMovementState MovementState = ENSAnimMovementState::Idle;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	bool bIsMovingUp = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimMovementState PreviousMovementState = ENSAnimMovementState::Idle;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	bool bHasLandRequest = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimGait Gait = ENSAnimGait::Walk;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	bool bIsHeavyLand = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimGait PreviousGait = ENSAnimGait::Walk;
 
-	// Locomotion / Air / Turn 상태
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSLocomotionState PreviousLocomotionState = ENSLocomotionState::Idle;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
+	ENSAnimGait StopGait = ENSAnimGait::Walk;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSLocomotionState LocomotionState = ENSLocomotionState::Idle;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bIsStarting = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSAirState AirState = ENSAirState::Grounded;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bIsPivoting = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
-	ENSTurnInPlaceState TurnInPlaceState = ENSTurnInPlaceState::None;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bJustLandedLight = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
-	bool bIsTurnInPlaceActive = false;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bJustLandedHeavy = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
-	float TurnInPlaceYawDelta = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bShouldTurnInPlace = false;
 
-	// Chooser Table용 상태
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSAnimState AnimState = ENSAnimState::Idle;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	bool bShouldSpinTransition = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSAnimState SelectedAnimState = ENSAnimState::Idle;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
+	float TimeToLand = 0.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	TObjectPtr<UPoseSearchDatabase> SelectedPoseSearchDatabase;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	float LandVelocity = 0.f;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	float PreviousVerticalVelocity = 0.f;
-
-	// Aim / 상체 상태
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYaw = 0.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	float AimPitch = 0.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
-	float AimOffsetAlpha = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	ENSTurnInPlaceDirection TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Upper Body")
-	ENSUpperBodyState UpperBodyState = ENSUpperBodyState::None;
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceYawDelta = 0.f;
 
-	// 이동 상태 판정 기준값
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
-	float IdleSpeedThreshold = 10.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion")
+	float MoveSpeedThreshold = 3.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion")
 	float WalkSpeedThreshold = 250.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion")
 	float RunSpeedThreshold = 650.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
-	float HeavyLandVelocityThreshold = 900.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion")
+	float HeavyLandSpeedThreshold = 900.f;
 
-	// Turn In Place 판정 기준값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
+	float LandStateHoldTime = 0.2f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
+	float StartStateHoldTime = 0.2f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
+	float PivotStateHoldTime = 0.2f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "-1.0", ClampMax = "1.0"))
+	float PivotAccelerationDotThreshold = -0.25f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float SpinTransitionAngle = 135.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
+	float TimeToLandTraceDistance = 5000.f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
 	float TurnInPlaceStartAngle = 50.f;
 
@@ -247,6 +212,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim", meta = (ClampMin = "0.0", ClampMax = "90.0"))
 	float AimPitchLimit = 90.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim", meta = (ClampMin = "0.0"))
-	float AimOffsetBlendSpeed = 10.f;
+private:
+	bool bWasFalling = false;
+	float PreviousVerticalVelocity = 0.f;
+	float StartStateRemainingTime = 0.f;
+	float LandStateRemainingTime = 0.f;
+	float PivotStateRemainingTime = 0.f;
 };

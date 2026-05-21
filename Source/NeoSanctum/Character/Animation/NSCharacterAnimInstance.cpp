@@ -5,12 +5,13 @@
 #include "CharacterTrajectoryComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/World.h"
 
 void UNSCharacterAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 
-	RefreshOwningCharacter();
+	RefreshCachedReferences();
 }
 
 void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
@@ -19,68 +20,91 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (!OwnerCharacter)
 	{
-		RefreshOwningCharacter();
+		RefreshCachedReferences();
 	}
 
-	UpdateMovementData(DeltaSeconds);
+	if (!OwnerCharacter)
+	{
+		ResetRuntimeData();
+		return;
+	}
+
+	PreviousMovementState = MovementState;
+	PreviousGait = Gait;
+	PreviousSpeed2D = Speed2D;
+
+	UpdateMovementData();
+	UpdateMovementMode();
+	UpdateMovementState();
+	UpdateGait();
+	UpdateStartStopData(DeltaSeconds);
+	UpdateLandingData(DeltaSeconds);
+	UpdatePivotData(DeltaSeconds);
+	UpdateSpinTransitionData();
+	UpdateAimData();
+	UpdateTurnInPlaceData();
+	UpdateTimeToLand();
+
+	PreviousVerticalVelocity = VerticalVelocity;
+	bWasFalling = MovementMode == ENSAnimMovementMode::InAir;
 }
 
-void UNSCharacterAnimInstance::RefreshOwningCharacter()
+void UNSCharacterAnimInstance::RefreshCachedReferences()
 {
 	OwnerCharacter = Cast<ACharacter>(TryGetPawnOwner());
 	CharacterMovement = OwnerCharacter ? OwnerCharacter->GetCharacterMovement() : nullptr;
 	CharacterTrajectoryComponent = OwnerCharacter ? OwnerCharacter->FindComponentByClass<UCharacterTrajectoryComponent>() : nullptr;
 }
 
-void UNSCharacterAnimInstance::SetSelectedAnimState(ENSAnimState NewSelectedAnimState)
+void UNSCharacterAnimInstance::ResetRuntimeData()
 {
-	SelectedAnimState = NewSelectedAnimState;
+	CharacterMovement = nullptr;
+	CharacterTrajectoryComponent = nullptr;
+
+	Velocity = FVector::ZeroVector;
+	LocalVelocity = FVector::ZeroVector;
+	Acceleration = FVector::ZeroVector;
+	LocalAcceleration = FVector::ZeroVector;
+	Speed2D = 0.f;
+	GroundSpeed = 0.f;
+	PreviousSpeed2D = 0.f;
+	StopSpeed2D = 0.f;
+	VerticalVelocity = 0.f;
+	LocomotionAngle = 0.f;
+	AccelerationAngle = 0.f;
+	bHasAcceleration = false;
+	bShouldMove = false;
+
+	MovementMode = ENSAnimMovementMode::OnGround;
+	MovementState = ENSAnimMovementState::Idle;
+	PreviousMovementState = ENSAnimMovementState::Idle;
+	Gait = ENSAnimGait::Walk;
+	PreviousGait = ENSAnimGait::Walk;
+	StopGait = ENSAnimGait::Walk;
+
+	bIsStarting = false;
+	bIsPivoting = false;
+	bJustLandedLight = false;
+	bJustLandedHeavy = false;
+	bShouldTurnInPlace = false;
+	bShouldSpinTransition = false;
+	TimeToLand = 0.f;
+
+	AimYaw = 0.f;
+	AimPitch = 0.f;
+
+	TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
+	TurnInPlaceYawDelta = 0.f;
+
+	bWasFalling = false;
+	PreviousVerticalVelocity = 0.f;
+	StartStateRemainingTime = 0.f;
+	LandStateRemainingTime = 0.f;
+	PivotStateRemainingTime = 0.f;
 }
 
-void UNSCharacterAnimInstance::SetSelectedPoseSearchDatabase(UPoseSearchDatabase* NewSelectedPoseSearchDatabase)
+void UNSCharacterAnimInstance::UpdateMovementData()
 {
-	SelectedPoseSearchDatabase = NewSelectedPoseSearchDatabase;
-}
-
-void UNSCharacterAnimInstance::SetUpperBodyState(ENSUpperBodyState NewUpperBodyState)
-{
-	UpperBodyState = NewUpperBodyState;
-}
-
-void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
-{
-	if (!OwnerCharacter)
-	{
-		Velocity = FVector::ZeroVector;
-		LocalVelocity = FVector::ZeroVector;
-		Acceleration = FVector::ZeroVector;
-		GroundSpeed = 0.f;
-		VerticalVelocity = 0.f;
-		bHasAcceleration = false;
-		bShouldMove = false;
-		bIsFalling = false;
-		bWasFalling = false;
-		bIsMovingUp = false;
-		bHasLandRequest = false;
-		bIsHeavyLand = false;
-		PreviousLocomotionState = ENSLocomotionState::Idle;
-		LocomotionState = ENSLocomotionState::Idle;
-		AirState = ENSAirState::Grounded;
-		TurnInPlaceState = ENSTurnInPlaceState::None;
-		bIsTurnInPlaceActive = false;
-		TurnInPlaceYawDelta = 0.f;
-		AnimState = ENSAnimState::Idle;
-		SelectedAnimState = ENSAnimState::Idle;
-		SelectedPoseSearchDatabase = nullptr;
-		LandVelocity = 0.f;
-		PreviousVerticalVelocity = 0.f;
-		AimYaw = 0.f;
-		AimPitch = 0.f;
-		AimOffsetAlpha = 0.f;
-		UpperBodyState = ENSUpperBodyState::None;
-		return;
-	}
-
 	if (!CharacterMovement)
 	{
 		CharacterMovement = OwnerCharacter->GetCharacterMovement();
@@ -88,121 +112,173 @@ void UNSCharacterAnimInstance::UpdateMovementData(float DeltaSeconds)
 
 	Velocity = OwnerCharacter->GetVelocity();
 	LocalVelocity = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(Velocity);
-	GroundSpeed = FVector(Velocity.X, Velocity.Y, 0.f).Size();
+	Speed2D = FVector(Velocity.X, Velocity.Y, 0.f).Size();
+	GroundSpeed = Speed2D;
 	VerticalVelocity = Velocity.Z;
-	bWasFalling = bIsFalling;
+	LocomotionAngle = Speed2D > MoveSpeedThreshold
+		? FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X))
+		: 0.f;
 
 	if (CharacterMovement)
 	{
 		Acceleration = CharacterMovement->GetCurrentAcceleration();
+		LocalAcceleration = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(Acceleration);
 		bHasAcceleration = Acceleration.SizeSquared2D() > UE_KINDA_SMALL_NUMBER;
-		bIsFalling = CharacterMovement->IsFalling();
+		AccelerationAngle = bHasAcceleration
+			? FMath::RadiansToDegrees(FMath::Atan2(LocalAcceleration.Y, LocalAcceleration.X))
+			: 0.f;
 	}
 	else
 	{
 		Acceleration = FVector::ZeroVector;
+		LocalAcceleration = FVector::ZeroVector;
 		bHasAcceleration = false;
-		bIsFalling = false;
+		AccelerationAngle = 0.f;
 	}
 
-	// 착지 순간의 낙하 속도로 Light/Heavy Land를 구분
-	bIsMovingUp = bIsFalling && VerticalVelocity > 0.f;
-	if (bWasFalling && !bIsFalling)
-	{
-		LandVelocity = FMath::Abs(PreviousVerticalVelocity);
-		bIsHeavyLand = LandVelocity >= HeavyLandVelocityThreshold;
-		bHasLandRequest = true;
-	}
-
-	bShouldMove = GroundSpeed > 3.f && bHasAcceleration;
-
-	UpdateLocomotionState();
-	UpdateAirState();
-	UpdateTurnInPlaceState();
-	UpdateAimData(DeltaSeconds);
-	UpdateAnimState();
-
-	PreviousVerticalVelocity = VerticalVelocity;
+	bShouldMove = Speed2D > MoveSpeedThreshold && bHasAcceleration;
 }
 
-void UNSCharacterAnimInstance::UpdateLocomotionState()
+void UNSCharacterAnimInstance::UpdateMovementMode()
 {
-	PreviousLocomotionState = LocomotionState;
-
-	ENSLocomotionState CurrentSpeedState = ENSLocomotionState::Idle;
-	if (GroundSpeed < IdleSpeedThreshold)
-	{
-		CurrentSpeedState = ENSLocomotionState::Idle;
-	}
-	else if (GroundSpeed < WalkSpeedThreshold)
-	{
-		CurrentSpeedState = ENSLocomotionState::Walk;
-	}
-	else if (GroundSpeed < RunSpeedThreshold)
-	{
-		CurrentSpeedState = ENSLocomotionState::Run;
-	}
-	else
-	{
-		CurrentSpeedState = ENSLocomotionState::Sprint;
-	}
-
-	// 속도의 단계가 바뀌는 순간에는 전환 상태로 변경
-	if (PreviousLocomotionState == ENSLocomotionState::Walk && CurrentSpeedState == ENSLocomotionState::Run)
-	{
-		LocomotionState = ENSLocomotionState::WalkToRun;
-	}
-	else if (PreviousLocomotionState == ENSLocomotionState::Walk && CurrentSpeedState == ENSLocomotionState::Sprint)
-	{
-		LocomotionState = ENSLocomotionState::WalkToSprint;
-	}
-	else if (PreviousLocomotionState == ENSLocomotionState::Run && CurrentSpeedState == ENSLocomotionState::Walk)
-	{
-		LocomotionState = ENSLocomotionState::RunToWalk;
-	}
-	else if (PreviousLocomotionState == ENSLocomotionState::Run && CurrentSpeedState == ENSLocomotionState::Sprint)
-	{
-		LocomotionState = ENSLocomotionState::RunToSprint;
-	}
-	else if (PreviousLocomotionState == ENSLocomotionState::Sprint && CurrentSpeedState == ENSLocomotionState::Walk)
-	{
-		LocomotionState = ENSLocomotionState::SprintToWalk;
-	}
-	else if (PreviousLocomotionState == ENSLocomotionState::Sprint && CurrentSpeedState == ENSLocomotionState::Run)
-	{
-		LocomotionState = ENSLocomotionState::SprintToRun;
-	}
-	else
-	{
-		LocomotionState = CurrentSpeedState;
-	}
+	const bool bIsFalling = CharacterMovement && CharacterMovement->IsFalling();
+	MovementMode = bIsFalling
+		? ENSAnimMovementMode::InAir
+		: ENSAnimMovementMode::OnGround;
 }
 
-void UNSCharacterAnimInstance::UpdateAirState()
+void UNSCharacterAnimInstance::UpdateMovementState()
 {
-	if (bHasLandRequest)
+	MovementState = Speed2D > MoveSpeedThreshold
+		? ENSAnimMovementState::Moving
+		: ENSAnimMovementState::Idle;
+}
+
+void UNSCharacterAnimInstance::UpdateGait()
+{
+	if (MovementState == ENSAnimMovementState::Idle)
 	{
-		AirState = bIsHeavyLand ? ENSAirState::LandHeavy : ENSAirState::LandLight;
-		bHasLandRequest = false;
 		return;
 	}
 
-	if (bIsFalling)
+	if (Speed2D < WalkSpeedThreshold)
 	{
-		AirState = bIsMovingUp ? ENSAirState::JumpStart : ENSAirState::FallLoop;
-		return;
+		Gait = ENSAnimGait::Walk;
 	}
-
-	AirState = ENSAirState::Grounded;
-	bIsHeavyLand = false;
+	else if (Speed2D < RunSpeedThreshold)
+	{
+		Gait = ENSAnimGait::Run;
+	}
+	else
+	{
+		Gait = ENSAnimGait::Sprint;
+	}
 }
 
-void UNSCharacterAnimInstance::UpdateTurnInPlaceState()
+void UNSCharacterAnimInstance::UpdateStartStopData(float DeltaSeconds)
 {
-	if (!OwnerCharacter || AirState != ENSAirState::Grounded || GroundSpeed >= IdleSpeedThreshold)
+	const bool bStartedMoving =
+		PreviousMovementState == ENSAnimMovementState::Idle &&
+		MovementState == ENSAnimMovementState::Moving;
+
+	const bool bStoppedMoving =
+		PreviousMovementState == ENSAnimMovementState::Moving &&
+		MovementState == ENSAnimMovementState::Idle;
+
+	if (bStartedMoving)
 	{
-		bIsTurnInPlaceActive = false;
-		TurnInPlaceState = ENSTurnInPlaceState::None;
+		StartStateRemainingTime = StartStateHoldTime;
+	}
+	else
+	{
+		StartStateRemainingTime = FMath::Max(0.f, StartStateRemainingTime - DeltaSeconds);
+	}
+
+	if (bStoppedMoving)
+	{
+		StopGait = PreviousGait;
+		StopSpeed2D = PreviousSpeed2D;
+	}
+
+	bIsStarting = StartStateRemainingTime > 0.f;
+}
+
+void UNSCharacterAnimInstance::UpdateLandingData(float DeltaSeconds)
+{
+	const bool bIsInAir = MovementMode == ENSAnimMovementMode::InAir;
+	const bool bJustLanded = bWasFalling && !bIsInAir;
+
+	if (bJustLanded)
+	{
+		const float LandSpeed = FMath::Abs(PreviousVerticalVelocity);
+		bJustLandedHeavy = LandSpeed >= HeavyLandSpeedThreshold;
+		bJustLandedLight = !bJustLandedHeavy;
+		LandStateRemainingTime = LandStateHoldTime;
+	}
+	else if (bIsInAir)
+	{
+		bJustLandedLight = false;
+		bJustLandedHeavy = false;
+		LandStateRemainingTime = 0.f;
+	}
+	else
+	{
+		LandStateRemainingTime = FMath::Max(0.f, LandStateRemainingTime - DeltaSeconds);
+		if (LandStateRemainingTime <= 0.f)
+		{
+			bJustLandedLight = false;
+			bJustLandedHeavy = false;
+		}
+	}
+}
+
+void UNSCharacterAnimInstance::UpdatePivotData(float DeltaSeconds)
+{
+	const FVector Velocity2D = FVector(Velocity.X, Velocity.Y, 0.f);
+	const FVector Acceleration2D = FVector(Acceleration.X, Acceleration.Y, 0.f);
+	const bool bWantsPivot =
+		MovementState == ENSAnimMovementState::Moving &&
+		bHasAcceleration &&
+		Velocity2D.SizeSquared() > FMath::Square(MoveSpeedThreshold) &&
+		FVector::DotProduct(Velocity2D.GetSafeNormal(), Acceleration2D.GetSafeNormal()) <= PivotAccelerationDotThreshold;
+
+	if (bWantsPivot)
+	{
+		PivotStateRemainingTime = PivotStateHoldTime;
+	}
+	else
+	{
+		PivotStateRemainingTime = FMath::Max(0.f, PivotStateRemainingTime - DeltaSeconds);
+	}
+
+	bIsPivoting = PivotStateRemainingTime > 0.f;
+}
+
+void UNSCharacterAnimInstance::UpdateSpinTransitionData()
+{
+	bShouldSpinTransition =
+		MovementMode == ENSAnimMovementMode::OnGround &&
+		MovementState == ENSAnimMovementState::Moving &&
+		Gait != ENSAnimGait::Sprint &&
+		FMath::Abs(LocomotionAngle) >= SpinTransitionAngle;
+}
+
+void UNSCharacterAnimInstance::UpdateAimData()
+{
+	const FRotator ActorRotation = OwnerCharacter->GetActorRotation();
+	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
+	const FRotator AimDelta = (AimRotation - ActorRotation).GetNormalized();
+
+	AimYaw = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Yaw), -AimYawLimit, AimYawLimit);
+	AimPitch = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Pitch), -AimPitchLimit, AimPitchLimit);
+}
+
+void UNSCharacterAnimInstance::UpdateTurnInPlaceData()
+{
+	if (MovementMode != ENSAnimMovementMode::OnGround || MovementState != ENSAnimMovementState::Idle)
+	{
+		bShouldTurnInPlace = false;
+		TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
 		TurnInPlaceYawDelta = 0.f;
 		return;
 	}
@@ -212,13 +288,13 @@ void UNSCharacterAnimInstance::UpdateTurnInPlaceState()
 	TurnInPlaceYawDelta = FRotator::NormalizeAxis(AimRotation.Yaw - ActorRotation.Yaw);
 
 	const float AbsYawDelta = FMath::Abs(TurnInPlaceYawDelta);
-	bIsTurnInPlaceActive = bIsTurnInPlaceActive
+	bShouldTurnInPlace = bShouldTurnInPlace
 		? AbsYawDelta > TurnInPlaceStopAngle
 		: AbsYawDelta >= TurnInPlaceStartAngle;
 
-	if (!bIsTurnInPlaceActive)
+	if (!bShouldTurnInPlace)
 	{
-		TurnInPlaceState = ENSTurnInPlaceState::None;
+		TurnInPlaceDirection = ENSTurnInPlaceDirection::None;
 		return;
 	}
 
@@ -227,96 +303,40 @@ void UNSCharacterAnimInstance::UpdateTurnInPlaceState()
 
 	if (bIsLeftTurn)
 	{
-		TurnInPlaceState = bIs180Turn ? ENSTurnInPlaceState::Left180 : ENSTurnInPlaceState::Left90;
+		TurnInPlaceDirection = bIs180Turn ? ENSTurnInPlaceDirection::Left180 : ENSTurnInPlaceDirection::Left90;
 	}
 	else
 	{
-		TurnInPlaceState = bIs180Turn ? ENSTurnInPlaceState::Right180 : ENSTurnInPlaceState::Right90;
+		TurnInPlaceDirection = bIs180Turn ? ENSTurnInPlaceDirection::Right180 : ENSTurnInPlaceDirection::Right90;
 	}
 }
 
-void UNSCharacterAnimInstance::UpdateAimData(float DeltaSeconds)
+void UNSCharacterAnimInstance::UpdateTimeToLand()
 {
-	if (!OwnerCharacter)
+	TimeToLand = 0.f;
+
+	if (MovementMode != ENSAnimMovementMode::InAir || VerticalVelocity >= 0.f || !OwnerCharacter)
 	{
-		AimYaw = 0.f;
-		AimPitch = 0.f;
-		AimOffsetAlpha = 0.f;
 		return;
 	}
 
-	const FRotator ActorRotation = OwnerCharacter->GetActorRotation();
-	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
-	const FRotator AimDelta = (AimRotation - ActorRotation).GetNormalized();
-
-	AimYaw = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Yaw), -AimYawLimit, AimYawLimit);
-	AimPitch = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Pitch), -AimPitchLimit, AimPitchLimit);
-
-	const float TargetAlpha = UpperBodyState == ENSUpperBodyState::None ? 0.f : 1.f;
-	AimOffsetAlpha = FMath::FInterpTo(AimOffsetAlpha, TargetAlpha, DeltaSeconds, AimOffsetBlendSpeed);
-}
-
-void UNSCharacterAnimInstance::UpdateAnimState()
-{
-	// 기존 Chooser Table용 상태 매핑
-	if (AirState != ENSAirState::Grounded)
+	UWorld* World = OwnerCharacter->GetWorld();
+	if (!World)
 	{
-		switch (AirState)
-		{
-		case ENSAirState::JumpStart:
-			AnimState = ENSAnimState::JumpStart;
-			break;
-		case ENSAirState::FallLoop:
-			AnimState = ENSAnimState::FallLoop;
-			break;
-		case ENSAirState::LandLight:
-			AnimState = ENSAnimState::LandLight;
-			break;
-		case ENSAirState::LandHeavy:
-			AnimState = ENSAnimState::LandHeavy;
-			break;
-		case ENSAirState::Grounded:
-		default:
-			AnimState = ENSAnimState::Idle;
-			break;
-		}
 		return;
 	}
 
-	switch (LocomotionState)
+	const FVector TraceStart = OwnerCharacter->GetActorLocation();
+	const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, TimeToLandTraceDistance);
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSAnimInstanceTimeToLand), false, OwnerCharacter);
+	if (!World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 	{
-	case ENSLocomotionState::Idle:
-		AnimState = ENSAnimState::Idle;
-		break;
-	case ENSLocomotionState::Walk:
-		AnimState = ENSAnimState::Walk;
-		break;
-	case ENSLocomotionState::Run:
-		AnimState = ENSAnimState::Run;
-		break;
-	case ENSLocomotionState::Sprint:
-		AnimState = ENSAnimState::Sprint;
-		break;
-	case ENSLocomotionState::WalkToRun:
-		AnimState = ENSAnimState::WalkToRun;
-		break;
-	case ENSLocomotionState::WalkToSprint:
-		AnimState = ENSAnimState::WalkToSprint;
-		break;
-	case ENSLocomotionState::RunToWalk:
-		AnimState = ENSAnimState::RunToWalk;
-		break;
-	case ENSLocomotionState::RunToSprint:
-		AnimState = ENSAnimState::RunToSprint;
-		break;
-	case ENSLocomotionState::SprintToWalk:
-		AnimState = ENSAnimState::SprintToWalk;
-		break;
-	case ENSLocomotionState::SprintToRun:
-		AnimState = ENSAnimState::SprintToRun;
-		break;
-	default:
-		AnimState = ENSAnimState::Idle;
-		break;
+		return;
 	}
+
+	const float CollisionHalfHeight = OwnerCharacter->GetSimpleCollisionHalfHeight();
+	const float DistanceToGround = FMath::Max(0.f, HitResult.Distance - CollisionHalfHeight);
+	TimeToLand = DistanceToGround / FMath::Max(FMath::Abs(VerticalVelocity), 1.f);
 }
