@@ -2,12 +2,15 @@
 
 
 #include "NSDroneAIController.h"
+#include "EngineUtils.h"
 
 
-// Sets default values
+const FName ANSDroneAIController::OwningPlayer = TEXT("OwningPlayer");
+const FName ANSDroneAIController::PriorityActor = TEXT("PriorityActor");
+
 ANSDroneAIController::ANSDroneAIController()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 void ANSDroneAIController::BeginPlay()
@@ -16,8 +19,58 @@ void ANSDroneAIController::BeginPlay()
 	
 }
 
-void ANSDroneAIController::Tick(float DeltaTime)
+void ANSDroneAIController::OnPossess(APawn* InPawn)
 {
-	Super::Tick(DeltaTime);
+	Super::OnPossess(InPawn);
+	
+	if (DroneAIBehaviorTree)
+	{
+		UBlackboardComponent* BBComp = Blackboard;
+		UseBlackboard(DroneAIBehaviorTree->BlackboardAsset, BBComp);
+		RunBehaviorTree(DroneAIBehaviorTree);
+		
+		DroneAIBBComponent = Blackboard;
+	}
+	
+	FTimerHandle PriorityTimerHandle;
+	GetWorldTimerManager().SetTimer(PriorityTimerHandle, this, &ANSDroneAIController::SetPriorityActor,0.5f, false);
+	FTimerHandle OwnerTimerHandle;
+	GetWorldTimerManager().SetTimer(OwnerTimerHandle, this, &ANSDroneAIController::SetOwnerPlayer,0.5f, false);
 }
+
+void ANSDroneAIController::SetPriorityActor()
+{
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		if ((*It)->ActorHasTag("Coin"))
+		{
+			if (DroneAIBBComponent)
+			{
+				DroneAIBBComponent->SetValueAsObject(PriorityActor, *It);
+				break;
+			}
+		}
+	}
+}
+
+void ANSDroneAIController::SetOwnerPlayer()
+{
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		if ((*It)->ActorHasTag("Player"))
+		{
+			if (DroneAIBBComponent)
+			{
+				DroneAIBBComponent->SetValueAsObject(OwningPlayer, *It);
+				break;
+			}
+		}
+	}
+}
+
+UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
+{
+	return Blackboard;
+}
+
 
