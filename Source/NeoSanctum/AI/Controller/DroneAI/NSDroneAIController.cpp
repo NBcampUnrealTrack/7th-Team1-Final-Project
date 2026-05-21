@@ -32,24 +32,20 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 		DroneAIBBComponent = Blackboard;
 	}
 	
-	FTimerHandle PriorityTimerHandle;
-	GetWorldTimerManager().SetTimer(PriorityTimerHandle, this, &ANSDroneAIController::SetPriorityActor,0.5f, false);
 	FTimerHandle OwnerTimerHandle;
 	GetWorldTimerManager().SetTimer(OwnerTimerHandle, this, &ANSDroneAIController::SetOwnerPlayer,0.5f, false);
 }
 
-void ANSDroneAIController::SetPriorityActor()
+void ANSDroneAIController::SetPriorityActor(AActor* InActor)
 {
-	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	if (!InActor)
 	{
-		if ((*It)->ActorHasTag("Coin"))
-		{
-			if (DroneAIBBComponent)
-			{
-				DroneAIBBComponent->SetValueAsObject(PriorityActor, *It);
-				break;
-			}
-		}
+		return;
+	}
+	
+	if (DroneAIBBComponent)
+	{
+		DroneAIBBComponent->SetValueAsObject(PriorityActor, InActor);
 	}
 }
 

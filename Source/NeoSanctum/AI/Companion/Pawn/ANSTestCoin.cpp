@@ -2,25 +2,33 @@
 
 
 #include "ANSTestCoin.h"
+#include "EngineUtils.h"
+#include "NeoSanctum/AI/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 
 
-// Sets default values
 AANSTestCoin::AANSTestCoin()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 }
 
-// Called when the game starts or when spawned
+void AANSTestCoin::RegisterPriorityActor()
+{
+	for (TActorIterator<ANSDroneAI> It(GetWorld()); It; ++It)
+	{
+		ANSDroneAIController* DroneAIController = Cast<ANSDroneAIController>((*It)->GetController());
+		if (DroneAIController)
+		{
+			DroneAIController->SetPriorityActor(this);
+		}
+	}
+}
+
+
 void AANSTestCoin::BeginPlay()
 {
 	Super::BeginPlay();
-	
+	RegisterPriorityActor();
 }
 
-// Called every frame
-void AANSTestCoin::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
 
