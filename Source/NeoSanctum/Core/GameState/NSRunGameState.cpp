@@ -2,3 +2,9 @@
 
 
 #include "NSRunGameState.h"
+#include "NeoSanctum/Core/Component/NSRunGameDataComponent.h"
+
+ANSRunGameState::ANSRunGameState()
+{
+	RunGameDataComponent = CreateDefaultSubobject<UNSRunGameDataComponent>(TEXT("RunGameDataComponent"));
+}
