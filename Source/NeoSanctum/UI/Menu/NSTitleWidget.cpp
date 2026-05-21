@@ -1,0 +1,148 @@
+// Copyright 2026 One Team. All rights reserved.
+
+
+#include "NSTitleWidget.h"
+
+#include "FindInBlueprints.h"
+#include "Components/Button.h"
+#include "Components/EditableTextBox.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
+
+void UNSTitleWidget::OnClickedHostButton()
+{
+	//HostGame 버튼 클릭시 맵 이동
+	UGameplayStatics::OpenLevel(
+		this,
+		TEXT("Lvl_ThirdPerson"),
+		true,
+		TEXT("listen"));
+	UE_LOG(LogTemp, Warning, TEXT("호스트 방 생성 버튼 클릭"));
+}
+
+void UNSTitleWidget::OnClickedJoinButton()
+{
+	//TODO(영웅): 호스트가 생성한 방에 들어가는 로직
+	//참가할 IP를 입력할수 있게 패널 표시
+	if (JoinPanel)
+	{
+		JoinPanel->SetVisibility(ESlateVisibility::Visible);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("참가 버튼 클릭"));
+}
+
+void UNSTitleWidget::OnClickedOptionButton()
+{
+	//TODO(영웅): 옵션 UI 연결
+	
+	UE_LOG(LogTemp, Warning, TEXT("옵션 버튼 클릭"));
+}
+
+void UNSTitleWidget::OnClickedQuitButton()
+{
+	//게임 종료처리
+	
+	UKismetSystemLibrary::QuitGame(
+		this,
+		GetOwningPlayer(),
+		EQuitPreference::Quit,
+		false);
+}
+
+void UNSTitleWidget::OnClickedConfirmJoinButton()
+{
+	if (!IPTextBox)
+	{
+		return;
+	}
+	const FString InputAddress = IPTextBox->GetText().ToString();
+	
+	if (InputAddress.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("IP 입력 창"));
+		return;
+	}
+	//TODO(영웅): InputAddress를 전달
+	UE_LOG(LogTemp,Warning,TEXT("참가 : %s"), *InputAddress);
+}
+
+void UNSTitleWidget::OnClickedCancelJoinButton()
+{
+	//입력 패널을 닫고 타이틀 상태로 돌아오기
+	if (JoinPanel)
+	{
+		JoinPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSTitleWidget::OnChangedIPText(const FText& ChangedText)
+{
+	FString InputString = ChangedText.ToString();
+	
+	FString FilteredString;
+	//숫자와 . 만 허용
+	for (TCHAR Character : InputString)
+	{
+		if (FChar::IsDigit(Character) || Character == TEXT('.'))
+		{
+			FilteredString.AppendChar(Character);
+		}
+	}
+	//허용되지 않은 문자가 제거된 문자열로 갱신
+	if (IPTextBox)
+	{
+		IPTextBox->SetText(FText::FromString(FilteredString));
+	}
+}
+
+void UNSTitleWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	
+	//방 생성 버튼 클릭시 이벤트
+	if (HostButton)
+	{
+		HostButton->OnClicked.AddDynamic(
+			this,
+			&UNSTitleWidget::OnClickedHostButton);
+	}
+	//방 참가 버튼 클릭 이벤트
+	if (JoinButton)
+	{
+		JoinButton->OnClicked.AddDynamic(
+			this,
+			&UNSTitleWidget::OnClickedJoinButton);
+	}
+	//설정 버튼 클릭 이벤트
+	if (OptionButton)
+	{
+		OptionButton->OnClicked.AddDynamic(
+			this, &UNSTitleWidget::OnClickedOptionButton);
+	}
+	//종료 버튼 클릭 이벤트
+	if (QuitButton)
+	{
+		QuitButton->OnClicked.AddDynamic(
+			this,
+			&UNSTitleWidget::OnClickedQuitButton);
+	}
+	//참가 패널
+	if (JoinPanel)
+	{
+		JoinPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	//IP입력
+	if (IPTextBox)
+	{
+		IPTextBox->OnTextChanged.AddDynamic(
+			this,
+			&UNSTitleWidget::OnChangedIPText);
+	}
+	//참가 취소 버튼 클릭 이벤트
+	if (CancelJoinButton)
+	{
+		CancelJoinButton->OnClicked.AddDynamic(
+			this,
+			&UNSTitleWidget::OnClickedCancelJoinButton);
+	}
+}
