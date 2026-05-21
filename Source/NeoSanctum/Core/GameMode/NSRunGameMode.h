@@ -4,12 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NSRunGameMode.generated.h"
 
 
 
 UCLASS()
-class NEOSANCTUM_API ANSRunGameMode : public AGameModeBase
+class NEOSANCTUM_API ANSRunGameMode :
+public AGameModeBase,
+public INSRunGameModeInterface
 {
 	GENERATED_BODY()
 	
@@ -18,11 +21,9 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void StartNextStage();
-	void OnStageCleared();
-
-	// 플레이어 사망 시 전멸 여부 판정용
-	void NotifyPlayerDied(AController* DeadPlayer);
+	// 인터페이스 구현부 오버라이드
+	virtual void NotifyStageCleared_Implementation() override;
+	virtual void NotifyPlayerDied_Implementation(AController* DeadPlayer) override;
 
 private:
 
