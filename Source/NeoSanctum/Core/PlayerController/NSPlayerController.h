@@ -13,4 +13,8 @@ class NEOSANCTUM_API ANSPlayerController : public APlayerController
 	
 public:
 	ANSPlayerController();
+	
+	// 게임 시작 요청
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_RequestStartRun();
 };
