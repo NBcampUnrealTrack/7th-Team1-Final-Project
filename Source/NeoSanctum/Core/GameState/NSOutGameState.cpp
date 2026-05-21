@@ -2,7 +2,13 @@
 
 
 #include "NSOutGameState.h"
+#include "NeoSanctum/Core/Component/NSOutGameDataComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+
+ANSOutGameState::ANSOutGameState()
+{
+	OutGameDataComponent = CreateDefaultSubobject<UNSOutGameDataComponent>(TEXT("OutGameDataComponent"));
+}
 
 bool ANSOutGameState::IsAllPlayersReady() const
 {
