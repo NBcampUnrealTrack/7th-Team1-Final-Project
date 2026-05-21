@@ -48,16 +48,16 @@ protected:
 	bool bUseCameraFacingRotation = true;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0", ClampMax = "180.0"))
-	float CameraFacingTurnStartAngle = 50.f;
+	float CameraFacingTurnStartAngle = 60.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0", ClampMax = "180.0"))
 	float CameraFacingTurnStopAngle = 15.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0"))
-	float CameraFacingRotationSpeed = 180.f;
+	float CameraFacingRotationSpeed = 160.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0"))
-	float CameraFacingMoveSpeedThreshold = 10.f;
+	float CameraFacingMoveSpeedThreshold = 15.f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Rotation")
 	bool bIsCameraFacingRotationActive = false;
