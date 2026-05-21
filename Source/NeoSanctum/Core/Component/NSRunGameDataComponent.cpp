@@ -1,28 +1,28 @@
-#include "NSRunDataComponent.h"
+#include "NSRunGameDataComponent.h"
 #include "Engine/AssetManager.h"
 #include "GameFramework/GameStateBase.h"
 
 // Project Settings > Asset Manager 에 등록된 이름과 반드시 일치
-const FPrimaryAssetType UNSRunDataComponent::MonsterAssetType     = TEXT("NSMonsterData");
-const FPrimaryAssetType UNSRunDataComponent::AugmentAssetType     = TEXT("NSAugmentData");
-const FPrimaryAssetType UNSRunDataComponent::AugmentPoolAssetType = TEXT("NSAugmentPool");
-const FPrimaryAssetType UNSRunDataComponent::PartAssetType        = TEXT("NSPartData");
+const FPrimaryAssetType UNSRunGameDataComponent::MonsterAssetType     = TEXT("NSMonsterData");
+const FPrimaryAssetType UNSRunGameDataComponent::AugmentAssetType     = TEXT("NSAugmentData");
+const FPrimaryAssetType UNSRunGameDataComponent::AugmentPoolAssetType = TEXT("NSAugmentPool");
+const FPrimaryAssetType UNSRunGameDataComponent::PartAssetType        = TEXT("NSPartData");
 
-UNSRunDataComponent* UNSRunDataComponent::Get(const UObject* WorldContextObject)
+UNSRunGameDataComponent* UNSRunGameDataComponent::Get(const UObject* WorldContextObject)
 {
     if (!WorldContextObject) return nullptr;
     if (AGameStateBase* GS = WorldContextObject->GetWorld()->GetGameState())
-        return GS->FindComponentByClass<UNSRunDataComponent>();
+        return GS->FindComponentByClass<UNSRunGameDataComponent>();
     return nullptr;
 }
 
-void UNSRunDataComponent::BeginPlay()
+void UNSRunGameDataComponent::BeginPlay()
 {
     Super::BeginPlay();
     StartLoading();
 }
 
-void UNSRunDataComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
+void UNSRunGameDataComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
 {
     LoadHandle.Reset();
     DataCache.Empty();
@@ -30,7 +30,7 @@ void UNSRunDataComponent::EndPlay(EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
 }
 
-void UNSRunDataComponent::StartLoading()
+void UNSRunGameDataComponent::StartLoading()
 {
     UAssetManager& AM = UAssetManager::Get();
 
@@ -46,7 +46,7 @@ void UNSRunDataComponent::StartLoading()
     if (AllPaths.IsEmpty())
     {
         bIsReady = true;
-        OnRunDataReady.Broadcast();
+        OnRunGameDataReady.Broadcast();
         return;
     }
 
@@ -55,7 +55,7 @@ void UNSRunDataComponent::StartLoading()
         FStreamableDelegate::CreateUObject(this, &ThisClass::OnAssetsLoaded));
 }
 
-void UNSRunDataComponent::OnAssetsLoaded()
+void UNSRunGameDataComponent::OnAssetsLoaded()
 {
     UAssetManager& AM = UAssetManager::Get();
 
@@ -69,5 +69,5 @@ void UNSRunDataComponent::OnAssetsLoaded()
     }
 
     bIsReady = true;
-    OnRunDataReady.Broadcast();
+    OnRunGameDataReady.Broadcast();
 }
