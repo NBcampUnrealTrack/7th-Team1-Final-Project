@@ -1,0 +1,26 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "UObject/Interface.h"
+#include "NSRunGameModeInterface.generated.h"
+
+
+
+UINTERFACE(MinimalAPI, Blueprintable)
+class UNSRunGameModeInterface : public UInterface { GENERATED_BODY() };
+
+class NEOSANCTUM_API INSRunGameModeInterface
+{
+	GENERATED_BODY()
+
+public:
+	// 스테이지 클리어 처리 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyStageCleared();
+
+	// 플레이어 사망 신호 처리 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyPlayerDied(AController* DeadPlayer);
+};
