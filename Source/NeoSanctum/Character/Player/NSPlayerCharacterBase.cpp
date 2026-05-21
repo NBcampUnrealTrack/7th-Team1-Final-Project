@@ -11,7 +11,7 @@
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
@@ -26,13 +26,20 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CameraComp->bUsePawnControlRotation = false;
 
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
-	MovementComponent->bOrientRotationToMovement = true;
+	MovementComponent->bOrientRotationToMovement = false;
 	MovementComponent->bUseControllerDesiredRotation = false;
 	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
 
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
+}
+
+void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	UpdateCameraFacingRotation(DeltaSeconds);
 }
 
 void ANSPlayerCharacterBase::BeginPlay()
@@ -50,3 +57,37 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	}
 }
 
+void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
+{
+	if (!bUseCameraFacingRotation || !Controller)
+	{
+		bIsCameraFacingRotationActive = false;
+		return;
+	}
+
+	const FRotator ActorRotation = GetActorRotation();
+	const FRotator ControlRotation = Controller->GetControlRotation();
+	const float YawDelta = FRotator::NormalizeAxis(ControlRotation.Yaw - ActorRotation.Yaw);
+	const float AbsYawDelta = FMath::Abs(YawDelta);
+	const FVector HorizontalVelocity(GetVelocity().X, GetVelocity().Y, 0.f);
+	const bool bShouldFaceCamera = HorizontalVelocity.SizeSquared() > FMath::Square(CameraFacingMoveSpeedThreshold);
+
+	bIsCameraFacingRotationActive = bShouldFaceCamera
+		|| (bIsCameraFacingRotationActive
+			? AbsYawDelta > CameraFacingTurnStopAngle
+			: AbsYawDelta >= CameraFacingTurnStartAngle);
+
+	if (!bIsCameraFacingRotationActive)
+	{
+		return;
+	}
+
+	const FRotator TargetRotation(0.f, ControlRotation.Yaw, 0.f);
+	const FRotator NewRotation = FMath::RInterpConstantTo(
+		ActorRotation,
+		TargetRotation,
+		DeltaSeconds,
+		CameraFacingRotationSpeed);
+
+	SetActorRotation(NewRotation);
+}

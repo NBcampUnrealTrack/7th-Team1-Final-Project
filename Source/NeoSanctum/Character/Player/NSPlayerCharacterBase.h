@@ -19,6 +19,7 @@ class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter
 public:
 	ANSPlayerCharacterBase();
 	
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
@@ -26,6 +27,9 @@ public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
+protected:
+	void UpdateCameraFacingRotation(float DeltaSeconds);
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player")
 	TObjectPtr<USpringArmComponent> SpringArmComp;
@@ -39,4 +43,22 @@ protected:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComp;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation")
+	bool bUseCameraFacingRotation = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float CameraFacingTurnStartAngle = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float CameraFacingTurnStopAngle = 15.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0"))
+	float CameraFacingRotationSpeed = 180.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation", meta = (ClampMin = "0.0"))
+	float CameraFacingMoveSpeedThreshold = 10.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Rotation")
+	bool bIsCameraFacingRotationActive = false;
 };

@@ -14,25 +14,71 @@ class UCharacterTrajectoryComponent;
 UENUM(BlueprintType)
 enum class ENSAnimState : uint8
 {
-	// 기본 이동 상태
+	// 기존 Chooser Table 호환용 통합 상태
 	Idle,
 	Walk,
 	Run,
 	Sprint,
-
-	// 기본 이동 상태가 바뀌는 순간의 전환 상태
 	WalkToRun,
 	WalkToSprint,
 	RunToWalk,
 	RunToSprint,
 	SprintToWalk,
 	SprintToRun,
-
-	// 공중/착지 상태
 	JumpStart,
 	FallLoop,
 	LandLight,
 	LandHeavy
+};
+
+UENUM(BlueprintType)
+enum class ENSLocomotionState : uint8
+{
+	// 지상 이동 상태
+	Idle,
+	Walk,
+	Run,
+	Sprint,
+
+	// 속도 전환 상태
+	WalkToRun,
+	WalkToSprint,
+	RunToWalk,
+	RunToSprint,
+	SprintToWalk,
+	SprintToRun
+};
+
+UENUM(BlueprintType)
+enum class ENSAirState : uint8
+{
+	// 공중/착지 상태
+	Grounded,
+	JumpStart,
+	FallLoop,
+	LandLight,
+	LandHeavy
+};
+
+UENUM(BlueprintType)
+enum class ENSTurnInPlaceState : uint8
+{
+	// 제자리 회전 상태
+	None,
+	Left90,
+	Right90,
+	Left180,
+	Right180
+};
+
+UENUM(BlueprintType)
+enum class ENSUpperBodyState : uint8
+{
+	// 상체 레이어 상태
+	None,
+	Aim,
+	Fire,
+	Reload
 };
 
 UCLASS()
@@ -51,14 +97,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Animation|State", meta = (BlueprintThreadSafe))
 	void SetSelectedPoseSearchDatabase(UPoseSearchDatabase* NewSelectedPoseSearchDatabase);
 
+	UFUNCTION(BlueprintCallable, Category = "Animation|State", meta = (BlueprintThreadSafe))
+	void SetUpperBodyState(ENSUpperBodyState NewUpperBodyState);
+
 protected:
-	// 소유 캐릭터와 애니메이션에서 읽을 컴포넌트를 캐싱
+	// 캐릭터와 컴포넌트를 캐싱
 	void RefreshOwningCharacter();
 
-	// CharacterMovement 값을 애니메이션용 변수로 복사하고 Locomotion 상태를 갱신
+	// CharacterMovement 값을 애니메이션 변수로 복사
 	void UpdateMovementData(float DeltaSeconds);
 
-	// 현재 이동/공중/착지 조건을 Chooser Table에서 사용할 상태로 정리
+	// 이동 상태를 계산
+	void UpdateLocomotionState();
+
+	// 공중/착지 상태를 계산
+	void UpdateAirState();
+
+	// 제자리 회전 상태를 계산
+	void UpdateTurnInPlaceState();
+
+	// AimOffset 입력값을 계산
+	void UpdateAimData(float DeltaSeconds);
+
+	// 기존 Chooser Table이 읽는 상태를 갱신
 	void UpdateAnimState();
 
 protected:
@@ -109,13 +170,26 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	bool bIsHeavyLand = false;
 
-	// Locomotion 상태
+	// Locomotion / Air / Turn 상태
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSAnimState PreviousGroundedAnimState = ENSAnimState::Idle;
+	ENSLocomotionState PreviousLocomotionState = ENSLocomotionState::Idle;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
-	ENSAnimState CurrentGroundedAnimState = ENSAnimState::Idle;
+	ENSLocomotionState LocomotionState = ENSLocomotionState::Idle;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
+	ENSAirState AirState = ENSAirState::Grounded;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	ENSTurnInPlaceState TurnInPlaceState = ENSTurnInPlaceState::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	bool bIsTurnInPlaceActive = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceYawDelta = 0.f;
+
+	// Chooser Table용 상태
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	ENSAnimState AnimState = ENSAnimState::Idle;
 
@@ -131,7 +205,20 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Movement")
 	float PreviousVerticalVelocity = 0.f;
 
-	// 이동 상태 기본값
+	// Aim / 상체 상태
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimYaw = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimPitch = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimOffsetAlpha = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Upper Body")
+	ENSUpperBodyState UpperBodyState = ENSUpperBodyState::None;
+
+	// 이동 상태 판정 기준값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	float IdleSpeedThreshold = 10.f;
 
@@ -143,4 +230,23 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Movement")
 	float HeavyLandVelocityThreshold = 900.f;
+
+	// Turn In Place 판정 기준값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceStartAngle = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlaceStopAngle = 15.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Turn In Place")
+	float TurnInPlace180Angle = 135.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float AimYawLimit = 90.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim", meta = (ClampMin = "0.0", ClampMax = "90.0"))
+	float AimPitchLimit = 90.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim", meta = (ClampMin = "0.0"))
+	float AimOffsetBlendSpeed = 10.f;
 };
