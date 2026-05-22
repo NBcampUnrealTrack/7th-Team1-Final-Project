@@ -101,6 +101,9 @@ Tool/*
 Content/TestSpace/*
 !Content/TestSpace/.gitkeep
 
+#Source Test
+Source/NeoSanctum/Test
+
 #Plugins
 Plugins/*/Binaries/
 Plugins/*/Intermediate/
