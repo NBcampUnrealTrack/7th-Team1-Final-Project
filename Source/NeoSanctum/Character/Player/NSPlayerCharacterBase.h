@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
@@ -15,6 +16,18 @@ class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
+
+USTRUCT(BlueprintType)
+struct FNSDefaultAbilityData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayAbility> AbilityClass;
+
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag InputTag;
+};
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -76,7 +89,7 @@ protected:
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
-	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+	TArray<FNSDefaultAbilityData> DefaultAbilities;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;

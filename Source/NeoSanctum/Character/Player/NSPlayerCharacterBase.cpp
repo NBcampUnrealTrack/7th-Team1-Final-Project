@@ -192,19 +192,24 @@ void ANSPlayerCharacterBase::GiveDefaultAbilities()
 		return;
 	}
 	
-	for (TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbilities)
+	for (FNSDefaultAbilityData& AbilityData : DefaultAbilities)
 	{
-		if (!AbilityClass)
+		if (!AbilityData.AbilityClass)
 		{
 			continue;
 		}
 		
-		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityClass))
+		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityData.AbilityClass))
 		{
 			continue;
 		}
 		
-		FGameplayAbilitySpec AbilitySpec(AbilityClass, 1, INDEX_NONE, this);
+		FGameplayAbilitySpec AbilitySpec(AbilityData.AbilityClass, 1, INDEX_NONE, this);		
+		if (AbilityData.InputTag.IsValid())
+		{
+			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);
+		}
+		
 		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
 	}
 }
