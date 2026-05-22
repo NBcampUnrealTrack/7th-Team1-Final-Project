@@ -38,12 +38,6 @@ void UGA_RangerAutoFire::ActivateAbility(
 	// 입력 즉시 첫 발을 발사한 뒤, 이후로는 타이머로 반복
 	FireOnce();
 	StartAutoFire();
-	
-	// Input.BaseAttack이 Release되면 연사 종료
-	UAbilityTask_WaitInputRelease* ReleaseTask =
-		UAbilityTask_WaitInputRelease::WaitInputRelease(this, true);
-	ReleaseTask->OnRelease.AddDynamic(this, &ThisClass::OnInputReleased);
-	ReleaseTask->ReadyForActivation();
 }
 
 void UGA_RangerAutoFire::EndAbility(
@@ -58,9 +52,14 @@ void UGA_RangerAutoFire::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_RangerAutoFire::OnInputReleased(float TimeHeld)
+void UGA_RangerAutoFire::InputReleased(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo)
 {
-	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
+	
+	// NSASC의 AbilitySpecInputReleased()를 통해 들어온 입력 해제 처리
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
 void UGA_RangerAutoFire::StartAutoFire()
