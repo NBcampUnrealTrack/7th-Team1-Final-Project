@@ -35,6 +35,13 @@ public:
 	void HideCrosshair();
 	//조준점 색상 변경
 	void SetCrosshairColor(FLinearColor NewColor);
+	//HP/Shield UI 갱신
+	void UpdateHealthAndShield(
+		float CurrentHealth,
+		float MaxHealth,
+		float CurrentShield,
+		float MaxShield);
+	
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
 

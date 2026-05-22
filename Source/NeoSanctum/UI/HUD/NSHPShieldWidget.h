@@ -36,7 +36,7 @@ public:
 	
 private:
 	//0 나누기 방지 후 ProgressBar 비율 계산
-	float GetSafePercent(float CurrentValue, float MaxValue);
+	float GetSafePercent(float CurrentValue, float MaxValue)const;
 	
 	//체력 바
 	UPROPERTY(meta = (BindWidget))
