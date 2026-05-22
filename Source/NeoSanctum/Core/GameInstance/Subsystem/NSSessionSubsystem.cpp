@@ -52,15 +52,19 @@ void UNSSessionSubsystem::CreateSession()
 
 void UNSSessionSubsystem::JoinSessionByAddress(const FString& Address)
 {
+	UE_LOG(LogTemp, Warning, TEXT("JoinSessionByAddress 호출: %s"), *Address);
+	
 	APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
 	if (PlayerController)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ClientTravel 호출: %s"), *Address);
 		// 입력받은 주소로 직접 맵 이동
 		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
 		OnJoinSessionComplete.Broadcast(true);
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("PlayerController 없음"));
 		OnJoinSessionComplete.Broadcast(false);
 	}
 }
