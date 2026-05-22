@@ -7,6 +7,8 @@
 #include "NeoSanctum/AI/Controller/DroneAI/NSDroneAIController.h"
 #include "NSDroneAI.generated.h"
 
+class USphereComponent;
+
 UCLASS()
 class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 {
