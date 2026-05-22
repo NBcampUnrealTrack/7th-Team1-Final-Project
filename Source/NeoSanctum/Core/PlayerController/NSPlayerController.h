@@ -17,4 +17,11 @@ public:
 	// 게임 시작 요청
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_RequestStartRun();
+	
+	void ExitSpectatorAndRespawn();
+	
+private:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_NotifyRespawn();
+	
 };
