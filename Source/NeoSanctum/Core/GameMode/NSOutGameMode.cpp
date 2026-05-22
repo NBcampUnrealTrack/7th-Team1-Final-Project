@@ -8,11 +8,11 @@
 
 ANSOutGameMode::ANSOutGameMode()
 {
+	bUseSeamlessTravel = true;
+	
 	GameStateClass = ANSOutGameState::StaticClass();
 	PlayerControllerClass = ANSPlayerController::StaticClass();
 	PlayerStateClass = ANSPlayerState::StaticClass();
-	
-	bUseSeamlessTravel = true;
 }
 
 void ANSOutGameMode::RequestStartRun_Implementation()
@@ -22,7 +22,7 @@ void ANSOutGameMode::RequestStartRun_Implementation()
 	{
 		if (NSOutGameState->IsAllPlayersReady())
 		{
-			GetWorld()->ServerTravel("/Game/TestSpace/TestInRun?listen");
+			GetWorld()->ServerTravel("/Game/TestSpace/TestInRun");
 		}
 	}
 }
