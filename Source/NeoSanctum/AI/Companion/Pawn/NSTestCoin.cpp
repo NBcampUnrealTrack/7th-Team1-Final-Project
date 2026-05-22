@@ -4,17 +4,23 @@
 #include "NSTestCoin.h"
 #include "EngineUtils.h"
 #include "NeoSanctum/AI/Controller/DroneAI/NSDroneAIController.h"
-#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
 
 
 ANSTestCoin::ANSTestCoin()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
+	CoinPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("CoinPerception"));
+	
+	StimuliSource = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>("StimuliSource");
+	StimuliSource->bAutoRegister = true;
+	StimuliSource->RegisterForSense(TSubclassOf<UAISense_Sight>(UAISense_Sight::StaticClass()));
 }
 
 void ANSTestCoin::RegisterPriorityActor()
 {
-	for (const TWeakObjectPtr<ANSDroneAIController>& DroneAIController : CashecDroneAIControllers)
+	for (const TWeakObjectPtr<ANSDroneAIController>& DroneAIController : CacheDroneAIControllers)
 	{
 		if (!DroneAIController.IsValid()) continue;
 		
@@ -26,24 +32,22 @@ void ANSTestCoin::RegisterPriorityActor()
 }
 
 
+
 void ANSTestCoin::BeginPlay()
 {
 	Super::BeginPlay();
-	RegisterPriorityActor();
+	for (TActorIterator<ANSDroneAIController> It(GetWorld()); It; ++It)
+	{
+		ANSDroneAIController* DroneAIC = *It;
+		if (DroneAIC)
+		{
+			CacheDroneAIControllers.Add(DroneAIC);
+		}
+	}
 }
 
 void ANSTestCoin::Destroyed()
 {
-	for (const TWeakObjectPtr<ANSDroneAIController>& DroneAIController : CashecDroneAIControllers)
-	{
-		if (!DroneAIController.IsValid()) continue;
-		
-		ANSDroneAIController* DroneAIC = DroneAIController.Get();
-		if (!IsValid(DroneAIC)) continue;
-		
-		DroneAIC->RemoveCoinActor(this);
-	}
-	
 	Super::Destroyed();
 }
 

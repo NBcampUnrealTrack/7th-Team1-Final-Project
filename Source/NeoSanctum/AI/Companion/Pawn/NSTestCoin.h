@@ -4,9 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "NSTestCoin.generated.h"
 
 class ANSDroneAIController;
+class UAIPerceptionStimuliSourceComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTestCoin : public AActor
@@ -17,14 +19,20 @@ public:
 	ANSTestCoin();
 
 	void RegisterPriorityActor();
-	
+
 protected:
 	virtual void BeginPlay() override;
 	
 	virtual void Destroyed() override;
 	
 private:
-	UPROPERTY(VisibleAnywhere)
-	TArray<TWeakObjectPtr<ANSDroneAIController>> CashecDroneAIControllers;
-
+	UPROPERTY(VisibleAnywhere, Category="Coin|CacheData")
+	TArray<TWeakObjectPtr<ANSDroneAIController>> CacheDroneAIControllers;
+	
+	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<UAIPerceptionStimuliSourceComponent> StimuliSource;
+	
+	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<UAIPerceptionComponent> CoinPerception;
+	
 };

@@ -11,6 +11,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NSDroneAIController.generated.h"
 
+class ANSTestCoin;
+
 UENUM(BlueprintType)
 enum EDroneState
 {
@@ -40,6 +42,9 @@ public:
 	UFUNCTION()
 	void SetOwnerPlayer();
 	
+	UFUNCTION()
+	void OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus);
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "DroneAI|Behavior")
 	UBehaviorTree* DroneAIBehaviorTree;
 	
@@ -60,5 +65,4 @@ private:
 	static const FName OwningPlayer;
 	static const FName PriorityActor;
 	static const FName FindCoinActor;
-	
 };

@@ -3,7 +3,8 @@
 
 #include "NSDroneAIController.h"
 #include "EngineUtils.h"
-
+#include "GameFramework/Character.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSTestCoin.h"
 
 const FName ANSDroneAIController::OwningPlayer = TEXT("OwningPlayer");
 const FName ANSDroneAIController::PriorityActor = TEXT("PriorityActor");
@@ -31,6 +32,8 @@ void ANSDroneAIController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	DroneAIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSDroneAIController::OnUpdatePerception);
+	
 }
 
 void ANSDroneAIController::OnPossess(APawn* InPawn)
@@ -57,11 +60,14 @@ void ANSDroneAIController::SetPriorityActor(AActor* InActor)
 		return;
 	}
 	
+	ANSTestCoin* CoinActor = Cast<ANSTestCoin>(InActor);
+	
 	if (DroneAIBBComponent)
 	{
-		DroneAIBBComponent->SetValueAsObject(PriorityActor, InActor);
+		DroneAIBBComponent->SetValueAsObject(PriorityActor, CoinActor);
 	}
 }
+
 
 void ANSDroneAIController::SetOwnerPlayer()
 {
@@ -76,6 +82,42 @@ void ANSDroneAIController::SetOwnerPlayer()
 			}
 		}
 	}
+}
+
+void ANSDroneAIController::OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus)
+{
+	
+	UE_LOG(LogTemp, Warning, TEXT("InActor: %s"), *InActor->GetClass()->GetName());
+	
+	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
+	UE_LOG(LogTemp, Warning, TEXT("Cast Result: %s"), 
+		IsValid(Coin) ? TEXT("Success") : TEXT("Failed"));
+	
+	
+	UE_LOG(LogTemp, Warning, TEXT("Stimulus Type: %d"), Stimulus.Type.Index);
+	UE_LOG(LogTemp, Warning, TEXT("Sight ID: %d"), UAISense::GetSenseID<UAISense_Sight>().Index);
+	
+	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Call bCanSeeCoin"));
+		bool bCanSeeCoin = Stimulus.WasSuccessfullySensed();
+		if (bCanSeeCoin)
+		{
+			if (DroneAIBBComponent)
+			{
+				DroneAIBBComponent->SetValueAsBool(FindCoinActor, bCanSeeCoin);
+				SetPriorityActor(Coin);
+			}
+		}
+		else
+		{
+			if (DroneAIBBComponent)
+			{
+				DroneAIBBComponent->SetValueAsBool(FindCoinActor, bCanSeeCoin);
+			}
+		}
+	}
+	
 }
 
 UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
