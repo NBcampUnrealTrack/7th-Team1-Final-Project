@@ -9,7 +9,7 @@
 void UNSHPShieldWidget::SetHealth(float CurrentHealth, float MaxHealth)
 {
 	//체력 비율 계산
-	//TODO(영웅):몬스터 피격시 체력 감소
+	
 	float HealthPercent = GetSafePercent(CurrentHealth, MaxHealth);
 	
 	if (HealthBar)
@@ -28,7 +28,6 @@ void UNSHPShieldWidget::SetHealth(float CurrentHealth, float MaxHealth)
 void UNSHPShieldWidget::SetShield(float CurrentShield, float MaxShield)
 {
 	//쉴드 비율 계산
-	//TODO:몬스터 피격시 실드 갑소
 	float ShieldPercent = GetSafePercent(CurrentShield, MaxShield);
 	if (ShieldBar)
 	{
@@ -68,7 +67,7 @@ void UNSHPShieldWidget::ResetHealthAndShield()
 	SetShield(0.0f, 0.0f);
 }
 
-float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)
+float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)const
 {
 	//최대값이 0 이하일때 비율 계산 X
 	if (MaxValue <= 0.0f)
