@@ -52,10 +52,22 @@ protected:
 	float FireInterval = 0.15f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	float TraceRange = 1000.0f;
+	float TraceRange = 10000.0f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
+	FName MuzzleSocketName = TEXT("Muzzle");
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bDrawDebugHitscan = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineDuration = 1.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineThickness = 1.5f;
 	
 private:
 	void ExecuteMuzzleFireCue();

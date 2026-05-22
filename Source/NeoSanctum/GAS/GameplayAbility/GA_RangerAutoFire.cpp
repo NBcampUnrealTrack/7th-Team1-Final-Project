@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
+#include "DrawDebugHelpers.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 UGA_RangerAutoFire::UGA_RangerAutoFire()
@@ -151,6 +152,38 @@ void UGA_RangerAutoFire::PerformHitscan()
 		QueryParams
 	);
 	
+
+	// 서버 판정 확인요 디버그 라인
+	if (bDrawDebugHitscan)
+	{
+		const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
+		// 초록: 허공에 발사, 빨강: 대상에 명중
+		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+
+		DrawDebugLine(
+			World,
+			TraceStart,
+			DebugEnd,
+			DebugColor,
+			false,
+			DebugLineDuration,
+			0,
+			DebugLineThickness
+		);
+
+		if (bHit)
+		{
+			DrawDebugPoint(
+				World,
+				HitResult.ImpactPoint,
+				12.0f,
+				FColor::Red,
+				false,
+				DebugLineDuration
+			);
+		}
+	}
+
 	if (!bHit)
 	{
 		return;
