@@ -1,6 +1,6 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NSGameplayTags_Cue.h"
+#include "NSGameplayTags_Ability.h"
 
 namespace NSGameplayTags
 {
