@@ -2,8 +2,13 @@
 
 #include "NSPlayerController.h"
 #include "GameFramework/GameModeBase.h"
+#include "AbilitySystemComponent.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -38,6 +43,43 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
+}
+
+void ANSPlayerController::UpdateHUDHealthAndShield()
+{
+	ANSPlayerState* NSPlayerState =
+		GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+	const UNSPlayerAttributeSet* PlayerAttributeSet =
+		NSPlayerState->GetPlayerAttributeSet();
+	if (!PlayerAttributeSet)
+	{
+		return;
+	}
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+	// 현재 Attribute 값을 로그로 확인
+	UE_LOG(LogTemp, Warning, TEXT("HP: %.0f / %.0f, Shield: %.0f / %.0f"),
+		PlayerAttributeSet->GetHealth(),
+		PlayerAttributeSet->GetMaxHealth(),
+		PlayerAttributeSet->GetShield(),
+		PlayerAttributeSet->GetMaxShield()
+	);
+
+	// 현재 Attribute 값을 HUD에 한번 직접 반영
+	UIManager->UpdateHealthAndShield(
+		PlayerAttributeSet->GetHealth(),
+		PlayerAttributeSet->GetMaxHealth(),
+		PlayerAttributeSet->GetShield(),
+		PlayerAttributeSet->GetMaxShield()
+	);
 }
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
