@@ -23,4 +23,12 @@ public:
 	// 플레이어 사망 신호 처리 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void NotifyPlayerDied(AController* DeadPlayer);
+	
+	// 거점 복귀 선택하면 호출될 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void RequestReturnToHub();
+
+	// 다음 스테이지 진행 선택하면 호출될 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void RequestMoveToNextStage();
 };
