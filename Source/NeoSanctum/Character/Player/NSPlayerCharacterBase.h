@@ -37,6 +37,9 @@ public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
+public:
+	TSubclassOf<AActor> GetWeaponActor() const { return Weapon; }
+	
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
@@ -97,4 +100,7 @@ protected:
 	// 카메라 방향 회전 진행 상태관리
 	UPROPERTY(BlueprintReadOnly, Category = "Rotation")
 	bool bIsCameraFacingRotationActive = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
+	TSubclassOf<AActor> Weapon;
 };
