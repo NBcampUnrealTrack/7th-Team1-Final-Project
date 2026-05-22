@@ -8,12 +8,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-	// 컨트롤러 기본 회전 대신 직접 상황에 따른 캐릭터 회전을 사용하기 위해 false 처리
+	
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
@@ -21,6 +23,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
+	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 60.0f));
+	SpringArmComp->TargetArmLength = 165.0f;
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
@@ -34,10 +38,10 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	MovementComponent->bOrientRotationToMovement = false;
 	MovementComponent->bUseControllerDesiredRotation = false;
 	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
-
-	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
+	
+	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 }
 
 void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
@@ -63,6 +67,55 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	}
 }
 
+void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
+{
+	Super::PossessedBy(EventController);
+	
+	InitializeAbilitySystem();
+	BindAttributeDelegates();
+	GiveDefaultAbilities();
+}
+
+void ANSPlayerCharacterBase::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	
+	InitializeAbilitySystem();
+	BindAttributeDelegates();
+}
+
+UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
+{
+	if (NSAbilitySystemComponent)
+	{
+		return NSAbilitySystemComponent;
+	}
+
+	if (const ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		return PS->GetAbilitySystemComponent();
+	}
+
+	return nullptr;
+}
+
+void ANSPlayerCharacterBase::InitializeAbilitySystem()
+{
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	
+	if (!PS)
+	{
+		return;
+	}
+	
+	NSAbilitySystemComponent = Cast<UNSAbilitySystemComponent>(PS->GetAbilitySystemComponent());
+	PlayerAttributeSet = PS->GetPlayerAttributeSet();
+	
+	if (NSAbilitySystemComponent && PlayerAttributeSet)
+	{
+		NSAbilitySystemComponent->InitAbilityActorInfo(PS, this);
+	}
+}
 void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 {
 	if (!bUseCameraFacingRotation || !Controller)
@@ -100,4 +153,76 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 		CameraFacingRotationSpeed);
 
 	SetActorRotation(NewRotation);
+}
+
+void ANSPlayerCharacterBase::BindAttributeDelegates()
+{
+	if (!NSAbilitySystemComponent || !PlayerAttributeSet)
+	{
+		return;
+	}
+	
+	// 중복 바인딩을 피하기 위한 바인딩 제거
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetHealthAttribute()).RemoveAll(this);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetShieldAttribute()).RemoveAll(this);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMoveSpeedAttribute()).RemoveAll(this);
+	
+	// 바인딩
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetHealthAttribute()).AddUObject(this, &ThisClass::OnHealthChanged);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetShieldAttribute()).AddUObject(this, &ThisClass::OnShieldChanged);
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
+}
+
+void ANSPlayerCharacterBase::GiveDefaultAbilities()
+{
+	if (!NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	// 서버권한에서만 어빌리티 부여
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	for (TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbilities)
+	{
+		if (!AbilityClass)
+		{
+			continue;
+		}
+		
+		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityClass))
+		{
+			continue;
+		}
+		
+		FGameplayAbilitySpec AbilitySpec(AbilityClass, 1, INDEX_NONE, this);
+		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
+	}
+}
+
+void ANSPlayerCharacterBase::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	
+}
+
+void ANSPlayerCharacterBase::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	
+}
+
+void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->MaxWalkSpeed = Data.NewValue;
+	}
 }
