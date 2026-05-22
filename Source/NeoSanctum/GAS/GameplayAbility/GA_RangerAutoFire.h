@@ -6,6 +6,8 @@
 #include "GA_SkillBase.h"
 #include "GA_RangerAutoFire.generated.h"
 
+class UGameplayEffect;
+
 /**
  * 원거리 캐릭터 기본 공격
  * 입력 유지 중 히트스캔 공격 반복
@@ -71,6 +73,8 @@ protected:
 	
 private:
 	void ExecuteMuzzleFireCue();
+	
+	bool TryGetMuzzleTransform(FTransform& OutMuzzleTransform) const;
 	
 	FTimerHandle AutoFireTimerHandle;
 };

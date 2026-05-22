@@ -36,7 +36,7 @@ void UGA_RangerAutoFire::ActivateAbility(
 	StartAutoFire();
 	
 	// Input.BaseAttack이 Release되면 연사 종료
-	UAbilityTask_WaitInputRelease* ReleaseTask = 
+	UAbilityTask_WaitInputRelease* ReleaseTask =
 		UAbilityTask_WaitInputRelease::WaitInputRelease(this, true);
 	ReleaseTask->OnRelease.AddDynamic(this, &ThisClass::OnInputReleased);
 	ReleaseTask->ReadyForActivation();
@@ -110,6 +110,7 @@ void UGA_RangerAutoFire::FireOnce()
 		return;
 	}
 	
+	// GameplayCue도 일단 서버에서만 실행(리슨 서버에서 테스트)
 	ExecuteMuzzleFireCue();
 	PerformHitscan();
 }
@@ -202,7 +203,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	
-	if (!SourceASC || TargetASC)
+	if (!SourceASC || !TargetASC)
 	{
 		return;
 	}
@@ -227,12 +228,49 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	{
 		return;
 	}
-	
+
+	FTransform MuzzleTransform;
+
+	if (!TryGetMuzzleTransform(MuzzleTransform))
+	{
+		// 소캣을 못 찾으면 캐릭터 전방 위치로 임시 처리
+		MuzzleTransform = FTransform(
+			AvatarActor->GetActorRotation(),
+			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
+		);
+	}
+
 	FGameplayCueParameters CueParameters;
 	CueParameters.Instigator = AvatarActor;
 	CueParameters.EffectCauser = AvatarActor;
-	CueParameters.Location = AvatarActor->GetActorLocation();
-	CueParameters.Normal = AvatarActor->GetActorForwardVector();
-	
+	CueParameters.Location = MuzzleTransform.GetLocation();
+	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
+
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
+}
+
+bool UGA_RangerAutoFire::TryGetMuzzleTransform(FTransform& OutMuzzleTransform) const
+{
+	// TODO: 주현님이랑 의논해서 무기 캐싱 받아오기.
+	AActor* WeaponActor = nullptr/*GetWeaponActor()*/;
+
+	if (!WeaponActor)
+	{
+		return false;
+	}
+
+	TArray<UStaticMeshComponent*> MeshComponents;
+	WeaponActor->GetComponents<UStaticMeshComponent>(MeshComponents);
+
+	for (UStaticMeshComponent* MeshComponent : MeshComponents)
+	{
+		// Body에 만든 Muzzle 소켓만 찾으면 됨
+		if (MeshComponent && MeshComponent->DoesSocketExist(MuzzleSocketName))
+		{
+			OutMuzzleTransform = MeshComponent->GetSocketTransform(MuzzleSocketName);
+			return true;
+		}
+	}
+
+	return false;
 }
