@@ -27,14 +27,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weights")
 	TMap<ENSAugmentRarity, float> RarityWeights;
 	
-	// 이 풀이 보유한 모든 증강 후보, Legendary 등급은 기믹 변경 후보를 여기에 등록
+	/**
+	 * 이 풀의 증강 후보 목록
+	 * 일반풀: Common/Rare/Epic 만 등록, 고등급풀: Common/Rare/Epic + Legendary(기믹 변경) 등록
+	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Entries")
 	TArray<TSoftObjectPtr<UNSAugmentDefinition>> Entries;
-
+	
 	/**
-	 * Legendary의 최대 개수를 채우면 증강 뽑기시 Legendary자리에 들어갈 증강들
-	 * Common,Rare,Epic과 비슷하게 수치증가만 있고 Legendary라 큰 증가폭을 가짐
-	 * 색깔이나 이펙트는 Legendary랑 같은싱그로
+	 * 지금이 고등급 풀이고 플레이어의 Legendary증강이 최대개수에 도달한경우 수치강화 Legendary증강이 들어감
+	 * 다른 Common/Rare/Epic처럼 StackEffectClass만 설정된 Legendary Definition을 등록 
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Entries")
 	TArray<TSoftObjectPtr<UNSAugmentDefinition>> LegendaryStatEntries;
