@@ -24,6 +24,15 @@ public:
 	// 인터페이스 구현부 오버라이드
 	virtual void NotifyStageCleared_Implementation() override;
 	virtual void NotifyPlayerDied_Implementation(AController* DeadPlayer) override;
+	virtual void RequestReturnToHub_Implementation() override;
+	virtual void RequestMoveToNextStage_Implementation() override;
+
+	// 룸 생성 완료시 호출
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void RespawnAllPlayers();
+	
+protected:
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 private:
 

@@ -10,11 +10,12 @@
 
 ANSRunGameMode::ANSRunGameMode()
 {
+	bUseSeamlessTravel = true;
+	
 	GameStateClass = ANSRunGameState::StaticClass();
 	PlayerControllerClass = ANSPlayerController::StaticClass();
 	PlayerStateClass = ANSPlayerState::StaticClass();
-	
-	bUseSeamlessTravel = true;
+	DefaultPawnClass = nullptr;
 }
 
 void ANSRunGameMode::BeginPlay()
@@ -54,6 +55,16 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 	}
 }
 
+void ANSRunGameMode::RequestReturnToHub_Implementation()
+{
+	GetWorld()->ServerTravel("/Game/TestSpace/TestInGame");
+}
+
+void ANSRunGameMode::RequestMoveToNextStage_Implementation()
+{
+	GetWorld()->ServerTravel("/Game/TestSpace/TestInRun");
+}
+
 
 void ANSRunGameMode::HandleRunOver(bool bIsClear)
 {
@@ -69,6 +80,34 @@ void ANSRunGameMode::HandleRunOver(bool bIsClear)
 			UE_LOG(LogTemp, Log, TEXT("런 전멸 실패 보상 지급"));
 		}
 	}
+	
+	// TODO: 후에 플레이어 선택지 띄우는 UI 호출 함수 연동해야함
+}
 
-	GetWorld()->ServerTravel("/Game/TestSpace/TestInGame?listen");
+void ANSRunGameMode::RespawnAllPlayers()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AGameStateBase* CurrentGameState = GetGameState<AGameStateBase>();
+	if (!CurrentGameState)
+	{
+		return;
+	}
+
+	for (APlayerState* PlayerState : CurrentGameState->PlayerArray)
+	{
+		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(PlayerState->GetPlayerController());
+		if (NSPlayerController)
+		{
+			NSPlayerController->ExitSpectatorAndRespawn();
+		}
+	}
+}
+
+void ANSRunGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	// 런 레벨 시작시 캐릭터 자동 스폰 방지용
 }
