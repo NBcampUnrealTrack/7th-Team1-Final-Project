@@ -107,6 +107,24 @@ void UNSUIManagerSubsystem::SetCrosshairColor(FLinearColor NewColor)
 	HUDWidget->SetCrosshairColor(NewColor);
 }
 
+void UNSUIManagerSubsystem::UpdateHealthAndShield(
+	float CurrentHealth,
+	float MaxHealth,
+	float CurrentShield,
+	float MaxShield)
+{
+	//실제 체력/ 실드 값을 HUD로 전달
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateHealthAndShield(
+		CurrentHealth,
+		MaxHealth,
+		CurrentShield,
+		MaxShield);
+}
+
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;
