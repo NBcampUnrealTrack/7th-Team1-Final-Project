@@ -13,19 +13,23 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	// 컨트롤러 기본 회전 대신 직접 상황에 따른 캐릭터 회전을 사용하기 위해 false 처리
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 	
+	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
+	// 카메라. 자체 회전은 사용하지 않음
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp);
 	CameraComp->bUsePawnControlRotation = false;
 
+	// 이동 방향 자동 회전 비활성화, 카메라 방향 회전으로 통일.
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
 	MovementComponent->bOrientRotationToMovement = false;
 	MovementComponent->bUseControllerDesiredRotation = false;
@@ -52,6 +56,7 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// 입력 바인딩 세부 구현은 전용 컴포넌트로 책임 이전
 	if (InputBinderComp)
 	{
 		InputBinderComp->InitializePlayerInput(PlayerInputComponent);
@@ -71,8 +76,11 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	const float YawDelta = FRotator::NormalizeAxis(ControlRotation.Yaw - ActorRotation.Yaw);
 	const float AbsYawDelta = FMath::Abs(YawDelta);
 	const FVector HorizontalVelocity(GetVelocity().X, GetVelocity().Y, 0.f);
+	
+	// 이동 중에는 카메라 방향을 우선해서, 따로 카메라 회전에 따라 캐릭터 회전을 보간하지 않음.
 	const bool bShouldFaceCamera = HorizontalVelocity.SizeSquared() > FMath::Square(CameraFacingMoveSpeedThreshold);
 
+	// 경계값 근처 회전 상태 떨림 방지용 시작/종료 각도 분리하는 삼항연산
 	bIsCameraFacingRotationActive = bShouldFaceCamera
 		|| (bIsCameraFacingRotationActive
 			? AbsYawDelta > CameraFacingTurnStopAngle
@@ -84,6 +92,7 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	}
 
 	const FRotator TargetRotation(0.f, ControlRotation.Yaw, 0.f);
+	// 카메라 Yaw 방향으로 일정 속도 보간해서 즉시 회전하는 것을 방지하는 러프
 	const FRotator NewRotation = FMath::RInterpConstantTo(
 		ActorRotation,
 		TargetRotation,

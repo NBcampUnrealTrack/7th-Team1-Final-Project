@@ -11,6 +11,7 @@ void UNSCharacterAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 
+	// 초기화 시점의 소유 캐릭터/주요 컴포넌트 캐싱
 	RefreshCachedReferences();
 }
 
@@ -33,6 +34,7 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	PreviousGait = Gait;
 	PreviousSpeed2D = Speed2D;
 
+	// 이전 프레임 값 기준 이동/전투/조준 상태 순차 갱신
 	UpdateMovementData();
 	UpdateMovementMode();
 	UpdateMovementState();
@@ -64,6 +66,7 @@ void UNSCharacterAnimInstance::RefreshCachedReferences()
 
 void UNSCharacterAnimInstance::ResetRuntimeData()
 {
+	// Preview나 Pawn이 없는 경우에 이전 프레임 값 제거해야 안 터짐
 	CharacterMovement = nullptr;
 	CharacterTrajectoryComponent = nullptr;
 
@@ -124,6 +127,7 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 	Speed2D = FVector(Velocity.X, Velocity.Y, 0.f).Size();
 	GroundSpeed = Speed2D;
 	VerticalVelocity = Velocity.Z;
+	// Chooser/BlendSpace 입력용 캐릭터 로컬 기준 이동 각도
 	LocomotionAngle = Speed2D > MoveSpeedThreshold
 		? FMath::RadiansToDegrees(FMath::Atan2(LocalVelocity.Y, LocalVelocity.X))
 		: 0.f;
@@ -133,6 +137,7 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 		Acceleration = CharacterMovement->GetCurrentAcceleration();
 		LocalAcceleration = OwnerCharacter->GetActorTransform().InverseTransformVectorNoScale(Acceleration);
 		bHasAcceleration = Acceleration.SizeSquared2D() > UE_KINDA_SMALL_NUMBER;
+		// 시작/피벗 계열 전이 선택용 가속 방향
 		AccelerationAngle = bHasAcceleration
 			? FMath::RadiansToDegrees(FMath::Atan2(LocalAcceleration.Y, LocalAcceleration.X))
 			: 0.f;
@@ -150,6 +155,7 @@ void UNSCharacterAnimInstance::UpdateMovementData()
 
 void UNSCharacterAnimInstance::UpdateMovementMode()
 {
+	// CharacterMovement Falling 여부를 애니메이션용 단순 상태로 변환
 	const bool bIsFalling = CharacterMovement && CharacterMovement->IsFalling();
 	MovementMode = bIsFalling
 		? ENSAnimMovementMode::InAir
@@ -158,6 +164,7 @@ void UNSCharacterAnimInstance::UpdateMovementMode()
 
 void UNSCharacterAnimInstance::UpdateMovementState()
 {
+	// 작은 미끄러짐은 Idle로 취급해 불필요한 이동 전이 감소
 	MovementState = Speed2D > MoveSpeedThreshold
 		? ENSAnimMovementState::Moving
 		: ENSAnimMovementState::Idle;
@@ -170,6 +177,7 @@ void UNSCharacterAnimInstance::UpdateGait()
 		return;
 	}
 
+	// 속도 임계값 기반 현재 보행 단계 구분
 	if (Speed2D < WalkSpeedThreshold)
 	{
 		Gait = ENSAnimGait::Walk;
@@ -196,6 +204,7 @@ void UNSCharacterAnimInstance::UpdateStartStopData(float DeltaSeconds)
 
 	if (bStartedMoving)
 	{
+		// 시작 애니메이션 선택을 위한 짧은 유지 시간
 		StartStateRemainingTime = StartStateHoldTime;
 	}
 	else
@@ -205,6 +214,7 @@ void UNSCharacterAnimInstance::UpdateStartStopData(float DeltaSeconds)
 
 	if (bStoppedMoving)
 	{
+		// 정지 애니메이션 선택용 정지 직전 속도와 Gait 보관
 		StopGait = PreviousGait;
 		StopSpeed2D = PreviousSpeed2D;
 	}
@@ -220,6 +230,7 @@ void UNSCharacterAnimInstance::UpdateLandingData(float DeltaSeconds)
 	if (bJustLanded)
 	{
 		const float LandSpeed = FMath::Abs(PreviousVerticalVelocity);
+		// 착지 직전 낙하 속도 기반 Light/Heavy 착지 구분
 		bJustLandedHeavy = LandSpeed >= HeavyLandSpeedThreshold;
 		bJustLandedLight = !bJustLandedHeavy;
 		LandStateRemainingTime = LandStateHoldTime;
@@ -245,6 +256,7 @@ void UNSCharacterAnimInstance::UpdatePivotData(float DeltaSeconds)
 {
 	const FVector Velocity2D = FVector(Velocity.X, Velocity.Y, 0.f);
 	const FVector Acceleration2D = FVector(Acceleration.X, Acceleration.Y, 0.f);
+	// 현재 이동 방향과 입력 가속 방향이 크게 반대인 Pivot 후보
 	const bool bWantsPivot =
 		MovementState == ENSAnimMovementState::Moving &&
 		bHasAcceleration &&
@@ -265,6 +277,7 @@ void UNSCharacterAnimInstance::UpdatePivotData(float DeltaSeconds)
 
 void UNSCharacterAnimInstance::UpdateSpinTransitionData()
 {
+	// 뒤쪽에 가까운 이동 방향의 큰 회전 전이 선택
 	bShouldSpinTransition =
 		MovementMode == ENSAnimMovementMode::OnGround &&
 		MovementState == ENSAnimMovementState::Moving &&
@@ -274,6 +287,7 @@ void UNSCharacterAnimInstance::UpdateSpinTransitionData()
 
 void UNSCharacterAnimInstance::UpdateCombatData(float DeltaSeconds)
 {
+	// 전투 타입 존재 시 ABP 상체 무기 레이어 사용
 	bUseUpperBodyLayer = CombatType != ENSAnimCombatType::None;
 }
 
@@ -283,6 +297,7 @@ void UNSCharacterAnimInstance::UpdateAimData()
 	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
 	const FRotator AimDelta = (AimRotation - ActorRotation).GetNormalized();
 
+	// AimOffset 입력 튐 방지를 위한 허용 각도 제한
 	AimYaw = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Yaw), -AimYawLimit, AimYawLimit);
 	AimPitch = FMath::Clamp(FRotator::NormalizeAxis(AimDelta.Pitch), -AimPitchLimit, AimPitchLimit);
 }
@@ -301,6 +316,7 @@ void UNSCharacterAnimInstance::UpdateTurnInPlaceData()
 	const FRotator AimRotation = OwnerCharacter->GetBaseAimRotation();
 	TurnInPlaceYawDelta = FRotator::NormalizeAxis(AimRotation.Yaw - ActorRotation.Yaw);
 
+	// 경계값 근처 상태 떨림 방지용 시작/종료 각도 분리
 	const float AbsYawDelta = FMath::Abs(TurnInPlaceYawDelta);
 	bShouldTurnInPlace = bShouldTurnInPlace
 		? AbsYawDelta > TurnInPlaceStopAngle
@@ -315,6 +331,7 @@ void UNSCharacterAnimInstance::UpdateTurnInPlaceData()
 	const bool bIsLeftTurn = TurnInPlaceYawDelta < 0.f;
 	const bool bIs180Turn = AbsYawDelta >= TurnInPlace180Angle;
 
+	// 방향과 각도 크기 기반 90/180도 회전 애니메이션 선택
 	if (bIsLeftTurn)
 	{
 		TurnInPlaceDirection = bIs180Turn ? ENSTurnInPlaceDirection::Left180 : ENSTurnInPlaceDirection::Left90;
@@ -343,6 +360,7 @@ void UNSCharacterAnimInstance::UpdateTimeToLand()
 	const FVector TraceStart = OwnerCharacter->GetActorLocation();
 	const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, TimeToLandTraceDistance);
 
+	// 아래 방향 지면 탐색으로 낙하 애니메이션 전이 시간 추정
 	FHitResult HitResult;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSAnimInstanceTimeToLand), false, OwnerCharacter);
 	if (!World->LineTraceSingleByChannel(HitResult, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
@@ -352,5 +370,6 @@ void UNSCharacterAnimInstance::UpdateTimeToLand()
 
 	const float CollisionHalfHeight = OwnerCharacter->GetSimpleCollisionHalfHeight();
 	const float DistanceToGround = FMath::Max(0.f, HitResult.Distance - CollisionHalfHeight);
+	// 현재 하강 속도 기준 지면 도달 시간 계산
 	TimeToLand = DistanceToGround / FMath::Max(FMath::Abs(VerticalVelocity), 1.f);
 }
