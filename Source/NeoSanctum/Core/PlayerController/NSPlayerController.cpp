@@ -81,6 +81,39 @@ void ANSPlayerController::UpdateHUDHealthAndShield()
 		PlayerAttributeSet->GetMaxShield()
 	);
 }
+
+void ANSPlayerController::OnHealthChanged(const FOnAttributeChangeData& Data)
+{
+	//체력값이 바뀌면 전체 HP/Shield값을 다시 읽어 HUD에 반영
+	UpdateHUDHealthAndShield();
+}
+
+void ANSPlayerController::OnMaxHealthChanged(const FOnAttributeChangeData& Data)
+{
+	//최대체력 변경시 전체 값을 다시 갱신한다
+	UpdateHUDHealthAndShield();
+}
+
+void ANSPlayerController::OnShieldChanged(const FOnAttributeChangeData& Data)
+{
+	//실드 값이 바뀌면 HUD에 반영
+	UpdateHUDHealthAndShield();
+}
+
+void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
+{
+	//최대실드 변경시 전체 값을 다시 갱신
+	UpdateHUDHealthAndShield();
+}
+
+void ANSPlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+	//HUD 생성 이후 Attribute 값 연결
+	BindAttributeToHUD();
+	UpdateHUDHealthAndShield();
+}
+
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
 	if (HasAuthority())
