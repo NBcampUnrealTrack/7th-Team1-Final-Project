@@ -7,10 +7,12 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
 #include "DrawDebugHelpers.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 UGA_RangerAutoFire::UGA_RangerAutoFire()
 {
+	AbilityTags.AddTag(NSGameplayTags::Ability_Ranger_AutoFire);
 }
 
 void UGA_RangerAutoFire::ActivateAbility(
