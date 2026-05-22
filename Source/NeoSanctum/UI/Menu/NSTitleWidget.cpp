@@ -8,15 +8,18 @@
 #include "Components/EditableTextBox.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
 
 void UNSTitleWidget::OnClickedHostButton()
 {
-	//HostGame 버튼 클릭시 맵 이동
-	UGameplayStatics::OpenLevel(
-		this,
-		TEXT("Lvl_ThirdPerson"),
-		true,
-		TEXT("listen"));
+	UNSSessionSubsystem* SessionSubsystem =
+		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>();
+	if (!SessionSubsystem)
+	{
+		return;
+	}
+	//호스트 세션 생성 요청
+	SessionSubsystem->CreateSession();
 	UE_LOG(LogTemp, Warning, TEXT("호스트 방 생성 버튼 클릭"));
 }
 
@@ -62,7 +65,14 @@ void UNSTitleWidget::OnClickedConfirmJoinButton()
 		UE_LOG(LogTemp, Warning, TEXT("IP 입력 창"));
 		return;
 	}
-	//TODO(영웅): InputAddress를 전달
+	UNSSessionSubsystem* SessionSubsystem =
+		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>();
+	if (!SessionSubsystem)
+	{
+		return;
+	}
+	//입력한 IP 주소로 참가 요청
+	SessionSubsystem->JoinSessionByAddress(InputAddress);
 	UE_LOG(LogTemp,Warning,TEXT("참가 : %s"), *InputAddress);
 }
 
@@ -99,6 +109,17 @@ void UNSTitleWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (PlayerController)
+	{
+		//타이틀 화면에서 마우스커서가 보인다
+		PlayerController->bShowMouseCursor = true;
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PlayerController->SetInputMode(InputMode);
+	}
+	
 	//방 생성 버튼 클릭시 이벤트
 	if (HostButton)
 	{
@@ -106,6 +127,8 @@ void UNSTitleWidget::NativeConstruct()
 			this,
 			&UNSTitleWidget::OnClickedHostButton);
 	}
+	
+	
 	//방 참가 버튼 클릭 이벤트
 	if (JoinButton)
 	{
@@ -137,6 +160,13 @@ void UNSTitleWidget::NativeConstruct()
 		IPTextBox->OnTextChanged.AddDynamic(
 			this,
 			&UNSTitleWidget::OnChangedIPText);
+	}
+	//참가 확인 버튼 클릭 이벤트
+	if (ConfirmJoinButton)
+	{
+		ConfirmJoinButton->OnClicked.AddDynamic(
+			this,
+			&UNSTitleWidget::OnClickedConfirmJoinButton);
 	}
 	//참가 취소 버튼 클릭 이벤트
 	if (CancelJoinButton)
