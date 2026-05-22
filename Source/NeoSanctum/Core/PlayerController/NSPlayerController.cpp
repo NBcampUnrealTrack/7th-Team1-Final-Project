@@ -10,6 +10,35 @@ ANSPlayerController::ANSPlayerController()
 	
 }
 
+void ANSPlayerController::BindAttributeToHUD()
+{
+	ANSPlayerState*NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+	UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+	//체력 변경시 델리게이트에서 바인딩으로 체력 갱신
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSBaseAttributeSet::GetHealthAttribute()
+		).AddUObject(this, &ANSPlayerController::OnHealthChanged);	
+	//최대체력 변경시 델리게이트에서 바인딩으로 체력 갱신
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSBaseAttributeSet::GetMaxHealthAttribute()
+		).AddUObject(this, &ANSPlayerController::OnMaxHealthChanged);
+	//실드 변경시 델리게이트에서 바인딩으로 체력 갱신
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSPlayerAttributeSet::GetShieldAttribute()
+		).AddUObject(this, &ANSPlayerController::OnShieldChanged);
+	//최대실드 변경시 델리게이트에서 바인딩으로 체력갱신
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSPlayerAttributeSet::GetMaxShieldAttribute()
+			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
+}
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
 	if (HasAuthority())
