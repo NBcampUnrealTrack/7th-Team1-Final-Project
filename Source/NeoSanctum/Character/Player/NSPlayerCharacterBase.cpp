@@ -15,8 +15,7 @@
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
-	// 컨트롤러 기본 회전 대신 직접 상황에 따른 캐릭터 회전을 사용하기 위해 false 처리
+	
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
@@ -39,8 +38,6 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	MovementComponent->bOrientRotationToMovement = false;
 	MovementComponent->bUseControllerDesiredRotation = false;
 	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
-
-	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
