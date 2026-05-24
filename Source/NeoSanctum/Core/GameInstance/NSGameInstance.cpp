@@ -3,7 +3,13 @@
 
 #include "NSGameInstance.h"
 #include "Blueprint/UserWidget.h"
+#include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
+
+UNSGameInstance* UNSGameInstance::Get(const UObject* WorldContext)
+{
+	return Cast<UNSGameInstance>(UGameplayStatics::GetGameInstance(WorldContext));
+}
 
 void UNSGameInstance::Init()
 {

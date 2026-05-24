@@ -16,6 +16,8 @@ public INSGameInstanceInterface
 	GENERATED_BODY()
 	
 public:
+	static UNSGameInstance* Get(const UObject* WorldContext);
+	
 	virtual void Init() override;
 	virtual void Shutdown() override;
 	
