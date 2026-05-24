@@ -23,7 +23,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<USceneComponent> WeaponRoot;
 	
-	// 캐릭터의 어느 소캣에 붙일지
+	// 캐릭터의 어느 소켓에 붙일지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FName AttachSocketName = TEXT("");
 };
