@@ -1,12 +1,11 @@
-﻿// Copyright 2026 One Team. All rights reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "NSSoundData.generated.h"
+#include "SoundData.generated.h"
 
-UENUM(BLueprintType)
+
+UENUM(BlueprintType)
 enum class ENSSoundCategory : uint8
 {
 	BGM,
@@ -14,13 +13,13 @@ enum class ENSSoundCategory : uint8
 	UI
 };
 
-UCLASS()
-class NEOSANCTUM_API UNSSoundData : public UDataTable
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSSoundDataTableRow : public FTableRowBase
 {
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SoundData")
-	ENSSoundCategory SoundCategory = ENSSoundCategory::BGM;
+	ENSSoundCategory Category = ENSSoundCategory::BGM;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SoundData")
 	TObjectPtr<USoundBase> Sound;
@@ -42,6 +41,9 @@ class NEOSANCTUM_API UNSSoundData : public UDataTable
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SoundData")
 	float FadeOutTime = 0.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SoundData")
+	float StartTime = 0.f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SoundData")
 	TObjectPtr<USoundAttenuation> Attenuation;
