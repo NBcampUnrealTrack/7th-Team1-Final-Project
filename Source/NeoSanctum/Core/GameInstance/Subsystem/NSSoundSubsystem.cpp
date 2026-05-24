@@ -19,9 +19,16 @@ UNSSoundSubsystem* UNSSoundSubsystem::Get(const UObject* WorldContext)
 void UNSSoundSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
+	
+	if (const UNSGameInstance* GameInstance = UNSGameInstance::Get(GetWorld()))
+	{
+		SoundDataTable = GameInstance->SoundDataTable;
+	}
 }
 
 void UNSSoundSubsystem::Deinitialize()
 {
+	SoundDataTable = nullptr;
+	
 	Super::Deinitialize();
 }

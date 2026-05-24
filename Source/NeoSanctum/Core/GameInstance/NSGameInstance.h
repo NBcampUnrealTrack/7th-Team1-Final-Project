@@ -22,6 +22,11 @@ public:
 	virtual void Shutdown() override;
 	
 	virtual void HideLoadingScreen_Implementation() override;
+	
+public:
+	// GameInstance 데이터 모음
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
+	TObjectPtr<UDataTable> SoundDataTable;
 
 private:
 	UPROPERTY()
