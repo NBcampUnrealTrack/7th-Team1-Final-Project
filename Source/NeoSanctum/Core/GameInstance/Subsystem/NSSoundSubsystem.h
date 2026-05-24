@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NeoSanctum/Data/Sound/SoundData.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "NSSoundSubsystem.generated.h"
 
@@ -51,6 +52,21 @@ public:
 	// 특정 카테고리 사운드 전체 중지
 	UFUNCTION(BlueprintCallable, Category = "Sound|Stop")
 	void StopCategory(ENSSoundCategory Category, float FadeOut = -1.f);
+	
+public:
+	UFUNCTION(BlueprintCallable, Category = "Sound|Setter")
+	void SetMasterVolume(float Volume);
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Sound|Getter")
+	float GetMasterVolume() const { return MasterVolume; }
+	
+	UFUNCTION(BlueprintPure, Category = "Sound|Getter")
+	float GetCategoryVolume(ENSSoundCategory Category) const;
+	
+private:
+	const FNSSoundDataTableRow* FindSoundRow(FName SoundID) const;
+	float GetFinalVolume(const FNSSoundDataTableRow& SoundRow) const;
 	
 private:
 	// 사운드 데이터 캐시
