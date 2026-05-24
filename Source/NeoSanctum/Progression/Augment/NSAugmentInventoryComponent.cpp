@@ -1,20 +1,178 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSAugmentInventoryComponent.h"
+#include "AbilitySystemInterface.h"
+#include "AbilitySystemComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "NeoSanctum/Core/Component/NSRunGameDataComponent.h"
+#include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 
 UNSAugmentInventoryComponent::UNSAugmentInventoryComponent()
 {
+	SetIsReplicatedByDefault(true);
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UNSAugmentInventoryComponent::BeginPlay()
+void UNSAugmentInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::BeginPlay();
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME_CONDITION(UNSAugmentInventoryComponent, Owned, COND_OwnerOnly);
 }
 
-void UNSAugmentInventoryComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                                 FActorComponentTickFunction* ThisTickFunction)
+void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 {
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	
+	// DefId로 증강 값을 가져와야 함
+	UNSRunGameDataComponent* RGDC = UNSRunGameDataComponent::Get(this);
+	if (!RGDC || !RGDC->IsReady())
+	{
+		return;
+	}
+	
+	UNSAugmentDefinition* Def = RGDC->GetData<UNSAugmentDefinition>(DefId);
+	if (!Def)
+	{
+		return;
+	}
+	
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+	
+	FNSAugmentInstance* Existing = Owned.FindByPredicate(
+		[&DefId](const FNSAugmentInstance& Instance) 
+		{ return Instance.DefId == DefId; });
+	
+	// 증강이 존재하면
+	if (Existing)
+	{
+		Existing->Stacks++;
+		// Common / Rare / Epic / Legendary(수치강화)
+		ApplyStackEffect(*Existing, Def, ASC);
+	} else
+	{
+		const bool bIsHaveLegendarySlot = Def->Rarity == ENSAugmentRarity::Legendary && !Def->GrantedAbilityClass.IsNull();
+		
+		FNSAugmentInstance NewInstance;
+		NewInstance.DefId = DefId;
+		NewInstance.Rarity = Def->Rarity;
+		NewInstance.Stacks = 1;
+		NewInstance.bCountsAsLegendarySlot = bIsHaveLegendarySlot;
+		// Common / Rare / Epic / Legendary(수치강화)
+		ApplyStackEffect(NewInstance, Def, ASC);
+		// Legendary 기믹 GA
+		GrantMechanicAbility(NewInstance, Def, ASC);
+		Owned.Add(NewInstance);
+	}
+	OnInventoryChanged.Broadcast();
 }
+
+void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
+{
+	if (Def->StackEffectClass.IsNull())
+	{
+		return;
+	}
+
+	// 처음 골랐을때는 무시, 중복 증강을 또 고른경우 핸들을 제거하고 아래에서 다시 적용
+	if (Inst.EffectHandle.IsValid())
+	{
+		ASC->RemoveActiveGameplayEffect(Inst.EffectHandle);
+		Inst.EffectHandle.Invalidate();
+	}
+	
+	// 데이터 컴포넌트에서 무조건 로드 보장
+	UClass* GEClass = Def->StackEffectClass.Get();
+	
+	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GEClass, 1.f, ContextHandle);
+	
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+	
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Augment_SetByCaller_Stack, static_cast<float>(Inst.Stacks));
+	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+}
+
+void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
+{
+	if (Def->GrantedAbilityClass.IsNull())
+	{
+		return;
+	}
+	
+	// RunDataComponent에서 로드 보장
+	UClass* GAClass = Def->GrantedAbilityClass.Get();
+	
+	TSubclassOf<UGameplayAbility> AbilityClass = GAClass;
+	Inst.AbilityHandle = ASC->GiveAbility((FGameplayAbilitySpec(AbilityClass, 1,INDEX_NONE, this)));
+}
+	
+void UNSAugmentInventoryComponent::ClearAll()
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	for (FNSAugmentInstance& Inst : Owned)
+	{
+		if (ASC && Inst.EffectHandle.IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(Inst.EffectHandle);
+		}
+		if (ASC && Inst.AbilityHandle.IsValid())
+		{
+			ASC->ClearAbility(Inst.AbilityHandle);
+		}
+	}
+	Owned.Reset();
+	OnInventoryChanged.Broadcast();
+}
+
+void UNSAugmentInventoryComponent::OnRep_Owned()
+{
+	// 복제되었을때 어떤 트리거 -> 가지고 있는 증강 아이콘 갱신 -> 델리게이트로 브로드캐스트
+	OnInventoryChanged.Broadcast();
+}
+
+int32 UNSAugmentInventoryComponent::GetStackCount(const FPrimaryAssetId& DefId) const
+{
+	const FNSAugmentInstance* Found = Owned.FindByPredicate(
+		[&DefId](const FNSAugmentInstance& Instance) { return Instance.DefId == DefId; });
+	return Found ? Found->Stacks : 0;
+}
+
+UAbilitySystemComponent* UNSAugmentInventoryComponent::GetOwnerASC()
+{
+	if (IAbilitySystemInterface* ASInterface = Cast<IAbilitySystemInterface>(GetOwner()))
+	{
+		return ASInterface->GetAbilitySystemComponent();
+	}
+	return nullptr;
+}
+
+int32 UNSAugmentInventoryComponent::GetLegendaryCount() const
+{
+	int32 LegendaryCount = 0;
+	for (const FNSAugmentInstance& Own : Owned)
+	{
+		if (Own.bCountsAsLegendarySlot)
+		{
+			++LegendaryCount;
+		}
+	}
+	return LegendaryCount;
+}
+
 
