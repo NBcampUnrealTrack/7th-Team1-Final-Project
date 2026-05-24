@@ -32,3 +32,31 @@ void UNSSoundSubsystem::Deinitialize()
 	
 	Super::Deinitialize();
 }
+
+void UNSSoundSubsystem::PlayBGM(FName SoundID, float FadeIn)
+{
+}
+
+void UNSSoundSubsystem::PlaySound2D(FName SoundID)
+{
+}
+
+void UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector Location)
+{
+}
+
+void UNSSoundSubsystem::PlaySoundAttached(FName SoundID, USceneComponent* AttachToComponent, FName SocketName)
+{
+}
+
+void UNSSoundSubsystem::StopBGM(float FadeOut)
+{
+}
+
+void UNSSoundSubsystem::StopSound(FName SoundID, float FadeOut)
+{
+}
+
+void UNSSoundSubsystem::StopCategory(ENSSoundCategory Category, float FadeOut)
+{
+}
