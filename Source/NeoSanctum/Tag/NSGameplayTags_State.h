@@ -9,4 +9,5 @@ namespace NSGameplayTags
 	// State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Invincible);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dashing);
 }

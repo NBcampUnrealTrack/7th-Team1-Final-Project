@@ -17,5 +17,5 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill1);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill3);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_Dodge);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_Dash);
 }
