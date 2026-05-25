@@ -22,6 +22,7 @@ ANSDroneAI::ANSDroneAI()
 	GetCharacterMovement()->AvoidanceWeight = 0.2f;
 	
 	GetMesh()->SetEnableGravity(true);
+	GetMesh()->SetCollisionObjectType(ECC_GameTraceChannel1);
 }
 
 void ANSDroneAI::BeginPlay()
