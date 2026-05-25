@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameplayTagContainer.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
@@ -21,7 +22,8 @@ class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 
 UCLASS()
-class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface
+class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
+											  public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -45,6 +47,12 @@ public:
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
+	
+public:
+	TSubclassOf<AActor> GetWeaponActor() const { return Weapon; }
+	
+	// 플레이어 진영 0번 설정 
+	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(0); }
 	
 protected:
 	void InitializeAbilitySystem();
