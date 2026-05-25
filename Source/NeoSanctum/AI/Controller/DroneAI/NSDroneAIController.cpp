@@ -86,16 +86,8 @@ void ANSDroneAIController::SetOwnerPlayer()
 
 void ANSDroneAIController::OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus)
 {
-	
-	UE_LOG(LogTemp, Warning, TEXT("InActor: %s"), *InActor->GetClass()->GetName());
-	
 	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
-	UE_LOG(LogTemp, Warning, TEXT("Cast Result: %s"), 
-		IsValid(Coin) ? TEXT("Success") : TEXT("Failed"));
-	
-	
-	UE_LOG(LogTemp, Warning, TEXT("Stimulus Type: %d"), Stimulus.Type.Index);
-	UE_LOG(LogTemp, Warning, TEXT("Sight ID: %d"), UAISense::GetSenseID<UAISense_Sight>().Index);
+	if (!IsValid(Coin)) return;
 	
 	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
 	{
