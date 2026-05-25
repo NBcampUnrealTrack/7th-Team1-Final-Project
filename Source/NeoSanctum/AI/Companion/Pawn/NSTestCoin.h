@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Components/SphereComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "NSTestCoin.generated.h"
 
+class USphereComponent;
 class ANSDroneAIController;
 class UAIPerceptionStimuliSourceComponent;
+class UProjectileMovementComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTestCoin : public AActor
@@ -19,12 +22,22 @@ public:
 	ANSTestCoin();
 
 	void RegisterPriorityActor();
+	
+	void CheckPlayerActor();
+	
+	UFUNCTION()
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
+						AActor* OtherActor,
+						UPrimitiveComponent* OtherComp,
+						int32 OtherBodyIndex,
+						bool bFromSweep,
+						const FHitResult& SweepResult);
 
+	void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
 protected:
 	virtual void BeginPlay() override;
-	
-	virtual void Destroyed() override;
-	
+
 private:
 	UPROPERTY(VisibleAnywhere, Category="Coin|CacheData")
 	TArray<TWeakObjectPtr<ANSDroneAIController>> CacheDroneAIControllers;
@@ -35,4 +48,16 @@ private:
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<UAIPerceptionComponent> CoinPerception;
 	
+	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<USphereComponent> CollisionComponent;
+	
+	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Coin|Collision", meta=(AllowPrivateAccess=true))
+	float MagneticRadius;
+	
+	FTimerHandle CheckPlayerTimerHandle;
 };
+
+
