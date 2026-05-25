@@ -13,4 +13,11 @@ UCLASS()
 class NEOSANCTUM_API UUBTTask_NSDroneAIMoveTo : public UBTTask_MoveTo
 {
 	GENERATED_BODY()
+	
+public:
+	UUBTTask_NSDroneAIMoveTo();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Drone")
+	float HoverHeight = 300.f;
+	
 };
