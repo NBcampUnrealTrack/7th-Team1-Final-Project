@@ -172,6 +172,8 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	// 바인딩
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
+	
+	ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
 }
 
 void ANSPlayerCharacterBase::GiveDefaultAbilities()
@@ -258,8 +260,13 @@ void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
+	ApplyMoveSpeedToCharacter(Data.NewValue);
+}
+
+void ANSPlayerCharacterBase::ApplyMoveSpeedToCharacter(float MoveSpeed)
+{
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		Movement->MaxWalkSpeed = Data.NewValue;
+		Movement->MaxWalkSpeed = MoveSpeed;
 	}
 }

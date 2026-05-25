@@ -62,6 +62,7 @@ protected:
 	
 protected:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	void ApplyMoveSpeedToCharacter(float MoveSpeed);
 	
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
