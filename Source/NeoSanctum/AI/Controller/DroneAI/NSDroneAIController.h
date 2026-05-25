@@ -31,16 +31,21 @@ public:
 	
 	UBlackboardComponent* GetBlackboardComponent() const;
 	
-protected:
-	virtual void BeginPlay() override;
-	virtual void OnPossess(APawn* InPawn) override;
-
-public:
 	UFUNCTION()
 	void SetOwnerPlayer();
 	
 	UFUNCTION()
 	void OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus);
+	
+	void UpdateTargetCoin();
+	void RemoveTargetCoin(const ANSTestCoin* TargetCoin);
+	
+protected:
+	virtual void BeginPlay() override;
+	virtual void OnPossess(APawn* InPawn) override;
+
+public:
+	
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "DroneAI|Behavior")
 	UBehaviorTree* DroneAIBehaviorTree;
@@ -57,6 +62,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "DroneAI|Perception")
 	TObjectPtr<UAISenseConfig_Sight> DroneAISightConfig;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "DroneAI|Perception")
+	TArray<ANSTestCoin*> Coins;
 private:
 	// 블랙보드 키 변수
 	static const FName OwningPlayer;

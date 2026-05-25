@@ -16,7 +16,7 @@ ANSTestCoin::ANSTestCoin()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
-	CoinPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("CoinPerception"));
+	/*CoinPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("CoinPerception"));*/
 	
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	CollisionComponent->SetupAttachment(RootComponent);
@@ -31,7 +31,7 @@ ANSTestCoin::ANSTestCoin()
 	ProjectileMovementComponent->bRotationFollowsVelocity =true;
 	ProjectileMovementComponent->ProjectileGravityScale = 0.f;
 	
-	
+	CollisionComponent->SetSphereRadius(200.f);
 	CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ANSTestCoin::OnOverlapBegin);
 }
 
@@ -125,18 +125,14 @@ void ANSTestCoin::BeginPlay()
 
 void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	Super::EndPlay(EndPlayReason);
 	for (const TWeakObjectPtr<ANSDroneAIController>& CacheDroneAIController : CacheDroneAIControllers)
 	{
-		if (UBlackboardComponent* BB = CacheDroneAIController->GetBlackboardComponent())
+		if (CacheDroneAIController.IsValid())
 		{
-			UObject* CurrentCoin = BB->GetValueAsObject(TEXT("FindCoinActor"));
-			if (CurrentCoin == this)
-			{
-				BB->ClearValue(TEXT("FindCoinActor"));
-			}
+			CacheDroneAIController->RemoveTargetCoin(this);
 		}
 	}
+	Super::EndPlay(EndPlayReason);
 }
 
 

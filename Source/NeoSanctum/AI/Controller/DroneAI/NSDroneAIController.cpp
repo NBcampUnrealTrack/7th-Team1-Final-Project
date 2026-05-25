@@ -3,7 +3,6 @@
 
 #include "NSDroneAIController.h"
 #include "EngineUtils.h"
-#include "GameFramework/Character.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSTestCoin.h"
 
 const FName ANSDroneAIController::OwningPlayer = TEXT("OwningPlayer");
@@ -16,8 +15,8 @@ ANSDroneAIController::ANSDroneAIController()
 	DroneAIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 	DroneAISightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Config_Sight"));
 	
-	DroneAISightConfig->SightRadius = 1500.0f; // 시야 범위
-	DroneAISightConfig->LoseSightRadius = 2000.f; // 시야 상실 범위
+	DroneAISightConfig->SightRadius = 500.0f; // 시야 범위
+	DroneAISightConfig->LoseSightRadius = 600.f; // 시야 상실 범위
 	DroneAISightConfig->PeripheralVisionAngleDegrees = 60.f; // 주변 시야 각도
 	
 	DroneAISightConfig->DetectionByAffiliation.bDetectEnemies = true;
@@ -70,15 +69,49 @@ void ANSDroneAIController::SetOwnerPlayer()
 
 void ANSDroneAIController::OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus)
 {
+	if (!IsValid(DroneAIBBComponent)) return;
 	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
 	if (!IsValid(Coin)) return;
-	if (!IsValid(DroneAIBBComponent)) return;
 	if (!Coin->ActorHasTag("Coin")) return;
 	if (Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>()) return;
-		
+	UE_LOG(LogTemp,Warning,TEXT("Call UpdatePerception"));
+	
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		DroneAIBBComponent->SetValueAsObject(FindCoinActor, Coin);
+		
+		UE_LOG(LogTemp,Warning,TEXT("Call WasSuccessfullySensed"));
+		Coins.Add(Coin);
+	}
+	else
+	{
+		Coins.Remove(Coin);
+	}
+	
+	UpdateTargetCoin();
+}
+
+void ANSDroneAIController::UpdateTargetCoin()
+{
+	if (Coins.IsEmpty()) return;
+	if (!IsValid(DroneAIBBComponent)) return;
+	for (ANSTestCoin* Coin : Coins)
+	{
+		if (IsValid(Coin))
+		{
+			DroneAIBBComponent->SetValueAsObject(FindCoinActor, Coin);
+		}
+	}
+}
+
+void ANSDroneAIController::RemoveTargetCoin(const ANSTestCoin* TargetCoin)
+{
+	for (ANSTestCoin* Coin : Coins)
+	{
+		if (TargetCoin == Coin)
+		{
+			Coins.Remove(Coin);
+			UpdateTargetCoin();
+		}
 	}
 }
 
@@ -86,5 +119,3 @@ UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
 {
 	return Blackboard;
 }
-
-

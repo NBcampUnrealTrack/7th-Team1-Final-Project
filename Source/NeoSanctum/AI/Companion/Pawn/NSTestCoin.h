@@ -43,8 +43,8 @@ private:
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<UAIPerceptionStimuliSourceComponent> StimuliSource;
 	
-	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
-	TObjectPtr<UAIPerceptionComponent> CoinPerception;
+	/*UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<UAIPerceptionComponent> CoinPerception;*/
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<USphereComponent> CollisionComponent;
