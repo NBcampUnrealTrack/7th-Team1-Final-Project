@@ -63,7 +63,7 @@ public:
 
 	// 어디서든 동일한 볼륨으로 들리는 사운드 재생
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
-	UAudioComponent* PlaySound2D(FName SoundID);
+	UAudioComponent* PlaySound2D(FName SoundID, float FadeIn = 1.f);
 
 	// 특정 위치에서 재생하는 사운드
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
@@ -71,12 +71,20 @@ public:
 
 	// 특정 소켓에 붙어서 함께 이동하는 사운드
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
-	UAudioComponent* PlaySoundAttached(FName SoundID, USceneComponent* AttachToComponent, FName SocketName = NAME_None);
+	UAudioComponent* PlaySoundAttached(
+		FName SoundID,
+		USceneComponent* AttachToComponent,
+		FName SocketName = NAME_None
+	);
 
 public:
 	// BGM 재생 중지
 	UFUNCTION(BlueprintCallable, Category = "Sound|Stop")
 	void StopBGM(float FadeOut = -1.f);
+
+	// 특정 사운드 재생 중지
+	UFUNCTION(BlueprintCallable)
+	void StopSound(UAudioComponent* AudioComponent, float FadeOut = -1.f);
 
 	// 특정 카테고리 사운드 전체 중지
 	UFUNCTION(BlueprintCallable, Category = "Sound|Stop")
@@ -109,16 +117,19 @@ private:
 		const FNSSoundDataTableRow& SoundRow,
 		float FadeIn = -1.f
 	);
+	// 특정 위치에서 재생되는 루프 사운드 헬퍼
 	UAudioComponent* PlayLoopAtLocation(
 		FName SoundID,
 		const FNSSoundDataTableRow& SoundRow,
 		FVector Location
 	);
+	// 특정 소켓에 부착되어 이동하는 루프 사운드 헬퍼
 	UAudioComponent* PlayLoopAttached(
 		FName SoundID,
 		const FNSSoundDataTableRow& SoundRow,
 		USceneComponent* AttachToComponent, FName SocketName
 	);
+	// 루프 사운드를 ActiveSounds 배열에 등록하기 위한
 	void RegisterLoop(
 		UAudioComponent* Component,
 		FName SoundID, ENSSoundCategory Category,
@@ -127,13 +138,18 @@ private:
 		USceneComponent* AttachToComponent = nullptr,
 		FName SocketName = NAME_None
 	);
+	// 사운드 루프를 걸기 위한 콜백
 	void OnLoopFinished(UAudioComponent* FinishedComponent);
-	void StopLoopsBySoundID(FName SoundID, float FadeOut = -1.f);
+	// 루프 재생 중인 특정 사운드를 ID 기반으로 찾아서 재생 중지
+	void StopSoundLoop(FName SoundID, float FadeOut = -1.f);
+	// 모든 루프 중인 사운드를 재생 중지
 	void StopAllLoops(float FadeOut = -1.f);
 
-	// 볼륨 관련 헬퍼
+	// 최종 볼륨값 반환 : SoundRow의 기본 볼륨 * MasterVolume * 해당 사운드의 카테고리 볼륨
 	float GetFinalVolume(const FNSSoundDataTableRow& SoundRow) const;
+	// 카테고리 볼륨 설정 Initialize
 	void InitializeCategoryVolumes();
+	// 볼륨 설정을 직접 적용시키는 함수 : 주로 루프 재생되는 사운드에서 한 루프가 끝나고 나면 다시 볼륨을 조정해줘야하기 때문에 사용
 	void ApplyVolume(ENSSoundCategory Category);
 
 private:

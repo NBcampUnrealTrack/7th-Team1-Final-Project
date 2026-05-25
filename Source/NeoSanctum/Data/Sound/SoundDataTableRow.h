@@ -13,7 +13,7 @@ enum class ENSSoundCategory : uint8
 };
 
 USTRUCT(BlueprintType)
-struct DOODOONG_API FNSSoundCategorySettings
+struct NEOSANCTUM_API FNSSoundCategorySettings
 {
 	GENERATED_BODY()
 
