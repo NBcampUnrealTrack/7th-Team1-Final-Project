@@ -3,7 +3,6 @@
 
 #include "NSBaseCompanionAI.h"
 #include "Components/SceneComponent.h"
-#include "Perception/AIPerceptionComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
 
@@ -15,6 +14,8 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
 	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
+	
+	
 }
 
 void ANSBaseCompanionAI::BeginPlay()

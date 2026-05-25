@@ -4,8 +4,8 @@
 #include "NSDroneAI.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 
 ANSDroneAI::ANSDroneAI()
 {
@@ -22,7 +22,7 @@ ANSDroneAI::ANSDroneAI()
 	GetCharacterMovement()->AvoidanceWeight = 0.2f;
 	
 	GetMesh()->SetEnableGravity(true);
-	GetMesh()->SetCollisionObjectType(ECC_GameTraceChannel1);
+	GetCapsuleComponent()->SetCollisionObjectType(ECC_GameTraceChannel1);
 }
 
 void ANSDroneAI::BeginPlay()
