@@ -6,7 +6,7 @@
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
-#include "NeoSanctum/Data/Sound/SoundData.h"
+#include "NeoSanctum/Data/Sound/NSSoundData.h"
 
 UNSSoundSubsystem* UNSSoundSubsystem::Get(const UObject* WorldContext)
 {
@@ -15,96 +15,49 @@ UNSSoundSubsystem* UNSSoundSubsystem::Get(const UObject* WorldContext)
 	{
 		return nullptr;
 	}
-	
+
 	return GameInstance->GetSubsystem<UNSSoundSubsystem>();
 }
 
 void UNSSoundSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	
+
 	if (const UNSGameInstance* GameInstance = UNSGameInstance::Get(GetWorld()))
 	{
-		SoundDataTable = GameInstance->SoundDataTable;
+		SoundData = GameInstance->SoundData;
+	}
+	
+	if (!SoundData)
+	{
+		SoundData = NewObject<UNSSoundData>(this);
 	}
 }
 
 void UNSSoundSubsystem::Deinitialize()
 {
-	SoundDataTable = nullptr;
-	
+	SoundData = nullptr;
+
 	Super::Deinitialize();
 }
 
-void UNSSoundSubsystem::PlayBGM(FName SoundID, float FadeIn)
-{
-	// 현재 재생되는 BGM이 있고 그 BGM이 재생을 요청한 SoundID와 같다면 중복재생을 방지하기 위해 return
-	if (CurrentBGM && CurrentBGMID == SoundID)
-	{
-		return;
-	}
-	
-	const FNSSoundDataTableRow* SoundRow = FindSoundRow(SoundID);
-	if (!SoundRow || !SoundRow->Sound)
-	{
-		return;
-	}
-	
-	// 기존에 재생되던 BGM 중지
-	StopBGM(SoundRow->FadeOutTime);
-	
-	CurrentBGM = UGameplayStatics::SpawnSound2D(
-		GetGameInstance(),
-		SoundRow->Sound,
-		GetFinalVolume(*SoundRow),
-		SoundRow->Pitch,
-		SoundRow->StartTime,
-		nullptr,
-		true
-	);
-	
-	if (CurrentBGM)
-	{
-		CurrentBGMID = SoundID;
-	}
-}
-
-void UNSSoundSubsystem::PlaySound2D(FName SoundID)
+UAudioComponent* UNSSoundSubsystem::PlayBGM(FName SoundID, float FadeIn)
 {
 }
 
-void UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector Location)
+UAudioComponent* UNSSoundSubsystem::PlaySound2D(FName SoundID)
 {
 }
 
-void UNSSoundSubsystem::PlaySoundAttached(FName SoundID, USceneComponent* AttachToComponent, FName SocketName)
+UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector Location)
+{
+}
+
+UAudioComponent* UNSSoundSubsystem::PlaySoundAttached(FName SoundID, USceneComponent* AttachToComponent, FName SocketName)
 {
 }
 
 void UNSSoundSubsystem::StopBGM(float FadeOut)
-{
-	if (!CurrentBGM)
-	{
-		CurrentBGMID = NAME_None;
-		return;
-	}
-	
-	const float FadeOutTime = FMath::Max(0.f, FadeOut);
-	CurrentBGM->OnAudioFinished.RemoveAll(this);
-	if (FadeOutTime > 0.f)
-	{
-		CurrentBGM->FadeOut(FadeOutTime, 0.f);
-	}
-	else
-	{
-		CurrentBGM->Stop();
-	}
-	
-	CurrentBGM = nullptr;
-	CurrentBGMID = NAME_None;
-}
-
-void UNSSoundSubsystem::StopSound(FName SoundID, float FadeOut)
 {
 }
 
@@ -116,32 +69,92 @@ void UNSSoundSubsystem::SetMasterVolume(float Volume)
 {
 }
 
+void UNSSoundSubsystem::SetCategoryVolume(ENSSoundCategory Category, float Volume)
+{
+}
+
 float UNSSoundSubsystem::GetCategoryVolume(ENSSoundCategory Category) const
 {
-	switch (Category)
-	{
-	case ENSSoundCategory::BGM:
-		return BGMVolume;
-	case ENSSoundCategory::SFX:
-		return SFXVolume;
-	case ENSSoundCategory::UI:
-		return UIVolume;
-	default:
-		return 1.f;
-	}
 }
 
 const FNSSoundDataTableRow* UNSSoundSubsystem::FindSoundRow(FName SoundID) const
 {
-	if (!SoundDataTable || SoundID.IsNone())
-	{
-		return nullptr;
-	}
 	
-	return SoundDataTable->FindRow<FNSSoundDataTableRow>(SoundID, TEXT("NSSoundSubsystem"));
+}
+
+void UNSSoundSubsystem::PlayOneShot2D(const FNSSoundDataTableRow& SoundRow) const
+{
+}
+
+void UNSSoundSubsystem::PlayLoop2D(
+	FName SoundID,
+	const FNSSoundDataTableRow& SoundRow,
+	float FadeIn
+)
+{
+}
+
+UAudioComponent* UNSSoundSubsystem::PlayLoopAtLocation(
+	FName SoundID,
+	const FNSSoundDataTableRow& SoundRow,
+	FVector Location
+)
+{
+}
+
+UAudioComponent* UNSSoundSubsystem::PlayLoopAttached(
+	FName SoundID,
+	const FNSSoundDataTableRow& SoundRow,
+	USceneComponent* AttachToComponent,
+	FName SocketName
+)
+{
+}
+
+void UNSSoundSubsystem::RegisterLoop(
+	UAudioComponent* Component,
+	FName SoundID, ENSSoundCategory Category,
+	ENSActiveSoundMode Mode, FVector Location,
+	USceneComponent* AttachToComponent,
+	FName SocketName
+)
+{
+}
+
+void UNSSoundSubsystem::OnLoopFinished(UAudioComponent* FinishedComponent)
+{
+}
+
+void UNSSoundSubsystem::StopLoopsBySoundID(FName SoundID, float FadeOut)
+{
+}
+
+void UNSSoundSubsystem::StopAllLoops(float FadeOut)
+{
 }
 
 float UNSSoundSubsystem::GetFinalVolume(const FNSSoundDataTableRow& SoundRow) const
 {
-	return SoundRow.Volume * MasterVolume * GetCategoryVolume(SoundRow.Category);
+}
+
+
+void UNSSoundSubsystem::InitializeCategoryVolumes()
+{
+}
+
+void UNSSoundSubsystem::ApplyVolume(ENSSoundCategory Category)
+{
+	FNSActiveSound* ActiveSound = ActiveSounds.Find(Category);
+	if (!ActiveSound || !ActiveSound->Component || ActiveSound->SoundID.IsNone())
+	{
+		return;
+	}
+
+	const FNSSoundDataTableRow* SoundRow = FindSoundRow(ActiveSound->SoundID);
+	if (!SoundRow)
+	{
+		return;
+	}
+
+	ActiveSound->Component->SetVolumeMultiplier(GetFinalVolume(*SoundRow));
 }

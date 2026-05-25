@@ -2,8 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "SoundData.generated.h"
-
+#include "SoundDataTableRow.generated.h"
 
 UENUM(BlueprintType)
 enum class ENSSoundCategory : uint8
@@ -11,6 +10,21 @@ enum class ENSSoundCategory : uint8
 	BGM,
 	SFX,
 	UI
+};
+
+USTRUCT(BlueprintType)
+struct DOODOONG_API FNSSoundCategorySettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	ENSSoundCategory Category = ENSSoundCategory::BGM;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound")
+	FName ConfigKey = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Sound", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DefaultVolume = 1.f;
 };
 
 USTRUCT(BlueprintType)
