@@ -34,6 +34,7 @@ void UNSSoundSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	}
 
 	InitializeCategoryVolumes();
+	LoadSoundSettings();
 }
 
 void UNSSoundSubsystem::Deinitialize()
@@ -202,6 +203,55 @@ float UNSSoundSubsystem::GetCategoryVolume(ENSSoundCategory Category) const
 {
 	const float* Volume = CategoryVolumes.Find(Category);
 	return Volume ? *Volume : 1.f;
+}
+
+void UNSSoundSubsystem::SaveSoundSettings()
+{
+	if (!GConfig || !SoundData)
+	{
+		return;
+	}
+
+	const FString Section = TEXT("/Script/NeoSanctum.SoundSettings");
+	GConfig->SetFloat(*Section, TEXT("MasterVolume"), MasterVolume, GGameUserSettingsIni);
+	for (const FNSSoundCategorySettings& Settings : SoundData->CategorySettings)
+	{
+		if (!Settings.ConfigKey.IsNone())
+		{
+			GConfig->SetFloat(
+				*Section,
+				*Settings.ConfigKey.ToString(),
+				GetCategoryVolume(Settings.Category),
+				GGameUserSettingsIni
+			);
+		}
+	}
+	GConfig->Flush(false, GGameUserSettingsIni);
+}
+
+void UNSSoundSubsystem::LoadSoundSettings()
+{
+	if (!GConfig || !SoundData)
+	{
+		return;
+	}
+	
+	const FString Section = TEXT("/Script/NeoSanctum.SoundSettings");
+	float SavedVolume = 1.f;
+	
+	if (GConfig->GetFloat(*Section, TEXT("MasterVolume"), SavedVolume, GGameUserSettingsIni))
+	{
+		SetMasterVolume(SavedVolume);
+	}
+	
+	for (const FNSSoundCategorySettings& Settings : SoundData->CategorySettings)
+	{
+		if (!Settings.ConfigKey.IsNone()
+			&& GConfig->GetFloat(*Section, *Settings.ConfigKey.ToString(), SavedVolume, GGameUserSettingsIni))
+		{
+			SetCategoryVolume(Settings.Category, SavedVolume);
+		}
+	}
 }
 
 const FNSSoundDataTableRow* UNSSoundSubsystem::FindSoundRow(FName SoundID) const

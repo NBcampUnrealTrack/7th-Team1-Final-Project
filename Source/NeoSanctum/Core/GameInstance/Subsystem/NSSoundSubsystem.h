@@ -103,7 +103,14 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Sound|Getter")
 	float GetCategoryVolume(ENSSoundCategory Category) const;
-
+	
+public:
+	// 사운드 세팅 저장 : UI 등 사운드 세팅을 저장하는 시점에 호출
+	void SaveSoundSettings();
+	
+	// 사운드 세팅 불러오기
+	void LoadSoundSettings();
+	
 private:
 	// ID기반 DataTableRow 찾기 
 	const FNSSoundDataTableRow* FindSoundRow(FName SoundID) const;
