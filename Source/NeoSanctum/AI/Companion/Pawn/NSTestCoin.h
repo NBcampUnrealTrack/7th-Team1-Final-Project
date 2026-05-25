@@ -20,8 +20,6 @@ class NEOSANCTUM_API ANSTestCoin : public AActor
 
 public:
 	ANSTestCoin();
-
-	void RegisterPriorityActor();
 	
 	void CheckPlayerActor();
 	

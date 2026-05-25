@@ -37,9 +37,6 @@ protected:
 
 public:
 	UFUNCTION()
-	void SetPriorityActor(AActor* InActor);
-	
-	UFUNCTION()
 	void SetOwnerPlayer();
 	
 	UFUNCTION()

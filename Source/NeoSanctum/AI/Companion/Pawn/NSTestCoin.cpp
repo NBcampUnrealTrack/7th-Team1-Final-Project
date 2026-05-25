@@ -35,19 +35,6 @@ ANSTestCoin::ANSTestCoin()
 	CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ANSTestCoin::OnOverlapBegin);
 }
 
-void ANSTestCoin::RegisterPriorityActor()
-{
-	for (const TWeakObjectPtr<ANSDroneAIController>& DroneAIController : CacheDroneAIControllers)
-	{
-		if (!DroneAIController.IsValid()) continue;
-		
-		ANSDroneAIController* DroneAIC = DroneAIController.Get();
-		if (!IsValid(DroneAIC)) continue;
-		
-		DroneAIC->SetPriorityActor(this);
-	}
-}
-
 void ANSTestCoin::CheckPlayerActor()
 {
 	// AI 도움 디버그 라인 그리기
@@ -133,15 +120,23 @@ void ANSTestCoin::BeginPlay()
 		}
 	}
 	
-	
-	
 	GetWorldTimerManager().SetTimer(CheckPlayerTimerHandle,this,&ThisClass::CheckPlayerActor,0.5f,true);
 }
 
 void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	
+	for (const TWeakObjectPtr<ANSDroneAIController>& CacheDroneAIController : CacheDroneAIControllers)
+	{
+		if (UBlackboardComponent* BB = CacheDroneAIController->GetBlackboardComponent())
+		{
+			UObject* CurrentCoin = BB->GetValueAsObject(TEXT("FindCoinActor"));
+			if (CurrentCoin == this)
+			{
+				BB->ClearValue(TEXT("FindCoinActor"));
+			}
+		}
+	}
 }
 
 

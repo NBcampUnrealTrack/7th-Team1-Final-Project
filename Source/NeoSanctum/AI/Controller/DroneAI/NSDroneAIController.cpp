@@ -32,6 +32,7 @@ void ANSDroneAIController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	SetOwnerPlayer();
 	DroneAIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSDroneAIController::OnUpdatePerception);
 	
 }
@@ -49,25 +50,8 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 		DroneAIBBComponent = Blackboard;
 	}
 	
-	FTimerHandle OwnerTimerHandle;
-	GetWorldTimerManager().SetTimer(OwnerTimerHandle, this, &ANSDroneAIController::SetOwnerPlayer,0.5f, false);
-}
-
-void ANSDroneAIController::SetPriorityActor(AActor* InActor)
-{
-	if (!InActor)
-	{
-		return;
-	}
 	
-	ANSTestCoin* CoinActor = Cast<ANSTestCoin>(InActor);
-	
-	if (DroneAIBBComponent)
-	{
-		DroneAIBBComponent->SetValueAsObject(PriorityActor, CoinActor);
-	}
 }
-
 
 void ANSDroneAIController::SetOwnerPlayer()
 {
@@ -88,28 +72,14 @@ void ANSDroneAIController::OnUpdatePerception(AActor* InActor, FAIStimulus Stimu
 {
 	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
 	if (!IsValid(Coin)) return;
-	
-	if (Stimulus.Type == UAISense::GetSenseID<UAISense_Sight>())
+	if (!IsValid(DroneAIBBComponent)) return;
+	if (!Coin->ActorHasTag("Coin")) return;
+	if (Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>()) return;
+		
+	if (Stimulus.WasSuccessfullySensed())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Call bCanSeeCoin"));
-		bool bCanSeeCoin = Stimulus.WasSuccessfullySensed();
-		if (bCanSeeCoin)
-		{
-			if (DroneAIBBComponent)
-			{
-				DroneAIBBComponent->SetValueAsBool(FindCoinActor, bCanSeeCoin);
-				SetPriorityActor(Coin);
-			}
-		}
-		else
-		{
-			if (DroneAIBBComponent)
-			{
-				DroneAIBBComponent->SetValueAsBool(FindCoinActor, bCanSeeCoin);
-			}
-		}
+		DroneAIBBComponent->SetValueAsObject(FindCoinActor, Coin);
 	}
-	
 }
 
 UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
