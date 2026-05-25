@@ -25,6 +25,7 @@ public:
 	/*
 	 * 0번을 플레이어 진영
 	 * 1번을 몬스터 진영으로 구성할 예정.
+	 * EnemyCharacter가 타겟팅 혹은 피격되었을 때 진영을 알기 위한 TeamId 조회
 	 */
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(1); }
 
