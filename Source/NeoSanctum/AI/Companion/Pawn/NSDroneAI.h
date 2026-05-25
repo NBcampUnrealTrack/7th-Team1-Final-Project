@@ -17,6 +17,7 @@ class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 public:
 	ANSDroneAI();
 	
+	virtual void Tick(float DeltaTime) override;
 protected:
 	virtual void BeginPlay() override;
 	
@@ -24,4 +25,6 @@ private:
 	ANSDroneAIController* DroneAIController;
 	
 	UBlackboardComponent* DroneAIBBComponent;
+	
+	void DrawSightDebug();
 };
