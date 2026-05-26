@@ -23,6 +23,7 @@ public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 	
 public:
+	// UI에서 클래스 선택시 구분하는 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character")
 	FGameplayTag CharacterTag;
 	
