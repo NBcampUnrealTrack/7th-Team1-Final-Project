@@ -17,7 +17,6 @@ class NEOSANCTUM_API UNSBTTask_FindPatrolLocation : public UBTTaskNode
 public:
 	UNSBTTask_FindPatrolLocation();
 
-protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 
 protected:
