@@ -3,6 +3,7 @@
 
 #include "NSDroneAIController.h"
 #include "EngineUtils.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSTestCoin.h"
 
 const FName ANSDroneAIController::OwningPlayer = TEXT("OwningPlayer");
@@ -48,7 +49,16 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 		
 		DroneAIBBComponent = Blackboard;
 	}
+
+	ANSDroneAI* MyPawn = Cast<ANSDroneAI>(InPawn);
+	if (!IsValid(MyPawn)) return;
 	
+	if (DroneAIBBComponent->GetValueAsObject(OwningPlayer) != nullptr)
+	{
+		DroneAIBBComponent->ClearValue(OwningPlayer);
+	}
+	
+	DroneAIBBComponent->SetValueAsObject(OwningPlayer, MyPawn->GetOwner());
 	
 }
 
@@ -70,49 +80,43 @@ void ANSDroneAIController::SetOwnerPlayer()
 void ANSDroneAIController::OnUpdatePerception(AActor* InActor, FAIStimulus Stimulus)
 {
 	if (!IsValid(DroneAIBBComponent)) return;
-	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
-	if (!IsValid(Coin)) return;
-	if (!Coin->ActorHasTag("Coin")) return;
 	if (Stimulus.Type != UAISense::GetSenseID<UAISense_Sight>()) return;
-	UE_LOG(LogTemp,Warning,TEXT("Call UpdatePerception"));
+	
+	ANSTestCoin* Coin = Cast<ANSTestCoin>(InActor);
+	if (!IsValid(Coin) || !Coin->ActorHasTag("Coin")) return;
 	
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		
-		UE_LOG(LogTemp,Warning,TEXT("Call WasSuccessfullySensed"));
-		Coins.Add(Coin);
+		UpdateTargetCoin(Coin);
 	}
 	else
 	{
-		Coins.Remove(Coin);
+		RemoveTargetCoin(Coin);
+	}
+}
+
+void ANSDroneAIController::UpdateTargetCoin(ANSTestCoin* TargetCoin)
+{
+	if (!IsValid(DroneAIBBComponent)) return;
+	
+	UObject* TargetActor = DroneAIBBComponent->GetValueAsObject(FindCoinActor);
+	if (TargetActor != nullptr) return;
+	
+	DroneAIBBComponent->SetValueAsObject(FindCoinActor, TargetCoin);
+}
+
+void ANSDroneAIController::RemoveTargetCoin(ANSTestCoin* TargetCoin)
+{
+	if (!IsValid(DroneAIBBComponent)) return;
+	
+	UObject* TargetActor = DroneAIBBComponent->GetValueAsObject(FindCoinActor);
+	if (TargetActor == nullptr) return;
+	
+	if (TargetActor == TargetCoin)
+	{
+		DroneAIBBComponent->ClearValue(FindCoinActor);
 	}
 	
-	UpdateTargetCoin();
-}
-
-void ANSDroneAIController::UpdateTargetCoin()
-{
-	if (Coins.IsEmpty()) return;
-	if (!IsValid(DroneAIBBComponent)) return;
-	for (ANSTestCoin* Coin : Coins)
-	{
-		if (IsValid(Coin))
-		{
-			DroneAIBBComponent->SetValueAsObject(FindCoinActor, Coin);
-		}
-	}
-}
-
-void ANSDroneAIController::RemoveTargetCoin(const ANSTestCoin* TargetCoin)
-{
-	for (ANSTestCoin* Coin : Coins)
-	{
-		if (TargetCoin == Coin)
-		{
-			Coins.Remove(Coin);
-			UpdateTargetCoin();
-		}
-	}
 }
 
 UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
