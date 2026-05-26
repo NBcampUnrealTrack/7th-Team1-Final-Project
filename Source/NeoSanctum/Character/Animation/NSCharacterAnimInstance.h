@@ -200,7 +200,7 @@ protected:
 
 	// 전투 타입에 따른 애니메이션 상태값들
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
-	ENSAnimCombatType CombatType = ENSAnimCombatType::None;
+	ENSAnimCombatType CombatType = ENSAnimCombatType::Ranged;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
 	bool bUseUpperBodyLayer = false;
