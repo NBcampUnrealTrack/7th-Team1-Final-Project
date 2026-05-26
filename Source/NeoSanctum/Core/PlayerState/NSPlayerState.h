@@ -10,6 +10,7 @@
 class UNSAbilitySystemComponent;
 class UNSPlayerAttributeSet;
 class UNSPlayerProgressComponent;
+class UNSAugmentInventoryComponent;
 class UNSPermanentSaveGame;
 
 UCLASS()
@@ -36,6 +37,8 @@ public:
 	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 
+	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -47,6 +50,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSPlayerProgressComponent> ProgressComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Augment")
+	TObjectPtr<UNSAugmentInventoryComponent> AugmentInventory;
 	
 private:
 	void OnSaveDataLoaded(UNSPermanentSaveGame* Data);
