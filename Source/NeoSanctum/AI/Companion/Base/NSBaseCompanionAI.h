@@ -3,16 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
 #include "AttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "NSBaseCompanionAI.generated.h"
 
+class UAIPerceptionComponent;
 class UFloatingPawnMovement;
 class USceneComponent;
+class UCapsuleComponent;
 
 UCLASS()
-class NEOSANCTUM_API ANSBaseCompanionAI : public APawn
+class NEOSANCTUM_API ANSBaseCompanionAI : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -23,20 +25,10 @@ protected:
 	virtual void BeginPlay() override;
 	
 protected:
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UFloatingPawnMovement> MovementComp;
-	
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<USceneComponent> RootScene;
-	
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UStaticMeshComponent> MeshComponent;
-	
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AbilitySystemComponent")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="AbilitySystemComponent")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UAttributeSet> AttributeSet;
 	
 public:

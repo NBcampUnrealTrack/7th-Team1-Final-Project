@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
-#include "AIController.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NSDroneAI.generated.h"
+
+class USphereComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
@@ -15,37 +17,13 @@ class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 public:
 	ANSDroneAI();
 	
-	UFUNCTION()
-	void OnMoveCompleted(FAIRequestID RequestID, EPathFollowingResult::Type Result);
-	
-	UFUNCTION()
-	void MoveToTargetOwningCharacter();
-	
-	UFUNCTION()
-	void FindTargetOwninigCharacter();
-	
-	UFUNCTION()
-	void StartMoving();
+	virtual void GetActorEyesViewPoint( FVector& Location, FRotator& Rotation ) const override;
 	
 protected:
 	virtual void BeginPlay() override;
-	
+
 private:
-	// 소유한 플레이어
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
-	TObjectPtr<ACharacter> TargetOwningCharacter;
+	ANSDroneAIController* DroneAIController;
 	
-	// 추적할 엑터
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
-	TObjectPtr<AActor> TargetActor;
-	
-	// 도착 거리 반경
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Drone", meta=(AllowPrivateAccess=true))
-	float TargetRange;
-	
-	UPROPERTY()
-	AAIController* AIController;
-	
-	UPROPERTY()
-	bool bIsMoving;
+	UBlackboardComponent* DroneAIBBComponent;
 };
