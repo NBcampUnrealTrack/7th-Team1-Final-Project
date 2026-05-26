@@ -6,6 +6,8 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "GameFramework/PlayerStart.h"
+#include "EngineUtils.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -105,6 +107,22 @@ void ANSRunGameMode::RespawnAllPlayers()
 			NSPlayerController->ExitSpectatorAndRespawn();
 		}
 	}
+}
+
+AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
+{
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		APlayerStart* PlayerStart = *It;
+		if (PlayerStart && PlayerStart->PlayerStartTag == FName("PlayerSpawn"))
+		{
+			UE_LOG(LogTemp, Log, TEXT("GameMode: 태그있는 스폰 포인트 발견 %s"), *PlayerStart->GetName());
+			return PlayerStart;
+		}
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("GameMode: 태그있는 스폰 포인트 발견 실패"));
+	return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
 void ANSRunGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
