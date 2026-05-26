@@ -30,7 +30,9 @@ public:
 	// 룸 생성 완료시 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void RespawnAllPlayers();
-	
+
+	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
+
 protected:
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 

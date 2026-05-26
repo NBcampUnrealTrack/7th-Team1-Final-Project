@@ -2,8 +2,11 @@
 
 
 #include "NSTitleGameMode.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 
 ANSTitleGameMode::ANSTitleGameMode()
 {
 	bUseSeamlessTravel = false;
+	
+	PlayerControllerClass = ANSPlayerController::StaticClass();
 }

@@ -44,6 +44,11 @@ public:
 	
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
+	
+	// (이용호 추가)Title 위젯 전용
+	void CreateTitle(APlayerController* OwningPlayer);
+	void ShowTitle();
+	void HideTitle();
 
 	
 private:
@@ -51,9 +56,15 @@ private:
 	UPROPERTY()
 	TObjectPtr<UNSHUDWidget> HUDWidget;
 	
+	UPROPERTY()
+	TObjectPtr<UUserWidget> TitleWidget;
+	
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UNSHUDWidget> HUDWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> TitleWidgetClass;
 	
 }; 

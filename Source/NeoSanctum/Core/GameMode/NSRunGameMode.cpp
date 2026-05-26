@@ -6,6 +6,8 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "GameFramework/PlayerStart.h"
+#include "EngineUtils.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -57,12 +59,12 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
-	GetWorld()->ServerTravel("/Game/TestSpace/TestInGame");
+	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_HideOut");
 }
 
 void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 {
-	GetWorld()->ServerTravel("/Game/TestSpace/TestInRun");
+	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
 }
 
 
@@ -105,6 +107,45 @@ void ANSRunGameMode::RespawnAllPlayers()
 			NSPlayerController->ExitSpectatorAndRespawn();
 		}
 	}
+}
+
+AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
+{
+	AActor* FirstFoundStart = nullptr;
+	
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+	{
+		APlayerStart* PlayerStart = *It;
+		if (PlayerStart && PlayerStart->PlayerStartTag == FName("PlayerSpawn"))
+		{
+			// 자리가 전부 찼을 때를 대비해서 첫번째 위치 저장
+			if (!FirstFoundStart)
+			{
+				FirstFoundStart = PlayerStart;
+			}
+
+			// 발견한 자리에 캐릭터있는지 체크용
+			FVector SpawnLocation = PlayerStart->GetActorLocation();
+			FQuat SpawnRotation = PlayerStart->GetActorQuat();
+			FCollisionShape CharacterCapsule = FCollisionShape::MakeCapsule(34.0f, 88.0f);
+			
+			if (!GetWorld()->OverlapAnyTestByChannel(SpawnLocation, SpawnRotation, ECC_Pawn, CharacterCapsule))
+			{
+				UE_LOG(LogTemp, Log, TEXT("GameMode: 비어있는 자리 발견 %s"), *PlayerStart->GetName());
+				return PlayerStart;
+			}
+		}
+	}
+
+	// 자리가 없으면 첫번째 PlayerStart 위치로 강제 소환
+	if (FirstFoundStart)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GameMode: 자리 X 강제 스폰"));
+		return FirstFoundStart;
+	}
+
+	// 태그 있는 PlayerStart 없으면 기본 스폰 위치로 스폰
+	return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
 void ANSRunGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)

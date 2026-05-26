@@ -109,6 +109,41 @@ void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (!IsLocalController()) return;
+
+	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	if (UIManager)
+	{
+		FString MapName = GetWorld()->GetName();
+
+		// 현재 레벨이 타이틀일 때
+		if (MapName.Contains(TEXT("Title")))
+		{
+			UIManager->CreateTitle(this);
+			UIManager->ShowTitle();
+			//UIManager->HideHUD();
+		}
+		// 현재 레벨이 아웃게임(거점)일 때
+		else if (MapName.Contains(TEXT("HideOut")))
+		{
+			UIManager->HideTitle();
+			//UIManager->CreateHUD(this);
+			//UIManager->ShowHUD();
+			
+			FInputModeGameOnly InputModeData;
+			SetInputMode(InputModeData);
+			bShowMouseCursor = false;
+		}
+		// 현재 레벨이 인 런일 때
+		else
+		{
+			FInputModeGameOnly InputModeData;
+			SetInputMode(InputModeData);
+			bShowMouseCursor = false;
+		}
+	}
+	
 	//HUD 생성 이후 Attribute 값 연결
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();

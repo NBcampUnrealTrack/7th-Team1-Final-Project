@@ -22,7 +22,7 @@ void ANSOutGameMode::RequestStartRun_Implementation()
 	{
 		if (NSOutGameState->IsAllPlayersReady())
 		{
-			GetWorld()->ServerTravel("/Game/TestSpace/TestInRun");
+			GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
 		}
 	}
 }
