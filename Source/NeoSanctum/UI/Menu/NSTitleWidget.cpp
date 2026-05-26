@@ -12,6 +12,9 @@
 
 void UNSTitleWidget::OnClickedHostButton()
 {
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance) return;
+	
 	UNSSessionSubsystem* SessionSubsystem =
 		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>();
 	if (!SessionSubsystem)
