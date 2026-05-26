@@ -91,7 +91,7 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 	if (bWasSuccessful)
 	{
 		// 후에 실제 맵 경로로 교체 필요
-		GetWorld()->ServerTravel("/Game/TestSpace/TestInGame?listen");
+		GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_HideOut");
 	}
 
 	OnCreateSessionComplete.Broadcast(bWasSuccessful);
