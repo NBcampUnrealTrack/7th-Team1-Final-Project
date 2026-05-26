@@ -20,18 +20,6 @@ class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 
-USTRUCT(BlueprintType)
-struct FNSDefaultAbilityData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayAbility> AbilityClass;
-
-	UPROPERTY(EditDefaultsOnly)
-	FGameplayTag InputTag;
-};
-
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface
 {
@@ -57,14 +45,9 @@ public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
-public:
-	TSubclassOf<AActor> GetWeaponActor() const { return Weapon; }
-	
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
-	void GiveDefaultAbilities();
-	void ApplyDefaultGameplayEffects();
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();
@@ -101,14 +84,6 @@ protected:
 	// ASC 캐시
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
-	
-	// Default Abilities 배열
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
-	TArray<FNSDefaultAbilityData> DefaultAbilities;
-
-	// Default Effects 배열 : 초기세팅용 Effect도 여기에 설정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
-	TArray<TSubclassOf<UGameplayEffect>> DefaultGameplayEffects;
 	
 	// Player 전용 Attribute Set
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")

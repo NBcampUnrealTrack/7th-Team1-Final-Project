@@ -80,8 +80,6 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	
 	InitializeAbilitySystem();
 	BindAttributeDelegates();
-	ApplyDefaultGameplayEffects();
-	GiveDefaultAbilities();
 	
 	if (HasAuthority() && !DebugCharacterData.IsNull())
 	{
@@ -225,88 +223,6 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
 	
 	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
-}
-
-void ANSPlayerCharacterBase::GiveDefaultAbilities()
-{
-	if (!NSAbilitySystemComponent)
-	{
-		return;
-	}
-	
-	// 서버권한에서만 어빌리티 부여
-	if (!HasAuthority())
-	{
-		return;
-	}
-	
-	for (FNSDefaultAbilityData& AbilityData : DefaultAbilities)
-	{
-		if (!AbilityData.AbilityClass)
-		{
-			continue;
-		}
-		
-		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityData.AbilityClass))
-		{
-			continue;
-		}
-		
-		FGameplayAbilitySpec AbilitySpec(AbilityData.AbilityClass, 1, INDEX_NONE, this);		
-		if (AbilityData.InputTag.IsValid())
-		{
-			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);
-		}
-		
-		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
-	}
-}
-
-void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
-{
-	if (!NSAbilitySystemComponent)
-	{
-		return;
-	}
-
-	// 서버권한에서만 기본 이펙트 부여
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	for (const TSubclassOf<UGameplayEffect>& EffectClass : DefaultGameplayEffects)
-	{
-		if (!EffectClass)
-		{
-			continue;
-		}
-
-		const UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
-		if (EffectCDO && EffectCDO->DurationPolicy != EGameplayEffectDurationType::Instant)
-		{
-			FGameplayEffectQuery Query;
-			Query.EffectDefinition = EffectClass;
-
-			if (NSAbilitySystemComponent->GetActiveEffects(Query).Num() > 0)
-			{
-				continue;
-			}
-		}
-
-		FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-
-		const FGameplayEffectSpecHandle SpecHandle = NSAbilitySystemComponent->MakeOutgoingSpec(
-			EffectClass,
-			1.f,
-			EffectContext);
-
-		if (SpecHandle.IsValid())
-		{
-			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
 }
 
 void ANSPlayerCharacterBase::ApplyCharacterVisual()
