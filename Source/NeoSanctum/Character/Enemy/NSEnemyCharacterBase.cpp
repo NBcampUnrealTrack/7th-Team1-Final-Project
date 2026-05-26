@@ -10,6 +10,8 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
     AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 }
