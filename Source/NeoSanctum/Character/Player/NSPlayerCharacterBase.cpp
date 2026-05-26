@@ -173,7 +173,7 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
 	
-	ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
+	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
 }
 
 void ANSPlayerCharacterBase::GiveDefaultAbilities()
