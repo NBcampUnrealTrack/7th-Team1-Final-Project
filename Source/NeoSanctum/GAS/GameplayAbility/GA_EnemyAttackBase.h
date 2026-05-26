@@ -46,4 +46,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
 	FGameplayTag HitCheckEventTag;
+
+	// 공격 판정 전방 거리
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
+	float AttackTraceDistance;
+
+	// 공격 판정 구체 반경
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
+	float AttackTraceRadius;
 };
