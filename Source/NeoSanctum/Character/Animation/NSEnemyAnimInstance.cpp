@@ -34,7 +34,6 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	if (MovementComponent && EnemyCharacter)
 	{
 		GroundSpeed = EnemyCharacter->GetVelocity().Size2D();
-		bIsMoving = (GroundSpeed > MovingSpeedThreshold) 
-				&& (MovementComponent->GetCurrentAcceleration().Size2D() > 0.0f);
+		bIsMoving = GroundSpeed > MovingSpeedThreshold;
 	}
 }
