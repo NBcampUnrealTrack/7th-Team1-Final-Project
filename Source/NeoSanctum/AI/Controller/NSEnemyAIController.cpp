@@ -2,13 +2,15 @@
 
 
 #include "NSEnemyAIController.h"
-
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
 {
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
+
+	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSEnemyAIController::OnTargetPerceptionUpdated);
 }
 
 ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other) const
@@ -30,4 +32,30 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 
 	// 인터페이스가 없거나 그 외의 대상은 중립 처리
 	return ETeamAttitude::Type::Neutral;
+}
+
+void ANSEnemyAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	if (BehaviorTreeAsset)
+	{
+		RunBehaviorTree(BehaviorTreeAsset);
+	}
+}
+
+void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
+{
+	UBlackboardComponent* BBComp = GetBlackboardComponent();
+	if (!BBComp) return;
+
+	// 감지된 대상이 플레이어인지 재검증
+	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile)
+	{
+		// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
+		AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
+
+		// 블랙보드 TargetActor 키에 실시간 업데이트
+		BBComp->SetValueAsObject(TargetActor, Target);
+	}
 }
