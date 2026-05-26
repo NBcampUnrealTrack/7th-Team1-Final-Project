@@ -10,6 +10,7 @@
 
 struct FOnAttributeChangeData;
 class UGameplayAbility;
+class UGameplayEffect;
 class UNSPlayerAttributeSet;
 class UNSAbilitySystemComponent;
 class USpringArmComponent;
@@ -57,21 +58,22 @@ protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
 	void GiveDefaultAbilities();
+	void ApplyDefaultGameplayEffects();
 	
 protected:
-	void OnHealthChanged(const FOnAttributeChangeData& Data);
-	void OnShieldChanged(const FOnAttributeChangeData& Data);
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
+	void ApplyMoveSpeedToCharacter(float MoveSpeed);
 	
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
 	void UpdateCameraFacingRotation(float DeltaSeconds);
 
 protected:
-	// 카메라 관련 컴포넌트들
+	// Spring Arm 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player")
 	TObjectPtr<USpringArmComponent> SpringArmComp;
 	
+	// 카메라 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Player")
 	TObjectPtr<UCameraComponent> CameraComp;
 
@@ -85,15 +87,23 @@ protected:
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComp;
 	
 protected:
+	// ASC 캐시
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
 	
+	// Default Abilities 배열
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TArray<FNSDefaultAbilityData> DefaultAbilities;
+
+	// Default Effects 배열 : 초기세팅용 Effect도 여기에 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
+	TArray<TSubclassOf<UGameplayEffect>> DefaultGameplayEffects;
 	
+	// Player 전용 Attribute Set
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 
+protected:
 	// 카메라 방향 캐릭터 회전 설정들
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Rotation")
 	bool bUseCameraFacingRotation = true;

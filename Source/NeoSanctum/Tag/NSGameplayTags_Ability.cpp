@@ -4,6 +4,9 @@
 
 namespace NSGameplayTags
 {
+	// Common Ability
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Common_Dash, "Ability.Common.Dash");	
+	
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
 }

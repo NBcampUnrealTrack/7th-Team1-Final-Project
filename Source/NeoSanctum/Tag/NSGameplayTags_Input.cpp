@@ -15,5 +15,5 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_ActiveSkill1, "Input.Ability.ActiveSkill1");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_ActiveSkill2, "Input.Ability.ActiveSkill2");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_ActiveSkill3, "Input.Ability.ActiveSkill3");
-	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_Dodge, "Input.Ability.Dodge");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_Dash, "Input.Ability.Dash");
 }

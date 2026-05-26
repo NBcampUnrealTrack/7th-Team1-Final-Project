@@ -5,6 +5,8 @@
 
 #include "Camera/CameraComponent.h"
 #include "CharacterTrajectoryComponent.h"
+#include "GameplayEffect.h"
+#include "GameplayEffectTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
@@ -73,6 +75,7 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	
 	InitializeAbilitySystem();
 	BindAttributeDelegates();
+	ApplyDefaultGameplayEffects();
 	GiveDefaultAbilities();
 }
 
@@ -164,19 +167,13 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	
 	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-		PlayerAttributeSet->GetHealthAttribute()).RemoveAll(this);
-	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-		PlayerAttributeSet->GetShieldAttribute()).RemoveAll(this);
-	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).RemoveAll(this);
 	
 	// 바인딩
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-		PlayerAttributeSet->GetHealthAttribute()).AddUObject(this, &ThisClass::OnHealthChanged);
-	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
-		PlayerAttributeSet->GetShieldAttribute()).AddUObject(this, &ThisClass::OnShieldChanged);
-	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
+	
+	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
 }
 
 void ANSPlayerCharacterBase::GiveDefaultAbilities()
@@ -214,20 +211,62 @@ void ANSPlayerCharacterBase::GiveDefaultAbilities()
 	}
 }
 
-void ANSPlayerCharacterBase::OnHealthChanged(const FOnAttributeChangeData& Data)
+void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 {
-	
-}
+	if (!NSAbilitySystemComponent)
+	{
+		return;
+	}
 
-void ANSPlayerCharacterBase::OnShieldChanged(const FOnAttributeChangeData& Data)
-{
-	
+	// 서버권한에서만 기본 이펙트 부여
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	for (const TSubclassOf<UGameplayEffect>& EffectClass : DefaultGameplayEffects)
+	{
+		if (!EffectClass)
+		{
+			continue;
+		}
+
+		const UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+		if (EffectCDO && EffectCDO->DurationPolicy != EGameplayEffectDurationType::Instant)
+		{
+			FGameplayEffectQuery Query;
+			Query.EffectDefinition = EffectClass;
+
+			if (NSAbilitySystemComponent->GetActiveEffects(Query).Num() > 0)
+			{
+				continue;
+			}
+		}
+
+		FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		const FGameplayEffectSpecHandle SpecHandle = NSAbilitySystemComponent->MakeOutgoingSpec(
+			EffectClass,
+			1.f,
+			EffectContext);
+
+		if (SpecHandle.IsValid())
+		{
+			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
+	ApplyMoveSpeedToCharacter(Data.NewValue);
+}
+
+void ANSPlayerCharacterBase::ApplyMoveSpeedToCharacter(float MoveSpeed)
+{
 	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
 	{
-		Movement->MaxWalkSpeed = Data.NewValue;
+		Movement->MaxWalkSpeed = MoveSpeed;
 	}
 }
