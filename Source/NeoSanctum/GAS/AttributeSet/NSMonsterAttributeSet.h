@@ -13,4 +13,7 @@ UCLASS()
 class NEOSANCTUM_API UNSMonsterAttributeSet : public UNSBaseAttributeSet
 {
 	GENERATED_BODY()
+
+public:
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
 };
