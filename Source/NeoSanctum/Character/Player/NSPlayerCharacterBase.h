@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class ANSWeaponBase;
+class UNSCharacterData;
 struct FOnAttributeChangeData;
 class UGameplayAbility;
 class UGameplayEffect;
@@ -17,18 +19,6 @@ class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
-
-USTRUCT(BlueprintType)
-struct FNSDefaultAbilityData
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayAbility> AbilityClass;
-
-	UPROPERTY(EditDefaultsOnly)
-	FGameplayTag InputTag;
-};
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface
@@ -47,18 +37,22 @@ public:
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
+	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
+	
+	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
+	
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
-public:
-	TSubclassOf<AActor> GetWeaponActor() const { return Weapon; }
-	
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
-	void GiveDefaultAbilities();
-	void ApplyDefaultGameplayEffects();
+	
+	void ApplyCharacterVisual();
+	void ApplyInitialAttributeEffect();
+	void GiveCharacterDataAbilities();
+	void SpawnDefaultWeapon();
 	
 protected:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
@@ -91,17 +85,16 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
 	
-	// Default Abilities 배열
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
-	TArray<FNSDefaultAbilityData> DefaultAbilities;
-
-	// Default Effects 배열 : 초기세팅용 Effect도 여기에 설정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
-	TArray<TSubclassOf<UGameplayEffect>> DefaultGameplayEffects;
-	
 	// Player 전용 Attribute Set
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
+	
+protected:
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Character|Data")
+	TObjectPtr<const UNSCharacterData> CharacterData;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<ANSWeaponBase> CurrentWeapon;
 
 protected:
 	// 카메라 방향 캐릭터 회전 설정들
@@ -126,4 +119,11 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TSubclassOf<AActor> Weapon;
+	
+protected:
+	// 캐릭터 데이터 테스트용 함수
+	void LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData);
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Debug")
+	TSoftObjectPtr<UNSCharacterData> DebugCharacterData;
 };

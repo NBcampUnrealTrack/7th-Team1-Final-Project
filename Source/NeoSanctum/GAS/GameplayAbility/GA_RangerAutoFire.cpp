@@ -7,6 +7,8 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
 #include "DrawDebugHelpers.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
@@ -234,7 +236,7 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 
 	FTransform MuzzleTransform;
 
-	if (!TryGetMuzzleTransform(MuzzleTransform))
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
 	{
 		// 소캣을 못 찾으면 캐릭터 전방 위치로 임시 처리
 		MuzzleTransform = FTransform(
@@ -252,28 +254,22 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
 }
 
-bool UGA_RangerAutoFire::TryGetMuzzleTransform(FTransform& OutMuzzleTransform) const
+bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) const
 {
-	// TODO: 주현님이랑 의논해서 무기 캐싱 받아오기.
-	AActor* WeaponActor = nullptr/*GetWeaponActor()*/;
-
-	if (!WeaponActor)
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+	
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+	
+	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
+	
+	if (!IsValid(CurrentWeapon))
 	{
 		return false;
 	}
 
-	TArray<UStaticMeshComponent*> MeshComponents;
-	WeaponActor->GetComponents<UStaticMeshComponent>(MeshComponents);
-
-	for (UStaticMeshComponent* MeshComponent : MeshComponents)
-	{
-		// Body에 만든 Muzzle 소켓만 찾으면 됨
-		if (MeshComponent && MeshComponent->DoesSocketExist(MuzzleSocketName))
-		{
-			OutMuzzleTransform = MeshComponent->GetSocketTransform(MuzzleSocketName);
-			return true;
-		}
-	}
-
-	return false;
+	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
 }

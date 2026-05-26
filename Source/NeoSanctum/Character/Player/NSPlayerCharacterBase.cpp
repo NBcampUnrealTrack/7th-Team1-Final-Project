@@ -10,7 +10,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
@@ -44,6 +46,9 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
+	
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
 
 void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
@@ -75,8 +80,14 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	
 	InitializeAbilitySystem();
 	BindAttributeDelegates();
-	ApplyDefaultGameplayEffects();
-	GiveDefaultAbilities();
+	
+	if (HasAuthority() && !DebugCharacterData.IsNull())
+	{
+		UNSCharacterData* LoadedCharacterData = DebugCharacterData.LoadSynchronous();
+		LoadDebugCharacterDataAssets(LoadedCharacterData);
+		InitializeFromCharacterData(LoadedCharacterData);
+		return;
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -100,6 +111,26 @@ UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() con
 	}
 
 	return nullptr;
+}
+
+void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData* InCharacterData)
+{
+	if (!InCharacterData)
+	{
+		return;
+	}
+	
+	CharacterData = InCharacterData;
+	
+	ApplyCharacterVisual();
+	
+	// 서버에서 처리할 것들
+	if (HasAuthority())
+	{
+		ApplyInitialAttributeEffect();
+		GiveCharacterDataAbilities();
+		SpawnDefaultWeapon();
+	}
 }
 
 void ANSPlayerCharacterBase::InitializeAbilitySystem()
@@ -158,6 +189,24 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	SetActorRotation(NewRotation);
 }
 
+void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData)
+{
+	if (!InCharacterData)
+	{
+		return;
+	}
+	
+	InCharacterData->SkeletalMesh.LoadSynchronous();
+	InCharacterData->AnimClass.LoadSynchronous();
+	InCharacterData->InitialAttributeEffect.LoadSynchronous();
+	InCharacterData->DefaultWeaponClass.LoadSynchronous();
+	
+	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
+	{
+		AbilityData.AbilityClass.LoadSynchronous();
+	}
+}
+
 void ANSPlayerCharacterBase::BindAttributeDelegates()
 {
 	if (!NSAbilitySystemComponent || !PlayerAttributeSet)
@@ -176,86 +225,120 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
 }
 
-void ANSPlayerCharacterBase::GiveDefaultAbilities()
+void ANSPlayerCharacterBase::ApplyCharacterVisual()
 {
-	if (!NSAbilitySystemComponent)
+	if (!CharacterData)
 	{
 		return;
 	}
 	
-	// 서버권한에서만 어빌리티 부여
-	if (!HasAuthority())
+	USkeletalMesh* LoadedMesh = CharacterData->SkeletalMesh.Get();
+	if (LoadedMesh)
+	{
+		GetMesh()->SetSkeletalMesh(LoadedMesh);
+	}
+	
+	UClass* LoadedAnimClass = CharacterData->AnimClass.Get();
+	if (LoadedAnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
+{
+	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
 	{
 		return;
 	}
 	
-	for (FNSDefaultAbilityData& AbilityData : DefaultAbilities)
+	TSubclassOf<UGameplayEffect> LoadedEffectClass = CharacterData->InitialAttributeEffect.Get();
+	if (!LoadedEffectClass)
 	{
-		if (!AbilityData.AbilityClass)
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	
+	FGameplayEffectSpecHandle SpecHandle = 
+		NSAbilitySystemComponent->MakeOutgoingSpec(LoadedEffectClass, 1.0f, EffectContext);
+	
+	if (SpecHandle.IsValid())
+	{
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+}
+
+void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
+{
+	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	for (const FNSCharacterAbilityData& AbilityData : CharacterData->DefaultAbilities)
+	{
+		TSubclassOf<UGameplayAbility> LoadedAbilityClass = AbilityData.AbilityClass.Get();
+		if (!LoadedAbilityClass)
 		{
 			continue;
 		}
 		
-		if (NSAbilitySystemComponent->FindAbilitySpecFromClass(AbilityData.AbilityClass))
-		{
-			continue;
-		}
+		const int32 AbilityLevel = FMath::Max(1, AbilityData.AbilityLevel);
 		
-		FGameplayAbilitySpec AbilitySpec(AbilityData.AbilityClass, 1, INDEX_NONE, this);		
+		FGameplayAbilitySpec AbilitySpec(LoadedAbilityClass, AbilityLevel);
 		if (AbilityData.InputTag.IsValid())
 		{
-			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);
+			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);			
 		}
 		
 		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
 	}
 }
 
-void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
+void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 {
-	if (!NSAbilitySystemComponent)
+	if (!HasAuthority() || !CharacterData)
 	{
 		return;
 	}
-
-	// 서버권한에서만 기본 이펙트 부여
-	if (!HasAuthority())
+	
+	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CharacterData->DefaultWeaponClass.Get();
+	if (!LoadedWeaponClass)
 	{
 		return;
 	}
-
-	for (const TSubclassOf<UGameplayEffect>& EffectClass : DefaultGameplayEffects)
+	
+	UWorld* World = GetWorld();
+	if (!World)
 	{
-		if (!EffectClass)
-		{
-			continue;
-		}
-
-		const UGameplayEffect* EffectCDO = EffectClass->GetDefaultObject<UGameplayEffect>();
-		if (EffectCDO && EffectCDO->DurationPolicy != EGameplayEffectDurationType::Instant)
-		{
-			FGameplayEffectQuery Query;
-			Query.EffectDefinition = EffectClass;
-
-			if (NSAbilitySystemComponent->GetActiveEffects(Query).Num() > 0)
-			{
-				continue;
-			}
-		}
-
-		FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-
-		const FGameplayEffectSpecHandle SpecHandle = NSAbilitySystemComponent->MakeOutgoingSpec(
-			EffectClass,
-			1.f,
-			EffectContext);
-
-		if (SpecHandle.IsValid())
-		{
-			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
+		return;
 	}
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	ANSWeaponBase* SpawnedWeapon = World->SpawnActor<ANSWeaponBase>(
+		LoadedWeaponClass,
+		FTransform::Identity,
+		SpawnParams
+	);
+	
+	if (!IsValid(SpawnedWeapon))
+	{
+		return;
+	}
+	
+	SpawnedWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		SpawnedWeapon->GetAttachSocketName()
+	);
+	
+	CurrentWeapon = SpawnedWeapon;
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
