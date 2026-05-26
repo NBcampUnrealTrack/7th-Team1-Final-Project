@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
-#include "NeoSanctum/AI/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NSDroneAI.generated.h"
 
 class USphereComponent;
@@ -17,14 +17,13 @@ class NEOSANCTUM_API ANSDroneAI : public ANSBaseCompanionAI
 public:
 	ANSDroneAI();
 	
-	virtual void Tick(float DeltaTime) override;
+	virtual void GetActorEyesViewPoint( FVector& Location, FRotator& Rotation ) const override;
+	
 protected:
 	virtual void BeginPlay() override;
-	
+
 private:
 	ANSDroneAIController* DroneAIController;
 	
 	UBlackboardComponent* DroneAIBBComponent;
-	
-	void DrawSightDebug();
 };
