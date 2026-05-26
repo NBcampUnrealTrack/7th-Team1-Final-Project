@@ -81,11 +81,19 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 		return;
 	}
 	NSInvComp->ApplyAugment(Chosen);
-	
+
+	Reset();
+}
+
+void UNSAugmentSelectionComponent::Reset()
+{
+	if (PendingOffer.Num() > 0)
+	{
+		Client_CloseOffer();
+	}
 	PendingOffer.Reset();
 	CurrentPool = nullptr;
 	CurrentRerollCost = 0;
-	Client_CloseOffer();
 }
 
 // 카드 목록을 뽑아 PendingOffer에 저장하고 클라에 전송

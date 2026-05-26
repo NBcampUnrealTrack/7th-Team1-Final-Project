@@ -38,7 +38,10 @@ public:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
 	void Server_Choose(int32 Index);
-	
+
+	// 선택 상태 초기화 (인런 종료, 선택 완료 등)
+	void Reset();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment", meta = (ClampMin = "1"))
 	int32 CardsCount = 3;
