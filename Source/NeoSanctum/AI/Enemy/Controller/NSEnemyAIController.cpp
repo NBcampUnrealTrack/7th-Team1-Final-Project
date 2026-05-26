@@ -2,6 +2,8 @@
 
 
 #include "NSEnemyAIController.h"
+
+#include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 
@@ -34,6 +36,26 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	return ETeamAttitude::Type::Neutral;
 }
 
+FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
+{
+	if (!CachedBBComp) return FGameplayTag();
+
+	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	APawn* AIPawn = GetPawn();
+	if (!TargetActor || !AIPawn) return FGameplayTag();
+
+	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
+	float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	// 공격 사거리 이내인 경우 공격 태그 반환
+	if (Distance <= AttackRange)
+	{
+		return AttackAbilityTag;
+	}
+
+	return FGameplayTag();
+}
+
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
@@ -41,13 +63,14 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	if (BehaviorTreeAsset)
 	{
 		RunBehaviorTree(BehaviorTreeAsset);
+
+		CachedBBComp = GetBlackboardComponent();
 	}
 }
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	UBlackboardComponent* BBComp = GetBlackboardComponent();
-	if (!BBComp) return;
+	if (!CachedBBComp) return;
 
 	// 감지된 대상이 플레이어인지 재검증
 	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile)
@@ -56,6 +79,6 @@ void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus 
 		AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
 
 		// 블랙보드 TargetActor 키에 실시간 업데이트
-		BBComp->SetValueAsObject(TargetActor, Target);
+		CachedBBComp->SetValueAsObject(TargetActorKey, Target);
 	}
 }

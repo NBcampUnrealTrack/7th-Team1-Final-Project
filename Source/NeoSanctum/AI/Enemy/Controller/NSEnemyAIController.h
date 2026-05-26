@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
@@ -25,6 +26,9 @@ public:
 	// 타 진영을 보았을 때의 적대/우호 규칙 정의 수립
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
+	// 타겟과의 실시간 거리 계산하여 현재 거리에 맞는 GAS 태그 결정 및 반환
+	FGameplayTag GetAttackAbilityTagByDistance();
+
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
 	virtual void OnPossess(APawn* InPawn) override;
@@ -42,6 +46,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
 
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Config")
-	FName TargetActor = TEXT("TargetActor");
+	// 공격 사거리
+	UPROPERTY(EditDefaultsOnly, Category = "AI")
+	float AttackRange = 200.0f;
+
+	// 공격 태그
+	UPROPERTY(EditDefaultsOnly, Category = "AI")
+	FGameplayTag AttackAbilityTag;
+
+private:
+	// 타겟 액터
+	FName TargetActorKey = TEXT("TargetActor");
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBlackboardComponent> CachedBBComp;
 };
