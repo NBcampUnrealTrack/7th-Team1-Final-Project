@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Components/SphereComponent.h"
-#include "Perception/AIPerceptionComponent.h"
 #include "NSTestCoin.generated.h"
 
 class USphereComponent;
@@ -42,9 +41,6 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<UAIPerceptionStimuliSourceComponent> StimuliSource;
-	
-	/*UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
-	TObjectPtr<UAIPerceptionComponent> CoinPerception;*/
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<USphereComponent> CollisionComponent;

@@ -7,7 +7,7 @@
 #include "DrawDebugHelpers.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "NeoSanctum/AI/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -15,8 +15,6 @@
 ANSTestCoin::ANSTestCoin()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	
-	/*CoinPerception = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("CoinPerception"));*/
 	
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
 	CollisionComponent->SetupAttachment(RootComponent);
@@ -31,13 +29,14 @@ ANSTestCoin::ANSTestCoin()
 	ProjectileMovementComponent->bRotationFollowsVelocity =true;
 	ProjectileMovementComponent->ProjectileGravityScale = 0.f;
 	
+	CollisionComponent->SetSimulatePhysics(true);
 	CollisionComponent->SetSphereRadius(200.f);
 	CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ANSTestCoin::OnOverlapBegin);
 }
 
 void ANSTestCoin::CheckPlayerActor()
 {
-	// AI 도움 디버그 라인 그리기
+	// AI 도움 디버그 스피어 그리기
 	DrawDebugSphere(
 		GetWorld(),
 		GetActorLocation(),  // 중심 위치
@@ -73,7 +72,7 @@ void ANSTestCoin::CheckPlayerActor()
 	{
 		if (FindActor->ActorHasTag(TEXT("DroneAI")))
 		{
-			// 감지됐을 때 색상 변경으로 확인
+			// AI도움 디버그 스피어 감지됐을 때 색상 변경으로 확인
 			DrawDebugSphere(
 				GetWorld(),
 				GetActorLocation(),
@@ -83,6 +82,8 @@ void ANSTestCoin::CheckPlayerActor()
 				false,
 				0.5f
 			);
+			
+			CollisionComponent->SetSimulatePhysics(false);
 			
 			// 추적 로직 활성화
 			if (!IsValid(ProjectileMovementComponent)) return;
@@ -125,6 +126,7 @@ void ANSTestCoin::BeginPlay()
 
 void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	Super::EndPlay(EndPlayReason);
 	for (const TWeakObjectPtr<ANSDroneAIController>& CacheDroneAIController : CacheDroneAIControllers)
 	{
 		if (CacheDroneAIController.IsValid())
@@ -132,7 +134,6 @@ void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			CacheDroneAIController->RemoveTargetCoin(this);
 		}
 	}
-	Super::EndPlay(EndPlayReason);
 }
 
 
