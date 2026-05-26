@@ -14,7 +14,7 @@ class UGameplayEffect;
 /**
  * 캐릭터 초기화시 필요한 PrimaryAsset입니다.
  */
-UCLASS()
+UCLASS(BlueprintType)
 class NEOSANCTUM_API UNSCharacterData : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
