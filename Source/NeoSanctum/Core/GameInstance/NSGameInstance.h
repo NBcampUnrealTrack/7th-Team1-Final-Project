@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NSGameInstance.generated.h"
 
+class UNSSoundData;
 
 UCLASS()
 class NEOSANCTUM_API UNSGameInstance :
@@ -16,10 +17,17 @@ public INSGameInstanceInterface
 	GENERATED_BODY()
 	
 public:
+	static UNSGameInstance* Get(const UObject* WorldContext);
+	
 	virtual void Init() override;
 	virtual void Shutdown() override;
 	
 	virtual void HideLoadingScreen_Implementation() override;
+	
+public:
+	// SoundData 캐싱
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
+	TObjectPtr<UNSSoundData> SoundData;
 
 private:
 	UPROPERTY()
