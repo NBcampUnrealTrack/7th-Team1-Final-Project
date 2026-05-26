@@ -8,7 +8,8 @@
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 {
-	if (!OwningPlayer || !HUDWidgetClass)
+	// 테스트 로직으로 인해서 !HUDWidgetClass 검사 로직 제거
+	if (!OwningPlayer)
 	{
 		return;
 	}
@@ -20,11 +21,26 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 	{
 		return;
 	}
+	
+	FString HUDPath = TEXT("/Game/NeoSanctum/UI/HUD/WBP_HUD.WBP_HUD_C");
+	UClass* LoadedHUDClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *HUDPath);
+
+	if (LoadedHUDClass)
+	{
+		HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, LoadedHUDClass);
+		if (HUDWidget)
+		{
+			HUDWidget->AddToViewport();
+		}
+	}
+	
+	/*
 	HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, HUDWidgetClass);
 	if (HUDWidget)
 	{
 		HUDWidget->AddToViewport();
 	}
+	*/
 }
 
 void UNSUIManagerSubsystem::ShowHUD()
@@ -128,4 +144,54 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;
+}
+
+void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
+{
+	// 테스트 로직으로 인해서 !TitleWidgetClass 검사 로직 삭제
+	if (!OwningPlayer)
+	{
+		return;
+	}
+	
+	if (TitleWidget)
+	{
+		return; 
+	}
+	
+	FString TitlePath = TEXT("/Game/NeoSanctum/UI/Menu/WBP_Title.WBP_Title_C");
+	UClass* LoadedTitleClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *TitlePath);
+
+	if (LoadedTitleClass)
+	{
+		TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, LoadedTitleClass);
+		if (TitleWidget)
+		{
+			TitleWidget->AddToViewport();
+		}
+	}
+	
+	/*
+	TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, TitleWidgetClass);
+	if (TitleWidget)
+	{
+		TitleWidget->AddToViewport();
+	}
+	*/
+}
+
+void UNSUIManagerSubsystem::ShowTitle()
+{
+	if (TitleWidget)
+	{
+		TitleWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSUIManagerSubsystem::HideTitle()
+{
+	if (TitleWidget)
+	{
+		TitleWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
