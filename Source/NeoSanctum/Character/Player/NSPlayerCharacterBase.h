@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class ANSWeaponBase;
+class UNSCharacterData;
 struct FOnAttributeChangeData;
 class UGameplayAbility;
 class UGameplayEffect;
@@ -47,6 +49,10 @@ public:
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
+	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
+	
+	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
+	
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
@@ -59,6 +65,11 @@ protected:
 	void BindAttributeDelegates();
 	void GiveDefaultAbilities();
 	void ApplyDefaultGameplayEffects();
+	
+	void ApplyCharacterVisual();
+	void ApplyInitialAttributeEffect();
+	void GiveCharacterDataAbilities();
+	void SpawnDefaultWeapon();
 	
 protected:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
@@ -102,6 +113,13 @@ protected:
 	// Player 전용 Attribute Set
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
+	
+protected:
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Character|Data")
+	TObjectPtr<const UNSCharacterData> CharacterData;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<ANSWeaponBase> CurrentWeapon;
 
 protected:
 	// 카메라 방향 캐릭터 회전 설정들

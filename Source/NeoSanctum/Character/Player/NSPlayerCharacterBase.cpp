@@ -10,7 +10,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
@@ -100,6 +102,26 @@ UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() con
 	}
 
 	return nullptr;
+}
+
+void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData* InCharacterData)
+{
+	if (!InCharacterData)
+	{
+		return;
+	}
+	
+	CharacterData = InCharacterData;
+	
+	ApplyCharacterVisual();
+	
+	// 서버에서 처리할 것들
+	if (HasAuthority())
+	{
+		ApplyInitialAttributeEffect();
+		GiveCharacterDataAbilities();
+		SpawnDefaultWeapon();
+	}
 }
 
 void ANSPlayerCharacterBase::InitializeAbilitySystem()
@@ -256,6 +278,122 @@ void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 	}
+}
+
+void ANSPlayerCharacterBase::ApplyCharacterVisual()
+{
+	if (!CharacterData)
+	{
+		return;
+	}
+	
+	USkeletalMesh* LoadedMesh = CharacterData->SkeletalMesh.Get();
+	if (LoadedMesh)
+	{
+		GetMesh()->SetSkeletalMesh(LoadedMesh);
+	}
+	
+	UClass* LoadedAnimClass = CharacterData->AnimClass.Get();
+	if (LoadedAnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
+{
+	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	TSubclassOf<UGameplayEffect> LoadedEffectClass = CharacterData->InitialAttributeEffect.Get();
+	if (!LoadedEffectClass)
+	{
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	
+	FGameplayEffectSpecHandle SpecHandle = 
+		NSAbilitySystemComponent->MakeOutgoingSpec(LoadedEffectClass, 1.0f, EffectContext);
+	
+	if (SpecHandle.IsValid())
+	{
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+}
+
+void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
+{
+	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	for (const FNSCharacterAbilityData& AbilityData : CharacterData->DefaultAbilities)
+	{
+		TSubclassOf<UGameplayAbility> LoadedAbilityClass = AbilityData.AbilityClass.Get();
+		if (!LoadedAbilityClass)
+		{
+			continue;
+		}
+		
+		const int32 AbilityLevel = FMath::Max(1, AbilityData.AbilityLevel);
+		
+		FGameplayAbilitySpec AbilitySpec(LoadedAbilityClass, AbilityLevel);
+		if (AbilityData.InputTag.IsValid())
+		{
+			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);			
+		}
+		
+		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
+	}
+}
+
+void ANSPlayerCharacterBase::SpawnDefaultWeapon()
+{
+	if (!HasAuthority() || !CharacterData)
+	{
+		return;
+	}
+	
+	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CharacterData->DefaultWeaponClass.Get();
+	if (!LoadedWeaponClass)
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = this;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	ANSWeaponBase* SpawnedWeapon = World->SpawnActor<ANSWeaponBase>(
+		LoadedWeaponClass,
+		FTransform::Identity,
+		SpawnParams
+	);
+	
+	if (!IsValid(SpawnedWeapon))
+	{
+		return;
+	}
+	
+	SpawnedWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		SpawnedWeapon->GetAttachSocketName()
+	);
+	
+	CurrentWeapon = SpawnedWeapon;
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
