@@ -36,8 +36,12 @@ protected:
 		bool bWasCancelled
 	) override;
 	
-	UFUNCTION()
-	void OnInputReleased(float TimeHeld);
+
+	virtual void InputReleased(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) override;
 	
 	void StartAutoFire();
 	void StopAutoFire();
