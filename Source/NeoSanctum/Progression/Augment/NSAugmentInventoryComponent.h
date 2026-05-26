@@ -9,10 +9,10 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentInventoryChanged);
 
-class UNSAugmentDefitnition;
+class UNSAugmentDefinition;
 class UAbilitySystemComponent;
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSAugmentInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -42,7 +42,10 @@ public:
 	UFUNCTION(BlueprintPure, Category="NS|Augment")	
 	bool IsLegendaryFull() const {return GetLegendaryCount() >= MaxLegendarySlots; }
 
-	UAbilitySystemComponent* GetOwnerASC();
+	UFUNCTION(BlueprintPure, Category = "NS|Augment")
+	int32 GetMaxLegendarySlots() const { return MaxLegendarySlots; }
+	
+	UAbilitySystemComponent* GetOwnerASC() const;
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
