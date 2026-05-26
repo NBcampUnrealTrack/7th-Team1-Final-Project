@@ -50,7 +50,11 @@ public class NeoSanctum : ModuleRules
 			"PCG",
 			
 			// Physics / Trace
-			"PhysicsCore"
+			"PhysicsCore",
+			
+			// Chaos Destruction
+			"GeometryCollectionEngine",
+			"Chaos",
 		});
 
 		// Uncomment if you are using Slate UI
