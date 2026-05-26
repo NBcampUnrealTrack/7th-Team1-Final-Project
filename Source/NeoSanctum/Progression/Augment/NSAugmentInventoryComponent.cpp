@@ -3,6 +3,7 @@
 #include "NSAugmentInventoryComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Core/Component/NSRunGameDataComponent.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
@@ -153,7 +154,7 @@ int32 UNSAugmentInventoryComponent::GetStackCount(const FPrimaryAssetId& DefId) 
 	return Found ? Found->Stacks : 0;
 }
 
-UAbilitySystemComponent* UNSAugmentInventoryComponent::GetOwnerASC()
+UAbilitySystemComponent* UNSAugmentInventoryComponent::GetOwnerASC() const
 {
 	if (IAbilitySystemInterface* ASInterface = Cast<IAbilitySystemInterface>(GetOwner()))
 	{
