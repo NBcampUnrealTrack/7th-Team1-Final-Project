@@ -15,6 +15,7 @@
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "Net/UnrealNetwork.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
@@ -98,6 +99,14 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 	BindAttributeDelegates();
 }
 
+void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANSPlayerCharacterBase, CharacterData);
+	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
+}
+
 UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
 {
 	if (NSAbilitySystemComponent)
@@ -121,6 +130,7 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	}
 	
 	CharacterData = InCharacterData;
+	LoadDebugCharacterDataAssets(CharacterData);
 	
 	ApplyCharacterVisual();
 	
@@ -189,7 +199,7 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	SetActorRotation(NewRotation);
 }
 
-void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData)
+void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(const UNSCharacterData* InCharacterData)
 {
 	if (!InCharacterData)
 	{
@@ -205,6 +215,26 @@ void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(UNSCharacterData* InCh
 	{
 		AbilityData.AbilityClass.LoadSynchronous();
 	}
+}
+
+void ANSPlayerCharacterBase::OnRep_CharacterData()
+{
+	LoadDebugCharacterDataAssets(CharacterData);
+	ApplyCharacterVisual();
+}
+
+void ANSPlayerCharacterBase::OnRep_CurrentWeapon()
+{
+	if (!IsValid(CurrentWeapon))
+	{
+		return;
+	}
+	
+	CurrentWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		CurrentWeapon->GetAttachSocketName()
+	);
 }
 
 void ANSPlayerCharacterBase::BindAttributeDelegates()

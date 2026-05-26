@@ -33,6 +33,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(AController* EventController) override;
 	virtual void OnRep_PlayerState() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -90,10 +91,10 @@ protected:
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 	
 protected:
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "Character|Data")
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CharacterData, BlueprintReadOnly, Category = "Character|Data")
 	TObjectPtr<const UNSCharacterData> CharacterData;
 	
-	UPROPERTY(Transient, BlueprintReadOnly, Category = "Weapon")
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentWeapon, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<ANSWeaponBase> CurrentWeapon;
 
 protected:
@@ -122,7 +123,13 @@ protected:
 	
 protected:
 	// 캐릭터 데이터 테스트용 함수
-	void LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData);
+	void LoadDebugCharacterDataAssets(const UNSCharacterData* InCharacterData);
+	
+	UFUNCTION()
+	void OnRep_CharacterData();
+	
+	UFUNCTION()
+	void OnRep_CurrentWeapon();
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Debug")
 	TSoftObjectPtr<UNSCharacterData> DebugCharacterData;
