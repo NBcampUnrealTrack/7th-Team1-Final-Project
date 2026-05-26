@@ -35,4 +35,7 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> AttackAbilityClass;
 };

@@ -20,4 +20,10 @@ void ANSEnemyCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// 서버에서만 능력 부여
+	if (HasAuthority() && ASC && AttackAbilityClass)
+	{
+		ASC->GiveAbility(FGameplayAbilitySpec(AttackAbilityClass, 1, -1));
+	}
+	
 }
