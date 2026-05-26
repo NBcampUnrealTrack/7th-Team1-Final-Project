@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "NSEnemyCharacterBase.generated.h"
 
+class UGameplayAbility;
 class UNSMonsterAttributeSet;
 
 UCLASS(Abstract)
@@ -29,13 +30,25 @@ public:
 	 */
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(1); }
 
+public:
+	UFUNCTION(BlueprintCallable, Category = "GAS|Death")
+	void HandleDeath();
+
+	void Die();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> AttackAbilityClass;
+	TSubclassOf<UGameplayAbility> AttackAbilityClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> DeathAbilityClass;
+
+protected:
+	bool bIsDead = false;
 };
