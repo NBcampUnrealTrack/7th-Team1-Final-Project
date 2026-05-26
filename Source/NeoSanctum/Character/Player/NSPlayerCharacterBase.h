@@ -144,4 +144,11 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon")
 	TSubclassOf<AActor> Weapon;
+	
+protected:
+	// 캐릭터 데이터 테스트용 함수
+	void LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData);
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Debug")
+	TSoftObjectPtr<UNSCharacterData> DebugCharacterData;
 };

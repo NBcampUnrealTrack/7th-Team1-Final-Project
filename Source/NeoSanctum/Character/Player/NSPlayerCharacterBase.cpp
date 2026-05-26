@@ -46,6 +46,9 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
+	
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
 
 void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
@@ -79,6 +82,14 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	BindAttributeDelegates();
 	ApplyDefaultGameplayEffects();
 	GiveDefaultAbilities();
+	
+	if (HasAuthority() && !DebugCharacterData.IsNull())
+	{
+		UNSCharacterData* LoadedCharacterData = DebugCharacterData.LoadSynchronous();
+		LoadDebugCharacterDataAssets(LoadedCharacterData);
+		InitializeFromCharacterData(LoadedCharacterData);
+		return;
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -178,6 +189,24 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 		CameraFacingRotationSpeed);
 
 	SetActorRotation(NewRotation);
+}
+
+void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(UNSCharacterData* InCharacterData)
+{
+	if (!InCharacterData)
+	{
+		return;
+	}
+	
+	InCharacterData->SkeletalMesh.LoadSynchronous();
+	InCharacterData->AnimClass.LoadSynchronous();
+	InCharacterData->InitialAttributeEffect.LoadSynchronous();
+	InCharacterData->DefaultWeaponClass.LoadSynchronous();
+	
+	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
+	{
+		AbilityData.AbilityClass.LoadSynchronous();
+	}
 }
 
 void ANSPlayerCharacterBase::BindAttributeDelegates()
