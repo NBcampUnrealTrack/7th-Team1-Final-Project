@@ -19,10 +19,7 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")
 	FGameplayTag InputTag;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")
-	FGameplayTag AbilityTag;
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability", meta = (ClampMin = "1"))
 	int32 AbilityLevel = 1;
 };
