@@ -63,9 +63,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	FName MuzzleSocketName = TEXT("Muzzle");
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bDrawDebugHitscan = false;
 	
@@ -78,7 +75,7 @@ protected:
 private:
 	void ExecuteMuzzleFireCue();
 	
-	bool TryGetMuzzleTransform(FTransform& OutMuzzleTransform) const;
+	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
 	FTimerHandle AutoFireTimerHandle;
 };
