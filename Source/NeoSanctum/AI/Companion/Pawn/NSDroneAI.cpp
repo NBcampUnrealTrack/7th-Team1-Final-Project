@@ -34,6 +34,13 @@ void ANSDroneAI::GetActorEyesViewPoint(FVector& Location, FRotator& Rotation) co
 	Rotation = GetActorRotation();
 }
 
+void ANSDroneAI::SetOwnerPlayer(AActor* Actor)
+{
+	if (!IsValid(Actor)) return;
+	
+	OwnerPlayer = Actor;
+}
+
 void ANSDroneAI::BeginPlay()
 {
 	Super::BeginPlay();
