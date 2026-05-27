@@ -49,8 +49,6 @@ public:
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
 public:
-	TSubclassOf<AActor> GetWeaponActor() const { return Weapon; }
-	
 	// 플레이어 진영 0번 설정 
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(0); }
 	
