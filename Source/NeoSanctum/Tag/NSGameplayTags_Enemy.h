@@ -8,4 +8,10 @@ namespace NSGameplayTags
 {
 	// Enemy State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_Combat);
+
+	// Enemy Action
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MeleeAttack);
+
+	// Enemy Event
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Enemy_Hit);
 }
