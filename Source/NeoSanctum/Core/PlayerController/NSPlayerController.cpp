@@ -191,7 +191,10 @@ void ANSPlayerController::ExitSpectatorAndRespawn()
 	}
 	
 	Possess(NewPawn);
-
+	
+	// 트래블 전 남아있던 회전값 초기화
+	ClientSetRotation(PlayerStartSpot->GetActorRotation(), true);
+	
 	Multicast_NotifyRespawn();
 }
 
