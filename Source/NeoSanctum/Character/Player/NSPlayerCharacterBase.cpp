@@ -65,10 +65,7 @@ void ANSPlayerCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (PlayerAttributeSet)
-	{
-		PlayerAttributeSet->OnOutOfHealth.AddUObject(this, &ANSPlayerCharacterBase::HandleOutOfHealth);
-	}
+	InitializeAbilitySystem();
 	
 	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
 	DroneAIClass,
@@ -102,7 +99,6 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	Super::PossessedBy(EventController);
 	
 	InitializeAbilitySystem();
-	BindAttributeDelegates();
 	
 	if (HasAuthority() && !DebugCharacterData.IsNull())
 	{
@@ -118,7 +114,6 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	
 	InitializeAbilitySystem();
-	BindAttributeDelegates();
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -180,6 +175,8 @@ void ANSPlayerCharacterBase::InitializeAbilitySystem()
 	if (NSAbilitySystemComponent && PlayerAttributeSet)
 	{
 		NSAbilitySystemComponent->InitAbilityActorInfo(PS, this);
+		
+		BindAttributeDelegates();
 	}
 }
 void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
@@ -265,6 +262,10 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	{
 		return;
 	}
+	
+	// 사망처리 바인딩
+	PlayerAttributeSet->OnOutOfHealth.RemoveAll(this);
+	PlayerAttributeSet->OnOutOfHealth.AddUObject(this, &ANSPlayerCharacterBase::HandleOutOfHealth);
 	
 	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
