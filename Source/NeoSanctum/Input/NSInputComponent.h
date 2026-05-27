@@ -20,14 +20,18 @@ public:
 
 	void AddInputMappings(
 		const UNSInputConfig* InputConfig,
-		UEnhancedInputLocalPlayerSubsystem* InputSubSystem);
+		UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
+		const FGameplayTag& InputModeTag = FGameplayTag()
+	);
 
 	void RemoveInputMappings(
 		const UNSInputConfig* InputConfig,
-		UEnhancedInputLocalPlayerSubsystem* InputSubSystem) const;
+		UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
+		const FGameplayTag& InputModeTag = FGameplayTag()
+	) const;
 
 	void RemoveBinds(TArray<uint32>& BindHandles);
-	
+
 public:
 	template <class UserClass, typename FuncType>
 	void BindNativeAction(
