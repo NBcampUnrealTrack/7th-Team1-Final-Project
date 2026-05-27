@@ -42,14 +42,7 @@ protected:
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo
 	) override;
-	
-	void StartAutoFire();
-	void StopAutoFire();
-	
-	void FireOnce();
-	void PerformHitscan();
-	void ApplyDamageToActor(AActor* TargetActor);
-	
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
@@ -73,8 +66,23 @@ protected:
 	float DebugLineThickness = 1.5f;
 	
 private:
+	void StartAutoFire();
+	void StopAutoFire();
+
+	void FireOnce();
+	void PerformHitscan();
+	void ApplyDamageToActor(AActor* TargetActor);
+
+	void PlayFireFeedback();
 	void ExecuteMuzzleFireCue();
-	
+	void DrawDebugHitscan();
+
+	bool ShouldPlayLocalFeedback() const;
+	bool TryBuildHitscanTrace(
+		FHitResult& OutHitResult,
+		FVector& OutTraceStart,
+		FVector& OutTraceEnd,
+		bool& bOutHit) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
 	FTimerHandle AutoFireTimerHandle;
