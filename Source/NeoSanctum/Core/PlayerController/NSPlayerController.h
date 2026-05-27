@@ -45,4 +45,5 @@ private:
 	
 protected:
 	virtual void BeginPlay() override;
+	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
 };

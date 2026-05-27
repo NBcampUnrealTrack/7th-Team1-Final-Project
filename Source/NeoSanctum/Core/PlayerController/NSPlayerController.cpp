@@ -156,6 +156,39 @@ void ANSPlayerController::BeginPlay()
 	UpdateHUDHealthAndShield();
 }
 
+void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
+	Super::ClientRestart_Implementation(NewPawn);
+
+	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
+	if (!IsLocalController()) return;
+
+	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager) return;
+
+	// 1. 심리스 트레블 전 스테이지의 HUD 잔재를 안전하게 청소
+	UIManager->ClearHUD();
+
+	FString MapName = GetWorld()->GetName();
+
+	// 2. 현재 로드된 맵이 타이틀이나 거점(HideOut)이 아닌 '진짜 인게임'일 때만 생성
+	if (!MapName.Contains(TEXT("Title")) && !MapName.Contains(TEXT("HideOut")))
+	{
+		UIManager->HideTitle();
+        
+		// 청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
+		UIManager->CreateHUD(this);
+		UIManager->ShowHUD();
+        
+		// 마우스 커서 및 입력 모드 제어
+		FInputModeGameOnly InputModeData;
+		SetInputMode(InputModeData);
+		bShowMouseCursor = false;
+
+		// 3. 캐릭터가 새로 배치되었으니 체력/실드 등 GAS 어트리뷰트 값을 HUD에 연동
+		UpdateHUDHealthAndShield();
+	}
+}
+
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
 	if (HasAuthority())
