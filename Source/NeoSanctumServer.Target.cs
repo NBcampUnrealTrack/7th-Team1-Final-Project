@@ -3,11 +3,11 @@
 using UnrealBuildTool;
 using System.Collections.Generic;
 
-public class NeoSanctumTarget : TargetRules
+public class NeoSanctumServerTarget : TargetRules
 {
-	public NeoSanctumTarget(TargetInfo Target) : base(Target)
+	public NeoSanctumServerTarget(TargetInfo Target) : base(Target)
 	{
-		Type = TargetType.Game;
+		Type = TargetType.Server;
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 		ExtraModuleNames.Add("NeoSanctum");

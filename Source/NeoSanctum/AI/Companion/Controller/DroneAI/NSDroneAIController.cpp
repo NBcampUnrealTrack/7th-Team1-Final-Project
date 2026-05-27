@@ -3,6 +3,7 @@
 
 #include "NSDroneAIController.h"
 #include "EngineUtils.h"
+#include "BehaviorTree/BehaviorTree.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSTestCoin.h"
 

@@ -2,7 +2,6 @@
 
 
 #include "NSBaseCompanionAI.h"
-#include "Components/SceneComponent.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
 
