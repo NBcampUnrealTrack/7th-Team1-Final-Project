@@ -141,6 +141,15 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 		MaxShield);
 }
 
+void UNSUIManagerSubsystem::ClearHUD()
+{
+	if (HUDWidget)
+	{
+		HUDWidget->RemoveFromParent();
+		HUDWidget=nullptr;
+	}
+}
+
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;

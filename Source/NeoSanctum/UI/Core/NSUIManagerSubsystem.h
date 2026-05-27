@@ -41,6 +41,7 @@ public:
 		float MaxHealth,
 		float CurrentShield,
 		float MaxShield);
+	void ClearHUD();
 	
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
