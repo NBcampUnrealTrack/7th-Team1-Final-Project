@@ -5,7 +5,6 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "Abilities/Tasks/AbilityTask_WaitInputRelease.h"
 #include "DrawDebugHelpers.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -109,85 +108,32 @@ void UGA_RangerAutoFire::FireOnce()
 		return;
 	}
 	
+	// 입력한 플레이어 화면에서 즉시 피드백 확인
+	if (ShouldPlayLocalFeedback())
+	{
+		PlayFireFeedback();
+	}
+	
 	// 데미지 판정은 서버에서만 처리
 	if (!AvatarActor->HasAuthority())
 	{
 		return;
 	}
 	
-	// GameplayCue도 일단 서버에서만 실행(리슨 서버에서 테스트)
-	ExecuteMuzzleFireCue();
+	// 서버에서만 데미지 로직 처리
 	PerformHitscan();
 }
 
 void UGA_RangerAutoFire::PerformHitscan()
 {
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	
-	if (!AvatarActor)
-	{
-		return;
-	}
-	
-	UWorld* World = GetWorld();
-	
-	if (!World)
-	{
-		return;
-	}
-	
-	APawn* Pawn = Cast<APawn>(AvatarActor);
-	AController* Controller = Pawn ? Pawn->GetController() : nullptr;
-	
-	const FVector TraceStart = Pawn ? Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
-	
-	const FRotator AimRotation = Controller ? Controller->GetControlRotation() : AvatarActor->GetActorRotation();
-	
-	const FVector TraceDirection = AimRotation.Vector();
-	const FVector TraceEnd = TraceStart + TraceDirection * TraceRange;
-	
 	FHitResult HitResult;
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(AvatarActor);
-	
-	const bool bHit = World->LineTraceSingleByChannel(
-		HitResult,
-		TraceStart,
-		TraceEnd,
-		TraceChannel,
-		QueryParams
-	);
-	
+	FVector TraceStart;
+	FVector TraceEnd;
+	bool bHit = false;
 
-	// 서버 판정 확인요 디버그 라인
-	if (bDrawDebugHitscan)
+	if (!TryBuildHitscanTrace(HitResult, TraceStart, TraceEnd, bHit))
 	{
-		const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
-		// 초록: 허공에 발사, 빨강: 대상에 명중
-		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
-
-		DrawDebugLine(
-			World,
-			TraceStart,
-			DebugEnd,
-			DebugColor,
-			false,
-			DebugLineDuration,
-			0,
-			DebugLineThickness
-		);
-
-		if (bHit)
-		{
-			DrawDebugPoint(
-				World,
-				HitResult.ImpactPoint,
-				12.0f,
-				FColor::Red,
-				false,
-				DebugLineDuration
-			);
-		}
+		return;
 	}
 
 	if (!bHit)
@@ -222,6 +168,124 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+}
+
+void UGA_RangerAutoFire::PlayFireFeedback()
+{
+	ExecuteMuzzleFireCue();
+
+	if (bDrawDebugHitscan)
+	{
+		DrawDebugHitscan();
+	}
+}
+
+void UGA_RangerAutoFire::DrawDebugHitscan()
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	FHitResult HitResult;
+	FVector TraceStart;
+	FVector TraceEnd;
+	bool bHit = false;
+
+	if (!TryBuildHitscanTrace(HitResult, TraceStart, TraceEnd, bHit))
+	{
+		return;
+	}
+
+	const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
+	const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+
+	// 초록: 허공, 빨강: 명중
+	DrawDebugLine(
+		World,
+		TraceStart,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			HitResult.ImpactPoint,
+			12.0f,
+			FColor::Red,
+			false,
+			DebugLineDuration
+		);
+	}
+}
+
+bool UGA_RangerAutoFire::ShouldPlayLocalFeedback() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	
+	if (!IsValid(Pawn))
+	{
+		return false;
+	}
+	
+	return Pawn->IsLocallyControlled();
+}
+
+bool UGA_RangerAutoFire::TryBuildHitscanTrace(
+	FHitResult& OutHitResult,
+	FVector& OutTraceStart,
+	FVector& OutTraceEnd,
+	bool& bOutHit) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return false;
+	}
+
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	const AController* Controller = Pawn ? Pawn->GetController() : nullptr;
+
+	OutTraceStart = Pawn
+		? Pawn->GetPawnViewLocation()
+		: AvatarActor->GetActorLocation();
+
+	const FRotator AimRotation = Controller
+		? Controller->GetControlRotation()
+		: AvatarActor->GetActorRotation();
+
+	const FVector TraceDirection = AimRotation.Vector();
+	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	bOutHit = World->LineTraceSingleByChannel(
+		OutHitResult,
+		OutTraceStart,
+		OutTraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+
+	return true;
 }
 
 void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
