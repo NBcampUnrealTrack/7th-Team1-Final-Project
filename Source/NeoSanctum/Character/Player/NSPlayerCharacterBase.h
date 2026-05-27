@@ -4,9 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
-#include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
 class ANSWeaponBase;
@@ -49,8 +49,7 @@ public:
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	
 public:
-	// 플레이어 진영 0번 설정 
-	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(0); }
+	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(static_cast<uint8>(ETeamId::Player)); }
 	
 protected:
 	void InitializeAbilitySystem();

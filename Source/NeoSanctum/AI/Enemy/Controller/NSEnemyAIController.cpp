@@ -5,6 +5,7 @@
 
 #include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
 
 
@@ -20,13 +21,11 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	// 센서에 포착된 대상이 팀 인터페이스 마크를 가지고 있는지 확인
 	if (const IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(&Other))
 	{
-		// 0번(플레이어) 진영은 무조건 적으로 규정
-		if (TeamAgent->GetGenericTeamId() == FGenericTeamId(0))
+		if (TeamAgent->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Player)))
 		{
 			return ETeamAttitude::Type::Hostile;
 		}
-		// 1번(몬스터) 진영은 아군으로 규정
-		else if (TeamAgent->GetGenericTeamId() == FGenericTeamId(1))
+		else if (TeamAgent->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Enemy)))
 		{
 			return ETeamAttitude::Type::Friendly;
 		}

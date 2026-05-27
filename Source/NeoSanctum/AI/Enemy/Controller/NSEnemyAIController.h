@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AIController.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
@@ -17,11 +18,12 @@ public:
 	ANSEnemyAIController();
 
 	/*
-	 * 0번을 플레이어 진영
-	 * 1번을 몬스터 진영으로 구성할 예정.
 	 * AI Controller가 적을 필터링하기 위한 TeamId 조회
 	 */
-	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(1); }
+	virtual FGenericTeamId GetGenericTeamId() const override
+	{
+		return FGenericTeamId(static_cast<uint8>(ETeamId::Enemy));
+	}
 
 	// 타 진영을 보았을 때의 적대/우호 규칙 정의 수립
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
