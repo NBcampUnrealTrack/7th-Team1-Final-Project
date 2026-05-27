@@ -20,6 +20,9 @@ struct FNSInputMappingContext
 	
 	UPROPERTY(EditDefaultsOnly)
 	int32 Priority = 0;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "InputMode")
+	FGameplayTag InputModeTag;
 };
 
 USTRUCT(BlueprintType)

@@ -4,6 +4,11 @@
 
 namespace NSGameplayTags
 {
+	// Input Mode
+	UE_DEFINE_GAMEPLAY_TAG(InputMode_Gameplay, "InputMode.Gameplay");
+	UE_DEFINE_GAMEPLAY_TAG(InputMode_UI, "InputMode.UI");
+	UE_DEFINE_GAMEPLAY_TAG(InputMode_DeathSpectator, "InputMode.DeathSpectator");
+
 	// Native Input
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Move, "Input.Native.Move");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Look, "Input.Native.Look");
