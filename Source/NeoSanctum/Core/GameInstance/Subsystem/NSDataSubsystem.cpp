@@ -5,7 +5,6 @@
 
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
-// #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 const FPrimaryAssetType UNSDataSubsystem::PlayerAssetType        = FPrimaryAssetType(TEXT("NSPlayerData"));
@@ -14,7 +13,12 @@ const FPrimaryAssetType UNSDataSubsystem::PartAssetType         = FPrimaryAssetT
 const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType      = FPrimaryAssetType(TEXT("NSMonsterData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType      = FPrimaryAssetType(TEXT("NSAugmentData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentPoolAssetType  = FPrimaryAssetType(TEXT("NSAugmentPool"));
-// TODO: 레벨 전용 GA가 있다면 아웃런, 인런 구분해서 여기서 추가해서 사용하게끔 
+// TODO: 레벨 전용 GA가 있다면 아웃런, 인런 구분해서 여기서 추가해서 사용하게끔
+
+// DataAsset의 meta=(AssetBundles="...") 와 반드시 일치
+const TArray<FName> UNSDataSubsystem::CommonBundles  = { FName("CommonUI"),  FName("CommonData")  };
+const TArray<FName> UNSDataSubsystem::OutGameBundles = { FName("OutRunUI"),  FName("OutRunData")  };
+const TArray<FName> UNSDataSubsystem::RunBundles     = { FName("InRunUI"),   FName("InRunData")   };
 
 void UNSDataSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -96,19 +100,18 @@ void UNSDataSubsystem::StartLoadCommon()
 
 	const TArray<FPrimaryAssetType> Types = { PlayerAssetType };
 
-	TArray<FSoftObjectPath> Paths;
-	CollectSoftPaths(Types, Paths);
+	TArray<FPrimaryAssetId> Ids;
+	GatherAssetIds(Types, Ids);
 
-	UE_LOG(LogTemp, Log, TEXT("[NSDataSubsystem] Common paths total=%d"), Paths.Num());
-
-	if (Paths.IsEmpty())
+	if (Ids.IsEmpty())
 	{
 		OnCommonAssetsLoaded();
 		return;
 	}
 
-	CommonHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
-		Paths,
+	CommonHandle = UAssetManager::Get().LoadPrimaryAssets(
+		Ids,
+		CommonBundles,
 		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnCommonAssetsLoaded));
 }
 
@@ -129,17 +132,18 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 	const TArray<FPrimaryAssetType> Types = { HubAssetType, PartAssetType };
 
-	TArray<FSoftObjectPath> Paths;
-	CollectSoftPaths(Types, Paths);
+	TArray<FPrimaryAssetId> Ids;
+	GatherAssetIds(Types, Ids);
 
-	if (Paths.IsEmpty())
+	if (Ids.IsEmpty())
 	{
 		OnOutGameAssetsLoaded();
 		return;
 	}
 
-	OutGameHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
-		Paths,
+	OutGameHandle = UAssetManager::Get().LoadPrimaryAssets(
+		Ids,
+		OutGameBundles,
 		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGameAssetsLoaded));
 }
 
@@ -161,59 +165,24 @@ void UNSDataSubsystem::StartLoadRun()
 	const TArray<FPrimaryAssetType> Types =
 		{ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType };
 
-	TArray<FSoftObjectPath> Paths;
-	CollectSoftPaths(Types, Paths);
+	TArray<FPrimaryAssetId> Ids;
+	GatherAssetIds(Types, Ids);
 
-	if (Paths.IsEmpty())
+	if (Ids.IsEmpty())
 	{
 		OnRunAssetsLoaded();
 		return;
 	}
 
-	RunHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
-		Paths,
+	RunHandle = UAssetManager::Get().LoadPrimaryAssets(
+		Ids,
+		RunBundles,
 		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunAssetsLoaded));
 }
 
 void UNSDataSubsystem::OnRunAssetsLoaded()
 {
 	CacheLoaded({ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType });
-	// StartLoadRunDependents();
-	OnRunDependentsLoaded();
-}
-
-// Augment 정의가 참조하는 GE/GA 클래스 사전 로드
-// void UNSDataSubsystem::StartLoadRunDependents()
-// {
-// 	TArray<FSoftObjectPath> DepPaths;
-// 	for (const TPair<FPrimaryAssetId, TObjectPtr<UObject>>& Pair : DataCache)
-// 	{
-// 		if (UNSAugmentDefinition* Aug = Cast<UNSAugmentDefinition>(Pair.Value.Get()))
-// 		{
-// 			if (!Aug->StackEffectClass.IsNull())
-// 			{
-// 				DepPaths.Add(Aug->StackEffectClass.ToSoftObjectPath());
-// 			}
-// 			if (!Aug->GrantedAbilityClass.IsNull())
-// 			{
-// 				DepPaths.Add(Aug->GrantedAbilityClass.ToSoftObjectPath());
-// 			}
-// 		}
-// 	}
-//
-// 	if (DepPaths.IsEmpty())
-// 	{
-// 		OnRunDependentsLoaded();
-// 		return;
-// 	}
-//
-// 	RunDependentsHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
-// 		DepPaths,
-// 		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunDependentsLoaded));
-// }
-
-void UNSDataSubsystem::OnRunDependentsLoaded()
-{
 	SetPhase(ENSDataLoadPhase::RunReady);
 	OnRunGameDataReady.Broadcast();
 }
@@ -244,11 +213,6 @@ void UNSDataSubsystem::UnloadOutGame()
 
 void UNSDataSubsystem::UnloadRun()
 {
-	if (RunDependentsHandle.IsValid())
-	{
-		RunDependentsHandle->ReleaseHandle();
-		RunDependentsHandle.Reset();
-	}
 	if (RunHandle.IsValid())
 	{
 		RunHandle->ReleaseHandle();
@@ -270,17 +234,14 @@ void UNSDataSubsystem::UnloadAll()
 // 헬퍼
 // ================================================================
 
-void UNSDataSubsystem::CollectSoftPaths(const TArray<FPrimaryAssetType>& Types, TArray<FSoftObjectPath>& OutPaths) const
+void UNSDataSubsystem::GatherAssetIds(const TArray<FPrimaryAssetType>& Types, TArray<FPrimaryAssetId>& OutIds) const
 {
 	UAssetManager& AM = UAssetManager::Get();
 	for (const FPrimaryAssetType& Type : Types)
 	{
-		TArray<FAssetData> Assets;
-		AM.GetPrimaryAssetDataList(Type, Assets);
-		for (const FAssetData& AD : Assets)
-		{
-			OutPaths.Add(AD.GetSoftObjectPath());
-		}
+		TArray<FPrimaryAssetId> Ids;
+		AM.GetPrimaryAssetIdList(Type, Ids);
+		OutIds.Append(Ids);
 	}
 }
 

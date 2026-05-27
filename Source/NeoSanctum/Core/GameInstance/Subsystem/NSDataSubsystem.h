@@ -124,6 +124,11 @@ public:
 	static const FPrimaryAssetType AugmentPoolAssetType;
 
 private:
+	// 로드 시 함께 끌어올 AssetBundle 목록 (DataAsset meta=(AssetBundles=...) 와 일치)
+	static const TArray<FName> CommonBundles;
+	static const TArray<FName> OutGameBundles;
+	static const TArray<FName> RunBundles;
+
 	// ================================================================
 	// 내부 로드/언로드
 	// ================================================================
@@ -136,16 +141,14 @@ private:
 
 	void StartLoadRun();
 	void OnRunAssetsLoaded();
-	// void StartLoadRunDependents();
-	void OnRunDependentsLoaded();
 
 	void UnloadCommon();
 	void UnloadOutGame();
 	void UnloadRun();
 	void UnloadAll();
 
-	// AssetType 목록을 수집해 SoftPath로 변환
-	void CollectSoftPaths(const TArray<FPrimaryAssetType>& Types, TArray<FSoftObjectPath>& OutPaths) const;
+	// AssetType 목록의 PrimaryAssetId를 수집
+	void GatherAssetIds(const TArray<FPrimaryAssetType>& Types, TArray<FPrimaryAssetId>& OutIds) const;
 	// 로드된 PrimaryAsset들을 DataCache에 저장
 	void CacheLoaded(const TArray<FPrimaryAssetType>& Types);
 	// 해당 타입의 캐시 엔트리 제거 및 UnloadPrimaryAssets
@@ -164,7 +167,6 @@ private:
 	TSharedPtr<FStreamableHandle> CommonHandle;
 	TSharedPtr<FStreamableHandle> OutGameHandle;
 	TSharedPtr<FStreamableHandle> RunHandle;
-	TSharedPtr<FStreamableHandle> RunDependentsHandle;
 
 	// 로드 페이즈 ENUM
 	ENSDataLoadPhase CurrentPhase = ENSDataLoadPhase::NotStarted;
