@@ -40,10 +40,7 @@ public:
 	
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
-	
-	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
-	
-	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
+
 	
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
