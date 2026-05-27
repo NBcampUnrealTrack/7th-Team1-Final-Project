@@ -11,7 +11,7 @@ UNSInputComponent::UNSInputComponent(const FObjectInitializer& ObjectInitializer
 void UNSInputComponent::AddInputMappings(
 	const UNSInputConfig* InputConfig,
 	UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
-	const FGameplayTag& InputModeTag
+	const FGameplayTagContainer& InputModeTags
 )
 {
 	check(InputConfig);
@@ -24,13 +24,14 @@ void UNSInputComponent::AddInputMappings(
 			continue;
 		}
 
-		// InputMode 태그가 존재하는데 파라미터의 태그와 다른 태그라면 추가하지 않고 스킵
-		if (InputModeTag.IsValid() && MappingContext.InputModeTag != InputModeTag)
+		// InputMode 태그 묶음이 존재하면 해당 모드에 포함된 MappingContext만 추가
+		if (!InputModeTags.IsEmpty()
+			&& (!MappingContext.InputModeTag.IsValid() || !InputModeTags.HasTagExact(MappingContext.InputModeTag)))
 		{
 			continue;
 		}
 
-		// InputMode 태그가 존재하지 않으면 모두 추가 / 존재하면 위 if문에서 걸러져서 해당 InputTag만 추가됨
+		// InputMode 태그 묶음이 비어있으면 기존 동작처럼 모두 추가
 		InputSubSystem->AddMappingContext(MappingContext.InputMappingContext, MappingContext.Priority);
 	}
 }
@@ -38,7 +39,7 @@ void UNSInputComponent::AddInputMappings(
 void UNSInputComponent::RemoveInputMappings(
 	const UNSInputConfig* InputConfig,
 	UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
-	const FGameplayTag& InputModeTag
+	const FGameplayTagContainer& InputModeTags
 ) const
 {
 	check(InputConfig);
@@ -51,13 +52,14 @@ void UNSInputComponent::RemoveInputMappings(
 			continue;
 		}
 
-		// InputMode 태그가 존재하는데 파라미터의 태그와 다른 태그라면 제거하지 않고 스킵
-		if (InputModeTag.IsValid() && MappingContext.InputModeTag != InputModeTag)
+		// InputMode 태그 묶음이 존재하면 해당 모드에 포함된 MappingContext만 제거
+		if (!InputModeTags.IsEmpty()
+			&& (!MappingContext.InputModeTag.IsValid() || !InputModeTags.HasTagExact(MappingContext.InputModeTag)))
 		{
 			continue;
 		}
 
-		// InputMode 태그가 존재하지 않으면 모두 제거 / 존재하면 위 if문에서 걸러져서 해당 InputTag만 제거됨
+		// InputMode 태그 묶음이 비어있으면 기존 동작처럼 모두 제거
 		InputSubSystem->RemoveMappingContext(MappingContext.InputMappingContext);
 	}
 }

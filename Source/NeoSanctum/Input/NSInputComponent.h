@@ -21,13 +21,13 @@ public:
 	void AddInputMappings(
 		const UNSInputConfig* InputConfig,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
-		const FGameplayTag& InputModeTag = FGameplayTag()
+		const FGameplayTagContainer& InputModeTags
 	);
 
 	void RemoveInputMappings(
 		const UNSInputConfig* InputConfig,
 		UEnhancedInputLocalPlayerSubsystem* InputSubSystem,
-		const FGameplayTag& InputModeTag = FGameplayTag()
+		const FGameplayTagContainer& InputModeTags
 	) const;
 
 	void RemoveBinds(TArray<uint32>& BindHandles);
