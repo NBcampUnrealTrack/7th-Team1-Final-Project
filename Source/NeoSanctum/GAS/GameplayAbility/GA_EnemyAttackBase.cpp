@@ -7,13 +7,23 @@
 #include "AbilitySystemInterface.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 {
+	// Advanced 세팅 설정
+	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateNo;
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
+	NetSecurityPolicy = EGameplayAbilityNetSecurityPolicy::ServerOnly;
+
+	bServerRespectsRemoteAbilityCancellation = false;
+	bRetriggerInstancedAbility = false;
 
 	AttackTraceDistance = 100.0f;
 	AttackTraceRadius = 80.0f;
+
+	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
 void UGA_EnemyAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
