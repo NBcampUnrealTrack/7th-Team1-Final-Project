@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
+#include "Engine/OverlapResult.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -129,9 +130,34 @@ AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, cons
 			FQuat SpawnRotation = PlayerStart->GetActorQuat();
 			FCollisionShape CharacterCapsule = FCollisionShape::MakeCapsule(34.0f, 88.0f);
 			
-			if (!GetWorld()->OverlapAnyTestByChannel(SpawnLocation, SpawnRotation, ECC_Pawn, CharacterCapsule))
+			TArray<FOverlapResult> Overlaps;
+			FCollisionQueryParams QueryParams;
+			
+			bool bIsOverlapPlayer = false;
+			
+			if (GetWorld()->OverlapMultiByChannel(
+				Overlaps,
+				SpawnLocation,
+				SpawnRotation,
+				ECC_Pawn,
+				CharacterCapsule, 
+				QueryParams))
 			{
-				UE_LOG(LogTemp, Log, TEXT("GameMode: 비어있는 자리 발견 %s"), *PlayerStart->GetName());
+				for (const FOverlapResult& Overlap : Overlaps)
+				{
+					AActor* OverlappedActor = Overlap.GetActor();
+					
+					if (OverlappedActor && OverlappedActor->IsA(APawn::StaticClass()))
+					{
+						bIsOverlapPlayer = true;
+						break;
+					}
+				}
+			}
+			
+			if (!bIsOverlapPlayer)
+			{
+				UE_LOG(LogTemp, Log, TEXT("GameMode: 비어있는 스폰 발견: %s"), *PlayerStart->GetName());
 				return PlayerStart;
 			}
 		}
