@@ -41,6 +41,11 @@ public:
 		float MaxHealth,
 		float CurrentShield,
 		float MaxShield);
+	//증강 UI 표시
+	void ShowAugmentation();
+	//증강 UI 숨김
+	void HideAugmentation();
+	
 	void ClearHUD();
 	
 	//HUD 위젯 반환
