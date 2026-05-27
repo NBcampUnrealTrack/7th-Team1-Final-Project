@@ -61,9 +61,18 @@ void ANSEnemyCharacterBase::HandleDeath()
 	// 물리 캡슐 콜리전 비활성화
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-
-	// 메쉬 콜리전 프로파일 조정
-	GetMesh()->SetCollisionProfileName(TEXT("NoCollision"));
+	
+	if (GetMesh())
+	{
+		// 애니메이션 인스턴스 중단
+		GetMesh()->bPauseAnims = true;
+		
+		// 콜리전 프로필을 Ragdoll로 변경
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+		
+		// 스켈레탈 메시의 물리 시뮬레이션을 활성화
+		GetMesh()->SetSimulatePhysics(true);
+	}
 }
 
 void ANSEnemyCharacterBase::Die()
