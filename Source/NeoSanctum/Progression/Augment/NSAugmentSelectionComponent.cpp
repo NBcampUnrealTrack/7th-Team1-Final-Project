@@ -5,7 +5,7 @@
 #include "NSAugmentInventoryComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
-#include "NeoSanctum/Core/Component/NSRunGameDataComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
 
@@ -48,8 +48,8 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
 		return;
 	}
 
-	UNSRunGameDataComponent* Run = UNSRunGameDataComponent::Get(this);
-	if (!Run || !Run->IsReady())
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
 	{
 		return;
 	}
@@ -62,7 +62,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
 	const TSet<FPrimaryAssetId> ExcludedIds(PendingOffer);
 
 	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>> ByRarity;
-	BuildRarityBuckets(Run, CurrentPool, bLegendaryFull, OwnedMechanicIds, ExcludedIds, ByRarity);
+	BuildRarityBuckets(Data, CurrentPool, bLegendaryFull, OwnedMechanicIds, ExcludedIds, ByRarity);
 
 	// 현재 오퍼의 Rarity 버킷에서만 추첨 (오퍼 내 Rarity 일관성 유지)
 	const TArray<UNSAugmentDefinition*>* Bucket = ByRarity.Find(CurrentOfferRarity);
@@ -160,14 +160,14 @@ void UNSAugmentSelectionComponent::Client_CloseOffer_Implementation()
 // PoolTag가 일치하는 PoolDefinition리턴
 UNSAugmentPoolDefinition* UNSAugmentSelectionComponent::FindPool(const FGameplayTag& PoolTag) const
 {
-	UNSRunGameDataComponent* Run = UNSRunGameDataComponent::Get(this);
-	if (!Run || !Run->IsReady())
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
 	{
 		return nullptr;
 	}
 
 	TArray<UNSAugmentPoolDefinition*> Pools =
-		Run->GetAllDataOfType<UNSAugmentPoolDefinition>(UNSRunGameDataComponent::AugmentPoolAssetType);
+		Data->GetAllDataOfType<UNSAugmentPoolDefinition>(UNSDataSubsystem::AugmentPoolAssetType);
 	for (UNSAugmentPoolDefinition* Pool : Pools)
 	{
 		if (Pool && Pool->PoolTag == PoolTag)
@@ -185,8 +185,8 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(UNSAugmentPoolDe
 	{
 		return {};
 	}
-	UNSRunGameDataComponent* Run = UNSRunGameDataComponent::Get(this);
-	if (!Run || !Run->IsReady())
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
 	{
 		return {};
 	}
@@ -199,22 +199,22 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(UNSAugmentPoolDe
 	const TSet<FPrimaryAssetId> EmptyExcluded;
 
 	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>> ByRarity;
-	BuildRarityBuckets(Run, Pool, bLegendaryFull, OwnedMechanicLegendaryIds, EmptyExcluded, ByRarity);
+	BuildRarityBuckets(Data, Pool, bLegendaryFull, OwnedMechanicLegendaryIds, EmptyExcluded, ByRarity);
 
 	return DrawCards(Pool, ByRarity, N, OutRarity);
 }
 
-// 소프트 포인터의 이름으로 FPrimaryAssetId 만들어서 데이터 컴포넌트에서 캐시 가져오기
+// 소프트 포인터의 이름으로 FPrimaryAssetId 만들어서 데이터 서브시스템에서 캐시 가져오기
 UNSAugmentDefinition* UNSAugmentSelectionComponent::ResolveDefinition(
-	UNSRunGameDataComponent* Run,
+	UNSDataSubsystem* Data,
 	const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const
 {
-	if (!Run || SoftDef.IsNull())
+	if (!Data || SoftDef.IsNull())
 	{
 		return nullptr;
 	}
-	const FPrimaryAssetId Id(UNSRunGameDataComponent::AugmentAssetType, FName(*SoftDef.GetAssetName()));
-	return Run->GetData<UNSAugmentDefinition>(Id);
+	const FPrimaryAssetId Id(UNSDataSubsystem::AugmentAssetType, FName(*SoftDef.GetAssetName()));
+	return Data->GetData<UNSAugmentDefinition>(Id);
 }
 
 // 레전더리 슬롯이 꽉찼는지, 기믹 변경 레전더리 Id 목록 저장
@@ -251,12 +251,14 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 	}
 }
 
-// 풀에있는 증강후보를 희귀도 기준으로 분류
-// - ExcludedIds에 있는 Def는 스킵 (오퍼 내 중복 방지 / 카드별 리롤시 기존 카드 제외)
-// - 같은 Def가 Entries에 여러 번 들어가도 한 번만 등록 (TSet으로 dedupe)
-// - Legendary 슬롯 풀이면 기믹 Legendary 제외, LegendaryStatEntries로 대체 투입
+/**
+ * 풀에있는 증강후보를 희귀도 기준으로 분류
+ * ExcludedIds에 있는 Def는 스킵 (오퍼 내 중복 방지 / 카드별 리롤시 기존 카드 제외)
+ * 같은 Def가 Entries에 여러 번 들어가도 한 번만 등록 (TSet으로 dedupe)
+ * Legendary 슬롯 풀이면 기믹 Legendary 제외, LegendaryStatEntries로 대체 투입
+ */
 void UNSAugmentSelectionComponent::BuildRarityBuckets(
-	UNSRunGameDataComponent* Run,
+	UNSDataSubsystem* Data,
 	const UNSAugmentPoolDefinition* Pool,
 	bool bLegendaryFull,
 	const TSet<FPrimaryAssetId>& OwnedMechanicIds,
@@ -264,7 +266,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& OutByRarity) const
 {
 	OutByRarity.Reset();
-	if (!Run || !Pool)
+	if (!Data || !Pool)
 	{
 		return;
 	}
@@ -273,7 +275,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 
 	for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef : Pool->Entries)
 	{
-		UNSAugmentDefinition* Def = ResolveDefinition(Run, SoftDef);
+		UNSAugmentDefinition* Def = ResolveDefinition(Data, SoftDef);
 		if (!Def)
 		{
 			continue;
@@ -309,7 +311,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	{
 		for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef : Pool->LegendaryStatEntries)
 		{
-			UNSAugmentDefinition* Def = ResolveDefinition(Run, SoftDef);
+			UNSAugmentDefinition* Def = ResolveDefinition(Data, SoftDef);
 			if (!Def)
 			{
 				continue;
