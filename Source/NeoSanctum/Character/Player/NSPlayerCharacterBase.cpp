@@ -19,8 +19,6 @@
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "Net/UnrealNetwork.h"
 
-#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
-
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -66,6 +64,11 @@ void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
 void ANSPlayerCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (PlayerAttributeSet)
+	{
+		PlayerAttributeSet->OnOutOfHealth.AddUObject(this, &ANSPlayerCharacterBase::HandleOutOfHealth);
+	}
 	
 	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
 	DroneAIClass,
@@ -401,4 +404,23 @@ void ANSPlayerCharacterBase::ApplyMoveSpeedToCharacter(float MoveSpeed)
 	{
 		Movement->MaxWalkSpeed = MoveSpeed;
 	}
+}
+
+void ANSPlayerCharacterBase::HandleOutOfHealth()
+{
+	Die();
+}
+
+void ANSPlayerCharacterBase::Die()
+{
+	if (bDead)
+	{
+		return;
+	}
+	
+	bDead = true;
+	
+	UE_LOG(LogTemp, Warning, TEXT("%s died"), *GetName());
+	
+	// TODO : 사망 애니메이션이나 충돌처리 등
 }
