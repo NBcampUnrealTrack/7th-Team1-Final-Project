@@ -9,6 +9,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class ANSDroneAI;
 class ANSWeaponBase;
 class UNSCharacterData;
 struct FOnAttributeChangeData;
@@ -138,4 +139,9 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Debug")
 	TSoftObjectPtr<UNSCharacterData> DebugCharacterData;
+	
+	//드론 스폰관련 Test
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Companion|AI")
+	TSubclassOf<ANSDroneAI> DroneAIClass;
 };

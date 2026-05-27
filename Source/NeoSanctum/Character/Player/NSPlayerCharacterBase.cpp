@@ -9,6 +9,8 @@
 #include "GameplayEffectTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -16,6 +18,8 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "Net/UnrealNetwork.h"
+
+#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 {
@@ -62,6 +66,21 @@ void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
 void ANSPlayerCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
+	DroneAIClass,
+	GetActorTransform(),
+	this,
+	this,
+	ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	);
+	
+	if (DroneAI)
+	{
+		DroneAI->SetOwnerPlayer(this);
+	}
+	
+	UGameplayStatics::FinishSpawningActor(DroneAI, GetActorTransform());
 }
 
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

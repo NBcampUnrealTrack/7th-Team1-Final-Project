@@ -50,6 +50,8 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 		DroneAIBBComponent = Blackboard;
 	}
 
+	if (!IsValid(DroneAIBBComponent)) return;
+	
 	ANSDroneAI* MyPawn = Cast<ANSDroneAI>(InPawn);
 	if (!IsValid(MyPawn)) return;
 	
@@ -58,7 +60,7 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 		DroneAIBBComponent->ClearValue(OwningPlayer);
 	}
 	
-	DroneAIBBComponent->SetValueAsObject(OwningPlayer, MyPawn->GetOwner());
+	DroneAIBBComponent->SetValueAsObject(OwningPlayer, MyPawn->GetOwnerPlayer());
 	
 }
 
