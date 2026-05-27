@@ -15,6 +15,7 @@
 #include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -444,6 +445,11 @@ void ANSPlayerCharacterBase::Die()
 	
 	ApplyDeathState();
 	StartDeathRagdoll();
+
+	if (ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(GetController()))
+	{
+		NSPlayerController->RequestEnterDeathSpectatorMode();
+	}
 }
 
 void ANSPlayerCharacterBase::ApplyDeathState()
@@ -497,4 +503,9 @@ void ANSPlayerCharacterBase::OnRep_DeathPresentationStarted()
 
 	ApplyDeathState();
 	StartDeathRagdoll();
+
+	if (ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(GetController()))
+	{
+		NSPlayerController->RequestEnterDeathSpectatorMode();
+	}
 }

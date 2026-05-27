@@ -14,6 +14,10 @@
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+
+	DefaultInputModeTags.AddTag(NSGameplayTags::InputMode_Gameplay);
+	DefaultInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
+	ActiveInputModeTags = DefaultInputModeTags;
 }
 
 void UNSInputBinderComponent::BeginPlay()
@@ -52,6 +56,27 @@ void UNSInputBinderComponent::SetInputConfig(UNSInputConfig* NewConfig)
 	ApplyInputConfig();
 }
 
+void UNSInputBinderComponent::SetActiveInputModeTags(const FGameplayTagContainer& NewInputModeTags)
+{
+	if (ActiveInputModeTags == NewInputModeTags)
+	{
+		return;
+	}
+
+	const bool bShouldReapplyInputConfig = bHasAppliedInputConfig;
+	if (bShouldReapplyInputConfig)
+	{
+		RemoveInputConfig();
+	}
+
+	ActiveInputModeTags = NewInputModeTags;
+
+	if (bShouldReapplyInputConfig)
+	{
+		ApplyInputConfig();
+	}
+}
+
 void UNSInputBinderComponent::ApplyInputConfig()
 {
 	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetInputSubsystem();
@@ -60,7 +85,7 @@ void UNSInputBinderComponent::ApplyInputConfig()
 		return;
 	}
 
-	InputComponent->AddInputMappings(CurrentInputConfig, InputSubsystem);
+	InputComponent->AddInputMappings(CurrentInputConfig, InputSubsystem, ActiveInputModeTags);
 	BindInputActions();
 	bHasAppliedInputConfig = true;
 }
@@ -74,7 +99,7 @@ void UNSInputBinderComponent::RemoveInputConfig()
 		return;
 	}
 
-	InputComponent->RemoveInputMappings(CurrentInputConfig, InputSubsystem);
+	InputComponent->RemoveInputMappings(CurrentInputConfig, InputSubsystem, ActiveInputModeTags);
 	bHasAppliedInputConfig = false;
 }
 

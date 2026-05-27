@@ -3,16 +3,25 @@
 #include "NSPlayerController.h"
 #include "GameFramework/GameModeBase.h"
 #include "AbilitySystemComponent.h"
+#include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 
 ANSPlayerController::ANSPlayerController()
 {
+	// 기본 태그 초기화
+	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_Gameplay);
+	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
 	
+	// 사망 상태 태그 초기화
+	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_DeathSpectator);
+	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
 }
 
 void ANSPlayerController::BindAttributeToHUD()
@@ -162,6 +171,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
 	if (!IsLocalController()) return;
 
+	ClearDeathSpectatorModeTimer();
+
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
 	if (!UIManager) return;
 
@@ -184,6 +195,14 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
 
+		if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(NewPawn))
+		{
+			if (UNSInputBinderComponent* InputBinder = PlayerCharacter->GetInputBinderComponent())
+			{
+				InputBinder->SetActiveInputModeTags(GetGameplayInputModeTags());
+			}
+		}
+
 		// 3. 캐릭터가 새로 배치되었으니 체력/실드 등 GAS 어트리뷰트 값을 HUD에 연동
 		UpdateHUDHealthAndShield();
 	}
@@ -204,6 +223,8 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 
 void ANSPlayerController::ExitSpectatorAndRespawn()
 {
+	ClearDeathSpectatorModeTimer();
+
 	if (!HasAuthority())
 	{
 		return;
@@ -256,4 +277,61 @@ void ANSPlayerController::Multicast_NotifyRespawn_Implementation()
 	}
 	
 	
+}
+
+void ANSPlayerController::RequestEnterDeathSpectatorMode()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	ClearDeathSpectatorModeTimer();
+	
+	if (DeathSpectatorModeDelay <= 0.f)
+	{
+		EnterDeathSpectatorMode();
+		return;
+	}
+
+	// 사망 후 DeathSpectatorModeDelay(기본 2초) 시간 이후에 관전자 모드로 진입
+	World->GetTimerManager().SetTimer(
+		DeathSpectatorModeTimerHandle,
+		this,
+		&ThisClass::EnterDeathSpectatorMode,
+		DeathSpectatorModeDelay,
+		false
+	);
+}
+
+void ANSPlayerController::EnterDeathSpectatorMode()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	UNSInputBinderComponent* InputBinder = PlayerCharacter ? PlayerCharacter->GetInputBinderComponent() : nullptr;
+	if (!InputBinder)
+	{
+		return;
+	}
+
+	// 사망 관전자 모드 Input 태그에 따라서 InputConfig 안에 있는 IMC를 골라서 교체
+	InputBinder->SetActiveInputModeTags(GetDeathSpectatorInputModeTags());
+}
+
+void ANSPlayerController::ClearDeathSpectatorModeTimer()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DeathSpectatorModeTimerHandle);
+	}
 }
