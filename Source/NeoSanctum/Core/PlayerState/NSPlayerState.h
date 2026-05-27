@@ -27,6 +27,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	bool IsReady() const { return bIsReady; }
+	bool IsDead() const { return bIsDead; }
+	// 사망 상태를 변경하기 위한 Setter
+	void SetIsDead(bool bNewIsDead);
 	
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void Server_SetReady();
@@ -50,4 +53,8 @@ private:
 
 	UPROPERTY(Replicated)
 	bool bIsReady;
+
+	// 사망 상태 변수
+	UPROPERTY(Replicated)
+	bool bIsDead;
 };

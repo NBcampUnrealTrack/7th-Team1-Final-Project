@@ -25,6 +25,7 @@ ANSPlayerState::ANSPlayerState()
 	ProgressComponent = CreateDefaultSubobject<UNSPlayerProgressComponent>(TEXT("ProgressComponent"));
 
 	bIsReady = false;
+	bIsDead = false;
 }
 
 void ANSPlayerState::BeginPlay()
@@ -58,6 +59,7 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ANSPlayerState, bIsReady);
+	DOREPLIFETIME(ANSPlayerState, bIsDead);
 }
 
 UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
@@ -73,4 +75,14 @@ UNSPlayerAttributeSet* ANSPlayerState::GetPlayerAttributeSet() const
 void ANSPlayerState::Server_SetReady_Implementation()
 {
 	bIsReady = !bIsReady;
+}
+
+void ANSPlayerState::SetIsDead(bool bNewIsDead)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsDead = bNewIsDead;
 }
