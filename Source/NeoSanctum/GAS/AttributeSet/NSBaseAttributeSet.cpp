@@ -79,10 +79,22 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		const float NewHealth = FMath::Clamp(GetHealth() - DamageAmount, 0.0f, GetMaxHealth());
 		
 		SetHealth(NewHealth);
+		
+		if (!bOutOfHealth && GetHealth() <= 0.0f)
+		{
+			bOutOfHealth = true;
+			OnOutOfHealth.Broadcast();
+		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
 		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
+		
+		if (!bOutOfHealth && GetHealth() <= 0.0f)
+		{
+			bOutOfHealth = true;
+			OnOutOfHealth.Broadcast();
+		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetMaxHealthAttribute())
 	{
