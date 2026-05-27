@@ -418,9 +418,8 @@ void ANSPlayerCharacterBase::Die()
 		return;
 	}
 	
-	bDead = true;
-	
 	UE_LOG(LogTemp, Warning, TEXT("%s died"), *GetName());
+	bDead = true;
 	
 	// TODO : 사망 애니메이션이나 충돌처리 등
 }

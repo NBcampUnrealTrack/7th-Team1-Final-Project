@@ -41,17 +41,6 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 		SetMaxShield(FMath::Max(GetMaxShield(), 0.0f));
 		SetShield(FMath::Clamp(GetShield(), 0.0f, GetMaxShield()));
 	}
-	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
-	{
-		SetHealth(FMath::Clamp(GetHealth(), 0.0f, GetMaxHealth()));
-		
-		if (!bOutOfHealth && GetHealth() <= 0.0f)
-		{
-			bOutOfHealth = true;
-			OnOutOfHealth.Broadcast();
-		}
-	}
-	
 }
 
 float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)

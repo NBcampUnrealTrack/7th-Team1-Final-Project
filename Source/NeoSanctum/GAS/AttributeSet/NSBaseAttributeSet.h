@@ -13,6 +13,8 @@
 	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+DECLARE_MULTICAST_DELEGATE(FOnOutOfHealth);
+
 struct FGameplayEffectModCallbackData;
 
 /**
@@ -66,6 +68,9 @@ public:
 	FGameplayAttributeData Damage;
 	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, Damage);
 	
+public:
+	FOnOutOfHealth OnOutOfHealth;
+	
 protected:
 	// Health 적용 전 대상별 방어 처리를 수행
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data);
@@ -91,4 +96,7 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MaxDashCost(const FGameplayAttributeData& OldMaxDashCost);
+	
+private:
+	bool bOutOfHealth = false;
 };

@@ -6,8 +6,6 @@
 #include "NSBaseAttributeSet.h"
 #include "NSPlayerAttributeSet.generated.h"
 
-DECLARE_MULTICAST_DELEGATE(FOnOutOfHealth);
-
 /**
  * 플레이어 전용 AttributeSet
  */
@@ -30,16 +28,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxShield, Category = "GAS|Attribute")
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxShield);
-
-public:
-	FOnOutOfHealth OnOutOfHealth;
 	
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
-	
-private:
-	bool bOutOfHealth = false;
 	
 private:
 	UFUNCTION()
