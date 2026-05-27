@@ -10,7 +10,7 @@
 
 class UNSAugmentPoolDefinition;
 class UNSAugmentDefinition;
-class UNSRunGameDataComponent;
+class UNSDataSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
@@ -63,7 +63,7 @@ private:
 	TArray<FPrimaryAssetId> RollCards(UNSAugmentPoolDefinition* Pool, int32 N, ENSAugmentRarity& OutRarity) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
-		UNSRunGameDataComponent* Run,
+		UNSDataSubsystem* Data,
 		const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const;
 
 	void CollectInventoryFilter(
@@ -72,7 +72,7 @@ private:
 
 	// Pool->Entries로부터 Rarity별 후보 버킷(나올 수 있는 후보 목록) 생성, ExcludedIds에 있는 Def는 제외, 중복 등록 방지
 	void BuildRarityBuckets(
-		UNSRunGameDataComponent* Run,
+		UNSDataSubsystem* Data,
 		const UNSAugmentPoolDefinition* Pool,
 		bool bLegendaryFull,
 		const TSet<FPrimaryAssetId>& OwnedMechanicIds,

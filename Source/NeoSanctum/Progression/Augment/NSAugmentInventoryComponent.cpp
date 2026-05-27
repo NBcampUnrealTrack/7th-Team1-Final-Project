@@ -5,7 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "Net/UnrealNetwork.h"
-#include "NeoSanctum/Core/Component/NSRunGameDataComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 
@@ -29,13 +29,13 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	}
 	
 	// DefId로 증강 값을 가져와야 함
-	UNSRunGameDataComponent* RGDC = UNSRunGameDataComponent::Get(this);
-	if (!RGDC || !RGDC->IsReady())
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
 	{
 		return;
 	}
-	
-	UNSAugmentDefinition* Def = RGDC->GetData<UNSAugmentDefinition>(DefId);
+
+	UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(DefId);
 	if (!Def)
 	{
 		return;
