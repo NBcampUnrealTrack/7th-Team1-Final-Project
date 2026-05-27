@@ -32,10 +32,9 @@ public:
 		return FGenericTeamId(static_cast<uint8>(ETeamId::Enemy));
 	}
 
-public:
-	UFUNCTION(BlueprintCallable, Category = "GAS|Death")
-	void HandleDeath();
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+public:
 	void Die();
 
 protected:
@@ -52,5 +51,9 @@ protected:
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
 
 protected:
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
 	bool bIsDead = false;
+
+	UFUNCTION()
+	void OnRep_bIsDead();
 };
