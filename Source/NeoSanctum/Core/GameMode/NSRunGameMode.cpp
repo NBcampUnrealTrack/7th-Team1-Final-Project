@@ -6,6 +6,9 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "NeoSanctum/Core/Stage/NSStageManager.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
@@ -25,36 +28,92 @@ void ANSRunGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	// TODO: 후에 StageManager 구현 후 연결해야함
+	if (HasAuthority())
+	{
+		NSStageManager = NewObject<UNSStageManager>(this);
+		
+		// 클리어 판정 알림용 바인딩
+		NSStageManager->OnStageCleared.BindUObject(
+			this,
+			&ANSRunGameMode::NotifyStageCleared_Implementation
+		);
+	}
 }
 
 void ANSRunGameMode::NotifyStageCleared_Implementation()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 맵 생성 중 적 카운팅 잘못되었을수도 있어서 검증용 추가 로직
+	int32 ActualAliveEnemies = 0;
+	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
+	{
+		ANSEnemyCharacterBase* Enemy = *It;
+		if (Enemy && !Enemy->IsDead())
+		{
+			ActualAliveEnemies++;
+		}
+	}
+
+	if (ActualAliveEnemies > 0)
+	{
+		// 카운팅 불일치 스테이지 매니저에서 보정
+		if (NSStageManager)
+		{
+			NSStageManager->SetEnemyCount(ActualAliveEnemies);
+		}
+		UE_LOG(LogTemp, Warning, TEXT("적 카운팅 불일치 현재 남은 적: %d"), ActualAliveEnemies);
+		return;
+	}
+
 	HandleRunOver(true);
 }
 
 void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 {
-	bool bIsAllPlayersDead = true;
+	if (!HasAuthority())
+	{
+		return;
+	}
 
-	// 게임의 모든 플레이어 컨트롤러 순회
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		APlayerController* PlayerController = It->Get();
-		if (PlayerController)
+		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(It->Get());
+		if (!NSPlayerController)
 		{
-			// 컨트롤러가 소유한 플레이어 스테이트 캐스팅
-			ANSPlayerState* NSPlayerState = PlayerController->GetPlayerState<ANSPlayerState>();
-			if (NSPlayerState)
-			{
-				// TODO: 후에 플레이어 스테이트의 상태 태그(Dead) 체크해서 전멸 판정 로직 추가해야함
-			}
+			continue;
+		}
+
+		// 죽은 플레이어는 제외
+		if (NSPlayerController == DeadPlayer)
+		{
+			continue;
+		}
+
+		// PlayerState 기반 생존 확인
+		ANSPlayerState* NSPlayerState = NSPlayerController->GetPlayerState<ANSPlayerState>();
+		if (NSPlayerState && !NSPlayerState->IsDead())
+		{
+			return;
 		}
 	}
 
-	if (bIsAllPlayersDead)
+	HandleRunOver(false);
+}
+
+void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
+{
+	if (!HasAuthority() || !DeadEnemy)
 	{
-		HandleRunOver(false);
+		return;
+	}
+
+	if (NSStageManager)
+	{
+		NSStageManager->HandleEnemyKilled();
 	}
 }
 
@@ -76,15 +135,31 @@ void ANSRunGameMode::HandleRunOver(bool bIsClear)
 	{
 		if (bIsClear)
 		{
-			UE_LOG(LogTemp, Log, TEXT("런 클리어 보상 지급"));
+			UE_LOG(LogTemp, Log, TEXT("런 클리어"));
 		}
 		else
 		{
-			UE_LOG(LogTemp, Log, TEXT("런 전멸 실패 보상 지급"));
+			UE_LOG(LogTemp, Log, TEXT("전멸"));
 		}
 	}
-	
-	// TODO: 후에 플레이어 선택지 띄우는 UI 호출 함수 연동해야함
+
+	// 모든 플레이어에게 게임 종료 UI 표시
+	AGameStateBase* CurrentGameState = GetGameState<AGameStateBase>();
+	if (!CurrentGameState)
+	{
+		return;
+	}
+
+	for (APlayerState* PlayerState : CurrentGameState->PlayerArray)
+	{
+		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(
+			PlayerState->GetPlayerController()
+		);
+		if (NSPlayerController)
+		{
+			NSPlayerController->Client_ShowRunOverUI(bIsClear);
+		}
+	}
 }
 
 void ANSRunGameMode::RespawnAllPlayers()
@@ -107,6 +182,14 @@ void ANSRunGameMode::RespawnAllPlayers()
 		{
 			NSPlayerController->ExitSpectatorAndRespawn();
 		}
+	}
+}
+
+void ANSRunGameMode::SetEnemyCount(int32 Count)
+{
+	if (NSStageManager)
+	{
+		NSStageManager->SetEnemyCount(Count);
 	}
 }
 
