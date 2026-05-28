@@ -5,6 +5,7 @@
 #include "NSHPShieldWidget.h"
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
+#include "NSAugmentationWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -90,3 +91,23 @@ void UNSHUDWidget::SetCrosshairColor(FLinearColor NewColor)
 	}
 	CrosshairWidget->SetCrosshairColor(NewColor);
 }
+
+void UNSHUDWidget::ShowAugmentation()
+{
+	//증강 선택 UI를 HUD위에 표시
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+	AugmentationWidget->ShowAugmentation();
+}
+
+void UNSHUDWidget::HideAugmentation()
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+	AugmentationWidget->HideAugmentation();
+}
+

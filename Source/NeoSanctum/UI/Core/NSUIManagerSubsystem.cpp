@@ -13,7 +13,6 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 	{
 		return;
 	}
-	
 	//TODO(영웅) : UI 설정 DataAsset 기반 HUD 클래스 관리 추가
 	
 	//이미 HUD가 있으면 중복 생성 X
@@ -148,6 +147,26 @@ void UNSUIManagerSubsystem::ClearHUD()
 		HUDWidget->RemoveFromParent();
 		HUDWidget=nullptr;
 	}
+}
+
+void UNSUIManagerSubsystem::ShowAugmentation()
+{
+	//증강 UI 표시를 HUD에 요청
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->ShowAugmentation();
+}
+
+void UNSUIManagerSubsystem::HideAugmentation()
+{
+	//증강 UI 숨김을 HUD에 요청
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->HideAugmentation();	
 }
 
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const

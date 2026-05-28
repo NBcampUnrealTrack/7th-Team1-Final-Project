@@ -9,6 +9,7 @@
 class UNSHPShieldWidget;
 class UNSGoodsWidget;
 class UNSCrosshairWidget;
+class UNSAugmentationWidget;
 
 /**
  * 인게임 HUD 요소를 묶어서 관리하는 위젯
@@ -45,6 +46,12 @@ public:
 	//조준점 색상 변경
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void SetCrosshairColor(FLinearColor NewColor);
+	//증강 UI 표시
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void ShowAugmentation();
+	//증강 UI 숨김
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void HideAugmentation();
 
 private:
 	//HP / Shield HUD 위젯
@@ -56,4 +63,8 @@ private:
 	//조준점 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSCrosshairWidget> CrosshairWidget;
+	//증강 선택 HUD 위젯
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UNSAugmentationWidget> AugmentationWidget;
+	
 };
