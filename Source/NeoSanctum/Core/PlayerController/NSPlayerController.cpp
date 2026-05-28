@@ -6,6 +6,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -175,6 +176,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	if (!IsLocalController()) return;
 
 	ClearDeathSpectatorModeTimer();
+	SpectatingPlayerState = nullptr;
 
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
 	if (!UIManager) return;
@@ -227,6 +229,7 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 void ANSPlayerController::ExitSpectatorAndRespawn()
 {
 	ClearDeathSpectatorModeTimer();
+	SpectatingPlayerState = nullptr;
 
 	if (!HasAuthority())
 	{
@@ -323,11 +326,13 @@ void ANSPlayerController::EnterDeathSpectatorMode()
 	if (HasAuthority())
 	{
 		SpawnAndPossessDeathSpectatorPawn();
+		SpectateNextPlayer();
 		return;
 	}
 
 	// 사망 관전자 모드 Input 태그에 따라서 InputConfig 안에 있는 IMC를 골라서 교체
 	Server_EnterDeathSpectatorMode();
+	SpectateNextPlayer();
 }
 
 void ANSPlayerController::ClearDeathSpectatorModeTimer()
@@ -340,12 +345,55 @@ void ANSPlayerController::ClearDeathSpectatorModeTimer()
 
 void ANSPlayerController::SpectatePreviousPlayer()
 {
-	// TODO : 이전 플레이어 관전 로직
+	SwitchSpectatorTarget(-1);
 }
 
 void ANSPlayerController::SpectateNextPlayer()
 {
-	// TODO : 다음 플레이어 관전 로직
+	SwitchSpectatorTarget(1);
+}
+
+void ANSPlayerController::SwitchSpectatorTarget(int32 Direction)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	const ANSPlayerState* ViewerPlayerState = GetPlayerState<ANSPlayerState>();
+	const ANSRunGameState* RunGameState = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
+	if (!ViewerPlayerState || !RunGameState)
+	{
+		return;
+	}
+	
+	TArray<ANSPlayerState*> AlivePlayerStates;
+	// GameState에서 PlayerState를 순회해서 살아있는 Player를 찾음
+	RunGameState->GetAlivePlayerStates(AlivePlayerStates, ViewerPlayerState);
+	if (AlivePlayerStates.IsEmpty())
+	{
+		return;
+	}
+	
+	int32 CurrentIndex = AlivePlayerStates.IndexOfByKey(SpectatingPlayerState.Get());
+	if (CurrentIndex == INDEX_NONE)
+	{
+		CurrentIndex = Direction >= 0 ? -1 : 0;
+	}
+	
+	const int32 TargetIndex = (CurrentIndex + Direction + AlivePlayerStates.Num()) % AlivePlayerStates.Num();
+	SetSpectatorTarget(AlivePlayerStates[TargetIndex]);
+}
+
+void ANSPlayerController::SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget)
+{
+	if (!NewSpectatorTarget)
+	{
+		return;
+	}
+
+	SpectatingPlayerState = NewSpectatorTarget;
+	UE_LOG(LogTemp, Log, TEXT("관전 대상 : %s"), *NewSpectatorTarget->GetPlayerName());
 }
 
 void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()

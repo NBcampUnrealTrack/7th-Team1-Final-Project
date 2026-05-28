@@ -9,6 +9,7 @@
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
+class ANSPlayerState;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -37,6 +38,10 @@ private:
 	void SpawnAndPossessDeathSpectatorPawn();
 	// 진입 타이머 초기화 헬퍼
 	void ClearDeathSpectatorModeTimer();
+	
+	// 관전자 스위칭
+	void SwitchSpectatorTarget(int32 Direction);
+	void SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget);
 	
 	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
 	UFUNCTION(Server, Reliable)
@@ -85,6 +90,10 @@ private:
 	// 사망 시 Spawn / Possess될 Spectator Pawn
 	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
 	TSubclassOf<ANSDeathSpectatorPawn> DeathSpectatorPawnClass;
+
+	// 관전 대상 PlayerState 캐싱
+	UPROPERTY(Transient)
+	TObjectPtr<ANSPlayerState> SpectatingPlayerState;
 
 	FTimerHandle DeathSpectatorModeTimerHandle;
 	
