@@ -16,7 +16,7 @@ struct FNSReplicatedSpectatorPOV
 
 	// 위치
 	UPROPERTY(BlueprintReadOnly)
-	FVector_NetQuantize Location = FVector::ZeroVector
+	FVector_NetQuantize Location = FVector::ZeroVector;
 	
 	// 회전
 	UPROPERTY(BlueprintReadOnly)
@@ -58,10 +58,10 @@ private:
 	// 관전자에게 보낼 카메라 정보
 	UPROPERTY(Replicated)
 	FNSReplicatedSpectatorPOV ReplicatedPOV;
-
-	// 타이머를 통해 얼마나 자주 카메라 정보를 보낼지 결정 
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "1.0"))
-	float UpdateInterval = 0.1f;
+	
+	// 타이머를 통해 얼마나 자주 카메라 정보를 보낼지 결정 : 0.033f가 약 30Hz라고 해서 기본값으로 설정함
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "0.01"))
+	float UpdateInterval = 0.033f;
 
 	FTimerHandle UpdateTimerHandle;
 };

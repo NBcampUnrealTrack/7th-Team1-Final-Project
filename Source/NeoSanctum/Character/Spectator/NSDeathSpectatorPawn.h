@@ -39,4 +39,20 @@ protected:
 	// 타겟의 SpectatorViewComponent 캐시
 	UPROPERTY(Transient)
 	TObjectPtr<UNSSpectatorViewComponent> TargetSpectatorView;
+	
+	// 카메라 위치를 따라가는 보간 속도
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Interpolation", meta = (ClampMin = "0.0"))
+	float LocationInterpSpeed = 18.f;
+	
+	// 카메라 회전을 따라가는 보간 속도
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Interpolation", meta = (ClampMin = "0.0"))
+	float RotationInterpSpeed = 18.f;
+	
+	// 시야 각을 따라가는 보간 속도
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Interpolation", meta = (ClampMin = "0.0"))
+	float FOVInterpSpeed = 12.f;
+	
+	// 대상 전환 시에 즉시 대상의 카메라 정보로 이동할지 여부
+	UPROPERTY(Transient)
+	bool bSnapToTargetPOV = false;
 };
