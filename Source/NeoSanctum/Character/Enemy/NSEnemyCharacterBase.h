@@ -56,4 +56,8 @@ protected:
 
 	UFUNCTION()
 	void OnRep_bIsDead();
+
+private:
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };

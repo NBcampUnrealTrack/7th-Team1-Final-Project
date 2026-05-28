@@ -7,6 +7,7 @@
 #include "AIController.h"
 #include "Components/CapsuleComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
 #include "Net/UnrealNetwork.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
@@ -17,6 +18,8 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
+
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 }
 
 void ANSEnemyCharacterBase::BeginPlay()
@@ -73,8 +76,6 @@ void ANSEnemyCharacterBase::Die()
 			AIController->UnPossess();
 		}
 
-		SetLifeSpan(5.0f);
-
 		if (ASC && DeathAbilityClass)
 		{
 			ASC->TryActivateAbilityByClass(DeathAbilityClass);
@@ -98,5 +99,11 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 
 		// 스켈레탈 메시의 물리 시뮬레이션을 활성화
 		GetMesh()->SetSimulatePhysics(true);
+
+		// 디졸브 효과 적용
+		if (DissolveComponent)
+		{
+			DissolveComponent->StartDissolve();
+		}
 	}
 }
