@@ -73,7 +73,7 @@ void ANSEnemyCharacterBase::Die()
 			AIController->UnPossess();
 		}
 
-		SetLifeSpan(5.0f);
+		SetLifeSpan(DissolveDuration);
 
 		if (ASC && DeathAbilityClass)
 		{
@@ -98,5 +98,42 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 
 		// 스켈레탈 메시의 물리 시뮬레이션을 활성화
 		GetMesh()->SetSimulatePhysics(true);
+
+		StartDissolve();
+	}
+}
+
+void ANSEnemyCharacterBase::StartDissolve()
+{
+	DynamicDissolveMaterial = GetMesh()->CreateDynamicMaterialInstance(0);
+
+	if (DynamicDissolveMaterial)
+	{
+		DissolveStartTime = GetWorld()->GetTimeSeconds();
+
+		GetWorld()->GetTimerManager().SetTimer(
+			DissolveTimerHandle,
+			this,
+			&ANSEnemyCharacterBase::UpdateDissolve,
+			0.016f, // 60fps 기준
+			true
+		);
+	}
+}
+
+void ANSEnemyCharacterBase::UpdateDissolve()
+{
+	float ElapsedTime = GetWorld()->GetTimeSeconds() - DissolveStartTime;
+	float Alpha = FMath::Clamp(ElapsedTime / DissolveDuration, 0.0f, 1.0f);
+	float CurrentMaskValue = FMath::Lerp(-1.0f, 1.0f, Alpha);
+
+	if (DynamicDissolveMaterial)
+	{
+		DynamicDissolveMaterial->SetScalarParameterValue(TEXT("DissolveMask"), CurrentMaskValue);
+	}
+
+	if (Alpha >= 1.0f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DissolveTimerHandle);
 	}
 }
