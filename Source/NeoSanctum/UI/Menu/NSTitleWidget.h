@@ -6,7 +6,7 @@
 #include "CommonActivatableWidget.h"
 #include "NSTitleWidget.generated.h"
 
-class UButton;
+class UCommonButtonBase;
 class UEditableTextBox;
 class UTextBlock;
 class UWidget;
@@ -39,34 +39,35 @@ public:
 	//참가 취소 버튼 클릭 처리
 	UFUNCTION()
 	void OnClickedCancelJoinButton();
+	//IP입력창
 	UFUNCTION()
 	void OnChangedIPText(const FText& ChangedText);
 	
 private:
 	//방생성 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> HostButton;
+	TObjectPtr<UCommonButtonBase> HostButton;
 	//방참여 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> JoinButton;
+	TObjectPtr<UCommonButtonBase> JoinButton;
 	//설정 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> OptionButton;
+	TObjectPtr<UCommonButtonBase> OptionButton;
 	//게임 종료 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> QuitButton;
+	TObjectPtr<UCommonButtonBase> QuitButton;
 	//IP 입력 패널
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> JoinPanel;
 	//IP 주소 입력창
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UEditableTextBox> IPTextBox;
-	//참가 확이 버튼
+	//참가 확인 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> ConfirmJoinButton;
+	TObjectPtr<UCommonButtonBase> ConfirmJoinButton;
 	//참가 취소 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> CancelJoinButton;
+	TObjectPtr<UCommonButtonBase> CancelJoinButton;
 
 
 	
