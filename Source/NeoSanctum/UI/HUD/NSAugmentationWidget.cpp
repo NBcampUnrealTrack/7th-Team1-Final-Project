@@ -1,8 +1,8 @@
 // Copyright 2026 One Team. All rights reserved.
 
+#include "NSAugmentationWidget.h"
 #include "Components/CanvasPanelSlot.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
-#include "NSAugmentationWidget.h"
 #include "Components/CanvasPanel.h"
 
 void UNSAugmentationWidget::ShowAugmentation()
