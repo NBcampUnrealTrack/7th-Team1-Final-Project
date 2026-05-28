@@ -6,6 +6,9 @@
 
 namespace NSGameplayTags
 {
+	// Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Common_Dash);
+	
 	// Ranger
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_MuzzleFire);
 }
