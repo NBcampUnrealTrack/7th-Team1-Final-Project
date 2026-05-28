@@ -27,6 +27,8 @@ public:
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
 	void RequestEnterDeathSpectatorMode();
+	void SpectatePreviousPlayer();
+	void SpectateNextPlayer();
 
 private:
 	// 실제로 사망 관전자 상태로 진입

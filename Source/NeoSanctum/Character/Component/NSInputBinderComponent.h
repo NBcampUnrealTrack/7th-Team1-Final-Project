@@ -40,6 +40,8 @@ protected:
 	void Input_Move(const FInputActionValue& Value);
 	void Input_Look(const FInputActionValue& Value);
 	void Input_Jump();
+	void Input_SpectatePrevious();
+	void Input_SpectateNext();
 
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	void Input_AbilityReleased(FGameplayTag InputTag);

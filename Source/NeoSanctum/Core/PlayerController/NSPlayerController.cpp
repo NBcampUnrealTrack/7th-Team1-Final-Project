@@ -338,6 +338,16 @@ void ANSPlayerController::ClearDeathSpectatorModeTimer()
 	}
 }
 
+void ANSPlayerController::SpectatePreviousPlayer()
+{
+	// TODO : 이전 플레이어 관전 로직
+}
+
+void ANSPlayerController::SpectateNextPlayer()
+{
+	// TODO : 다음 플레이어 관전 로직
+}
+
 void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()
 {
 	SpawnAndPossessDeathSpectatorPawn();

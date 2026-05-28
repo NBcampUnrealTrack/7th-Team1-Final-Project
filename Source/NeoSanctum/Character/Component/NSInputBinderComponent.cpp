@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
@@ -142,6 +143,26 @@ void UNSInputBinderComponent::BindInputActions()
 		NativeInputBindHandles
 	);
 
+	InputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Death_PrevPlayer,
+		ETriggerEvent::Started,
+		this,
+		&ThisClass::Input_SpectatePrevious,
+		true,
+		NativeInputBindHandles
+	);
+
+	InputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Death_NextPlayer,
+		ETriggerEvent::Started,
+		this,
+		&ThisClass::Input_SpectateNext,
+		true,
+		NativeInputBindHandles
+	);
+
 	InputComponent->BindAbilityActions(
 		CurrentInputConfig,
 		this,
@@ -204,6 +225,26 @@ void UNSInputBinderComponent::Input_Jump()
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
 		Character->Jump();
+	}
+}
+
+void UNSInputBinderComponent::Input_SpectatePrevious()
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	ANSPlayerController* PlayerController = OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (PlayerController)
+	{
+		PlayerController->SpectatePreviousPlayer();
+	}
+}
+
+void UNSInputBinderComponent::Input_SpectateNext()
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	ANSPlayerController* PlayerController = OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (PlayerController)
+	{
+		PlayerController->SpectateNextPlayer();
 	}
 }
 
