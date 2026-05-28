@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -16,6 +17,8 @@
 ANSPlayerController::ANSPlayerController()
 {
 	// 기본 태그 초기화
+	DeathSpectatorPawnClass = ANSDeathSpectatorPawn::StaticClass();
+
 	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_Gameplay);
 	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
 	
@@ -317,15 +320,14 @@ void ANSPlayerController::EnterDeathSpectatorMode()
 		return;
 	}
 
-	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
-	UNSInputBinderComponent* InputBinder = PlayerCharacter ? PlayerCharacter->GetInputBinderComponent() : nullptr;
-	if (!InputBinder)
+	if (HasAuthority())
 	{
+		SpawnAndPossessDeathSpectatorPawn();
 		return;
 	}
 
 	// 사망 관전자 모드 Input 태그에 따라서 InputConfig 안에 있는 IMC를 골라서 교체
-	InputBinder->SetActiveInputModeTags(GetDeathSpectatorInputModeTags());
+	Server_EnterDeathSpectatorMode();
 }
 
 void ANSPlayerController::ClearDeathSpectatorModeTimer()
@@ -334,4 +336,52 @@ void ANSPlayerController::ClearDeathSpectatorModeTimer()
 	{
 		World->GetTimerManager().ClearTimer(DeathSpectatorModeTimerHandle);
 	}
+}
+
+void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()
+{
+	SpawnAndPossessDeathSpectatorPawn();
+}
+
+void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (GetPawn() && GetPawn()->IsA<ANSDeathSpectatorPawn>())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World || !DeathSpectatorPawnClass)
+	{
+		return;
+	}
+
+	APawn* PreviousPawn = GetPawn();
+	const FVector SpectatorSpawnLocation = PreviousPawn ? PreviousPawn->GetActorLocation() : FVector::ZeroVector;
+	const FRotator SpectatorSpawnRotation = PreviousPawn ? PreviousPawn->GetActorRotation() : GetControlRotation();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = PreviousPawn;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ANSDeathSpectatorPawn* DeathSpectatorPawn = World->SpawnActor<ANSDeathSpectatorPawn>(
+		DeathSpectatorPawnClass,
+		SpectatorSpawnLocation,
+		SpectatorSpawnRotation,
+		SpawnParams
+	);
+	
+	if (!DeathSpectatorPawn)
+	{
+		return;
+	}
+
+	Possess(DeathSpectatorPawn);
+	SetViewTarget(DeathSpectatorPawn);
 }

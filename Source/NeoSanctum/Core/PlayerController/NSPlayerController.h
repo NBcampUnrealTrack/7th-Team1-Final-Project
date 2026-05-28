@@ -8,6 +8,8 @@
 #include "GameplayTagContainer.h"
 #include "NSPlayerController.generated.h"
 
+class ANSDeathSpectatorPawn;
+
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
 {
@@ -29,8 +31,14 @@ public:
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
+	// Spectator Pawn을 스폰하고 Possess하는 헬퍼
+	void SpawnAndPossessDeathSpectatorPawn();
 	// 진입 타이머 초기화 헬퍼
 	void ClearDeathSpectatorModeTimer();
+	
+	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
+	UFUNCTION(Server, Reliable)
+	void Server_EnterDeathSpectatorMode();
 	
 private:
 	const FGameplayTagContainer& GetGameplayInputModeTags() const { return GameplayInputModeTags; }
@@ -71,6 +79,10 @@ private:
 	// 사망 후 몇 초 뒤에 Death Spectator 모드로 진입할지 결정
 	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "0.0"))
 	float DeathSpectatorModeDelay = 2.0f;
+	
+	// 사망 시 Spawn / Possess될 Spectator Pawn
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
+	TSubclassOf<ANSDeathSpectatorPawn> DeathSpectatorPawnClass;
 
 	FTimerHandle DeathSpectatorModeTimerHandle;
 	
