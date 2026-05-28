@@ -42,6 +42,7 @@ private:
 	// 관전자 스위칭
 	void SwitchSpectatorTarget(int32 Direction);
 	void SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget);
+	APawn* GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const;
 	
 	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
 	UFUNCTION(Server, Reliable)

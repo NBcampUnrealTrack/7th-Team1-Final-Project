@@ -4,11 +4,13 @@
 
 #include "Camera/CameraComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 
 ANSDeathSpectatorPawn::ANSDeathSpectatorPawn()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 	
 	SceneRootComp = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRootComp"));
 	SetRootComponent(SceneRootComp);
@@ -24,6 +26,24 @@ ANSDeathSpectatorPawn::ANSDeathSpectatorPawn()
 	InputBinderComp->SetActiveInputModeTags(SpectatorInputModeTags);
 }
 
+void ANSDeathSpectatorPawn::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	if (!TargetSpectatorView)
+	{
+		return;
+	}
+
+	// 컴포넌트의 POV 구조체를 받아와서 지금 Pawn 카메라에 정보를 덮어씀
+	const FNSReplicatedSpectatorPOV& TargetPOV = TargetSpectatorView->GetReplicatedPOV();
+	SetActorLocationAndRotation(TargetPOV.Location, TargetPOV.Rotation);
+	if (CameraComp)
+	{
+		CameraComp->SetFieldOfView(TargetPOV.FOV);
+	}
+}
+
 void ANSDeathSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -32,4 +52,9 @@ void ANSDeathSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	{
 		InputBinderComp->InitializePlayerInput(PlayerInputComponent);
 	}
+}
+
+void ANSDeathSpectatorPawn::SetSpectatorView(UNSSpectatorViewComponent* NewSpectatorView)
+{
+	TargetSpectatorView = NewSpectatorView;
 }

@@ -6,6 +6,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
+#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
@@ -177,6 +178,14 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 	ClearDeathSpectatorModeTimer();
 	SpectatingPlayerState = nullptr;
+
+	// 사망 직후 첫 관전 대상을 결정하고 해당 화면 View를 볼 수 있게 수동으로 NextPlayer를 호출해줘야함
+	if (NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>())
+	{
+		SetViewTarget(NewPawn);
+		SpectateNextPlayer();
+		return;
+	}
 
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
 	if (!UIManager) return;
@@ -393,7 +402,33 @@ void ANSPlayerController::SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget)
 	}
 
 	SpectatingPlayerState = NewSpectatorTarget;
+	
+	// 관전 대상을 찾은 후라서 해당 TargetCharacter의 SpectatorViewComponent를 보고 카메라 정보를 받아 설정하는 부분
+	ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(GetPawn());
+	ANSPlayerCharacterBase* TargetCharacter = Cast<ANSPlayerCharacterBase>(GetPawnFromPlayerState(NewSpectatorTarget));
+	UNSSpectatorViewComponent* TargetSpectatorView =
+		TargetCharacter ? TargetCharacter->GetSpectatorViewComponent() : nullptr;
+	if (DeathSpectatorPawn)
+	{
+		DeathSpectatorPawn->SetSpectatorView(TargetSpectatorView);
+	}
 	UE_LOG(LogTemp, Log, TEXT("관전 대상 : %s"), *NewSpectatorTarget->GetPlayerName());
+}
+
+APawn* ANSPlayerController::GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const
+{
+	if (!TargetPlayerState)
+	{
+		return nullptr;
+	}
+
+	if (APawn* TargetPawn = TargetPlayerState->GetPawn())
+	{
+		return TargetPawn;
+	}
+
+	const AController* OwningController = Cast<AController>(TargetPlayerState->GetOwner());
+	return OwningController ? OwningController->GetPawn() : nullptr;
 }
 
 void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()
