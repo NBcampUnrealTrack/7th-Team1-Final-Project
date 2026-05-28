@@ -9,6 +9,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_Dash::UGA_Dash()
@@ -128,6 +129,7 @@ void UGA_Dash::ActivateAbility(
 	
 	// 실제로 실행되는 부분
 	DashTask->ReadyForActivation();
+	ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Common_Dash);
 }
 
 void UGA_Dash::EndAbility(
@@ -148,6 +150,7 @@ void UGA_Dash::EndAbility(
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
+		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Common_Dash);
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
