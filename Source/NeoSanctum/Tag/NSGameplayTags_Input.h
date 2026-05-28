@@ -17,6 +17,10 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Jump);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Sprint);
 	
+	//Native Death Inpu
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Death_PrevPlayer);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Death_NextPlayer);
+	
 	// Ability Input
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_BaseAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill1);
