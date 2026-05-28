@@ -223,3 +223,44 @@ void UNSUIManagerSubsystem::HideTitle()
 		TitleWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
+
+void UNSUIManagerSubsystem::CreateRunEnd(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer)
+	{
+		return;
+	}
+	
+	if (RunEndWidget)
+	{
+		return; 
+	}
+	
+	FString RunEndPath = TEXT("/Game/NeoSanctum/UI/WBP_TestRunEnd.WBP_TestRunEnd_C");
+	UClass* LoadedRunEndClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *RunEndPath);
+
+	if (LoadedRunEndClass)
+	{
+		RunEndWidget = CreateWidget<UUserWidget>(OwningPlayer, LoadedRunEndClass);
+		if (RunEndWidget)
+		{
+			RunEndWidget->AddToViewport();
+		}
+	}
+}
+
+void UNSUIManagerSubsystem::ShowRunEnd()
+{
+	if (RunEndWidget)
+	{
+		RunEndWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSUIManagerSubsystem::HideRunEnd()
+{
+	if (RunEndWidget)
+	{
+		RunEndWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
