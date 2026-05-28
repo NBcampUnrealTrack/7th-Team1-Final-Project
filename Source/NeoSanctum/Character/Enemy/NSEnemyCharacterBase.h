@@ -58,15 +58,6 @@ protected:
 	void OnRep_bIsDead();
 
 private:
-	void StartDissolve();
-	
-	void UpdateDissolve();
-
-	FTimerHandle DissolveTimerHandle;
-
-	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> DynamicDissolveMaterial;
-
-	float DissolveStartTime = 0.0f;
-	const float DissolveDuration = 5.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };
