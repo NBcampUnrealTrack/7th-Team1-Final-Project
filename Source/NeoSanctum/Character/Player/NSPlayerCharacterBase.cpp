@@ -14,6 +14,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -53,6 +54,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
+	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -70,6 +72,12 @@ void ANSPlayerCharacterBase::BeginPlay()
 	Super::BeginPlay();
 	
 	InitializeAbilitySystem();
+	
+	if (SpectatorViewComp)
+	{
+		// 관전자에게 보낼 카메라 정보의 타겟이 되는 카메라 설정
+		SpectatorViewComp->SetSourceCamera(CameraComp);
+	}
 	
 	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
 	DroneAIClass,

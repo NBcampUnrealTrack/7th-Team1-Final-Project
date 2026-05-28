@@ -21,6 +21,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
+class UNSSpectatorViewComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -45,6 +46,7 @@ public:
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
+	UNSSpectatorViewComponent* GetSpectatorViewComponent() const { return SpectatorViewComp; }
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	
 public:
@@ -100,6 +102,9 @@ protected:
 	// Input 바인딩 하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UNSInputBinderComponent> InputBinderComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spectator")
+	TObjectPtr<UNSSpectatorViewComponent> SpectatorViewComp;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
