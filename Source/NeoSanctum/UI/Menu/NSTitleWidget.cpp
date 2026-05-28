@@ -2,8 +2,9 @@
 
 
 #include "NSTitleWidget.h"
-#include "Components/Button.h"
+#include "CommonButtonBase.h"
 #include "Components/EditableTextBox.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
 
@@ -30,6 +31,10 @@ void UNSTitleWidget::OnClickedJoinButton()
 	if (JoinPanel)
 	{
 		JoinPanel->SetVisibility(ESlateVisibility::Visible);
+	}
+	if (IPTextBox)
+	{
+		IPTextBox->SetFocus();
 	}
 	UE_LOG(LogTemp, Warning, TEXT("참가 버튼 클릭"));
 }
@@ -87,6 +92,10 @@ void UNSTitleWidget::OnClickedCancelJoinButton()
 
 void UNSTitleWidget::OnChangedIPText(const FText& ChangedText)
 {
+	if (!IPTextBox)
+	{
+		return;
+	}
 	FString InputString = ChangedText.ToString();
 	
 	FString FilteredString;
@@ -99,7 +108,7 @@ void UNSTitleWidget::OnChangedIPText(const FText& ChangedText)
 		}
 	}
 	//허용되지 않은 문자가 제거된 문자열로 갱신
-	if (IPTextBox)
+	if (InputString != FilteredString)
 	{
 		IPTextBox->SetText(FText::FromString(FilteredString));
 	}
@@ -114,6 +123,7 @@ void UNSTitleWidget::NativeConstruct()
 	{
 		//타이틀 화면에서 마우스커서가 보인다
 		PlayerController->bShowMouseCursor = true;
+		
 		FInputModeUIOnly InputMode;
 		InputMode.SetWidgetToFocus(TakeWidget());
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -123,7 +133,8 @@ void UNSTitleWidget::NativeConstruct()
 	//방 생성 버튼 클릭시 이벤트
 	if (HostButton)
 	{
-		HostButton->OnClicked.AddDynamic(
+
+		HostButton->OnClicked().AddUObject(
 			this,
 			&UNSTitleWidget::OnClickedHostButton);
 	}
@@ -132,20 +143,21 @@ void UNSTitleWidget::NativeConstruct()
 	//방 참가 버튼 클릭 이벤트
 	if (JoinButton)
 	{
-		JoinButton->OnClicked.AddDynamic(
+		JoinButton->OnClicked().AddUObject(
 			this,
 			&UNSTitleWidget::OnClickedJoinButton);
 	}
 	//설정 버튼 클릭 이벤트
 	if (OptionButton)
 	{
-		OptionButton->OnClicked.AddDynamic(
-			this, &UNSTitleWidget::OnClickedOptionButton);
+		OptionButton->OnClicked().AddUObject(
+			this,
+			&UNSTitleWidget::OnClickedOptionButton);
 	}
 	//종료 버튼 클릭 이벤트
 	if (QuitButton)
 	{
-		QuitButton->OnClicked.AddDynamic(
+		QuitButton->OnClicked().AddUObject(
 			this,
 			&UNSTitleWidget::OnClickedQuitButton);
 	}
@@ -164,14 +176,14 @@ void UNSTitleWidget::NativeConstruct()
 	//참가 확인 버튼 클릭 이벤트
 	if (ConfirmJoinButton)
 	{
-		ConfirmJoinButton->OnClicked.AddDynamic(
+		ConfirmJoinButton->OnClicked().AddUObject(
 			this,
 			&UNSTitleWidget::OnClickedConfirmJoinButton);
 	}
 	//참가 취소 버튼 클릭 이벤트
 	if (CancelJoinButton)
 	{
-		CancelJoinButton->OnClicked.AddDynamic(
+		CancelJoinButton->OnClicked().AddUObject(
 			this,
 			&UNSTitleWidget::OnClickedCancelJoinButton);
 	}
