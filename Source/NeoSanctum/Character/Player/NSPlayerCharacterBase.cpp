@@ -11,6 +11,7 @@
 #include "GameplayEffectTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
@@ -18,6 +19,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
@@ -449,6 +451,13 @@ void ANSPlayerCharacterBase::Die()
 		}
 
 		bDeathPresentationStarted = true;
+		
+		// GameMode에 플레이어 사망 알림
+		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+		{
+			INSRunGameModeInterface::Execute_NotifyPlayerDied(GameMode, GetController());
+		}
 	}
 	
 	ApplyDeathState();
