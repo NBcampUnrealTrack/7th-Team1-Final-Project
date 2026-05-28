@@ -28,6 +28,7 @@ public:
 public:
 	void InitializePlayerInput(UInputComponent* PlayerInputComponent);
 	void SetInputConfig(UNSInputConfig* NewConfig);
+	void SetActiveInputModeTags(const FGameplayTagContainer& NewInputModeTags);
 
 protected:
 	void ApplyInputConfig();
@@ -39,6 +40,8 @@ protected:
 	void Input_Move(const FInputActionValue& Value);
 	void Input_Look(const FInputActionValue& Value);
 	void Input_Jump();
+	void Input_SpectatePrevious();
+	void Input_SpectateNext();
 
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	void Input_AbilityReleased(FGameplayTag InputTag);
@@ -50,11 +53,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	TObjectPtr<UNSInputConfig> DefaultInputConfig;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	FGameplayTagContainer DefaultInputModeTags;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UNSInputConfig> CurrentInputConfig;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSInputComponent> InputComponent;
+
+	UPROPERTY(Transient)
+	FGameplayTagContainer ActiveInputModeTags;
 
 	UPROPERTY(Transient)
 	bool bHasAppliedInputConfig = false;

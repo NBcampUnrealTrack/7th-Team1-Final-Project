@@ -21,6 +21,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
+class UNSSpectatorViewComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -45,6 +46,7 @@ public:
 public:
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
+	UNSSpectatorViewComponent* GetSpectatorViewComponent() const { return SpectatorViewComp; }
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	
 public:
@@ -70,12 +72,19 @@ protected:
 	UFUNCTION()
 	void OnRep_CurrentWeapon();
 	
+	// 사망 연출을 클라이언트에서 한 번 복제해야함.
+	UFUNCTION()
+	void OnRep_DeathPresentationStarted();
+	
 protected:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 	void ApplyMoveSpeedToCharacter(float MoveSpeed);
 	
+protected:
 	void HandleOutOfHealth();
 	void Die();
+	void ApplyDeathState();
+	void StartDeathRagdoll();
 	
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
@@ -93,6 +102,9 @@ protected:
 	// Input 바인딩 하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UNSInputBinderComponent> InputBinderComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spectator")
+	TObjectPtr<UNSSpectatorViewComponent> SpectatorViewComp;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
@@ -145,6 +157,7 @@ protected:
 	TSubclassOf<ANSDroneAI> DroneAIClass;
 	
 private:
-	// 캐릭터 사망여부
-	bool bDead = false;
+	// 사망 상태에 따라 연출을 실행할 때 클라이언트에 복제하는 시점을 조정하기 위한 bool 변수
+	UPROPERTY(ReplicatedUsing = OnRep_DeathPresentationStarted)
+	bool bDeathPresentationStarted = false;
 };

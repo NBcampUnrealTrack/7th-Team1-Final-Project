@@ -5,6 +5,8 @@
 
 #include "Camera/CameraComponent.h"
 #include "CharacterTrajectoryComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameplayEffect.h"
 #include "GameplayEffectTypes.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -12,11 +14,14 @@
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
 ANSPlayerCharacterBase::ANSPlayerCharacterBase()
@@ -49,6 +54,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
+	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -65,9 +71,12 @@ void ANSPlayerCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (PlayerAttributeSet)
+	InitializeAbilitySystem();
+	
+	if (SpectatorViewComp)
 	{
-		PlayerAttributeSet->OnOutOfHealth.AddUObject(this, &ANSPlayerCharacterBase::HandleOutOfHealth);
+		// 관전자에게 보낼 카메라 정보의 타겟이 되는 카메라 설정
+		SpectatorViewComp->SetSourceCamera(CameraComp);
 	}
 	
 	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
@@ -102,7 +111,6 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	Super::PossessedBy(EventController);
 	
 	InitializeAbilitySystem();
-	BindAttributeDelegates();
 	
 	if (HasAuthority() && !DebugCharacterData.IsNull())
 	{
@@ -118,7 +126,6 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	
 	InitializeAbilitySystem();
-	BindAttributeDelegates();
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -127,6 +134,7 @@ void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 	DOREPLIFETIME(ANSPlayerCharacterBase, CharacterData);
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
+	DOREPLIFETIME(ANSPlayerCharacterBase, bDeathPresentationStarted);
 }
 
 UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
@@ -180,6 +188,13 @@ void ANSPlayerCharacterBase::InitializeAbilitySystem()
 	if (NSAbilitySystemComponent && PlayerAttributeSet)
 	{
 		NSAbilitySystemComponent->InitAbilityActorInfo(PS, this);
+		
+		BindAttributeDelegates();
+
+		if (bDeathPresentationStarted)
+		{
+			ApplyDeathState();
+		}
 	}
 }
 void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
@@ -265,6 +280,10 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	{
 		return;
 	}
+	
+	// 사망처리 바인딩
+	PlayerAttributeSet->OnOutOfHealth.RemoveAll(this);
+	PlayerAttributeSet->OnOutOfHealth.AddUObject(this, &ANSPlayerCharacterBase::HandleOutOfHealth);
 	
 	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
@@ -413,13 +432,88 @@ void ANSPlayerCharacterBase::HandleOutOfHealth()
 
 void ANSPlayerCharacterBase::Die()
 {
-	if (bDead)
+	if (bDeathPresentationStarted)
 	{
 		return;
 	}
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s died"), *GetName());
-	bDead = true;
+
+	// 서버에서 사망처리
+	if (HasAuthority())
+	{
+		if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+		{
+			// PlayerState에서 사망 상태를 관리
+			NSPlayerState->SetIsDead(true);
+		}
+
+		bDeathPresentationStarted = true;
+	}
 	
-	// TODO : 사망 애니메이션이나 충돌처리 등
+	ApplyDeathState();
+	StartDeathRagdoll();
+
+	if (ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(GetController()))
+	{
+		NSPlayerController->RequestEnterDeathSpectatorMode();
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyDeathState()
+{
+	if (!NSAbilitySystemComponent)
+	{
+		return;
+	}
+
+	// 실행중인 Ability 전부 취소
+	NSAbilitySystemComponent->CancelAbilities();
+	// 임시 : 강제로 Dead 상태 태그 부여 -> 이후 GA_Death로 로직을 빼고 GE에서 변경하도록 할 예정 
+	NSAbilitySystemComponent->AddLooseGameplayTag(NSGameplayTags::State_Dead);
+}
+
+void ANSPlayerCharacterBase::StartDeathRagdoll()
+{
+	if (UCharacterMovementComponent* MovementComponent = GetCharacterMovement())
+	{
+		// MovementComponent를 즉시 정지 : 이미 입력된 움직임을 즉시 정지해야 캐릭터가 튕겨져나가지 않음
+		MovementComponent->StopMovementImmediately();
+		// 비활성화
+		MovementComponent->DisableMovement();
+	}
+
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		// 캡슐 충돌 비활성화
+		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CapsuleComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (USkeletalMeshComponent* MeshComponent = GetMesh())
+	{
+		// Collision 프로필을 Ragdoll 프로필로 변경
+		MeshComponent->SetCollisionProfileName(TEXT("Ragdoll"));
+		MeshComponent->SetAllBodiesSimulatePhysics(true);
+		MeshComponent->SetSimulatePhysics(true);
+		MeshComponent->WakeAllRigidBodies();
+		// 애니메이션 포즈와 래그돌 상태에 따른 물리 적용이 자연스럽게 섞이도록 하는 설정
+		MeshComponent->bBlendPhysics = true;
+	}
+}
+
+void ANSPlayerCharacterBase::OnRep_DeathPresentationStarted()
+{
+	if (!bDeathPresentationStarted)
+	{
+		return;
+	}
+
+	ApplyDeathState();
+	StartDeathRagdoll();
+
+	if (ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(GetController()))
+	{
+		NSPlayerController->RequestEnterDeathSpectatorMode();
+	}
 }

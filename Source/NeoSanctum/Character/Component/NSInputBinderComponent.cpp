@@ -7,6 +7,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
@@ -14,6 +15,10 @@
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+
+	DefaultInputModeTags.AddTag(NSGameplayTags::InputMode_Gameplay);
+	DefaultInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
+	ActiveInputModeTags = DefaultInputModeTags;
 }
 
 void UNSInputBinderComponent::BeginPlay()
@@ -52,6 +57,27 @@ void UNSInputBinderComponent::SetInputConfig(UNSInputConfig* NewConfig)
 	ApplyInputConfig();
 }
 
+void UNSInputBinderComponent::SetActiveInputModeTags(const FGameplayTagContainer& NewInputModeTags)
+{
+	if (ActiveInputModeTags == NewInputModeTags)
+	{
+		return;
+	}
+
+	const bool bShouldReapplyInputConfig = bHasAppliedInputConfig;
+	if (bShouldReapplyInputConfig)
+	{
+		RemoveInputConfig();
+	}
+
+	ActiveInputModeTags = NewInputModeTags;
+
+	if (bShouldReapplyInputConfig)
+	{
+		ApplyInputConfig();
+	}
+}
+
 void UNSInputBinderComponent::ApplyInputConfig()
 {
 	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetInputSubsystem();
@@ -60,7 +86,7 @@ void UNSInputBinderComponent::ApplyInputConfig()
 		return;
 	}
 
-	InputComponent->AddInputMappings(CurrentInputConfig, InputSubsystem);
+	InputComponent->AddInputMappings(CurrentInputConfig, InputSubsystem, ActiveInputModeTags);
 	BindInputActions();
 	bHasAppliedInputConfig = true;
 }
@@ -74,7 +100,7 @@ void UNSInputBinderComponent::RemoveInputConfig()
 		return;
 	}
 
-	InputComponent->RemoveInputMappings(CurrentInputConfig, InputSubsystem);
+	InputComponent->RemoveInputMappings(CurrentInputConfig, InputSubsystem, ActiveInputModeTags);
 	bHasAppliedInputConfig = false;
 }
 
@@ -113,6 +139,26 @@ void UNSInputBinderComponent::BindInputActions()
 		ETriggerEvent::Triggered,
 		this,
 		&ThisClass::Input_Jump,
+		true,
+		NativeInputBindHandles
+	);
+
+	InputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Death_PrevPlayer,
+		ETriggerEvent::Started,
+		this,
+		&ThisClass::Input_SpectatePrevious,
+		true,
+		NativeInputBindHandles
+	);
+
+	InputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Death_NextPlayer,
+		ETriggerEvent::Started,
+		this,
+		&ThisClass::Input_SpectateNext,
 		true,
 		NativeInputBindHandles
 	);
@@ -179,6 +225,26 @@ void UNSInputBinderComponent::Input_Jump()
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
 		Character->Jump();
+	}
+}
+
+void UNSInputBinderComponent::Input_SpectatePrevious()
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	ANSPlayerController* PlayerController = OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (PlayerController)
+	{
+		PlayerController->SpectatePreviousPlayer();
+	}
+}
+
+void UNSInputBinderComponent::Input_SpectateNext()
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	ANSPlayerController* PlayerController = OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (PlayerController)
+	{
+		PlayerController->SpectateNextPlayer();
 	}
 }
 
