@@ -16,6 +16,8 @@ UGA_RangerAutoFire::UGA_RangerAutoFire()
 	FGameplayTagContainer AssetTags = GetAssetTags();
 	AssetTags.AddTag(NSGameplayTags::Ability_Ranger_AutoFire);
 	SetAssetTags(AssetTags);
+	
+	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
 }
 
 void UGA_RangerAutoFire::ActivateAbility(
