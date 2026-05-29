@@ -25,11 +25,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	FText PartName;
 
-	// 레그 파츠는 false — 인런 밸런스상 리롤 불가
+	// 레그 파츠는 false —> 인런 밸런스상 리롤 불가
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	bool bCanReroll = true;
 
-	// 등급별 수치 범위 (min~max). 장착·리롤·등급업 시 이 범위에서 랜덤 결정.
+	// 등급별 수치 범위 (min~max), 장착/리롤/등급업 시 이 범위에서 랜덤 결정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	TMap<ENSPartRarity, FNSPartValueRange> ValueRange;
 
@@ -39,11 +39,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Visual", meta = (AssetBundles = "OutRunUI,InRunUI"))
 	TSoftObjectPtr<UTexture2D> Icon;
 
-	// 번들 태그 없음 — 드랍 발생 시 몬스터 사망 애니메이션 동안 온디맨드 로드
+	// 번들 태그 없음 —> 드랍 발생 시 몬스터 사망 애니메이션 동안 온디맨드 로드
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Visual")
 	TSoftObjectPtr<UStaticMesh> DropMesh;
 
-	// MVP에서는 비움. 레전더리 등급 기믹 GA 확장 대비.
+	// 레전더리 등급 기믹 GA 확장 대비
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|GAS", meta = (AssetBundles = "InRunData"))
 	TArray<TSoftClassPtr<UGameplayAbility>> GrantedAbilities;
 };

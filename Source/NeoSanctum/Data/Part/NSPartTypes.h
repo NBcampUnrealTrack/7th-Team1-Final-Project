@@ -36,7 +36,10 @@ struct FNSPartValueRange
 	float Max = 0.f;
 };
 
-/** 파츠 런타임 상태 (레플리케이션·저장 대상). GE 핸들은 UNSPartEquipComponent가 관리. */
+/** 
+ * 파츠 런타임 상태 (레플리케이션/저장 대상) 
+ * GE 핸들은 UNSPartEquipComponent가 관리 
+ */
 USTRUCT(BlueprintType)
 struct FNSPartData
 {
