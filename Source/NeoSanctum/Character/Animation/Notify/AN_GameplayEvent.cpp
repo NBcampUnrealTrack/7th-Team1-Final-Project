@@ -12,9 +12,14 @@ void UAN_GameplayEvent::Notify(
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
-	if (MeshComp && MeshComp->GetOwner() && EventTag.IsValid())
+	AActor* Owner = MeshComp->GetOwner();
+	
+	FGameplayEventData EventData;
+	EventData.Instigator = Owner;
+	EventData.Target = Owner;
+	
+	for (const FGameplayTag& Tag : EventTags)
 	{
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
-			MeshComp->GetOwner(), EventTag, FGameplayEventData());
+		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Tag, EventData);
 	}
 }
