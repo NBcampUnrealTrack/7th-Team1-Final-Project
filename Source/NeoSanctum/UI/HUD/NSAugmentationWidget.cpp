@@ -113,6 +113,8 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 				//3번 선택지 오른쪽 아래
 				CardPosition = FVector2D(350.f,200.f);
 				break;
+			default:
+				break;
 			}
 			CardSlot->SetPosition(CardPosition);
 		}
