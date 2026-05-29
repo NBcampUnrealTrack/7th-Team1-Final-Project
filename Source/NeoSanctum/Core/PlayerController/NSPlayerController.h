@@ -104,4 +104,12 @@ private:
 protected:
 	virtual void BeginPlay() override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
+	
+	virtual void SetupInputComponent() override;
+
+	void SelectAugmentCard1();
+	void SelectAugmentCard2();
+	void SelectAugmentCard3();
+	void OpenAugmentationSelection();
+
 };

@@ -15,6 +15,8 @@
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "InputCoreTypes.h"
+#include "Engine/GameInstance.h"
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -496,4 +498,73 @@ void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
 
 	Possess(DeathSpectatorPawn);
 	SetViewTarget(DeathSpectatorPawn);
+}
+void ANSPlayerController::SelectAugmentCard1()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->SelectAugmentCardByIndex(0);
+		}
+	}
+}
+void ANSPlayerController::SelectAugmentCard2()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->SelectAugmentCardByIndex(1);
+		}
+	}
+}
+void ANSPlayerController::SelectAugmentCard3()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->SelectAugmentCardByIndex(2);
+		}
+	}
+}
+void ANSPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard1);
+	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard2);
+	InputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard3);
+	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::OpenAugmentationSelection);
+}
+void ANSPlayerController::OpenAugmentationSelection()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->ShowAugmentation();
+		}
+	}
 }
