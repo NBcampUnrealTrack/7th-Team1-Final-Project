@@ -15,7 +15,7 @@ class UNSDataSubsystem;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 
-UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
+UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSAugmentSelectionComponent : public UActorComponent
 {
 	GENERATED_BODY()
@@ -29,7 +29,11 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "NS|Augment")
 	FOnAugmentOfferClosed OnOfferClosed;
 
-	// 트리거(레벨업/엘리트킬/보물상자)에서 호출
+	// 서버 권한 트리거(레벨업/엘리트킬/보스처치)에서 직접 호출
+	UFUNCTION(BlueprintCallable, Category = "NS|Augment")
+	void RequestOffer(FGameplayTag PoolTag);
+
+	// 클라이언트 트리거(보물상자 등)에서 서버로 요청할 때 호출
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
 	void Server_RequestOffer(FGameplayTag PoolTag);
 
@@ -37,6 +41,7 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
 	void Server_RerollCard(int32 Index);
 
+	// 증강 골랐을때
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
 	void Server_Choose(int32 Index);
 
