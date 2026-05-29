@@ -39,8 +39,65 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 
-	// 한 번 활성화될 때 한 발만 발사
-	FireOnce();
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	if (bLogPredictionKey)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[레인저 연사][활성화] 로컬조작:%d 서버권한:%d 예측키:%s"),
+			ActorInfo->IsLocallyControlled(),
+			ActorInfo->IsNetAuthority(),
+			*GetCurrentPredictionKeyStatus()
+		);
+	}
+
+	// 서버가 클라이언트 TargetData를 받을 수 있도록 델리게이트 등록
+	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
+		Handle,
+		ActivationInfo.GetActivationPredictionKey()
+	).AddUObject(this, &ThisClass::OnTargetDataReadyCallback);
+
+	// 서버의 원격 클라이언트 캐릭터인지 판단
+	const bool bShouldWaitForClientTargetData = ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+
+	if (bShouldWaitForClientTargetData)
+	{
+		if (bLogPredictionKey)
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[레인저 연사][타겟데이터 대기] 서버가 클라이언트 TargetData를 기다리는 중 / 예측키:%s"),
+				*GetCurrentPredictionKeyStatus()
+			);
+		}
+
+		// TargetData가 델리게이트 등록보다 먼저 도착한 경우 처리
+		// 바로 OnTargetDataReadyCallback 실행
+		ASC->CallReplicatedTargetDataDelegatesIfSet(Handle, ActivationInfo.GetActivationPredictionKey());
+	}
+	else
+	{
+		if (bLogPredictionKey)
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[레인저 연사][타겟데이터 생성] 로컬에서 TargetData 생성 중 / 예측키:%s"),
+				*GetCurrentPredictionKeyStatus()
+			);
+		}
+		// 로컬 조작 클라이언트나 호스트는 직접 TargetData를 만듬
+		FireOnce();
+	}
 
 	UWorld* World = GetWorld();
 
@@ -72,6 +129,23 @@ void UGA_RangerAutoFire::EndAbility(
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FireDelayTimerHandle);
+	}
+
+	// 이전 발사의 델리게이트 제거
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
+		{
+			ASC->AbilityTargetDataSetDelegate(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey()
+			).Remove(OnTargetDataReadyCallbackDelegateHandle);
+
+			OnTargetDataReadyCallbackDelegateHandle.Reset();
+		}
+
+		// ASC 내부의 저장된 복제 TargetData 소비/정리
+		ASC->ConsumeClientReplicatedTargetData(Handle, ActivationInfo.GetActivationPredictionKey());
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
@@ -121,7 +195,7 @@ void UGA_RangerAutoFire::FireOnce()
 	}
 	
 	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResult(HitResult);
-	OnRangerTargetDataReady(TargetDataHandle);
+	OnTargetDataReadyCallback(TargetDataHandle, FGameplayTag());
 }
 
 FGameplayAbilityTargetDataHandle UGA_RangerAutoFire::MakeTargetDataFromHitResult(const FHitResult& HitResult) const
@@ -135,6 +209,71 @@ FGameplayAbilityTargetDataHandle UGA_RangerAutoFire::MakeTargetDataFromHitResult
 	TargetDataHandle.Add(TargetData);
 	
 	return TargetDataHandle;
+}
+
+void UGA_RangerAutoFire::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FGameplayTag ApplicationTag)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (!ASC)
+	{
+		return;
+	}
+
+	FScopedPredictionWindow ScopedPredictionWindow(ASC);
+
+	FGameplayAbilityTargetDataHandle LocalTargetDataHandle = TargetDataHandle;
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+
+	if (bLogPredictionKey)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[레인저 연사][타겟데이터 준비] 로컬조작:%d 서버권한:%d 데이터개수:%d 예측키:%s"),
+			ActorInfo ? ActorInfo->IsLocallyControlled() : false,
+			ActorInfo ? ActorInfo->IsNetAuthority() : false,
+			TargetDataHandle.Num(),
+			*GetCurrentPredictionKeyStatus()
+		);
+	}
+
+	const bool bShouldNotifyServer =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
+
+	// 원격 클라이언트만 아래 분기 실행
+	if (bShouldNotifyServer)
+	{
+		if (bLogPredictionKey)
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[레인저 연사][타겟데이터 전송] 클라이언트가 서버로 TargetData 전송 / ScopedPredictionKey유효:%d 예측키:%s"),
+				ASC->ScopedPredictionKey.IsValidKey(),
+				*GetCurrentPredictionKeyStatus()
+			);
+		}
+
+		// 클라이언트가 TargetData를 서버로 보내는 RPC
+		// 같은 Ability Handle + PredictionKey를 가진 서버 Ability에게 전송
+		ASC->CallServerSetReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey(),
+			LocalTargetDataHandle,
+			ApplicationTag,
+			ASC->ScopedPredictionKey
+		);
+	}
+
+	OnRangerTargetDataReady(LocalTargetDataHandle);
+
+	ASC->ConsumeClientReplicatedTargetData(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActivationInfo().GetActivationPredictionKey());
 }
 
 void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)

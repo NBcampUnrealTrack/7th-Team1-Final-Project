@@ -64,12 +64,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineThickness = 1.5f;
 	
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bLogPredictionKey = true;
+	
 private:
 	void FinishFireCycle();
 
 	void FireOnce();
 	
 	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	void OnTargetDataReadyCallback(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ApplicationTag);
 	void OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
@@ -87,5 +93,6 @@ private:
 		bool& bOutHit) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
 };
