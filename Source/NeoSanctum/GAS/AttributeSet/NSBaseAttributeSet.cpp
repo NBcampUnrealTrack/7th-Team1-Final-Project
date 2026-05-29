@@ -16,8 +16,9 @@ void UNSBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, BaseDamage, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, Defense, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashCost, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MaxDashCost, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashCount, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MaxDashCount, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashRegenRate, COND_None, REPNOTIFY_Always);
 }
 
 void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -44,11 +45,15 @@ void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
-	else if (Attribute == GetDashCostAttribute())
+	else if (Attribute == GetDashCountAttribute())
 	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxDashCost());
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxDashCount());
 	}
-	else if (Attribute == GetMaxDashCostAttribute())
+	else if (Attribute == GetMaxDashCountAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetDashRegenRateAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -105,14 +110,18 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 	{
 		SetMoveSpeed(FMath::Max(GetMoveSpeed(), 0.0f));
 	}
-	else if (Data.EvaluatedData.Attribute == GetDashCostAttribute())
+	else if (Data.EvaluatedData.Attribute == GetDashCountAttribute())
 	{
-		SetDashCost(FMath::Clamp(GetDashCost(), 0.0f, GetMaxDashCost()));
+		SetDashCount(FMath::Clamp(GetDashCount(), 0.0f, GetMaxDashCount()));
 	}
-	else if (Data.EvaluatedData.Attribute == GetMaxDashCostAttribute())
+	else if (Data.EvaluatedData.Attribute == GetMaxDashCountAttribute())
 	{
-		SetMaxDashCost(FMath::Max(GetMaxDashCost(), 0.0f));
-		SetDashCost(FMath::Clamp(GetDashCost(), 0.0f, GetMaxDashCost()));
+		SetMaxDashCount(FMath::Max(GetMaxDashCount(), 0.0f));
+		SetDashCount(FMath::Clamp(GetDashCount(), 0.0f, GetMaxDashCount()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetDashRegenRateAttribute())
+	{
+		SetDashRegenRate(FMath::Max(GetDashRegenRate(), 0.0f));
 	}
 }
 
@@ -146,12 +155,17 @@ void UNSBaseAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveS
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MoveSpeed, OldMoveSpeed);
 }
 
-void UNSBaseAttributeSet::OnRep_DashCost(const FGameplayAttributeData& OldDashCost)
+void UNSBaseAttributeSet::OnRep_DashCount(const FGameplayAttributeData& OldDashCount)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashCost, OldDashCost);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashCount, OldDashCount);
 }
 
-void UNSBaseAttributeSet::OnRep_MaxDashCost(const FGameplayAttributeData& OldMaxDashCost)
+void UNSBaseAttributeSet::OnRep_MaxDashCount(const FGameplayAttributeData& OldMaxDashCount)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MaxDashCost, OldMaxDashCost);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MaxDashCount, OldMaxDashCount);
+}
+
+void UNSBaseAttributeSet::OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashRegenRate, OldDashRegenRate);
 }
