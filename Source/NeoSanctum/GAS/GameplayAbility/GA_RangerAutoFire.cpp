@@ -101,47 +101,83 @@ void UGA_RangerAutoFire::FinishFireCycle()
 
 void UGA_RangerAutoFire::FireOnce()
 {
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	FHitResult HitResult;
+	FVector TraceStart;
+	FVector TraceEnd;
+	bool bHit = false;
 	
-	if (!AvatarActor)
+	if (!TryBuildHitscanTrace(HitResult, TraceStart, TraceEnd, bHit))
 	{
 		return;
 	}
 	
-	// 입력한 플레이어 화면에서 즉시 피드백 확인
+	// Miss도 TargetData 흐름에 태우기 위해 Trace 정보를 채워둠
+	if (!bHit)
+	{
+		HitResult.TraceStart = TraceStart;
+		HitResult.TraceEnd = TraceEnd;
+		HitResult.Location = TraceEnd;
+		HitResult.ImpactPoint = TraceEnd;
+	}
+	
+	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResult(HitResult);
+	OnRangerTargetDataReady(TargetDataHandle);
+}
+
+FGameplayAbilityTargetDataHandle UGA_RangerAutoFire::MakeTargetDataFromHitResult(const FHitResult& HitResult) const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+	
+	FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+		new FGameplayAbilityTargetData_SingleTargetHit();
+	
+	TargetData->HitResult = HitResult;
+	TargetDataHandle.Add(TargetData);
+	
+	return TargetDataHandle;
+}
+
+void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	// 조작 중인 클라이언트는 즉시 발사 피드백
 	if (ShouldPlayLocalFeedback())
 	{
 		PlayFireFeedback();
 	}
 	
-	// 데미지 판정은 서버에서만 처리
-	if (!AvatarActor->HasAuthority())
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	
+	if (!AvatarActor || !AvatarActor->HasAuthority())
 	{
 		return;
 	}
 	
-	// 서버에서만 데미지 로직 처리
-	PerformHitscan();
+	// 실제 데미지는 서버에서만 처리
+	ProcessTargetDataForDamage(TargetDataHandle);
 }
 
-void UGA_RangerAutoFire::PerformHitscan()
+void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
 {
-	FHitResult HitResult;
-	FVector TraceStart;
-	FVector TraceEnd;
-	bool bHit = false;
-
-	if (!TryBuildHitscanTrace(HitResult, TraceStart, TraceEnd, bHit))
+	if (TargetDataHandle.Num() <= 0)
 	{
 		return;
 	}
 
-	if (!bHit)
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+
+	if (!TargetData)
 	{
 		return;
 	}
-	
-	ApplyDamageToActor(HitResult.GetActor());
+
+	const FHitResult* HitResult = TargetData->GetHitResult();
+
+	if (!HitResult || !HitResult->bBlockingHit)
+	{
+		return;
+	}
+
+	ApplyDamageToActor(HitResult->GetActor());
 }
 
 void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
@@ -263,13 +299,11 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
 	const AController* Controller = Pawn ? Pawn->GetController() : nullptr;
 
-	OutTraceStart = Pawn
-		? Pawn->GetPawnViewLocation()
-		: AvatarActor->GetActorLocation();
+	OutTraceStart = Pawn ?
+		Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
 
-	const FRotator AimRotation = Controller
-		? Controller->GetControlRotation()
-		: AvatarActor->GetActorRotation();
+	const FRotator AimRotation = Controller	?
+		Controller->GetControlRotation() : AvatarActor->GetActorRotation();
 
 	const FVector TraceDirection = AimRotation.Vector();
 	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;

@@ -68,7 +68,11 @@ private:
 	void FinishFireCycle();
 
 	void FireOnce();
-	void PerformHitscan();
+	
+	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	void OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
 	void ApplyDamageToActor(AActor* TargetActor);
 
 	void PlayFireFeedback();
