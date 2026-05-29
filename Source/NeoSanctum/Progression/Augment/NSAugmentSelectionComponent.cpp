@@ -15,7 +15,8 @@ UNSAugmentSelectionComponent::UNSAugmentSelectionComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UNSAugmentSelectionComponent::Server_RequestOffer_Implementation(FGameplayTag PoolTag)
+// 서버에서 호출하는 진입점 (레벨업/엘리트처치/보스처치)
+void UNSAugmentSelectionComponent::RequestOffer(FGameplayTag PoolTag)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -31,6 +32,12 @@ void UNSAugmentSelectionComponent::Server_RequestOffer_Implementation(FGameplayT
 	CurrentPool = Pool;
 	CurrentRerollCost = 0;
 	RollAndPresent();
+}
+
+// 클라에서 호출하는 진입점 (보물상자)
+void UNSAugmentSelectionComponent::Server_RequestOffer_Implementation(FGameplayTag PoolTag)
+{
+	RequestOffer(PoolTag);
 }
 
 void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
@@ -85,6 +92,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
 	Client_PresentOffer(PendingOffer, CurrentRerollCost);
 }
 
+// 증강 골랐을때
 void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
