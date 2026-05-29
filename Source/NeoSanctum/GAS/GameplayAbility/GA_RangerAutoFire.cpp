@@ -34,13 +34,32 @@ void UGA_RangerAutoFire::ActivateAbility(
 	
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
+		// TODO: 탄약 관련기능이 생기면 0발 때는 재장전 GA에게 이벤트 전달
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	// 입력 즉시 첫 발을 발사한 뒤, 이후로는 타이머로 반복
+
+	// 한 번 활성화될 때 한 발만 발사
 	FireOnce();
-	StartAutoFire();
+
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	const float DelayTime = FMath::Max(FireInterval, 0.01f);
+
+	// FireInterval 동안 Ability를 Active 상태로 유지해 연사 속도를 제한
+	World->GetTimerManager().SetTimer(
+		FireDelayTimerHandle,
+		this,
+		&ThisClass::FinishFireCycle,
+		DelayTime,
+		false
+	);
 }
 
 void UGA_RangerAutoFire::EndAbility(
@@ -50,55 +69,34 @@ void UGA_RangerAutoFire::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
-	StopAutoFire();
-	
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(FireDelayTimerHandle);
+	}
+
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_RangerAutoFire::InputReleased(const FGameplayAbilitySpecHandle Handle,
+void UGA_RangerAutoFire::InputReleased(
+	const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo,
 	const FGameplayAbilityActivationInfo ActivationInfo)
 {
 	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
-	
-	// NSASC의 AbilitySpecInputReleased()를 통해 들어온 입력 해제 처리
+
+	// 입력을 떼면 발사 사이클 즉시 종료
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
-void UGA_RangerAutoFire::StartAutoFire()
+void UGA_RangerAutoFire::FinishFireCycle()
 {
-	if (FireInterval <= 0.0f)
-	{
-		return;
-	}
-	
-	UWorld* World = GetWorld();
-	
-	if (!World)
-	{
-		return;
-	}
-	
-	// 실제 발사 판정은 FireOnce 내부에서 서버 권한으로 제한
-	World->GetTimerManager().SetTimer(
-		AutoFireTimerHandle,
-		this,
-		&ThisClass::FireOnce,
-		FireInterval,
-		true
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false
 	);
-}
-
-void UGA_RangerAutoFire::StopAutoFire()
-{
-	UWorld* World = GetWorld();
-	
-	if (!World)
-	{
-		return;
-	}
-	
-	World->GetTimerManager().ClearTimer(AutoFireTimerHandle);
 }
 
 void UGA_RangerAutoFire::FireOnce()

@@ -10,7 +10,7 @@ class UGameplayEffect;
 
 /**
  * 원거리 캐릭터 기본 공격
- * 입력 유지 중 히트스캔 공격 반복
+ * 입력 유지 중 반복 활성화 되는 히트스캔 공격 반복
  */
 UCLASS()
 class NEOSANCTUM_API UGA_RangerAutoFire : public UGA_SkillBase
@@ -36,7 +36,6 @@ protected:
 		bool bWasCancelled
 	) override;
 	
-
 	virtual void InputReleased(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -66,8 +65,7 @@ protected:
 	float DebugLineThickness = 1.5f;
 	
 private:
-	void StartAutoFire();
-	void StopAutoFire();
+	void FinishFireCycle();
 
 	void FireOnce();
 	void PerformHitscan();
@@ -85,5 +83,5 @@ private:
 		bool& bOutHit) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
-	FTimerHandle AutoFireTimerHandle;
+	FTimerHandle FireDelayTimerHandle;
 };
