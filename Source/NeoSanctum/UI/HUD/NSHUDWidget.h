@@ -53,6 +53,7 @@ public:
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void HideAugmentation();
 
+	void SelectAugmentCardByIndex(int32 CardIndex);
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))

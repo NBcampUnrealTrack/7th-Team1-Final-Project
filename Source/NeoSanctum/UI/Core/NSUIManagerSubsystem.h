@@ -48,6 +48,8 @@ public:
 	
 	void ClearHUD();
 	
+	void SelectAugmentCardByIndex(int32 CardIndex);
+	
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
 	

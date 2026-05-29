@@ -4,6 +4,7 @@
 #include "NSUIManagerSubsystem.h"
 #include "Blueprint/UserWidget.h"
 #include "NeoSanctum/UI/HUD/NSHUDWidget.h"
+#include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
@@ -149,13 +150,27 @@ void UNSUIManagerSubsystem::ClearHUD()
 	}
 }
 
+void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[증강] UIManager SelectAugmentCardByIndex 호출됨: %d"), CardIndex);
+
+	if (!HUDWidget)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[증강] 실패: HUDWidget이 nullptr 입니다"));
+		return;
+	}
+
+	HUDWidget->SelectAugmentCardByIndex(CardIndex);
+}
+
 void UNSUIManagerSubsystem::ShowAugmentation()
 {
-	//증강 UI 표시를 HUD에 요청
+	//증강 UI를 HUD에 요청
 	if (!HUDWidget)
 	{
 		return;
 	}
+	//증강 UI표시는 HUD에서 관리
 	HUDWidget->ShowAugmentation();
 }
 
@@ -166,6 +181,7 @@ void UNSUIManagerSubsystem::HideAugmentation()
 	{
 		return;
 	}
+	//증강 UI숨김 HUD에서 관리
 	HUDWidget->HideAugmentation();	
 }
 

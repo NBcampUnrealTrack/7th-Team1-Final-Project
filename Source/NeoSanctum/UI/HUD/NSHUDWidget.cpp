@@ -103,11 +103,22 @@ void UNSHUDWidget::ShowAugmentation()
 }
 
 void UNSHUDWidget::HideAugmentation()
-{
+{	//증강 선택 UI를 숨김
 	if (!AugmentationWidget)
 	{
 		return;
 	}
 	AugmentationWidget->HideAugmentation();
+}
+
+void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
+{
+
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+
+	AugmentationWidget->SelectCardByIndex(CardIndex);
 }
 
