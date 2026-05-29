@@ -20,5 +20,5 @@ protected:
 
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")
-	FGameplayTag EventTag;
+	FGameplayTagContainer EventTags;
 };
