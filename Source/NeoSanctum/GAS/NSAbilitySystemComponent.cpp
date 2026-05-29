@@ -3,6 +3,8 @@
 
 #include "NSAbilitySystemComponent.h"
 
+#include "GameplayAbility/GA_SkillBase.h"
+
 void UNSAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag& InputTag)
 {
 	if (!InputTag.IsValid())
@@ -69,6 +71,29 @@ void UNSAbilitySystemComponent::ProcessAbilityInput(float DeltaTime, bool bGameP
 	TArray<FGameplayAbilitySpecHandle> AbilitiesToActivate;
 	AbilitiesToActivate.Reset();
 	
+	// 입력을 유지하는 동안 반복 활성화되는 Ability 처리
+	for (const FGameplayAbilitySpecHandle& SpecHandle : InputHeldSpecHandles)
+	{
+		FGameplayAbilitySpec* AbilitySpec = FindAbilitySpecFromHandle(SpecHandle);
+		
+		if (!AbilitySpec || !AbilitySpec->Ability || AbilitySpec->IsActive())
+		{
+			continue;
+		}
+		
+		const UGA_SkillBase* SkillAbility = Cast<UGA_SkillBase>(AbilitySpec->Ability);
+		if (!SkillAbility)
+		{
+			continue;
+		}
+		
+		if (SkillAbility->GetActivationPolicy() == ENSAbilityActivationPolicy::WhileInputActive)
+		{
+			AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
+		}
+	}
+	
+	// 이번 프레임에 막 눌린 입력 처리
 	for (const FGameplayAbilitySpecHandle& SpecHandle : InputPressedSpecHandles)
 	{
 		FGameplayAbilitySpec* AbilitySpec = FindAbilitySpecFromHandle(SpecHandle);
@@ -87,7 +112,14 @@ void UNSAbilitySystemComponent::ProcessAbilityInput(float DeltaTime, bool bGameP
 			continue;
 		}
 		
-		AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
+		const UGA_SkillBase* SkillAbility = Cast<UGA_SkillBase>(AbilitySpec->Ability);
+		const bool bShouldActivateOnPress = !SkillAbility 
+			|| SkillAbility->GetActivationPolicy() == ENSAbilityActivationPolicy::OnInputTriggered;
+		
+		if (bShouldActivateOnPress)
+		{
+			AbilitiesToActivate.AddUnique(AbilitySpec->Handle);
+		}
 	}
 	
 	for (const FGameplayAbilitySpecHandle& SpecHandle : AbilitiesToActivate)
