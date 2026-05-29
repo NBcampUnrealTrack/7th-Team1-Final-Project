@@ -7,6 +7,7 @@
 #include "NSAugmentationWidget.generated.h"
 
 class UCanvasPanel;
+class UWeapBox;
 class UNSAugmentCardWidget;
 
 /**
