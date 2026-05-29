@@ -8,7 +8,9 @@
 #include "Components/CapsuleComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/GameModeBase.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
@@ -70,6 +72,13 @@ void ANSEnemyCharacterBase::Die()
 	{
 		bIsDead = true;
 		OnRep_bIsDead();
+		
+		// (이용호 추가) 죽을 때 게임모드에 알림
+		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+		{
+			INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+		}
 
 		if (AAIController* AIController = Cast<AAIController>(GetController()))
 		{

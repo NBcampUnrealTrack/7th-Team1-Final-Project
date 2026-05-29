@@ -7,26 +7,26 @@
 
 
 
-ANSStageManager::ANSStageManager()
+void UNSStageManager::SetEnemyCount(int32 Count)
 {
-	PrimaryActorTick.bCanEverTick = false;
+	RemainingEnemyCount = Count;
+	UE_LOG(LogTemp, Log, TEXT("초기 적 수: %d"), RemainingEnemyCount);
 }
 
-void ANSStageManager::BeginPlay()
+void UNSStageManager::HandleEnemyKilled()
 {
-	Super::BeginPlay();
-}
+	RemainingEnemyCount = FMath::Max(0, RemainingEnemyCount - 1);
+	UE_LOG(LogTemp, Log, TEXT("남은 적: %d"), RemainingEnemyCount);
 
-void ANSStageManager::CheckStageClearCondition()
-{
-	// TODO: 후에 게임 종료 조건 OR 승리 조건 넣어야함.
-	
-	AGameModeBase* CurrentGameMode = GetWorld()->GetAuthGameMode();
-	
-	if (CurrentGameMode && CurrentGameMode->Implements<UNSRunGameModeInterface>())
+	if (RemainingEnemyCount <= 0)
 	{
-		INSRunGameModeInterface::Execute_NotifyStageCleared(CurrentGameMode);
+		CheckStageClearCondition();
 	}
+}
+
+void UNSStageManager::CheckStageClearCondition()
+{
+	OnStageCleared.ExecuteIfBound();
 }
 
 

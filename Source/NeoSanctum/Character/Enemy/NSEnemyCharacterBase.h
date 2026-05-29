@@ -36,7 +36,9 @@ public:
 
 public:
 	void Die();
-
+	
+	// (이용호 추가) 외부에서 생존 여부 확인용
+	bool IsDead() const { return bIsDead; }
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;

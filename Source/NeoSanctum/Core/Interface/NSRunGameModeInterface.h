@@ -24,6 +24,10 @@ public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void NotifyPlayerDied(AController* DeadPlayer);
 	
+	// 적 죽었을 때 호출 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyEnemyKilled(ACharacter* DeadEnemy);
+	
 	// 거점 복귀 선택하면 호출될 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void RequestReturnToHub();
