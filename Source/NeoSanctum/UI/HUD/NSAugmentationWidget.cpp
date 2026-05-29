@@ -4,19 +4,52 @@
 #include "Components/CanvasPanelSlot.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
 #include "Components/CanvasPanel.h"
+#include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
 
 void UNSAugmentationWidget::ShowAugmentation()
-{
-	//증강 선택 UI 표시
+{	
+	//증강 UI표시
 	SetVisibility(ESlateVisibility::Visible);
+	SetIsFocusable(true);
+
+	//OwningPlayer가 없으면 PlayerController사용
+	APlayerController* PC = GetOwningPlayer();
+
+	if (!PC && GetWorld())
+	{
+		PC = GetWorld()->GetFirstPlayerController();
+	}
+
+	if (!PC)
+	{
+		return;
+	}
+	//증강 선택중에는 입력모드 UI로 변경
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PC->SetInputMode(InputMode);
+	PC->bShowMouseCursor = true;
 	
+	// 현재 증강 위젯에 키보드 포커스를 준다
+	SetUserFocus(PC);
 	SetKeyboardFocus();
+
 }
 
 void UNSAugmentationWidget::HideAugmentation()
 {
 	//증강 선택 UI 숨김
 	SetVisibility(ESlateVisibility::Collapsed);
+
+	//증강 선택이 끝나면 입력 모드를 다시 게임 전용으로 복구
+	if (APlayerController* PC = GetOwningPlayer())
+	{
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+		PC->bShowMouseCursor = false;
+	}
 }
 
 void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
@@ -31,7 +64,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 	AugmentCardWidgets.Empty();
 	
 	ChoiceCount = NewChoiceCount;
-	
+	//생성할 카드위젯이 없으면 선택지가 생기지 않는다
 	if (!AugmentCardWidgetClass)
 	{
 		return;
@@ -48,6 +81,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 		{
 			continue;
 		}
+		AugmentCardWidgets.Add(NewCard);
 		//테스트용 임시 데이터
 		NewCard->SetAugmentName(
 			FString::Printf(
@@ -87,28 +121,27 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 
 void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 {
-	if (!AugmentCardWidgetClass)
+	//잘못된 번호가 입력되면 선택 x
+	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
 	{
 		return;
 	}
-	HighLightCard(CardIndex);
-	UE_LOG(LogTemp,Warning,TEXT("증강 선택 확정 : %d"),CardIndex+1);
-	//TODO(영웅): 선택한 증강 선택 연결 로직
+
+	UE_LOG(LogTemp, Warning, TEXT("[증강] 증강 선택 확정 : %d"), CardIndex + 1);
+
 	HideAugmentation();
 }
 
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 {
 	// TODO(영웅): 실제 증강 데이터 선택 및 적용 로직 연결
-	UE_LOG(LogTemp, Warning, TEXT("Augment Selected: %d"), CardIndex + 1);
-
+	// 선택이 끝나면 증강 UI를 닫음
 	HideAugmentation();
 }
 
 void UNSAugmentationWidget::RequestRerollAugment()
 {
 	// TODO(영웅): 런 인 재화 또는 리롤 가능 횟수 확인 후 선택지 재생성
-	UE_LOG(LogTemp, Warning, TEXT("Augment Reroll Requested"));
 
 	CreateChoiceCard(ChoiceCount);
 }
@@ -116,11 +149,11 @@ void UNSAugmentationWidget::RequestRerollAugment()
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
 {
 	// TODO(영웅): 현재 보유 중인 증강 목록 UI 갱신
-	UE_LOG(LogTemp, Warning, TEXT("Refresh Owned Augment List"));
 }
 
 void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 {
+
 	//잘못된 인덱스가 들어온경우 처리 x
 	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
 	{
@@ -141,13 +174,13 @@ void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	
-	//기본 상태에서는 숨김
-	SetVisibility(ESlateVisibility::Collapsed);
-	
-	CreateChoiceCard(3);
-	
+	//키보드입력을 받을수있게 한다
 	SetIsFocusable(true);
+	//기본상태에서는 숨김
+	SetVisibility(ESlateVisibility::Collapsed);
+	//증강 선택지 3개
+	CreateChoiceCard(3);
+
 }
 
 FReply UNSAugmentationWidget::NativeOnKeyDown(
@@ -155,16 +188,21 @@ FReply UNSAugmentationWidget::NativeOnKeyDown(
 	const FKeyEvent& InKeyEvent)
 {
 	const FKey PressedKey = InKeyEvent.GetKey();
+	
+	//숫자키 1,2,3으로 각 증강 선택지를 바로 선택
 	if (PressedKey == EKeys::One)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[증강] 1번 키 입력"));
 		SelectCardByIndex(0);
 		return FReply::Handled();
 	}if (PressedKey == EKeys::Two)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[증강] 2번 키 입력"));
 		SelectCardByIndex(1);
 		return FReply::Handled();
 	}if (PressedKey == EKeys::Three)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[증강] 3번 키 입력"));
 		SelectCardByIndex(2);
 		return FReply::Handled();
 	}
