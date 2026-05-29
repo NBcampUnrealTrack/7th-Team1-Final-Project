@@ -7,10 +7,12 @@
 #include "Components/SphereComponent.h"
 #include "NSTestCoin.generated.h"
 
+class USceneComponent;
 class USphereComponent;
 class ANSDroneAIController;
 class UAIPerceptionStimuliSourceComponent;
 class UProjectileMovementComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTestCoin : public AActor
@@ -44,6 +46,9 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<USphereComponent> CollisionComponent;
+	
+	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
+	TObjectPtr<UStaticMeshComponent> StaticMeshComponent;
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent;

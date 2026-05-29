@@ -124,5 +124,5 @@ void ANSDroneAIController::RemoveTargetCoin(ANSTestCoin* TargetCoin)
 
 UBlackboardComponent* ANSDroneAIController::GetBlackboardComponent() const
 {
-	return Blackboard;
+	return DroneAIBBComponent;
 }
