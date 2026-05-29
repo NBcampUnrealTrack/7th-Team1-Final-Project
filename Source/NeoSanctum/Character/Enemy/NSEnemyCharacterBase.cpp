@@ -38,7 +38,7 @@ void ANSEnemyCharacterBase::BeginPlay()
 			AttributeSet->SetHealth(100.0f);
 
 			AttributeSet->SetDefense(10.0f);
-			AttributeSet->SetBaseDamage(20.0f);
+			AttributeSet->SetBaseDamage(50.0f);
 		}
 
 		// 서버에서만 능력 부여
