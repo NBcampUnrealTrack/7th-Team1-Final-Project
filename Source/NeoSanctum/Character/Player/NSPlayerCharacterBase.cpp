@@ -175,6 +175,7 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	if (HasAuthority())
 	{
 		ApplyInitialAttributeEffect();
+		ApplyDefaultGameplayEffects();
 		GiveCharacterDataAbilities();
 		SpawnDefaultWeapon();
 	}
@@ -258,6 +259,11 @@ void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(const UNSCharacterData
 	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
 	{
 		AbilityData.AbilityClass.LoadSynchronous();
+	}
+	
+	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : InCharacterData->DefaultGameplayEffects)
+	{
+		DefaultEffect.LoadSynchronous();
 	}
 }
 
@@ -345,6 +351,34 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	if (SpecHandle.IsValid())
 	{
 		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
+{
+	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	
+	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : CharacterData->DefaultGameplayEffects)
+	{
+		TSubclassOf<UGameplayEffect> Effect = DefaultEffect.Get();
+		if (!Effect)
+		{
+			continue;
+		}
+		
+		FGameplayEffectSpecHandle SpecHandle = 
+			NSAbilitySystemComponent->MakeOutgoingSpec(Effect, 1.0f, EffectContext);
+		
+		if (SpecHandle.IsValid())
+		{
+			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
 	}
 }
 
