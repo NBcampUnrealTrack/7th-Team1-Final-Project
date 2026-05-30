@@ -33,7 +33,13 @@ public:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
-	
+
+	virtual bool CheckCost(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		FGameplayTagContainer* OptionalRelevantTags = nullptr
+	) const override;
+
 protected:
 	// 정해진 대쉬 지속시간 만큼 대쉬를 수행하고 끝나면 어빌리티를 종료하기 위한 콜백
 	UFUNCTION()
