@@ -185,11 +185,13 @@ void UGA_RangerAutoFire::FireOnce()
 		return;
 	}
 	
+	// 서버 검증에서 사용할 Trace 정보를 항상 채움
+	HitResult.TraceStart = TraceStart;
+	HitResult.TraceEnd = TraceEnd;
+	
 	// Miss도 TargetData 흐름에 태우기 위해 Trace 정보를 채워둠
 	if (!bHit)
 	{
-		HitResult.TraceStart = TraceStart;
-		HitResult.TraceEnd = TraceEnd;
 		HitResult.Location = TraceEnd;
 		HitResult.ImpactPoint = TraceEnd;
 	}
@@ -309,14 +311,21 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	const FHitResult* HitResult = TargetData->GetHitResult();
+	const FHitResult* ClientHitResult = TargetData->GetHitResult();
 
-	if (!HitResult || !HitResult->bBlockingHit)
+	if (!ClientHitResult || !ClientHitResult->bBlockingHit)
 	{
 		return;
 	}
 
-	ApplyDamageToActor(HitResult->GetActor());
+	FHitResult ServerHitResult;
+	
+	if (!ValidateTargetDataHitResult(*ClientHitResult, ServerHitResult))
+	{
+		return;
+	}
+	
+	ApplyDamageToActor(ServerHitResult.GetActor());
 }
 
 void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
@@ -509,4 +518,73 @@ bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) c
 	}
 
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
+	const FHitResult& ClientHitResult,
+	FHitResult& OutServerHitResult) const
+{
+	if (!ClientHitResult.bBlockingHit || !IsValid(ClientHitResult.GetActor()))
+	{
+		return false;
+	}
+	
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	
+	if (!AvatarActor || !World || !AvatarActor->HasAuthority())
+	{
+		return false;
+	}
+	
+	const FVector TraceStart = ClientHitResult.TraceStart;
+	const FVector TraceEnd = ClientHitResult.TraceEnd;
+	
+	if (TraceStart.Equals(TraceEnd))
+	{
+		return false;
+	}
+	
+	const float MaxTraceDistance = TraceRange + ServerHitLocationTolerance;
+	if (FVector::DistSquared(TraceStart, TraceEnd) > FMath::Square(MaxTraceDistance))
+	{
+		return false;
+	}
+	
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	const FVector ServerViewLocation = Pawn ? Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
+	
+	if (FVector::DistSquared(ServerViewLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	{
+		return false;
+	}
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+	
+	const bool bServerHit = World->LineTraceSingleByChannel(
+		OutServerHitResult,
+		TraceStart,
+		TraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+	
+	if (!bServerHit || !OutServerHitResult.bBlockingHit)
+	{
+		return false;
+	}
+	
+	if (OutServerHitResult.GetActor() != ClientHitResult.GetActor())
+	{
+		return false;
+	}
+	
+	if (FVector::DistSquared(OutServerHitResult.ImpactPoint, ClientHitResult.ImpactPoint)
+		> FMath::Square(ServerHitLocationTolerance))
+	{
+		return false;
+	}
+	
+	return true;
 }

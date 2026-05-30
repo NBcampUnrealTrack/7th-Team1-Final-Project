@@ -52,6 +52,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	float TraceRange = 10000.0f;
 	
+	// 클라가 보낸 TraceStart가 서버 기준에서 너무 멀면 거부
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float ServerTraceStartTolerance = 300.0f;
+	
+	// 클라 Hit 위치와 서버 재 Trace Hit 위치가 너무 다르면 거부
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float ServerHitLocationTolerance = 200.0f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
@@ -92,6 +100,8 @@ private:
 		FVector& OutTraceEnd,
 		bool& bOutHit) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
+	
+	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
 	
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
