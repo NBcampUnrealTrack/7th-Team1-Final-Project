@@ -280,10 +280,19 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 
 void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
 {
-	// 조작 중인 클라이언트는 즉시 발사 피드백
-	if (ShouldPlayLocalFeedback())
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	
+	const bool bShouldExecuteCue = 
+		ActorInfo && (ActorInfo->IsLocallyControlled() || ActorInfo->IsNetAuthority());
+	
+	if (bShouldExecuteCue)
 	{
-		PlayFireFeedback();
+		ExecuteMuzzleFireCue();
+	}
+	
+	if (ShouldPlayLocalFeedback() && bDrawDebugHitscan)
+	{
+		DrawDebugHitscan();
 	}
 	
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -352,16 +361,6 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
-}
-
-void UGA_RangerAutoFire::PlayFireFeedback()
-{
-	ExecuteMuzzleFireCue();
-
-	if (bDrawDebugHitscan)
-	{
-		DrawDebugHitscan();
-	}
 }
 
 void UGA_RangerAutoFire::DrawDebugHitscan()
