@@ -74,7 +74,7 @@ protected:
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
-	bool bLogPredictionKey = true;
+	bool bLogPredictionKey = false;
 	
 private:
 	void FinishFireCycle();
@@ -90,7 +90,7 @@ private:
 	void ApplyDamageToActor(AActor* TargetActor);
 	
 	void ExecuteMuzzleFireCue();
-	void DrawDebugHitscan();
+	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 
 	bool ShouldPlayLocalFeedback() const;
 	bool TryBuildHitscanTrace(

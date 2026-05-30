@@ -292,7 +292,7 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 	
 	if (ShouldPlayLocalFeedback() && bDrawDebugHitscan)
 	{
-		DrawDebugHitscan();
+		DrawDebugTargetData(TargetDataHandle);
 	}
 	
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -363,7 +363,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
 }
 
-void UGA_RangerAutoFire::DrawDebugHitscan()
+void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
 {
 	UWorld* World = GetWorld();
 
@@ -372,41 +372,57 @@ void UGA_RangerAutoFire::DrawDebugHitscan()
 		return;
 	}
 
-	FHitResult HitResult;
-	FVector TraceStart;
-	FVector TraceEnd;
-	bool bHit = false;
-
-	if (!TryBuildHitscanTrace(HitResult, TraceStart, TraceEnd, bHit))
+	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
 	{
-		return;
-	}
-
-	const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
-	const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
-
-	// 초록: 허공, 빨강: 명중
-	DrawDebugLine(
-		World,
-		TraceStart,
-		DebugEnd,
-		DebugColor,
-		false,
-		DebugLineDuration,
-		0,
-		DebugLineThickness
-	);
-
-	if (bHit)
-	{
-		DrawDebugPoint(
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
+		
+		if (!TargetData)
+		{
+			continue;
+		}
+		
+		const FHitResult* HitResult = TargetData->GetHitResult();
+		
+		if (!HitResult)
+		{
+			continue;
+		}
+		
+		const FVector TraceStart = HitResult->TraceStart;
+		const FVector TraceEnd = HitResult->TraceEnd;
+		
+		if (TraceStart.Equals(TraceEnd))
+		{
+			continue;
+		}
+		
+		const bool bHit = HitResult->bBlockingHit;
+		const FVector DebugEnd = bHit ? HitResult->ImpactPoint : TraceEnd;
+		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+		
+		// 초록: 허공, 빨강: 명중
+		DrawDebugLine(
 			World,
-			HitResult.ImpactPoint,
-			12.0f,
-			FColor::Red,
+			TraceStart,
+			DebugEnd,
+			DebugColor,
 			false,
-			DebugLineDuration
+			DebugLineDuration,
+			0,
+			DebugLineThickness
 		);
+		
+		if (bHit)
+		{
+			DrawDebugPoint(
+				World,
+				HitResult->ImpactPoint,
+				12.0f,
+				FColor::Red,
+				false,
+				DebugLineDuration
+			);
+		}
 	}
 }
 
@@ -483,7 +499,7 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 
 	if (!TryGetAttackOriginTransform(MuzzleTransform))
 	{
-		// 소캣을 못 찾으면 캐릭터 전방 위치로 임시 처리
+		// 소켓을 못 찾으면 캐릭터 전방 위치로 임시 처리
 		MuzzleTransform = FTransform(
 			AvatarActor->GetActorRotation(),
 			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
