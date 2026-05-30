@@ -62,6 +62,8 @@ protected:
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();
+	void ApplyDefaultGameplayEffects();
+	
 	void GiveCharacterDataAbilities();
 	void SpawnDefaultWeapon();
 	
@@ -117,7 +119,7 @@ protected:
 	TObjectPtr<UNSAbilitySystemComponent> NSAbilitySystemComponent;
 	
 	// Player 전용 Attribute Set
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AbilitySystem")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 	
 protected:
