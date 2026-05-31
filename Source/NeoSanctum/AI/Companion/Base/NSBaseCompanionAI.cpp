@@ -2,6 +2,9 @@
 
 
 #include "NSBaseCompanionAI.h"
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
 
@@ -11,9 +14,17 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
+	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>("Collision");
+	SetRootComponent(CapsuleComponent);
+	CapsuleComponent->SetSimulatePhysics(false);
+	
+	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("SkeletalMesh");
+	SkeletalMeshComponent->SetupAttachment(CapsuleComponent);
+	
+	FloatingPawnMovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
+	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
 	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
-	
 	
 }
 
