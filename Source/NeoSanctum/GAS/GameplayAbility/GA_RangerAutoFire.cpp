@@ -447,7 +447,7 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 {
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 
-	if (!AvatarActor)
+	if (!IsValid(AvatarActor))
 	{
 		return false;
 	}
@@ -458,19 +458,54 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	{
 		return false;
 	}
+	
+	if (!TryGetAimTraceStartLocation(OutTraceStart))
+	{
+		return false;
+	}
 
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
-	const AController* Controller = Pawn ? Pawn->GetController() : nullptr;
+	const APlayerController* PlayerController = Pawn ? 
+		Cast<APlayerController>(Pawn->GetController()) : nullptr;
+	
+	if (!IsValid(PlayerController))
+	{
+		return false;
+	}
+	
+	int32 ViewportSizeX = 0;
+	int32 ViewportSizeY = 0;
+	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
 
-	OutTraceStart = Pawn ?
-		Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
+	if (ViewportSizeX <=0 || ViewportSizeY <= 0)
+	{
+		return false;
+	}
+	
+	const float CrosshairScreenX = ViewportSizeX * 0.5f;
+	const float CrosshairScreenY = ViewportSizeY * 0.5f;
+	
+	FVector DeprojectWorldLocation;
+	FVector DeprojectWorldDirection;
+	
+	if (!PlayerController->DeprojectScreenPositionToWorld(
+		CrosshairScreenX, 
+		CrosshairScreenY, 
+		DeprojectWorldLocation,
+		DeprojectWorldDirection))
+	{
+		return false;
+	}
 
-	const FRotator AimRotation = Controller	?
-		Controller->GetControlRotation() : AvatarActor->GetActorRotation();
+	const FVector TraceDirection = DeprojectWorldDirection.GetSafeNormal();
+	
+	if (TraceDirection.IsNearlyZero())
+	{
+		return false;
+	}
 
-	const FVector TraceDirection = AimRotation.Vector();
 	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
-
+	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
 
