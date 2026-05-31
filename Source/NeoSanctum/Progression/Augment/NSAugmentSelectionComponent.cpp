@@ -50,46 +50,12 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
 	{
 		return;
 	}
-	if (!PendingOffer.IsValidIndex(Index))
-	{
-		return;
-	}
 
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
-	if (!Data || !Data->IsRunReady())
-	{
-		return;
-	}
-
-	// 인벤토리 필터 + 현재 오퍼 카드 전체를 제외 셋으로 (새 카드는 남은 2장과도 달라야 함)
-	bool bLegendaryFull = false;
-	TSet<FPrimaryAssetId> OwnedMechanicIds;
-	CollectInventoryFilter(bLegendaryFull, OwnedMechanicIds);
-
-	const TSet<FPrimaryAssetId> ExcludedIds(PendingOffer);
-
-	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>> ByRarity;
-	BuildRarityBuckets(Data, CurrentPool, bLegendaryFull, OwnedMechanicIds, ExcludedIds, ByRarity);
-
-	// 현재 오퍼의 Rarity 버킷에서만 추첨 (오퍼 내 Rarity 일관성 유지)
-	const TArray<UNSAugmentDefinition*>* Bucket = ByRarity.Find(CurrentOfferRarity);
-	if (!Bucket || Bucket->Num() == 0)
-	{
-		// 후보 없음 → 리롤 실패, 오퍼 상태 유지
-		return;
-	}
-
-	const int32 PickIdx = FMath::RandRange(0, Bucket->Num() - 1);
-	UNSAugmentDefinition* Picked = (*Bucket)[PickIdx];
-
-	// TODO : 리롤 비용 추후에 수정
+	// TODO : 리롤 비용 차감 (재화 시스템 연동 후). 현재는 카운터만 증가.
 	CurrentRerollCost++;
-	PendingOffer[Index] = Picked->GetPrimaryAssetId();
 
-	UE_LOG(LogTemp, Warning, TEXT("[RerollCard] Index=%d Rarity=%d → %s (%s)"),
-		Index, (int32)CurrentOfferRarity, *Picked->GetName(), *Picked->DisplayName.ToString());
-
-	Client_PresentOffer(PendingOffer, CurrentRerollCost);
+	// 카드 3개 전부 새로 추첨 (Rarity도 다시 결정) → Client_PresentOffer까지 RollAndPresent가 처리
+	RollAndPresent();
 }
 
 // 증강 골랐을때

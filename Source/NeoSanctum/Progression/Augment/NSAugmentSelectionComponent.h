@@ -37,9 +37,9 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
 	void Server_RequestOffer(FGameplayTag PoolTag);
 
-	// 증강 리롤
+	// 증강 리롤 (카드 3개 전부 새로 추첨)
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_RerollCard(int32 Index);
+	void Server_RerollCard();
 
 	// 증강 골랐을때
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
