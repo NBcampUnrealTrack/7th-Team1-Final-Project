@@ -54,6 +54,8 @@ public:
 	void HideAugmentation();
 
 	void SelectAugmentCardByIndex(int32 CardIndex);
+
+	void RequestRerollAugment();
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))

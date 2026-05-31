@@ -163,6 +163,16 @@ void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
 	HUDWidget->SelectAugmentCardByIndex(CardIndex);
 }
 
+void UNSUIManagerSubsystem::RequestRerollAugment()
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	HUDWidget->RequestRerollAugment();
+}
+
 void UNSUIManagerSubsystem::ShowAugmentation()
 {
 	//증강 UI를 HUD에 요청
