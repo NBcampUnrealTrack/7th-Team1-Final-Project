@@ -10,6 +10,7 @@
 
 class ANSDeathSpectatorPawn;
 class ANSPlayerState;
+class UNSAugmentSelectionComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -27,6 +28,10 @@ public:
 	
 	UFUNCTION(Client, Reliable)
 	void Client_ShowRunOverUI(bool bIsClear);
+
+	// 클라이언트에 인런 데이터 로드 지시
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyRunStarted();
 	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
@@ -100,16 +105,21 @@ private:
 	TObjectPtr<ANSPlayerState> SpectatingPlayerState;
 
 	FTimerHandle DeathSpectatorModeTimerHandle;
-	
+
+	// 증강 추첨/선택 로직을 담당하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "NS|Augment")
+	TObjectPtr<UNSAugmentSelectionComponent> AugmentSelectionComponent;
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
 	
 	virtual void SetupInputComponent() override;
 
-	void SelectAugmentCard1();
-	void SelectAugmentCard2();
-	void SelectAugmentCard3();
 	void OpenAugmentationSelection();
+
+	// 런 데이터 로드 완료 후 오퍼 요청 (OpenAugmentationSelection 테스트용 콜백)
+	UFUNCTION()
+	void OnTestRunDataReady();
 
 };
