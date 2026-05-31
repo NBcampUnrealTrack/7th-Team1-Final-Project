@@ -89,12 +89,16 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UN
 		Inst.EffectHandle.Invalidate();
 	}
 	
-	// 데이터 컴포넌트에서 무조건 로드 보장
-	UClass* GEClass = Def->StackEffectClass.Get();
-	
+	// 아직 데이터 서브시스템을 연결하지 않아서 LoadSynchronous로 로드 보장 -> 추후에 .Get()으로 변경예정
+	UClass* GEClass = Def->StackEffectClass.LoadSynchronous();
+	if (!GEClass)
+	{
+		return;
+	}
+
 	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
 	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GEClass, 1.f, ContextHandle);
-	
+
 	if (!SpecHandle.IsValid())
 	{
 		return;
@@ -111,9 +115,13 @@ void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst
 		return;
 	}
 	
-	// RunDataComponent에서 로드 보장
-	UClass* GAClass = Def->GrantedAbilityClass.Get();
-	
+	// 아직 데이터 서브시스템을 연결하지 않아서 LoadSynchronous로 로드 보장 -> 추후에 .Get()으로 변경예정
+	UClass* GAClass = Def->GrantedAbilityClass.LoadSynchronous();
+	if (!GAClass)
+	{
+		return;
+	}
+
 	TSubclassOf<UGameplayAbility> AbilityClass = GAClass;
 	Inst.AbilityHandle = ASC->GiveAbility((FGameplayAbilitySpec(AbilityClass, 1,INDEX_NONE, this)));
 }
