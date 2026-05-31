@@ -28,7 +28,7 @@ void UNSAugmentSelectionComponent::RequestOffer(FGameplayTag PoolTag)
 	{
 		return;
 	}
-
+	
 	CurrentPool = Pool;
 	CurrentRerollCost = 0;
 	RollAndPresent();
@@ -106,7 +106,7 @@ void UNSAugmentSelectionComponent::Reset()
 	CurrentOfferRarity = ENSAugmentRarity::Common;
 }
 
-// 새 오퍼 추첨 - Rarity를 새로 결정하고 N장 추첨, 결과를 PendingOffer에 저장
+// 새 오퍼 추첨 -> Rarity를 새로 결정하고 N장 추첨, 결과를 PendingOffer에 저장
 void UNSAugmentSelectionComponent::RollAndPresent()
 {
 	if (!CurrentPool)
