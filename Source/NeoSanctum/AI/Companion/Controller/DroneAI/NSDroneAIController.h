@@ -25,10 +25,10 @@ public:
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	
-	UPROPERTY(EditDefaultsOnly, Category="DroneAI")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
 	
 private:
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere)
 	APawn* OwnerPlayer = nullptr;
 };

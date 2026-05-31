@@ -15,6 +15,9 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 	
 	if (BehaviorTreeAsset)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("RunBehaviorTree"));
 		RunBehaviorTree(BehaviorTreeAsset);
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("NO RunBehaviorTree"));
 }
