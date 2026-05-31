@@ -3,7 +3,7 @@
 
 #include "NSTestCoin.h"
 #include "EngineUtils.h"
-#include "NSDroneAI.h"
+#include "NSBasicDroneAI.h"
 #include "DrawDebugHelpers.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -71,7 +71,7 @@ void ANSTestCoin::CheckPlayerActor()
 	GetActorLocation(),	
 	MagneticRadius,
 	ObjectTypes,
-	ANSDroneAI::StaticClass(),
+	ANSBasicDroneAI::StaticClass(),
 	IgnoreActors,
 	OutActors
 	);
