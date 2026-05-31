@@ -4,7 +4,8 @@
 #include "NSAugmentCardWidget.h"
 #include "Components/Border.h"
 #include "Components/TextBlock.h"
-#include "VerseVM/VVMRuntimeError.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
 
 void UNSAugmentCardWidget::SetAugmentName(const FString& NewName)
 {
@@ -44,6 +45,21 @@ void UNSAugmentCardWidget::SetHighLighted(bool bHighLighted)
 		//기본 카드 색상
 		CardBorder->SetBrushColor(FLinearColor(0.1f,0.1f,0.1f,1.0f));
 	}
+}
+
+void UNSAugmentCardWidget::SetAugmentIcon(UTexture2D* NewIcon)
+{
+	if (!AugmentIcon)
+	{
+		return;
+	}
+	if (!NewIcon)
+	{
+		AugmentIcon->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	AugmentIcon->SetBrushFromTexture(NewIcon);
+	AugmentIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UNSAugmentCardWidget::NativeConstruct()

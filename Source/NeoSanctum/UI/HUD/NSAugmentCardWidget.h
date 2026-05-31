@@ -8,6 +8,8 @@
 
 class UBorder;
 class UTextBlock;
+class UImage;
+class UTexture2D;
 
 /**
  *  증강 카드를 표시하는 위젯
@@ -27,6 +29,9 @@ public:
 	//카드 하이라이트 표시
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetHighLighted(bool bHighLighted);
+	//증강 아이콘 설정
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetAugmentIcon(UTexture2D* NewIcon);
 	
 private:
 	//증강 이름 텍스트
@@ -38,6 +43,9 @@ private:
 	//카드 테두리
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UBorder> CardBorder;
+	//증강 아이콘
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UImage> AugmentIcon;
 	
 protected:
 	virtual void NativeConstruct() override;
