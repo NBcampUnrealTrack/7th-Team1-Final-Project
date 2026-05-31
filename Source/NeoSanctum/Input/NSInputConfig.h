@@ -65,5 +65,9 @@ public:
 	TArray<FNSInputAction> NativeInputActions;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
-	TArray<FNSInputAction> AbilityInputActions;	
+	TArray<FNSInputAction> AbilityInputActions;
+
+	// 증강 선택창 전용 입력 (IMC_Augment 활성 중에만 동작)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Meta = (TitleProperty = "InputAction"))
+	TArray<FNSInputAction> AugmentInputActions;
 };

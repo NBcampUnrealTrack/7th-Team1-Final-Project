@@ -29,7 +29,10 @@ public:
 	void InitializePlayerInput(UInputComponent* PlayerInputComponent);
 	void SetInputConfig(UNSInputConfig* NewConfig);
 	void SetActiveInputModeTags(const FGameplayTagContainer& NewInputModeTags);
-
+	
+	void EnterAugmentInputMode();
+	void ExitAugmentInputMode();
+	
 protected:
 	void ApplyInputConfig();
 	void RemoveInputConfig();
@@ -42,10 +45,13 @@ protected:
 	void Input_Jump();
 	void Input_SpectatePrevious();
 	void Input_SpectateNext();
-
+	
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	void Input_AbilityReleased(FGameplayTag InputTag);
-
+	
+	// 증강 입력 단일 핸들러 (InputTag로 카드 선택/리롤 분기)
+	void Input_AugmentAction(FGameplayTag InputTag);
+	
 protected:
 	UEnhancedInputLocalPlayerSubsystem* GetInputSubsystem() const;
 	
@@ -64,12 +70,18 @@ protected:
 
 	UPROPERTY(Transient)
 	FGameplayTagContainer ActiveInputModeTags;
+	
+	UPROPERTY(Transient)
+	FGameplayTagContainer CachedInputModeTagsBeforeAugment;
 
 	UPROPERTY(Transient)
 	bool bHasAppliedInputConfig = false;
 
 	UPROPERTY(Transient)
 	TArray<uint32> NativeInputBindHandles;
+
+	UPROPERTY(Transient)
+	TArray<uint32> AugmentInputBindHandles;
 
 	UPROPERTY(Transient)
 	TArray<uint32> AbilityInputBindHandles;

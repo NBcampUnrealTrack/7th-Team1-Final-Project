@@ -10,7 +10,10 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
@@ -29,6 +32,9 @@ ANSPlayerController::ANSPlayerController()
 	// 사망 상태 태그 초기화
 	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_DeathSpectator);
 	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
+
+	// 증강 선택 컴포넌트 생성
+	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
 }
 
 void ANSPlayerController::BindAttributeToHUD()
@@ -226,14 +232,32 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
-	if (HasAuthority())
+	if (!HasAuthority())
 	{
-		AGameModeBase* CurrentGameMode = GetWorld()->GetAuthGameMode();
-		
-		if (CurrentGameMode && CurrentGameMode->Implements<UNSOutGameInterface>())
-		{
-			INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
-		}
+		return;
+	}
+
+	AGameModeBase* CurrentGameMode = GetWorld()->GetAuthGameMode();
+	if (CurrentGameMode && CurrentGameMode->Implements<UNSOutGameInterface>())
+	{
+		INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
+	}
+
+	//서버 인런 데이터 로드
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->EnterRun();
+	}
+
+	//각 클라이언트에 인런 데이터 로드 지시
+	Client_NotifyRunStarted();
+}
+
+void ANSPlayerController::Client_NotifyRunStarted_Implementation()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->EnterRun();
 	}
 }
 
@@ -499,72 +523,49 @@ void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
 	Possess(DeathSpectatorPawn);
 	SetViewTarget(DeathSpectatorPawn);
 }
-void ANSPlayerController::SelectAugmentCard1()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(0);
-		}
-	}
-}
-void ANSPlayerController::SelectAugmentCard2()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(1);
-		}
-	}
-}
-void ANSPlayerController::SelectAugmentCard3()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(2);
-		}
-	}
-}
 void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard1);
-	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard2);
-	InputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard3);
 	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::OpenAugmentationSelection);
 }
 void ANSPlayerController::OpenAugmentationSelection()
 {
-	if (!GetWorld())
+	if (!AugmentSelectionComponent)
 	{
 		return;
 	}
 
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
 	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->ShowAugmentation();
-		}
+		return;
 	}
+
+	if (!Data->IsRunReady())
+	{
+		// 런 데이터가 없으면 로드 후 자동 요청 (테스트용)
+		Data->OnRunGameDataReady.AddUniqueDynamic(this, &ANSPlayerController::OnTestRunDataReady);
+		Data->EnterRun();		
+		return;
+	}
+
+	// 런 데이터가 이미 준비됐으면 바로 오퍼 요청
+	AugmentSelectionComponent->RequestOffer(NSGameplayTags::Augment_Pool_Normal);
+}
+
+void ANSPlayerController::OnTestRunDataReady()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+	Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::OnTestRunDataReady);
+
+	if (!AugmentSelectionComponent)
+	{
+		return;
+	}
+	AugmentSelectionComponent->RequestOffer(NSGameplayTags::Augment_Pool_Normal);
 }

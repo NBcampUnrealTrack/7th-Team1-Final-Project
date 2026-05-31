@@ -11,6 +11,7 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -76,6 +77,23 @@ void UNSInputBinderComponent::SetActiveInputModeTags(const FGameplayTagContainer
 	{
 		ApplyInputConfig();
 	}
+}
+
+void UNSInputBinderComponent::EnterAugmentInputMode()
+{
+	// 진입 직전의 활성 태그를 캐시 (종료 시 정확히 복원하기 위함)
+	CachedInputModeTagsBeforeAugment = ActiveInputModeTags;
+	
+	// 증강 IMC 활성화 -> 1/2/3/R
+	FGameplayTagContainer AugmentInputModeTags;
+	AugmentInputModeTags.AddTag(NSGameplayTags::InputMode_Augment);
+	SetActiveInputModeTags(AugmentInputModeTags);
+}
+
+void UNSInputBinderComponent::ExitAugmentInputMode()
+{
+	// 증강 선택 종료 → 진입 직전 입력 모드로 복귀
+	SetActiveInputModeTags(CachedInputModeTagsBeforeAugment);
 }
 
 void UNSInputBinderComponent::ApplyInputConfig()
@@ -170,6 +188,13 @@ void UNSInputBinderComponent::BindInputActions()
 		&ThisClass::Input_AbilityReleased,
 		AbilityInputBindHandles
 	);
+	
+	InputComponent->BindAugmentActions(
+		CurrentInputConfig,
+		this,
+		&ThisClass::Input_AugmentAction,
+		AugmentInputBindHandles
+	);
 }
 
 void UNSInputBinderComponent::UnbindInputActions()
@@ -178,6 +203,7 @@ void UNSInputBinderComponent::UnbindInputActions()
 	{
 		InputComponent->RemoveBinds(NativeInputBindHandles);
 		InputComponent->RemoveBinds(AbilityInputBindHandles);
+		InputComponent->RemoveBinds(AugmentInputBindHandles);
 	}
 }
 
@@ -246,6 +272,50 @@ void UNSInputBinderComponent::Input_SpectateNext()
 	{
 		PlayerController->SpectateNextPlayer();
 	}
+}
+
+void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
+{
+	const UWorld* World = GetWorld();
+	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager = GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (InputTag == NSGameplayTags::Input_Augment_Reroll)
+	{
+		UIManager->RequestRerollAugment();
+		return;
+	}
+
+	// 카드 선택 -> 태그로 인덱스 판정
+	int32 CardIndex = INDEX_NONE;
+	if (InputTag == NSGameplayTags::Input_Augment_Card1)
+	{
+		CardIndex = 0;
+	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card2)
+	{
+		CardIndex = 1;
+	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card3)
+	{
+		CardIndex = 2;
+	}
+
+	if (CardIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	UIManager->SelectAugmentCardByIndex(CardIndex);
 }
 
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)

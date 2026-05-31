@@ -52,6 +52,14 @@ public:
 		ReleasedFuncType ReleasedFunc,
 		TArray<uint32>& BindHandles
 	);
+
+	template <class UserClass, typename FuncType>
+	void BindAugmentActions(
+		const UNSInputConfig* InputConfig,
+		UserClass* Object,
+		FuncType Func,
+		TArray<uint32>& BindHandles
+	);
 };
 
 template <class UserClass, typename FuncType>
@@ -107,6 +115,31 @@ void UNSInputComponent::BindAbilityActions(
 					Action.InputTag
 				).GetHandle());
 			}
+		}
+	}
+}
+
+template <class UserClass, typename FuncType>
+void UNSInputComponent::BindAugmentActions(
+	const UNSInputConfig* InputConfig,
+	UserClass* Object,
+	FuncType Func,
+	TArray<uint32>& BindHandles
+)
+{
+	check(InputConfig);
+
+	for (const FNSInputAction& Action : InputConfig->AugmentInputActions)
+	{
+		if (Action.InputAction && Action.InputTag.IsValid())
+		{
+			BindHandles.Add(BindAction(
+				Action.InputAction,
+				ETriggerEvent::Started,
+				Object,
+				Func,
+				Action.InputTag
+			).GetHandle());
 		}
 	}
 }
