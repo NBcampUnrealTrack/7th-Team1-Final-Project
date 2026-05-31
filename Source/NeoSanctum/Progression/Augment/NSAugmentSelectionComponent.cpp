@@ -40,7 +40,7 @@ void UNSAugmentSelectionComponent::Server_RequestOffer_Implementation(FGameplayT
 	RequestOffer(PoolTag);
 }
 
-void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Index)
+void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
