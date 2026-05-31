@@ -4,7 +4,7 @@
 #include "NSDroneAIController.h"
 #include "EngineUtils.h"
 #include "BehaviorTree/BehaviorTree.h"
-#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSBasicDroneAI.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSTestCoin.h"
 
 const FName ANSDroneAIController::OwningPlayer = TEXT("OwningPlayer");
@@ -53,7 +53,7 @@ void ANSDroneAIController::OnPossess(APawn* InPawn)
 
 	if (!IsValid(DroneAIBBComponent)) return;
 	
-	ANSDroneAI* MyPawn = Cast<ANSDroneAI>(InPawn);
+	ANSBasicDroneAI* MyPawn = Cast<ANSBasicDroneAI>(InPawn);
 	if (!IsValid(MyPawn)) return;
 	
 	if (DroneAIBBComponent->GetValueAsObject(OwningPlayer) != nullptr)

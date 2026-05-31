@@ -13,7 +13,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
-#include "NeoSanctum/AI/Companion/Pawn/NSDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSBasicDroneAI.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -86,7 +86,7 @@ void ANSPlayerCharacterBase::BeginPlay()
 		SpectatorViewComp->SetSourceCamera(CameraComp);
 	}
 	
-	ANSDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSDroneAI>(
+	ANSBasicDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSBasicDroneAI>(
 	DroneAIClass,
 	GetActorTransform(),
 	this,
