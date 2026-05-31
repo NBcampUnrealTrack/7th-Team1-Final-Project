@@ -122,3 +122,13 @@ void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
 	AugmentationWidget->SelectCardByIndex(CardIndex);
 }
 
+void UNSHUDWidget::RequestRerollAugment()
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+
+	AugmentationWidget->RequestRerollAugment();
+}
+
