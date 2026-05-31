@@ -1,15 +1,13 @@
 ﻿// Copyright 2026 One Team. All rights reserved.
 
-
 #include "NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
 
-
-// Sets default values
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
 	PrimaryActorTick.bCanEverTick = false;
@@ -38,4 +36,15 @@ void ANSBaseCompanionAI::BeginPlay()
 	}
 }
 
+void ANSBaseCompanionAI::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	if (!HasAuthority() || !IsValid(NewController)) return;
+	
+	ANSDroneAIController* DroneAIController = Cast<ANSDroneAIController>(NewController);
+	if (!IsValid(DroneAIController)) return;
+	
+	CachedAIController = DroneAIController;
+}
 
