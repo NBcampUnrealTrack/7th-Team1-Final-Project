@@ -42,9 +42,6 @@ private:
 	TArray<TWeakObjectPtr<ANSDroneAIController>> CacheDroneAIControllers;
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
-	TObjectPtr<UAIPerceptionStimuliSourceComponent> StimuliSource;
-	
-	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")
 	TObjectPtr<USphereComponent> CollisionComponent;
 	
 	UPROPERTY(VisibleAnywhere, Category="Coin|Perception")

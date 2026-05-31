@@ -26,10 +26,6 @@ ANSTestCoin::ANSTestCoin()
 	StaticMeshComponent->SetupAttachment(CollisionComponent);
 	StaticMeshComponent->SetCollisionProfileName("BlockAllDynamic");
 	
-	StimuliSource = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>("StimuliSource");
-	StimuliSource->bAutoRegister = true;
-	StimuliSource->RegisterForSense(TSubclassOf<UAISense_Sight>(UAISense_Sight::StaticClass()));
-	
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->InitialSpeed = 200.f;
 	ProjectileMovementComponent->MaxSpeed = 600.f;
@@ -138,13 +134,7 @@ void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	GetWorldTimerManager().ClearTimer(CheckPlayerTimerHandle);
-	for (const TWeakObjectPtr<ANSDroneAIController>& CacheDroneAIController : CacheDroneAIControllers)
-	{
-		if (CacheDroneAIController.IsValid())
-		{
-			CacheDroneAIController->RemoveTargetCoin(this);
-		}
-	}
+	
 }
 
 
