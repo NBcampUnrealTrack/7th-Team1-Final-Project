@@ -4,7 +4,7 @@
 #include "NeoSanctum/GAS/GameplayCue/NSGameplayCueNotify_Sustainable.h"
 
 #include "Components/AudioComponent.h"
-#include "Components/SkeletalMeshComponent.h"
+#include "Components/MeshComponent.h"
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
@@ -96,7 +96,7 @@ USceneComponent* ANSGameplayCueNotify_Sustainable::GetAttachComponent(AActor* My
 		return nullptr;
 	}
 	
-	if (USkeletalMeshComponent* MeshComponent = MyTarget->FindComponentByClass<USkeletalMeshComponent>())
+	if (UMeshComponent* MeshComponent = MyTarget->FindComponentByClass<UMeshComponent>())
 	{
 		if (SocketName.IsNone() || MeshComponent->DoesSocketExist(SocketName))
 		{

@@ -3,7 +3,7 @@
 
 #include "NeoSanctum/GAS/GameplayCue/NSGameplayCueNotify_Instant.h"
 
-#include "Components/SkeletalMeshComponent.h"
+#include "Components/MeshComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 
@@ -27,7 +27,7 @@ USceneComponent* UNSGameplayCueNotify_Instant::GetAttachComponent(AActor* MyTarg
 		return nullptr;
 	}
 	
-	if (USkeletalMeshComponent* MeshComponent = MyTarget->FindComponentByClass<USkeletalMeshComponent>())
+	if (UMeshComponent* MeshComponent = MyTarget->FindComponentByClass<UMeshComponent>())
 	{
 		if (SocketName.IsNone() || MeshComponent->DoesSocketExist(SocketName))
 		{
