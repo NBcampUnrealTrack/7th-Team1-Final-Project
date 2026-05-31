@@ -7,9 +7,10 @@
 namespace NSGameplayTags
 {
 	// Input Mode
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputMode_Gameplay); 
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputMode_Gameplay);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputMode_UI);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputMode_DeathSpectator);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(InputMode_Augment);
 
 	// Native Input
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Move);
@@ -27,4 +28,11 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_Dash);
+	
+	// Augment Input
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card1);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card2);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card3);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Reroll);
+
 }
