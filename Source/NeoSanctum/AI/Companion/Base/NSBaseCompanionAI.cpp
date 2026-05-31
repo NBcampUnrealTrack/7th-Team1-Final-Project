@@ -2,7 +2,7 @@
 
 #include "NSBaseCompanionAI.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
-#include "Components/CapsuleComponent.h"
+#include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
@@ -10,30 +10,45 @@
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	
-	CapsuleComponent = CreateDefaultSubobject<UCapsuleComponent>("Collision");
-	SetRootComponent(CapsuleComponent);
-	CapsuleComponent->SetSimulatePhysics(false);
+	// AIController 자동빙의
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	AIControllerClass = ANSDroneAIController::StaticClass();
+	
+	SphereComponent = CreateDefaultSubobject<USphereComponent>("Collision");
+	SetRootComponent(SphereComponent);
+	SphereComponent->SetSimulatePhysics(false);
 	
 	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("SkeletalMesh");
-	SkeletalMeshComponent->SetupAttachment(CapsuleComponent);
+	SkeletalMeshComponent->SetupAttachment(SphereComponent);
+	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	FloatingPawnMovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
+	FloatingPawnMovementComponent->MaxSpeed = 1000.f;
+	FloatingPawnMovementComponent->Acceleration = 4000.f;
+	FloatingPawnMovementComponent->Deceleration = 4000.f;
+	FloatingPawnMovementComponent->TurningBoost = 8.f;
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
 	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
 	
+	bReplicates = true;
+	SetReplicateMovement(true);
 }
 
-void ANSBaseCompanionAI::BeginPlay()
+void ANSBaseCompanionAI::Tick(float DeltaSeconds)
 {
-	Super::BeginPlay();
-	
-	if (AbilitySystemComponent)
+	Super::Tick(DeltaSeconds);
+	if (HasAuthority())
 	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		MaintainAltitude(DeltaSeconds);
 	}
+}
+
+void ANSBaseCompanionAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 }
 
 void ANSBaseCompanionAI::PossessedBy(AController* NewController)
@@ -48,3 +63,66 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	CachedAIController = DroneAIController;
 }
 
+void ANSBaseCompanionAI::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	}
+}
+
+void ANSBaseCompanionAI::GetActorEyesViewPoint(FVector& Location, FRotator& Rotation) const
+{
+	Super::GetActorEyesViewPoint(Location, Rotation);
+	Rotation = GetActorRotation();
+}
+
+void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
+{
+	FVector TargetPosition = TargetLocation - GetActorLocation();
+	TargetPosition.Z = 0.f;
+	
+	if (TargetPosition.SizeSquared() < FMath::Square(ArrivalRadius)) return;
+	
+	FVector TargetDirection = TargetPosition.GetSafeNormal();
+	TargetDirection += ComputeAvoidanceVector() * AvoidanceStrength;
+	TargetDirection = TargetDirection.GetSafeNormal2D();
+	
+	AddMovementInput(TargetDirection, 1.0f);
+}
+
+void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
+{
+	if (!IsValid(Actor)) return;
+	
+	OwnerPlayer = Actor;
+}
+
+void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
+{
+	const FVector Start = GetActorLocation();
+	const FVector End = Start - FVector(0.f,0.f,GroundTraceDistance);
+	
+	FHitResult Hit;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+	
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, CollisionParams))
+	{
+		const float DesiredHeight = Hit.ImpactPoint.Z + Altitude;
+		const float DesiredMoveDistance = DesiredHeight - Start.Z;
+		
+		if (FMath::Abs(DesiredMoveDistance) > AltitudeDeadZone)
+		{
+			const float InputZ = FMath::Clamp(DesiredMoveDistance / AltitudeCorrectionRange, -1.f, 1.f);
+			AddMovementInput(FVector::UpVector, InputZ);
+		}
+	}
+}
+
+FVector ANSBaseCompanionAI::ComputeAvoidanceVector() const
+{
+	return FVector::ZeroVector;
+}
