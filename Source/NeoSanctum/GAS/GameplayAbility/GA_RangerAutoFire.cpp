@@ -485,6 +485,19 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	return true;
 }
 
+bool UGA_RangerAutoFire::TryGetAimTraceStartLocation(FVector& OutLocation) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+	
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+	
+	return PlayerCharacter->TryGetAimTraceStartLocation(OutLocation);
+}
+
 void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();

@@ -44,10 +44,11 @@ public:
 
 	
 public:
-	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; };
+	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; }
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	UNSSpectatorViewComponent* GetSpectatorViewComponent() const { return SpectatorViewComp; }
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
+	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	
 public:
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(static_cast<uint8>(ETeamId::Player)); }

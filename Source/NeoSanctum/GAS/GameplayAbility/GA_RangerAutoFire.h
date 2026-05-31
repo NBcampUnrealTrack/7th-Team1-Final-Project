@@ -98,7 +98,10 @@ private:
 		FVector& OutTraceStart,
 		FVector& OutTraceEnd,
 		bool& bOutHit) const;
+	
+	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
+	 
 	
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
 	
