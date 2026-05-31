@@ -86,20 +86,23 @@ void ANSPlayerCharacterBase::BeginPlay()
 		SpectatorViewComp->SetSourceCamera(CameraComp);
 	}
 	
-	ANSBasicDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSBasicDroneAI>(
-	DroneAIClass,
-	GetActorTransform(),
-	this,
-	this,
-	ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-	);
-	
-	if (DroneAI)
+	if (HasAuthority())
 	{
-		DroneAI->SetOwnerPlayer(this);
-	}
+		ANSBasicDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSBasicDroneAI>(
+		DroneAIClass,
+		GetActorTransform(),
+		this,
+		this,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+		);
 	
-	UGameplayStatics::FinishSpawningActor(DroneAI, GetActorTransform());
+		if (DroneAI)
+		{
+			DroneAI->SetOwnerPlayer(this);
+		}
+	
+		UGameplayStatics::FinishSpawningActor(DroneAI, GetActorTransform());
+	}
 }
 
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
