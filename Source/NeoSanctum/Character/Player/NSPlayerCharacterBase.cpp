@@ -13,7 +13,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "Kismet/GameplayStatics.h"
-#include "NeoSanctum/AI/Companion/Pawn/NSBasicDroneAI.h"
+#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -88,20 +89,13 @@ void ANSPlayerCharacterBase::BeginPlay()
 	
 	if (HasAuthority())
 	{
-		ANSBasicDroneAI* DroneAI = GetWorld()->SpawnActorDeferred<ANSBasicDroneAI>(
-		DroneAIClass,
-		GetActorTransform(),
-		this,
-		this,
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
-		);
+		ANSBaseCompanionAI* DroneAI = 
+			GetWorld()->SpawnActor<ANSBaseCompanionAI>(DroneAIClass, GetActorTransform());
 	
-		if (DroneAI)
+		if (ANSDroneAIController* DC = Cast<ANSDroneAIController>(DroneAI->GetController()))
 		{
-			DroneAI->SetOwnerPlayer(this);
+			DC->SetOwnerPlayer(this);   // this = 드론을 소유한 플레이어 Pawn
 		}
-	
-		UGameplayStatics::FinishSpawningActor(DroneAI, GetActorTransform());
 	}
 }
 
