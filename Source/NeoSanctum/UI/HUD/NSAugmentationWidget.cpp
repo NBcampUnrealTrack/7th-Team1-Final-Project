@@ -3,15 +3,19 @@
 #include "NSAugmentationWidget.h"
 #include "Components/CanvasPanelSlot.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
+#include "Engine/AssetManager.h"
 #include "Components/CanvasPanel.h"
 #include "GameFramework/PlayerController.h"
-#include "InputCoreTypes.h"
 
 void UNSAugmentationWidget::ShowAugmentation()
-{	
+{
 	//증강 UI표시
 	SetVisibility(ESlateVisibility::Visible);
-	SetIsFocusable(true);
 
 	//OwningPlayer가 없으면 PlayerController사용
 	APlayerController* PC = GetOwningPlayer();
@@ -25,17 +29,12 @@ void UNSAugmentationWidget::ShowAugmentation()
 	{
 		return;
 	}
-	//증강 선택중에는 입력모드 UI로 변경
-	FInputModeUIOnly InputMode;
-	InputMode.SetWidgetToFocus(TakeWidget());
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	PC->SetInputMode(InputMode);
-	PC->bShowMouseCursor = true;
 	
-	// 현재 증강 위젯에 키보드 포커스를 준다
-	SetUserFocus(PC);
-	SetKeyboardFocus();
-
+	// 입력 차단은 IMC 스위칭으로 달성
+	if (UNSInputBinderComponent* Binder = GetOwningInputBinder(PC))
+	{
+		Binder->EnterAugmentInputMode();
+	}
 }
 
 void UNSAugmentationWidget::HideAugmentation()
@@ -43,13 +42,16 @@ void UNSAugmentationWidget::HideAugmentation()
 	//증강 선택 UI 숨김
 	SetVisibility(ESlateVisibility::Collapsed);
 
-	//증강 선택이 끝나면 입력 모드를 다시 게임 전용으로 복구
-	if (APlayerController* PC = GetOwningPlayer())
+	if (UNSInputBinderComponent* Binder = GetOwningInputBinder(GetOwningPlayer()))
 	{
-		FInputModeGameOnly InputMode;
-		PC->SetInputMode(InputMode);
-		PC->bShowMouseCursor = false;
+		Binder->ExitAugmentInputMode();
 	}
+}
+
+UNSInputBinderComponent* UNSAugmentationWidget::GetOwningInputBinder(APlayerController* PC) const
+{
+	ANSPlayerCharacterBase* Character = PC ? Cast<ANSPlayerCharacterBase>(PC->GetPawn()) : nullptr;
+	return Character ? Character->GetInputBinderComponent() : nullptr;
 }
 
 void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
@@ -131,21 +133,37 @@ void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 
 	UE_LOG(LogTemp, Warning, TEXT("[증강] 증강 선택 확정 : %d"), CardIndex + 1);
 
-	HideAugmentation();
+	ConfirmAugmentSelection(CardIndex);
 }
 
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 {
-	// TODO(영웅): 실제 증강 데이터 선택 및 적용 로직 연결
-	// 선택이 끝나면 증강 UI를 닫음
-	HideAugmentation();
+	//현재 오퍼 범위 밖이면 무시
+	if (!CurrentOfferIds.IsValidIndex(CardIndex))
+	{
+		return;
+	}
+
+	UNSAugmentSelectionComponent* SelComp = GetSelectionComponent();
+	if (!SelComp)
+	{
+		return;
+	}
+
+	//서버 권한에서 증강 적용. UI 숨김은 서버의 Client_CloseOffer -> OnOfferClosed가 처리
+	SelComp->Server_Choose(CardIndex);
 }
 
 void UNSAugmentationWidget::RequestRerollAugment()
 {
-	// TODO(영웅): 런 인 재화 또는 리롤 가능 횟수 확인 후 선택지 재생성
-
-	CreateChoiceCard(ChoiceCount);
+	// 재화/리롤 횟수 검증은 서버(Server_RerollCard)에서 처리 예정 (현재 재화 시스템 미연동)
+	UNSAugmentSelectionComponent* SelComp = GetSelectionComponent();
+	if (!SelComp)
+	{
+		return;
+	}
+	//서버에 전체 리롤 요청 → Client_PresentOffer → HandleOfferPresented로 카드 갱신
+	SelComp->Server_RerollCard();
 }
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
@@ -176,37 +194,168 @@ void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	//키보드입력을 받을수있게 한다
-	SetIsFocusable(true);
 	//기본상태에서는 숨김
 	SetVisibility(ESlateVisibility::Collapsed);
 	//증강 선택지 3개
 	CreateChoiceCard(3);
 
+	//오너 PC의 선택 컴포넌트 델리게이트 구독
+	APlayerController* PC = GetOwningPlayer();
+	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] NativeConstruct - PC=%s"), PC ? *PC->GetName() : TEXT("null"));
+
+	if (UNSAugmentSelectionComponent* SelComp = GetSelectionComponent())
+	{
+		SelComp->OnOfferPresented.AddDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
+		SelComp->OnOfferClosed.AddDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
+		UE_LOG(LogTemp, Log, TEXT("[증강][Widget] 델리게이트 바인딩 성공"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[증강][Widget] SelectionComponent 없음 - 바인딩 실패"));
+	}
 }
 
-FReply UNSAugmentationWidget::NativeOnKeyDown(
-	const FGeometry& InGeometry,
-	const FKeyEvent& InKeyEvent)
+void UNSAugmentationWidget::NativeDestruct()
 {
-	const FKey PressedKey = InKeyEvent.GetKey();
-	
-	//숫자키 1,2,3으로 각 증강 선택지를 바로 선택
-	if (PressedKey == EKeys::One)
+	//진행 중인 비동기 로드 취소
+	if (IconLoadHandle.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강] 1번 키 입력"));
-		SelectCardByIndex(0);
-		return FReply::Handled();
-	}if (PressedKey == EKeys::Two)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강] 2번 키 입력"));
-		SelectCardByIndex(1);
-		return FReply::Handled();
-	}if (PressedKey == EKeys::Three)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강] 3번 키 입력"));
-		SelectCardByIndex(2);
-		return FReply::Handled();
+		IconLoadHandle->CancelHandle();
+		IconLoadHandle.Reset();
 	}
-	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+	//구독 해제
+	if (SelectionComponent.IsValid())
+	{
+		SelectionComponent->OnOfferPresented.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
+		SelectionComponent->OnOfferClosed.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
+	}
+	Super::NativeDestruct();
+}
+
+UNSAugmentSelectionComponent* UNSAugmentationWidget::GetSelectionComponent()
+{
+	if (SelectionComponent.IsValid())
+	{
+		return SelectionComponent.Get();
+	}
+
+	APlayerController* PC = GetOwningPlayer();
+	if (!PC)
+	{
+		return nullptr;
+	}
+
+	SelectionComponent = PC->FindComponentByClass<UNSAugmentSelectionComponent>();
+	return SelectionComponent.Get();
+}
+
+void UNSAugmentationWidget::HandleOfferPresented(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost)
+{
+	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] HandleOfferPresented - 카드 %d장"), OfferIds.Num());
+	CurrentOfferIds = OfferIds;
+	CreateChoiceCard(OfferIds.Num());
+
+	// 오퍼 3개의 아이콘 소프트포인터만 수집 (GE/GA는 서버 ApplyAugment에서 로드)
+	TArray<FSoftObjectPath> PathsToLoad;
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (Data && Data->IsRunReady())
+	{
+		for (const FPrimaryAssetId& Id : OfferIds)
+		{
+			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Id);
+			if (!Def)
+			{
+				continue;
+			}
+			if (!Def->Icon.IsNull())
+			{
+				PathsToLoad.Add(Def->Icon.ToSoftObjectPath());
+			}
+		}
+	}
+
+	// 이전 로드가 진행 중이면 취소 (리롤 시)
+	if (IconLoadHandle.IsValid())
+	{
+		IconLoadHandle->CancelHandle();
+		IconLoadHandle.Reset();
+	}
+
+	if (PathsToLoad.Num() > 0)
+	{
+		// 로드 완료 후 카드 채우고 UI 표시
+		IconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+			PathsToLoad,
+			FStreamableDelegate::CreateUObject(this, &UNSAugmentationWidget::OnIconsLoaded)
+		);
+	}
+	else
+	{
+		// 로드할 소프트포인터가 없으면 (아이콘 미설정 등) 바로 표시
+		PopulateOfferCards();
+		if (GetVisibility() != ESlateVisibility::Visible)
+		{
+			ShowAugmentation();
+		}
+	}
+}
+
+void UNSAugmentationWidget::OnIconsLoaded()
+{
+	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] OnIconsLoaded - 카드 채우기 시작"));
+	PopulateOfferCards();
+	// 첫 오퍼 시에만 UI를 열고, 리롤 시에는 이미 열려있으므로 생략
+	if (GetVisibility() != ESlateVisibility::Visible)
+	{
+		ShowAugmentation();
+	}
+}
+
+void UNSAugmentationWidget::PopulateOfferCards()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[증강] PopulateOfferCards: DataSubsystem 없음"));
+		return;
+	}
+	if (!Data->IsRunReady())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[증강] PopulateOfferCards: IsRunReady=false (Phase=%d)"), (int32)Data->GetCurrentPhase());
+		return;
+	}
+
+	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
+	{
+		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
+		if (!Card || !CurrentOfferIds.IsValidIndex(Index))
+		{
+			continue;
+		}
+
+		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CurrentOfferIds[Index]);
+		if (!Def)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[증강] PopulateOfferCards: [%d] Def 없음 Id=%s"), Index, *CurrentOfferIds[Index].ToString());
+			continue;
+		}
+
+		UE_LOG(LogTemp, Log, TEXT("[증강] PopulateOfferCards: [%d] %s"), Index, *Def->DisplayName.ToString());
+		Card->SetAugmentName(Def->DisplayName.ToString());
+		Card->SetAugmentDescription(Def->Description.ToString());
+		// 비동기 로드 완료 후 호출되므로 .Get()으로 바로 사용 가능
+		Card->SetAugmentIcon(Def->Icon.Get());
+	}
+}
+
+void UNSAugmentationWidget::HandleOfferClosed()
+{
+	//오퍼 종료 시 아이콘 로드 핸들 해제 (자산 반환)
+	if (IconLoadHandle.IsValid())
+	{
+		IconLoadHandle->CancelHandle();
+		IconLoadHandle.Reset();
+	}
+	//서버가 오퍼를 닫으면 UI 숨김
+	HideAugmentation();
 }
