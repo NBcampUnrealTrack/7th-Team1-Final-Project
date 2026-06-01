@@ -14,6 +14,9 @@ void UANS_WeaponTraceCheck::NotifyTick(
 {
 	Super::NotifyTick(MeshComp, Animation, FrameDeltaTime, EventReference);
 
+	UWorld* World = MeshComp->GetWorld();
+	if (!World || !World->IsGameWorld()) return;
+	
 	AActor* Owner = MeshComp->GetOwner();
 	if (!Owner || !Owner->HasAuthority()) return;
 
