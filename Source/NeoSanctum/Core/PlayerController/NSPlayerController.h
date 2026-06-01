@@ -39,6 +39,9 @@ public:
 	void SpectatePreviousPlayer();
 	void SpectateNextPlayer();
 
+	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
+	void ToggleAugmentationPanel();
+
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
@@ -116,10 +119,7 @@ protected:
 	
 	virtual void SetupInputComponent() override;
 
-	// Tab키 : 증강 패널 토글
-	void ToggleAugmentationPanel();
-
-	// P키(디버그 용) : 테스트용 증강 적재
+	// O키(디버그 용) : 테스트용 증강 적재
 	void Debug_EnqueueAugmentOffer();
 
 	// 테스트용 콜백

@@ -32,4 +32,5 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Card2, "Input.Augment.Card2");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Card3, "Input.Augment.Card3");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Reroll, "Input.Augment.Reroll");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_TogglePanel, "Input.Augment.TogglePanel");
 }

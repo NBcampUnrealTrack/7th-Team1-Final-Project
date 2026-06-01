@@ -34,5 +34,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Reroll);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_TogglePanel);
 
 }
