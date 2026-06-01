@@ -46,12 +46,12 @@ public:
 	//조준점 색상 변경
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void SetCrosshairColor(FLinearColor NewColor);
-	//증강 UI 표시
+	//증강 패널 열기
 	UFUNCTION(BlueprintCallable,Category = "UI")
-	void ShowAugmentation();
-	//증강 UI 숨김
+	void OpenAugmentationPanel();
+	//증강 패널 닫기
 	UFUNCTION(BlueprintCallable,Category = "UI")
-	void HideAugmentation();
+	void CloseAugmentationPanel();
 
 	void SelectAugmentCardByIndex(int32 CardIndex);
 

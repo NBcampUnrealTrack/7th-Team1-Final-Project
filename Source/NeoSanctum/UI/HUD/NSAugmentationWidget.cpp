@@ -4,54 +4,65 @@
 #include "Components/CanvasPanelSlot.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
-#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
-#include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "Engine/AssetManager.h"
+#include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
+#include "Components/SizeBox.h"
+#include "Components/WrapBox.h"
+#include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 
-void UNSAugmentationWidget::ShowAugmentation()
+void UNSAugmentationWidget::OpenPanel()
 {
-	//증강 UI표시
+	// 순수 UI 표시만 담당 (보유 아이콘 갱신)
+	bPanelOpen = true;
 	SetVisibility(ESlateVisibility::Visible);
-
-	//OwningPlayer가 없으면 PlayerController사용
-	APlayerController* PC = GetOwningPlayer();
-
-	if (!PC && GetWorld())
-	{
-		PC = GetWorld()->GetFirstPlayerController();
-	}
-
-	if (!PC)
-	{
-		return;
-	}
-	
-	// 입력 차단은 IMC 스위칭으로 달성
-	if (UNSInputBinderComponent* Binder = GetOwningInputBinder(PC))
-	{
-		Binder->EnterAugmentInputMode();
-	}
+	RefreshOwnedAugmentList();
 }
 
-void UNSAugmentationWidget::HideAugmentation()
+void UNSAugmentationWidget::ClosePanel()
 {
-	//증강 선택 UI 숨김
+	bPanelOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
-
-	if (UNSInputBinderComponent* Binder = GetOwningInputBinder(GetOwningPlayer()))
+	
+	if (IconLoadHandle.IsValid())
 	{
-		Binder->ExitAugmentInputMode();
+		IconLoadHandle->CancelHandle();
+		IconLoadHandle.Reset();
+	}
+	if (OwnedIconLoadHandle.IsValid())
+	{
+		OwnedIconLoadHandle->CancelHandle();
+		OwnedIconLoadHandle.Reset();
 	}
 }
 
-UNSInputBinderComponent* UNSAugmentationWidget::GetOwningInputBinder(APlayerController* PC) const
+void UNSAugmentationWidget::ShowCardSection()
 {
-	ANSPlayerCharacterBase* Character = PC ? Cast<ANSPlayerCharacterBase>(PC->GetPawn()) : nullptr;
-	return Character ? Character->GetInputBinderComponent() : nullptr;
+	if (CardSectionRoot)
+	{
+		CardSectionRoot->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSAugmentationWidget::HideCardSection()
+{
+	if (ChoiceRootCanvas)
+	{
+		ChoiceRootCanvas->ClearChildren();
+	}
+	AugmentCardWidgets.Empty();
+	CurrentOfferIds.Reset();
+
+	if (CardSectionRoot)
+	{
+		CardSectionRoot->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
@@ -132,8 +143,6 @@ void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 		return;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("[증강] 증강 선택 확정 : %d"), CardIndex + 1);
-
 	ConfirmAugmentSelection(CardIndex);
 }
 
@@ -169,7 +178,91 @@ void UNSAugmentationWidget::RequestRerollAugment()
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
 {
-	// TODO(영웅): 현재 보유 중인 증강 목록 UI 갱신
+	if (!OwnedAugmentWrapBox)
+	{
+		return;
+	}
+	OwnedAugmentWrapBox->ClearChildren();
+
+	UNSAugmentInventoryComponent* Inv = GetInventoryComponent();
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Inv || !Data || !Data->IsRunReady())
+	{
+		return;
+	}
+
+	// 보유 증강 아이콘 소프트포인터 수집
+	TArray<FSoftObjectPath> PathsToLoad;
+	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
+	{
+		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+		if (Def && !Def->Icon.IsNull())
+		{
+			PathsToLoad.Add(Def->Icon.ToSoftObjectPath());
+		}
+	}
+	if (PathsToLoad.Num() == 0)
+	{
+		return;
+	}
+
+	// 이전 로드 취소 후 비동기 로드
+	if (OwnedIconLoadHandle.IsValid())
+	{
+		OwnedIconLoadHandle->CancelHandle();
+		OwnedIconLoadHandle.Reset();
+	}
+	OwnedIconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		PathsToLoad,
+		FStreamableDelegate::CreateUObject(this, &UNSAugmentationWidget::OnOwnedIconsLoaded)
+	);
+}
+
+void UNSAugmentationWidget::OnOwnedIconsLoaded()
+{
+	if (!OwnedAugmentWrapBox || !WidgetTree)
+	{
+		return;
+	}
+	OwnedAugmentWrapBox->ClearChildren();
+
+	UNSAugmentInventoryComponent* Inv = GetInventoryComponent();
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Inv || !Data)
+	{
+		return;
+	}
+
+	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
+	{
+		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+		if (!Def)
+		{
+			continue;
+		}
+		UTexture2D* Texture = Def->Icon.Get();
+		if (!Texture)
+		{
+			continue;
+		}
+
+		// SizeBox로 감싸서 텍스처 원본 해상도와 무관하게 일정한 크기로 표시
+		USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		UImage* IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		if (!SizeBox || !IconImage)
+		{
+			continue;
+		}
+		SizeBox->SetWidthOverride(OwnedIconSize.X);
+		SizeBox->SetHeightOverride(OwnedIconSize.Y);
+		// SetBrushFromTexture 후 원하는 표시 크기로 재지정
+		IconImage->SetBrushFromTexture(Texture, false);
+		FSlateBrush Brush = IconImage->GetBrush();
+		Brush.ImageSize = OwnedIconSize;
+		IconImage->SetBrush(Brush);
+		SizeBox->AddChild(IconImage);
+		OwnedAugmentWrapBox->AddChildToWrapBox(SizeBox);
+	}
 }
 
 void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
@@ -195,24 +288,27 @@ void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	//기본상태에서는 숨김
+	//기본상태에서는 패널 숨김 + 카드 영역 숨김
+	bPanelOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
-	//증강 선택지 3개
-	CreateChoiceCard(3);
+	HideCardSection();
 
 	//오너 PC의 선택 컴포넌트 델리게이트 구독
 	APlayerController* PC = GetOwningPlayer();
-	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] NativeConstruct - PC=%s"), PC ? *PC->GetName() : TEXT("null"));
 
 	if (UNSAugmentSelectionComponent* SelComp = GetSelectionComponent())
 	{
 		SelComp->OnOfferPresented.AddDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelComp->OnOfferClosed.AddDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
-		UE_LOG(LogTemp, Log, TEXT("[증강][Widget] 델리게이트 바인딩 성공"));
+		SelComp->OnPendingCountChanged.AddDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+		//현재 대기 카운트로 뱃지 초기화
+		HandlePendingCountChanged(SelComp->GetPendingCount());
 	}
-	else
+
+	//보유 증강 변경 구독
+	if (UNSAugmentInventoryComponent* Inv = GetInventoryComponent())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강][Widget] SelectionComponent 없음 - 바인딩 실패"));
+		Inv->OnInventoryChanged.AddDynamic(this, &UNSAugmentationWidget::HandleInventoryChanged);
 	}
 }
 
@@ -224,11 +320,21 @@ void UNSAugmentationWidget::NativeDestruct()
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
+	if (OwnedIconLoadHandle.IsValid())
+	{
+		OwnedIconLoadHandle->CancelHandle();
+		OwnedIconLoadHandle.Reset();
+	}
 	//구독 해제
 	if (SelectionComponent.IsValid())
 	{
 		SelectionComponent->OnOfferPresented.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelectionComponent->OnOfferClosed.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
+		SelectionComponent->OnPendingCountChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+	}
+	if (InventoryComponent.IsValid())
+	{
+		InventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandleInventoryChanged);
 	}
 	Super::NativeDestruct();
 }
@@ -250,9 +356,26 @@ UNSAugmentSelectionComponent* UNSAugmentationWidget::GetSelectionComponent()
 	return SelectionComponent.Get();
 }
 
+UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
+{
+	if (InventoryComponent.IsValid())
+	{
+		return InventoryComponent.Get();
+	}
+
+	APlayerController* PC = GetOwningPlayer();
+	APlayerState* PS = PC ? PC->PlayerState : nullptr;
+	if (!PS)
+	{
+		return nullptr;
+	}
+
+	InventoryComponent = PS->FindComponentByClass<UNSAugmentInventoryComponent>();
+	return InventoryComponent.Get();
+}
+
 void UNSAugmentationWidget::HandleOfferPresented(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost)
 {
-	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] HandleOfferPresented - 카드 %d장"), OfferIds.Num());
 	CurrentOfferIds = OfferIds;
 	CreateChoiceCard(OfferIds.Num());
 
@@ -284,7 +407,7 @@ void UNSAugmentationWidget::HandleOfferPresented(const TArray<FPrimaryAssetId>& 
 
 	if (PathsToLoad.Num() > 0)
 	{
-		// 로드 완료 후 카드 채우고 UI 표시
+		// 로드 완료 후 카드 채우고 표시
 		IconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 			PathsToLoad,
 			FStreamableDelegate::CreateUObject(this, &UNSAugmentationWidget::OnIconsLoaded)
@@ -292,24 +415,16 @@ void UNSAugmentationWidget::HandleOfferPresented(const TArray<FPrimaryAssetId>& 
 	}
 	else
 	{
-		// 로드할 소프트포인터가 없으면 (아이콘 미설정 등) 바로 표시
+		// 아이콘이 없는 경우
 		PopulateOfferCards();
-		if (GetVisibility() != ESlateVisibility::Visible)
-		{
-			ShowAugmentation();
-		}
+		ShowCardSection();
 	}
 }
 
 void UNSAugmentationWidget::OnIconsLoaded()
 {
-	UE_LOG(LogTemp, Log, TEXT("[증강][Widget] OnIconsLoaded - 카드 채우기 시작"));
 	PopulateOfferCards();
-	// 첫 오퍼 시에만 UI를 열고, 리롤 시에는 이미 열려있으므로 생략
-	if (GetVisibility() != ESlateVisibility::Visible)
-	{
-		ShowAugmentation();
-	}
+	ShowCardSection();
 }
 
 void UNSAugmentationWidget::PopulateOfferCards()
@@ -317,12 +432,10 @@ void UNSAugmentationWidget::PopulateOfferCards()
 	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
 	if (!Data)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[증강] PopulateOfferCards: DataSubsystem 없음"));
 		return;
 	}
 	if (!Data->IsRunReady())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강] PopulateOfferCards: IsRunReady=false (Phase=%d)"), (int32)Data->GetCurrentPhase());
 		return;
 	}
 
@@ -337,11 +450,9 @@ void UNSAugmentationWidget::PopulateOfferCards()
 		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CurrentOfferIds[Index]);
 		if (!Def)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("[증강] PopulateOfferCards: [%d] Def 없음 Id=%s"), Index, *CurrentOfferIds[Index].ToString());
 			continue;
 		}
-
-		UE_LOG(LogTemp, Log, TEXT("[증강] PopulateOfferCards: [%d] %s"), Index, *Def->DisplayName.ToString());
+		
 		Card->SetAugmentName(Def->DisplayName.ToString());
 		Card->SetAugmentDescription(Def->Description.ToString());
 		// 비동기 로드 완료 후 호출되므로 .Get()으로 바로 사용 가능
@@ -357,6 +468,31 @@ void UNSAugmentationWidget::HandleOfferClosed()
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
-	//서버가 오퍼를 닫으면 UI 숨김
-	HideAugmentation();
+	//카드 영역만 닫음. 패널 전체(보유 아이콘)는 유지 → 대기 0개면 보유 목록만 표시됨
+	HideCardSection();
+}
+
+void UNSAugmentationWidget::HandlePendingCountChanged(int32 NewCount)
+{
+	if (!PendingCountText)
+	{
+		return;
+	}
+	//대기 0개면 뱃지 숨김
+	if (NewCount <= 0)
+	{
+		PendingCountText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	PendingCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	PendingCountText->SetText(FText::AsNumber(NewCount));
+}
+
+void UNSAugmentationWidget::HandleInventoryChanged()
+{
+	//패널이 열려 있을 때만 보유 아이콘 갱신 (닫혀 있으면 다음 OpenPanel에서 갱신)
+	if (bPanelOpen)
+	{
+		RefreshOwnedAugmentList();
+	}
 }
