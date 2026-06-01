@@ -100,6 +100,8 @@ private:
 	void ApplyDamageToActor(AActor* TargetActor);
 	
 	void ExecuteMuzzleFireCue();
+	void ExcuteImpactCue(const FHitResult& HitResult); 
+	
 	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 	void DrawDebugMuzzleObstructionTrace(
 		const FVector& TraceStart,

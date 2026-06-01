@@ -327,10 +327,12 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 	
 	if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
 	{
+		ExcuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
 	
 	ApplyDamageToActor(ServerHitResult.GetActor());
+	ExcuteImpactCue(ServerHitResult);
 }
 
 void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
@@ -619,6 +621,25 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
 
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
+}
+
+void UGA_RangerAutoFire::ExcuteImpactCue(const FHitResult& HitResult)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	
+	if (!ASC || !AvatarActor || !HitResult.bBlockingHit)
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.Location = HitResult.ImpactPoint;
+	CueParameters.Normal = HitResult.ImpactNormal;
+	
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_Impact, CueParameters);
 }
 
 bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) const
