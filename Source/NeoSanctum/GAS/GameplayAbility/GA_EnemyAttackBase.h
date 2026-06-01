@@ -58,4 +58,7 @@ protected:
 	
 private:
 	TObjectPtr<UNSEnemyData> EnemyData;
+	
+	// 이번 공격에서 타격 여부 체크
+	bool bHasHitThisAttack;
 };

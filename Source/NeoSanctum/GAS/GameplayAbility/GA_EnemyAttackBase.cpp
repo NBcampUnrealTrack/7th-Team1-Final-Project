@@ -35,6 +35,8 @@ void UGA_EnemyAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
+	bHasHitThisAttack = false;
+	
 	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
     {
         if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(ActorInfo->AvatarActor.Get()))
@@ -100,6 +102,8 @@ void UGA_EnemyAttackBase::OnMontageInterrupted()
 
 void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 {
+	if (bHasHitThisAttack) return;
+	
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 	if (!AvatarActor || !World) return;
@@ -151,6 +155,8 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 
 			if (TargetASC && AIASC && DamageEffectClass)
 			{
+				bHasHitThisAttack = true;
+				
 				// GE 발생 정보 생성
 				FGameplayEffectContextHandle EffectContext = AIASC->MakeEffectContext();
 				EffectContext.AddHitResult(HitResult);
@@ -167,7 +173,7 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 		}
 	}
 
-	if (GameplayCueTag.IsValid())
+	if (GameplayCueTag.IsValid() && bHit)
 	{
 		GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(GameplayCueTag, FGameplayCueParameters());
 	}
