@@ -8,6 +8,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
@@ -23,7 +24,7 @@ UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 	bRetriggerInstancedAbility = false;
 
 	AttackTraceDistance = 100.0f;
-	AttackTraceRadius = 80.0f;
+	AttackTraceRadius = 8.0f;
 
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
@@ -34,20 +35,20 @@ void UGA_EnemyAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle Handl
                                           const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-	
+
 	bHasHitThisAttack = false;
-	
+
 	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
-    {
-        if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(ActorInfo->AvatarActor.Get()))
-        {
-            EnemyData = EnemyChar->GetEnemyData();
-            if (EnemyData)
-            {
-                AttackTraceDistance = EnemyData->MaxAttackRange;
-            }
-        }
-    }
+	{
+		if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(ActorInfo->AvatarActor.Get()))
+		{
+			EnemyData = EnemyChar->GetEnemyData();
+			if (EnemyData)
+			{
+				AttackTraceDistance = EnemyData->MaxAttackRange;
+			}
+		}
+	}
 
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -103,7 +104,7 @@ void UGA_EnemyAttackBase::OnMontageInterrupted()
 void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 {
 	if (bHasHitThisAttack) return;
-	
+
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 	if (!AvatarActor || !World) return;
@@ -114,12 +115,44 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 	FVector ForwardVector = AvatarActor->GetActorForwardVector();
 	FVector EndLocation = StartLocation + (ForwardVector * AttackTraceDistance);
 
+	ANSEnemyWeaponBase* AttachedWeapon = nullptr;
+	TArray<AActor*> AttachedActors;
+	AvatarActor->GetAttachedActors(AttachedActors);
+	for (AActor* Actor : AttachedActors)
+	{
+		if (ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(Actor))
+		{
+			AttachedWeapon = Weapon;
+			break;
+		}
+	}
+
+	if (AttachedWeapon)
+	{
+		if (UStaticMeshComponent* WeaponMesh = AttachedWeapon->GetComponentByClass<UStaticMeshComponent>())
+		{
+			FVector SocketStart = WeaponMesh->GetSocketLocation(TEXT("TraceStart"));
+			FVector SocketEnd = WeaponMesh->GetSocketLocation(TEXT("TraceEnd"));
+
+			if (!SocketStart.IsZero() || !SocketEnd.IsZero())
+			{
+				StartLocation = SocketStart;
+				EndLocation = SocketEnd;
+			}
+		}
+	}
+
 	FHitResult HitResult;
 	FCollisionShape SphereShape = FCollisionShape::MakeSphere(AttackTraceRadius);
 	FCollisionQueryParams QueryParams;
 
 	// 공격자 자신은 판정에서 제외
 	QueryParams.AddIgnoredActor(AvatarActor);
+
+	if (AttachedWeapon)
+	{
+		QueryParams.AddIgnoredActor(AttachedWeapon);
+	}
 
 	bool bHit = World->SweepSingleByChannel(
 		HitResult,
@@ -132,15 +165,13 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 	);
 
 #if !UE_BUILD_SHIPPING
-	// 개발 단계 디버그용 리포트 (충돌 구체 시각화)
-	DrawDebugSphere(
-		World,
-		bHit ? HitResult.ImpactPoint : EndLocation,
-		AttackTraceRadius,
-		12,
-		bHit ? FColor::Red : FColor::Green,
-		false,
-		1.0f);
+	FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+	DrawDebugLine(World, StartLocation, EndLocation, DebugColor,
+	              false, 1.0f, 0, 3.0f);
+	DrawDebugSphere(World, StartLocation, AttackTraceRadius, 8, DebugColor,
+	                false, 1.0f);
+	DrawDebugSphere(World, EndLocation, AttackTraceRadius, 8, DebugColor,
+	                false, 1.0f);
 #endif
 
 	// GE 적용
@@ -156,7 +187,7 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 			if (TargetASC && AIASC && DamageEffectClass)
 			{
 				bHasHitThisAttack = true;
-				
+
 				// GE 발생 정보 생성
 				FGameplayEffectContextHandle EffectContext = AIASC->MakeEffectContext();
 				EffectContext.AddHitResult(HitResult);
