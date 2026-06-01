@@ -7,10 +7,21 @@
 #include "GA_Engineer_SpawnTurret.generated.h"
 
 /**
- * 
+ * Engineer turret placement ability.
  */
 UCLASS()
 class NEOSANCTUM_API UGA_Engineer_SpawnTurret : public UGA_SkillBase
 {
 	GENERATED_BODY()
+
+public:
+	UGA_Engineer_SpawnTurret();
+
+protected:
+	virtual void ActivateAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		const FGameplayEventData* TriggerEventData
+	) override;
 };
