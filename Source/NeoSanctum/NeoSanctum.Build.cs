@@ -32,6 +32,7 @@ public class NeoSanctum : ModuleRules
 			"AIModule", 
 			"GameplayStateTreeModule", 
 			"NavigationSystem",
+			"StateTreeModule",
 			
 			// Animation
 			"AnimGraphRuntime", 
