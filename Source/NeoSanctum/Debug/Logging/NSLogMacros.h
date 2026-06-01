@@ -108,11 +108,11 @@
 #define NS_ACTOR_LOG(Actor, Category, Verbosity, Format, ...) \
 	do \
 	{ \
-		const AActor* LogActor = (Actor); \
+		const AActor* NSLogTargetActor = (Actor); \
 		UE_LOGFMT(Category, Verbosity, "[{NetMode}][{Role}][{Actor}][{Function}] " Format, \
-			("NetMode", NSLog::GetNetModeString(LogActor)), \
-			("Role", NSLog::GetRoleString(LogActor)), \
-			("Actor", NSLog::GetActorNameString(LogActor)), \
+			("NetMode", NSLog::GetNetModeString(NSLogTargetActor)), \
+			("Role", NSLog::GetRoleString(NSLogTargetActor)), \
+			("Actor", NSLog::GetActorNameString(NSLogTargetActor)), \
 			("Function", FString(__FUNCTION__)), ##__VA_ARGS__); \
 	} \
 	while (false)
