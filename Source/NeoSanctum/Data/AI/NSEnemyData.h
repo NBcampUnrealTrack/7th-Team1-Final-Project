@@ -7,9 +7,9 @@
 #include "Engine/DataAsset.h"
 #include "NSEnemyData.generated.h"
 
+class ANSEnemyWeaponBase;
 class USkeletalMesh;
 class UAnimInstance;
-class ANSWeaponBase;
 class UDataTable;
 class UGameplayEffect;
 class UGameplayAbility;
@@ -80,7 +80,7 @@ public:
 
 	// 무기
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
-	TSubclassOf<ANSWeaponBase> DefaultWeaponClass;
+	TSubclassOf<ANSEnemyWeaponBase> DefaultWeaponClass;
 
 	// 초기 스탯
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
