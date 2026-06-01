@@ -79,23 +79,6 @@ void UNSInputBinderComponent::SetActiveInputModeTags(const FGameplayTagContainer
 	}
 }
 
-void UNSInputBinderComponent::EnterAugmentInputMode()
-{
-	// 진입 직전의 활성 태그를 캐시 (종료 시 정확히 복원하기 위함)
-	CachedInputModeTagsBeforeAugment = ActiveInputModeTags;
-	
-	// 증강 IMC 활성화 -> 1/2/3/R
-	FGameplayTagContainer AugmentInputModeTags;
-	AugmentInputModeTags.AddTag(NSGameplayTags::InputMode_Augment);
-	SetActiveInputModeTags(AugmentInputModeTags);
-}
-
-void UNSInputBinderComponent::ExitAugmentInputMode()
-{
-	// 증강 선택 종료 → 진입 직전 입력 모드로 복귀
-	SetActiveInputModeTags(CachedInputModeTagsBeforeAugment);
-}
-
 void UNSInputBinderComponent::ApplyInputConfig()
 {
 	UEnhancedInputLocalPlayerSubsystem* InputSubsystem = GetInputSubsystem();
@@ -285,6 +268,12 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 
 	UNSUIManagerSubsystem* UIManager = GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
 	if (!UIManager)
+	{
+		return;
+	}
+
+	// 증강 패널이 닫혀있으면 1/2/3/T 입력 무시
+	if (!UIManager->IsAugmentationPanelOpen())
 	{
 		return;
 	}

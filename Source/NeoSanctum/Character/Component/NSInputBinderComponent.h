@@ -29,10 +29,7 @@ public:
 	void InitializePlayerInput(UInputComponent* PlayerInputComponent);
 	void SetInputConfig(UNSInputConfig* NewConfig);
 	void SetActiveInputModeTags(const FGameplayTagContainer& NewInputModeTags);
-	
-	void EnterAugmentInputMode();
-	void ExitAugmentInputMode();
-	
+
 protected:
 	void ApplyInputConfig();
 	void RemoveInputConfig();
@@ -69,9 +66,6 @@ protected:
 
 	UPROPERTY(Transient)
 	FGameplayTagContainer ActiveInputModeTags;
-	
-	UPROPERTY(Transient)
-	FGameplayTagContainer CachedInputModeTagsBeforeAugment;
 
 	UPROPERTY(Transient)
 	bool bHasAppliedInputConfig = false;
