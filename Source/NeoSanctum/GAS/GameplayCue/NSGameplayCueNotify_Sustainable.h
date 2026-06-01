@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayCueNotify_Actor.h"
+#include "NeoSanctum/GAS/GameplayCue/NSGameplayCueTypes.h"
 #include "NSGameplayCueNotify_Sustainable.generated.h"
 
 class UAudioComponent;
@@ -46,20 +47,24 @@ protected:
 		FName SocketName,
 		FName& OutSocketName
 	) const;
-	UAudioComponent* PlayAttachedSound(
+	UAudioComponent* PlaySound(
 		AActor* MyTarget,
+		const FGameplayCueParameters& Parameters,
 		FName SoundID,
+		ENSGameplayCueSpawnMode SpawnMode,
 		FName ComponentName,
 		FName SocketName
 	) const;
-	UNiagaraComponent* SpawnAttachedVFX(
+	UNiagaraComponent* SpawnVFX(
 		AActor* MyTarget,
+		const FGameplayCueParameters& Parameters,
 		UNiagaraSystem* NiagaraSystem,
+		ENSGameplayCueSpawnMode SpawnMode,
 		FName ComponentName,
 		FName SocketName,
 		bool bAutoDestroy
 	) const;
-	void LoopPresentation(AActor* MyTarget);
+	void LoopPresentation(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
 protected:
 	// 시작 시점에 1회 재생될 사운드 ID : DataTable상의 RowName
@@ -74,12 +79,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
 	FName EndSoundID = NAME_None;
 
-	// 사운드를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
+	ENSGameplayCueSpawnMode SoundSpawnMode = ENSGameplayCueSpawnMode::Location;
+
+	// 사운드를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound",
+		meta = (EditCondition = "SoundSpawnMode == ENSGameplayCueSpawnMode::Attached", EditConditionHides))
 	FName SoundAttachComponentName = NAME_None;
 
 	// 사운드를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound",
+		meta = (EditCondition = "SoundSpawnMode == ENSGameplayCueSpawnMode::Attached", EditConditionHides))
 	FName SoundAttachSocketName = NAME_None;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound", meta = (ClampMin = "0.0"))
@@ -98,12 +108,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	TObjectPtr<UNiagaraSystem> EndVFX;
 
-	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	ENSGameplayCueSpawnMode VFXSpawnMode = ENSGameplayCueSpawnMode::Location;
+
+	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
+		meta = (EditCondition = "VFXSpawnMode == ENSGameplayCueSpawnMode::Attached", EditConditionHides))
 	FName VFXAttachComponentName = NAME_None;
 
 	// VFX를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
+		meta = (EditCondition = "VFXSpawnMode == ENSGameplayCueSpawnMode::Attached", EditConditionHides))
 	FName VFXAttachSocketName = NAME_None;
 	
 protected:

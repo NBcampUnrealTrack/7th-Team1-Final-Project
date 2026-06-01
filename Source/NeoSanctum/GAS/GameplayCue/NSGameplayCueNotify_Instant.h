@@ -4,18 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameplayCueNotify_Static.h"
+#include "NeoSanctum/GAS/GameplayCue/NSGameplayCueTypes.h"
 #include "NSGameplayCueNotify_Instant.generated.h"
 
 class UNiagaraSystem;
 class UAudioComponent;
 class USceneComponent;
-
-UENUM(BlueprintType)
-enum class ENSGameplayCueSpawnMode : uint8
-{
-	Location,
-	Attached
-};
 
 /**
  * 즉발형 GameplayCue 연출
