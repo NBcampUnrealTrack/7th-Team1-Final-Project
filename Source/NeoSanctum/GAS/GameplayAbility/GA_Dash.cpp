@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -53,13 +54,6 @@ void UGA_Dash::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	// GameplayEffect 적용을 위한 CommitAbility()
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
 
 	// 우선순위에 따른 대시 방향 설정
 	FVector DashDirection = MoveComp->GetCurrentAcceleration().GetSafeNormal2D();
@@ -95,6 +89,13 @@ void UGA_Dash::ActivateAbility(
 		{
 			DashDirection = ProjectedDirection;
 		}
+	}
+	
+	// DashCount 소모하는 Effect 적용을 위한 CommitAbility()
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
 	// 임시 상태태그 부여
@@ -154,6 +155,25 @@ void UGA_Dash::EndAbility(
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+bool UGA_Dash::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags))
+	{
+		return false;
+	}
+	
+	const UNSPlayerAttributeSet* AttributeSet = ActorInfo->AbilitySystemComponent->GetSet<UNSPlayerAttributeSet>();
+	
+	if (!AttributeSet)
+	{
+		return false;
+	}
+	
+	// DashCount AttributeSet이 1 이상이어야 true가 되어 Ability가 활성화 될 수 있음.
+	return AttributeSet->GetDashCount() >= 1.f;
 }
 
 void UGA_Dash::OnDashFinished()

@@ -53,16 +53,6 @@ public:
 	FGameplayAttributeData MoveSpeed;
 	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, MoveSpeed);
 	
-	// 대쉬 횟수
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DashCost, Category = "GAS|Attribute")
-	FGameplayAttributeData DashCost;
-	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, DashCost);
-	
-	// 최대 대쉬 횟수
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxDashCost, Category = "GAS|Attribute")
-	FGameplayAttributeData MaxDashCost;
-	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, MaxDashCost);
-	
 	// 최종 데미지를 잠시 담는 용이므로 Replicate하지 않음
 	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attribute")
 	FGameplayAttributeData Damage;
@@ -90,12 +80,6 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed);
-	
-	UFUNCTION()
-	void OnRep_DashCost(const FGameplayAttributeData& OldDashCost);
-	
-	UFUNCTION()
-	void OnRep_MaxDashCost(const FGameplayAttributeData& OldMaxDashCost);
 	
 private:
 	bool bOutOfHealth = false;

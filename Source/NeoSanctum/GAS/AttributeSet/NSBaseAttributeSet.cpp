@@ -16,8 +16,6 @@ void UNSBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, BaseDamage, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, Defense, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashCost, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MaxDashCost, COND_None, REPNOTIFY_Always);
 }
 
 void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -41,14 +39,6 @@ void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 	else if (Attribute == GetMoveSpeedAttribute())
-	{
-		NewValue = FMath::Max(NewValue, 0.0f);
-	}
-	else if (Attribute == GetDashCostAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxDashCost());
-	}
-	else if (Attribute == GetMaxDashCostAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -105,15 +95,6 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 	{
 		SetMoveSpeed(FMath::Max(GetMoveSpeed(), 0.0f));
 	}
-	else if (Data.EvaluatedData.Attribute == GetDashCostAttribute())
-	{
-		SetDashCost(FMath::Clamp(GetDashCost(), 0.0f, GetMaxDashCost()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetMaxDashCostAttribute())
-	{
-		SetMaxDashCost(FMath::Max(GetMaxDashCost(), 0.0f));
-		SetDashCost(FMath::Clamp(GetDashCost(), 0.0f, GetMaxDashCost()));
-	}
 }
 
 float UNSBaseAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
@@ -144,14 +125,4 @@ void UNSBaseAttributeSet::OnRep_Defense(const FGameplayAttributeData& OldDefense
 void UNSBaseAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MoveSpeed, OldMoveSpeed);
-}
-
-void UNSBaseAttributeSet::OnRep_DashCost(const FGameplayAttributeData& OldDashCost)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashCost, OldDashCost);
-}
-
-void UNSBaseAttributeSet::OnRep_MaxDashCost(const FGameplayAttributeData& OldMaxDashCost)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MaxDashCost, OldMaxDashCost);
 }

@@ -39,6 +39,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
 	TArray<FNSCharacterAbilityData> DefaultAbilities;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	TArray<TSoftClassPtr<UGameplayEffect>> DefaultGameplayEffects;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon")
 	TSoftClassPtr<ANSWeaponBase> DefaultWeaponClass;
 };
