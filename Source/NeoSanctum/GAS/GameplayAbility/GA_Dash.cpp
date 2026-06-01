@@ -8,7 +8,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
-#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -165,7 +165,7 @@ bool UGA_Dash::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGamepla
 		return false;
 	}
 	
-	const UNSBaseAttributeSet* AttributeSet = ActorInfo->AbilitySystemComponent->GetSet<UNSBaseAttributeSet>();
+	const UNSPlayerAttributeSet* AttributeSet = ActorInfo->AbilitySystemComponent->GetSet<UNSPlayerAttributeSet>();
 	
 	if (!AttributeSet)
 	{
