@@ -72,7 +72,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineThickness = 1.5f;
 	
-protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineStartOffset = 200.0f;
+	
+	// 클라이언트 예측키 확인용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bLogPredictionKey = false;
 	

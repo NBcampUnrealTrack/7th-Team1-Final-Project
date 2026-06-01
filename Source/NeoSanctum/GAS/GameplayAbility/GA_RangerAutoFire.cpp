@@ -400,10 +400,23 @@ void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHan
 		const FVector DebugEnd = bHit ? HitResult->ImpactPoint : TraceEnd;
 		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
 		
+		const FVector DebugDirection = (DebugEnd - TraceStart).GetSafeNormal();
+		
+		if (DebugDirection.IsNearlyZero())
+		{
+			continue;
+		}
+		
+		const float DebugDistance = FVector::Dist(TraceStart, DebugEnd);
+		const float AppliedOffset = 
+			FMath::Clamp(DebugLineStartOffset, 0.0f, FMath::Max(DebugDistance - 10.0f, 0.0f));
+		
+		const FVector DebugStart = TraceStart + DebugDirection * AppliedOffset;
+		
 		// 초록: 허공, 빨강: 명중
 		DrawDebugLine(
 			World,
-			TraceStart,
+			DebugStart,
 			DebugEnd,
 			DebugColor,
 			false,
@@ -477,7 +490,7 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	int32 ViewportSizeY = 0;
 	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
 
-	if (ViewportSizeX <=0 || ViewportSizeY <= 0)
+	if (ViewportSizeX <= 0 || ViewportSizeY <= 0)
 	{
 		return false;
 	}
