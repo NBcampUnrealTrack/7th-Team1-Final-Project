@@ -116,10 +116,13 @@ protected:
 	
 	virtual void SetupInputComponent() override;
 
-	void OpenAugmentationSelection();
+	// Tab키 : 증강 패널 토글
+	void ToggleAugmentationPanel();
 
-	// 런 데이터 로드 완료 후 오퍼 요청 (OpenAugmentationSelection 테스트용 콜백)
+	// P키(디버그 용) : 테스트용 증강 적재
+	void Debug_EnqueueAugmentOffer();
+
+	// 테스트용 콜백
 	UFUNCTION()
 	void OnTestRunDataReady();
-
 };

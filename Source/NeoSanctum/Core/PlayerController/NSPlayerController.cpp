@@ -527,9 +527,39 @@ void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::OpenAugmentationSelection);
+	// Tab키로 증강 패널 토글
+	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::ToggleAugmentationPanel);
+
+	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
+	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
 }
-void ANSPlayerController::OpenAugmentationSelection()
+
+void ANSPlayerController::ToggleAugmentationPanel()
+{
+	UNSUIManagerSubsystem* UIManager = GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (UIManager->IsAugmentationPanelOpen())
+	{
+		// 열려있으면 닫음 (토글)
+		UIManager->CloseAugmentationPanel();
+	}
+	else
+	{
+		// 패널 UI 표시
+		UIManager->OpenAugmentationPanel();
+		// 서버에 대기열 front 오퍼 표시 요청 (대기 있으면 카드가 옴)
+		if (AugmentSelectionComponent)
+		{
+			AugmentSelectionComponent->Server_OpenPanel();
+		}
+	}
+}
+
+void ANSPlayerController::Debug_EnqueueAugmentOffer()
 {
 	if (!AugmentSelectionComponent)
 	{
@@ -542,16 +572,22 @@ void ANSPlayerController::OpenAugmentationSelection()
 		return;
 	}
 
+	// 런 데이터가 없으면 로드 후 자동 적재 (테스트용)
 	if (!Data->IsRunReady())
 	{
-		// 런 데이터가 없으면 로드 후 자동 요청 (테스트용)
 		Data->OnRunGameDataReady.AddUniqueDynamic(this, &ANSPlayerController::OnTestRunDataReady);
-		Data->EnterRun();		
+		Data->EnterRun();
 		return;
 	}
 
-	// 런 데이터가 이미 준비됐으면 바로 오퍼 요청
-	AugmentSelectionComponent->RequestOffer(NSGameplayTags::Augment_Pool_Normal);
+	if (HasAuthority())
+	{
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+	}
+	else
+	{
+		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+	}
 }
 
 void ANSPlayerController::OnTestRunDataReady()
@@ -567,5 +603,12 @@ void ANSPlayerController::OnTestRunDataReady()
 	{
 		return;
 	}
-	AugmentSelectionComponent->RequestOffer(NSGameplayTags::Augment_Pool_Normal);
+	if (HasAuthority())
+	{
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+	}
+	else
+	{
+		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+	}
 }
