@@ -3,6 +3,8 @@
 
 #include "NSEnemyWeaponBase.h"
 
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
+
 
 ANSEnemyWeaponBase::ANSEnemyWeaponBase()
 {
@@ -11,5 +13,15 @@ ANSEnemyWeaponBase::ANSEnemyWeaponBase()
 	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
 
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void ANSEnemyWeaponBase::StartDissolve()
+{
+	if (DissolveComponent)
+	{
+		DissolveComponent->StartDissolve();
+	}
 }

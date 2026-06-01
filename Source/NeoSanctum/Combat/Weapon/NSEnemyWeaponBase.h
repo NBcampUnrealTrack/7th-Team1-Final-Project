@@ -38,10 +38,16 @@ public:
 
 	FORCEINLINE const FWeaponConfig& GetWeaponConfig() const { return WeaponConfig; }
 
+	void StartDissolve();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Visual")
 	TObjectPtr<UStaticMeshComponent> WeaponMesh;
 
 	UPROPERTY(EditDefaultsOnly)
 	FWeaponConfig WeaponConfig;
+
+private:
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };

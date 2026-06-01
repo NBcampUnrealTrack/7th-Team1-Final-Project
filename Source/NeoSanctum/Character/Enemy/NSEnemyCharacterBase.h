@@ -9,6 +9,8 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSEnemyCharacterBase.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
+
 class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
@@ -36,6 +38,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+
+	FOnEnemyDead OnEnemyDead;
 
 public:
 	void Die();

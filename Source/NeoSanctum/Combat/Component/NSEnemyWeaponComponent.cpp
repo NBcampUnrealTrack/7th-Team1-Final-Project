@@ -16,6 +16,16 @@ UNSEnemyWeaponComponent::UNSEnemyWeaponComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UNSEnemyWeaponComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (ANSEnemyCharacterBase* OwnerCharacter = Cast<ANSEnemyCharacterBase>(GetOwner()))
+	{
+		OwnerCharacter->OnEnemyDead.AddUObject(this, &UNSEnemyWeaponComponent::OnOwnerDead);
+	}
+}
+
 void UNSEnemyWeaponComponent::EquipWeapon()
 {
 	ANSEnemyCharacterBase* Owner = Cast<ANSEnemyCharacterBase>(GetOwner());
@@ -36,8 +46,8 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 
 	// 무기 소켓에 부착
 	CurrentWeapon->AttachToComponent(
-		Owner->GetMesh(), 
-		FAttachmentTransformRules::SnapToTargetIncludingScale, 
+		Owner->GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
 		Config.EquipSocketName
 	);
 
@@ -56,10 +66,19 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 		if (Config.WeaponAbility)
 		{
 			ASC->GiveAbility(FGameplayAbilitySpec(
-				Config.WeaponAbility, 
-				1, 
+				Config.WeaponAbility,
+				1,
 				Config.WeaponAbility.GetDefaultObject()->GetNetExecutionPolicy()
 			));
 		}
+	}
+}
+
+
+void UNSEnemyWeaponComponent::OnOwnerDead()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->StartDissolve();
 	}
 }
