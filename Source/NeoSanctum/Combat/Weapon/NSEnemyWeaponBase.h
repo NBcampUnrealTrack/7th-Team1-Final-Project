@@ -42,6 +42,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Visual")
 	TObjectPtr<UStaticMeshComponent> WeaponMesh;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Data")
+	UPROPERTY(EditDefaultsOnly)
 	FWeaponConfig WeaponConfig;
 };
