@@ -114,6 +114,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 				CardPosition = FVector2D(350.f,200.f);
 				break;
 			default:
+				CardPosition = FVector2D(0.0f,0.0f);
 				break;
 			}
 			CardSlot->SetPosition(CardPosition);
