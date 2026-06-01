@@ -146,8 +146,9 @@ void UNSUIManagerSubsystem::ClearHUD()
 	if (HUDWidget)
 	{
 		HUDWidget->RemoveFromParent();
-		HUDWidget=nullptr;
+		HUDWidget = nullptr;
 	}
+	bAugmentationPanelOpen = false;
 }
 
 void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
@@ -173,26 +174,32 @@ void UNSUIManagerSubsystem::RequestRerollAugment()
 	HUDWidget->RequestRerollAugment();
 }
 
-void UNSUIManagerSubsystem::ShowAugmentation()
+void UNSUIManagerSubsystem::OpenAugmentationPanel()
 {
-	//증강 UI를 HUD에 요청
+	if (bAugmentationPanelOpen)
+	{
+		return;
+	}
 	if (!HUDWidget)
 	{
 		return;
 	}
-	//증강 UI표시는 HUD에서 관리
-	HUDWidget->ShowAugmentation();
+	bAugmentationPanelOpen = true;
+	HUDWidget->OpenAugmentationPanel();
 }
 
-void UNSUIManagerSubsystem::HideAugmentation()
+void UNSUIManagerSubsystem::CloseAugmentationPanel()
 {
-	//증강 UI 숨김을 HUD에 요청
+	if (!bAugmentationPanelOpen)
+	{
+		return;
+	}
+	bAugmentationPanelOpen = false;
 	if (!HUDWidget)
 	{
 		return;
 	}
-	//증강 UI숨김 HUD에서 관리
-	HUDWidget->HideAugmentation();	
+	HUDWidget->CloseAugmentationPanel();
 }
 
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const

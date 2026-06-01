@@ -41,11 +41,13 @@ public:
 		float MaxHealth,
 		float CurrentShield,
 		float MaxShield);
-	//증강 UI 표시
-	void ShowAugmentation();
-	//증강 UI 숨김
-	void HideAugmentation();
-	
+	//증강 패널 열기 (Tab 토글 / 자동 오픈)
+	void OpenAugmentationPanel();
+	//증강 패널 닫기 (Tab 토글)
+	void CloseAugmentationPanel();
+	//증강 패널 열림 여부 (InputBinder 게이팅용)
+	bool IsAugmentationPanelOpen() const { return bAugmentationPanelOpen; }
+
 	void ClearHUD();
 	
 	void SelectAugmentCardByIndex(int32 CardIndex);
@@ -70,6 +72,8 @@ private:
 	//생성된 HUD 보관
 	UPROPERTY()
 	TObjectPtr<UNSHUDWidget> HUDWidget;
+
+	bool bAugmentationPanelOpen = false;
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleWidget;
