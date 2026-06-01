@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTypes.h"
 #include "BehaviorTree/BTTaskNode.h"
 #include "NSBTTask_ExecuteEnemyAbility.generated.h"
 
@@ -15,4 +16,10 @@ public:
 	UNSBTTask_ExecuteEnemyAbility();
 
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+	
+private:
+	void OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData);
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBehaviorTreeComponent> CachedOwnerComp;
 };

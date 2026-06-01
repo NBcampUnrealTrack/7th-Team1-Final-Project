@@ -16,6 +16,8 @@ class NEOSANCTUM_API ANSEnemyAIController : public AAIController
 
 public:
 	ANSEnemyAIController();
+	
+	virtual void Tick(float DeltaTime) override;
 
 	/*
 	 * AI Controller가 적을 필터링하기 위한 TeamId 조회

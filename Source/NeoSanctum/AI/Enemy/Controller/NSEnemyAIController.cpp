@@ -15,9 +15,18 @@
 
 ANSEnemyAIController::ANSEnemyAIController()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSEnemyAIController::OnTargetPerceptionUpdated);
+}
+
+void ANSEnemyAIController::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	GetAttackAbilityTagByDistance();
 }
 
 ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other) const
@@ -48,11 +57,18 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 
 	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
 	APawn* AIPawn = GetPawn();
-	if (!AIPawn || !TargetActor) return FGameplayTag();
+	if (!AIPawn) return FGameplayTag();
 
 	if (!IsValidLivingTarget(TargetActor))
 	{
 		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		return FGameplayTag();
+	}
+	
+	if (!TargetActor) 
+	{
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 		return FGameplayTag();
 	}
 
@@ -66,11 +82,13 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 		{
 			if (Distance <= EnemyData->MaxAttackRange)
 			{
+				CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
 				return AttackAbilityTag;
 			}
 		}
 	}
 
+	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 	return FGameplayTag();
 }
 
