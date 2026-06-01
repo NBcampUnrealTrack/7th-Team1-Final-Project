@@ -28,7 +28,6 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
-	virtual void GetActorEyesViewPoint( FVector& Location, FRotator& Rotation ) const override;
 	
 	// @민재 : 드론 움직임 함수 BT연동
 	UFUNCTION(BlueprintCallable, Category = "Drone|Movement")

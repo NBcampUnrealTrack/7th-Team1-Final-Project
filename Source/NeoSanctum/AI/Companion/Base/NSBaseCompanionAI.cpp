@@ -73,12 +73,6 @@ void ANSBaseCompanionAI::BeginPlay()
 	}
 }
 
-void ANSBaseCompanionAI::GetActorEyesViewPoint(FVector& Location, FRotator& Rotation) const
-{
-	Super::GetActorEyesViewPoint(Location, Rotation);
-	Rotation = GetActorRotation();
-}
-
 void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 {
 	FVector TargetPosition = TargetLocation - GetActorLocation();
