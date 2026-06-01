@@ -3,6 +3,8 @@
 
 #include "NSEnemyAIController.h"
 
+#include "AbilitySystemComponent.h"
+#include "AttributeSet.h"
 #include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
@@ -25,7 +27,10 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	{
 		if (TeamAgent->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Player)))
 		{
-			return ETeamAttitude::Type::Hostile;
+			if (IsValidLivingTarget(&Other))
+			{
+				return ETeamAttitude::Type::Hostile;
+			}
 		}
 		else if (TeamAgent->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Enemy)))
 		{
@@ -43,7 +48,13 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 
 	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
 	APawn* AIPawn = GetPawn();
-	if (!TargetActor || !AIPawn) return FGameplayTag();
+	if (!AIPawn || !TargetActor) return FGameplayTag();
+
+	if (!IsValidLivingTarget(TargetActor))
+	{
+		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
+		return FGameplayTag();
+	}
 
 	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
 	float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
@@ -69,7 +80,7 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 
 	ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(InPawn);
 	if (!EnemyChar) return;
-	
+
 	UNSEnemyData* EnemyData = EnemyChar->GetEnemyData();
 	if (!EnemyData) return;
 
@@ -91,7 +102,7 @@ void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus 
 	if (!CachedBBComp) return;
 
 	// 감지된 대상이 플레이어인지 재검증
-	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile)
+	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile && IsValidLivingTarget(Actor))
 	{
 		// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
 		AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
@@ -99,4 +110,45 @@ void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus 
 		// 블랙보드 TargetActor 키에 실시간 업데이트
 		CachedBBComp->SetValueAsObject(TargetActorKey, Target);
 	}
+}
+
+bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
+{
+	if (!Target) return false;
+
+	// GAS 능력 여부 확인
+	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Target);
+	if (!ASI) return false;
+
+	UAbilitySystemComponent* ASC = ASI->GetAbilitySystemComponent();
+	if (!ASC) return false;
+
+	bool bHasHealthAttribute = false;
+	float CurrentHealth = 0.0f;
+
+	// 대상 관계 없이 Health 추출
+	for (UAttributeSet* AttributeSet : ASC->GetSpawnedAttributes())
+	{
+		if (AttributeSet)
+		{
+			if (FProperty* Prop = AttributeSet->GetClass()->FindPropertyByName(TEXT("Health")))
+			{
+				FGameplayAttribute HealthAttribute(Prop);
+				if (ASC->HasAttributeSetForAttribute(HealthAttribute))
+				{
+					CurrentHealth = ASC->GetNumericAttribute(HealthAttribute);
+					bHasHealthAttribute = true;
+					break;
+				}
+			}
+		}
+	}
+
+	// 체력 데이터가 없거나 체력이 0 이하인 경우 무효 타겟으로 판정
+	if (!bHasHealthAttribute || CurrentHealth <= 0.0f)
+	{
+		return false;
+	}
+
+	return true;
 }

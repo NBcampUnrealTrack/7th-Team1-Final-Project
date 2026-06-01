@@ -38,6 +38,10 @@ protected:
 	// 시각 센서가 갱신될 때 블랙보드로 데이터를 전달할 콜백 함수
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+private:
+	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
+	bool IsValidLivingTarget(const AActor* Target) const;
 
 protected:
 	// 시야/청각 설정 컴포넌트
