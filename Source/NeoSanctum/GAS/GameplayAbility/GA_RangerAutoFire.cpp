@@ -334,6 +334,13 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 	
+	FHitResult MuzzleObstructionHitResult;
+	
+	if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
+	{
+		return;
+	}
+	
 	ApplyDamageToActor(ServerHitResult.GetActor());
 }
 
@@ -594,6 +601,63 @@ bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) c
 	}
 
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+bool UGA_RangerAutoFire::IsMuzzleObstructed(
+	const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	
+	if (!IsValid(AvatarActor) || !World)
+	{
+		return false;
+	}
+	
+	AActor* TargetActor = ServerHitResult.GetActor();
+	
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+	
+	FTransform MuzzleTransform;
+	
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		return false;
+	}
+	
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector AimPoint = ServerHitResult.ImpactPoint;
+	
+	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+	
+	if (ShotDirection.IsNearlyZero())
+	{
+		return false;
+	}
+	
+	const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+	const FVector ObstructionTraceStart = MuzzleLocation - ShotDirection * BackTraceDistance;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+	
+	const bool bHit = World->LineTraceSingleByChannel(
+		OutObstructionHitResult,
+		ObstructionTraceStart,
+		AimPoint,
+		TraceChannel,
+		QueryParams
+	);
+	
+	if (!bHit || !OutObstructionHitResult.bBlockingHit)
+	{
+		return false;
+	}
+	
+	return OutObstructionHitResult.GetActor() != TargetActor;
 }
 
 bool UGA_RangerAutoFire::ValidateTargetDataHitResult(

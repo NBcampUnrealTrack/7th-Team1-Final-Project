@@ -60,6 +60,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerHitLocationTolerance = 200.0f;
 	
+	// 총구가 벽에 살짝 파고든 상황까지 잡기 위해 Trace 시작점을 뒤로 당기는 거리
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float MuzzleObstructionBackTraceDistance = 100.0f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
@@ -104,9 +108,10 @@ private:
 	
 	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
-	 
 	
+	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
+	
 	
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
