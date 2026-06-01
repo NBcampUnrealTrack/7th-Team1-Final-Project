@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameModeBase.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
@@ -28,31 +29,81 @@ void ANSEnemyCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (ASC)
+	if (!ASC) return;
+
+	ASC->InitAbilityActorInfo(this, this);
+
+	if (!EnemyData) return;
+
+	// Visual 동적 로딩
+	if (GetMesh())
 	{
-		ASC->InitAbilityActorInfo(this, this);
-
-		if (HasAuthority() && AttributeSet)
+		if (EnemyData->SkeletalMesh)
 		{
-			AttributeSet->SetMaxHealth(100.0f);
-			AttributeSet->SetHealth(100.0f);
+			GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+		}
+		if (EnemyData->BaseAnimClass)
+		{
+			GetMesh()->SetAnimInstanceClass(EnemyData->BaseAnimClass);
+		}
+	}
+	SetActorScale3D(EnemyData->DrawScale);
 
-			AttributeSet->SetDefense(10.0f);
-			AttributeSet->SetBaseDamage(50.0f);
+	// GAS 데이터 테이블 기반 스탯 초기화
+	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
+	{
+		FName RowName = EnemyData->EnemyTag.GetTagName();
+		FNSMonsterAttributeRow* StatRow = EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
+			
+		if (StatRow)
+		{
+			AttributeSet->SetMaxHealth(StatRow->MaxHealth);
+			AttributeSet->SetHealth(StatRow->MaxHealth);
+			AttributeSet->SetDefense(StatRow->Defense);
+			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("[%s] 데이터 테이블에서 '%s' 태그에 해당하는 행을 찾을 수 없습니다!"), *GetName(), *RowName.ToString());
+		}
+	}
+
+	// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
+	if (HasAuthority())
+	{
+		for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->StartupEffects)
+		{
+			if (EffectClass)
+			{
+				FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+				Context.AddSourceObject(this);
+
+				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
+				if (SpecHandle.IsValid())
+				{
+					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+				}
+			}
 		}
 
-		// 서버에서만 능력 부여
-		if (HasAuthority())
+		for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
 		{
-			if (AttackAbilityClass)
+			if (AbilityClass)
 			{
-				ASC->GiveAbility(FGameplayAbilitySpec(AttackAbilityClass, 1, -1));
+				ASC->GiveAbility(FGameplayAbilitySpec(
+					AbilityClass,
+					1,
+					static_cast<int32>(AbilityClass.GetDefaultObject()->GetNetExecutionPolicy())));
 			}
+		}
+	}
 
-			if (DeathAbilityClass)
-			{
-				ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
-			}
+	// 서버에서만 사망 능력 부여
+	if (HasAuthority())
+	{
+		if (DeathAbilityClass)
+		{
+			ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
 		}
 	}
 }
@@ -72,7 +123,7 @@ void ANSEnemyCharacterBase::Die()
 	{
 		bIsDead = true;
 		OnRep_bIsDead();
-		
+
 		// (이용호 추가) 죽을 때 게임모드에 알림
 		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())

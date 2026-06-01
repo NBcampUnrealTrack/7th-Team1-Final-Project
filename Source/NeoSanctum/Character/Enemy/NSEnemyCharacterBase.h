@@ -9,6 +9,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSEnemyCharacterBase.generated.h"
 
+class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
 
@@ -34,6 +35,7 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
 public:
 	void Die();
 	
@@ -46,8 +48,8 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayAbility> AttackAbilityClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Character Data")
+	TObjectPtr<UNSEnemyData> EnemyData;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
