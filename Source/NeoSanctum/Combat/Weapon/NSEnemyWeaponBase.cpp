@@ -9,6 +9,8 @@
 ANSEnemyWeaponBase::ANSEnemyWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
+	bReplicates = true;
 
 	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
