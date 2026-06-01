@@ -10,4 +10,7 @@ namespace NSGameplayTags
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_ProjectileShot, "Ability.Ranger.ProjectileShot");
+
+	// Engineer Ability
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpawnTurret, "Ability.Engineer.SpawnTurret");
 }
