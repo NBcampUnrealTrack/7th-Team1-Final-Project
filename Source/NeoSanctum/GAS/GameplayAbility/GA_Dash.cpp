@@ -54,13 +54,6 @@ void UGA_Dash::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	// DashCount 소모하는 Effect 적용을 위한 CommitAbility()
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
 
 	// 우선순위에 따른 대시 방향 설정
 	FVector DashDirection = MoveComp->GetCurrentAcceleration().GetSafeNormal2D();
@@ -96,6 +89,13 @@ void UGA_Dash::ActivateAbility(
 		{
 			DashDirection = ProjectedDirection;
 		}
+	}
+	
+	// DashCount 소모하는 Effect 적용을 위한 CommitAbility()
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
 	// 임시 상태태그 부여
