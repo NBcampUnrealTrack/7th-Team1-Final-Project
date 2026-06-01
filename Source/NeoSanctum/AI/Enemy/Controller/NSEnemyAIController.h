@@ -44,14 +44,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent;
 
-	// 에디터에서 몬스터별로 다른 BT를 꽂을 수 있도록 노출
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
-
-	// 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI")
-	float AttackRange = 200.0f;
-
 	// 공격 태그
 	UPROPERTY(EditDefaultsOnly, Category = "AI")
 	FGameplayTag AttackAbilityTag;

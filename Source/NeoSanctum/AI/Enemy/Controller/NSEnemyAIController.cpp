@@ -5,6 +5,8 @@
 
 #include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
 
@@ -47,9 +49,15 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 	float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
 	// 공격 사거리 이내인 경우 공격 태그 반환
-	if (Distance <= AttackRange)
+	if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(AIPawn))
 	{
-		return AttackAbilityTag;
+		if (UNSEnemyData* EnemyData = EnemyChar->GetEnemyData())
+		{
+			if (Distance <= EnemyData->MaxAttackRange)
+			{
+				return AttackAbilityTag;
+			}
+		}
 	}
 
 	return FGameplayTag();
@@ -59,11 +67,22 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	if (BehaviorTreeAsset)
+	ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(InPawn);
+	if (!EnemyChar) return;
+	
+	UNSEnemyData* EnemyData = EnemyChar->GetEnemyData();
+	if (!EnemyData) return;
+
+	if (EnemyData->BehaviorTree)
 	{
-		RunBehaviorTree(BehaviorTreeAsset);
+		RunBehaviorTree(EnemyData->BehaviorTree);
 
 		CachedBBComp = GetBlackboardComponent();
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsFloat(TEXT("MinAttackRange"), EnemyData->MinAttackRange);
+			CachedBBComp->SetValueAsFloat(TEXT("MaxAttackRange"), EnemyData->MaxAttackRange);
+		}
 	}
 }
 
