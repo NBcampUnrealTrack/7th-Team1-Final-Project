@@ -16,9 +16,6 @@ void UNSBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, BaseDamage, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, Defense, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MoveSpeed, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashCount, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, MaxDashCount, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSBaseAttributeSet, DashRegenRate, COND_None, REPNOTIFY_Always);
 }
 
 void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -42,18 +39,6 @@ void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 	else if (Attribute == GetMoveSpeedAttribute())
-	{
-		NewValue = FMath::Max(NewValue, 0.0f);
-	}
-	else if (Attribute == GetDashCountAttribute())
-	{
-		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxDashCount());
-	}
-	else if (Attribute == GetMaxDashCountAttribute())
-	{
-		NewValue = FMath::Max(NewValue, 0.0f);
-	}
-	else if (Attribute == GetDashRegenRateAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -110,19 +95,6 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 	{
 		SetMoveSpeed(FMath::Max(GetMoveSpeed(), 0.0f));
 	}
-	else if (Data.EvaluatedData.Attribute == GetDashCountAttribute())
-	{
-		SetDashCount(FMath::Clamp(GetDashCount(), 0.0f, GetMaxDashCount()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetMaxDashCountAttribute())
-	{
-		SetMaxDashCount(FMath::Max(GetMaxDashCount(), 0.0f));
-		SetDashCount(FMath::Clamp(GetDashCount(), 0.0f, GetMaxDashCount()));
-	}
-	else if (Data.EvaluatedData.Attribute == GetDashRegenRateAttribute())
-	{
-		SetDashRegenRate(FMath::Max(GetDashRegenRate(), 0.0f));
-	}
 }
 
 float UNSBaseAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
@@ -153,19 +125,4 @@ void UNSBaseAttributeSet::OnRep_Defense(const FGameplayAttributeData& OldDefense
 void UNSBaseAttributeSet::OnRep_MoveSpeed(const FGameplayAttributeData& OldMoveSpeed)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MoveSpeed, OldMoveSpeed);
-}
-
-void UNSBaseAttributeSet::OnRep_DashCount(const FGameplayAttributeData& OldDashCount)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashCount, OldDashCount);
-}
-
-void UNSBaseAttributeSet::OnRep_MaxDashCount(const FGameplayAttributeData& OldMaxDashCount)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, MaxDashCount, OldMaxDashCount);
-}
-
-void UNSBaseAttributeSet::OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSBaseAttributeSet, DashRegenRate, OldDashRegenRate);
 }
