@@ -43,6 +43,7 @@ void ANSBaseCompanionAI::Tick(float DeltaSeconds)
 	if (HasAuthority())
 	{
 		MaintainAltitude(DeltaSeconds);
+		DroneAIRotate(DeltaSeconds);
 	}
 }
 
@@ -114,6 +115,20 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 			AddMovementInput(FVector::UpVector, InputZ);
 		}
 	}
+}
+
+void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
+{
+	if (!FloatingPawnMovementComponent) return;
+	
+	FVector Vel = FloatingPawnMovementComponent->Velocity;
+	Vel.Z = 0.f;
+	if (Vel.SizeSquared() < FMath::Square(MinSpeedToRotate)) return;
+	
+	const FRotator Current = GetActorRotation();
+	const FRotator Desired(0.f, Vel.Rotation().Yaw, 0.f);
+	const FRotator NewRot = FMath::RInterpTo(Current, Desired,DeltaSeconds,YawInterpSpeed);
+	SetActorRotation(NewRot);
 }
 
 FVector ANSBaseCompanionAI::ComputeAvoidanceVector() const

@@ -37,6 +37,9 @@ protected:
 	// @민재 : 고도유지 이동관련 함수
 	void MaintainAltitude(float DeltaSeconds);
 	
+	// @민재 : 회전기능 함수
+	void DroneAIRotate(float DeltaSeconds);
+	
 	FVector ComputeAvoidanceVector() const;
 	
 protected:
@@ -50,7 +53,14 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovementComponent;
 	
-	//@민재 : 드론 고도 유지위한 변수
+	// @민재 : 드론 회전관련 변수
+	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
+	float YawInterpSpeed = 5.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
+	float MinSpeedToRotate = 50.f;
+	
+	// @민재 : 드론 고도 유지위한 변수
 	UPROPERTY(EditAnywhere, Category="DroneAI|Altitude")
 	float Altitude = 300.f;
 	
@@ -63,7 +73,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
 	
-	//@민재 : 커스텀 회피 변수
+	// @민재 : 커스텀 회피 변수
 	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")
 	float AvoidanceTraceDistance  = 400.f;
 	
