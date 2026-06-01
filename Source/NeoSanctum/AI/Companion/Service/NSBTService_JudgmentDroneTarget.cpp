@@ -49,6 +49,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	
 	ANSBaseCompanionAI* DronePawn = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
 	ANSDroneAIController* DroneController = Cast<ANSDroneAIController>(AIController);
+	APawn* Owner = DroneController ? DroneController->GetOwnerPlayer() : nullptr;
 	if (!DroneController || !DronePawn) return;
 	
 	if (AActor* Currency = FindNearestActor(DronePawn, CurrencyClass, CurrencyDetectionRadius))
@@ -59,8 +60,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	}
 	
 	const FVector FollowPos = 
-		DronePawn->GetOwnerPlayer()->GetActorLocation() + 
-		DronePawn->GetOwnerPlayer()->GetActorRotation().RotateVector(FollowOffset);
+		Owner->GetActorLocation() + Owner->GetActorRotation().RotateVector(FollowOffset);
 	
 	BB->ClearValue(TargetActorKey.SelectedKeyName);
 	BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, FollowPos);
