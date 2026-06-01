@@ -5,6 +5,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 
 UNSBTTask_ExecuteEnemyAbility::UNSBTTask_ExecuteEnemyAbility()
@@ -42,6 +43,11 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 		return EBTNodeResult::Failed;
 	}
 	
+	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
+	{
+		BBComp->SetValueAsBool(TEXT("bIsAttacking"), true);
+	}
+	
 	// 애니메이션이 끝날 때까지 대기
 	return EBTNodeResult::InProgress;
 }
@@ -49,6 +55,11 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData)
 {
 	if (!CachedOwnerComp) return;
+	
+	if (UBlackboardComponent* BBComp = CachedOwnerComp->GetBlackboardComponent())
+	{
+		BBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+	}
 
 	ANSEnemyAIController* AIController = Cast<ANSEnemyAIController>(CachedOwnerComp->GetAIOwner());
 	if (AIController)
