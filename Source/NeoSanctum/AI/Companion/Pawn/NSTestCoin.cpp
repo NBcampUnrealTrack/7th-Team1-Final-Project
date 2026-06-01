@@ -3,7 +3,7 @@
 
 #include "NSTestCoin.h"
 #include "EngineUtils.h"
-#include "NSDroneAI.h"
+#include "NSBasicDroneAI.h"
 #include "DrawDebugHelpers.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -16,21 +16,26 @@ ANSTestCoin::ANSTestCoin()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
+	
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("Collision"));
-	CollisionComponent->SetupAttachment(RootComponent);
+	SetRootComponent(CollisionComponent);
+	CollisionComponent->SetSimulatePhysics(true);
+	CollisionComponent->SetEnableGravity(true);
+	
+	StaticMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
+	StaticMeshComponent->SetupAttachment(CollisionComponent);
+	StaticMeshComponent->SetCollisionProfileName("BlockAllDynamic");
+	
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
-	
-	StimuliSource = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>("StimuliSource");
-	StimuliSource->bAutoRegister = true;
-	StimuliSource->RegisterForSense(TSubclassOf<UAISense_Sight>(UAISense_Sight::StaticClass()));
-	
-	ProjectileMovementComponent->InitialSpeed = 0.f;
+	ProjectileMovementComponent->InitialSpeed = 200.f;
 	ProjectileMovementComponent->MaxSpeed = 600.f;
 	ProjectileMovementComponent->bRotationFollowsVelocity =true;
-	ProjectileMovementComponent->ProjectileGravityScale = 0.f;
+	ProjectileMovementComponent->ProjectileGravityScale = 1.f;
+	ProjectileMovementComponent->bShouldBounce = true;
+	ProjectileMovementComponent->Bounciness = 0.4f;
+	ProjectileMovementComponent->bIsHomingProjectile = false;
 	
-	CollisionComponent->SetSimulatePhysics(true);
-	CollisionComponent->SetSphereRadius(200.f);
+	
 	CollisionComponent->OnComponentBeginOverlap.AddDynamic(this, &ANSTestCoin::OnOverlapBegin);
 }
 
@@ -59,10 +64,10 @@ void ANSTestCoin::CheckPlayerActor()
 	// 범위 감지
 	UKismetSystemLibrary::SphereOverlapActors(
 	GetWorld(),
-	GetActorLocation(),
+	GetActorLocation(),	
 	MagneticRadius,
 	ObjectTypes,
-	ANSDroneAI::StaticClass(),
+	ANSBasicDroneAI::StaticClass(),
 	IgnoreActors,
 	OutActors
 	);
@@ -84,15 +89,16 @@ void ANSTestCoin::CheckPlayerActor()
 			);
 			
 			CollisionComponent->SetSimulatePhysics(false);
+			CollisionComponent->SetEnableGravity(false);
 			
 			// 추적 로직 활성화
 			if (!IsValid(ProjectileMovementComponent)) return;
+			ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
 			ProjectileMovementComponent->bIsHomingProjectile = true;
 			ProjectileMovementComponent->HomingAccelerationMagnitude = 3000.f;
 			ProjectileMovementComponent->HomingTargetComponent = FindActor->GetRootComponent();
 			ProjectileMovementComponent->Activate(true);
-			// 추적시작 타이머 비활성화
-			GetWorldTimerManager().ClearTimer(CheckPlayerTimerHandle);
+			
 			break;
 		}
 	}
@@ -127,13 +133,8 @@ void ANSTestCoin::BeginPlay()
 void ANSTestCoin::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	for (const TWeakObjectPtr<ANSDroneAIController>& CacheDroneAIController : CacheDroneAIControllers)
-	{
-		if (CacheDroneAIController.IsValid())
-		{
-			CacheDroneAIController->RemoveTargetCoin(this);
-		}
-	}
+	GetWorldTimerManager().ClearTimer(CheckPlayerTimerHandle);
+	
 }
 
 

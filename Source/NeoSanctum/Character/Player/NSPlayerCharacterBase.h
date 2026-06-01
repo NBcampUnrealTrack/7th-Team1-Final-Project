@@ -9,7 +9,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
-class ANSDroneAI;
+class ANSBaseCompanionAI;
 class ANSWeaponBase;
 class UNSCharacterData;
 struct FOnAttributeChangeData;
@@ -156,7 +156,7 @@ protected:
 	//드론 스폰관련 Test
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Companion|AI")
-	TSubclassOf<ANSDroneAI> DroneAIClass;
+	TSubclassOf<ANSBaseCompanionAI> DroneAIClass;
 	
 private:
 	// 사망 상태에 따라 연출을 실행할 때 클라이언트에 복제하는 시점을 조정하기 위한 bool 변수
