@@ -24,10 +24,10 @@ bool ANSGameplayCueNotify_Sustainable::OnActive_Implementation(
 {
 	Super::OnActive_Implementation(MyTarget, Parameters);
 	
-	PlayAttachedSound(MyTarget, StartSoundID, SoundAttachComponentName, SoundAttachSocketName);
-	SpawnAttachedVFX(MyTarget, StartVFX, VFXAttachComponentName, VFXAttachSocketName, true);
+	PlaySound(MyTarget, Parameters, StartSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
+	SpawnVFX(MyTarget, Parameters, StartVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName, true);
 	
-	LoopPresentation(MyTarget);
+	LoopPresentation(MyTarget, Parameters);
 	
 	return true;
 }
@@ -39,7 +39,7 @@ bool ANSGameplayCueNotify_Sustainable::WhileActive_Implementation(
 {
 	Super::WhileActive_Implementation(MyTarget, Parameters);
 	
-	LoopPresentation(MyTarget);
+	LoopPresentation(MyTarget, Parameters);
 	
 	return true;
 }
@@ -71,22 +71,37 @@ bool ANSGameplayCueNotify_Sustainable::OnRemove_Implementation(
 		LoopVFXComponent = nullptr;
 	}
 	
-	SpawnAttachedVFX(MyTarget, EndVFX, VFXAttachComponentName, VFXAttachSocketName, true);
-	PlayAttachedSound(MyTarget, EndSoundID, SoundAttachComponentName, SoundAttachSocketName);
+	SpawnVFX(MyTarget, Parameters, EndVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName, true);
+	PlaySound(MyTarget, Parameters, EndSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
 	
 	return true;
 }
 
-void ANSGameplayCueNotify_Sustainable::LoopPresentation(AActor* MyTarget)
+void ANSGameplayCueNotify_Sustainable::LoopPresentation(AActor* MyTarget, const FGameplayCueParameters& Parameters)
 {
 	if (!LoopAudioComponent)
 	{
-		LoopAudioComponent = PlayAttachedSound(MyTarget, LoopSoundID, SoundAttachComponentName, SoundAttachSocketName);
+		LoopAudioComponent = PlaySound(
+			MyTarget,
+			Parameters,
+			LoopSoundID,
+			SoundSpawnMode,
+			SoundAttachComponentName,
+			SoundAttachSocketName
+		);
 	}
 	
 	if (!LoopVFXComponent)
 	{
-		LoopVFXComponent = SpawnAttachedVFX(MyTarget, LoopVFX, VFXAttachComponentName, VFXAttachSocketName, false);
+		LoopVFXComponent = SpawnVFX(
+			MyTarget,
+			Parameters,
+			LoopVFX,
+			VFXSpawnMode,
+			VFXAttachComponentName,
+			VFXAttachSocketName,
+			false
+		);
 	}
 }
 
@@ -161,9 +176,11 @@ USceneComponent* ANSGameplayCueNotify_Sustainable::GetAttachComponent(
 	return MyTarget->GetRootComponent();
 }
 
-UAudioComponent* ANSGameplayCueNotify_Sustainable::PlayAttachedSound(
+UAudioComponent* ANSGameplayCueNotify_Sustainable::PlaySound(
 	AActor* MyTarget,
+	const FGameplayCueParameters& Parameters,
 	FName SoundID,
+	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
 	FName SocketName
 ) const
@@ -174,19 +191,37 @@ UAudioComponent* ANSGameplayCueNotify_Sustainable::PlayAttachedSound(
 	}
 	
 	UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(MyTarget);
-	FName ResolvedSocketName;
-	USceneComponent* AttachComponent = GetAttachComponent(MyTarget, ComponentName, SocketName, ResolvedSocketName);
-	if (!SoundSubsystem || !AttachComponent)
+	if (!SoundSubsystem)
 	{
 		return nullptr;
 	}
 	
-	return SoundSubsystem->PlaySoundAttached(SoundID, AttachComponent, ResolvedSocketName);
+	if (SpawnMode == ENSGameplayCueSpawnMode::Attached)
+	{
+		FName ResolvedSocketName;
+		USceneComponent* AttachComponent = GetAttachComponent(
+			MyTarget,
+			ComponentName,
+			SocketName,
+			ResolvedSocketName
+		);
+		
+		if (AttachComponent)
+		{
+			return SoundSubsystem->PlaySoundAttached(SoundID, AttachComponent, ResolvedSocketName);
+		}
+
+		return nullptr;
+	}
+
+	return SoundSubsystem->PlaySoundAtLocation(SoundID, Parameters.Location);
 }
 
-UNiagaraComponent* ANSGameplayCueNotify_Sustainable::SpawnAttachedVFX(
+UNiagaraComponent* ANSGameplayCueNotify_Sustainable::SpawnVFX(
 	AActor* MyTarget,
+	const FGameplayCueParameters& Parameters,
 	UNiagaraSystem* NiagaraSystem,
+	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
 	FName SocketName,
 	bool bAutoDestroy
@@ -197,20 +232,38 @@ UNiagaraComponent* ANSGameplayCueNotify_Sustainable::SpawnAttachedVFX(
 		return nullptr;
 	}
 	
-	FName ResolvedSocketName;
-	USceneComponent* AttachComponent = GetAttachComponent(MyTarget, ComponentName, SocketName, ResolvedSocketName);
-	if (!AttachComponent)
+	if (SpawnMode == ENSGameplayCueSpawnMode::Attached)
 	{
-		return nullptr;
+		FName ResolvedSocketName;
+		USceneComponent* AttachComponent = GetAttachComponent(
+			MyTarget,
+			ComponentName,
+			SocketName,
+			ResolvedSocketName
+		);
+		
+		if (!AttachComponent)
+		{
+			return nullptr;
+		}
+
+		return UNiagaraFunctionLibrary::SpawnSystemAttached(
+			NiagaraSystem,
+			AttachComponent,
+			ResolvedSocketName,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			EAttachLocation::SnapToTarget,
+			bAutoDestroy
+		);
 	}
 	
-	return UNiagaraFunctionLibrary::SpawnSystemAttached(
+	return UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+		MyTarget,
 		NiagaraSystem,
-		AttachComponent,
-		ResolvedSocketName,
-		FVector::ZeroVector,
-		FRotator::ZeroRotator,
-		EAttachLocation::SnapToTarget,
+		Parameters.Location,
+		Parameters.Normal.Rotation(),
+		FVector::OneVector,
 		bAutoDestroy
 	);
 }
