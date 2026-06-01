@@ -627,10 +627,14 @@ bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 		return false;
 	}
 	
-	const APawn* Pawn = Cast<APawn>(AvatarActor);
-	const FVector ServerViewLocation = Pawn ? Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
+	FVector ServerAimTraceStartLocation;
 	
-	if (FVector::DistSquared(ServerViewLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	if (!TryGetAimTraceStartLocation(ServerAimTraceStartLocation))
+	{
+		return false;
+	}
+	
+	if (FVector::DistSquared(ServerAimTraceStartLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
 	{
 		return false;
 	}
