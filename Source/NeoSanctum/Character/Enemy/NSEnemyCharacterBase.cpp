@@ -23,6 +23,9 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
 
 void ANSEnemyCharacterBase::BeginPlay()
@@ -48,6 +51,7 @@ void ANSEnemyCharacterBase::BeginPlay()
 		}
 	}
 	SetActorScale3D(EnemyData->DrawScale);
+
 
 	// GAS 데이터 테이블 기반 스탯 초기화
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
