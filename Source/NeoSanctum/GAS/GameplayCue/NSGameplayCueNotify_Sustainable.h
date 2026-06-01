@@ -40,11 +40,22 @@ public:
 	) override;
 	
 protected:
-	USceneComponent* GetAttachComponent(AActor* MyTarget, FName SocketName) const;
-	UAudioComponent* PlayAttachedSound(AActor* MyTarget, FName SoundID, FName SocketName) const;
+	USceneComponent* GetAttachComponent(
+		AActor* MyTarget,
+		FName ComponentName,
+		FName SocketName,
+		FName& OutSocketName
+	) const;
+	UAudioComponent* PlayAttachedSound(
+		AActor* MyTarget,
+		FName SoundID,
+		FName ComponentName,
+		FName SocketName
+	) const;
 	UNiagaraComponent* SpawnAttachedVFX(
 		AActor* MyTarget,
 		UNiagaraSystem* NiagaraSystem,
+		FName ComponentName,
 		FName SocketName,
 		bool bAutoDestroy
 	) const;
@@ -62,6 +73,9 @@ protected:
 	// 종료 시점에 1회 재생될 사운드 ID : DataTable상의 RowName
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
 	FName EndSoundID = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
+	FName SoundAttachComponentName = NAME_None;
 
 	// 사운드를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
@@ -82,6 +96,9 @@ protected:
 	// Cue가 End되는 시점에 1회 재생할 VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	TObjectPtr<UNiagaraSystem> EndVFX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	FName VFXAttachComponentName = NAME_None;
 
 	// VFX를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")

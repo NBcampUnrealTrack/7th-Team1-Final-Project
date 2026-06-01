@@ -26,18 +26,38 @@ public:
 	) const override;
 	
 protected:
-	USceneComponent* GetAttachComponent(AActor* MyTarget, FName SocketName) const;
+	USceneComponent* GetAttachComponent(
+		AActor* MyTarget,
+		FName ComponentName,
+		FName SocketName,
+		FName& OutSocketName
+	) const;
 	
 	// 사운드 재생
-	UAudioComponent* PlayAttachedSound(AActor* MyTarget, FName SoundID, FName SocketName) const;
+	UAudioComponent* PlayAttachedSound(
+		AActor* MyTarget,
+		const FGameplayCueParameters& Parameters,
+		FName SoundID,
+		FName ComponentName,
+		FName SocketName
+	) const;
 	// VFX 재생
-	void SpawnAttachedVFX(AActor* MyTarget, UNiagaraSystem* NiagaraSystem, FName SocketName) const;
+	void SpawnAttachedVFX(
+		AActor* MyTarget,
+		const FGameplayCueParameters& Parameters,
+		UNiagaraSystem* NiagaraSystem,
+		FName ComponentName,
+		FName SocketName
+	) const;
 	
 protected:
 	// 사운드 ID : DataTable상의 RowName
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
 	FName ExecuteSoundID = NAME_None;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
+	FName SoundAttachComponentName = NAME_None;
+	
 	// 사운드를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|Sound")
 	FName SoundAttachSocketName = NAME_None;
@@ -46,6 +66,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	TObjectPtr<UNiagaraSystem> ExecuteVFX;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	FName VFXAttachComponentName = NAME_None;
+	
 	// VFX를 붙힐 소켓 : None이면 그냥 MeshComponent root로 고정임
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	FName VFXAttachSocketName = NAME_None;
