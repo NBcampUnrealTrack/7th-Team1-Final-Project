@@ -48,8 +48,7 @@ protected:
 	
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	void Input_AbilityReleased(FGameplayTag InputTag);
-	
-	// 증강 입력 단일 핸들러 (InputTag로 카드 선택/리롤 분기)
+
 	void Input_AugmentAction(FGameplayTag InputTag);
 	
 protected:
@@ -79,10 +78,10 @@ protected:
 
 	UPROPERTY(Transient)
 	TArray<uint32> NativeInputBindHandles;
-
-	UPROPERTY(Transient)
-	TArray<uint32> AugmentInputBindHandles;
-
+	
 	UPROPERTY(Transient)
 	TArray<uint32> AbilityInputBindHandles;
+	
+	UPROPERTY(Transient)
+	TArray<uint32> AugmentInputBindHandles;
 };
