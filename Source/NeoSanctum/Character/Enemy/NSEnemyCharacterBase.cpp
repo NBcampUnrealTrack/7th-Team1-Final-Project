@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameModeBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
@@ -23,6 +24,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -110,6 +112,12 @@ void ANSEnemyCharacterBase::BeginPlay()
 			ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
 		}
 	}
+	
+	// 무기 장착, ABP와 공격 어빌리티 부여
+	if (WeaponComponent)
+    {
+        WeaponComponent->EquipWeapon();
+    }
 }
 
 void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

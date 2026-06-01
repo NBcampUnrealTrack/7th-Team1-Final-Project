@@ -36,11 +36,13 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+
 public:
 	void Die();
-	
+
 	// (이용호 추가) 외부에서 생존 여부 확인용
 	bool IsDead() const { return bIsDead; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -54,14 +56,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
+
 protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
 	bool bIsDead = false;
 
 	UFUNCTION()
 	void OnRep_bIsDead();
-
-private:
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };
