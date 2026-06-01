@@ -10,7 +10,7 @@ class UGameplayEffect;
 
 /**
  * 원거리 캐릭터 기본 공격
- * 입력 유지 중 히트스캔 공격 반복
+ * 한 번 활성화될 때 한 발을 발사하고, 입력 유지 중 반복 활성화
  */
 UCLASS()
 class NEOSANCTUM_API UGA_RangerAutoFire : public UGA_SkillBase
@@ -36,7 +36,6 @@ protected:
 		bool bWasCancelled
 	) override;
 	
-
 	virtual void InputReleased(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -53,6 +52,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	float TraceRange = 10000.0f;
 	
+	// 클라가 보낸 TraceStart가 서버 기준에서 너무 멀면 거부
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float ServerTraceStartTolerance = 300.0f;
+	
+	// 클라 Hit 위치와 서버 재 Trace Hit 위치가 너무 다르면 거부
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float ServerHitLocationTolerance = 200.0f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
@@ -65,17 +72,25 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineThickness = 1.5f;
 	
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bLogPredictionKey = false;
+	
 private:
-	void StartAutoFire();
-	void StopAutoFire();
+	void FinishFireCycle();
 
 	void FireOnce();
-	void PerformHitscan();
+	
+	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	void OnTargetDataReadyCallback(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ApplicationTag);
+	void OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
 	void ApplyDamageToActor(AActor* TargetActor);
-
-	void PlayFireFeedback();
+	
 	void ExecuteMuzzleFireCue();
-	void DrawDebugHitscan();
+	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 
 	bool ShouldPlayLocalFeedback() const;
 	bool TryBuildHitscanTrace(
@@ -85,5 +100,8 @@ private:
 		bool& bOutHit) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
-	FTimerHandle AutoFireTimerHandle;
+	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
+	
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
+	FTimerHandle FireDelayTimerHandle;
 };

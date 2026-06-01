@@ -17,4 +17,15 @@ class NEOSANCTUM_API UNSAbilitySystemComponent : public UAbilitySystemComponent
 public:
 	void AbilityInputTagPressed(const FGameplayTag& InputTag);
 	void AbilityInputTagReleased(const FGameplayTag& InputTag);
+	
+	// 입력 이벤트를 한 프레임 단위로 모아서 처리
+	void ProcessAbilityInput(float DeltaTime, bool bGamePaused);
+	
+	// 입력 상태를 강제로 비울 때 사용
+	void ClearAbilityInput();
+	
+private:
+	TArray<FGameplayAbilitySpecHandle> InputPressedSpecHandles;
+	TArray<FGameplayAbilitySpecHandle> InputReleasedSpecHandles;
+	TArray<FGameplayAbilitySpecHandle> InputHeldSpecHandles;
 };

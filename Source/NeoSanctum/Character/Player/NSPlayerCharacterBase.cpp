@@ -66,6 +66,11 @@ void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	if (NSAbilitySystemComponent && IsLocallyControlled())
+	{
+		NSAbilitySystemComponent->ProcessAbilityInput(DeltaSeconds, false);
+	}
+	
 	UpdateCameraFacingRotation(DeltaSeconds);
 }
 

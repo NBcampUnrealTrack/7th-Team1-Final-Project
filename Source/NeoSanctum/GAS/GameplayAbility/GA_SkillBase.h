@@ -9,6 +9,13 @@
 class ANSPlayerState;
 class UNSAbilitySystemComponent;
 
+UENUM(BlueprintType)
+enum class ENSAbilityActivationPolicy : uint8
+{
+	OnInputTriggered,
+	WhileInputActive
+};
+
 /**
  * 플레이어 스킬 공통 베이스
  */
@@ -20,10 +27,16 @@ class NEOSANCTUM_API UGA_SkillBase : public UGameplayAbility
 public:
 	UGA_SkillBase();
 	
+	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
+	
 protected:
 	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
 	
 	ANSPlayerState* GetNSPlayerState() const;
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Activation")
+	ENSAbilityActivationPolicy ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
 	
 	// 현재 Prediction Key 상태 확인하는 디버그용 함수
 	UFUNCTION(BlueprintCallable, Category = "GAS|Debug")
