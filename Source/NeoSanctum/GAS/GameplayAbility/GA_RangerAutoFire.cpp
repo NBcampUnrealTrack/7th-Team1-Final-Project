@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
@@ -47,15 +48,12 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 
-	if (bLogPredictionKey)
+	if (bLogPredictionKey && ActorInfo)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[레인저 연사][활성화] 로컬조작:%d 서버권한:%d 예측키:%s"),
-			ActorInfo->IsLocallyControlled(),
-			ActorInfo->IsNetAuthority(),
-			*GetCurrentPredictionKeyStatus()
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"레인저 연사 활성화. 로컬조작={LocallyControlled} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
 		);
 	}
 
@@ -70,13 +68,11 @@ void UGA_RangerAutoFire::ActivateAbility(
 
 	if (bShouldWaitForClientTargetData)
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 대기] 서버가 클라이언트 TargetData를 기다리는 중 / 예측키:%s"),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"클라이언트 TargetData 대기 중. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 
@@ -86,13 +82,11 @@ void UGA_RangerAutoFire::ActivateAbility(
 	}
 	else
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 생성] 로컬에서 TargetData 생성 중 / 예측키:%s"),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"로컬 TargetData 생성. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 		// 로컬 조작 클라이언트나 호스트는 직접 TargetData를 만듬
@@ -230,16 +224,13 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 
-	if (bLogPredictionKey)
+	if (bLogPredictionKey && ActorInfo)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[레인저 연사][타겟데이터 준비] 로컬조작:%d 서버권한:%d 데이터개수:%d 예측키:%s"),
-			ActorInfo ? ActorInfo->IsLocallyControlled() : false,
-			ActorInfo ? ActorInfo->IsNetAuthority() : false,
-			TargetDataHandle.Num(),
-			*GetCurrentPredictionKeyStatus()
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"TargetData 준비 완료. 로컬조작={LocallyControlled} TargetData개수={TargetDataNum} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("TargetDataNum", TargetDataHandle.Num()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
 		);
 	}
 
@@ -249,14 +240,12 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 	// 원격 클라이언트만 아래 분기 실행
 	if (bShouldNotifyServer)
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 전송] 클라이언트가 서버로 TargetData 전송 / ScopedPredictionKey유효:%d 예측키:%s"),
-				ASC->ScopedPredictionKey.IsValidKey(),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"서버로 TargetData 전송. ScopedPredictionKey유효={ScopedPredictionKeyValid} 예측키={PredictionKey}",
+				("ScopedPredictionKeyValid", ASC->ScopedPredictionKey.IsValidKey()),
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 
@@ -334,6 +323,13 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 	
+	FHitResult MuzzleObstructionHitResult;
+	
+	if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
+	{
+		return;
+	}
+	
 	ApplyDamageToActor(ServerHitResult.GetActor());
 }
 
@@ -400,10 +396,23 @@ void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHan
 		const FVector DebugEnd = bHit ? HitResult->ImpactPoint : TraceEnd;
 		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
 		
+		const FVector DebugDirection = (DebugEnd - TraceStart).GetSafeNormal();
+		
+		if (DebugDirection.IsNearlyZero())
+		{
+			continue;
+		}
+		
+		const float DebugDistance = FVector::Dist(TraceStart, DebugEnd);
+		const float AppliedOffset = 
+			FMath::Clamp(DebugLineStartOffset, 0.0f, FMath::Max(DebugDistance - 10.0f, 0.0f));
+		
+		const FVector DebugStart = TraceStart + DebugDirection * AppliedOffset;
+		
 		// 초록: 허공, 빨강: 명중
 		DrawDebugLine(
 			World,
-			TraceStart,
+			DebugStart,
 			DebugEnd,
 			DebugColor,
 			false,
@@ -423,6 +432,55 @@ void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHan
 				DebugLineDuration
 			);
 		}
+	}
+}
+
+void UGA_RangerAutoFire::DrawDebugMuzzleObstructionTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	const FHitResult& ObstructionHitResult,
+	bool bIsObstructed) const
+{
+	UWorld* World = GetWorld();
+	
+	if (!World)
+	{
+		return;
+	}
+	
+	if (TraceStart.Equals(TraceEnd))
+	{
+		return;
+	}
+	
+	const bool bHit = ObstructionHitResult.bBlockingHit;
+	const FVector DebugEnd = bHit ? ObstructionHitResult.ImpactPoint : TraceEnd;
+	const FColor DebugColor = bIsObstructed ? FColor::Orange : FColor::Cyan;
+	
+	// Cyan:	총구 경로가 열려 있음
+	// Orange:	총구 경로가 벽/장애물에 막힘
+	
+	DrawDebugLine(
+		World,
+		TraceStart,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+	
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			ObstructionHitResult.ImpactPoint,
+			14.0f,
+			DebugColor,
+			false,
+			DebugLineDuration
+		);
 	}
 }
 
@@ -447,7 +505,7 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 {
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 
-	if (!AvatarActor)
+	if (!IsValid(AvatarActor))
 	{
 		return false;
 	}
@@ -458,19 +516,54 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	{
 		return false;
 	}
+	
+	if (!TryGetAimTraceStartLocation(OutTraceStart))
+	{
+		return false;
+	}
 
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
-	const AController* Controller = Pawn ? Pawn->GetController() : nullptr;
+	const APlayerController* PlayerController = Pawn ? 
+		Cast<APlayerController>(Pawn->GetController()) : nullptr;
+	
+	if (!IsValid(PlayerController))
+	{
+		return false;
+	}
+	
+	int32 ViewportSizeX = 0;
+	int32 ViewportSizeY = 0;
+	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
 
-	OutTraceStart = Pawn ?
-		Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
+	if (ViewportSizeX <= 0 || ViewportSizeY <= 0)
+	{
+		return false;
+	}
+	
+	const float CrosshairScreenX = ViewportSizeX * 0.5f;
+	const float CrosshairScreenY = ViewportSizeY * 0.5f;
+	
+	FVector DeprojectWorldLocation;
+	FVector DeprojectWorldDirection;
+	
+	if (!PlayerController->DeprojectScreenPositionToWorld(
+		CrosshairScreenX, 
+		CrosshairScreenY, 
+		DeprojectWorldLocation,
+		DeprojectWorldDirection))
+	{
+		return false;
+	}
 
-	const FRotator AimRotation = Controller	?
-		Controller->GetControlRotation() : AvatarActor->GetActorRotation();
+	const FVector TraceDirection = DeprojectWorldDirection.GetSafeNormal();
+	
+	if (TraceDirection.IsNearlyZero())
+	{
+		return false;
+	}
 
-	const FVector TraceDirection = AimRotation.Vector();
 	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
-
+	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
 
@@ -483,6 +576,19 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	);
 
 	return true;
+}
+
+bool UGA_RangerAutoFire::TryGetAimTraceStartLocation(FVector& OutLocation) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+	
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+	
+	return PlayerCharacter->TryGetAimTraceStartLocation(OutLocation);
 }
 
 void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
@@ -535,6 +641,71 @@ bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) c
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
 }
 
+bool UGA_RangerAutoFire::IsMuzzleObstructed(
+	const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	
+	if (!IsValid(AvatarActor) || !World)
+	{
+		return false;
+	}
+	
+	AActor* TargetActor = ServerHitResult.GetActor();
+	
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+	
+	FTransform MuzzleTransform;
+	
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		return false;
+	}
+	
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector AimPoint = ServerHitResult.ImpactPoint;
+	
+	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+	
+	if (ShotDirection.IsNearlyZero())
+	{
+		return false;
+	}
+	
+	const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+	const FVector ObstructionTraceStart = MuzzleLocation - ShotDirection * BackTraceDistance;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+	
+	const bool bHit = World->LineTraceSingleByChannel(
+		OutObstructionHitResult,
+		ObstructionTraceStart,
+		AimPoint,
+		TraceChannel,
+		QueryParams
+	);
+	
+	const bool bIsObstructed =
+		bHit && OutObstructionHitResult.bBlockingHit && OutObstructionHitResult.GetActor() != TargetActor;
+	
+	if (bDrawDebugMuzzleObstruction)
+	{
+		DrawDebugMuzzleObstructionTrace(
+			ObstructionTraceStart,
+			AimPoint,
+			OutObstructionHitResult,
+			bIsObstructed
+		);
+	}
+	
+	return bIsObstructed;
+}
+
 bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 	const FHitResult& ClientHitResult,
 	FHitResult& OutServerHitResult) const
@@ -566,10 +737,14 @@ bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 		return false;
 	}
 	
-	const APawn* Pawn = Cast<APawn>(AvatarActor);
-	const FVector ServerViewLocation = Pawn ? Pawn->GetPawnViewLocation() : AvatarActor->GetActorLocation();
+	FVector ServerAimTraceStartLocation;
 	
-	if (FVector::DistSquared(ServerViewLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	if (!TryGetAimTraceStartLocation(ServerAimTraceStartLocation))
+	{
+		return false;
+	}
+	
+	if (FVector::DistSquared(ServerAimTraceStartLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
 	{
 		return false;
 	}

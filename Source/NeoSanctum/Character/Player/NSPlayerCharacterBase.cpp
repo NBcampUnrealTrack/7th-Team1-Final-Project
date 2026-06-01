@@ -178,6 +178,18 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	}
 }
 
+bool ANSPlayerCharacterBase::TryGetAimTraceStartLocation(FVector& OutLocation) const
+{
+	if (IsValid(CameraComp))
+	{
+		OutLocation = CameraComp->GetComponentLocation();
+		return true;
+	}
+	
+	OutLocation = GetPawnViewLocation();
+	return true;
+}
+
 void ANSPlayerCharacterBase::InitializeAbilitySystem()
 {
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();

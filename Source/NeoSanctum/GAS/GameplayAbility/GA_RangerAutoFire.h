@@ -60,6 +60,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerHitLocationTolerance = 200.0f;
 	
+	// 총구가 벽에 살짝 파고든 상황까지 잡기 위해 Trace 시작점을 뒤로 당기는 거리
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
+	float MuzzleObstructionBackTraceDistance = 100.0f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
@@ -67,12 +71,18 @@ protected:
 	bool bDrawDebugHitscan = false;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bDrawDebugMuzzleObstruction = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineDuration = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineThickness = 1.5f;
 	
-protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineStartOffset = 200.0f;
+	
+	// 클라이언트 예측키 확인용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bLogPredictionKey = false;
 	
@@ -91,6 +101,12 @@ private:
 	
 	void ExecuteMuzzleFireCue();
 	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+	void DrawDebugMuzzleObstructionTrace(
+		const FVector& TraceStart,
+		const FVector& TraceEnd,
+		const FHitResult& ObstructionHitResult,
+		bool bIsObstructed
+	) const;
 
 	bool ShouldPlayLocalFeedback() const;
 	bool TryBuildHitscanTrace(
@@ -98,8 +114,11 @@ private:
 		FVector& OutTraceStart,
 		FVector& OutTraceEnd,
 		bool& bOutHit) const;
+	
+	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
+	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
 	
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
