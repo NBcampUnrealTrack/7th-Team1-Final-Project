@@ -15,8 +15,8 @@ bool UNSGameplayCueNotify_Instant::OnExecute_Implementation(
 {
 	Super::OnExecute_Implementation(MyTarget, Parameters);
 	
-	PlayAttachedSound(MyTarget, Parameters, ExecuteSoundID, SoundAttachComponentName, SoundAttachSocketName);
-	SpawnAttachedVFX(MyTarget, Parameters, ExecuteVFX, VFXAttachComponentName, VFXAttachSocketName);
+	PlaySound(MyTarget, Parameters, ExecuteSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
+	SpawnVFX(MyTarget, Parameters, ExecuteVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName);
 	
 	return true;
 }
@@ -92,10 +92,11 @@ USceneComponent* UNSGameplayCueNotify_Instant::GetAttachComponent(
 	return MyTarget->GetRootComponent();
 }
 
-UAudioComponent* UNSGameplayCueNotify_Instant::PlayAttachedSound(
+UAudioComponent* UNSGameplayCueNotify_Instant::PlaySound(
 	AActor* MyTarget,
 	const FGameplayCueParameters& Parameters,
 	FName SoundID,
+	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
 	FName SocketName
 ) const
@@ -111,20 +112,32 @@ UAudioComponent* UNSGameplayCueNotify_Instant::PlayAttachedSound(
 		return nullptr;
 	}
 	
-	FName ResolvedSocketName;
-	USceneComponent* AttachComponent = GetAttachComponent(MyTarget, ComponentName, SocketName, ResolvedSocketName);
-	if (AttachComponent)
+	if (SpawnMode == ENSGameplayCueSpawnMode::Attached)
 	{
-		return SoundSubsystem->PlaySoundAttached(SoundID, AttachComponent, ResolvedSocketName);
+		FName ResolvedSocketName;
+		USceneComponent* AttachComponent = GetAttachComponent(
+			MyTarget,
+			ComponentName,
+			SocketName,
+			ResolvedSocketName
+		);
+		
+		if (AttachComponent)
+		{
+			return SoundSubsystem->PlaySoundAttached(SoundID, AttachComponent, ResolvedSocketName);
+		}
+		
+		return nullptr;
 	}
 	
 	return SoundSubsystem->PlaySoundAtLocation(SoundID, Parameters.Location);
 }
 
-void UNSGameplayCueNotify_Instant::SpawnAttachedVFX(
+void UNSGameplayCueNotify_Instant::SpawnVFX(
 	AActor* MyTarget,
 	const FGameplayCueParameters& Parameters,
 	UNiagaraSystem* NiagaraSystem,
+	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
 	FName SocketName
 ) const
@@ -134,19 +147,30 @@ void UNSGameplayCueNotify_Instant::SpawnAttachedVFX(
 		return;
 	}
 	
-	FName ResolvedSocketName;
-	USceneComponent* AttachComponent = GetAttachComponent(MyTarget, ComponentName, SocketName, ResolvedSocketName);
-	if (AttachComponent)
+	if (SpawnMode == ENSGameplayCueSpawnMode::Attached)
 	{
-		UNiagaraFunctionLibrary::SpawnSystemAttached(
-			NiagaraSystem,
-			AttachComponent,
-			ResolvedSocketName,
-			FVector::ZeroVector,
-			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			true
+		FName ResolvedSocketName;
+		USceneComponent* AttachComponent = GetAttachComponent(
+			MyTarget,
+			ComponentName,
+			SocketName,
+			ResolvedSocketName
 		);
+		
+		if (AttachComponent)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAttached(
+				NiagaraSystem,
+				AttachComponent,
+				ResolvedSocketName,
+				FVector::ZeroVector,
+				FRotator::ZeroRotator,
+				EAttachLocation::SnapToTarget,
+				true
+			);
+			return;
+		}
+		
 		return;
 	}
 	
