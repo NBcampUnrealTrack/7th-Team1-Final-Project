@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
@@ -47,15 +48,12 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 
-	if (bLogPredictionKey)
+	if (bLogPredictionKey && ActorInfo)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[레인저 연사][활성화] 로컬조작:%d 서버권한:%d 예측키:%s"),
-			ActorInfo->IsLocallyControlled(),
-			ActorInfo->IsNetAuthority(),
-			*GetCurrentPredictionKeyStatus()
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"레인저 연사 활성화. 로컬조작={LocallyControlled} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
 		);
 	}
 
@@ -70,13 +68,11 @@ void UGA_RangerAutoFire::ActivateAbility(
 
 	if (bShouldWaitForClientTargetData)
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 대기] 서버가 클라이언트 TargetData를 기다리는 중 / 예측키:%s"),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"클라이언트 TargetData 대기 중. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 
@@ -86,13 +82,11 @@ void UGA_RangerAutoFire::ActivateAbility(
 	}
 	else
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 생성] 로컬에서 TargetData 생성 중 / 예측키:%s"),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"로컬 TargetData 생성. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 		// 로컬 조작 클라이언트나 호스트는 직접 TargetData를 만듬
@@ -230,16 +224,13 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 
-	if (bLogPredictionKey)
+	if (bLogPredictionKey && ActorInfo)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[레인저 연사][타겟데이터 준비] 로컬조작:%d 서버권한:%d 데이터개수:%d 예측키:%s"),
-			ActorInfo ? ActorInfo->IsLocallyControlled() : false,
-			ActorInfo ? ActorInfo->IsNetAuthority() : false,
-			TargetDataHandle.Num(),
-			*GetCurrentPredictionKeyStatus()
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"TargetData 준비 완료. 로컬조작={LocallyControlled} TargetData개수={TargetDataNum} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("TargetDataNum", TargetDataHandle.Num()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
 		);
 	}
 
@@ -249,14 +240,12 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 	// 원격 클라이언트만 아래 분기 실행
 	if (bShouldNotifyServer)
 	{
-		if (bLogPredictionKey)
+		if (bLogPredictionKey && ActorInfo)
 		{
-			UE_LOG(
-				LogTemp,
-				Warning,
-				TEXT("[레인저 연사][타겟데이터 전송] 클라이언트가 서버로 TargetData 전송 / ScopedPredictionKey유효:%d 예측키:%s"),
-				ASC->ScopedPredictionKey.IsValidKey(),
-				*GetCurrentPredictionKeyStatus()
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"서버로 TargetData 전송. ScopedPredictionKey유효={ScopedPredictionKeyValid} 예측키={PredictionKey}",
+				("ScopedPredictionKeyValid", ASC->ScopedPredictionKey.IsValidKey()),
+				("PredictionKey", GetCurrentPredictionKeyStatus())
 			);
 		}
 
@@ -443,6 +432,55 @@ void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHan
 				DebugLineDuration
 			);
 		}
+	}
+}
+
+void UGA_RangerAutoFire::DrawDebugMuzzleObstructionTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	const FHitResult& ObstructionHitResult,
+	bool bIsObstructed) const
+{
+	UWorld* World = GetWorld();
+	
+	if (!World)
+	{
+		return;
+	}
+	
+	if (TraceStart.Equals(TraceEnd))
+	{
+		return;
+	}
+	
+	const bool bHit = ObstructionHitResult.bBlockingHit;
+	const FVector DebugEnd = bHit ? ObstructionHitResult.ImpactPoint : TraceEnd;
+	const FColor DebugColor = bIsObstructed ? FColor::Orange : FColor::Cyan;
+	
+	// Cyan:	총구 경로가 열려 있음
+	// Orange:	총구 경로가 벽/장애물에 막힘
+	
+	DrawDebugLine(
+		World,
+		TraceStart,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+	
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			ObstructionHitResult.ImpactPoint,
+			14.0f,
+			DebugColor,
+			false,
+			DebugLineDuration
+		);
 	}
 }
 
@@ -652,12 +690,20 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 		QueryParams
 	);
 	
-	if (!bHit || !OutObstructionHitResult.bBlockingHit)
+	const bool bIsObstructed =
+		bHit && OutObstructionHitResult.bBlockingHit && OutObstructionHitResult.GetActor() != TargetActor;
+	
+	if (bDrawDebugMuzzleObstruction)
 	{
-		return false;
+		DrawDebugMuzzleObstructionTrace(
+			ObstructionTraceStart,
+			AimPoint,
+			OutObstructionHitResult,
+			bIsObstructed
+		);
 	}
 	
-	return OutObstructionHitResult.GetActor() != TargetActor;
+	return bIsObstructed;
 }
 
 bool UGA_RangerAutoFire::ValidateTargetDataHitResult(

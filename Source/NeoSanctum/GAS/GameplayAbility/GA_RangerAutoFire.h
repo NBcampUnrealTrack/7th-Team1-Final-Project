@@ -71,6 +71,9 @@ protected:
 	bool bDrawDebugHitscan = false;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bDrawDebugMuzzleObstruction = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugLineDuration = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
@@ -98,6 +101,12 @@ private:
 	
 	void ExecuteMuzzleFireCue();
 	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+	void DrawDebugMuzzleObstructionTrace(
+		const FVector& TraceStart,
+		const FVector& TraceEnd,
+		const FHitResult& ObstructionHitResult,
+		bool bIsObstructed
+	) const;
 
 	bool ShouldPlayLocalFeedback() const;
 	bool TryBuildHitscanTrace(
@@ -111,7 +120,6 @@ private:
 	
 	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
-	
 	
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
