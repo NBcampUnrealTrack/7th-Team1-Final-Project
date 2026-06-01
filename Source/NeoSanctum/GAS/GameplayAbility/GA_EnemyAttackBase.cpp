@@ -7,6 +7,8 @@
 #include "AbilitySystemInterface.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
@@ -32,6 +34,18 @@ void UGA_EnemyAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle Handl
                                           const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
+	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
+    {
+        if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(ActorInfo->AvatarActor.Get()))
+        {
+            EnemyData = EnemyChar->GetEnemyData();
+            if (EnemyData)
+            {
+                AttackTraceDistance = EnemyData->MaxAttackRange;
+            }
+        }
+    }
 
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{

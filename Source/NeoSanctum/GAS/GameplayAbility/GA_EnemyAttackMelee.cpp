@@ -15,7 +15,4 @@ UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 
 	ActivationOwnedTags.AddTag(NSGameplayTags::State_Enemy_Combat);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
-
-	AttackTraceDistance = 100.0f;
-	AttackTraceRadius = 80.0f;
 }
