@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "NSEnemyWeaponBase.generated.h"
 
@@ -14,6 +15,9 @@ USTRUCT(BlueprintType)
 struct FWeaponConfig
 {
 	GENERATED_BODY()
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config")
+	FGameplayTag AttackAbilityTag;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config")
 	TSubclassOf<UGameplayAbility> WeaponAbility;

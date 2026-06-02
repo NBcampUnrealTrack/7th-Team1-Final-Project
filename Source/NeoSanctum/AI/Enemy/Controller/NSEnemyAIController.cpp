@@ -8,6 +8,7 @@
 #include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -86,7 +87,11 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 			if (Distance <= EnemyData->MaxAttackRange)
 			{
 				CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
-				return AttackAbilityTag;
+				
+				if (const ANSEnemyWeaponBase* DefaultWeaponCDO = EnemyData->DefaultWeaponClass->GetDefaultObject<ANSEnemyWeaponBase>())
+				{
+					return DefaultWeaponCDO->GetWeaponConfig().AttackAbilityTag;
+				}
 			}
 		}
 	}
