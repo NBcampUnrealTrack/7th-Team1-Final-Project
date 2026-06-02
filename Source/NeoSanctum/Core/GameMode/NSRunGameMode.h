@@ -8,6 +8,7 @@
 #include "NSRunGameMode.generated.h"
 
 class UNSStageManager;
+class UNSMonsterPoolManager;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -27,7 +28,8 @@ public:
 	virtual void NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy) override;
 	virtual void RequestReturnToHub_Implementation() override;
 	virtual void RequestMoveToNextStage_Implementation() override;
-
+	virtual void ReturnMonsterToPool_Implementation(ACharacter* Monster) override;
+	
 	// 룸 생성 완료시 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void RespawnAllPlayers();
@@ -35,6 +37,10 @@ public:
 	// 맵 로딩이 완료되고 블루프린트에서 호출될 함수
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void SetEnemyCount(int32 Count);
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void AddEnemyCount(int32 Count);
+
+	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
 
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 
@@ -47,4 +53,7 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
+	
+	UPROPERTY()
+	TObjectPtr<UNSMonsterPoolManager> NSMonsterPoolManager;
 };

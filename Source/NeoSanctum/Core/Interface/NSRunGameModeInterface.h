@@ -35,4 +35,8 @@ public:
 	// 다음 스테이지 진행 선택하면 호출될 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void RequestMoveToNextStage();
+	
+	// 몬스터 풀 반환용 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void ReturnMonsterToPool(ACharacter* Monster);
 };

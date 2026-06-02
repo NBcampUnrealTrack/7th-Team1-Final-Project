@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Core/Stage/NSStageManager.h"
+#include "NeoSanctum/Core/Stage/NSMonsterPoolManager.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "GameFramework/PlayerStart.h"
@@ -31,6 +32,7 @@ void ANSRunGameMode::BeginPlay()
 	if (HasAuthority())
 	{
 		NSStageManager = NewObject<UNSStageManager>(this);
+		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
 		
 		// 클리어 판정 알림용 바인딩
 		NSStageManager->OnStageCleared.BindUObject(
@@ -38,6 +40,8 @@ void ANSRunGameMode::BeginPlay()
 			&ANSRunGameMode::NotifyStageCleared_Implementation
 		);
 	}
+	
+	
 }
 
 void ANSRunGameMode::NotifyStageCleared_Implementation()
@@ -52,7 +56,7 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
 	{
 		ANSEnemyCharacterBase* Enemy = *It;
-		if (Enemy && !Enemy->IsDead())
+		if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
 		{
 			ActualAliveEnemies++;
 		}
@@ -127,6 +131,15 @@ void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
 }
 
+void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)
+{
+	if (HasAuthority() && NSMonsterPoolManager)
+	{
+		NSMonsterPoolManager->ReturnMonsterToPool(Monster);
+	}
+
+}
+
 
 void ANSRunGameMode::HandleRunOver(bool bIsClear)
 {
@@ -190,6 +203,14 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 	if (NSStageManager)
 	{
 		NSStageManager->SetEnemyCount(Count);
+	}
+}
+
+void ANSRunGameMode::AddEnemyCount(int32 Count)
+{
+	if (HasAuthority() && NSStageManager)
+	{
+		NSStageManager->AddEnemyCount(Count);
 	}
 }
 
