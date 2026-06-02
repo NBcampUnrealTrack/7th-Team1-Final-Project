@@ -11,4 +11,5 @@ namespace NSGameplayTags
 	
 	// Ranger
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_MuzzleFire);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_Impact);
 }

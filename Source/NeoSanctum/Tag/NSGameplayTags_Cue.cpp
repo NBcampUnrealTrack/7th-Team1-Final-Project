@@ -9,4 +9,5 @@ namespace NSGameplayTags
 	
 	// Ranger
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_MuzzleFire, "GameplayCue.Ranger.MuzzleFire");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_Impact, "GameplayCue.Ranger.Impact");
 }
