@@ -55,7 +55,7 @@ void ANSTestCoin::CheckPlayerActor()
 	// 감지할 오브젝트 타입 변수
 	TArray<AActor*> OutActors;
 	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_GameTraceChannel1));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
 	
 	// 무시할 엑터
 	TArray<AActor*> IgnoreActors;
