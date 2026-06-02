@@ -527,9 +527,6 @@ void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	// Tab키로 증강 패널 토글
-	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::ToggleAugmentationPanel);
-
 	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
 	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
 }
@@ -572,37 +569,12 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 		return;
 	}
 
-	// 런 데이터가 없으면 로드 후 자동 적재 (테스트용)
+	// 인런에서만 동작 (런 데이터 준비 전이면 무시)
 	if (!Data->IsRunReady())
 	{
-		Data->OnRunGameDataReady.AddUniqueDynamic(this, &ANSPlayerController::OnTestRunDataReady);
-		Data->EnterRun();
 		return;
 	}
-
-	if (HasAuthority())
-	{
-		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
-	}
-	else
-	{
-		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
-	}
-}
-
-void ANSPlayerController::OnTestRunDataReady()
-{
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
-	if (!Data)
-	{
-		return;
-	}
-	Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::OnTestRunDataReady);
-
-	if (!AugmentSelectionComponent)
-	{
-		return;
-	}
+	
 	if (HasAuthority())
 	{
 		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);

@@ -121,8 +121,4 @@ protected:
 
 	// O키(디버그 용) : 테스트용 증강 적재
 	void Debug_EnqueueAugmentOffer();
-
-	// 테스트용 콜백
-	UFUNCTION()
-	void OnTestRunDataReady();
 };
