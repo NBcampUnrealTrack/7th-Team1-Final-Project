@@ -119,6 +119,12 @@ private:
 	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
 	
+	// AI 청각 감지용 소음 발생
+	void ReportWeaponNoise(const AActor* InAvatarActor);
+	
+	// AI 데미지 감지용 가해자 지정
+	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
+	
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
 };

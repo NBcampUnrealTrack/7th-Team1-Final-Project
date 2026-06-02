@@ -285,6 +285,8 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 		return;
 	}
 	
+	ReportWeaponNoise(AvatarActor);
+	
 	// 실제 데미지는 서버에서만 처리
 	ProcessTargetDataForDamage(TargetDataHandle);
 }
@@ -350,6 +352,8 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	{
 		return;
 	}
+	
+	AssignDamageInstigator(DamageSpecHandle);
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
@@ -827,4 +831,25 @@ bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 	}
 	
 	return true;
+}
+
+void UGA_RangerAutoFire::ReportWeaponNoise(const AActor* InAvatarActor)
+{
+	if (APawn* NoiseInstigator = Cast<APawn>(const_cast<AActor*>(InAvatarActor)))
+    {
+        NoiseInstigator->MakeNoise(1.0f, NoiseInstigator, InAvatarActor->GetActorLocation());
+    }
+}
+
+void UGA_RangerAutoFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle)
+{
+	if (!InSpecHandle.IsValid())
+    {
+        return;
+    }
+
+    if (AActor* AvatarActor = GetAvatarActorFromActorInfo())
+    {
+        InSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+    }
 }
