@@ -6,6 +6,8 @@
 #include "Abilities/GameplayAbility.h"
 #include "GA_EnemyAttackBase.generated.h"
 
+class UNSEnemyData;
+
 /**
  * 모든 적 AI 공격 어빌리티의 최상위 부모 C++ 클래스
  * 멀티플레이어 애니메이션 동기화 및 BT 제어권 연동 흐름을 통제합니다.
@@ -48,10 +50,15 @@ protected:
 	FGameplayTag HitCheckEventTag;
 
 	// 공격 판정 전방 거리
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
 	float AttackTraceDistance;
 
 	// 공격 판정 구체 반경
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
 	float AttackTraceRadius;
+	
+private:
+	TObjectPtr<UNSEnemyData> EnemyData;
+	
+	// 이번 공격에서 타격 여부 체크
+	bool bHasHitThisAttack;
 };

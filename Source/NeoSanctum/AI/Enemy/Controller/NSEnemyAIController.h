@@ -16,6 +16,8 @@ class NEOSANCTUM_API ANSEnemyAIController : public AAIController
 
 public:
 	ANSEnemyAIController();
+	
+	virtual void Tick(float DeltaTime) override;
 
 	/*
 	 * AI Controller가 적을 필터링하기 위한 TeamId 조회
@@ -38,19 +40,15 @@ protected:
 	// 시각 센서가 갱신될 때 블랙보드로 데이터를 전달할 콜백 함수
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+private:
+	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
+	bool IsValidLivingTarget(const AActor* Target) const;
 
 protected:
 	// 시야/청각 설정 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent;
-
-	// 에디터에서 몬스터별로 다른 BT를 꽂을 수 있도록 노출
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI")
-	TObjectPtr<UBehaviorTree> BehaviorTreeAsset;
-
-	// 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI")
-	float AttackRange = 200.0f;
 
 	// 공격 태그
 	UPROPERTY(EditDefaultsOnly, Category = "AI")

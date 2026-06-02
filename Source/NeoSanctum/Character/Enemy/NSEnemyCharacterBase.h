@@ -9,6 +9,9 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSEnemyCharacterBase.generated.h"
 
+DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
+
+class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
 
@@ -34,11 +37,16 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+
+	FOnEnemyDead OnEnemyDead;
+
 public:
 	void Die();
-	
+
 	// (이용호 추가) 외부에서 생존 여부 확인용
 	bool IsDead() const { return bIsDead; }
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -46,11 +54,17 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayAbility> AttackAbilityClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Character Data")
+	TObjectPtr<UNSEnemyData> EnemyData;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
@@ -58,8 +72,4 @@ protected:
 
 	UFUNCTION()
 	void OnRep_bIsDead();
-
-private:
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };
