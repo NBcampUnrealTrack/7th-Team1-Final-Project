@@ -6,6 +6,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -39,6 +40,8 @@ void UGA_RangerAutoFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	PlayFireMontage();
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 
@@ -181,6 +184,32 @@ void UGA_RangerAutoFire::FireOnce()
 	
 	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResult(HitResult);
 	OnTargetDataReadyCallback(TargetDataHandle, FGameplayTag());
+}
+
+void UGA_RangerAutoFire::PlayFireMontage()
+{
+	if (!FireMontage)
+	{
+		return;
+	}
+	
+	// 발사 판정은 FireInterval이 관리하므로 몽타주는 연출 피드백으로만 재생
+	UAbilityTask_PlayMontageAndWait* MontageTask = 
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			FireMontage,
+			FireMontagePlayRate,
+			NAME_None,
+			false
+		);
+	
+	if (!MontageTask)
+	{
+		return;
+	}
+	
+	MontageTask->ReadyForActivation();
 }
 
 FGameplayAbilityTargetDataHandle UGA_RangerAutoFire::MakeTargetDataFromHitResult(const FHitResult& HitResult) const

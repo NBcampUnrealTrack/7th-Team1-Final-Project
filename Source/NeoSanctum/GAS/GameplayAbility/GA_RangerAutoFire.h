@@ -39,6 +39,12 @@ protected:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
+	TObjectPtr<UAnimMontage> FireMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
+	float FireMontagePlayRate = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	float FireInterval = 0.15f;
@@ -84,6 +90,8 @@ private:
 	void FinishFireCycle();
 
 	void FireOnce();
+	
+	void PlayFireMontage();
 	
 	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
 	void OnTargetDataReadyCallback(
