@@ -1,0 +1,64 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "CommonUserWidget.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+#include "GameplayTagContainer.h"
+#include "NSSkillSlotWidget.generated.h"
+
+class UCommonTextBlock;
+class UImage;
+class UMaterialInstanceDynamic;
+struct FNSSkillCooldownMessage;
+
+/**
+ *  스킬의 쿨타임을 시각적으로 보여주는 위젯
+ */
+UCLASS()
+class NEOSANCTUM_API UNSSkillSlotWidget : public UCommonUserWidget
+{
+	GENERATED_BODY()
+	
+public:
+	//쿨타임 UI표시 시작
+	void StartCooldown(float NewCooldownDuration);
+	//쿨타임 UI 촉화
+	void ResetCooldown();
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
+	FGameplayTag BoundSkillTag;
+	
+private:
+	//GMS 쿨타임 시작 수신
+	void HandleCooldownMessage(
+		FGameplayTag Channel,
+		const FNSSkillCooldownMessage& Message);
+	
+	//스킬 아이콘
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> SkillIcon;
+	//원형 쿨타임
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> CooldownOverlay;
+	// 남은 쿨타임 텍스트
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonTextBlock> CooldownText;
+	//쿨타임과 머테리얼 연결
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;//(MID : MaterialInstanceDynamic)
+	//우젯 제거시 GMS리스너 해제
+	FGameplayMessageListenerHandle CooldownListenerHandle;
+	
+	//전체 쿨타임
+	float CooldownDuration = 0.0f;
+	//남은 쿨타임
+	float RemainingCooldown = 0.0f;
+	
+	protected:
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+	virtual void NativeTick(
+			const FGeometry& InGeometry,
+			float InDeltaTime) override;
+};
