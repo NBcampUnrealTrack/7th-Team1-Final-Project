@@ -5,19 +5,43 @@
 
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "Perception/AISense_Damage.h"
 
 void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
+	// 부모 AttributeSet에 의해 데미지 처리되기 전에 어그로 감지
+	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
+	{
+		float RawDamage = GetDamage();
+		AActor* DamagedActor = Data.Target.GetAvatarActor();
+		AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+
+		if (RawDamage > 0.0f && DamagedActor && InstigatorActor)
+		{
+			APawn* AttackerPawn = Cast<APawn>(InstigatorActor);
+			if (!AttackerPawn)
+			{
+				if (AController* PC = Cast<AController>(InstigatorActor)) AttackerPawn = PC->GetPawn();
+			}
+
+			if (AttackerPawn)
+			{
+				UAISense_Damage::ReportDamageEvent(
+					DamagedActor->GetWorld(), DamagedActor, AttackerPawn,
+					RawDamage, AttackerPawn->GetActorLocation(), DamagedActor->GetActorLocation()
+				);
+			}
+		}
+	}
+	
 	Super::PostGameplayEffectExecute(Data);
 
-	if (Data.EvaluatedData.Attribute == GetDamageAttribute() || Data.EvaluatedData.Attribute == GetHealthAttribute())
+	// 사망 시 처리
+	if (GetHealth() <= 0.0f)
 	{
-		if (GetHealth() <= 0.0f)
+		if (ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor()))
 		{
-			if (ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor()))
-			{
-				EnemyCharacter->Die();
-			}
+			EnemyCharacter->Die();
 		}
 	}
 }
