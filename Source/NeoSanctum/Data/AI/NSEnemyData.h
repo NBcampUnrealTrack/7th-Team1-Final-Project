@@ -70,10 +70,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TObjectPtr<USkeletalMesh> SkeletalMesh;
 
-	// 로코모션 애니메이션
-	UPROPERTY(EditDefaultsOnly, Category = "Visual")
-	TSubclassOf<UAnimInstance> BaseAnimClass;
-
 	// 몬스터 크기 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	FVector DrawScale;
