@@ -50,10 +50,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent;
 
-	// 공격 태그
-	UPROPERTY(EditDefaultsOnly, Category = "AI")
-	FGameplayTag AttackAbilityTag;
-
 private:
 	// 타겟 액터
 	FName TargetActorKey = TEXT("TargetActor");

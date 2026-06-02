@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -178,6 +179,17 @@ void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
 	if (bHit && HitResult.GetActor())
 	{
 		AActor* TargetActor = HitResult.GetActor();
+
+		IGenericTeamAgentInterface* AttackerTeam = Cast<IGenericTeamAgentInterface>(AvatarActor);
+		IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
+
+		if (AttackerTeam && TargetTeam)
+		{
+			if (AttackerTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
+			{
+				return;
+			}
+		}
 
 		if (IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor))
 		{
