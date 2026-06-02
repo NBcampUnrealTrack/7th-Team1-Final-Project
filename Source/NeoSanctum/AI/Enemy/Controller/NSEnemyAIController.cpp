@@ -11,12 +11,15 @@
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISense_Damage.h"
+#include "Perception/AISense_Hearing.h"
+#include "Perception/AISense_Sight.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
 
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSEnemyAIController::OnTargetPerceptionUpdated);
@@ -25,7 +28,7 @@ ANSEnemyAIController::ANSEnemyAIController()
 void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	GetAttackAbilityTagByDistance();
 }
 
@@ -65,8 +68,8 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 		return FGameplayTag();
 	}
-	
-	if (!TargetActor) 
+
+	if (!TargetActor)
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 		return FGameplayTag();
@@ -117,16 +120,33 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	if (!CachedBBComp) return;
+	if (!CachedBBComp || !Actor) return;
+
+	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
+	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
+	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
 
 	// 감지된 대상이 플레이어인지 재검증
 	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile && IsValidLivingTarget(Actor))
 	{
-		// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
-		AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
+		// 시각
+		if (Stimulus.Type == SightID)
+		{
+			// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
+			AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
 
-		// 블랙보드 TargetActor 키에 실시간 업데이트
-		CachedBBComp->SetValueAsObject(TargetActorKey, Target);
+			// 블랙보드 TargetActor 키에 실시간 업데이트
+			CachedBBComp->SetValueAsObject(TargetActorKey, Target);
+		}
+
+		// 청각 / 데미지
+		else if (Stimulus.Type == HearingID || Stimulus.Type == DamageID)
+		{
+			if (Stimulus.WasSuccessfullySensed())
+			{
+				CachedBBComp->SetValueAsObject(TargetActorKey, Actor);
+			}
+		}
 	}
 }
 
