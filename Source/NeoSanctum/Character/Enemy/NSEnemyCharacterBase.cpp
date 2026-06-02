@@ -111,6 +111,13 @@ void ANSEnemyCharacterBase::BeginPlay()
 	{
 		WeaponComponent->EquipWeapon();
 	}
+	
+	// 디졸브 완료 콜백 바인딩
+	if (DissolveComponent && HasAuthority())
+	{
+		DissolveComponent->OnDissolveComplete.BindUObject(
+			this, &ANSEnemyCharacterBase::OnDissolveFinished);
+	}
 }
 
 void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -127,8 +134,8 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
-		OnRep_bIsDead();
-
+		ApplyDeadVisual();
+		
 		// (이용호 추가) 죽을 때 게임모드에 알림
 		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
@@ -149,6 +156,18 @@ void ANSEnemyCharacterBase::Die()
 }
 
 void ANSEnemyCharacterBase::OnRep_bIsDead()
+{
+	if (bIsDead)
+	{
+		ApplyDeadVisual();
+	}
+	else
+	{
+		ApplyAliveVisual();
+	}
+}
+
+void ANSEnemyCharacterBase::ApplyDeadVisual()
 {
 	// 물리 캡슐 콜리전 비활성화
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -173,4 +192,92 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 	}
 
 	OnEnemyDead.Broadcast();
+}
+
+void ANSEnemyCharacterBase::ApplyAliveVisual()
+{
+	SetActorHiddenInGame(false);
+
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+		CapsuleComp->SetCollisionResponseToAllChannels(ECR_Block);
+	}
+
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetSimulatePhysics(false);
+		MeshComp->AttachToComponent(
+			GetCapsuleComponent(),
+			FAttachmentTransformRules::SnapToTargetIncludingScale);
+		MeshComp->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+		MeshComp->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		MeshComp->SetCollisionProfileName(TEXT("CharacterMesh"));
+		MeshComp->bPauseAnims = false;
+	}
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->ResetDissolve();
+	}
+}
+
+void ANSEnemyCharacterBase::OnDissolveFinished()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_ReturnMonsterToPool(GameMode, this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("풀 매니저 없음, 풀 반환 실패"));
+	}
+}
+
+void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsInPool = false;
+	bIsDead = false;
+
+	SetActorLocationAndRotation(SpawnLocation, SpawnRotation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorTickEnabled(true);
+	SetActorEnableCollision(true);
+
+	ApplyAliveVisual();
+
+	if (AttributeSet)
+	{
+		AttributeSet->SetMaxHealth(100.0f);
+		AttributeSet->SetHealth(100.0f);
+		AttributeSet->SetDefense(10.0f);
+		AttributeSet->SetBaseDamage(20.0f);
+	}
+
+	// BT 정상 작동을 위해 AIControllerClass로 재빙의
+	SpawnDefaultController();
+}
+
+void ANSEnemyCharacterBase::DeactivateForPool()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsInPool = true;
+
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
 }
