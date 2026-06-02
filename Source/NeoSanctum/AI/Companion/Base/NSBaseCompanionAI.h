@@ -47,6 +47,8 @@ protected:
 	
 	void BuildDangerMap();
 	
+	bool IsWalkableSurface(const FVector& SurfaceNormal) const;
+	
 	FVector ChooseSteeringDirection() const;
 	
 protected:
@@ -92,6 +94,9 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
 	float DangerThreshold = 0.1f;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
+	float MaxWalkableSlopeAngle = 50.f;
  
 	TArray<FVector> SteeringDirections;
 	

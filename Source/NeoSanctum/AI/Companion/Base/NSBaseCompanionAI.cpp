@@ -68,6 +68,8 @@ void ANSBaseCompanionAI::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	InitSteeringDirections();
+	
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -81,11 +83,12 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 	
 	if (TargetPosition.SizeSquared() < FMath::Square(ArrivalRadius)) return;
 	
-	FVector TargetDirection = TargetPosition.GetSafeNormal();
-	TargetDirection += ComputeAvoidanceVector() * AvoidanceStrength;
-	TargetDirection = TargetDirection.GetSafeNormal2D();
-	
-	AddMovementInput(TargetDirection, 1.0f);
+	FVector TargetDirection = TargetPosition.GetSafeNormal();  
+	BuildInterestMap(TargetDirection);  
+	BuildDangerMap();  
+	FVector SteeringDirection = ChooseSteeringDirection();  
+  
+	AddMovementInput(SteeringDirection, 1.0f);
 }
 
 void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
@@ -190,6 +193,11 @@ void ANSBaseCompanionAI::BuildDangerMap()
 		
 		DangerMap.Add(Danger);
 	}
+}
+
+bool ANSBaseCompanionAI::IsWalkableSurface(const FVector& SurfaceNormal) const
+{
+	
 }
 
 FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
