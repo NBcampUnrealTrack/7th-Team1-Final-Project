@@ -100,7 +100,8 @@ private:
 	void ApplyDamageToActor(AActor* TargetActor);
 	
 	void ExecuteMuzzleFireCue();
-	void ExcuteImpactCue(const FHitResult& HitResult); 
+	void ExecuteImpactCue(const FHitResult& HitResult);
+	void ExecutePredictedImpactCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
 	void DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 	void DrawDebugMuzzleObstructionTrace(
@@ -110,6 +111,7 @@ private:
 		bool bIsObstructed
 	) const;
 
+	// 로컬 조작자인지 판단
 	bool ShouldPlayLocalFeedback() const;
 	bool TryBuildHitscanTrace(
 		FHitResult& OutHitResult,

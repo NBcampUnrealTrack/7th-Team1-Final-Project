@@ -286,6 +286,11 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 	
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	
+	if (ShouldPlayLocalFeedback() && AvatarActor && !AvatarActor->HasAuthority())
+	{
+		ExecutePredictedImpactCue(TargetDataHandle);
+	}
+	
 	if (!AvatarActor || !AvatarActor->HasAuthority())
 	{
 		return;
@@ -327,12 +332,12 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 	
 	if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
 	{
-		ExcuteImpactCue(MuzzleObstructionHitResult);
+		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
 	
 	ApplyDamageToActor(ServerHitResult.GetActor());
-	ExcuteImpactCue(ServerHitResult);
+	ExecuteImpactCue(ServerHitResult);
 }
 
 void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
@@ -623,7 +628,7 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
 }
 
-void UGA_RangerAutoFire::ExcuteImpactCue(const FHitResult& HitResult)
+void UGA_RangerAutoFire::ExecuteImpactCue(const FHitResult& HitResult)
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -640,6 +645,41 @@ void UGA_RangerAutoFire::ExcuteImpactCue(const FHitResult& HitResult)
 	CueParameters.Normal = HitResult.ImpactNormal;
 	
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_Impact, CueParameters);
+}
+
+void UGA_RangerAutoFire::ExecutePredictedImpactCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return;
+	}
+	
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+	
+	if (!TargetData)
+	{
+		return;
+	}
+	
+	const FHitResult* LocalHitResult = TargetData->GetHitResult();
+	
+	if (!LocalHitResult || !LocalHitResult->bBlockingHit)
+	{
+		return;
+	}
+	
+	// 로컬 피드백용 ImpactCue이므로 실제 데미지 판정은 서버에서 다시 검증
+	const FHitResult PredictedImpactHitResult = *LocalHitResult;
+	FHitResult MuzzleObstructionHitResult;
+	
+	// 총구가 막힌 상황이면 조준 대상이 아니라 실제로 막힌 지점에 ImpactCue 표시
+	if (IsMuzzleObstructed(PredictedImpactHitResult, MuzzleObstructionHitResult))
+	{
+		ExecuteImpactCue(MuzzleObstructionHitResult);
+		return;
+	}
+	
+	ExecuteImpactCue(PredictedImpactHitResult);
 }
 
 bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) const
