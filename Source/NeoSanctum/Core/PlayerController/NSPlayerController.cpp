@@ -10,7 +10,10 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
@@ -29,6 +32,9 @@ ANSPlayerController::ANSPlayerController()
 	// 사망 상태 태그 초기화
 	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_DeathSpectator);
 	DeathSpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
+
+	// 증강 선택 컴포넌트 생성
+	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
 }
 
 void ANSPlayerController::BindAttributeToHUD()
@@ -226,14 +232,32 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 void ANSPlayerController::Server_RequestStartRun_Implementation()
 {
-	if (HasAuthority())
+	if (!HasAuthority())
 	{
-		AGameModeBase* CurrentGameMode = GetWorld()->GetAuthGameMode();
-		
-		if (CurrentGameMode && CurrentGameMode->Implements<UNSOutGameInterface>())
-		{
-			INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
-		}
+		return;
+	}
+
+	AGameModeBase* CurrentGameMode = GetWorld()->GetAuthGameMode();
+	if (CurrentGameMode && CurrentGameMode->Implements<UNSOutGameInterface>())
+	{
+		INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
+	}
+
+	//서버 인런 데이터 로드
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->EnterRun();
+	}
+
+	//각 클라이언트에 인런 데이터 로드 지시
+	Client_NotifyRunStarted();
+}
+
+void ANSPlayerController::Client_NotifyRunStarted_Implementation()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->EnterRun();
 	}
 }
 
@@ -499,72 +523,64 @@ void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
 	Possess(DeathSpectatorPawn);
 	SetViewTarget(DeathSpectatorPawn);
 }
-void ANSPlayerController::SelectAugmentCard1()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(0);
-		}
-	}
-}
-void ANSPlayerController::SelectAugmentCard2()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(1);
-		}
-	}
-}
-void ANSPlayerController::SelectAugmentCard3()
-{
-	if (!GetWorld())
-	{
-		return;
-	}
-
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
-	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->SelectAugmentCardByIndex(2);
-		}
-	}
-}
 void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	InputComponent->BindKey(EKeys::One, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard1);
-	InputComponent->BindKey(EKeys::Two, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard2);
-	InputComponent->BindKey(EKeys::Three, IE_Pressed, this, &ANSPlayerController::SelectAugmentCard3);
-	InputComponent->BindKey(EKeys::Tab, IE_Pressed, this, &ANSPlayerController::OpenAugmentationSelection);
+	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
+	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
 }
-void ANSPlayerController::OpenAugmentationSelection()
+
+void ANSPlayerController::ToggleAugmentationPanel()
 {
-	if (!GetWorld())
+	UNSUIManagerSubsystem* UIManager = GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
+	if (!UIManager)
 	{
 		return;
 	}
 
-	if (UGameInstance* GI = GetWorld()->GetGameInstance())
+	if (UIManager->IsAugmentationPanelOpen())
 	{
-		if (UNSUIManagerSubsystem* UIManager = GI->GetSubsystem<UNSUIManagerSubsystem>())
+		// 열려있으면 닫음 (토글)
+		UIManager->CloseAugmentationPanel();
+	}
+	else
+	{
+		// 패널 UI 표시
+		UIManager->OpenAugmentationPanel();
+		// 서버에 대기열 front 오퍼 표시 요청 (대기 있으면 카드가 옴)
+		if (AugmentSelectionComponent)
 		{
-			UIManager->ShowAugmentation();
+			AugmentSelectionComponent->Server_OpenPanel();
 		}
+	}
+}
+
+void ANSPlayerController::Debug_EnqueueAugmentOffer()
+{
+	if (!AugmentSelectionComponent)
+	{
+		return;
+	}
+
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+
+	// 인런에서만 동작 (런 데이터 준비 전이면 무시)
+	if (!Data->IsRunReady())
+	{
+		return;
+	}
+	
+	if (HasAuthority())
+	{
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+	}
+	else
+	{
+		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
 	}
 }

@@ -42,10 +42,12 @@ protected:
 	void Input_Jump();
 	void Input_SpectatePrevious();
 	void Input_SpectateNext();
-
+	
 	void Input_AbilityPressed(FGameplayTag InputTag);
 	void Input_AbilityReleased(FGameplayTag InputTag);
 
+	void Input_AugmentAction(FGameplayTag InputTag);
+	
 protected:
 	UEnhancedInputLocalPlayerSubsystem* GetInputSubsystem() const;
 	
@@ -70,7 +72,10 @@ protected:
 
 	UPROPERTY(Transient)
 	TArray<uint32> NativeInputBindHandles;
-
+	
 	UPROPERTY(Transient)
 	TArray<uint32> AbilityInputBindHandles;
+	
+	UPROPERTY(Transient)
+	TArray<uint32> AugmentInputBindHandles;
 };

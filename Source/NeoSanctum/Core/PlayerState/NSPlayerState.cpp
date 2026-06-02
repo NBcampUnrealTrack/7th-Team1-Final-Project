@@ -6,6 +6,7 @@
 #include "NSPlayerProgressComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
@@ -23,6 +24,9 @@ ANSPlayerState::ANSPlayerState()
 
 	// 진행도 저장,로드 컴포넌트
 	ProgressComponent = CreateDefaultSubobject<UNSPlayerProgressComponent>(TEXT("ProgressComponent"));
+
+	// 인런 증강 보유 컴포넌트 (인런 종료 시 RunGameMode가 Clear)
+	AugmentInventory = CreateDefaultSubobject<UNSAugmentInventoryComponent>(TEXT("AugmentInventory"));
 
 	bIsReady = false;
 	bIsDead = false;

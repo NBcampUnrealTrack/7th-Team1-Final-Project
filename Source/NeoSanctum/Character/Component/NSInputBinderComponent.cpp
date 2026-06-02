@@ -11,6 +11,7 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -170,6 +171,13 @@ void UNSInputBinderComponent::BindInputActions()
 		&ThisClass::Input_AbilityReleased,
 		AbilityInputBindHandles
 	);
+	
+	InputComponent->BindAugmentActions(
+		CurrentInputConfig,
+		this,
+		&ThisClass::Input_AugmentAction,
+		AugmentInputBindHandles
+	);
 }
 
 void UNSInputBinderComponent::UnbindInputActions()
@@ -178,6 +186,7 @@ void UNSInputBinderComponent::UnbindInputActions()
 	{
 		InputComponent->RemoveBinds(NativeInputBindHandles);
 		InputComponent->RemoveBinds(AbilityInputBindHandles);
+		InputComponent->RemoveBinds(AugmentInputBindHandles);
 	}
 }
 
@@ -246,6 +255,67 @@ void UNSInputBinderComponent::Input_SpectateNext()
 	{
 		PlayerController->SpectateNextPlayer();
 	}
+}
+
+void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
+{
+	const UWorld* World = GetWorld();
+	UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager = GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+	
+	if (InputTag == NSGameplayTags::Input_Augment_TogglePanel)
+	{
+		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+		ANSPlayerController* PlayerController = OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+		if (PlayerController)
+		{
+			PlayerController->ToggleAugmentationPanel();
+		}
+		return;
+	}
+
+	// 증강 패널이 닫혀있으면 1/2/3/T 입력 무시
+	if (!UIManager->IsAugmentationPanelOpen())
+	{
+		return;
+	}
+
+	if (InputTag == NSGameplayTags::Input_Augment_Reroll)
+	{
+		UIManager->RequestRerollAugment();
+		return;
+	}
+
+	// 카드 선택 -> 태그로 인덱스 판정
+	int32 CardIndex = INDEX_NONE;
+	if (InputTag == NSGameplayTags::Input_Augment_Card1)
+	{
+		CardIndex = 0;
+	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card2)
+	{
+		CardIndex = 1;
+	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card3)
+	{
+		CardIndex = 2;
+	}
+
+	if (CardIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	UIManager->SelectAugmentCardByIndex(CardIndex);
 }
 
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)

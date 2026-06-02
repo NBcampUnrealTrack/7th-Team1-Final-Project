@@ -8,6 +8,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(InputMode_Gameplay, "InputMode.Gameplay");
 	UE_DEFINE_GAMEPLAY_TAG(InputMode_UI, "InputMode.UI");
 	UE_DEFINE_GAMEPLAY_TAG(InputMode_DeathSpectator, "InputMode.DeathSpectator");
+	UE_DEFINE_GAMEPLAY_TAG(InputMode_Augment, "InputMode.Augment");
 
 	// Native Input
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Move, "Input.Native.Move");
@@ -15,7 +16,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Jump, "Input.Native.Jump");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Sprint, "Input.Native.Sprint");
 	
-	// Native Death Inpu
+	// Native Death Input
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Death_PrevPlayer, "Input.Native.Death.PrevPlayer");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Death_NextPlayer, "Input.Native.Death.NextPlayer");
 	
@@ -25,4 +26,11 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_ActiveSkill2, "Input.Ability.ActiveSkill2");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_ActiveSkill3, "Input.Ability.ActiveSkill3");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Ability_Dash, "Input.Ability.Dash");
+
+	// Augment Input
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Card1, "Input.Augment.Card1");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Card2, "Input.Augment.Card2");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Card3, "Input.Augment.Card3");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_Reroll, "Input.Augment.Reroll");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Augment_TogglePanel, "Input.Augment.TogglePanel");
 }

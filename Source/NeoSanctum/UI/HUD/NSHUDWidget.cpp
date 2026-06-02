@@ -92,23 +92,22 @@ void UNSHUDWidget::SetCrosshairColor(FLinearColor NewColor)
 	CrosshairWidget->SetCrosshairColor(NewColor);
 }
 
-void UNSHUDWidget::ShowAugmentation()
+void UNSHUDWidget::OpenAugmentationPanel()
 {
-	//증강 선택 UI를 HUD위에 표시
 	if (!AugmentationWidget)
 	{
 		return;
 	}
-	AugmentationWidget->ShowAugmentation();
+	AugmentationWidget->OpenPanel();
 }
 
-void UNSHUDWidget::HideAugmentation()
-{	//증강 선택 UI를 숨김
+void UNSHUDWidget::CloseAugmentationPanel()
+{
 	if (!AugmentationWidget)
 	{
 		return;
 	}
-	AugmentationWidget->HideAugmentation();
+	AugmentationWidget->ClosePanel();
 }
 
 void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
@@ -120,5 +119,15 @@ void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
 	}
 
 	AugmentationWidget->SelectCardByIndex(CardIndex);
+}
+
+void UNSHUDWidget::RequestRerollAugment()
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+
+	AugmentationWidget->RequestRerollAugment();
 }
 
