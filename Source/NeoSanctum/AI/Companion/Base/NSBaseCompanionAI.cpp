@@ -146,9 +146,6 @@ void ANSBaseCompanionAI::InitSteeringDirections()
 		
 		SteeringDirections.Add(Direction);
 	}
-	
-	
-	
 }
 
 void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
@@ -197,7 +194,29 @@ void ANSBaseCompanionAI::BuildDangerMap()
 
 FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
 {
-	return FVector::ZeroVector;
+	float BestInterest = TNumericLimits<float>::Lowest();
+	int32 BestIndex = INDEX_NONE;
+	
+	for (int32 i = 0; i < NumSteeringDirections; ++i)
+	{
+		if (DangerMap[i] > DangerThreshold)
+		{
+			continue;
+		}
+		
+		if (InterestMap[i] > BestInterest)
+		{
+			BestInterest = InterestMap[i];
+			BestIndex = i;
+		}
+	}
+	
+	if (BestIndex == INDEX_NONE)
+	{
+		return FVector::ZeroVector;
+	}
+	
+	return SteeringDirections[BestIndex];
 }
 
 #pragma endregion
