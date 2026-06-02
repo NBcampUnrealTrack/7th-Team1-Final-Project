@@ -145,17 +145,6 @@ void UGA_RangerAutoFire::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_RangerAutoFire::InputReleased(
-	const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo)
-{
-	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
-
-	// 입력을 떼면 발사 사이클 즉시 종료
-	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-}
-
 void UGA_RangerAutoFire::FinishFireCycle()
 {
 	EndAbility(

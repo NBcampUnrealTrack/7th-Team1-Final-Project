@@ -35,12 +35,6 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
-	
-	virtual void InputReleased(
-		const FGameplayAbilitySpecHandle Handle,
-		const FGameplayAbilityActorInfo* ActorInfo,
-		const FGameplayAbilityActivationInfo ActivationInfo
-	) override;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
