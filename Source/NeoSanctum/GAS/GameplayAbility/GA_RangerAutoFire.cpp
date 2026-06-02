@@ -285,6 +285,7 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 		return;
 	}
 	
+	// 실제 소음은 서버에서만 처리
 	ReportWeaponNoise(AvatarActor);
 	
 	// 실제 데미지는 서버에서만 처리
@@ -353,6 +354,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 		return;
 	}
 	
+	// 데미지 감지 가해자 지정
 	AssignDamageInstigator(DamageSpecHandle);
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
