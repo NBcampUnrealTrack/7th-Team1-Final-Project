@@ -131,7 +131,40 @@ void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 	SetActorRotation(NewRot);
 }
 
-FVector ANSBaseCompanionAI::ComputeAvoidanceVector() const
+#pragma region 회피기능
+
+void ANSBaseCompanionAI::InitSteeringDirections()
+{
+	float AngleStep = 360.0f / NumSteeringDirections;
+	
+	for (int32 i = 0; i < NumSteeringDirections; ++i)
+	{
+		float Angle = i * AngleStep;
+		
+		FRotator Rotation = FRotator(0.f,Angle,0.f);
+		FVector Direction = Rotation.Vector();
+		
+		SteeringDirections.Add(Direction);
+	}
+	
+	
+	
+}
+
+void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
+{
+	
+	
+}
+
+void ANSBaseCompanionAI::BuildDangerMap()
+{
+	Dangermap.Reserve(SteeringDirections.Num());
+}
+
+FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
 {
 	return FVector::ZeroVector;
 }
+
+#pragma endregion
