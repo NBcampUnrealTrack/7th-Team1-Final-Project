@@ -153,7 +153,13 @@ void ANSBaseCompanionAI::InitSteeringDirections()
 
 void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
 {
+	InterestMap.Reset(SteeringDirections.Num());
 	
+	for (const FVector& Direction : SteeringDirections)
+	{
+		float Interest = FVector::DotProduct(Direction,DesiredDirection);
+		InterestMap.Add(Interest);
+	}
 	
 }
 
