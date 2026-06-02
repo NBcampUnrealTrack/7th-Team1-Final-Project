@@ -165,7 +165,34 @@ void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
 
 void ANSBaseCompanionAI::BuildDangerMap()
 {
-	Dangermap.Reserve(SteeringDirections.Num());
+	DangerMap.Reset(SteeringDirections.Num());
+	
+	for (const FVector& Direction : SteeringDirections)
+	{
+		const FVector Start = GetActorLocation();
+		const FVector End = Start + Direction * AvoidanceTraceDistance;
+		
+		FHitResult Hit;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+		CollisionParams.bTraceComplex = false;
+		
+		float Danger = 0.f;
+	
+		if (GetWorld()->SweepSingleByChannel(
+			Hit,
+			Start,
+			End,
+			FQuat::Identity,
+			ECollisionChannel::ECC_Visibility,
+			FCollisionShape::MakeSphere(AvoidanceTraceRadius),
+			CollisionParams))
+		{
+			Danger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+		}
+		
+		DangerMap.Add(Danger);
+	}
 }
 
 FVector ANSBaseCompanionAI::ChooseSteeringDirection() const

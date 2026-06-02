@@ -97,7 +97,7 @@ protected:
 	
 	TArray<float> InterestMap;
 	
-	TArray<float> Dangermap;
+	TArray<float> DangerMap;
 	
 	// @민재 : 도착거리 판정
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
