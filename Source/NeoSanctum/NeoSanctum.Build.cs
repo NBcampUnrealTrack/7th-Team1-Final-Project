@@ -22,6 +22,7 @@ public class NeoSanctum : ModuleRules
 			"SlateCore", 
 			"CommonUI", 
 			"CommonInput",
+			"GameplayMessageRuntime",
 			
 			// GAS
 			"GameplayAbilities", 
