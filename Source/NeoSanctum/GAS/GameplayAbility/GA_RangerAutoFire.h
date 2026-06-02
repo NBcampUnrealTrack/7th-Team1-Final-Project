@@ -6,6 +6,7 @@
 #include "GA_SkillBase.h"
 #include "GA_RangerAutoFire.generated.h"
 
+class UAnimMontage;
 class UGameplayEffect;
 
 /**

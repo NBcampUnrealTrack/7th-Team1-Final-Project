@@ -41,8 +41,6 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
-	PlayFireMontage();
-
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 
 	if (!ASC)
@@ -50,6 +48,8 @@ void UGA_RangerAutoFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	PlayFireMontage();
 
 	if (bLogPredictionKey && ActorInfo)
 	{
@@ -193,13 +193,15 @@ void UGA_RangerAutoFire::PlayFireMontage()
 		return;
 	}
 	
+	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
+	
 	// 발사 판정은 FireInterval이 관리하므로 몽타주는 연출 피드백으로만 재생
 	UAbilityTask_PlayMontageAndWait* MontageTask = 
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			NAME_None,
 			FireMontage,
-			FireMontagePlayRate,
+			MontagePlayRate,
 			NAME_None,
 			false
 		);
