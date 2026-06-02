@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "NSDissolveComponent.generated.h"
 
+DECLARE_DELEGATE(FNSOnDissolveComplete)
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSDissolveComponent : public UActorComponent
@@ -16,7 +17,11 @@ public:
 	UNSDissolveComponent();
 
 	UFUNCTION(BlueprintCallable, Category = "Utility|Visuals")
-	void StartDissolve();
+	void StartDissolve(bool bDestroyAfterDissolve = false);
+	//(이용호 추가)
+	void ResetDissolve();
+
+	FNSOnDissolveComplete OnDissolveComplete;
 	
 protected:
 	UPROPERTY()
