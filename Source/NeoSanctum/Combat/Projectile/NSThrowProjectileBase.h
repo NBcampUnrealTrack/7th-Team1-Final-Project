@@ -16,10 +16,18 @@ class NEOSANCTUM_API ANSThrowProjectileBase : public AActor
 
 public:
 	ANSThrowProjectileBase();
-	
-	
-	
+
 public:
+	UFUNCTION(BlueprintCallable, Category = "Projectile")
+	virtual void InitializeThrowActor(
+		APawn* InOwningPawn,
+		AController* InOwningController,
+		const FVector& InitialVelocity
+	);
+
+protected:
+	APawn* GetOwningPawn() const { return OwningPawn; }
+	AController* GetOwningController() const { return OwningController; }
 	USphereComponent* GetCollisionComponent() const { return CollisionComponent; }
 	UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }
 	UProjectileMovementComponent* GetProjectileMovementComponent() const { return ProjectileMovementComponent; }
@@ -33,4 +41,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent;
+
+protected:
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
+	TObjectPtr<APawn> OwningPawn;
+	
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
+	TObjectPtr<AController> OwningController;
 };

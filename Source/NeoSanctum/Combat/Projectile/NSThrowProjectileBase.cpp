@@ -16,10 +16,9 @@ ANSThrowProjectileBase::ANSThrowProjectileBase()
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
 	SetRootComponent(CollisionComponent);
 	CollisionComponent->InitSphereRadius(15.0f);
-	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CollisionComponent->SetCollisionObjectType(ECC_WorldDynamic);
-	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
-	CollisionComponent->SetNotifyRigidBodyCollision(true);
+	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 
 	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComponent->SetupAttachment(CollisionComponent);
@@ -32,4 +31,26 @@ ANSThrowProjectileBase::ANSThrowProjectileBase()
 	ProjectileMovementComponent->MaxSpeed = 3000.0f;
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
 	ProjectileMovementComponent->bShouldBounce = false;
+}
+
+void ANSThrowProjectileBase::InitializeThrowActor(
+	APawn* InOwningPawn,
+	AController* InOwningController,
+	const FVector& InitialVelocity)
+{
+	OwningPawn = InOwningPawn;
+	OwningController = InOwningController;
+
+	if (OwningPawn)
+	{
+		SetOwner(OwningPawn);
+		SetInstigator(OwningPawn);
+		CollisionComponent->IgnoreActorWhenMoving(OwningPawn, true);
+	}
+
+	if (!InitialVelocity.IsNearlyZero())
+	{
+		SetActorRotation(InitialVelocity.GetSafeNormal().Rotation());
+		ProjectileMovementComponent->Velocity = InitialVelocity;
+	}
 }
