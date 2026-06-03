@@ -36,15 +36,48 @@ void UGA_RangerProjectileShot::ActivateAbility(
 		return;
 	}
 	
-	NS_LOG(LogNS, Warning, "인풋 눌림 4");
-	
 	// 실제 데미지용 Projectile은 서버 권한에서만 스폰
 	if (ActorInfo->IsNetAuthority())
 	{
 		TrySpawnProjectile();
 	}
 	
+	if (bKeepAbilityActiveForDebug)
+	{
+		UWorld* World = GetWorld();
+		
+		if (World)
+		{
+			const float Duration = FMath::Max(DebugActiveDuration, 0.1f);
+			
+			// GameplayDebugger에서 Active 상태를 확인하는 타이머
+			World->GetTimerManager().SetTimer(
+				DebugEndAbilityTimerHandle,
+				this,
+				&ThisClass::FinishDebugAbility,
+				Duration,
+				false
+			);
+			
+			return;
+		}
+	}
+	
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+}
+
+void UGA_RangerProjectileShot::EndAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DebugEndAbilityTimerHandle);
+	}
+	
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 bool UGA_RangerProjectileShot::TrySpawnProjectile() const
@@ -68,7 +101,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectile() const
 	
 	if (!TryGetAttackOriginTransform(MuzzleTransform))
 	{
-		// 무기 소켓을 찾이 못하면 캐릭터 전방으로 임시 발사
+		// 무기 소켓을 찾지 못하면 캐릭터 전방으로 임시 발사
 		MuzzleTransform = FTransform(
 			AvatarActor->GetActorRotation(),
 			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
@@ -108,4 +141,15 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	}
 	
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+void UGA_RangerProjectileShot::FinishDebugAbility()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false
+	);
 }

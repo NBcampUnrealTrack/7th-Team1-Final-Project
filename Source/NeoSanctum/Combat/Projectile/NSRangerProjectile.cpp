@@ -58,7 +58,7 @@ void ANSRangerProjectile::IgnoreSourceActorCollision()
 	AActor* OwnerActor = GetOwner();
 	APawn* InstigatorPawn = GetInstigator();
 	
-	// 발사 직후 자기 캐릭터와 부딛혀 사라지는 것 방지
+	// 발사 직후 자기 캐릭터와 부딪혀 사라지는 것 방지
 	if (IsValid(OwnerActor))
 	{
 		CollisionComponent->IgnoreActorWhenMoving(OwnerActor, true);

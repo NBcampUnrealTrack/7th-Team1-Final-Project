@@ -12,7 +12,6 @@ class ANSRangerProjectile;
  * Ranger 투사체 발사 Ability
  * GA는 서버에서 Projectile을 스폰하고 이후 이동 및 충돌은 Projectile Actor가 담당.
  */
-
 UCLASS()
 class NEOSANCTUM_API UGA_RangerProjectileShot : public UGA_SkillBase
 {
@@ -28,12 +27,35 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData
 	) override;
-	
+
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled
+	) override;
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TSubclassOf<ANSRangerProjectile> ProjectileClass;
-	
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bKeepAbilityActiveForDebug = false;
+
+	UPROPERTY(EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "GAS|Debug",
+		meta = (EditCondition = "bKeepAbilityActiveForDebug"))
+	float DebugActiveDuration = 1.0f;
+
 private:
 	bool TrySpawnProjectile() const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
+
+private:
+	void FinishDebugAbility();
+
+	FTimerHandle DebugEndAbilityTimerHandle;
 };
