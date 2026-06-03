@@ -33,14 +33,6 @@ enum class ENSAnimGait : uint8
 };
 
 UENUM(BlueprintType)
-enum class ENSAnimCombatType : uint8
-{
-	None,
-	Ranged,
-	Melee
-};
-
-UENUM(BlueprintType)
 enum class ENSTurnInPlaceDirection : uint8
 {
 	None,
@@ -58,10 +50,6 @@ class NEOSANCTUM_API UNSCharacterAnimInstance : public UAnimInstance
 public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
-
-	// 외부 로직에서도 전투타입을 갱신해야할 것 같아서 만든 세터
-	UFUNCTION(BlueprintCallable, Category = "Animation|Combat")
-	void SetCombatType(ENSAnimCombatType NewCombatType);
 
 protected:
 	// AnimInstance 참조 캐릭터/컴포넌트 재설정
@@ -93,9 +81,6 @@ protected:
 
 	// 큰 이동 방향 변화에 따른 회전 계산으로 Transition 상태 갱신
 	void UpdateSpinTransitionData();
-
-	// 전투 타입별 상체 레이어 사용 여부 갱신 : 현재 None / Ranged / Melee 상태
-	void UpdateCombatData(float DeltaSeconds);
 
 	// 컨트롤 회전과 캐릭터 회전 차이 기반 조준 오프셋 계산
 	void UpdateAimData();
@@ -197,13 +182,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
 	float TimeToLand = 0.f;
-
-	// 전투 타입에 따른 애니메이션 상태값들
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
-	ENSAnimCombatType CombatType = ENSAnimCombatType::Ranged;
-
-	UPROPERTY(BlueprintReadOnly, Category = "Animation|Combat")
-	bool bUseUpperBodyLayer = false;
 
 	// AimOffset용 조준 방향값
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")

@@ -43,18 +43,12 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateLandingData(DeltaSeconds);
 	UpdatePivotData(DeltaSeconds);
 	UpdateSpinTransitionData();
-	UpdateCombatData(DeltaSeconds);
 	UpdateAimData();
 	UpdateTurnInPlaceData();
 	UpdateTimeToLand();
 
 	PreviousVerticalVelocity = VerticalVelocity;
 	bWasFalling = MovementMode == ENSAnimMovementMode::InAir;
-}
-
-void UNSCharacterAnimInstance::SetCombatType(ENSAnimCombatType NewCombatType)
-{
-	CombatType = NewCombatType;
 }
 
 void UNSCharacterAnimInstance::RefreshCachedReferences()
@@ -98,9 +92,6 @@ void UNSCharacterAnimInstance::ResetRuntimeData()
 	bShouldTurnInPlace = false;
 	bShouldSpinTransition = false;
 	TimeToLand = 0.f;
-
-	CombatType = ENSAnimCombatType::None;
-	bUseUpperBodyLayer = false;
 
 	AimYaw = 0.f;
 	AimPitch = 0.f;
@@ -283,12 +274,6 @@ void UNSCharacterAnimInstance::UpdateSpinTransitionData()
 		MovementState == ENSAnimMovementState::Moving &&
 		Gait != ENSAnimGait::Sprint &&
 		FMath::Abs(LocomotionAngle) >= SpinTransitionAngle;
-}
-
-void UNSCharacterAnimInstance::UpdateCombatData(float DeltaSeconds)
-{
-	// 전투 타입 존재 시 ABP 상체 무기 레이어 사용
-	bUseUpperBodyLayer = CombatType != ENSAnimCombatType::None;
 }
 
 void UNSCharacterAnimInstance::UpdateAimData()
