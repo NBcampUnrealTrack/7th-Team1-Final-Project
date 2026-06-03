@@ -29,7 +29,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TObjectPtr<USphereComponent> CollisionComponent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;			
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
