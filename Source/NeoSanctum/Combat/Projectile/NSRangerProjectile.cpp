@@ -42,8 +42,32 @@ ANSRangerProjectile::ANSRangerProjectile()
 void ANSRangerProjectile::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	IgnoreSourceActorCollision();
 
 	SetLifeSpan(LifeSeconds);
+}
+
+void ANSRangerProjectile::IgnoreSourceActorCollision()
+{
+	if (!CollisionComponent)
+	{
+		return;
+	}
+	
+	AActor* OwnerActor = GetOwner();
+	APawn* InstigatorPawn = GetInstigator();
+	
+	// 발사 직후 자기 캐릭터와 부딛혀 사라지는 것 방지
+	if (IsValid(OwnerActor))
+	{
+		CollisionComponent->IgnoreActorWhenMoving(OwnerActor, true);
+	}
+	
+	if (IsValid(InstigatorPawn) && InstigatorPawn != OwnerActor)
+	{
+		CollisionComponent->IgnoreActorWhenMoving(InstigatorPawn, true);
+	}
 }
 
 void ANSRangerProjectile::OnProjectileHit(

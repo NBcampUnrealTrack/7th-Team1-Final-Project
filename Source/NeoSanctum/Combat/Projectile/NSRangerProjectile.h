@@ -38,7 +38,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
 	float LifeSeconds = 5.0f;
 
-public:
+private:
+	void IgnoreSourceActorCollision();
+	
 	UFUNCTION()
 	void OnProjectileHit(
 		UPrimitiveComponent* HitComponent,
