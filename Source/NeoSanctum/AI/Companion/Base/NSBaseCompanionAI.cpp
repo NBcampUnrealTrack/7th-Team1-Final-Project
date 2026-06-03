@@ -188,7 +188,14 @@ void ANSBaseCompanionAI::BuildDangerMap()
 			FCollisionShape::MakeSphere(AvoidanceTraceRadius),
 			CollisionParams))
 		{
-			Danger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+			if (!IsWalkableSurface(Hit.Normal))
+			{
+				Danger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+			}
+			else
+			{
+				Danger = 0.f;
+			}
 		}
 		
 		DangerMap.Add(Danger);
@@ -197,7 +204,16 @@ void ANSBaseCompanionAI::BuildDangerMap()
 
 bool ANSBaseCompanionAI::IsWalkableSurface(const FVector& SurfaceNormal) const
 {
+	float SurfaceAndUpVectorDot = FVector::DotProduct(SurfaceNormal,FVector::UpVector);
+	float MaxSlopeRadians = FMath::DegreesToRadians(MaxWalkableSlopeAngle);
+	float MaxSlopeCos = FMath::Cos(MaxSlopeRadians);
 	
+	if (SurfaceAndUpVectorDot >= MaxSlopeCos)
+	{
+		return true;
+	}
+	
+	return false;
 }
 
 FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
