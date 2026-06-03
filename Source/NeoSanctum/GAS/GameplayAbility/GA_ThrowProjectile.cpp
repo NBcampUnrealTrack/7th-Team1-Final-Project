@@ -3,6 +3,9 @@
 
 #include "GA_ThrowProjectile.h"
 
+#include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+
 UGA_ThrowProjectile::UGA_ThrowProjectile()
 {
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
@@ -25,7 +28,36 @@ void UGA_ThrowProjectile::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	if (!AnimMontage)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
 
+	// 몽타주 시작
+	ThrowMontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+		this,
+		TEXT("ThrowMontageTask"),
+		AnimMontage,
+		MontagePlayRate,
+		NAME_None,
+		false,
+		1.0f,
+		0.0f
+	);
+
+	if (!ThrowMontageTask)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	ThrowMontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
+	ThrowMontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
+	ThrowMontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
+	ThrowMontageTask->ReadyForActivation();
+	
 	if (ActorInfo->IsLocallyControlled())
 	{
 		// TODO : 던지기 궤적 + 탄착 지점 프리뷰
@@ -41,10 +73,12 @@ void UGA_ThrowProjectile::InputReleased(
 
 	if (ActorInfo && ActorInfo->IsLocallyControlled())
 	{
-		// TODO : 실제 던지기 = Projectile 액터를 스폰
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			
+			ASC->CurrentMontageJumpToSection(ReleaseSectionName);
+		}
 	}
-
-	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
 void UGA_ThrowProjectile::EndAbility(
@@ -56,5 +90,34 @@ void UGA_ThrowProjectile::EndAbility(
 {
 	// TODO : 프리뷰 종료
 
+	// 몽타주 종료
+	if (ThrowMontageTask)
+	{
+		ThrowMontageTask->EndTask();
+		ThrowMontageTask = nullptr;
+	}
+
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_ThrowProjectile::OnThrowMontageCompleted()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false
+	);
+}
+
+void UGA_ThrowProjectile::OnThrowMontageInterrupted()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		true
+	);
 }
