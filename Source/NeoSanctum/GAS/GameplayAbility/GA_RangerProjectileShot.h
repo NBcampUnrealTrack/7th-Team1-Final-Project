@@ -92,7 +92,7 @@ private:
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 
 private:
-	// 디버그용
+	// TargetData
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	bool TryGetAimPointFromTargetData(
@@ -100,6 +100,8 @@ private:
 		FVector& OutAimPoint
 	) const;
 
+private:
+	// Debug
 	void DrawDebugProjectileAimTrace(
 		const FVector& TraceStart,
 		const FVector& TraceEnd,
@@ -113,7 +115,7 @@ private:
 		const FColor& DebugColor
 	) const;
 
-private:
+
 	void FinishDebugAbility();
 
 	FTimerHandle DebugEndAbilityTimerHandle;

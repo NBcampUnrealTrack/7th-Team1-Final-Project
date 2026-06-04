@@ -4,6 +4,7 @@
 #include "GA_RangerProjectileShot.h"
 
 #include "AbilitySystemComponent.h"
+#include "DrawDebugHelpers.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Projectile/NSRangerProjectile.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -168,7 +169,7 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	
-	// 디버그
+	// 로컬 조작자 화면에 예측 발사 방향 표시
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 	
 	if (bDrawDebugProjectileLaunch && ActorInfo && ActorInfo->IsLocallyControlled())
@@ -315,7 +316,7 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 		OutHitResult.ImpactPoint = TraceEnd;
 	}
 	
-	// 디버그
+	// 로컬 조준 Trace 표시
 	if (bDrawDebugProjectileAimTrace)
 	{
 		DrawDebugProjectileAimTrace(TraceStart, TraceEnd, OutHitResult, bHit);
@@ -373,7 +374,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 		return false;
 	}
 	
-	// 디버그
+	// 서버가 처리한 원격 클라이언트 발사 방향 표시
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
 	const bool bIsLocallyControlled = Pawn && Pawn->IsLocallyControlled();
 
