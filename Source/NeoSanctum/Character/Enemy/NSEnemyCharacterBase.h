@@ -48,6 +48,9 @@ public:
 	bool IsDead() const { return bIsDead; }
 	bool IsInPool() const { return bIsInPool; }
 	
+	// 스폰 시 데이터 주입용 (BeginPlay 전 호출)
+	void SetEnemyData(UNSEnemyData* InEnemyData);
+	
 	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 	void DeactivateForPool();
 protected:
@@ -79,9 +82,11 @@ protected:
 	//(이용호 추가)
 	void ApplyAliveVisual();
 	void ApplyDeadVisual();
+	void InitializeFromData(bool bFullInit);
 
 private:
 	//(이용호 추가)
 	void OnDissolveFinished();
+	UPROPERTY(Replicated)
 	bool bIsInPool = false;
 };

@@ -37,80 +37,8 @@ void ANSEnemyCharacterBase::BeginPlay()
 	if (!ASC) return;
 
 	ASC->InitAbilityActorInfo(this, this);
-
-	if (!EnemyData) return;
-
-	// Visual 동적 로딩
-	if (GetMesh())
-	{
-		if (EnemyData->SkeletalMesh)
-		{
-			GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
-		}
-	}
-	SetActorScale3D(EnemyData->DrawScale);
-
-
-	// GAS 데이터 테이블 기반 스탯 초기화
-	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
-	{
-		FName RowName = EnemyData->EnemyTag.GetTagName();
-		FNSMonsterAttributeRow* StatRow = 
-			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
-
-		if (StatRow)
-		{
-			AttributeSet->SetMaxHealth(StatRow->MaxHealth);
-			AttributeSet->SetHealth(StatRow->MaxHealth);
-			AttributeSet->SetDefense(StatRow->Defense);
-			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
-		}
-	}
-
-	// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
-	if (HasAuthority())
-	{
-		for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->StartupEffects)
-		{
-			if (EffectClass)
-			{
-				FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-				Context.AddSourceObject(this);
-
-				FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
-				if (SpecHandle.IsValid())
-				{
-					ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-				}
-			}
-		}
-
-		for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
-		{
-			if (AbilityClass)
-			{
-				ASC->GiveAbility(FGameplayAbilitySpec(
-					AbilityClass,
-					1,
-					static_cast<int32>(AbilityClass.GetDefaultObject()->GetNetExecutionPolicy())));
-			}
-		}
-	}
-
-	// 서버에서만 사망 능력 부여
-	if (HasAuthority())
-	{
-		if (DeathAbilityClass)
-		{
-			ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
-		}
-	}
-
-	// 무기 장착, ABP와 공격 어빌리티 부여
-	if (WeaponComponent)
-	{
-		WeaponComponent->EquipWeapon();
-	}
+	
+	InitializeFromData(true);
 	
 	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
@@ -125,6 +53,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsDead);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
 }
 
 void ANSEnemyCharacterBase::Die()
@@ -194,6 +123,91 @@ void ANSEnemyCharacterBase::ApplyDeadVisual()
 	OnEnemyDead.Broadcast();
 }
 
+void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
+{
+	if (!EnemyData) return;
+	
+	// 스탯은 최초, 재사용할 때 항상 초기화
+	// GAS 데이터 테이블 기반 스탯 초기화
+	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
+	{
+		FName RowName = EnemyData->EnemyTag.GetTagName();
+		FNSMonsterAttributeRow* StatRow = 
+			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
+
+		if (StatRow)
+		{
+			AttributeSet->SetMaxHealth(StatRow->MaxHealth);
+			AttributeSet->SetHealth(StatRow->MaxHealth);
+			AttributeSet->SetDefense(StatRow->Defense);
+			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+		}
+	}
+	
+	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
+	if (bFullInit)
+	{
+		// Visual 동적 로딩
+		if (GetMesh())
+		{
+			if (EnemyData->SkeletalMesh)
+			{
+				GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+			}
+			if (EnemyData->BaseAnimClass)
+			{
+				GetMesh()->SetAnimInstanceClass(EnemyData->BaseAnimClass);
+			}
+		}
+		SetActorScale3D(EnemyData->DrawScale);
+
+		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
+		if (HasAuthority())
+		{
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->StartupEffects)
+			{
+				if (EffectClass)
+				{
+					FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+					Context.AddSourceObject(this);
+
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
+					if (SpecHandle.IsValid())
+					{
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
+
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
+			{
+				if (AbilityClass)
+				{
+					ASC->GiveAbility(FGameplayAbilitySpec(
+						AbilityClass,
+						1,
+						static_cast<int32>(AbilityClass.GetDefaultObject()->GetNetExecutionPolicy())));
+				}
+			}
+		}
+
+		// 서버에서만 사망 능력 부여
+		if (HasAuthority())
+		{
+			if (DeathAbilityClass)
+			{
+				ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
+			}
+		}
+
+		// 무기 장착, ABP와 공격 어빌리티 부여
+		if (WeaponComponent)
+		{
+			WeaponComponent->EquipWeapon();
+		}
+	}
+}
+
 void ANSEnemyCharacterBase::ApplyAliveVisual()
 {
 	SetActorHiddenInGame(false);
@@ -240,6 +254,16 @@ void ANSEnemyCharacterBase::OnDissolveFinished()
 	}
 }
 
+void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
+{
+	if (!HasAuthority() || !InEnemyData)
+	{
+		return;
+	}
+
+	EnemyData = InEnemyData;
+}
+
 void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation)
 {
 	if (!HasAuthority())
@@ -250,19 +274,19 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsInPool = false;
 	bIsDead = false;
 
-	SetActorLocationAndRotation(SpawnLocation, SpawnRotation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorLocationAndRotation(
+		SpawnLocation,
+		SpawnRotation,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
 	SetActorTickEnabled(true);
 	SetActorEnableCollision(true);
 
 	ApplyAliveVisual();
 
-	if (AttributeSet)
-	{
-		AttributeSet->SetMaxHealth(100.0f);
-		AttributeSet->SetHealth(100.0f);
-		AttributeSet->SetDefense(10.0f);
-		AttributeSet->SetBaseDamage(20.0f);
-	}
+	// 스탯만 리셋
+	InitializeFromData(false);
 
 	// BT 정상 작동을 위해 AIControllerClass로 재빙의
 	SpawnDefaultController();
