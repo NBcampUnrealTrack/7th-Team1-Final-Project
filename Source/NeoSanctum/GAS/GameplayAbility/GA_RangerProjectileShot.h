@@ -55,10 +55,24 @@ protected:
 	float DebugActiveDuration = 1.0f;
 
 private:
-	bool TrySpawnProjectile() const;
+	void FireProjectileShot();
+	
+	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	void OnTargetDataReadyCallback(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+		FGameplayTag ApplicationTag
+	);
+	
+	void OnProjectileTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
+	bool TryBuildProjectileAimTrace(FHitResult& OutHitResult) const;
+	bool TrySpawnProjectileFromTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
+	
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
-
-	bool TryGetAimPoint(FVector& OutAimPoint) const;
+	
+private:
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	
 private:
 	void FinishDebugAbility();
