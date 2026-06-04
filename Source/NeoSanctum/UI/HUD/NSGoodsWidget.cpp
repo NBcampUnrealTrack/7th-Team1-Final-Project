@@ -3,6 +3,8 @@
 
 #include "NSGoodsWidget.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
+#include "NeoSanctum/Data/UI/NSGoodsUIData.h"
 
 void UNSGoodsWidget::SetRunInGoodsAmount(int32 NewGoodsAmount)
 {
@@ -66,9 +68,42 @@ void UNSGoodsWidget::ResetRunInGoodsAmount()
 	SetRunInGoodsAmount(0);
 }
 
+void UNSGoodsWidget::ApplyGoodsUIData()
+{
+	const FNSGoodsUIData* RunInGoodsData =
+		RunInGoodsUIDataRow.GetRow<FNSGoodsUIData>(
+			TEXT("ApplyGoodsUIData_RunIn"));
+	
+	if (RunInGoodsData && RunInGoodsIcon)
+	{
+		UTexture2D* LoadedIcon =
+			RunInGoodsData->GoodsIcon.LoadSynchronous();
+		
+		if (LoadedIcon)
+		{
+			RunInGoodsIcon->SetBrushFromTexture(LoadedIcon);
+		}
+	}
+	const FNSGoodsUIData* RunOutGoodsData =
+		RunOutGoodsUIDataRow.GetRow<FNSGoodsUIData>(
+			TEXT("ApplyGoodsUIData_RunOut"));
+	
+	if (RunOutGoodsData && RunOutGoodsIcon)
+	{
+		UTexture2D* LoadedIcon =
+			RunOutGoodsData->GoodsIcon.LoadSynchronous();
+		if (LoadedIcon)
+		{
+			RunOutGoodsIcon->SetBrushFromTexture(LoadedIcon);
+		}
+	}
+}
+
 void UNSGoodsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	
+	ApplyGoodsUIData();
 	
 	//실제 값이 들어오기 전 기본 상태
 	SetRunInGoodsAmount(0);
