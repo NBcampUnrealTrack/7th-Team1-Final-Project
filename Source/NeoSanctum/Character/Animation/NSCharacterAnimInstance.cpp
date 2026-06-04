@@ -2,10 +2,15 @@
 
 #include "NSCharacterAnimInstance.h"
 
+#include "AbilitySystemComponent.h"
 #include "CharacterTrajectoryComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 void UNSCharacterAnimInstance::NativeInitializeAnimation()
 {
@@ -43,18 +48,13 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateLandingData(DeltaSeconds);
 	UpdatePivotData(DeltaSeconds);
 	UpdateSpinTransitionData();
-	UpdateCombatData(DeltaSeconds);
 	UpdateAimData();
 	UpdateTurnInPlaceData();
 	UpdateTimeToLand();
+	UpdateHandIKData(DeltaSeconds);
 
 	PreviousVerticalVelocity = VerticalVelocity;
 	bWasFalling = MovementMode == ENSAnimMovementMode::InAir;
-}
-
-void UNSCharacterAnimInstance::SetCombatType(ENSAnimCombatType NewCombatType)
-{
-	CombatType = NewCombatType;
 }
 
 void UNSCharacterAnimInstance::RefreshCachedReferences()
@@ -98,9 +98,9 @@ void UNSCharacterAnimInstance::ResetRuntimeData()
 	bShouldTurnInPlace = false;
 	bShouldSpinTransition = false;
 	TimeToLand = 0.f;
-
-	CombatType = ENSAnimCombatType::None;
-	bUseUpperBodyLayer = false;
+	bActivateLeftHandIK = false;
+	LeftHandIKAlpha = 0.f;
+	LeftHandIKTransform = FTransform::Identity;
 
 	AimYaw = 0.f;
 	AimPitch = 0.f;
@@ -285,12 +285,6 @@ void UNSCharacterAnimInstance::UpdateSpinTransitionData()
 		FMath::Abs(LocomotionAngle) >= SpinTransitionAngle;
 }
 
-void UNSCharacterAnimInstance::UpdateCombatData(float DeltaSeconds)
-{
-	// 전투 타입 존재 시 ABP 상체 무기 레이어 사용
-	bUseUpperBodyLayer = CombatType != ENSAnimCombatType::None;
-}
-
 void UNSCharacterAnimInstance::UpdateAimData()
 {
 	const FRotator ActorRotation = OwnerCharacter->GetActorRotation();
@@ -372,4 +366,69 @@ void UNSCharacterAnimInstance::UpdateTimeToLand()
 	const float DistanceToGround = FMath::Max(0.f, HitResult.Distance - CollisionHalfHeight);
 	// 현재 하강 속도 기준 지면 도달 시간 계산
 	TimeToLand = DistanceToGround / FMath::Max(FMath::Abs(VerticalVelocity), 1.f);
+}
+
+void UNSCharacterAnimInstance::UpdateHandIKData(float DeltaSeconds)
+{
+	bActivateLeftHandIK = false;
+	float TargetAlpha = 0.f;
+	
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerCharacter);
+	if (!PlayerCharacter)
+	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+	
+	// 필요한 경우 State.Deactivate.HandIK 태그를 통해 임시로 HandIK를 비활성화 할 수 있음
+	if (const UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Deactivate_HandIK))
+		{
+			UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+			return;
+		}
+	}
+	
+	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
+	if (!IsValid(CurrentWeapon))
+	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+	
+	// 무기에서 HandIK용 Socket Transform을 받아옴
+	FTransform LeftHandIKWorldTransform;
+	if (!CurrentWeapon->TryGetLeftHandIKTransform(LeftHandIKWorldTransform))
+	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+	
+	USkeletalMeshComponent* OwningComponent = GetOwningComponent();
+	if (!IsValid(OwningComponent))
+	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+	
+	FVector BoneSpaceLocation = FVector::ZeroVector;
+	FRotator BoneSpaceRotation = FRotator::ZeroRotator;
+	OwningComponent->TransformToBoneSpace(
+		TEXT("hand_r"),
+		LeftHandIKWorldTransform.GetLocation(),
+		LeftHandIKWorldTransform.Rotator(),
+		BoneSpaceLocation,
+		BoneSpaceRotation);
+	
+	LeftHandIKTransform = FTransform(BoneSpaceRotation, BoneSpaceLocation, FVector::OneVector);
+	TargetAlpha = 1.f;
+	UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+}
+
+void UNSCharacterAnimInstance::UpdateHandIKAlpha(float TargetAlpha, float DeltaSeconds)
+{
+	LeftHandIKAlpha = FMath::FInterpTo(LeftHandIKAlpha, TargetAlpha, DeltaSeconds, LeftHandIKInterpSpeed);
+	// UE_KINDA_SMALL_NUMBER : 엔진에서 사실상 0으로 보는 가장 작은 값. (0.f 같은 float보다 안전하다)
+	bActivateLeftHandIK = LeftHandIKAlpha > UE_KINDA_SMALL_NUMBER;
 }

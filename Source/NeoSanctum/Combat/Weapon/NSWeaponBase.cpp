@@ -3,6 +3,7 @@
 
 #include "NSWeaponBase.h"
 
+#include "Components/SceneComponent.h"
 
 ANSWeaponBase::ANSWeaponBase()
 {
@@ -21,5 +22,29 @@ FName ANSWeaponBase::GetAttachSocketName() const
 
 bool ANSWeaponBase::TryGetAttackOriginTransform(FTransform& OutTransform) const
 {
+	return false;
+}
+
+bool ANSWeaponBase::TryGetLeftHandIKTransform(FTransform& OutTransform) const
+{
+	if (LeftHandIKSocketName.IsNone())
+	{
+		return false;
+	}
+
+	TArray<USceneComponent*> SceneComponents;
+	GetComponents<USceneComponent>(SceneComponents);
+
+	for (USceneComponent* SceneComponent : SceneComponents)
+	{
+		if (!IsValid(SceneComponent) || !SceneComponent->DoesSocketExist(LeftHandIKSocketName))
+		{
+			continue;
+		}
+
+		OutTransform = SceneComponent->GetSocketTransform(LeftHandIKSocketName, RTS_World);
+		return true;
+	}
+
 	return false;
 }
