@@ -22,7 +22,7 @@ public:
 	virtual void InitializeThrowActor(
 		APawn* InOwningPawn,
 		AController* InOwningController,
-		const FVector& InitialVelocity
+		const FVector& ThrowDirection
 	);
 
 protected:

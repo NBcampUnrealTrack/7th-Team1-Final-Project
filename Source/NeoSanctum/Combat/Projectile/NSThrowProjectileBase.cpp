@@ -36,7 +36,7 @@ ANSThrowProjectileBase::ANSThrowProjectileBase()
 void ANSThrowProjectileBase::InitializeThrowActor(
 	APawn* InOwningPawn,
 	AController* InOwningController,
-	const FVector& InitialVelocity)
+	const FVector& ThrowDirection)
 {
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
@@ -48,9 +48,10 @@ void ANSThrowProjectileBase::InitializeThrowActor(
 		CollisionComponent->IgnoreActorWhenMoving(OwningPawn, true);
 	}
 
-	if (!InitialVelocity.IsNearlyZero())
+	if (!ThrowDirection.IsNearlyZero())
 	{
-		SetActorRotation(InitialVelocity.GetSafeNormal().Rotation());
-		ProjectileMovementComponent->Velocity = InitialVelocity;
+		const FVector NormalizedThrowDirection = ThrowDirection.GetSafeNormal();
+		SetActorRotation(NormalizedThrowDirection.Rotation());
+		ProjectileMovementComponent->Velocity = NormalizedThrowDirection * ProjectileMovementComponent->InitialSpeed;
 	}
 }

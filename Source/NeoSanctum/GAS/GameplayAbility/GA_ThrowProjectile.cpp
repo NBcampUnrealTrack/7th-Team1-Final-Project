@@ -5,6 +5,11 @@
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "GameFramework/Character.h"
+#include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_ThrowProjectile::UGA_ThrowProjectile()
@@ -41,7 +46,7 @@ void UGA_ThrowProjectile::ActivateAbility(
 		this,
 		TEXT("ThrowMontageTask"),
 		AnimMontage,
-		MontagePlayRate,
+		1.0f,
 		NAME_None,
 		false,
 		1.0f,
@@ -53,6 +58,8 @@ void UGA_ThrowProjectile::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	StartGameplayEventTasks();
 	
 	ThrowMontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
 	ThrowMontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
@@ -91,7 +98,20 @@ void UGA_ThrowProjectile::EndAbility(
 	bool bWasCancelled)
 {
 	// TODO : 프리뷰 종료
+	DestroyHeldMesh();
 	RemoveDeactivateHandIKTag();
+
+	if (AttachProjectileEventTask)
+	{
+		AttachProjectileEventTask->EndTask();
+		AttachProjectileEventTask = nullptr;
+	}
+
+	if (ThrowProjectileEventTask)
+	{
+		ThrowProjectileEventTask->EndTask();
+		ThrowProjectileEventTask = nullptr;
+	}
 
 	// 몽타주 종료
 	if (ThrowMontageTask)
@@ -123,6 +143,147 @@ void UGA_ThrowProjectile::OnThrowMontageInterrupted()
 		true,
 		true
 	);
+}
+
+void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Payload)
+{
+	AttachHeldMesh();
+}
+
+void UGA_ThrowProjectile::OnThrowProjectileEventReceived(FGameplayEventData Payload)
+{
+	DestroyHeldMesh();
+	SpawnProjectile();
+}
+
+void UGA_ThrowProjectile::StartGameplayEventTasks()
+{
+	// AttachTag에서 설정한 EventTag 대기
+	AttachProjectileEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		AttachTag,
+		nullptr,
+		false,
+		false
+	);
+	
+	// 바인딩
+	if (AttachProjectileEventTask)
+	{
+		AttachProjectileEventTask->EventReceived.AddDynamic(this, &ThisClass::OnAttachProjectileEventReceived);
+		AttachProjectileEventTask->ReadyForActivation();
+	}
+	
+	// ReleaseTag에서 설정한 EventTag 대기
+	ThrowProjectileEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		ReleaseTag,
+		nullptr,
+		false,
+		false
+	);
+	
+	// 바인딩
+	if (ThrowProjectileEventTask)
+	{
+		ThrowProjectileEventTask->EventReceived.AddDynamic(this, &ThisClass::OnThrowProjectileEventReceived);
+		ThrowProjectileEventTask->ReadyForActivation();
+	}
+}
+
+void UGA_ThrowProjectile::AttachHeldMesh()
+{
+	if (HoldMeshComponent || !HoldStaticMesh)
+	{
+		return;
+	}
+
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character || !Character->GetMesh())
+	{
+		return;
+	}
+	
+	HoldMeshComponent = NewObject<UStaticMeshComponent>(Character);
+	if (!HoldMeshComponent)
+	{
+		return;
+	}
+	
+	// 메쉬 컴포넌트 설정하고 캐릭터의 Weapon_l 소켓에 부착
+	HoldMeshComponent->SetStaticMesh(HoldStaticMesh);
+	HoldMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HoldMeshComponent->SetGenerateOverlapEvents(false);
+	HoldMeshComponent->RegisterComponent();
+	HoldMeshComponent->AttachToComponent(
+		Character->GetMesh(),
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		HoldAttachSocketName
+	);
+	HoldMeshComponent->SetRelativeTransform(HoldRelativeTransform);
+}
+
+void UGA_ThrowProjectile::DestroyHeldMesh()
+{
+	if (!HoldMeshComponent)
+	{
+		return;
+	}
+	
+	// 부착해두었던 MeshComponent 제거
+	HoldMeshComponent->DestroyComponent();
+	HoldMeshComponent = nullptr;
+}
+
+void UGA_ThrowProjectile::SpawnProjectile()
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	
+	if (!AvatarActor || !AvatarActor->HasAuthority() || !World || !ProjectileClass)
+	{
+		return;
+	}
+	
+	APawn* OwningPawn = Cast<APawn>(AvatarActor);
+	AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
+	const FTransform SpawnTransform = GetProjectileSpawnTransform();
+	const FVector ThrowDirection = GetProjectileThrowDirection();
+	
+	// SpawnActor를 통해 Projectile Actor 스폰
+	ANSThrowProjectileBase* Projectile = World->SpawnActor<ANSThrowProjectileBase>(
+		ProjectileClass,
+		SpawnTransform
+	);
+	
+	// Projectile Initialize
+	if (Projectile)
+	{
+		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
+	}
+}
+
+FTransform UGA_ThrowProjectile::GetProjectileSpawnTransform() const
+{
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (Character && Character->GetMesh() && !ProjectileSpawnSocketName.IsNone())
+	{
+		return Character->GetMesh()->GetSocketTransform(ProjectileSpawnSocketName, RTS_World);
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return AvatarActor ? AvatarActor->GetActorTransform() : FTransform::Identity;
+}
+
+FVector UGA_ThrowProjectile::GetProjectileThrowDirection() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return FVector::ZeroVector;
+	}
+
+	return AvatarActor->GetActorForwardVector();
 }
 
 void UGA_ThrowProjectile::AddDeactivateHandIKTag()
