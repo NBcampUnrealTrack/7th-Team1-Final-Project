@@ -48,6 +48,10 @@ struct FNSPartData
 	UPROPERTY(BlueprintReadOnly)
 	TSoftObjectPtr<UNSPartDefinition> DefinitionPtr;
 
+	// 슬롯 식별용
+	UPROPERTY(BlueprintReadOnly)
+	ENSPartSlot Slot = ENSPartSlot::Body;
+
 	UPROPERTY(BlueprintReadOnly)
 	ENSPartRarity CurrentRarity = ENSPartRarity::Common;
 
