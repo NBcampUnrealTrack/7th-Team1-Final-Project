@@ -153,6 +153,7 @@ bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) cons
 	FHitResult Hit;
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
+	CollisionParams.AddIgnoredActor(OwnerPlayer);
 	
 	if (GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, ECC_Visibility, CollisionParams))
 	{
