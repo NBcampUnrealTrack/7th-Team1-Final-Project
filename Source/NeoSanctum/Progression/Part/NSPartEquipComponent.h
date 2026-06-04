@@ -6,16 +6,19 @@
 #include "Components/ActorComponent.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayAbilitySpec.h"
-#include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "Engine/StreamableManager.h"
+#include "NEOSanctum/Data/Part/NSPartTypes.h"
 #include "NSPartEquipComponent.generated.h"
 
+class UAbilitySystemComponent;
 class UGameplayEffect;
+class UNSPartDefinition;
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnPartChanged, const FNSPartData&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, ENSPartSlot, const FNSPartData&);
 
 /**
- * PlayerState에 부착
- * 장착/리롤/등급업/드랍 관리
+ * PlayerState에 부착되는 파츠 컴포넌트
+ * 슬롯별 파츠 장착/드랍/GAS 연동 관리
  */
 UCLASS(ClassGroup=(NEOSANCTUM), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSPartEquipComponent : public UActorComponent
@@ -25,55 +28,68 @@ class NEOSANCTUM_API UNSPartEquipComponent : public UActorComponent
 public:
 	UNSPartEquipComponent();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-	// 서버 전용 직접 호출 (런 시작 시 SaveGame → EquipPart 등)
+	// 서버 전용 직접 호출
 	void EquipPart(const FNSPartData& NewPart);
-	void RerollStat();
-	void UpgradeRarity();
-	void DropCurrentPart(const FVector& Location);
 	void ClearAll();
 
-	const FNSPartData& GetEquippedPart() const { return EquippedPart; }
-	bool HasEquippedPart() const { return EquippedPart.IsValid(); }
+	bool HasEquippedPart(ENSPartSlot Slot) const;
+	const FNSPartData* GetEquippedPart(ENSPartSlot Slot) const;
 
-	// 클라이언트 → 서버 요청
 	UFUNCTION(Server, Reliable)
 	void ServerRequestEquip(FNSPartData NewPart);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestReroll();
+	void ServerRequestReroll(ENSPartSlot Slot);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestUpgradeRarity();
+	void ServerRequestUpgradeRarity(ENSPartSlot Slot);
 
 public:
-	// UI 구독용 델리게이트 (클라이언트에서 OnRep 시 브로드캐스트)
 	FNSOnPartChanged OnPartChanged;
 
-	// 등급 업그레이드 성공 확률 -> 추후 변경
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Part", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float UpgradeSuccessChance = 0.5f;
 
 private:
-	void RemoveActiveGE();
-	void RemoveGrantedAbilities();
-	void ApplyPartEffect();
-	void GrantAbilities();
+	FNSPartData* FindPart(ENSPartSlot Slot);
+	const FNSPartData* FindPart(ENSPartSlot Slot) const;
+
+	void DropPartInSlot(ENSPartSlot Slot, const FVector& Location);
+	void RemovePartEffects(ENSPartSlot Slot);
+
+	void RemoveGEForSlot(ENSPartSlot Slot);
+	void RemoveAbilitiesForSlot(ENSPartSlot Slot);
+
+	void ApplyPartEffect(ENSPartSlot Slot);
+	void Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGameplayEffect> GEClass);
+	void OnEffectLoaded(ENSPartSlot Slot);
+
+	void GrantAbilities(ENSPartSlot Slot);
+	void OnAbilitiesLoaded(ENSPartSlot Slot);
+
+	void RerollStat(ENSPartSlot Slot);
+	void UpgradeRarity(ENSPartSlot Slot);
 	float RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const;
+
 	UAbilitySystemComponent* GetOwnerASC() const;
 
-	// 장착된 파츠의 Definition을 NSDataSubsystem 캐시에서 조회, 없으면 .Get()으로 직접조회 -> nullptr반환
-	UNSPartDefinition* GetEquippedDefinition() const;
+	// 장착 파츠의 Definition을 NSDataSubsystem 캐시에서 조회, 없으면 .Get() — nullptr 반환 가능
+	UNSPartDefinition* ResolveDefinition(const FNSPartData& Part) const;
 
 	UFUNCTION()
-	void OnRep_EquippedPart();
+	void OnRep_EquippedParts();
 
 private:
-	UPROPERTY(ReplicatedUsing=OnRep_EquippedPart)
-	FNSPartData EquippedPart;
+	UPROPERTY(ReplicatedUsing=OnRep_EquippedParts)
+	TArray<FNSPartData> EquippedParts;
 
-	FActiveGameplayEffectHandle ActiveGEHandle;
-	TArray<FGameplayAbilitySpecHandle> GrantedAbilityHandles;
+	// 런타임 핸들 (슬롯별)
+	TMap<ENSPartSlot, FActiveGameplayEffectHandle> ActiveGEHandles;
+	TMap<ENSPartSlot, TArray<FGameplayAbilitySpecHandle>> GrantedAbilityHandlesBySlot;
+	TMap<ENSPartSlot, TSharedPtr<FStreamableHandle>> EffectLoadHandles;
+	TMap<ENSPartSlot, TSharedPtr<FStreamableHandle>> AbilityLoadHandles;
 };

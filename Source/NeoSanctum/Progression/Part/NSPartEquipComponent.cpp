@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
+#include "WorldPartition/WorldPartitionRuntimeCell.h"
 
 UNSPartEquipComponent::UNSPartEquipComponent()
 {
@@ -18,227 +19,413 @@ UNSPartEquipComponent::UNSPartEquipComponent()
 	SetIsReplicatedByDefault(true);
 }
 
-void UNSPartEquipComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void UNSPartEquipComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(UNSPartEquipComponent, EquippedPart, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UNSPartEquipComponent, EquippedParts, COND_OwnerOnly);
 }
 
-// 파츠 장착 -> 기존 파츠 드롭 -> 새 파츠 장착(GE,GA적용)
+void UNSPartEquipComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 진행 중 비동기 로드 콜백이 파괴 후 호출되지 않도록 취소
+	for (TPair<ENSPartSlot, TSharedPtr<FStreamableHandle>>& Pair : EffectLoadHandles)
+	{
+		if (Pair.Value.IsValid())
+		{
+			Pair.Value->CancelHandle();
+		}
+	}
+	for (TPair<ENSPartSlot, TSharedPtr<FStreamableHandle>>& Pair : AbilityLoadHandles)
+	{
+		if (Pair.Value.IsValid())
+		{
+			Pair.Value->CancelHandle();
+		}
+	}
+	EffectLoadHandles.Empty();
+	AbilityLoadHandles.Empty();
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart)
 {
-	if (!GetOwner()->HasAuthority())
+	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
+
+	UNSPartDefinition* Def = ResolveDefinition(NewPart);
+	if (!Def)
+	{
+		return;
+	}
+
+	const ENSPartSlot Slot = Def->PartSlot;
 
 	APlayerState* PS = Cast<APlayerState>(GetOwner());
 	APawn* Pawn = PS ? PS->GetPawn() : nullptr;
-	FVector DropLocation = Pawn ? Pawn->GetActorLocation() : FVector::ZeroVector;
+	const FVector DropLocation = Pawn ? Pawn->GetActorLocation() : FVector::ZeroVector;
 
-	DropCurrentPart(DropLocation);
+	DropPartInSlot(Slot, DropLocation);
 
-	EquippedPart = NewPart;
-	ApplyPartEffect();
-	GrantAbilities();
-}
+	FNSPartData Stored = NewPart;
+	Stored.Slot = Slot;
 
-// 수치 리롤
-void UNSPartEquipComponent::RerollStat()
-{
-	if (!GetOwner()->HasAuthority())
+	if (FNSPartData* Existing = FindPart(Slot))
 	{
-		return;
+		*Existing = Stored;
 	}
-	if (!HasEquippedPart())
+	else
 	{
-		return;
+		EquippedParts.Add(Stored);
 	}
 
-	UNSPartDefinition* Def = GetEquippedDefinition();
-	if (!Def || !Def->bCanReroll)
-	{
-		return;
-	}
+	ApplyPartEffect(Slot);
+	GrantAbilities(Slot);
 
-	EquippedPart.CurrentValue = RollValueForRarity(Def, EquippedPart.CurrentRarity);
-	EquippedPart.RollCount++;
-
-	RemoveActiveGE();
-	ApplyPartEffect();
-}
-
-void UNSPartEquipComponent::UpgradeRarity()
-{
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
-	}
-	if (!HasEquippedPart())
-	{
-		return;
-	}
-	if (EquippedPart.CurrentRarity == ENSPartRarity::Legendary)
-	{
-		return;
-	}
-
-	if (FMath::FRand() > UpgradeSuccessChance)
-	{
-		return;
-	}
-
-	EquippedPart.CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(EquippedPart.CurrentRarity) + 1);
-
-	UNSPartDefinition* Def = GetEquippedDefinition();
-	if (Def)
-	{
-		EquippedPart.CurrentValue = RollValueForRarity(Def, EquippedPart.CurrentRarity);
-	}
-
-	RemoveActiveGE();
-	ApplyPartEffect();
-}
-
-// TODO : 장착 파츠 드롭, 파츠 드롭 구현 해야함
-void UNSPartEquipComponent::DropCurrentPart(const FVector& Location)
-{
-	if (!HasEquippedPart())
-	{
-		return;
-	}
-
-	RemoveActiveGE();
-	RemoveGrantedAbilities();
-	EquippedPart = FNSPartData{};
+	OnPartChanged.Broadcast(Slot, Stored);
 }
 
 void UNSPartEquipComponent::ClearAll()
 {
-	if (!GetOwner()->HasAuthority())
+	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
-
-	RemoveActiveGE();
-	RemoveGrantedAbilities();
-	EquippedPart = FNSPartData{};
+	for (const FNSPartData& Part : EquippedParts)
+	{
+		RemovePartEffects(Part.Slot);
+	}
+	EquippedParts.Empty();
 }
 
-void UNSPartEquipComponent::RemoveActiveGE()
+bool UNSPartEquipComponent::HasEquippedPart(ENSPartSlot Slot) const
 {
-	if (!ActiveGEHandle.IsValid())
-	{
-		return;
-	}
-
-	UAbilitySystemComponent* ASC = GetOwnerASC();
-	if (!ASC)
-	{
-		return;
-	}
-
-	ASC->RemoveActiveGameplayEffect(ActiveGEHandle);
-	ActiveGEHandle.Invalidate();
+	return FindPart(Slot) != nullptr;
 }
 
-void UNSPartEquipComponent::RemoveGrantedAbilities()
+const FNSPartData* UNSPartEquipComponent::GetEquippedPart(ENSPartSlot Slot) const
 {
-	if (GrantedAbilityHandles.Num() == 0)
+	return FindPart(Slot);
+}
+
+FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot)
+{
+	return EquippedParts.FindByPredicate([Slot](const FNSPartData& P) { return P.Slot==Slot; });
+}
+
+const FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot) const
+{
+	return EquippedParts.FindByPredicate([Slot](const FNSPartData& P) {return P.Slot == Slot;});
+}
+
+// ================================================================
+// 드롭 / 효과 제거
+// ================================================================
+
+// TODO : 드롭 액터 스폰하기
+void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, const FVector& Location)
+{
+	if (!FindPart(Slot))
 	{
 		return;
 	}
+	RemovePartEffects(Slot);
+	EquippedParts.RemoveAll([Slot](const FNSPartData& P) { return P.Slot==Slot; });
+}
 
-	UAbilitySystemComponent* ASC = GetOwnerASC();
-	if (!ASC)
-	{
-		GrantedAbilityHandles.Empty();
-		return;
-	}
+void UNSPartEquipComponent::RemovePartEffects(ENSPartSlot Slot)
+{
+	RemoveGEForSlot(Slot);
+	RemoveAbilitiesForSlot(Slot);
 
-	for (const FGameplayAbilitySpecHandle& Handle : GrantedAbilityHandles)
+	if (TSharedPtr<FStreamableHandle>* LoadHandle = EffectLoadHandles.Find(Slot))
 	{
-		if (Handle.IsValid())
+		if (LoadHandle->IsValid())
 		{
-			ASC->ClearAbility(Handle);
+			(*LoadHandle)->CancelHandle();
+		}
+		EffectLoadHandles.Remove(Slot);
+	}
+	if (TSharedPtr<FStreamableHandle>* LoadHandle = AbilityLoadHandles.Find(Slot))
+	{
+		if (LoadHandle->IsValid())
+		{
+			(*LoadHandle)->CancelHandle();
+		}
+		AbilityLoadHandles.Remove(Slot);
+	}
+}
+
+void UNSPartEquipComponent::RemoveGEForSlot(ENSPartSlot Slot)
+{
+	FActiveGameplayEffectHandle* Handle = ActiveGEHandles.Find(Slot);
+	if (!Handle || !Handle->IsValid())
+	{
+		ActiveGEHandles.Remove(Slot);
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetOwnerASC())
+	{
+		ASC->RemoveActiveGameplayEffect(*Handle);
+	}
+	ActiveGEHandles.Remove(Slot);
+}
+
+void UNSPartEquipComponent::RemoveAbilitiesForSlot(ENSPartSlot Slot)
+{
+	TArray<FGameplayAbilitySpecHandle>* Handles = GrantedAbilityHandlesBySlot.Find(Slot);
+	if (!Handles || Handles->Num() == 0)
+	{
+		GrantedAbilityHandlesBySlot.Remove(Slot);
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetOwnerASC())
+	{
+		for (const FGameplayAbilitySpecHandle& Handle : *Handles)
+		{
+			if (Handle.IsValid())
+			{
+				ASC->ClearAbility(Handle);
+			}
 		}
 	}
-	GrantedAbilityHandles.Empty();
+	GrantedAbilityHandlesBySlot.Remove(Slot);
 }
 
-// GA적용
-void UNSPartEquipComponent::GrantAbilities()
+// ================================================================
+// GE 적용 및 로드
+// ================================================================
+
+
+void UNSPartEquipComponent::ApplyPartEffect(ENSPartSlot Slot)
 {
-	if (!GetOwner()->HasAuthority())
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
 	{
 		return;
 	}
-
-	UNSPartDefinition* Def = GetEquippedDefinition();
-	if (!Def || Def->GrantedAbilities.Num() == 0)
-	{
-		return;
-	}
-
-	UAbilitySystemComponent* ASC = GetOwnerASC();
-	if (!ASC)
-	{
-		return;
-	}
-
-	// 데이터 서브 시스템에서 메모리에 올려놓아 동기 Get() 가능
-	for (const TSoftClassPtr<UGameplayAbility>& AbilityClass : Def->GrantedAbilities)
-	{
-		TSubclassOf<UGameplayAbility> LoadedClass = AbilityClass.Get();
-		if (!LoadedClass)
-		{
-			continue;
-		}
-
-		FGameplayAbilitySpec Spec(LoadedClass, 1, INDEX_NONE, this);
-		GrantedAbilityHandles.Add(ASC->GiveAbility(Spec));
-	}
-}
-
-// 파츠 GE적용
-void UNSPartEquipComponent::ApplyPartEffect()
-{
-	if (!GetOwner()->HasAuthority())
-	{
-		return;
-	}
-
-	UNSPartDefinition* Def = GetEquippedDefinition();
+	
+	UNSPartDefinition* Def = ResolveDefinition(*Part);
 	if (!Def || Def->EffectClass.IsNull())
 	{
 		return;
 	}
+	
+	if (TSubclassOf<UGameplayEffect> Loaded = Def->EffectClass.Get())
+	{
+		Internal_ApplyGE(Slot, Loaded);
+		return;
+	}
+	
+	const FSoftObjectPath Path = Def->EffectClass.ToSoftObjectPath();
+	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		Path, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnEffectLoaded, Slot));
+	EffectLoadHandles.Add(Slot, Handle);
+}
+
+void UNSPartEquipComponent::Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGameplayEffect> GEClass)
+{
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
 
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC)
 	{
 		return;
 	}
-
-	// 데이터 서브 시스템에서 메모리에 올려놓기 때문에 동기 Get() 가능 (바로 반환됨)
-	TSubclassOf<UGameplayEffect> GEClass = Def->EffectClass.Get();
-	if (!GEClass)
-	{
-		return;
-	}
-
+	
+	// 리롤같이 스텟변경이 있는경우 대비용으로 기존 GE먼저 제거
+	RemoveGEForSlot(Slot);
+	
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(GEClass, 1.f, Context);
 	if (!Spec.IsValid())
 	{
 		return;
 	}
-
-	Spec.Data->SetSetByCallerMagnitude(NSGameplayTags::Part_Value, EquippedPart.CurrentValue);
-	ActiveGEHandle = ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data);
+	Spec.Data->SetSetByCallerMagnitude(NSGameplayTags::Part_Value, Part->CurrentValue);
+	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
 }
 
-// 미리 지정해놓은 ValueRange내에서 리롤
+void UNSPartEquipComponent::OnEffectLoaded(ENSPartSlot Slot)
+{
+	EffectLoadHandles.Remove(Slot);
+	
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+	
+	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	if (!Def)
+	{
+		return;
+	}
+	
+	TSubclassOf<UGameplayEffect> Loaded = Def->EffectClass.Get();
+	if (!Loaded)
+	{
+		return;
+	}
+	Internal_ApplyGE(Slot, Loaded);
+}
+
+// ================================================================
+// GA 부여 및 로드
+// ================================================================
+
+void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
+{
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+	
+	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	if (!Def || Def->GrantedAbilities.Num() == 0)
+	{
+		return;
+	}
+	
+	bool bAllLoaded = true;
+	for (const TSoftClassPtr<UGameplayAbility>& AbilityClass : Def->GrantedAbilities)
+	{
+		if (!AbilityClass.Get())
+		{
+			bAllLoaded = false;
+			break;
+		}
+	}
+	if (bAllLoaded)
+	{
+		OnAbilitiesLoaded(Slot);
+		return;
+	}
+	
+	TArray<FSoftObjectPath> Paths;
+	for (const TSoftClassPtr<UGameplayAbility>& AbilityClass : Def->GrantedAbilities)
+	{
+		if (!AbilityClass.IsNull())
+		{
+			Paths.Add(AbilityClass.ToSoftObjectPath());
+		}
+	}
+	
+	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		Paths, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnAbilitiesLoaded,
+			Slot));
+	AbilityLoadHandles.Add(Slot, Handle);
+}
+
+void UNSPartEquipComponent::OnAbilitiesLoaded(ENSPartSlot Slot)
+{
+	AbilityLoadHandles.Remove(Slot);
+	
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+	
+	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	if (!Def)
+	{
+		return;
+	}
+	
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+	
+	RemoveAbilitiesForSlot(Slot);
+	
+	TArray<FGameplayAbilitySpecHandle>& Handles = GrantedAbilityHandlesBySlot.FindOrAdd(Slot);
+	for (const TSoftClassPtr<UGameplayAbility>& AbilityClass : Def->GrantedAbilities)
+	{
+		TSubclassOf<UGameplayAbility> Loaded = AbilityClass.Get();
+		if (!Loaded)
+		{
+			continue;
+		}
+		FGameplayAbilitySpec Spec(Loaded, 1, INDEX_NONE, this);
+		Handles.Add(ASC->GiveAbility(Spec));
+	}
+}
+
+// ================================================================
+// 리롤 / 등급업
+// ================================================================
+
+void UNSPartEquipComponent::RerollStat(ENSPartSlot Slot)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+
+	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	if (!Def || !Def->bCanReroll)
+	{
+		return;
+	}
+	
+	Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
+	// TODO : 추후에 카운트에 따라 비용 증가시 사용
+	Part->RollCount++;
+	
+	ApplyPartEffect(Slot);
+	OnPartChanged.Broadcast(Slot, *Part);
+}
+
+void UNSPartEquipComponent::UpgradeRarity(ENSPartSlot Slot)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+	if (Part->CurrentRarity == ENSPartRarity::Legendary)
+	{
+		return;
+	}
+	if (FMath::FRand() > UpgradeSuccessChance)
+	{
+		return;
+	}
+	
+	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
+	
+	if (UNSPartDefinition* Def = ResolveDefinition(*Part))
+	{
+		Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
+	}
+	
+	ApplyPartEffect(Slot);
+	OnPartChanged.Broadcast(Slot, *Part);
+}
+
 float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const
 {
 	const FNSPartValueRange* Range = Def->ValueRange.Find(Rarity);
@@ -249,6 +436,10 @@ float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, EN
 	return FMath::RandRange(Range->Min, Range->Max);
 }
 
+// ================================================================
+// 조회 헬퍼
+// ================================================================
+
 UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 {
 	APlayerState* PS = Cast<APlayerState>(GetOwner());
@@ -256,59 +447,67 @@ UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 	{
 		return nullptr;
 	}
-
+	
 	APawn* Pawn = PS->GetPawn();
 	if (!Pawn)
 	{
 		return nullptr;
 	}
-
+	
 	IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Pawn);
 	if (!ASI)
 	{
 		return nullptr;
 	}
-
 	return ASI->GetAbilitySystemComponent();
 }
 
-UNSPartDefinition* UNSPartEquipComponent::GetEquippedDefinition() const
+UNSPartDefinition* UNSPartEquipComponent::ResolveDefinition(const FNSPartData& Part) const
 {
-	if (EquippedPart.DefinitionPtr.IsNull())
+	if (Part.DefinitionPtr.IsNull())
 	{
 		return nullptr;
 	}
-
+	
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
 	if (!DataSS)
 	{
-		return EquippedPart.DefinitionPtr.Get();
+		return Part.DefinitionPtr.Get();
 	}
-
-	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(EquippedPart.DefinitionPtr.ToSoftObjectPath());
+	
+	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(Part.DefinitionPtr.ToSoftObjectPath());
 	UNSPartDefinition* Cached = DataSS->GetData<UNSPartDefinition>(Id);
-
-	// 캐시에 없으면(데이터 미등록 등) nullptr
-	return Cached ? Cached : EquippedPart.DefinitionPtr.Get();
+	
+	return Cached ? Cached : Part.DefinitionPtr.Get();
 }
 
-void UNSPartEquipComponent::OnRep_EquippedPart()
+// ================================================================
+// 리플리케이션 콜백
+// ================================================================
+
+void UNSPartEquipComponent::OnRep_EquippedParts()
 {
-	OnPartChanged.Broadcast(EquippedPart);
+	for (const FNSPartData& Part : EquippedParts)
+	{
+		OnPartChanged.Broadcast(Part.Slot, Part);
+	}
 }
 
+// ================================================================
 // Server RPC
+// ================================================================
+
 void UNSPartEquipComponent::ServerRequestEquip_Implementation(FNSPartData NewPart)
 {
 	EquipPart(NewPart);
 }
 
-void UNSPartEquipComponent::ServerRequestReroll_Implementation()
+void UNSPartEquipComponent::ServerRequestReroll_Implementation(ENSPartSlot Slot)
 {
-	RerollStat();
+	RerollStat(Slot);
 }
 
-void UNSPartEquipComponent::ServerRequestUpgradeRarity_Implementation()
+void UNSPartEquipComponent::ServerRequestUpgradeRarity_Implementation(ENSPartSlot Slot)
 {
-	UpgradeRarity();
+	UpgradeRarity(Slot);
 }
