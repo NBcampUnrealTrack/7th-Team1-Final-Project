@@ -46,11 +46,7 @@ public:
 	void RequestRerollAugment();
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Augment")
-	TObjectPtr<UDataTable> AugmentUIDataTable;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Augment")
-	TArray<FName> TestAugmentRowNames;
+
 
 private:
 	//카드 영역 표시 (대기 > 0)
