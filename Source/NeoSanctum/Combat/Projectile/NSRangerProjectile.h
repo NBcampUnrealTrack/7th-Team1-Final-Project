@@ -6,14 +6,15 @@
 #include "GameFramework/Actor.h"
 #include "NSRangerProjectile.generated.h"
 
-/*
- * Ranger 투사체 기본 Actor
- * 이동과 충돌은 Projectile이 담당하고, GA는 스폰까지만 담당
- */
+
 
 class UProjectileMovementComponent;
 class USphereComponent;
 
+/*
+ * Ranger 투사체 기본 Actor
+ * 이동과 충돌은 Projectile이 담당하고, GA는 스폰까지만 담당
+ */
 UCLASS()
 class NEOSANCTUM_API ANSRangerProjectile : public AActor
 {

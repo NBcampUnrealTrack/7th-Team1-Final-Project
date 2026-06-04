@@ -113,7 +113,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectile() const
 	
 	if (!TryGetAimPoint(AimPoint))
 	{
-		// 조준점 계싼에 실패하면 총구 Forward 기준으로 발사
+		// 조준점 계산에 실패하면 총구 Forward 기준으로 발사
 		AimPoint = MuzzleLocation + MuzzleTransform.GetRotation().GetForwardVector() * TraceRange;
 	}
 	
@@ -182,7 +182,7 @@ bool UGA_RangerProjectileShot::TryGetAimPoint(FVector& OutAimPoint) const
 	
 	if (!PlayerCharacter->TryGetAimTraceStartLocation(TraceStart))
 	{
-		return  false;
+		return false;
 	}
 	
 	const FVector TraceEnd = TraceStart + PlayerCharacter->GetControlRotation().Vector() * TraceRange;
