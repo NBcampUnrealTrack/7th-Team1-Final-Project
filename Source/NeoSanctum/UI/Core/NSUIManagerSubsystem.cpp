@@ -5,7 +5,47 @@
 #include "Blueprint/UserWidget.h"
 #include "NeoSanctum/UI/HUD/NSHUDWidget.h"
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
+#include "Engine/DataTable.h"
+#include "UObject/ConstructorHelpers.h"
+#include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 
+UNSUIManagerSubsystem::UNSUIManagerSubsystem()
+{
+	static ConstructorHelpers::FObjectFinder<UDataTable>
+	UIWidgetTableFinder(
+		TEXT("/Game/NeoSanctum/Data/UI/DT_UIWidget.DT_UIWidget"));
+	if (UIWidgetTableFinder.Succeeded())
+	{
+		UIWidgetDataTable = UIWidgetTableFinder.Object;
+	}
+}
+TSubclassOf<UUserWidget>
+UNSUIManagerSubsystem::GetWidgetClassFromTable(
+	FName RowName) const
+{
+	if (!UIWidgetDataTable)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[UI] DT_UIWidget을 찾지 못했습니다."));
+		return nullptr;
+	}
+	const FNSUIWidgetData* WidgetData =
+		UIWidgetDataTable->FindRow<FNSUIWidgetData>(
+			RowName,
+			TEXT("GetWidgetClassFromTable"));
+	if (!WidgetData)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[UI] Row를 찾지 못했습니다: %s"),
+			*RowName.ToString());
+		return nullptr;
+	}
+	return WidgetData->WidgetClass.LoadSynchronous();
+}
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 {
@@ -22,8 +62,8 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 		return;
 	}
 	
-	FString HUDPath = TEXT("/Game/NeoSanctum/UI/HUD/WBP_HUD.WBP_HUD_C");
-	UClass* LoadedHUDClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *HUDPath);
+	TSubclassOf<UUserWidget> LoadedHUDClass =
+	GetWidgetClassFromTable(TEXT("HUD"));
 
 	if (LoadedHUDClass)
 	{
@@ -220,8 +260,8 @@ void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 		return; 
 	}
 	
-	FString TitlePath = TEXT("/Game/NeoSanctum/UI/Menu/WBP_Title.WBP_Title_C");
-	UClass* LoadedTitleClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *TitlePath);
+	TSubclassOf<UUserWidget> LoadedTitleClass =
+		GetWidgetClassFromTable(TEXT("Title"));
 
 	if (LoadedTitleClass)
 	{

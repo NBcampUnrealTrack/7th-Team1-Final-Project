@@ -7,6 +7,7 @@
 #include "NSUIManagerSubsystem.generated.h"
 
 class UNSHUDWidget;
+class UDataTable;
 
 /**
  * 게임 전체 UI 생성을 관리하는 서브시스템
@@ -67,7 +68,7 @@ public:
 	void ShowRunEnd();
 	void HideRunEnd();
 
-	
+	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관
 	UPROPERTY()
@@ -80,6 +81,13 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
+	
+	//DataTable에서 RowName에 해당되는 위젯 조회
+	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
+		FName RowName)const;
+	//UI 위젯 정보 테이블
+	UPROPERTY()
+	TObjectPtr<UDataTable> UIWidgetDataTable;
 	
 protected:
 	//HUD 위젯 블루프린트
