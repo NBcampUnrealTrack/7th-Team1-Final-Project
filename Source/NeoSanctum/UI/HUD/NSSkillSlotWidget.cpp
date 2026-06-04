@@ -5,6 +5,7 @@
 #include "Components/Image.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NSSkillCooldownMessage.h"
+#include "NeoSanctum/Data/UI/NSSkillUIData.h"
 
 void UNSSkillSlotWidget::StartCooldown(float NewCooldownDuration)
 {
@@ -76,9 +77,32 @@ void UNSSkillSlotWidget::HandleCooldownMessage(
 	StartCooldown(Message.CooldownDuration);
 }
 
+void UNSSkillSlotWidget::ApplySkillUIData()
+{
+	const FNSSkillUIData* SkillUIData =
+		SkillUIDataRow.GetRow<FNSSkillUIData>(
+			TEXT("ApplySkillUIData"));
+	if (!SkillUIData)
+	{
+		return;
+	}
+	BoundSkillTag = SkillUIData->SkillTag;
+	if (SkillIcon)
+	{
+		UTexture2D* LoadedIcon =
+			SkillUIData->SkillIcon.LoadSynchronous();
+		if (LoadedIcon)
+		{
+			SkillIcon->SetBrushFromTexture(LoadedIcon);	
+		}
+	}
+}
+
 void UNSSkillSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	
+	ApplySkillUIData();
 	
 	// WBP의 CooldownOverlay Brush에 적용된 머티리얼을 동적 인스턴스로 가져온다
 	if (CooldownOverlay)
