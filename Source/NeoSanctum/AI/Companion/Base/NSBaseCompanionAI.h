@@ -51,6 +51,11 @@ protected:
 	
 	FVector ChooseSteeringDirection() const;
 	
+	// @민재 : 지형추적 기능
+	bool TraceGroundAt(const FVector& WorldXY, float& OutZ) const; 
+	
+	bool SampleHighestGround(float& OutGroundZ) const;
+	
 protected:
 	// @민재 : 컴포넌트 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -81,6 +86,26 @@ protected:
  
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
+	
+	// @민재 : 지형추적 기능
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float GroundSampleRadius = 150.f;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	int32 GroundSampleCount = 4;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float GroundLookAheadDistance = 200.f;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float MaxClimbSpeed = 600.f;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float MaxDescendSpeed = 150.f;
+	
+	float SmoothedTargetHeight = 0.f;
+	bool bHasValidGround = false;
+	
 	
 	// @민재 : 커스텀 회피 기능 관련
 	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")

@@ -94,7 +94,8 @@ void ANSPlayerCharacterBase::BeginPlay()
 	
 		if (ANSDroneAIController* DC = Cast<ANSDroneAIController>(DroneAI->GetController()))
 		{
-			DC->SetOwnerPlayer(this);   // this = 드론을 소유한 플레이어 Pawn
+			DC->SetOwnerPlayer(this);
+			DroneAI->SetOwnerPlayer(this);// this = 드론을 소유한 플레이어 Pawn
 		}
 	}
 }
