@@ -40,7 +40,16 @@ protected:
 	// @민재 : 회전기능 함수
 	void DroneAIRotate(float DeltaSeconds);
 	
-	FVector ComputeAvoidanceVector() const;
+	// @민재 : 회피기능 함수
+	void InitSteeringDirections();
+	
+	void BuildInterestMap(const FVector& DesiredDirection);
+	
+	void BuildDangerMap();
+	
+	bool IsWalkableSurface(const FVector& SurfaceNormal) const;
+	
+	FVector ChooseSteeringDirection() const;
 	
 protected:
 	// @민재 : 컴포넌트 
@@ -73,15 +82,27 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
 	
-	// @민재 : 커스텀 회피 변수
+	// @민재 : 커스텀 회피 기능 관련
 	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")
-	float AvoidanceTraceDistance  = 400.f;
+	float AvoidanceTraceDistance = 400.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")
+	float AvoidanceTraceRadius = 100.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")
+	int32 NumSteeringDirections = 16;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
-	float AvoidanceTraceRadius = 80.f;
- 
+	float DangerThreshold = 0.1f;
+	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
-	float AvoidanceStrength = 1.0f;
+	float MaxWalkableSlopeAngle = 50.f;
+ 
+	TArray<FVector> SteeringDirections;
+	
+	TArray<float> InterestMap;
+	
+	TArray<float> DangerMap;
 	
 	// @민재 : 도착거리 판정
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")

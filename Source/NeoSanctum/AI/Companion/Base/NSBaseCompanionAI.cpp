@@ -68,6 +68,8 @@ void ANSBaseCompanionAI::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	InitSteeringDirections();
+	
 	if (AbilitySystemComponent)
 	{
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
@@ -81,11 +83,12 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 	
 	if (TargetPosition.SizeSquared() < FMath::Square(ArrivalRadius)) return;
 	
-	FVector TargetDirection = TargetPosition.GetSafeNormal();
-	TargetDirection += ComputeAvoidanceVector() * AvoidanceStrength;
-	TargetDirection = TargetDirection.GetSafeNormal2D();
-	
-	AddMovementInput(TargetDirection, 1.0f);
+	FVector TargetDirection = TargetPosition.GetSafeNormal();  
+	BuildInterestMap(TargetDirection);  
+	BuildDangerMap();  
+	FVector SteeringDirection = ChooseSteeringDirection();  
+  
+	AddMovementInput(SteeringDirection, 1.0f);
 }
 
 void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
@@ -131,7 +134,113 @@ void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 	SetActorRotation(NewRot);
 }
 
-FVector ANSBaseCompanionAI::ComputeAvoidanceVector() const
+#pragma region 회피기능
+
+void ANSBaseCompanionAI::InitSteeringDirections()
 {
-	return FVector::ZeroVector;
+	float AngleStep = 360.0f / NumSteeringDirections;
+	
+	for (int32 i = 0; i < NumSteeringDirections; ++i)
+	{
+		float Angle = i * AngleStep;
+		
+		FRotator Rotation = FRotator(0.f,Angle,0.f);
+		FVector Direction = Rotation.Vector();
+		
+		SteeringDirections.Add(Direction);
+	}
 }
+
+void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
+{
+	InterestMap.Reset(SteeringDirections.Num());
+	
+	for (const FVector& Direction : SteeringDirections)
+	{
+		float Interest = FVector::DotProduct(Direction,DesiredDirection);
+		InterestMap.Add(Interest);
+	}
+	
+}
+
+void ANSBaseCompanionAI::BuildDangerMap()
+{
+	DangerMap.Reset(SteeringDirections.Num());
+	
+	for (const FVector& Direction : SteeringDirections)
+	{
+		const FVector Start = GetActorLocation();
+		const FVector End = Start + Direction * AvoidanceTraceDistance;
+		
+		FHitResult Hit;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+		CollisionParams.bTraceComplex = false;
+		
+		float Danger = 0.f;
+	
+		if (GetWorld()->SweepSingleByChannel(
+			Hit,
+			Start,
+			End,
+			FQuat::Identity,
+			ECollisionChannel::ECC_Visibility,
+			FCollisionShape::MakeSphere(AvoidanceTraceRadius),
+			CollisionParams))
+		{
+			if (!IsWalkableSurface(Hit.Normal))
+			{
+				Danger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+			}
+			else
+			{
+				Danger = 0.f;
+			}
+		}
+		
+		DangerMap.Add(Danger);
+	}
+}
+
+bool ANSBaseCompanionAI::IsWalkableSurface(const FVector& SurfaceNormal) const
+{
+	float SurfaceAndUpVectorDot = FVector::DotProduct(SurfaceNormal,FVector::UpVector);
+	float MaxSlopeRadians = FMath::DegreesToRadians(MaxWalkableSlopeAngle);
+	float MaxSlopeCos = FMath::Cos(MaxSlopeRadians);
+	
+	if (SurfaceAndUpVectorDot >= MaxSlopeCos)
+	{
+		return true;
+	}
+	
+	return false;
+}
+
+FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
+{
+	float BestInterest = TNumericLimits<float>::Lowest();
+	int32 BestIndex = INDEX_NONE;
+	
+	for (int32 i = 0; i < NumSteeringDirections; ++i)
+	{
+		if (DangerMap[i] > DangerThreshold)
+		{
+			continue;
+		}
+		
+		if (InterestMap[i] > BestInterest)
+		{
+			BestInterest = InterestMap[i];
+			BestIndex = i;
+		}
+	}
+	
+	if (BestIndex == INDEX_NONE)
+	{
+		return FVector::ZeroVector;
+	}
+	
+	return SteeringDirections[BestIndex];
+}
+
+#pragma endregion
