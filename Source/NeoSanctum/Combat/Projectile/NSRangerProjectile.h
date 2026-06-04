@@ -21,6 +21,8 @@ class NEOSANCTUM_API ANSRangerProjectile : public AActor
 
 public:
 	ANSRangerProjectile();
+	
+	void LaunchProjectile(const FVector& LaunchDirection);
 
 protected:
 	virtual void BeginPlay() override;

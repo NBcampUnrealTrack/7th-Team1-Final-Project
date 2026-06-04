@@ -39,14 +39,18 @@ protected:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TSubclassOf<ANSRangerProjectile> ProjectileClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
+	float TraceRange = 10000.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bKeepAbilityActiveForDebug = false;
 
-	UPROPERTY(EditDefaultsOnly,
-		BlueprintReadOnly,
-		Category = "GAS|Debug",
+	UPROPERTY(EditDefaultsOnly,	BlueprintReadOnly, Category = "GAS|Debug",
 		meta = (EditCondition = "bKeepAbilityActiveForDebug"))
 	float DebugActiveDuration = 1.0f;
 
@@ -54,6 +58,8 @@ private:
 	bool TrySpawnProjectile() const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 
+	bool TryGetAimPoint(FVector& OutAimPoint) const;
+	
 private:
 	void FinishDebugAbility();
 

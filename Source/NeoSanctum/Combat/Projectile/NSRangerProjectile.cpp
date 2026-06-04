@@ -48,6 +48,26 @@ void ANSRangerProjectile::BeginPlay()
 	SetLifeSpan(LifeSeconds);
 }
 
+
+void ANSRangerProjectile::LaunchProjectile(const FVector& LaunchDirection)
+{
+	if (!ProjectileMovement)
+	{
+		return;
+	}
+	
+	const FVector SafeLaunchDirection = LaunchDirection.GetSafeNormal();
+	
+	if (SafeLaunchDirection.IsNearlyZero())
+	{
+		return;
+	}
+	
+	// SpawnRotation만 믿지 않고 ProjectileMovement 속도를 명시적으로 지정
+	SetActorRotation(SafeLaunchDirection.Rotation());
+	ProjectileMovement->Velocity = SafeLaunchDirection * ProjectileMovement->InitialSpeed;
+}
+
 void ANSRangerProjectile::IgnoreSourceActorCollision()
 {
 	if (!CollisionComponent)

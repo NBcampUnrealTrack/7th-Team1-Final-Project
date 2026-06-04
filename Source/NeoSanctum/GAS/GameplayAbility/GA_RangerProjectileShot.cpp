@@ -92,8 +92,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectile() const
 	
 	if (!ProjectileClass)
 	{
-		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning,
-			"ProjectileShot 실패. ProjectileClass가 설정되지 않음");
+		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning, "ProjectileShot 실패. ProjectileClass가 설정되지 않음");
 		return false;
 	}
 	
@@ -108,6 +107,25 @@ bool UGA_RangerProjectileShot::TrySpawnProjectile() const
 		);
 	}
 	
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	
+	FVector AimPoint = MuzzleLocation + MuzzleTransform.GetRotation().GetForwardVector() * TraceRange;
+	
+	if (!TryGetAimPoint(AimPoint))
+	{
+		// 조준점 계싼에 실패하면 총구 Forward 기준으로 발사
+		AimPoint = MuzzleLocation + MuzzleTransform.GetRotation().GetForwardVector() * TraceRange;
+	}
+	
+	const FVector LaunchDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+	
+	if (LaunchDirection.IsNearlyZero())
+	{
+		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning, "ProjectileShot 실패. 발사 방향을 계산할 수 없음");
+		
+		return false;
+	}
+	
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.Owner = AvatarActor;
 	SpawnParameters.Instigator = Cast<APawn>(AvatarActor);
@@ -115,12 +133,18 @@ bool UGA_RangerProjectileShot::TrySpawnProjectile() const
 	
 	ANSRangerProjectile* Projectile = World->SpawnActor<ANSRangerProjectile>(
 		ProjectileClass,
-		MuzzleTransform.GetLocation(),
-		MuzzleTransform.GetRotation().Rotator(),
+		MuzzleLocation,
+		LaunchDirection.Rotation(),
 		SpawnParameters
 	);
 	
-	return IsValid(Projectile);
+	if (!IsValid(Projectile))
+	{
+		return false;
+	}
+	
+	Projectile->LaunchProjectile(LaunchDirection);
+	return true;
 }
 
 bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransform) const
@@ -141,6 +165,54 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	}
 	
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+bool UGA_RangerProjectileShot::TryGetAimPoint(FVector& OutAimPoint) const
+{
+	UWorld* World = GetWorld();
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+	
+	if (!World || !IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+	
+	FVector TraceStart;
+	
+	if (!PlayerCharacter->TryGetAimTraceStartLocation(TraceStart))
+	{
+		return  false;
+	}
+	
+	const FVector TraceEnd = TraceStart + PlayerCharacter->GetControlRotation().Vector() * TraceRange;
+	
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(RangerProjectileAimTrace), 
+		false,
+		PlayerCharacter
+	);
+	QueryParams.AddIgnoredActor(PlayerCharacter);
+	
+	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
+	
+	if (IsValid(CurrentWeapon))
+	{
+		QueryParams.AddIgnoredActor(CurrentWeapon);
+	}
+	
+	const bool bHit = World->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+	
+	// 맞은 지점이 있으면 그 지점으로, 없으면 최대 사거리 지점으로 발사 방향 설정
+	OutAimPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
+	return true;
 }
 
 void UGA_RangerProjectileShot::FinishDebugAbility()
