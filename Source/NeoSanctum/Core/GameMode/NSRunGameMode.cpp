@@ -10,6 +10,7 @@
 #include "NeoSanctum/Core/Stage/NSMonsterPoolManager.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
@@ -32,13 +33,13 @@ void ANSRunGameMode::BeginPlay()
 	if (HasAuthority())
 	{
 		NSStageManager = NewObject<UNSStageManager>(this);
-		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
-		
 		// 클리어 판정 알림용 바인딩
 		NSStageManager->OnStageCleared.BindUObject(
 			this,
 			&ANSRunGameMode::NotifyStageCleared_Implementation
 		);
+		
+		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
 	}
 	
 	
@@ -140,6 +141,27 @@ void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)
 
 }
 
+void ANSRunGameMode::RequestSpawnMonster_Implementation(
+	UClass* CharacterClass, 
+	UNSEnemyData* EnemyData, 
+	const FVector& Location,
+	const FRotator& Rotation)
+{
+	if (!HasAuthority() || !NSMonsterPoolManager || !CharacterClass || !EnemyData)
+	{
+		return;
+	}
+
+	ACharacter* Spawned = NSMonsterPoolManager->GetPooledMonster(
+		CharacterClass,
+		EnemyData,
+		Location, 
+		Rotation);
+	if (Spawned && NSStageManager)
+	{
+		NSStageManager->AddEnemyCount(1);
+	}
+}
 
 void ANSRunGameMode::HandleRunOver(bool bIsClear)
 {
@@ -203,14 +225,6 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 	if (NSStageManager)
 	{
 		NSStageManager->SetEnemyCount(Count);
-	}
-}
-
-void ANSRunGameMode::AddEnemyCount(int32 Count)
-{
-	if (HasAuthority() && NSStageManager)
-	{
-		NSStageManager->AddEnemyCount(Count);
 	}
 }
 
