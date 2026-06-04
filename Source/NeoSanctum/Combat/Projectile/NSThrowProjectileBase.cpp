@@ -27,10 +27,10 @@ ANSThrowProjectileBase::ANSThrowProjectileBase()
 
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->UpdatedComponent = CollisionComponent;
-	ProjectileMovementComponent->InitialSpeed = 0.0f;
+	ProjectileMovementComponent->InitialSpeed = 1500.0f;
 	ProjectileMovementComponent->MaxSpeed = 3000.0f;
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
-	ProjectileMovementComponent->bShouldBounce = false;
+	ProjectileMovementComponent->bShouldBounce = true;
 }
 
 void ANSThrowProjectileBase::InitializeThrowActor(

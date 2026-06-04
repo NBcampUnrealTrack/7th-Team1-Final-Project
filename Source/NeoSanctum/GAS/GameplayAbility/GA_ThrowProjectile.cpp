@@ -217,7 +217,7 @@ void UGA_ThrowProjectile::AttachHeldMesh()
 	HoldMeshComponent->RegisterComponent();
 	HoldMeshComponent->AttachToComponent(
 		Character->GetMesh(),
-		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
 		HoldAttachSocketName
 	);
 	HoldMeshComponent->SetRelativeTransform(HoldRelativeTransform);

@@ -85,9 +85,11 @@ protected:
 	FName ReleaseSectionName = TEXT("Release");
 	
 	// Hold 단계에서 손에 메쉬를 붙히는 타이밍을 정해주는 Event Tag
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")
 	FGameplayTag AttachTag;
 	
 	// Release 단계에서 손에 붙어있던 메쉬를 제거하고 Projectile을 던지는 타이밍을 정해주는 Event Tag
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")
 	FGameplayTag ReleaseTag;
 	
 protected:
