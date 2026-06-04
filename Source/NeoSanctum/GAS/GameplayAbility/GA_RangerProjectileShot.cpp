@@ -161,11 +161,6 @@ void UGA_RangerProjectileShot::OnTargetDataReadyCallback(
 	}
 	
 	OnProjectileTargetDataReady(LocalTargetDataHandle);
-	
-	ASC->ConsumeClientReplicatedTargetData(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActivationInfo().GetActivationPredictionKey()
-	);
 }
 
 void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
@@ -290,7 +285,7 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 	OutHitResult.TraceStart = TraceStart;
 	OutHitResult.TraceEnd = TraceEnd;
 	
-	// Miss도 서버 스폰 방향 계산에 사용하기 위해 TraceEnd를 Aimpoint로 채움
+	// Miss도 서버 스폰 방향 계산에 사용하기 위해 TraceEnd를 AimPoint로 채움
 	if (!bHit)
 	{
 		OutHitResult.Location = TraceEnd;
