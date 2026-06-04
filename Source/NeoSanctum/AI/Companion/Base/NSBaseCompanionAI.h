@@ -92,7 +92,10 @@ protected:
 	float GroundSampleRadius = 150.f;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
-	int32 GroundSampleCound = 4;
+	int32 GroundSampleCount = 4;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float GroundLookAheadDistance = 200.f;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float MaxClimbSpeed = 600.f;
