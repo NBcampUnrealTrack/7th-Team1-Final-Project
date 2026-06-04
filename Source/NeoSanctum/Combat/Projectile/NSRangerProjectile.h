@@ -11,7 +11,7 @@
 class UProjectileMovementComponent;
 class USphereComponent;
 
-/*
+/**
  * Ranger 투사체 기본 Actor
  * 이동과 충돌은 Projectile이 담당하고, GA는 스폰까지만 담당
  */
