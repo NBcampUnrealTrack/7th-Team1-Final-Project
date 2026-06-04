@@ -11,4 +11,5 @@ namespace NSGameplayTags
 	
 	// Ranger Ability
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_AutoFire);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_ProjectileShot);
 }

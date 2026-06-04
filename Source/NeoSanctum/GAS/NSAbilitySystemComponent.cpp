@@ -113,8 +113,8 @@ void UNSAbilitySystemComponent::ProcessAbilityInput(float DeltaTime, bool bGameP
 		}
 		
 		const UGA_SkillBase* SkillAbility = Cast<UGA_SkillBase>(AbilitySpec->Ability);
-		const bool bShouldActivateOnPress = !SkillAbility 
-			|| SkillAbility->GetActivationPolicy() == ENSAbilityActivationPolicy::OnInputTriggered;
+		const bool bShouldActivateOnPress = !SkillAbility ||
+			SkillAbility->GetActivationPolicy() == ENSAbilityActivationPolicy::OnInputTriggered;
 		
 		if (bShouldActivateOnPress)
 		{
