@@ -6,7 +6,7 @@
 #include "UObject/Object.h"
 #include "NSMonsterPoolManager.generated.h"
 
-
+class UNSEnemyData;
 
 USTRUCT()
 struct FNSMonsterPoolArray
@@ -23,11 +23,17 @@ class NEOSANCTUM_API UNSMonsterPoolManager : public UObject
 	GENERATED_BODY()
 	
 public:
-	ACharacter* GetPooledMonster(UClass* MonsterClass, const FVector& Location, const FRotator& Rotation);
+	ACharacter* GetPooledMonster(
+		UClass* CharacterClass,
+		UNSEnemyData* EnemyData,
+		const FVector& Location,
+		const FRotator& Rotation);
+
 	void ReturnMonsterToPool(ACharacter* Monster);
 
 private:
+	// 풀 키 = 데이터 에셋 (종류별 독립 풀)
 	UPROPERTY(Transient)
-	TMap<UClass*, FNSMonsterPoolArray> PoolMap;
+	TMap<TObjectPtr<UNSEnemyData>, FNSMonsterPoolArray> PoolMap;
 	
 };

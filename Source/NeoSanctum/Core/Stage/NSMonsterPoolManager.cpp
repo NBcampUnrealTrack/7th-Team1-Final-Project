@@ -6,14 +6,19 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 
 
-ACharacter* UNSMonsterPoolManager::GetPooledMonster(UClass* MonsterClass, const FVector& Location, const FRotator& Rotation)
+ACharacter* UNSMonsterPoolManager::GetPooledMonster(
+	UClass* CharacterClass,
+	UNSEnemyData* EnemyData,
+	const FVector& Location,
+	const FRotator& Rotation)
 {
-	if (!GetWorld() || !MonsterClass)
+	if (!GetWorld() || !CharacterClass || !EnemyData)
 	{
 		return nullptr;
 	}
 
-	FNSMonsterPoolArray& Pool = PoolMap.FindOrAdd(MonsterClass);
+	// 데이터 에셋 기준 풀
+	FNSMonsterPoolArray& Pool = PoolMap.FindOrAdd(EnemyData);
 
 	// 풀 대기 액터 검색
 	for (ACharacter* Candidate : Pool.Monsters)
@@ -28,19 +33,22 @@ ACharacter* UNSMonsterPoolManager::GetPooledMonster(UClass* MonsterClass, const 
 		}
 	}
 
-	// 풀 부족하면 신규 생성
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	// 풀 부족하면 신규 생성 (BeginPlay 전 데이터 주입)
+	FTransform SpawnTransform(Rotation, Location);
 
-	ACharacter* NewActor = GetWorld()->SpawnActor<ACharacter>(
-		MonsterClass, FTransform(Rotation, Location), SpawnParams);
+	ANSEnemyCharacterBase* NewEnemy = GetWorld()->SpawnActorDeferred<ANSEnemyCharacterBase>(
+		CharacterClass, SpawnTransform,
+		nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
-	if (NewActor)
+	if (NewEnemy)
 	{
-		Pool.Monsters.Add(NewActor);
+		NewEnemy->SetEnemyData(EnemyData);
+		NewEnemy->FinishSpawning(SpawnTransform);
+		Pool.Monsters.Add(NewEnemy);
 	}
 
-	return NewActor;
+	return NewEnemy;
 }
 
 void UNSMonsterPoolManager::ReturnMonsterToPool(ACharacter* Monster)
