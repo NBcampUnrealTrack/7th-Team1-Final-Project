@@ -51,6 +51,9 @@ protected:
 	UFUNCTION()
 	void OnThrowMontageInterrupted();
 
+	void AddDeactivateHandIKTag();
+	void RemoveDeactivateHandIKTag();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")
 	TObjectPtr<UAnimMontage> AnimMontage;
@@ -64,4 +67,6 @@ protected:
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_PlayMontageAndWait> ThrowMontageTask;
+
+	bool bDeactivateHandIKTagAdded = false;
 };

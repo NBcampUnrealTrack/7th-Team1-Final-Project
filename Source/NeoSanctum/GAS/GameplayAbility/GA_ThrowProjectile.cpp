@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_ThrowProjectile::UGA_ThrowProjectile()
 {
@@ -56,6 +57,7 @@ void UGA_ThrowProjectile::ActivateAbility(
 	ThrowMontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
 	ThrowMontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
 	ThrowMontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
+	AddDeactivateHandIKTag();
 	ThrowMontageTask->ReadyForActivation();
 	
 	if (ActorInfo->IsLocallyControlled())
@@ -89,6 +91,7 @@ void UGA_ThrowProjectile::EndAbility(
 	bool bWasCancelled)
 {
 	// TODO : 프리뷰 종료
+	RemoveDeactivateHandIKTag();
 
 	// 몽타주 종료
 	if (ThrowMontageTask)
@@ -120,4 +123,33 @@ void UGA_ThrowProjectile::OnThrowMontageInterrupted()
 		true,
 		true
 	);
+}
+
+void UGA_ThrowProjectile::AddDeactivateHandIKTag()
+{
+	if (bDeactivateHandIKTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Deactivate_HandIK);
+		bDeactivateHandIKTagAdded = true;
+	}
+}
+
+void UGA_ThrowProjectile::RemoveDeactivateHandIKTag()
+{
+	if (!bDeactivateHandIKTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Deactivate_HandIK);
+	}
+
+	bDeactivateHandIKTagAdded = false;
 }
