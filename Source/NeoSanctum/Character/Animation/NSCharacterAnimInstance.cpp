@@ -51,7 +51,7 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateAimData();
 	UpdateTurnInPlaceData();
 	UpdateTimeToLand();
-	UpdateHandIKData();
+	UpdateHandIKData(DeltaSeconds);
 
 	PreviousVerticalVelocity = VerticalVelocity;
 	bWasFalling = MovementMode == ENSAnimMovementMode::InAir;
@@ -368,15 +368,15 @@ void UNSCharacterAnimInstance::UpdateTimeToLand()
 	TimeToLand = DistanceToGround / FMath::Max(FMath::Abs(VerticalVelocity), 1.f);
 }
 
-void UNSCharacterAnimInstance::UpdateHandIKData()
+void UNSCharacterAnimInstance::UpdateHandIKData(float DeltaSeconds)
 {
 	bActivateLeftHandIK = false;
-	LeftHandIKAlpha = 0.f;
-	LeftHandIKTransform = FTransform::Identity;
+	float TargetAlpha = 0.f;
 	
 	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerCharacter);
 	if (!PlayerCharacter)
 	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
 	
@@ -385,6 +385,7 @@ void UNSCharacterAnimInstance::UpdateHandIKData()
 	{
 		if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Deactivate_HandIK))
 		{
+			UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
 			return;
 		}
 	}
@@ -392,6 +393,7 @@ void UNSCharacterAnimInstance::UpdateHandIKData()
 	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
 	if (!IsValid(CurrentWeapon))
 	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
 	
@@ -399,12 +401,14 @@ void UNSCharacterAnimInstance::UpdateHandIKData()
 	FTransform LeftHandIKWorldTransform;
 	if (!CurrentWeapon->TryGetLeftHandIKTransform(LeftHandIKWorldTransform))
 	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
 	
 	USkeletalMeshComponent* OwningComponent = GetOwningComponent();
 	if (!IsValid(OwningComponent))
 	{
+		UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
 	
@@ -418,6 +422,13 @@ void UNSCharacterAnimInstance::UpdateHandIKData()
 		BoneSpaceRotation);
 	
 	LeftHandIKTransform = FTransform(BoneSpaceRotation, BoneSpaceLocation, FVector::OneVector);
-	bActivateLeftHandIK = true;
-	LeftHandIKAlpha = 1.f;
+	TargetAlpha = 1.f;
+	UpdateHandIKAlpha(TargetAlpha, DeltaSeconds);
+}
+
+void UNSCharacterAnimInstance::UpdateHandIKAlpha(float TargetAlpha, float DeltaSeconds)
+{
+	LeftHandIKAlpha = FMath::FInterpTo(LeftHandIKAlpha, TargetAlpha, DeltaSeconds, LeftHandIKInterpSpeed);
+	// UE_KINDA_SMALL_NUMBER : 엔진에서 사실상 0으로 보는 가장 작은 값. (0.f 같은 float보다 안전하다)
+	bActivateLeftHandIK = LeftHandIKAlpha > UE_KINDA_SMALL_NUMBER;
 }

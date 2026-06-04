@@ -91,7 +91,11 @@ protected:
 	// 공중에서 지면까지의 예상 도달 시간 계산
 	void UpdateTimeToLand();
 
-	void UpdateHandIKData();
+	// HandIK 적용을 위한 변수들 Update
+	void UpdateHandIKData(float DeltaSeconds);
+	
+	// HandIK Alpha값을 업데이트 하는 래퍼 : 보간을 통해 너무 급격하게 변하지 않게 했음
+	void UpdateHandIKAlpha(float TargetAlpha, float DeltaSeconds);
 
 protected:
 	// 캐릭터, 캐릭터 무브먼트 컴포넌트 등 필요한 참조들
@@ -201,6 +205,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Hand IK")
 	FTransform LeftHandIKTransform = FTransform::Identity;
+
+	// HandIK를 갑자기 비활성화할 때 보간을 하기 위한 위한 수치
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Hand IK", meta = (ClampMin = "0.0"))
+	float LeftHandIKInterpSpeed = 12.f;
 
 protected:
 	// AimOffset용 조준 방향값
