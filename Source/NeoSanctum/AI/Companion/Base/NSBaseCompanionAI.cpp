@@ -100,16 +100,36 @@ void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 {
-	const FVector Start = GetActorLocation();
+	float OutZ;
+	
+	if(SampleHighestGround(OutZ))
+	{
+		float RawTarget = OutZ + Altitude;
+		if (!bHasValidGround)
+		{
+			SmoothedTargetHeight = RawTarget;
+			bHasValidGround = true;
+		}
+		else
+		{
+			float DesiredPoint = RawTarget - SmoothedTargetHeight;
+			SmoothedTargetHeight += FMath::Clamp(DesiredPoint, -MaxDescendSpeed * DeltaSeconds, MaxClimbSpeed * DeltaSeconds);
+		}
+		
+		const float DesiredMoveDis = SmoothedTargetHeight - GetActorLocation().Z;
+		if (FMath::Abs(DesiredMoveDis) > AltitudeDeadZone)
+		{
+			const float InputZ = FMath::Clamp(DesiredMoveDis / AltitudeCorrectionRange, -1.f, 1.f);
+			AddMovementInput(FVector::UpVector, InputZ);
+		}
+	}
+	
+	/*
 	const FVector End = Start - FVector(0.f,0.f,GroundTraceDistance);
 	
 	FHitResult Hit;
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
-	
-	float OutZ;
-	
-	if(SampleHighestGround(OutZ))
 	
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, CollisionParams))
 	{
@@ -122,6 +142,7 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 			AddMovementInput(FVector::UpVector, InputZ);
 		}
 	}
+	*/
 }
 
 bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
