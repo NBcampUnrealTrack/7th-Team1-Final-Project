@@ -91,6 +91,8 @@ protected:
 	// 공중에서 지면까지의 예상 도달 시간 계산
 	void UpdateTimeToLand();
 
+	void UpdateHandIKData();
+
 protected:
 	// 캐릭터, 캐릭터 무브먼트 컴포넌트 등 필요한 참조들
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|References")
@@ -101,7 +103,8 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|References")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComponent;
-
+	
+protected:
 	// 이동 속도와 방향관련 변수들
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	FVector Velocity = FVector::ZeroVector;
@@ -115,6 +118,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	FVector LocalAcceleration = FVector::ZeroVector;
 
+protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	float Speed2D = 0.f;
 
@@ -142,6 +146,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Locomotion")
 	bool bShouldMove = false;
 
+protected:
 	// Chooser 선택에 사용하는 상태 Enum 값들
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
 	ENSAnimMovementMode MovementMode = ENSAnimMovementMode::OnGround;
@@ -161,6 +166,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|State")
 	ENSAnimGait StopGait = ENSAnimGait::Walk;
 
+protected:
 	// Chooser 선택에 사용하는 전이 상태 bool 값들
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
 	bool bIsStarting = false;
@@ -183,6 +189,20 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Chooser")
 	float TimeToLand = 0.f;
 
+protected:
+	
+	// HandIK 관련
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Hand IK")
+	bool bActivateLeftHandIK = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Hand IK")
+	float LeftHandIKAlpha = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Hand IK")
+	FTransform LeftHandIKTransform = FTransform::Identity;
+
+protected:
 	// AimOffset용 조준 방향값
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYaw = 0.f;

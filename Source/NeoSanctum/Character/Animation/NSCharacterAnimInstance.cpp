@@ -2,10 +2,15 @@
 
 #include "NSCharacterAnimInstance.h"
 
+#include "AbilitySystemComponent.h"
 #include "CharacterTrajectoryComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 void UNSCharacterAnimInstance::NativeInitializeAnimation()
 {
@@ -46,6 +51,7 @@ void UNSCharacterAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateAimData();
 	UpdateTurnInPlaceData();
 	UpdateTimeToLand();
+	UpdateHandIKData();
 
 	PreviousVerticalVelocity = VerticalVelocity;
 	bWasFalling = MovementMode == ENSAnimMovementMode::InAir;
@@ -92,6 +98,9 @@ void UNSCharacterAnimInstance::ResetRuntimeData()
 	bShouldTurnInPlace = false;
 	bShouldSpinTransition = false;
 	TimeToLand = 0.f;
+	bActivateLeftHandIK = false;
+	LeftHandIKAlpha = 0.f;
+	LeftHandIKTransform = FTransform::Identity;
 
 	AimYaw = 0.f;
 	AimPitch = 0.f;
@@ -357,4 +366,58 @@ void UNSCharacterAnimInstance::UpdateTimeToLand()
 	const float DistanceToGround = FMath::Max(0.f, HitResult.Distance - CollisionHalfHeight);
 	// 현재 하강 속도 기준 지면 도달 시간 계산
 	TimeToLand = DistanceToGround / FMath::Max(FMath::Abs(VerticalVelocity), 1.f);
+}
+
+void UNSCharacterAnimInstance::UpdateHandIKData()
+{
+	bActivateLeftHandIK = false;
+	LeftHandIKAlpha = 0.f;
+	LeftHandIKTransform = FTransform::Identity;
+	
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerCharacter);
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+	
+	// 필요한 경우 State.Deactivate.HandIK 태그를 통해 임시로 HandIK를 비활성화 할 수 있음
+	if (const UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Deactivate_HandIK))
+		{
+			return;
+		}
+	}
+	
+	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
+	if (!IsValid(CurrentWeapon))
+	{
+		return;
+	}
+	
+	// 무기에서 HandIK용 Socket Transform을 받아옴
+	FTransform LeftHandIKWorldTransform;
+	if (!CurrentWeapon->TryGetLeftHandIKTransform(LeftHandIKWorldTransform))
+	{
+		return;
+	}
+	
+	USkeletalMeshComponent* OwningComponent = GetOwningComponent();
+	if (!IsValid(OwningComponent))
+	{
+		return;
+	}
+	
+	FVector BoneSpaceLocation = FVector::ZeroVector;
+	FRotator BoneSpaceRotation = FRotator::ZeroRotator;
+	OwningComponent->TransformToBoneSpace(
+		TEXT("hand_r"),
+		LeftHandIKWorldTransform.GetLocation(),
+		LeftHandIKWorldTransform.Rotator(),
+		BoneSpaceLocation,
+		BoneSpaceRotation);
+	
+	LeftHandIKTransform = FTransform(BoneSpaceRotation, BoneSpaceLocation, FVector::OneVector);
+	bActivateLeftHandIK = true;
+	LeftHandIKAlpha = 1.f;
 }
