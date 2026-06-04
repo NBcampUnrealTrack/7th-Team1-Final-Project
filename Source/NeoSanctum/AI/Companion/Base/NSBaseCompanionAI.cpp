@@ -120,6 +120,29 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 	}
 }
 
+bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
+{
+	const FVector StartWorldLocation = WorldXY;
+	const FVector EndWorldLocation = WorldXY - FVector(0.f, 0.f, GroundTraceDistance);
+	
+	FHitResult Hit;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+	
+	if (GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, ECC_Visibility, CollisionParams))
+	{
+		OutZ = Hit.ImpactPoint.Z;
+		return true;
+	}
+	return false;
+}
+
+bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
+{
+	
+	return false;
+}
+
 void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 {
 	if (!FloatingPawnMovementComponent) return;
@@ -241,16 +264,6 @@ FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
 	}
 	
 	return SteeringDirections[BestIndex];
-}
-
-bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
-{
-	return false;
-}
-
-bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
-{
-	return false;
 }
 
 #pragma endregion
