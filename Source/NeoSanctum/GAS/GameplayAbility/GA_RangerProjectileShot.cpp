@@ -193,7 +193,6 @@ bool UGA_RangerProjectileShot::TryGetAimPoint(FVector& OutAimPoint) const
 		false,
 		PlayerCharacter
 	);
-	QueryParams.AddIgnoredActor(PlayerCharacter);
 	
 	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
 	
