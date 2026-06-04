@@ -243,4 +243,14 @@ FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
 	return SteeringDirections[BestIndex];
 }
 
+bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
+{
+	return false;
+}
+
+bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
+{
+	return false;
+}
+
 #pragma endregion
