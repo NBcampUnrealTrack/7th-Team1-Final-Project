@@ -6,12 +6,14 @@
 #include "CommonUserWidget.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "GameplayTagContainer.h"
+#include "Engine/DataTable.h"
 #include "NSSkillSlotWidget.generated.h"
 
 class UCommonTextBlock;
 class UImage;
 class UMaterialInstanceDynamic;
 struct FNSSkillCooldownMessage;
+struct FNSSkillUIData;
 
 /**
  *  스킬의 쿨타임을 시각적으로 보여주는 위젯
@@ -28,12 +30,17 @@ public:
 	void ResetCooldown();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FGameplayTag BoundSkillTag;
+	//슬롯에 적용할 UI데이터
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category =  "Skill")
+	FDataTableRowHandle SkillUIDataRow;
 	
 private:
 	//GMS 쿨타임 시작 수신
 	void HandleCooldownMessage(
 		FGameplayTag Channel,
 		const FNSSkillCooldownMessage& Message);
+	//DataTable Row에서 아이콘과 SkillTag를 적용
+	void ApplySkillUIData();
 	
 	//스킬 아이콘
 	UPROPERTY(meta = (BindWidget))

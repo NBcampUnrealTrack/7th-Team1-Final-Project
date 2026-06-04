@@ -95,15 +95,13 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 			continue;
 		}
 		AugmentCardWidgets.Add(NewCard);
-		//테스트용 임시 데이터
-		NewCard->SetAugmentName(
-			FString::Printf(
-				TEXT("증강 선택지 %d"),Index +1));
-		NewCard->SetAugmentDescription(
-			TEXT("증강 설명 테스트"));
-		//HorizontalBox에 증강추가
-		UCanvasPanelSlot* CardSlot = 
-			ChoiceRootCanvas->AddChildToCanvas(NewCard);
+		
+			NewCard->SetAugmentName(TEXT(""));
+    		NewCard->SetAugmentDescription(TEXT(""));
+    		NewCard->SetAugmentIcon(nullptr);
+    
+    		UCanvasPanelSlot* CardSlot =
+    			ChoiceRootCanvas->AddChildToCanvas(NewCard);
 
 		if (CardSlot)
 		{

@@ -47,6 +47,7 @@ public:
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
 
+
 private:
 	//카드 영역 표시 (대기 > 0)
 	void ShowCardSection();

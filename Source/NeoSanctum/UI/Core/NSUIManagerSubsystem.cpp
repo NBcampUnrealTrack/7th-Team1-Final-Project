@@ -5,34 +5,94 @@
 #include "Blueprint/UserWidget.h"
 #include "NeoSanctum/UI/HUD/NSHUDWidget.h"
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
+#include "Engine/DataTable.h"
+#include "UObject/ConstructorHelpers.h"
+#include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 
+UNSUIManagerSubsystem::UNSUIManagerSubsystem()
+{
+	static ConstructorHelpers::FObjectFinder<UDataTable>
+	UIWidgetTableFinder(
+		TEXT("/Game/NeoSanctum/Data/UI/DT_UIWidget.DT_UIWidget"));
+	if (UIWidgetTableFinder.Succeeded())
+	{
+		UIWidgetDataTable = UIWidgetTableFinder.Object;
+	}
+}
+TSubclassOf<UUserWidget>
+UNSUIManagerSubsystem::GetWidgetClassFromTable(
+	FName RowName) const
+{
+	if (!UIWidgetDataTable)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[UI] DT_UIWidget을 찾지 못했습니다."));
+		return nullptr;
+	}
+	const FNSUIWidgetData* WidgetData =
+		UIWidgetDataTable->FindRow<FNSUIWidgetData>(
+			RowName,
+			TEXT("GetWidgetClassFromTable"));
+	if (!WidgetData)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[UI] Row를 찾지 못했습니다: %s"),
+			*RowName.ToString());
+		return nullptr;
+	}
+	return WidgetData->WidgetClass.LoadSynchronous();
+}
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 {
-	// 테스트 로직으로 인해서 !HUDWidgetClass 검사 로직 제거
 	if (!OwningPlayer)
 	{
 		return;
 	}
-	//TODO(영웅) : UI 설정 DataAsset 기반 HUD 클래스 관리 추가
-	
-	//이미 HUD가 있으면 중복 생성 X
+
 	if (HUDWidget)
 	{
 		return;
 	}
-	
-	FString HUDPath = TEXT("/Game/NeoSanctum/UI/HUD/WBP_HUD.WBP_HUD_C");
-	UClass* LoadedHUDClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *HUDPath);
 
-	if (LoadedHUDClass)
+	TSubclassOf<UNSHUDWidget> WidgetClassToUse = nullptr;
+
+	//데이터테이블에 없을경우 기존 HUD위젯으로
+	TSubclassOf<UUserWidget> LoadedWidgetClass =
+		GetWidgetClassFromTable(TEXT("HUD"));
+
+	//데이터테이블에서 타입을 검증
+	if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UNSHUDWidget::StaticClass()))
 	{
-		HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, LoadedHUDClass);
-		if (HUDWidget)
-		{
-			HUDWidget->AddToViewport();
-		}
+		WidgetClassToUse = *LoadedWidgetClass;
 	}
+
+	//데이터테이블에 없을시 에디터에서 지정한 위젯을 사용
+	if (!WidgetClassToUse)
+	{
+		WidgetClassToUse = HUDWidgetClass;
+	}
+
+	//데이터테이블과 fallback에 없으면 종료
+	if (!WidgetClassToUse)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UI Data] HUD 위젯 클래스를 찾지 못했습니다."));
+		return;
+	}
+
+	HUDWidget = CreateWidget<UNSHUDWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
+
+	if (HUDWidget)
+	{
+		HUDWidget->AddToViewport();
+	}
+
 	
 	/*
 	HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, HUDWidgetClass);
@@ -157,7 +217,7 @@ void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
 
 	if (!HUDWidget)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[증강] 실패: HUDWidget이 nullptr 입니다"));
+		UE_LOG(LogTemp, Warning, TEXT("[증강] 실패: HUDWidget이 nullptr 입니다"));
 		return;
 	}
 
@@ -209,29 +269,41 @@ UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 {
-	// 테스트 로직으로 인해서 !TitleWidgetClass 검사 로직 삭제
-	if (!OwningPlayer)
-	{
-		return;
-	}
-	
-	if (TitleWidget)
-	{
-		return; 
-	}
-	
-	FString TitlePath = TEXT("/Game/NeoSanctum/UI/Menu/WBP_Title.WBP_Title_C");
-	UClass* LoadedTitleClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *TitlePath);
+		if (!OwningPlayer)
+		{
+			return;
+		}
 
-	if (LoadedTitleClass)
-	{
-		TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, LoadedTitleClass);
+		if (TitleWidget)
+		{
+			return;
+		}
+	
+		//데이터테이블에 없을경우 기존 Title위젯으로
+		TSubclassOf<UUserWidget> WidgetClassToUse =
+			GetWidgetClassFromTable(TEXT("Title"));
+
+		//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴 
+		if (!WidgetClassToUse)
+		{
+			WidgetClassToUse = TitleWidgetClass;
+		}
+
+		//데이터테이블과 fallback 이 모두 없으면 종료
+		if (!WidgetClassToUse)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
+			return;
+		}
+
+		TitleWidget = CreateWidget<UUserWidget>(
+			OwningPlayer,
+			WidgetClassToUse);
+
 		if (TitleWidget)
 		{
 			TitleWidget->AddToViewport();
-		}
-	}
-	
+		}	
 	/*
 	TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, TitleWidgetClass);
 	if (TitleWidget)
