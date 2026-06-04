@@ -17,7 +17,9 @@ public:
 	FName GetAttachSocketName() const;
 	
 	// 자식 클래스에서 재정의
+
 	virtual bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
+	virtual bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon")
@@ -26,4 +28,7 @@ protected:
 	// 캐릭터의 어느 소켓에 붙일지
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon")
 	FName AttachSocketName = TEXT("");
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|IK")
+	FName LeftHandIKSocketName = TEXT("LeftHandIK");
 };
