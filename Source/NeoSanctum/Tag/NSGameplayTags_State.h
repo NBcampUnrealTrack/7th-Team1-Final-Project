@@ -10,4 +10,5 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dead);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Invincible);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Dashing);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Deactivate_HandIK);
 }
