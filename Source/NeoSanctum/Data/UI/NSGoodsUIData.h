@@ -3,7 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
-#include "GamePlayTagContainer.h"
+#include "GameplayTagContainer.h"
 #include "NSGoodsUIData.generated.h"
 
 class UTexture2D;
