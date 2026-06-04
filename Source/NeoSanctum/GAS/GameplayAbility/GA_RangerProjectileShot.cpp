@@ -168,6 +168,29 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	
+	// 디버그
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	
+	if (bDrawDebugProjectileLaunch && ActorInfo && ActorInfo->IsLocallyControlled())
+	{
+		FVector AimPoint;
+
+		if (TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
+		{
+			FTransform MuzzleTransform;
+
+			if (TryGetAttackOriginTransform(MuzzleTransform))
+			{
+				// Cyan: 로컬 조작자가 계산한 예측 발사 방향
+				DrawDebugProjectileLaunch(
+					MuzzleTransform.GetLocation(),
+					AimPoint,
+					FColor::Cyan
+				);
+			}
+		}
+	}
+	
 	if (AvatarActor && AvatarActor->HasAuthority())
 	{
 		TrySpawnProjectileFromTargetData(TargetDataHandle);
@@ -292,33 +315,24 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 		OutHitResult.ImpactPoint = TraceEnd;
 	}
 	
+	// 디버그
+	if (bDrawDebugProjectileAimTrace)
+	{
+		DrawDebugProjectileAimTrace(TraceStart, TraceEnd, OutHitResult, bHit);
+	}
+	
 	return true;
 }
 
 bool UGA_RangerProjectileShot::TrySpawnProjectileFromTargetData(
 	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
 {
-	if (TargetDataHandle.Num() <= 0)
+	FVector AimPoint;
+	
+	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
 	{
 		return false;
 	}
-	
-	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
-	
-	if (!TargetData)
-	{
-		return false;
-	}
-	
-	const FHitResult* ClientHitResult = TargetData->GetHitResult();
-	
-	if (!ClientHitResult)
-	{
-		return false;
-	}
-	
-	const FVector AimPoint = ClientHitResult->bBlockingHit ?
-		ClientHitResult->ImpactPoint : ClientHitResult->TraceEnd;
 	
 	return TrySpawnProjectileAtAimPoint(AimPoint);
 }
@@ -357,6 +371,16 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 	{
 		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning, "ProjectileShot 실패. 발사 방향을 계산할 수 없음");
 		return false;
+	}
+	
+	// 디버그
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	const bool bIsLocallyControlled = Pawn && Pawn->IsLocallyControlled();
+
+	if (bDrawDebugProjectileLaunch && !bIsLocallyControlled)
+	{
+		// Orange: 서버가 원격 클라이언트 발사를 처리한 실제 발사 방향
+		DrawDebugProjectileLaunch(MuzzleLocation, AimPoint, FColor::Orange);
 	}
 	
 	FActorSpawnParameters SpawnParameters;
@@ -398,6 +422,127 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	}
 
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+bool UGA_RangerProjectileShot::TryGetAimPointFromTargetData(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FVector& OutAimPoint) const
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+
+	if (!TargetData)
+	{
+		return false;
+	}
+
+	const FHitResult* HitResult = TargetData->GetHitResult();
+
+	if (!HitResult)
+	{
+		return false;
+	}
+
+	// Hit가 없으면 TraceEnd를 조준점으로 사용
+	OutAimPoint = HitResult->bBlockingHit ? HitResult->ImpactPoint : HitResult->TraceEnd;
+	return true;
+}
+
+void UGA_RangerProjectileShot::DrawDebugProjectileAimTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	const FHitResult& HitResult,
+	bool bHit) const
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
+	const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+	const FVector DebugDirection = (DebugEnd - TraceStart).GetSafeNormal();
+
+	if (DebugDirection.IsNearlyZero())
+	{
+		return;
+	}
+	
+	const float DebugDistance = static_cast<float>(FVector::Dist(TraceStart, DebugEnd));
+	const float AppliedOffset =
+		FMath::Clamp(DebugAimTraceStartOffset, 0.0f, FMath::Max(DebugDistance - 10.0f, 0.0f));
+
+	const FVector DebugStart = TraceStart + DebugDirection * AppliedOffset;
+	
+	// 초록: 허공 조준, 빨강: 조준 Trace 명중
+	DrawDebugLine(
+		World,
+		DebugStart,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+
+	DrawDebugPoint(
+		World,
+		DebugEnd,
+		DebugPointSize,
+		DebugColor,
+		false,
+		DebugLineDuration
+	);
+}
+
+void UGA_RangerProjectileShot::DrawDebugProjectileLaunch(
+	const FVector& MuzzleLocation,
+	const FVector& AimPoint,
+	const FColor& DebugColor) const
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	const FVector LaunchDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+
+	if (LaunchDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FVector DebugEnd = MuzzleLocation + LaunchDirection * 1000.0f;
+
+	// 총구에서 실제 발사 방향으로 짧게 표시
+	DrawDebugLine(
+		World,
+		MuzzleLocation,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+
+	DrawDebugPoint(
+		World,
+		MuzzleLocation,
+		DebugPointSize,
+		DebugColor,
+		false,
+		DebugLineDuration
+	);
 }
 
 void UGA_RangerProjectileShot::FinishDebugAbility()

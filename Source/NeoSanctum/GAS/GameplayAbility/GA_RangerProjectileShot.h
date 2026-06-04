@@ -39,10 +39,10 @@ protected:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TSubclassOf<ANSRangerProjectile> ProjectileClass;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	float TraceRange = 10000.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 
@@ -50,30 +50,69 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bKeepAbilityActiveForDebug = false;
 
-	UPROPERTY(EditDefaultsOnly,	BlueprintReadOnly, Category = "GAS|Debug",
+	UPROPERTY(EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "GAS|Debug",
 		meta = (EditCondition = "bKeepAbilityActiveForDebug"))
 	float DebugActiveDuration = 1.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bDrawDebugProjectileAimTrace = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	bool bDrawDebugProjectileLaunch = false;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineDuration = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugLineThickness = 1.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugPointSize = 12.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
+	float DebugAimTraceStartOffset = 200.0f;
+
 private:
 	void FireProjectileShot();
-	
+
 	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
 	void OnTargetDataReadyCallback(
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
 		FGameplayTag ApplicationTag
 	);
-	
+
 	void OnProjectileTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
-	
+
 	bool TryBuildProjectileAimTrace(FHitResult& OutHitResult) const;
 	bool TrySpawnProjectileFromTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
-	
+
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
-	
+
 private:
+	// 디버그용
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
-	
+
+	bool TryGetAimPointFromTargetData(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+		FVector& OutAimPoint
+	) const;
+
+	void DrawDebugProjectileAimTrace(
+		const FVector& TraceStart,
+		const FVector& TraceEnd,
+		const FHitResult& HitResult,
+		bool bHit
+	) const;
+
+	void DrawDebugProjectileLaunch(
+		const FVector& MuzzleLocation,
+		const FVector& AimPoint,
+		const FColor& DebugColor
+	) const;
+
 private:
 	void FinishDebugAbility();
 
