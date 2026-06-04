@@ -107,6 +107,10 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
 	
+	float OutZ;
+	
+	if(SampleHighestGround(OutZ))
+	
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECollisionChannel::ECC_Visibility, CollisionParams))
 	{
 		const float DesiredHeight = Hit.ImpactPoint.Z + Altitude;
@@ -139,8 +143,49 @@ bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) cons
 
 bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 {
+	if (!FloatingPawnMovementComponent) return false;
 	
-	return false;
+	TArray<FVector> SamplePoints;
+	SamplePoints.Reset(GroundSampleCount + 2);
+        
+	const FVector DroneLocation = GetActorLocation();
+	SamplePoints.Add(DroneLocation);
+	
+	FVector ForwardXY = FloatingPawnMovementComponent->Velocity.GetSafeNormal2D();
+	
+	if (ForwardXY.IsNearlyZero())
+	{
+		ForwardXY = GetActorForwardVector().GetSafeNormal2D();
+	}
+	
+	const FVector LookAheadPoint = DroneLocation + ForwardXY * GroundLookAheadDistance;
+	SamplePoints.Add(LookAheadPoint);
+	
+	const float AngleStep = 360.f / GroundSampleCount;
+	
+	for (int32 i = 0; i < GroundSampleCount; ++i)
+	{
+		const float Angle = i * AngleStep;
+        const FVector Dir = FRotator(0.f, Angle, 0.f).Vector();
+		const FVector SamplePoint = DroneLocation + Dir * GroundSampleRadius;
+		SamplePoints.Add(SamplePoint);
+	}
+	
+	float HighestZ = TNumericLimits<float>::Lowest();
+	bool bFound = false;
+	
+	for (const FVector& Point : SamplePoints)
+	{
+		float HitZ;
+		if (TraceGroundAt(Point, HitZ))
+		{
+			bFound = true;
+			HighestZ = FMath::Max(HighestZ, HitZ);
+		}
+	}
+	
+	OutGroundZ = HighestZ;
+	return bFound;
 }
 
 void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
