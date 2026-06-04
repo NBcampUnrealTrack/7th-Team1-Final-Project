@@ -20,6 +20,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "InputCoreTypes.h"
 #include "Engine/GameInstance.h"
+#include "VerseVM/VVMRuntimeError.h"
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -39,6 +40,10 @@ ANSPlayerController::ANSPlayerController()
 
 void ANSPlayerController::BindAttributeToHUD()
 {
+	if (!IsLocalController() || bHUDAttributeBound)
+	{
+		return;
+	}
 	ANSPlayerState*NSPlayerState = GetPlayerState<ANSPlayerState>();
 	if (!NSPlayerState)
 	{
@@ -65,10 +70,16 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
+	
+	bHUDAttributeBound = true;
 }
 
 void ANSPlayerController::UpdateHUDHealthAndShield()
 {
+	if (!IsLocalController())
+	{
+		return;
+	}
 	ANSPlayerState* NSPlayerState =
 		GetPlayerState<ANSPlayerState>();
 	if (!NSPlayerState)
@@ -81,8 +92,13 @@ void ANSPlayerController::UpdateHUDHealthAndShield()
 	{
 		return;
 	}
-	UNSUIManagerSubsystem* UIManager =
-		GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
+	UNSUIManagerSubsystem* UIManager = 
+		GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
 	if (!UIManager)
 	{
 		return;
@@ -137,7 +153,19 @@ void ANSPlayerController::BeginPlay()
 		return;
 	}
 
-	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+	
 	if (!UIManager)
 	{
 		return;
@@ -195,24 +223,34 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		return;
 	}
 
-	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
-	if (!UIManager) return;
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
 
-	// 1. 심리스 트레블 전 스테이지의 HUD 잔재를 안전하게 청소
+	UNSUIManagerSubsystem* UIManager =
+		GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+
+	//심리스 트레블 전 스테이지의 HUD 잔재를 안전하게 청소
 	UIManager->ClearHUD();
 
 	FString MapName = GetWorld()->GetName();
 
-	// 2. 현재 로드된 맵이 타이틀이나 거점(HideOut)이 아닌 '진짜 인게임'일 때만 생성
-	if (!MapName.Contains(TEXT("Title")) && !MapName.Contains(TEXT("HideOut")))
+	//현재 로드된 맵이 타이틀이나 거점(HideOut)이 아닌 '진짜 인게임'일 때만 생성
+	if (!MapName.Contains(TEXT("Title")))
 	{
 		UIManager->HideTitle();
         
-		// 청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
+		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
         
-		// 마우스 커서 및 입력 모드 제어
+		//마우스 커서 및 입력 모드 제어
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
@@ -225,8 +263,12 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 			}
 		}
 
-		// 3. 캐릭터가 새로 배치되었으니 체력/실드 등 GAS 어트리뷰트 값을 HUD에 연동
+		//캐릭터가 새로 배치되었으니 체력/실드 등 GAS 어트리뷰트 값을 HUD에 연동
+		BindAttributeToHUD();
 		UpdateHUDHealthAndShield();
+		GetWorldTimerManager().SetTimerForNextTick(
+	this,
+	&ANSPlayerController::UpdateHUDHealthAndShield);
 	}
 }
 

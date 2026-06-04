@@ -84,6 +84,9 @@ private:
 	
 	//최대 실드 변경시 갱신
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
+	
+	//HUD Attribute Delegate 중복 바인딩 방지
+	bool bHUDAttributeBound = false;
 
 private:
 	// 기본적인 Gameplay 상태일 때의 Input Mode 태그 목록
