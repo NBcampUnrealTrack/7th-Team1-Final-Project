@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Projectile/NSRangerProjectile.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -46,6 +47,8 @@ void UGA_RangerProjectileShot::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	
+	PlayFireMontage();
 
 	// 서버가 원격 클라이언트의 TargetData를 받을 수 있도록 먼저 등록
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
@@ -439,6 +442,34 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	}
 
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+void UGA_RangerProjectileShot::PlayFireMontage()
+{
+	if (!FireMontage)
+	{
+		return;
+	}
+	
+	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
+	
+	// Projectile 스폰 타이밍은 TargetData 흐름이 관리하므로 몽타주는 연출 피드백으로만 재생
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			FireMontage,
+			MontagePlayRate,
+			NAME_None,
+			false
+		);
+	
+	if (!MontageTask)
+	{
+		return;
+	}
+	
+	MontageTask->ReadyForActivation();
 }
 
 bool UGA_RangerProjectileShot::TryGetAimPointFromTargetData(
