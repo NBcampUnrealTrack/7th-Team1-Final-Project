@@ -13,7 +13,7 @@ ANSRangerProjectile::ANSRangerProjectile()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	
-	SetReplicates(true);
+	bReplicates = true;
 	SetReplicateMovement(true);
 	
 	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
