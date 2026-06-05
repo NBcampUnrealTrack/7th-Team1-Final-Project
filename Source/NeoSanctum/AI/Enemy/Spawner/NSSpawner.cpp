@@ -8,6 +8,8 @@
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "GameFramework/GameModeBase.h"
+#include "NavigationSystem.h"
+#include "RoomLevel.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -123,9 +125,14 @@ void ANSSpawner::ExecuteFinalSpawn()
 	}
 
 	// 스폰 요청(카운트는 게임모드가 스폰 성공했을 때 진행)
+	TArray<FVector> PlacedLocations;
+	PlacedLocations.Reserve(FinalSpawnQuantity);
+
 	for (int32 i = 0; i < FinalSpawnQuantity; ++i)
 	{
-		FVector SpawnLocation = GetRandomSpawnLocation();
+		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations);
+		PlacedLocations.Add(SpawnLocation);
+
 		INSRunGameModeInterface::Execute_RequestSpawnMonster(
 			GameMode, CharacterClass, EnemyData, SpawnLocation, GetActorRotation());
 	}
@@ -133,26 +140,81 @@ void ANSSpawner::ExecuteFinalSpawn()
 	UE_LOG(LogTemp, Log, TEXT("스폰 요청 수량: %d"), FinalSpawnQuantity);
 }
 
-FVector ANSSpawner::GetRandomSpawnLocation() const
+FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const
 {
-	FVector Origin = GetActorLocation();
-
-	// 반경 내 랜덤 XY
-	FVector2D RandomXY = FMath::RandPointInCircle(SpawnRadius);
-	FVector TraceStart = Origin + FVector(RandomXY.X, RandomXY.Y, 500.0f);
-	FVector TraceEnd = TraceStart - FVector(0.0f, 0.0f, 2000.0f);
-
-	// 지면 라인 트레이스 (경사면 대응)
-	FHitResult Hit;
-	FCollisionQueryParams Params;
-	Params.AddIgnoredActor(this);
-
-	if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECC_WorldStatic, Params))
+	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
+	if (!NavSystem)
 	{
-		// 캡슐 절반 높이만큼 띄움
-		return Hit.Location + FVector(0.0f, 0.0f, 88.0f);
+		return GetActorLocation();
 	}
 
-	return Origin;
+	FVector Center, Extent;
+	GetRoomBounds(Center, Extent);
+
+	// 벽에 붙는 것 방지용
+	const float Margin = 100.0f;
+	const float HalfX = FMath::Max(Extent.X - Margin, 0.0f);
+	const float HalfY = FMath::Max(Extent.Y - Margin, 0.0f);
+
+	const int32 MaxTries = 20;
+	FVector LastValid = GetActorLocation();
+
+	for (int32 Try = 0; Try < MaxTries; ++Try)
+	{
+		// 스포너가 있는 룸 안에서만 샘플링
+		const FVector Candidate = Center + FVector(
+			FMath::FRandRange(-HalfX, HalfX),
+			FMath::FRandRange(-HalfY, HalfY),
+			0.0f);
+
+		// 옆 룸으로 안 넘어가게 조절
+		FNavLocation NavLoc;
+		const FVector QueryExtent(150.0f, 150.0f, Extent.Z + 100.0f);
+		if (!NavSystem->ProjectPointToNavigation(Candidate, NavLoc, QueryExtent))
+		{
+			// 해당되는 자리에 네브메시 없으면 저장안함
+			continue; 
+		}
+
+		LastValid = NavLoc.Location;
+
+		// 최소 간격 검사
+		bool bTooClose = false;
+		for (const FVector& Placed : AlreadyPlaced)
+		{
+			if (FVector::DistSquared2D(Placed, NavLoc.Location) < 
+				MinSpawnSpacing * MinSpawnSpacing)
+			{
+				bTooClose = true;
+				break;
+			}
+		}
+
+		if (!bTooClose)
+		{
+			return NavLoc.Location + FVector(0.0f, 0.0f, 88.0f);
+		}
+	}
+
+	// 실패해도 마지막 유효 네브메시 점을 반환
+	return LastValid + FVector(0.0f, 0.0f, 88.0f);
+}
+
+// 자기 룸의 바운드 얻기(없으면 스포너 반경 폴백)
+bool ANSSpawner::GetRoomBounds(FVector& OutCenter, FVector& OutExtent) const
+{
+	if (ULevel* Level = GetLevel())
+	{
+		if (ARoomLevel* RoomLevel = Cast<ARoomLevel>(Level->GetLevelScriptActor()))
+		{
+			OutCenter = RoomLevel->GetBoundsCenter();
+			OutExtent = RoomLevel->GetBoundsExtent();
+			return true;
+		}
+	}
+	OutCenter = GetActorLocation();
+	OutExtent = FVector(FallbackSpawnRadius, FallbackSpawnRadius, 1000.0f);
+	
+	return false;
 }
 

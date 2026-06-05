@@ -22,6 +22,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void ActivateSpawner(UDataTable* SpawnTable);
+	
+	// 룸 바운드 조회용
+	bool GetRoomBounds(FVector& OutCenter, FVector& OutExtent) const;
+	
+	// 배치된 위치를 받아서 최소 간격 이상으로 새 위치 선출
+	FVector GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const;
 
 private:
 	void ProcessSpawnProbability(UDataTable* SpawnTable);
@@ -29,12 +35,14 @@ private:
 	void OnLoadCompleted();
 	void ExecuteFinalSpawn();
 
-	FVector GetRandomSpawnLocation() const;
-
 protected:
-	// 스폰 분산 반경
+	// 룸 바운드를 못 찾았을 때만 쓰는 폴백용 반경(정상 경로에선 미사용)
 	UPROPERTY(EditDefaultsOnly, Category = "Spawn")
-	float SpawnRadius = 300.0f;
+	float FallbackSpawnRadius = 300.0f;
+
+	// 적 사이 최소 간격
+	UPROPERTY(EditDefaultsOnly, Category = "Spawn")
+	float MinSpawnSpacing = 200.0f;
 
 	// 로드 실패 시 폴백용
 	UPROPERTY(EditDefaultsOnly, Category = "Fallback")
