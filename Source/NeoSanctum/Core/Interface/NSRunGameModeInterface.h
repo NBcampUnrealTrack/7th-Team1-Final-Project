@@ -42,7 +42,7 @@ public:
 	
 	// 스포너가 몬스터 스폰 요청
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
-	void RequestSpawnMonster(
+	ANSEnemyCharacterBase* RequestSpawnMonster(
 		UClass* CharacterClass,
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
