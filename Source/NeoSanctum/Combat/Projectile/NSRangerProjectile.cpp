@@ -3,8 +3,12 @@
 
 #include "NSRangerProjectile.h"
 
+#include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/GAS/GameplayCue/NSGameplayCueNotify_Instant.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 
 ANSRangerProjectile::ANSRangerProjectile()
@@ -37,6 +41,11 @@ ANSRangerProjectile::ANSRangerProjectile()
 	ProjectileMovement->ProjectileGravityScale = 0.0f;
 	ProjectileMovement->bRotationFollowsVelocity = true;
 	ProjectileMovement->bShouldBounce = false;
+}
+
+void ANSRangerProjectile::InitializeProjectile(UAbilitySystemComponent* InSourceASC)
+{
+	SourceASC = InSourceASC;
 }
 
 void ANSRangerProjectile::BeginPlay()
@@ -102,6 +111,24 @@ void ANSRangerProjectile::OnProjectileHit(
 		return;
 	}
 	
-	// TODO: 폭발 데미지와 Cue는 다음 단계에서 추가, 현재는 서버 충돌 흐름만 확인
+	// TODO: 폭발 데미지는 다음 단계에서 추가
+	ExecuteImpactCue(HitResult);
+	
 	Destroy();
+}
+
+void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
+{
+	if (!SourceASC || !HitResult.bBlockingHit)
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = GetInstigator();
+	CueParameters.EffectCauser = this;
+	CueParameters.Location = HitResult.ImpactPoint;
+	CueParameters.Normal = HitResult.ImpactNormal;
+	
+	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_Impact, CueParameters);
 }

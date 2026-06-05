@@ -10,6 +10,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 {
@@ -171,6 +172,14 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 	
 	// 로컬 조작자 화면에 예측 발사 방향 표시
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	
+	const bool bShouldExecuteMuzzleCue =
+		ActorInfo && (ActorInfo->IsLocallyControlled() || ActorInfo->IsNetAuthority());
+	
+	if (bShouldExecuteMuzzleCue)
+	{
+		ExecuteProjectileMuzzleCue(TargetDataHandle);
+	}
 	
 	if (bDrawDebugProjectileLaunch && ActorInfo && ActorInfo->IsLocallyControlled())
 	{
@@ -401,6 +410,13 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 		return false;
 	}
 	
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	
+	if (ASC)
+	{
+		Projectile->InitializeProjectile(ASC);
+	}
+	
 	Projectile->LaunchProjectile(LaunchDirection);
 	return true;
 }
@@ -451,6 +467,51 @@ bool UGA_RangerProjectileShot::TryGetAimPointFromTargetData(
 	// Hit가 없으면 TraceEnd를 조준점으로 사용
 	OutAimPoint = HitResult->bBlockingHit ? HitResult->ImpactPoint : HitResult->TraceEnd;
 	return true;
+}
+
+void UGA_RangerProjectileShot::ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	
+	if (!ASC || !AvatarActor)
+	{
+		return;
+	}
+	
+	FVector AimPoint;
+	
+	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
+	{
+		return;
+	}
+	
+	FTransform MuzzleTransform;
+	
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		// 소켓을 못 찾으면 캐릭터 전방 위치로 임시 처리
+		MuzzleTransform = FTransform(
+			AvatarActor->GetActorRotation(),
+			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
+		);
+	}
+	
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector LaunchDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+	
+	if (LaunchDirection.IsNearlyZero())
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.Location = MuzzleLocation;
+	CueParameters.Normal = LaunchDirection;
+	
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_MuzzleFire, CueParameters);
 }
 
 void UGA_RangerProjectileShot::DrawDebugProjectileAimTrace(

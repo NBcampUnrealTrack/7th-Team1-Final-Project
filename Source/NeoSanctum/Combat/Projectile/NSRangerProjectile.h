@@ -7,7 +7,7 @@
 #include "NSRangerProjectile.generated.h"
 
 
-
+class UAbilitySystemComponent;
 class UProjectileMovementComponent;
 class USphereComponent;
 
@@ -22,6 +22,8 @@ class NEOSANCTUM_API ANSRangerProjectile : public AActor
 
 public:
 	ANSRangerProjectile();
+	
+	void InitializeProjectile(UAbilitySystemComponent* InSourceASC);
 	
 	void LaunchProjectile(const FVector& LaunchDirection);
 
@@ -52,4 +54,9 @@ private:
 		FVector NormalImpulse,
 		const FHitResult& HitResult
 	);
+	
+	void ExecuteImpactCue(const FHitResult& HitResult);
+	
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> SourceASC;
 };
