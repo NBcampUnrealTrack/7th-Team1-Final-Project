@@ -10,6 +10,7 @@
 class UAbilitySystemComponent;
 class UProjectileMovementComponent;
 class USphereComponent;
+class UStaticMeshComponent;
 
 /**
  * Ranger 투사체 기본 Actor
