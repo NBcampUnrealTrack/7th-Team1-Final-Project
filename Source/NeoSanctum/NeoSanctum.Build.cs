@@ -6,6 +6,7 @@ public class NeoSanctum : ModuleRules
 {
 	public NeoSanctum(ReadOnlyTargetRules Target) : base(Target)
 	{
+		PrivateDependencyModuleNames.AddRange(new string[] { "ProceduralDungeon" });
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[]
