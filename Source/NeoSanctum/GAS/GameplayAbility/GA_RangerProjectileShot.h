@@ -47,7 +47,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animaiton")
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	TObjectPtr<UAnimMontage> FireMontage;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
