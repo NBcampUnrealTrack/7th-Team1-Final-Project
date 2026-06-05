@@ -461,7 +461,7 @@ void UGA_RangerProjectileShot::PlayFireMontage()
 			FireMontage,
 			MontagePlayRate,
 			NAME_None,
-			false
+			true
 		);
 	
 	if (!MontageTask)

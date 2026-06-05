@@ -203,7 +203,7 @@ void UGA_RangerAutoFire::PlayFireMontage()
 			FireMontage,
 			MontagePlayRate,
 			NAME_None,
-			false
+			true
 		);
 	
 	if (!MontageTask)
