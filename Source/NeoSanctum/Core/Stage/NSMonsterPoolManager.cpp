@@ -62,5 +62,6 @@ void UNSMonsterPoolManager::ReturnMonsterToPool(ACharacter* Monster)
 	{
 		Enemy->DeactivateForPool();
 		Enemy->SetNetDormancy(DORM_DormantAll);
+		Enemy->FlushNetDormancy();
 	}
 }
