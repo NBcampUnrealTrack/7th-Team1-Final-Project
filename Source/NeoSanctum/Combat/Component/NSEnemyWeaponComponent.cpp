@@ -31,6 +31,13 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 	ANSEnemyCharacterBase* Owner = Cast<ANSEnemyCharacterBase>(GetOwner());
 	if (!Owner || !Owner->HasAuthority()) return;
 
+	// 재장착할 때 대비용
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+	
 	UNSEnemyData* EnemyData = Owner->GetEnemyData();
 	if (!EnemyData || !EnemyData->DefaultWeaponClass) return;
 
