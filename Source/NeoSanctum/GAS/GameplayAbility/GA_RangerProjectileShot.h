@@ -7,6 +7,7 @@
 #include "GA_RangerProjectileShot.generated.h"
 
 class ANSRangerProjectile;
+class UAnimMontage;
 
 /**
  * Ranger 투사체 발사 Ability
@@ -45,6 +46,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
+	TObjectPtr<UAnimMontage> FireMontage;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
+	float FireMontagePlayRate = 1.0f;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
@@ -90,6 +97,8 @@ private:
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
 
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
+	
+	void PlayFireMontage();
 
 private:
 	// TargetData
