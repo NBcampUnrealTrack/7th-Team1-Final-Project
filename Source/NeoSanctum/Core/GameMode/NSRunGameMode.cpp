@@ -134,14 +134,22 @@ void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 
 void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)
 {
-	if (HasAuthority() && NSMonsterPoolManager)
+	if (!HasAuthority() || !NSMonsterPoolManager)
 	{
-		NSMonsterPoolManager->ReturnMonsterToPool(Monster);
+		return;
 	}
 
+	// 몬스터가 살아있는채로 반환되는 경우에는 수동으로 카운트 줄임
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(Monster);
+	if (Enemy && !Enemy->IsDead() && NSStageManager)
+	{
+		NSStageManager->AddEnemyCount(-1);
+	}
+
+	NSMonsterPoolManager->ReturnMonsterToPool(Monster);
 }
 
-void ANSRunGameMode::RequestSpawnMonster_Implementation(
+ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	UClass* CharacterClass, 
 	UNSEnemyData* EnemyData, 
 	const FVector& Location,
@@ -149,18 +157,23 @@ void ANSRunGameMode::RequestSpawnMonster_Implementation(
 {
 	if (!HasAuthority() || !NSMonsterPoolManager || !CharacterClass || !EnemyData)
 	{
-		return;
+		return nullptr;
 	}
 
 	ACharacter* Spawned = NSMonsterPoolManager->GetPooledMonster(
 		CharacterClass,
 		EnemyData,
-		Location, 
+		Location,
 		Rotation);
-	if (Spawned && NSStageManager)
+
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(Spawned);
+
+	if (Enemy && NSStageManager)
 	{
 		NSStageManager->AddEnemyCount(1);
 	}
+
+	return Enemy;
 }
 
 void ANSRunGameMode::HandleRunOver(bool bIsClear)

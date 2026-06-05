@@ -29,7 +29,7 @@ public:
 	virtual void RequestReturnToHub_Implementation() override;
 	virtual void RequestMoveToNextStage_Implementation() override;
 	virtual void ReturnMonsterToPool_Implementation(ACharacter* Monster) override;
-	virtual void RequestSpawnMonster_Implementation(
+	virtual ANSEnemyCharacterBase* RequestSpawnMonster_Implementation(
 		UClass* CharacterClass,
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
