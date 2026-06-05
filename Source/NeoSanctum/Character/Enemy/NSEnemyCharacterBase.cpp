@@ -257,6 +257,13 @@ void ANSEnemyCharacterBase::OnDissolveFinished()
 	}
 }
 
+void ANSEnemyCharacterBase::OnRep_bIsInPool()
+{
+	// 클라이언트에 남아있는 콜리전 정리
+	SetActorHiddenInGame(bIsInPool);
+	SetActorEnableCollision(!bIsInPool);
+}
+
 void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
 {
 	if (!HasAuthority() || !InEnemyData)

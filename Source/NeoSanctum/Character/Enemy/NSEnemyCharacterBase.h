@@ -87,6 +87,9 @@ protected:
 private:
 	//(이용호 추가)
 	void OnDissolveFinished();
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_bIsInPool)
 	bool bIsInPool = false;
+	
+	UFUNCTION()
+	void OnRep_bIsInPool();
 };
