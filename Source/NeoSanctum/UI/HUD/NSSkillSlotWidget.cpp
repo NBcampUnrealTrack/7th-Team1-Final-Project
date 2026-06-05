@@ -64,17 +64,44 @@ void UNSSkillSlotWidget::ResetCooldown()
 		CooldownText->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
-
 void UNSSkillSlotWidget::HandleCooldownMessage(
-	FGameplayTag Channel, 
+	FGameplayTag Channel,
 	const FNSSkillCooldownMessage& Message)
 {
-	if (Message.SkillTag != BoundSkillTag)
+	if (BoundSkillTag.IsValid() &&
+		Message.SkillTag.IsValid() &&
+		!Message.SkillTag.MatchesTagExact(BoundSkillTag))
 	{
 		return;
 	}
 
-	StartCooldown(Message.CooldownDuration);
+	CurrentCharge = Message.CurrentCharge;
+	MaxCharge = Message.MaxCharge;
+
+	UpdateChargeText(CurrentCharge, MaxCharge);
+
+	if (MaxCharge <= 0 || Message.CooldownDuration <= 0.0f)
+	{
+		PendingCooldownCount = 0;
+		ResetCooldown();
+		return;
+	}
+
+	PendingCooldownCount =
+		FMath::Max(MaxCharge - CurrentCharge, 0);
+
+	CooldownDuration = Message.CooldownDuration;
+
+	if (PendingCooldownCount <= 0)
+	{
+		ResetCooldown();
+		return;
+	}
+
+	if (RemainingCooldown <= 0.0f)
+	{
+		StartCooldown(CooldownDuration);
+	}
 }
 
 void UNSSkillSlotWidget::ApplySkillUIData()
@@ -98,6 +125,30 @@ void UNSSkillSlotWidget::ApplySkillUIData()
 	}
 }
 
+void UNSSkillSlotWidget::UpdateChargeText(
+	int32 NewCurrentCharge,
+	int32 NewMaxCharge)
+{
+	if (!ChargeText)
+	{
+		return;
+	}
+
+	if (NewMaxCharge <= 0)
+	{
+		ChargeText->SetVisibility(ESlateVisibility::Visible);
+		return;
+	}
+
+	ChargeText->SetVisibility(ESlateVisibility::Visible);
+
+	ChargeText->SetText(
+		FText::FromString(
+			FString::Printf(
+				TEXT("%d"),
+				NewCurrentCharge)));
+}
+
 void UNSSkillSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -110,6 +161,10 @@ void UNSSkillSlotWidget::NativeConstruct()
 		CooldownMID = CooldownOverlay->GetDynamicMaterial();
 	}
 	ResetCooldown();
+	if (ChargeText)
+	{
+		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
+	}
 	// GMS 채널을 구독하여 스킬 쿨타임 시작 메시지를 받는다
 	UGameplayMessageSubsystem& MessageSubsystem =
 		UGameplayMessageSubsystem::Get(this);
@@ -129,43 +184,62 @@ void UNSSkillSlotWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+
 void UNSSkillSlotWidget::NativeTick(
 	const FGeometry& InGeometry,
 	float InDeltaTime)
 {
 	Super::NativeTick(InGeometry, InDeltaTime);
-	// 쿨타임이 없으면 매 프레임 UI 갱신을 생략
+
 	if (RemainingCooldown <= 0.0f)
 	{
 		return;
 	}
-	RemainingCooldown = 
-		FMath::Max(RemainingCooldown - InDeltaTime, 0.0f);
-	// 쿨타임 시작 시 1.0, 종료 시 0.0이 된다
-	const float CooldownRatio = 
+
+	RemainingCooldown = FMath::Max(
+		RemainingCooldown - InDeltaTime,
+		0.0f);
+
+	const float CooldownRatio =
 		CooldownDuration > 0.0f
-	? RemainingCooldown / CooldownDuration
-	: 0.0f;
-	
+			? RemainingCooldown / CooldownDuration
+			: 0.0f;
+
 	if (CooldownMID)
 	{
 		CooldownMID->SetScalarParameterValue(
 			TEXT("CooldownRatio"),
 			CooldownRatio);
 	}
-	
+
 	if (CooldownText)
 	{
 		CooldownText->SetText(
-		FText::FromString(
-			FString::Printf(
-				TEXT("%.2f"),
-				RemainingCooldown)));
+			FText::FromString(
+				FString::Printf(
+					TEXT("%.2f"),
+					RemainingCooldown)));
 	}
-	
+
 	if (RemainingCooldown <= 0.0f)
 	{
-		// GMS는 시작 알림만 전달
+		if (PendingCooldownCount > 0)
+		{
+			--PendingCooldownCount;
+
+			if (CurrentCharge < MaxCharge)
+			{
+				++CurrentCharge;
+				UpdateChargeText(CurrentCharge, MaxCharge);
+			}
+
+			if (PendingCooldownCount > 0)
+			{
+				StartCooldown(CooldownDuration);
+				return;
+			}
+		}
+
 		ResetCooldown();
 	}
 }
