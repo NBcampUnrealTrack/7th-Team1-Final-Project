@@ -33,13 +33,7 @@ void UGA_RangerProjectileShot::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
+	
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 
 	if (!ASC)
@@ -47,8 +41,6 @@ void UGA_RangerProjectileShot::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	
-	PlayFireMontage();
 
 	// 서버가 원격 클라이언트의 TargetData를 받을 수 있도록 먼저 등록
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
@@ -111,12 +103,27 @@ void UGA_RangerProjectileShot::FireProjectileShot()
 			GetCurrentActivationInfo(),
 			true,
 			true);
+
+		return;
+	}
+
+	if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			true
+		);
 		
 		return;
 	}
+
+	PlayFireMontage();
 	
 	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResult(HitResult);
-	
+
 	OnTargetDataReadyCallback(TargetDataHandle, FGameplayTag());
 }
 
@@ -139,20 +146,41 @@ void UGA_RangerProjectileShot::OnTargetDataReadyCallback(
 	FGameplayTag ApplicationTag)
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	
+
 	if (!ASC)
 	{
 		return;
 	}
-	
+
 	FScopedPredictionWindow ScopedPredictionWindow(ASC);
-	
+
 	FGameplayAbilityTargetDataHandle LocalTargetDataHandle = TargetDataHandle;
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 	
+	const bool bShouldCommitFromReplicatedTargetData =
+		ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+	
+	if (bShouldCommitFromReplicatedTargetData)
+	{
+		if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				true
+			);
+		
+			return;
+		}
+		
+		PlayFireMontage();
+	}
+
 	const bool bShouldNotifyServer =
 		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
-	
+
 	// 서버에게만 로컬 데이터 전송
 	if (bShouldNotifyServer)
 	{
@@ -164,7 +192,7 @@ void UGA_RangerProjectileShot::OnTargetDataReadyCallback(
 			ASC->ScopedPredictionKey
 		);
 	}
-	
+
 	OnProjectileTargetDataReady(LocalTargetDataHandle);
 }
 
@@ -172,18 +200,18 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 	const FGameplayAbilityTargetDataHandle& TargetDataHandle)
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	
+
 	// 로컬 조작자 화면에 예측 발사 방향 표시
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
-	
+
 	const bool bShouldExecuteMuzzleCue =
 		ActorInfo && (ActorInfo->IsLocallyControlled() || ActorInfo->IsNetAuthority());
-	
+
 	if (bShouldExecuteMuzzleCue)
 	{
 		ExecuteProjectileMuzzleCue(TargetDataHandle);
 	}
-	
+
 	if (bDrawDebugProjectileLaunch && ActorInfo && ActorInfo->IsLocallyControlled())
 	{
 		FVector AimPoint;
@@ -203,18 +231,18 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 			}
 		}
 	}
-	
+
 	if (AvatarActor && AvatarActor->HasAuthority())
 	{
 		TrySpawnProjectileFromTargetData(TargetDataHandle);
 	}
-	
+
 	if (bKeepAbilityActiveForDebug)
 	{
 		if (UWorld* World = GetWorld())
 		{
 			const float Duration = FMath::Max(DebugActiveDuration, 0.1f);
-			
+
 			// GameplayDebugger에서 Active 상태를 확인하는 타이머
 			World->GetTimerManager().SetTimer(
 				DebugEndAbilityTimerHandle,
@@ -223,11 +251,11 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 				Duration,
 				false
 			);
-			
+
 			return;
 		}
 	}
-	
+
 	EndAbility(
 		GetCurrentAbilitySpecHandle(),
 		GetCurrentActorInfo(),
@@ -242,43 +270,42 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 	UWorld* World = GetWorld();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
-	
+
 	if (!World || !IsValid(PlayerCharacter))
 	{
 		return false;
 	}
-	
+
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
-	const APlayerController* PlayerController = Pawn ?
-		Cast<APlayerController>(Pawn->GetController()) : nullptr;
-	
+	const APlayerController* PlayerController = Pawn ? Cast<APlayerController>(Pawn->GetController()) : nullptr;
+
 	if (!IsValid(PlayerController))
 	{
 		return false;
 	}
-	
+
 	FVector TraceStart;
-	
+
 	if (!PlayerCharacter->TryGetAimTraceStartLocation(TraceStart))
 	{
 		return false;
 	}
-	
+
 	int32 ViewportSizeX = 0;
 	int32 ViewportSizeY = 0;
 	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
-	
+
 	if (ViewportSizeX <= 0 || ViewportSizeY <= 0)
 	{
 		return false;
 	}
-	
+
 	const float CrosshairScreenX = ViewportSizeX * 0.5f;
 	const float CrosshairScreenY = ViewportSizeY * 0.5f;
-	
+
 	FVector DeprojectWorldLocation;
 	FVector DeprojectWorldDirection;
-	
+
 	if (!PlayerController->DeprojectScreenPositionToWorld(
 		CrosshairScreenX,
 		CrosshairScreenY,
@@ -287,29 +314,29 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 	{
 		return false;
 	}
-	
+
 	const FVector TraceDirection = DeprojectWorldDirection.GetSafeNormal();
-	
+
 	if (TraceDirection.IsNearlyZero())
 	{
 		return false;
 	}
-	
+
 	const FVector TraceEnd = TraceStart + TraceDirection * TraceRange;
-	
+
 	FCollisionQueryParams QueryParams(
 		SCENE_QUERY_STAT(RangerProjectileAimTrace),
 		false,
 		PlayerCharacter
 	);
-	
+
 	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
-	
+
 	if (IsValid(CurrentWeapon))
 	{
 		QueryParams.AddIgnoredActor(CurrentWeapon);
 	}
-	
+
 	const bool bHit = World->LineTraceSingleByChannel(
 		OutHitResult,
 		TraceStart,
@@ -317,23 +344,23 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 		TraceChannel,
 		QueryParams
 	);
-	
+
 	OutHitResult.TraceStart = TraceStart;
 	OutHitResult.TraceEnd = TraceEnd;
-	
+
 	// Miss도 서버 스폰 방향 계산에 사용하기 위해 TraceEnd를 AimPoint로 채움
 	if (!bHit)
 	{
 		OutHitResult.Location = TraceEnd;
 		OutHitResult.ImpactPoint = TraceEnd;
 	}
-	
+
 	// 로컬 조준 Trace 표시
 	if (bDrawDebugProjectileAimTrace)
 	{
 		DrawDebugProjectileAimTrace(TraceStart, TraceEnd, OutHitResult, bHit);
 	}
-	
+
 	return true;
 }
 
@@ -341,12 +368,12 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileFromTargetData(
 	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
 {
 	FVector AimPoint;
-	
+
 	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
 	{
 		return false;
 	}
-	
+
 	return TrySpawnProjectileAtAimPoint(AimPoint);
 }
 
@@ -354,20 +381,20 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 {
 	UWorld* World = GetWorld();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	
+
 	if (!World || !IsValid(AvatarActor))
 	{
 		return false;
 	}
-	
+
 	if (!ProjectileClass)
 	{
 		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning, "ProjectileShot 실패. ProjectileClass가 설정되지 않음");
 		return false;
 	}
-	
+
 	FTransform MuzzleTransform;
-	
+
 	if (!TryGetAttackOriginTransform(MuzzleTransform))
 	{
 		// 무기 소켓을 찾지 못하면 캐릭터 전방으로 임시 발사
@@ -376,16 +403,16 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
 		);
 	}
-	
+
 	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
 	const FVector LaunchDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
-	
+
 	if (LaunchDirection.IsNearlyZero())
 	{
 		NS_ACTOR_LOG(AvatarActor, LogNSGAS, Warning, "ProjectileShot 실패. 발사 방향을 계산할 수 없음");
 		return false;
 	}
-	
+
 	// 서버가 처리한 원격 클라이언트 발사 방향 표시
 	const APawn* Pawn = Cast<APawn>(AvatarActor);
 	const bool bIsLocallyControlled = Pawn && Pawn->IsLocallyControlled();
@@ -395,31 +422,31 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 		// Orange: 서버가 원격 클라이언트 발사를 처리한 실제 발사 방향
 		DrawDebugProjectileLaunch(MuzzleLocation, AimPoint, FColor::Orange);
 	}
-	
+
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.Owner = AvatarActor;
 	SpawnParameters.Instigator = Cast<APawn>(AvatarActor);
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	
+
 	ANSRangerProjectile* Projectile = World->SpawnActor<ANSRangerProjectile>(
 		ProjectileClass,
 		MuzzleLocation,
 		LaunchDirection.Rotation(),
 		SpawnParameters
 	);
-	
+
 	if (!IsValid(Projectile))
 	{
 		return false;
 	}
-	
+
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	
+
 	if (ASC)
 	{
 		Projectile->InitializeProjectile(ASC);
 	}
-	
+
 	Projectile->LaunchProjectile(LaunchDirection);
 	return true;
 }
@@ -450,9 +477,9 @@ void UGA_RangerProjectileShot::PlayFireMontage()
 	{
 		return;
 	}
-	
+
 	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
-	
+
 	// Projectile 스폰 타이밍은 TargetData 흐름이 관리하므로 몽타주는 연출 피드백으로만 재생
 	UAbilityTask_PlayMontageAndWait* MontageTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
@@ -463,12 +490,12 @@ void UGA_RangerProjectileShot::PlayFireMontage()
 			NAME_None,
 			true
 		);
-	
+
 	if (!MontageTask)
 	{
 		return;
 	}
-	
+
 	MontageTask->ReadyForActivation();
 }
 
@@ -504,21 +531,21 @@ void UGA_RangerProjectileShot::ExecuteProjectileMuzzleCue(const FGameplayAbility
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	
+
 	if (!ASC || !AvatarActor)
 	{
 		return;
 	}
-	
+
 	FVector AimPoint;
-	
+
 	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
 	{
 		return;
 	}
-	
+
 	FTransform MuzzleTransform;
-	
+
 	if (!TryGetAttackOriginTransform(MuzzleTransform))
 	{
 		// 소켓을 못 찾으면 캐릭터 전방 위치로 임시 처리
@@ -527,21 +554,21 @@ void UGA_RangerProjectileShot::ExecuteProjectileMuzzleCue(const FGameplayAbility
 			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
 		);
 	}
-	
+
 	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
 	const FVector LaunchDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
-	
+
 	if (LaunchDirection.IsNearlyZero())
 	{
 		return;
 	}
-	
+
 	FGameplayCueParameters CueParameters;
 	CueParameters.Instigator = AvatarActor;
 	CueParameters.EffectCauser = AvatarActor;
 	CueParameters.Location = MuzzleLocation;
 	CueParameters.Normal = LaunchDirection;
-	
+
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_MuzzleFire, CueParameters);
 }
 
@@ -566,13 +593,13 @@ void UGA_RangerProjectileShot::DrawDebugProjectileAimTrace(
 	{
 		return;
 	}
-	
+
 	const float DebugDistance = static_cast<float>(FVector::Dist(TraceStart, DebugEnd));
 	const float AppliedOffset =
 		FMath::Clamp(DebugAimTraceStartOffset, 0.0f, FMath::Max(DebugDistance - 10.0f, 0.0f));
 
 	const FVector DebugStart = TraceStart + DebugDirection * AppliedOffset;
-	
+
 	// 초록: 허공 조준, 빨강: 조준 Trace 명중
 	DrawDebugLine(
 		World,
