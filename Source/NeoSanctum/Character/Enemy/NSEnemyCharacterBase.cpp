@@ -5,12 +5,14 @@
 
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
+#include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
@@ -75,6 +77,7 @@ void ANSEnemyCharacterBase::Die()
 		if (AAIController* AIController = Cast<AAIController>(GetController()))
 		{
 			AIController->UnPossess();
+			AIController->Destroy();
 		}
 
 		if (ASC && DeathAbilityClass)
@@ -282,11 +285,17 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 		ETeleportType::TeleportPhysics);
 	SetActorTickEnabled(true);
 	SetActorEnableCollision(true);
-
+	
+	// 이동을 멈췄으므로 재가동
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Walking);
+	}
+	
 	ApplyAliveVisual();
 
-	// 스탯만 리셋
-	InitializeFromData(false);
+	// 종료할 때 전부 없앴으므로 전부 재주입
+	InitializeFromData(true);
 
 	// BT 정상 작동을 위해 AIControllerClass로 재빙의
 	SpawnDefaultController();
@@ -301,6 +310,39 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 
 	bIsInPool = true;
 
+	// 이동 즉시 정지 및 비활성화
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+		Move->DisableMovement();
+	}
+
+	// 진행 중인 몽타주 정지
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		if (UAnimInstance* Anim = MeshComp->GetAnimInstance())
+		{
+			Anim->StopAllMontages(0.0f);
+		}
+	}
+
+	// 살아있는 채로 반환된 경우 AI, 컨트롤러 정리
+	if (AAIController* AICon = Cast<AAIController>(GetController()))
+	{
+		AICon->StopMovement();
+		AICon->UnPossess();
+		AICon->Destroy();
+	}
+
+	// GAS 정리(실행 중 어빌리티 취소,활성 이펙트 전부 제거,그랜트 해제)
+	if (ASC)
+	{
+		ASC->CancelAllAbilities();
+		ASC->RemoveActiveEffects(FGameplayEffectQuery());
+		ASC->ClearAllAbilities();
+	}
+
+	// 물리적 중지
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	SetActorTickEnabled(false);
