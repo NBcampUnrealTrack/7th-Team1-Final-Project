@@ -23,6 +23,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void ActivateSpawner(UDataTable* SpawnTable);
 	
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void ReturnMonstersToPool();
+	
 	// 룸 바운드 조회용
 	bool GetRoomBounds(FVector& OutCenter, FVector& OutExtent) const;
 	
@@ -34,6 +37,12 @@ private:
 	void RequestAsyncLoad();
 	void OnLoadCompleted();
 	void ExecuteFinalSpawn();
+	
+	bool bHasSpawned = false;
+	
+	// 스포너가 스폰한 몬스터 저장용
+	UPROPERTY()
+	TArray<TObjectPtr<ANSEnemyCharacterBase>> SpawnedMonsters;
 
 protected:
 	// 룸 바운드를 못 찾았을 때만 쓰는 폴백용 반경(정상 경로에선 미사용)

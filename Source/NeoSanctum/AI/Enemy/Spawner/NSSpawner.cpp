@@ -23,9 +23,48 @@ void ANSSpawner::ActivateSpawner(UDataTable* SpawnTable)
 	{
 		return;
 	}
+	
+	// 이미 스폰된 룸이면 무시
+	if (bHasSpawned) 
+	{
+		return;
+	}
+
+	bHasSpawned = true;
 
 	ProcessSpawnProbability(SpawnTable);
 	RequestAsyncLoad();
+}
+
+void ANSSpawner::ReturnMonstersToPool()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 들어갔다 곧바로 나간 경우면 취소
+	if (StreamingHandle.IsValid())
+	{
+		StreamingHandle->CancelHandle();
+		StreamingHandle.Reset();
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		for (ANSEnemyCharacterBase* Monster : SpawnedMonsters)
+		{
+			// 살아남은 몬스터만 반환
+			if (IsValid(Monster))
+			{
+				INSRunGameModeInterface::Execute_ReturnMonsterToPool(GameMode, Monster);
+			}
+		}
+	}
+
+	SpawnedMonsters.Empty();
+	bHasSpawned = false;
 }
 
 void ANSSpawner::ProcessSpawnProbability(UDataTable* SpawnTable)
@@ -133,8 +172,17 @@ void ANSSpawner::ExecuteFinalSpawn()
 		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations);
 		PlacedLocations.Add(SpawnLocation);
 
-		INSRunGameModeInterface::Execute_RequestSpawnMonster(
-			GameMode, CharacterClass, EnemyData, SpawnLocation, GetActorRotation());
+		ANSEnemyCharacterBase* Spawned = INSRunGameModeInterface::Execute_RequestSpawnMonster(
+			GameMode,
+			CharacterClass,
+			EnemyData,
+			SpawnLocation,
+			GetActorRotation());
+
+		if (Spawned)
+		{
+			SpawnedMonsters.Add(Spawned);
+		}
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("스폰 요청 수량: %d"), FinalSpawnQuantity);
