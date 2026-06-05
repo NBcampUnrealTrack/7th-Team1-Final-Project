@@ -8,10 +8,15 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "NeoSanctum/UI/HUD/NSSkillCooldownMessage.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "Engine/GameInstance.h"
+#include "VerseVM/VVMRuntimeError.h"
 
 UGA_Dash::UGA_Dash()
 {
@@ -91,20 +96,70 @@ void UGA_Dash::ActivateAbility(
 		}
 	}
 	
-	// DashCount 소모하는 Effect 적용을 위한 CommitAbility()
+	//DashCount를 소모하기 위해 Ability Cost를 적용한다.
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
-	// 임시 상태태그 부여
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	if (ASC)
+	if (!ASC)
 	{
-		ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
+	const float CurrentDashCount =
+		ASC->GetNumericAttribute(
+			UNSPlayerAttributeSet::GetDashCountAttribute());
+
+	const float MaxDashCount =
+		ASC->GetNumericAttribute(
+			UNSPlayerAttributeSet::GetMaxDashCountAttribute());
+
+	const float DashRegenRate =
+		ASC->GetNumericAttribute(
+			UNSPlayerAttributeSet::GetDashRegenRateAttribute());
+
+	const float DashCooldownDuration =
+		DashRegenRate > 0.0f
+			? 1.0f / DashRegenRate
+			: 0.0f;
+
+	if (DashCooldownDuration > 0.0f)
+	{
+		if (APlayerController* PlayerController =
+			ActorInfo->PlayerController.Get())
+		{
+			if (PlayerController->IsLocalController())
+			{
+				if (UGameInstance* GameInstance =
+					PlayerController->GetGameInstance())
+				{
+					if (UGameplayMessageSubsystem* MessageSubsystem =
+						GameInstance->GetSubsystem<UGameplayMessageSubsystem>())
+					{
+						FNSSkillCooldownMessage Message;
+						Message.SkillTag = NSGameplayTags::Ability_Common_Dash;
+						Message.CooldownDuration = DashCooldownDuration;
+						Message.CurrentCharge = FMath::Clamp(
+							FMath::FloorToInt(CurrentDashCount),
+							0,
+							FMath::FloorToInt(MaxDashCount));
+						Message.MaxCharge =
+							FMath::FloorToInt(MaxDashCount);
+
+						MessageSubsystem->BroadcastMessage(
+							TAG_Message_UI_SkillCooldown_Start,
+							Message);
+					}
+				}
+			}
+		}
+	}
+	
+	
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
 	// 대쉬 속도 = 거리 / 지속시간
 	const float DashSpeed = DashDistance / DashDuration;
 	DashTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
