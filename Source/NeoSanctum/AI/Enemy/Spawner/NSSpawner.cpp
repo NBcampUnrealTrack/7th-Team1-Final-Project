@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "GameFramework/GameModeBase.h"
 #include "NavigationSystem.h"
 #include "RoomLevel.h"
@@ -15,6 +16,33 @@
 ANSSpawner::ANSSpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
+}
+
+void ANSSpawner::OnActorEnteredRoom(AActor* OtherActor, UDataTable* SpawnTable)
+{
+	if (!HasAuthority()) return;
+	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) return;
+
+	++PlayersInRoom;
+	
+	ActivateSpawner(SpawnTable);
+}
+
+void ANSSpawner::OnActorExitedRoom(AActor* OtherActor)
+{
+	if (!HasAuthority()) return;
+	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) return;
+
+	PlayersInRoom = FMath::Max(0, PlayersInRoom - 1);
+
+	// 아직 룸에 플레이어가 남아 있으면 몬스터 유지
+	if (PlayersInRoom > 0)
+	{
+		return;
+	}
+
+	// 마지막 플레이어가 나갔을 때만 풀로 반환
+	ReturnMonstersToPool();
 }
 
 void ANSSpawner::ActivateSpawner(UDataTable* SpawnTable)
