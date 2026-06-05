@@ -651,7 +651,7 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	CueParameters.Location = MuzzleTransform.GetLocation();
 	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
 
-	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_AutoFire_MuzzleFire, CueParameters);
 }
 
 void UGA_RangerAutoFire::ExecuteImpactCue(const FHitResult& HitResult)
@@ -670,7 +670,7 @@ void UGA_RangerAutoFire::ExecuteImpactCue(const FHitResult& HitResult)
 	CueParameters.Location = HitResult.ImpactPoint;
 	CueParameters.Normal = HitResult.ImpactNormal;
 	
-	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_Impact, CueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_AutoFire_Impact, CueParameters);
 }
 
 void UGA_RangerAutoFire::ExecutePredictedImpactCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle)

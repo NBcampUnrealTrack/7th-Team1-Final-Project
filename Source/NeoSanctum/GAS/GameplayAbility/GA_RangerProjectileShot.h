@@ -99,6 +99,9 @@ private:
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
 		FVector& OutAimPoint
 	) const;
+	
+	// GameplayCue
+	void ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
 private:
 	// Debug
