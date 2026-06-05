@@ -511,7 +511,7 @@ void UGA_RangerProjectileShot::ExecuteProjectileMuzzleCue(const FGameplayAbility
 	CueParameters.Location = MuzzleLocation;
 	CueParameters.Normal = LaunchDirection;
 	
-	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_MuzzleFire, CueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
 }
 
 void UGA_RangerProjectileShot::DrawDebugProjectileAimTrace(

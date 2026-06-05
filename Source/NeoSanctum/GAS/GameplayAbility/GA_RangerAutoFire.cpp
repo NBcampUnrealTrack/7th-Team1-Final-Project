@@ -651,7 +651,7 @@ void UGA_RangerAutoFire::ExecuteMuzzleFireCue()
 	CueParameters.Location = MuzzleTransform.GetLocation();
 	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
 
-	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_AutoFire_MuzzleFire, CueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_MuzzleFire, CueParameters);
 }
 
 void UGA_RangerAutoFire::ExecuteImpactCue(const FHitResult& HitResult)
