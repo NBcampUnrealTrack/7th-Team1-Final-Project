@@ -43,9 +43,19 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
 	float LifeSeconds = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
+	float ExplosionRadius = 300.0f;
+	
+protected:
+	// Debug
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
+	bool bDrawDebugExplosion = false;
 
 private:
 	void IgnoreSourceActorCollision();
+	
+	void FindSplashTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
 	
 	UFUNCTION()
 	void OnProjectileHit(

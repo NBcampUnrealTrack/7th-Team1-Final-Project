@@ -5,7 +5,9 @@
 
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 
@@ -97,6 +99,90 @@ void ANSRangerProjectile::IgnoreSourceActorCollision()
 	}
 }
 
+void ANSRangerProjectile::FindSplashTargetActors(
+	const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const
+{
+	OutTargetActors.Reset();
+	
+	UWorld* World = GetWorld();
+	
+	if (!World || ExplosionRadius <= 0.0f)
+	{
+		return;
+	}
+	
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplash), false);
+	QueryParams.AddIgnoredActor(this);
+	
+	AActor* OwnerActor = GetOwner();
+	APawn* InstigatorPawn = GetInstigator();
+	
+	if (IsValid(OwnerActor))
+	{
+		QueryParams.AddIgnoredActor(OwnerActor);
+	}
+	
+	if (IsValid(InstigatorPawn))
+	{
+		QueryParams.AddIgnoredActor(InstigatorPawn);
+	}
+	
+	TArray<FOverlapResult> OverlapResults;
+	const FCollisionShape SplashShape = FCollisionShape::MakeSphere(ExplosionRadius);
+	
+	World->OverlapMultiByObjectType(
+		OverlapResults,
+		ExplosionLocation,
+		FQuat::Identity,
+		ObjectQueryParams,
+		SplashShape,
+		QueryParams
+	);
+	
+	TSet<AActor*> UniqueTargetActors;
+	
+	for (const FOverlapResult& OverlapResult : OverlapResults)
+	{
+		AActor* TargetActor = OverlapResult.GetActor();
+		
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+		
+		// QueryParams 무시 목록을 통과한 경우에도 한 번 더 안전하게 거름
+		if (TargetActor == this || TargetActor == OwnerActor || TargetActor == InstigatorPawn)
+		{
+			continue;
+		}
+		
+		UniqueTargetActors.Add(TargetActor);
+	}
+	
+	OutTargetActors.Reserve(UniqueTargetActors.Num());
+	
+	for (AActor* TargetActor : UniqueTargetActors)
+	{
+		OutTargetActors.Add(TargetActor);
+	}
+	
+	if (bDrawDebugExplosion)
+	{
+		DrawDebugSphere(
+			World,
+			ExplosionLocation,
+			ExplosionRadius,
+			24,
+			FColor::Red,
+			false,
+			2.0f
+		);
+	}
+}
+
 void ANSRangerProjectile::OnProjectileHit(
 	UPrimitiveComponent* HitComponent,
 	AActor* OtherActor,
@@ -109,8 +195,22 @@ void ANSRangerProjectile::OnProjectileHit(
 		return;
 	}
 	
-	// TODO: 폭발 데미지는 다음 단계에서 추가
 	ExecuteImpactCue(HitResult);
+	
+	FVector ExplosionLocation = GetActorLocation();
+	if (HitResult.bBlockingHit)
+	{
+		ExplosionLocation = FVector(HitResult.ImpactPoint);
+	}
+	
+	TArray<AActor*> SplashTargetActors;
+	FindSplashTargetActors(ExplosionLocation, SplashTargetActors);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"Projectile splash targets found. Count={Count}, Radius={Radius}",
+		("Count", SplashTargetActors.Num()),
+		("Radius", ExplosionRadius)
+	);
 	
 	Destroy();
 }
