@@ -256,13 +256,12 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 		}
 	}
 
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		false
-	);
+	// Montage가 있으면 Montage 콜백에서 Ability 종료
+	if (!FireMontage)
+	{
+		FinishProjectileShotAbility(false);
+		return;
+	}
 }
 
 bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResult) const
@@ -471,16 +470,16 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
 }
 
-void UGA_RangerProjectileShot::PlayFireMontage()
+UAbilityTask_PlayMontageAndWait* UGA_RangerProjectileShot::PlayFireMontage()
 {
 	if (!FireMontage)
 	{
-		return;
+		return nullptr;
 	}
 
 	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
 
-	// Projectile 스폰 타이밍은 TargetData 흐름이 관리하므로 몽타주는 연출 피드백으로만 재생
+	// Projectile 발사는 TargetData 흐름에서 즉시 처리하고, Ability 종료만 Montage에 맞춤
 	UAbilityTask_PlayMontageAndWait* MontageTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
@@ -493,10 +492,42 @@ void UGA_RangerProjectileShot::PlayFireMontage()
 
 	if (!MontageTask)
 	{
-		return;
+		return nullptr;
 	}
 
+	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnFireMontageCompleted);
+	MontageTask->OnBlendOut.AddDynamic(this, &ThisClass::OnFireMontageCompleted);
+	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
+	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
+	
 	MontageTask->ReadyForActivation();
+	return MontageTask;
+}
+
+void UGA_RangerProjectileShot::OnFireMontageCancelled()
+{
+	FinishProjectileShotAbility(true);
+}
+
+void UGA_RangerProjectileShot::OnFireMontageCompleted()
+{
+	FinishProjectileShotAbility(false);
+}
+
+void UGA_RangerProjectileShot::FinishProjectileShotAbility(bool bWasCancelled)
+{
+	if (!IsActive())
+	{
+		return;
+	}
+	
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		bWasCancelled
+	);
 }
 
 bool UGA_RangerProjectileShot::TryGetAimPointFromTargetData(

@@ -6,6 +6,7 @@
 #include "GA_SkillBase.h"
 #include "GA_RangerProjectileShot.generated.h"
 
+class UAbilityTask_PlayMontageAndWait;
 class ANSRangerProjectile;
 class UAnimMontage;
 
@@ -36,6 +37,16 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
+	
+	UAbilityTask_PlayMontageAndWait* PlayFireMontage();
+	
+	UFUNCTION()
+	void OnFireMontageCancelled();
+	
+	UFUNCTION()
+	void OnFireMontageCompleted();
+	
+	void FinishProjectileShotAbility(bool bWasCancelled);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
@@ -97,8 +108,6 @@ private:
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
 
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
-	
-	void PlayFireMontage();
 
 private:
 	// TargetData
