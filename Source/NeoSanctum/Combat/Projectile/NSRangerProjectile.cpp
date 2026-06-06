@@ -3,6 +3,7 @@
 
 #include "NSRangerProjectile.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
 #include "Engine/OverlapResult.h"
@@ -43,9 +44,14 @@ ANSRangerProjectile::ANSRangerProjectile()
 	ProjectileMovement->bShouldBounce = false;
 }
 
-void ANSRangerProjectile::InitializeProjectile(UAbilitySystemComponent* InSourceASC)
+void ANSRangerProjectile::InitializeProjectile(
+	UAbilitySystemComponent* InSourceASC,
+	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
+	float InSplashDamageEffectLevel)
 {
 	SourceASC = InSourceASC;
+	SplashDamageEffectClass = InSplashDamageEffectClass;
+	SplashDamageEffectLevel = InSplashDamageEffectLevel;
 }
 
 void ANSRangerProjectile::BeginPlay()
@@ -207,10 +213,12 @@ void ANSRangerProjectile::OnProjectileHit(
 	FindSplashTargetActors(ExplosionLocation, SplashTargetActors);
 	
 	NS_ACTOR_LOG(this, LogNSGAS, Log,
-		"Projectile splash targets found. Count={Count}, Radius={Radius}",
+		"스플래시 대상 검색 완료. 대상수={Count}, 반경={Radius}",
 		("Count", SplashTargetActors.Num()),
 		("Radius", ExplosionRadius)
 	);
+	
+	ApplySplashDamage(ExplosionLocation, SplashTargetActors);
 	
 	Destroy();
 }
@@ -229,4 +237,75 @@ void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
 	CueParameters.Normal = HitResult.ImpactNormal;
 	
 	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_Impact, CueParameters);
+}
+
+void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const
+{
+	if (TargetActors.IsEmpty())
+	{
+		return;
+	}
+	
+	if (!SourceASC || !SplashDamageEffectClass)
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning,
+			"스플래시 데미지를 건너 뜀. SourceASC유효={HasSourceASC}, 이펙트클래스유효={HasEffectClass}",
+			("HasSourceASC", SourceASC != nullptr),
+			("HasEffectClass", SplashDamageEffectClass != nullptr)
+		);
+		
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	EffectContext.AddOrigin(ExplosionLocation);
+	
+	const FGameplayEffectSpecHandle DamageSpecHandle =
+		SourceASC->MakeOutgoingSpec(
+			SplashDamageEffectClass,
+			SplashDamageEffectLevel,
+			EffectContext
+		);
+	
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning, "스플래시 데미지 스펙 생성에 실패");
+
+		return;
+	}
+	
+	int32 AppliedCount = 0;
+	
+	for (AActor* TargetActor : TargetActors)
+	{
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+		
+		UAbilitySystemComponent* TargetASC = 
+			UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+		
+		if (!TargetASC)
+		{
+			NS_ACTOR_LOG(TargetActor, LogNSGAS, Warning, "스플래시 대상에게 ASC가 없어 데미지를 적용안함");
+
+			continue;
+		}
+		
+		// 서버 Projectile 충돌 결과로만 스플래시 데미지를 적용
+		SourceASC->ApplyGameplayEffectSpecToTarget(
+			*DamageSpecHandle.Data.Get(),
+			TargetASC
+		);
+		
+		++AppliedCount;
+	}
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"스플래시 데미지 적용 완료. 적용수={AppliedCount}, 대상수={TargetCount}",
+		("AppliedCount", AppliedCount),
+		("TargetCount", TargetActors.Num())
+	);
 }

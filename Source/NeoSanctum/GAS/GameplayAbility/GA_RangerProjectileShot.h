@@ -58,6 +58,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
+	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
+	float SplashDamageEffectLevel = 1.0f;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	TObjectPtr<UAnimMontage> FireMontage;
 	

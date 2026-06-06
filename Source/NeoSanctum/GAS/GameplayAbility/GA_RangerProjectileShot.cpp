@@ -443,7 +443,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
-		Projectile->InitializeProjectile(ASC);
+		Projectile->InitializeProjectile(ASC, SplashDamageEffectClass, SplashDamageEffectLevel);
 	}
 
 	Projectile->LaunchProjectile(LaunchDirection);
