@@ -7,6 +7,7 @@
 #include "GA_RangerProjectileShot.generated.h"
 
 class UAbilityTask_PlayMontageAndWait;
+class UGameplayEffect;
 class ANSRangerProjectile;
 class UAnimMontage;
 
@@ -38,7 +39,7 @@ protected:
 		bool bWasCancelled
 	) override;
 	
-	UAbilityTask_PlayMontageAndWait* PlayFireMontage();
+	bool PlayFireMontage();
 	
 	UFUNCTION()
 	void OnFireMontageCancelled();
@@ -126,6 +127,9 @@ private:
 	
 	// GameplayCue
 	void ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
+private:
+	bool bIsWaitngForFireMontage = false;
 
 private:
 	// Debug

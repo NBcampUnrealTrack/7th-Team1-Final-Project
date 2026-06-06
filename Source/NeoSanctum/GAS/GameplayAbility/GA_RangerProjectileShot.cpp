@@ -28,6 +28,8 @@ void UGA_RangerProjectileShot::ActivateAbility(
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
+	bIsWaitngForFireMontage = false;
+	
 	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -257,7 +259,7 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 	}
 
 	// Montage가 있으면 Montage 콜백에서 Ability 종료
-	if (!FireMontage)
+	if (!bIsWaitngForFireMontage)
 	{
 		FinishProjectileShotAbility(false);
 		return;
@@ -470,11 +472,13 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
 }
 
-UAbilityTask_PlayMontageAndWait* UGA_RangerProjectileShot::PlayFireMontage()
+bool UGA_RangerProjectileShot::PlayFireMontage()
 {
+	bIsWaitngForFireMontage = false;
+	
 	if (!FireMontage)
 	{
-		return nullptr;
+		return false;
 	}
 
 	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
@@ -492,7 +496,9 @@ UAbilityTask_PlayMontageAndWait* UGA_RangerProjectileShot::PlayFireMontage()
 
 	if (!MontageTask)
 	{
-		return nullptr;
+		NS_OBJ_LOG(LogNSGAS, Warning, "ProjectileShot 발사 몽타주 Task 생성에 실패");
+		
+		return false;
 	}
 
 	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnFireMontageCompleted);
@@ -500,22 +506,28 @@ UAbilityTask_PlayMontageAndWait* UGA_RangerProjectileShot::PlayFireMontage()
 	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
 	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
 	
+	bIsWaitngForFireMontage = true;
+	
 	MontageTask->ReadyForActivation();
-	return MontageTask;
+	return true;
 }
 
 void UGA_RangerProjectileShot::OnFireMontageCancelled()
 {
+	bIsWaitngForFireMontage = false;
 	FinishProjectileShotAbility(true);
 }
 
 void UGA_RangerProjectileShot::OnFireMontageCompleted()
 {
+	bIsWaitngForFireMontage = false;
 	FinishProjectileShotAbility(false);
 }
 
 void UGA_RangerProjectileShot::FinishProjectileShotAbility(bool bWasCancelled)
 {
+	bIsWaitngForFireMontage = false;
+	
 	if (!IsActive())
 	{
 		return;
