@@ -199,6 +199,9 @@ void ANSRangerProjectile::FilterOccludedSplashTargets(
 	
 	const int32 BeforeCount = TargetActors.Num();
 	
+	// TargetActors 안의 각 TargetActor를 하나 씩 검사
+	// IsSplashTraceOcclusion(TraceStart, TargetActor)가 true면 제거
+	// false면 배열에 남김
 	TargetActors.RemoveAll([this, &TraceStart](const AActor* TargetActor)
 	{
 		return IsSplashTargetOccluded(TraceStart, TargetActor);
@@ -235,7 +238,7 @@ bool ANSRangerProjectile::IsSplashTargetOccluded(const FVector& TraceStart, cons
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
 	
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerPorjectileSplashOcclusion), false);
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplashOcclusion), false);
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(TargetActor);
 	
