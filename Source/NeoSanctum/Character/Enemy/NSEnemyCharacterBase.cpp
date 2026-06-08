@@ -344,6 +344,11 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		ASC->RemoveActiveEffects(FGameplayEffectQuery());
 		ASC->ClearAllAbilities();
 	}
+	
+	if (WeaponComponent)
+	{
+		WeaponComponent->UnEquipWeapon();
+	}
 
 	// 물리적 중지
 	SetActorHiddenInGame(true);

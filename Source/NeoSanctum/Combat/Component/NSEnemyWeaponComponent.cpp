@@ -81,6 +81,15 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 	}
 }
 
+void UNSEnemyWeaponComponent::UnEquipWeapon()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->Destroy();
+		CurrentWeapon = nullptr;
+	}
+}
+
 
 void UNSEnemyWeaponComponent::OnOwnerDead()
 {
