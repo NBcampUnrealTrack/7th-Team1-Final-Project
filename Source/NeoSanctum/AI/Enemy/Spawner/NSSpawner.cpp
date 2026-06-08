@@ -10,6 +10,8 @@
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "GameFramework/GameModeBase.h"
 #include "NavigationSystem.h"
+#include "RoomLevel.h"
+#include "Room.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -17,44 +19,42 @@ ANSSpawner::ANSSpawner()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ANSSpawner::OnActorEnteredRoom(AActor* OtherActor)
+URoom* ANSSpawner::GetOwningRoom()
 {
-	if (!HasAuthority())
-	{
-		return;
+	if (CachedRoom) 
+	{		
+		return CachedRoom;
 	}
 	
-	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass()))
+	if (ULevel* Level = GetLevel())
 	{
-		return;
+		if (ARoomLevel* RoomLevel = Cast<ARoomLevel>(Level->GetLevelScriptActor()))
+		{
+			CachedRoom = RoomLevel->GetRoom();
+		}
 	}
 	
-	++PlayersInRoom;
-	ActivateSpawner();
+	return CachedRoom;
 }
 
-void ANSSpawner::OnActorExitedRoom(AActor* OtherActor)
+void ANSSpawner::EvaluateRelevancy(int32 MinRelevancy)
 {
-	if (!HasAuthority())
+	if (!HasAuthority()) 
 	{
 		return;
 	}
 	
-	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) 
-	{		
-		return;
-	}
-
-	PlayersInRoom = FMath::Max(0, PlayersInRoom - 1);
-
-	// 아직 룸에 플레이어가 남아 있으면 몬스터 유지
-	if (PlayersInRoom > 0)
+	if (MinRelevancy >= 0 && MinRelevancy <= SpawnRelevancyThreshold)
 	{
-		return;
+		// 플레이어가 정해둔 거리 안으로 들어오면 스폰
+		ActivateSpawner();
 	}
-
-	// 마지막 플레이어가 나갔을 때만 풀로 반환
-	ReturnMonstersToPool();
+	else if (MinRelevancy < 0)
+	{
+		// 모든 플레이어가 거리 밖으로 나가게되면 풀 반환
+		ReturnMonstersToPool();
+	}
+	// MinRelevancy = 0 이면 현상유지
 }
 
 void ANSSpawner::ActivateSpawner()

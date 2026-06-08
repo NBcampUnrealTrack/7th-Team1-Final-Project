@@ -11,6 +11,7 @@
 class UDataTable;
 class ANSEnemyCharacterBase;
 class UNSEnemyData;
+class URoom;
 
 UCLASS()
 class NEOSANCTUM_API ANSSpawner : public AActor
@@ -20,14 +21,12 @@ class NEOSANCTUM_API ANSSpawner : public AActor
 public:
 	ANSSpawner();
 	
-	// 스포너 에디터에서 On Actor Enter Room 이벤트에 연결할 함수
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
-	void OnActorEnteredRoom(AActor* OtherActor);
-	
-	// 스포너 에디터에서 On Actor Exit Room 이벤트에 연결할 함수
-	UFUNCTION(BlueprintCallable, Category = "GameFlow")
-	void OnActorExitedRoom(AActor* OtherActor);
+	URoom* GetOwningRoom();
 
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void EvaluateRelevancy(int32 MinRelevancy);
+	
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void ActivateSpawner();
 	
@@ -68,6 +67,10 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Fallback")
 	TObjectPtr<UNSEnemyData> FallbackEnemyData;
+	
+	// 스폰 타이밍 결정용
+	UPROPERTY(EditAnywhere, Category = "Spawn")
+	int32 SpawnRelevancyThreshold = 0;
 
 private:
 	TSoftClassPtr<ANSEnemyCharacterBase> SoftCharacterClass;
@@ -75,6 +78,6 @@ private:
 	int32 FinalSpawnQuantity = 0;
 	TSharedPtr<FStreamableHandle> StreamingHandle;
 	
-	// 룸에 남아있는 플레이어 숫자 체크용
-	int32 PlayersInRoom = 0;
+	UPROPERTY(Transient)
+	TObjectPtr<URoom> CachedRoom;
 };
