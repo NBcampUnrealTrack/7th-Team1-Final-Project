@@ -10,7 +10,6 @@
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "GameFramework/GameModeBase.h"
 #include "NavigationSystem.h"
-#include "RoomLevel.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -18,20 +17,33 @@ ANSSpawner::ANSSpawner()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ANSSpawner::OnActorEnteredRoom(AActor* OtherActor, UDataTable* SpawnTable)
+void ANSSpawner::OnActorEnteredRoom(AActor* OtherActor)
 {
-	if (!HasAuthority()) return;
-	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) return;
-
-	++PlayersInRoom;
+	if (!HasAuthority())
+	{
+		return;
+	}
 	
-	ActivateSpawner(SpawnTable);
+	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass()))
+	{
+		return;
+	}
+	
+	++PlayersInRoom;
+	ActivateSpawner();
 }
 
 void ANSSpawner::OnActorExitedRoom(AActor* OtherActor)
 {
-	if (!HasAuthority()) return;
-	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) return;
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	if (!OtherActor || !OtherActor->IsA(ANSPlayerCharacterBase::StaticClass())) 
+	{		
+		return;
+	}
 
 	PlayersInRoom = FMath::Max(0, PlayersInRoom - 1);
 
@@ -45,9 +57,9 @@ void ANSSpawner::OnActorExitedRoom(AActor* OtherActor)
 	ReturnMonstersToPool();
 }
 
-void ANSSpawner::ActivateSpawner(UDataTable* SpawnTable)
+void ANSSpawner::ActivateSpawner()
 {
-	if (!HasAuthority() || !SpawnTable)
+	if (!HasAuthority() || !SpawnDataTable)
 	{
 		return;
 	}
@@ -59,8 +71,7 @@ void ANSSpawner::ActivateSpawner(UDataTable* SpawnTable)
 	}
 
 	bHasSpawned = true;
-
-	ProcessSpawnProbability(SpawnTable);
+	ProcessSpawnProbability(SpawnDataTable);
 	RequestAsyncLoad();
 }
 
@@ -218,79 +229,38 @@ void ANSSpawner::ExecuteFinalSpawn()
 
 FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const
 {
-	UNavigationSystemV1* NavSystem = UNavigationSystemV1::GetCurrent(GetWorld());
-	if (!NavSystem)
-	{
-		return GetActorLocation();
-	}
+	const FVector Origin = GetActorLocation();
+	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
 
-	FVector Center, Extent;
-	GetRoomBounds(Center, Extent);
-
-	// 벽에 붙는 것 방지용
-	const float Margin = 100.0f;
-	const float HalfX = FMath::Max(Extent.X - Margin, 0.0f);
-	const float HalfY = FMath::Max(Extent.Y - Margin, 0.0f);
-
-	const int32 MaxTries = 20;
-	FVector LastValid = GetActorLocation();
+	const int32 MaxTries = 10;
+	const float MinSpacingSq = MinSpawnSpacing * MinSpawnSpacing;
 
 	for (int32 Try = 0; Try < MaxTries; ++Try)
 	{
-		// 스포너가 있는 룸 안에서만 샘플링
-		const FVector Candidate = Center + FVector(
-			FMath::FRandRange(-HalfX, HalfX),
-			FMath::FRandRange(-HalfY, HalfY),
-			0.0f);
+		// 스포너 주변 작은 반경
+		const FVector2D Off = FMath::RandPointInCircle(SpawnRadius);
+		const FVector Candidate = Origin + FVector(Off.X, Off.Y, 0.0f);
 
-		// 옆 룸으로 안 넘어가게 조절
+		// 바닥 유효성(네브메시 투영)
 		FNavLocation NavLoc;
-		const FVector QueryExtent(150.0f, 150.0f, Extent.Z + 100.0f);
-		if (!NavSystem->ProjectPointToNavigation(Candidate, NavLoc, QueryExtent))
+		if (NavSys && NavSys->ProjectPointToNavigation(Candidate, NavLoc, FVector(100, 100, 200)))
 		{
-			// 해당되는 자리에 네브메시 없으면 저장안함
-			continue; 
-		}
-
-		LastValid = NavLoc.Location;
-
-		// 최소 간격 검사
-		bool bTooClose = false;
-		for (const FVector& Placed : AlreadyPlaced)
-		{
-			if (FVector::DistSquared2D(Placed, NavLoc.Location) < 
-				MinSpawnSpacing * MinSpawnSpacing)
+			// 캡슐 겹침만 피하는 가벼운 간격 검사
+			bool bTooClose = false;
+			for (const FVector& P : AlreadyPlaced)
 			{
-				bTooClose = true;
-				break;
+				if (FVector::DistSquared2D(P, NavLoc.Location) < MinSpacingSq)
+				{
+					bTooClose = true;
+					break;
+				}
+			}
+			if (!bTooClose)
+			{
+				return NavLoc.Location + FVector(0.0f, 0.0f, 88.0f);
 			}
 		}
-
-		if (!bTooClose)
-		{
-			return NavLoc.Location + FVector(0.0f, 0.0f, 88.0f);
-		}
 	}
-
-	// 실패해도 마지막 유효 네브메시 점을 반환
-	return LastValid + FVector(0.0f, 0.0f, 88.0f);
+	// 실패 시 스포너 위치
+	return Origin + FVector(0.0f, 0.0f, 88.0f);
 }
-
-// 자기 룸의 바운드 얻기(없으면 스포너 반경 폴백)
-bool ANSSpawner::GetRoomBounds(FVector& OutCenter, FVector& OutExtent) const
-{
-	if (ULevel* Level = GetLevel())
-	{
-		if (ARoomLevel* RoomLevel = Cast<ARoomLevel>(Level->GetLevelScriptActor()))
-		{
-			OutCenter = RoomLevel->GetBoundsCenter();
-			OutExtent = RoomLevel->GetBoundsExtent();
-			return true;
-		}
-	}
-	OutCenter = GetActorLocation();
-	OutExtent = FVector(FallbackSpawnRadius, FallbackSpawnRadius, 1000.0f);
-	
-	return false;
-}
-
