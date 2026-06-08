@@ -6,6 +6,8 @@
 #include "GA_SkillBase.h"
 #include "GA_RangerProjectileShot.generated.h"
 
+class UAbilityTask_PlayMontageAndWait;
+class UGameplayEffect;
 class ANSRangerProjectile;
 class UAnimMontage;
 
@@ -36,6 +38,16 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
+	
+	bool PlayFireMontage();
+	
+	UFUNCTION()
+	void OnFireMontageCancelled();
+	
+	UFUNCTION()
+	void OnFireMontageCompleted();
+	
+	void FinishProjectileShotAbility(bool bWasCancelled);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
@@ -46,6 +58,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
+	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
+	float SplashDamageEffectLevel = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	TObjectPtr<UAnimMontage> FireMontage;
@@ -97,8 +115,6 @@ private:
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
 
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
-	
-	void PlayFireMontage();
 
 private:
 	// TargetData
@@ -111,6 +127,9 @@ private:
 	
 	// GameplayCue
 	void ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
+private:
+	bool bIsWaitngForFireMontage = false;
 
 private:
 	// Debug

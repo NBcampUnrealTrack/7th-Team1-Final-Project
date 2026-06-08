@@ -3,9 +3,12 @@
 
 #include "NSRangerProjectile.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 
@@ -41,9 +44,14 @@ ANSRangerProjectile::ANSRangerProjectile()
 	ProjectileMovement->bShouldBounce = false;
 }
 
-void ANSRangerProjectile::InitializeProjectile(UAbilitySystemComponent* InSourceASC)
+void ANSRangerProjectile::InitializeProjectile(
+	UAbilitySystemComponent* InSourceASC,
+	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
+	float InSplashDamageEffectLevel)
 {
 	SourceASC = InSourceASC;
+	SplashDamageEffectClass = InSplashDamageEffectClass;
+	SplashDamageEffectLevel = InSplashDamageEffectLevel;
 }
 
 void ANSRangerProjectile::BeginPlay()
@@ -97,6 +105,90 @@ void ANSRangerProjectile::IgnoreSourceActorCollision()
 	}
 }
 
+void ANSRangerProjectile::FindSplashTargetActors(
+	const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const
+{
+	OutTargetActors.Reset();
+	
+	UWorld* World = GetWorld();
+	
+	if (!World || ExplosionRadius <= 0.0f)
+	{
+		return;
+	}
+	
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplash), false);
+	QueryParams.AddIgnoredActor(this);
+	
+	AActor* OwnerActor = GetOwner();
+	APawn* InstigatorPawn = GetInstigator();
+	
+	if (IsValid(OwnerActor))
+	{
+		QueryParams.AddIgnoredActor(OwnerActor);
+	}
+	
+	if (IsValid(InstigatorPawn))
+	{
+		QueryParams.AddIgnoredActor(InstigatorPawn);
+	}
+	
+	TArray<FOverlapResult> OverlapResults;
+	const FCollisionShape SplashShape = FCollisionShape::MakeSphere(ExplosionRadius);
+	
+	World->OverlapMultiByObjectType(
+		OverlapResults,
+		ExplosionLocation,
+		FQuat::Identity,
+		ObjectQueryParams,
+		SplashShape,
+		QueryParams
+	);
+	
+	TSet<AActor*> UniqueTargetActors;
+	
+	for (const FOverlapResult& OverlapResult : OverlapResults)
+	{
+		AActor* TargetActor = OverlapResult.GetActor();
+		
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+		
+		// QueryParams 무시 목록을 통과한 경우에도 한 번 더 안전하게 거름
+		if (TargetActor == this || TargetActor == OwnerActor || TargetActor == InstigatorPawn)
+		{
+			continue;
+		}
+		
+		UniqueTargetActors.Add(TargetActor);
+	}
+	
+	OutTargetActors.Reserve(UniqueTargetActors.Num());
+	
+	for (AActor* TargetActor : UniqueTargetActors)
+	{
+		OutTargetActors.Add(TargetActor);
+	}
+	
+	if (bDrawDebugExplosion)
+	{
+		DrawDebugSphere(
+			World,
+			ExplosionLocation,
+			ExplosionRadius,
+			24,
+			FColor::Red,
+			false,
+			2.0f
+		);
+	}
+}
+
 void ANSRangerProjectile::OnProjectileHit(
 	UPrimitiveComponent* HitComponent,
 	AActor* OtherActor,
@@ -109,8 +201,24 @@ void ANSRangerProjectile::OnProjectileHit(
 		return;
 	}
 	
-	// TODO: 폭발 데미지는 다음 단계에서 추가
 	ExecuteImpactCue(HitResult);
+	
+	FVector ExplosionLocation = GetActorLocation();
+	if (HitResult.bBlockingHit)
+	{
+		ExplosionLocation = FVector(HitResult.ImpactPoint);
+	}
+	
+	TArray<AActor*> SplashTargetActors;
+	FindSplashTargetActors(ExplosionLocation, SplashTargetActors);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"스플래시 대상 검색 완료. 대상수={Count}, 반경={Radius}",
+		("Count", SplashTargetActors.Num()),
+		("Radius", ExplosionRadius)
+	);
+	
+	ApplySplashDamage(ExplosionLocation, SplashTargetActors);
 	
 	Destroy();
 }
@@ -129,4 +237,75 @@ void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
 	CueParameters.Normal = HitResult.ImpactNormal;
 	
 	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_Impact, CueParameters);
+}
+
+void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const
+{
+	if (TargetActors.IsEmpty())
+	{
+		return;
+	}
+	
+	if (!SourceASC || !SplashDamageEffectClass)
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning,
+			"스플래시 데미지를 건너 뜀. SourceASC유효={HasSourceASC}, 이펙트클래스유효={HasEffectClass}",
+			("HasSourceASC", SourceASC != nullptr),
+			("HasEffectClass", SplashDamageEffectClass != nullptr)
+		);
+		
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+	EffectContext.AddOrigin(ExplosionLocation);
+	
+	const FGameplayEffectSpecHandle DamageSpecHandle =
+		SourceASC->MakeOutgoingSpec(
+			SplashDamageEffectClass,
+			SplashDamageEffectLevel,
+			EffectContext
+		);
+	
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning, "스플래시 데미지 스펙 생성에 실패");
+
+		return;
+	}
+	
+	int32 AppliedCount = 0;
+	
+	for (AActor* TargetActor : TargetActors)
+	{
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+		
+		UAbilitySystemComponent* TargetASC = 
+			UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+		
+		if (!TargetASC)
+		{
+			NS_ACTOR_LOG(TargetActor, LogNSGAS, Warning, "스플래시 대상에게 ASC가 없어 데미지를 적용안함");
+
+			continue;
+		}
+		
+		// 서버 Projectile 충돌 결과로만 스플래시 데미지를 적용
+		SourceASC->ApplyGameplayEffectSpecToTarget(
+			*DamageSpecHandle.Data.Get(),
+			TargetASC
+		);
+		
+		++AppliedCount;
+	}
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"스플래시 데미지 적용 완료. 적용수={AppliedCount}, 대상수={TargetCount}",
+		("AppliedCount", AppliedCount),
+		("TargetCount", TargetActors.Num())
+	);
 }

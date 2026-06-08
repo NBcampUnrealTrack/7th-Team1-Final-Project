@@ -7,6 +7,7 @@
 #include "NSRangerProjectile.generated.h"
 
 
+class UGameplayEffect;
 class UAbilitySystemComponent;
 class UProjectileMovementComponent;
 class USphereComponent;
@@ -24,7 +25,11 @@ class NEOSANCTUM_API ANSRangerProjectile : public AActor
 public:
 	ANSRangerProjectile();
 	
-	void InitializeProjectile(UAbilitySystemComponent* InSourceASC);
+	void InitializeProjectile(
+		UAbilitySystemComponent* InSourceASC,
+		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
+		float InSplashDamageEffectLevel
+	);
 	
 	void LaunchProjectile(const FVector& LaunchDirection);
 
@@ -43,9 +48,19 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
 	float LifeSeconds = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
+	float ExplosionRadius = 300.0f;
+	
+protected:
+	// Debug
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
+	bool bDrawDebugExplosion = false;
 
 private:
 	void IgnoreSourceActorCollision();
+	
+	void FindSplashTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
 	
 	UFUNCTION()
 	void OnProjectileHit(
@@ -58,6 +73,15 @@ private:
 	
 	void ExecuteImpactCue(const FHitResult& HitResult);
 	
+	void ApplySplashDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const;
+	
+private:
+	
 	UPROPERTY()
 	TObjectPtr<UAbilitySystemComponent> SourceASC;
+	
+	UPROPERTY()
+	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
+	
+	float SplashDamageEffectLevel = 1.0f;
 };
