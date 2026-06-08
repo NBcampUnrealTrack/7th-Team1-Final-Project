@@ -19,6 +19,29 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+private:
+	UFUNCTION()
+	void OnDetectionSphereBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult
+	);
+
+	UFUNCTION()
+	void OnDetectionSphereEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex
+	);
+
+private:
+	bool IsValidTargetActor(const AActor* TargetActor) const;
+	void InitializeTargets();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<USceneComponent> SceneRoot;
@@ -41,4 +64,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");
+
+private:
+	TSet<TWeakObjectPtr<AActor>> TargetSet;
 };
