@@ -6,7 +6,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
-#include "AttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
@@ -31,10 +31,17 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 	FloatingPawnMovementComponent->TurningBoost = 8.f;
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
-	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
+	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
 	bReplicates = true;
 	SetReplicateMovement(true);
+}
+
+UAbilitySystemComponent* ANSBaseCompanionAI::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
 }
 
 void ANSBaseCompanionAI::Tick(float DeltaSeconds)
@@ -62,6 +69,10 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	if (!IsValid(DroneAIController)) return;
 	
 	CachedAIController = DroneAIController;
+	
+	InitAbilityActorInfo();
+	InitializeDefaultStats();
+	GiveDefaultAbilities();
 }
 
 void ANSBaseCompanionAI::BeginPlay()
@@ -70,10 +81,7 @@ void ANSBaseCompanionAI::BeginPlay()
 	
 	InitSteeringDirections();
 	
-	if (AbilitySystemComponent)
-	{
-		AbilitySystemComponent->InitAbilityActorInfo(this, this);
-	}
+	InitAbilityActorInfo();
 }
 
 void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
@@ -96,6 +104,61 @@ void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
 	if (!IsValid(Actor)) return;
 	
 	OwnerPlayer = Actor;
+}
+
+void ANSBaseCompanionAI::InitAbilityActorInfo()
+{
+	checkf(AbilitySystemComponent, TEXT("Can't Found ASC %s"), *GetName());
+	
+	
+	AbilitySystemComponent->InitAbilityActorInfo(this,this);
+	
+}
+
+void ANSBaseCompanionAI::InitializeDefaultStats()
+{
+	if (!HasAuthority()) return;
+	
+	if (!AbilitySystemComponent || !DefaultStatsEffect)	return;
+	
+	FGameplayEffectContextHandle ContextHandle =
+		AbilitySystemComponent->MakeEffectContext();
+	
+	FGameplayEffectSpecHandle SpecHandle =
+		AbilitySystemComponent->MakeOutgoingSpec(
+		DefaultStatsEffect,
+		1.f,
+		ContextHandle
+		);
+	
+	if (SpecHandle.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+
+}
+
+void ANSBaseCompanionAI::GiveDefaultAbilities()
+{
+	if (!HasAuthority() || bDefaultAbilitiesGranted) return;
+	
+	if (!AbilitySystemComponent) return;
+	
+	for (const TSubclassOf<UGameplayAbility>& AbilityClass : DefaultAbilities)
+	{
+		if (!AbilityClass) continue;
+		
+		FGameplayAbilitySpec AbilitySpec(
+		AbilityClass,
+		1,
+		INDEX_NONE,
+		this
+		);
+		
+		AbilitySystemComponent->GiveAbility(AbilitySpec);
+	}
+	
+	bDefaultAbilitiesGranted = true;
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
