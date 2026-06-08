@@ -11,7 +11,9 @@
 
 ANSTurret::ANSTurret()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	// 처음부터 Tick을 활성화 한 채로 시작하지 않기 위한 설정
+	PrimaryActorTick.bStartWithTickEnabled = false;
 
 	bReplicates = true;
 	SetReplicateMovement(true);
@@ -34,6 +36,13 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 }
 
+void ANSTurret::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	RotateHeadToTarget(DeltaSeconds);
+}
+
 void ANSTurret::BeginPlay()
 {
 	Super::BeginPlay();
@@ -52,6 +61,16 @@ void ANSTurret::BeginPlay()
 
 		InitializeTargets();
 	}
+
+	const float RefreshInterval = FMath::Max(TargetRefreshInterval, 0.01f);
+	GetWorldTimerManager().SetTimer(
+		TargetRefreshTimerHandle,
+		this,
+		&ThisClass::UpdateAutoTarget,
+		RefreshInterval,
+		true
+	);
+	UpdateAutoTarget();
 }
 
 void ANSTurret::OnDetectionSphereBeginOverlap(
@@ -127,4 +146,62 @@ void ANSTurret::InitializeTargets()
 			TargetSet.Add(OverlappingActor);
 		}
 	}
+}
+
+void ANSTurret::UpdateAutoTarget()
+{
+	AActor* ClosestTarget = nullptr;
+	float ClosestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (TSet<TWeakObjectPtr<AActor>>::TIterator It(TargetSet); It; ++It)
+	{
+		AActor* TargetActor = It->Get();
+		if (!IsValidTargetActor(TargetActor))
+		{
+			It.RemoveCurrent();
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared(GetActorLocation(), TargetActor->GetActorLocation());
+		if (DistanceSquared < ClosestDistanceSquared)
+		{
+			ClosestDistanceSquared = DistanceSquared;
+			ClosestTarget = TargetActor;
+		}
+	}
+
+	AutoTarget = ClosestTarget;
+	// 타겟이 있다면 Tick을 활성화해서 RotateHeadToTarget 로직이 돌아갈 수 있도록 함 
+	// 타겟이 없으면 Tick을 비활성화.
+	SetActorTickEnabled(AutoTarget.IsValid());
+}
+
+void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
+{
+	AActor* TargetActor = AutoTarget.Get();
+	if (!IsValidTargetActor(TargetActor) || !HeadPivotComponent)
+	{
+		return;
+	}
+
+	const FVector ToTarget = TargetActor->GetActorLocation() - HeadPivotComponent->GetComponentLocation();
+	const FVector LocalDirection = HeadPivotComponent->GetAttachParent()
+		? HeadPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
+		: ToTarget;
+
+	const FVector FlatLocalDirection(LocalDirection.X, LocalDirection.Y, 0.0f);
+	if (FlatLocalDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator DesiredRelativeRotation = FlatLocalDirection.Rotation();
+	const FRotator NewRelativeRotation = FMath::RInterpConstantTo(
+		HeadPivotComponent->GetRelativeRotation(),
+		DesiredRelativeRotation,
+		DeltaSeconds,
+		HeadTurnSpeed
+	);
+
+	HeadPivotComponent->SetRelativeRotation(NewRelativeRotation);
 }
