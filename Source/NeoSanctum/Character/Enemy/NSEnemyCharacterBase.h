@@ -46,7 +46,13 @@ public:
 
 	// (이용호 추가) 외부에서 생존 여부 확인용
 	bool IsDead() const { return bIsDead; }
-
+	bool IsInPool() const { return bIsInPool; }
+	
+	// 스폰 시 데이터 주입용 (BeginPlay 전 호출)
+	void SetEnemyData(UNSEnemyData* InEnemyData);
+	
+	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
+	void DeactivateForPool();
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -72,4 +78,18 @@ protected:
 
 	UFUNCTION()
 	void OnRep_bIsDead();
+	
+	//(이용호 추가)
+	void ApplyAliveVisual();
+	void ApplyDeadVisual();
+	void InitializeFromData(bool bFullInit);
+
+private:
+	//(이용호 추가)
+	void OnDissolveFinished();
+	UPROPERTY(ReplicatedUsing = OnRep_bIsInPool)
+	bool bIsInPool = false;
+	
+	UFUNCTION()
+	void OnRep_bIsInPool();
 };

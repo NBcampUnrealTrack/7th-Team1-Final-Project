@@ -9,7 +9,7 @@ UNSDissolveComponent::UNSDissolveComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
-void UNSDissolveComponent::StartDissolve()
+void UNSDissolveComponent::StartDissolve(bool bDestroyAfterDissolve)
 {
 AActor* Owner = GetOwner();
 	if (!Owner || !GetWorld()) return;
@@ -45,9 +45,25 @@ AActor* Owner = GetOwner();
 			true
 		);
 		
-		if (Owner->HasAuthority())
+		if (bDestroyAfterDissolve && Owner->HasAuthority())
 		{
 			Owner->SetLifeSpan(DissolveDuration);
+		}
+	}
+}
+
+void UNSDissolveComponent::ResetDissolve()
+{
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DissolveTimerHandle);
+	}
+
+	for (UMaterialInstanceDynamic* DMI : DynamicMaterials)
+	{
+		if (DMI)
+		{
+			DMI->SetScalarParameterValue(TEXT("DissolveMask"), -1.0f);
 		}
 	}
 }
@@ -71,5 +87,6 @@ void UNSDissolveComponent::UpdateDissolveAlpha()
 	if (Alpha >= 1.0f)
 	{
 		GetWorld()->GetTimerManager().ClearTimer(DissolveTimerHandle);
+		OnDissolveComplete.ExecuteIfBound();
 	}
 }

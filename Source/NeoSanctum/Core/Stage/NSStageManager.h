@@ -17,6 +17,7 @@ public:
 	
 	// 맵 로딩 완료 시점에 GameMode에서 호출
 	void SetEnemyCount(int32 Count);
+	void AddEnemyCount(int32 Count);
 
 	// 적 처치 시 GameMode에서 호출
 	void HandleEnemyKilled();

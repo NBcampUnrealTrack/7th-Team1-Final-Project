@@ -13,6 +13,12 @@ void UNSStageManager::SetEnemyCount(int32 Count)
 	UE_LOG(LogTemp, Log, TEXT("초기 적 수: %d"), RemainingEnemyCount);
 }
 
+void UNSStageManager::AddEnemyCount(int32 Count)
+{
+	RemainingEnemyCount += Count;
+	UE_LOG(LogTemp, Log, TEXT("적 수 추가: %d, 총: %d"), Count, RemainingEnemyCount);
+}
+
 void UNSStageManager::HandleEnemyKilled()
 {
 	RemainingEnemyCount = FMath::Max(0, RemainingEnemyCount - 1);

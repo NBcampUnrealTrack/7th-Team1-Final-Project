@@ -7,8 +7,10 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Core/Stage/NSStageManager.h"
+#include "NeoSanctum/Core/Stage/NSMonsterPoolManager.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
@@ -31,13 +33,16 @@ void ANSRunGameMode::BeginPlay()
 	if (HasAuthority())
 	{
 		NSStageManager = NewObject<UNSStageManager>(this);
-		
 		// 클리어 판정 알림용 바인딩
 		NSStageManager->OnStageCleared.BindUObject(
 			this,
 			&ANSRunGameMode::NotifyStageCleared_Implementation
 		);
+		
+		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
 	}
+	
+	
 }
 
 void ANSRunGameMode::NotifyStageCleared_Implementation()
@@ -52,7 +57,7 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
 	{
 		ANSEnemyCharacterBase* Enemy = *It;
-		if (Enemy && !Enemy->IsDead())
+		if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
 		{
 			ActualAliveEnemies++;
 		}
@@ -127,6 +132,49 @@ void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
 }
 
+void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)
+{
+	if (!HasAuthority() || !NSMonsterPoolManager)
+	{
+		return;
+	}
+
+	// 몬스터가 살아있는채로 반환되는 경우에는 수동으로 카운트 줄임
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(Monster);
+	if (Enemy && !Enemy->IsDead() && NSStageManager)
+	{
+		NSStageManager->AddEnemyCount(-1);
+	}
+
+	NSMonsterPoolManager->ReturnMonsterToPool(Monster);
+}
+
+ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
+	UClass* CharacterClass, 
+	UNSEnemyData* EnemyData, 
+	const FVector& Location,
+	const FRotator& Rotation)
+{
+	if (!HasAuthority() || !NSMonsterPoolManager || !CharacterClass || !EnemyData)
+	{
+		return nullptr;
+	}
+
+	ACharacter* Spawned = NSMonsterPoolManager->GetPooledMonster(
+		CharacterClass,
+		EnemyData,
+		Location,
+		Rotation);
+
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(Spawned);
+
+	if (Enemy && NSStageManager)
+	{
+		NSStageManager->AddEnemyCount(1);
+	}
+
+	return Enemy;
+}
 
 void ANSRunGameMode::HandleRunOver(bool bIsClear)
 {

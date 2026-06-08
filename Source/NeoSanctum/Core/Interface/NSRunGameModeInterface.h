@@ -35,4 +35,16 @@ public:
 	// 다음 스테이지 진행 선택하면 호출될 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void RequestMoveToNextStage();
+	
+	// 몬스터 풀 반환용 함수 (적 캐릭터 디졸브 완료 후 호출)
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void ReturnMonsterToPool(ACharacter* Monster);
+	
+	// 스포너가 몬스터 스폰 요청
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	ANSEnemyCharacterBase* RequestSpawnMonster(
+		UClass* CharacterClass,
+		UNSEnemyData* EnemyData,
+		const FVector& Location,
+		const FRotator& Rotation);
 };

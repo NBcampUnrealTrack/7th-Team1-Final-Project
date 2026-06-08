@@ -19,6 +19,9 @@ public:
 	// 몬스터 무기 스폰 후 착용
 	UFUNCTION(BlueprintCallable, Category = "Weapon System")
 	void EquipWeapon();
+	//(이용호 추가) 무기 디스폰용
+	UFUNCTION(BlueprintCallable, Category = "Weapon System")
+	void UnEquipWeapon();
 
 protected:
 	virtual void BeginPlay() override;
