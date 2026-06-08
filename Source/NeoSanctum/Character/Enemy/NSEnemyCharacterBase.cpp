@@ -157,10 +157,6 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			{
 				GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
 			}
-			if (EnemyData->BaseAnimClass)
-			{
-				GetMesh()->SetAnimInstanceClass(EnemyData->BaseAnimClass);
-			}
 		}
 		SetActorScale3D(EnemyData->DrawScale);
 
