@@ -52,15 +52,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
 	float ExplosionRadius = 300.0f;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
+	bool bExcludeOccludedSplashTargets = true;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
+	float SplashOcclusionTraceStartOffset = 5.0f;
+	
 protected:
 	// Debug
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
 	bool bDrawDebugExplosion = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
+	bool bDrawDebugSplashOcclusion = false;
 
 private:
 	void IgnoreSourceActorCollision();
 	
 	void FindSplashTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
+	
+	void FilterOccludedSplashTargets(const FVector& TraceStart, TArray<AActor*>& TargetActors) const;
+	bool IsSplashTargetOccluded(const FVector& TraceStart, const AActor* TargetActor) const;
 	
 	UFUNCTION()
 	void OnProjectileHit(

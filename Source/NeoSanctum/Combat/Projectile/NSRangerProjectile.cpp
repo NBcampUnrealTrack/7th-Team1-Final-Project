@@ -189,6 +189,100 @@ void ANSRangerProjectile::FindSplashTargetActors(
 	}
 }
 
+void ANSRangerProjectile::FilterOccludedSplashTargets(
+	const FVector& TraceStart, TArray<AActor*>& TargetActors) const
+{
+	if (!bExcludeOccludedSplashTargets || TargetActors.IsEmpty())
+	{
+		return;
+	}
+	
+	const int32 BeforeCount = TargetActors.Num();
+	
+	// TargetActors 안의 각 TargetActor를 하나 씩 검사
+	// IsSplashTraceOcclusion(TraceStart, TargetActor)가 true면 제거
+	// false면 배열에 남김
+	TargetActors.RemoveAll([this, &TraceStart](const AActor* TargetActor)
+	{
+		return IsSplashTargetOccluded(TraceStart, TargetActor);
+	});
+	
+	const int32 RemovedCount = BeforeCount - TargetActors.Num();
+	
+	if (RemovedCount > 0)
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Log,
+			"벽에 가려진 스플래시 대상을 제외. 제외수={RemovedCount}, 남은대상수={RemainingCount}",
+			("RemovedCount", RemovedCount),
+			("RemainingCount", TargetActors.Num())
+		);
+	}
+}
+
+bool ANSRangerProjectile::IsSplashTargetOccluded(const FVector& TraceStart, const AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return true;
+	}
+	
+	UWorld* World = GetWorld();
+	
+	if (!World)
+	{
+		return false;
+	}
+	
+	const FVector TraceEnd = TargetActor->GetActorLocation();
+	
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplashOcclusion), false);
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(TargetActor);
+	
+	AActor* OwnerActor = GetOwner();
+	APawn* InstigatorPawn = GetInstigator();
+	
+	if (IsValid(OwnerActor))
+	{
+		QueryParams.AddIgnoredActor(OwnerActor);
+	}
+	
+	if (IsValid(InstigatorPawn))
+	{
+		QueryParams.AddIgnoredActor(InstigatorPawn);
+	}
+	
+	FHitResult OcclusionHit;
+	const bool bBlocked = World->LineTraceSingleByObjectType(
+		OcclusionHit,
+		TraceStart,
+		TraceEnd,
+		ObjectQueryParams,
+		QueryParams
+	);
+	
+	// 초록 선: 벽에 가려지지 않은 대상
+	// 빨간 선: 벽에 가려져 제외된 대상
+	if (bDrawDebugSplashOcclusion)
+	{
+		DrawDebugLine(
+			World,
+			TraceStart,
+			TraceEnd,
+			bBlocked ? FColor::Red : FColor::Green,
+			false,
+			2.0f,
+			0,
+			1.5f
+		);
+	}
+	
+	return bBlocked;
+}
+
 void ANSRangerProjectile::OnProjectileHit(
 	UPrimitiveComponent* HitComponent,
 	AActor* OtherActor,
@@ -204,17 +298,26 @@ void ANSRangerProjectile::OnProjectileHit(
 	ExecuteImpactCue(HitResult);
 	
 	FVector ExplosionLocation = GetActorLocation();
+	FVector OcclusionTraceStart = ExplosionLocation;
+	
 	if (HitResult.bBlockingHit)
 	{
 		ExplosionLocation = FVector(HitResult.ImpactPoint);
+		OcclusionTraceStart =
+			ExplosionLocation + FVector(HitResult.ImpactNormal) * SplashOcclusionTraceStartOffset;
 	}
 	
 	TArray<AActor*> SplashTargetActors;
 	FindSplashTargetActors(ExplosionLocation, SplashTargetActors);
 	
+	const int32 FoundTargetCount = SplashTargetActors.Num();
+	
+	FilterOccludedSplashTargets(OcclusionTraceStart, SplashTargetActors);
+	
 	NS_ACTOR_LOG(this, LogNSGAS, Log,
-		"스플래시 대상 검색 완료. 대상수={Count}, 반경={Radius}",
-		("Count", SplashTargetActors.Num()),
+		"스플래시 대상 검색 완료. 검색수={FoundCount}, 유효대상수={ValidCount}, 반경={Radius}",
+		("FoundCount", FoundTargetCount),
+		("ValidCount", SplashTargetActors.Num()),
 		("Radius", ExplosionRadius)
 	);
 	
