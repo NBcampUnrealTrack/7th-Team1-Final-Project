@@ -16,6 +16,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "InputCoreTypes.h"
@@ -142,6 +143,29 @@ void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 {
 	//최대실드 변경시 전체 값을 다시 갱신
 	UpdateHUDHealthAndShield();
+}
+
+void ANSPlayerController::ShowCharacterSelectWidget()
+{
+	if (!CharacterSelectWidget)
+	{
+		return;
+	}
+	//중복생성 방지
+	if (CharacterSelectWidget)
+	{
+		return;
+	}
+	CharacterSelectWidget = 
+		CreateWidget<UNSCharacterSelectWidget>(this, CharacterSelectWidgetClass);
+	if (!CharacterSelectWidget)
+	{
+		return;
+	}
+	CharacterSelectWidget->AddToViewport();
+	//마우스 커서 표시
+	SetShowMouseCursor(true);
+	SetInputMode(FInputModeUIOnly());
 }
 
 void ANSPlayerController::BeginPlay()
