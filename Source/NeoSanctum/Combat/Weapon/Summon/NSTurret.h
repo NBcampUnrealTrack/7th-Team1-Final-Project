@@ -43,6 +43,9 @@ private:
 	bool IsValidTargetActor(const AActor* TargetActor) const;
 	void InitializeTargets();
 	void UpdateAutoTarget();
+	
+private:
+	void RotateJointToTarget(float DeltaSeconds);
 	void RotateHeadToTarget(float DeltaSeconds);
 
 protected:
@@ -51,7 +54,13 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<UStaticMeshComponent> BaseMeshComponent;
-
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<USceneComponent> JointPivotComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UStaticMeshComponent> JointMeshComponent;
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<USceneComponent> HeadPivotComponent;
 
@@ -69,7 +78,10 @@ protected:
 	float TargetRefreshInterval = 0.25f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Aim")
-	float HeadTurnSpeed = 360.0f;
+	float YawTurnSpeed = 360.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Aim")
+	float PitchTurnSpeed = 360.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");

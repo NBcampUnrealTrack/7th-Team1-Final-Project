@@ -23,9 +23,15 @@ ANSTurret::ANSTurret()
 
 	BaseMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BaseMeshComponent"));
 	BaseMeshComponent->SetupAttachment(SceneRoot);
-
+	
+	JointPivotComponent = CreateDefaultSubobject<USceneComponent>(TEXT("JointPivotComponent"));
+	JointPivotComponent->SetupAttachment(BaseMeshComponent);
+	
+	JointMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("JointMeshComponent"));
+	JointMeshComponent->SetupAttachment(JointPivotComponent);
+	
 	HeadPivotComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HeadPivotComponent"));
-	HeadPivotComponent->SetupAttachment(BaseMeshComponent);
+	HeadPivotComponent->SetupAttachment(JointMeshComponent);
 
 	HeadMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("HeadMeshComponent"));
 	HeadMeshComponent->SetupAttachment(HeadPivotComponent);
@@ -40,6 +46,7 @@ void ANSTurret::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	RotateJointToTarget(DeltaSeconds);
 	RotateHeadToTarget(DeltaSeconds);
 }
 
@@ -176,6 +183,36 @@ void ANSTurret::UpdateAutoTarget()
 	SetActorTickEnabled(AutoTarget.IsValid());
 }
 
+void ANSTurret::RotateJointToTarget(float DeltaSeconds)
+{
+	AActor* TargetActor = AutoTarget.Get();
+	if (!IsValidTargetActor(TargetActor) || !JointPivotComponent)
+	{
+		return;
+	}
+
+	const FVector ToTarget = TargetActor->GetActorLocation() - JointPivotComponent->GetComponentLocation();
+	const FVector LocalDirection = JointPivotComponent->GetAttachParent()
+		? JointPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
+		: ToTarget;
+
+	const FVector FlatLocalDirection(LocalDirection.X, LocalDirection.Y, 0.0f);
+	if (FlatLocalDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FRotator DesiredRelativeRotation = FlatLocalDirection.Rotation();
+	const FRotator NewRelativeRotation = FMath::RInterpConstantTo(
+		JointPivotComponent->GetRelativeRotation(),
+		DesiredRelativeRotation,
+		DeltaSeconds,
+		YawTurnSpeed
+	);
+
+	JointPivotComponent->SetRelativeRotation(NewRelativeRotation);
+}
+
 void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 {
 	AActor* TargetActor = AutoTarget.Get();
@@ -189,18 +226,18 @@ void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 		? HeadPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
 		: ToTarget;
 
-	const FVector FlatLocalDirection(LocalDirection.X, LocalDirection.Y, 0.0f);
-	if (FlatLocalDirection.IsNearlyZero())
+	if (LocalDirection.IsNearlyZero())
 	{
 		return;
 	}
 
-	const FRotator DesiredRelativeRotation = FlatLocalDirection.Rotation();
+	const float DesiredPitch = LocalDirection.Rotation().Pitch;
+	const FRotator DesiredRelativeRotation(DesiredPitch, 0.0f, 0.0f);
 	const FRotator NewRelativeRotation = FMath::RInterpConstantTo(
 		HeadPivotComponent->GetRelativeRotation(),
 		DesiredRelativeRotation,
 		DeltaSeconds,
-		HeadTurnSpeed
+		PitchTurnSpeed
 	);
 
 	HeadPivotComponent->SetRelativeRotation(NewRelativeRotation);
