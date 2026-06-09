@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
 #include "WorldPartition/WorldPartitionRuntimeCell.h"
 
@@ -124,15 +125,47 @@ const FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot) const
 // 드롭 / 효과 제거
 // ================================================================
 
-// TODO : 드롭 액터 스폰하기
 void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, const FVector& Location)
 {
-	if (!FindPart(Slot))
+	FNSPartData* Existing = FindPart(Slot);
+	if (!Existing)
 	{
 		return;
 	}
+
+	// 제거 전 복사 — 드랍 액터에 넘길 데이터
+	const FNSPartData Dropped = *Existing;
+
 	RemovePartEffects(Slot);
 	EquippedParts.RemoveAll([Slot](const FNSPartData& P) { return P.Slot==Slot; });
+
+	SpawnDroppedPart(Dropped, Location);
+}
+
+void UNSPartEquipComponent::SpawnDroppedPart(const FNSPartData& Part, const FVector& Location)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	TSubclassOf<ANSDroppedPart> ClassToSpawn = DroppedPartClass;
+	if (!ClassToSpawn)
+	{
+		ClassToSpawn = ANSDroppedPart::StaticClass();
+	}
+
+	const FTransform SpawnTransform(FRotator::ZeroRotator, Location);
+	ANSDroppedPart* Dropped = World->SpawnActorDeferred<ANSDroppedPart>(
+		ClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!Dropped)
+	{
+		return;
+	}
+
+	Dropped->Initialize(Part);
+	Dropped->FinishSpawning(SpawnTransform);
 }
 
 void UNSPartEquipComponent::RemovePartEffects(ENSPartSlot Slot)

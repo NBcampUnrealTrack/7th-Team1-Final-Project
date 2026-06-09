@@ -13,6 +13,7 @@
 class UAbilitySystemComponent;
 class UGameplayEffect;
 class UNSPartDefinition;
+class ANSDroppedPart;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, ENSPartSlot, const FNSPartData&);
 
@@ -54,11 +55,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Part", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float UpgradeSuccessChance = 0.5f;
 
+	// 교체 시 바닥에 스폰할 드랍 액터 클래스. 미지정 시 ANSDroppedPart 기본 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
+	TSubclassOf<ANSDroppedPart> DroppedPartClass;
+
 private:
 	FNSPartData* FindPart(ENSPartSlot Slot);
 	const FNSPartData* FindPart(ENSPartSlot Slot) const;
 
 	void DropPartInSlot(ENSPartSlot Slot, const FVector& Location);
+	void SpawnDroppedPart(const FNSPartData& Part, const FVector& Location);
 	void RemovePartEffects(ENSPartSlot Slot);
 
 	void RemoveGEForSlot(ENSPartSlot Slot);
