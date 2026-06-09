@@ -16,4 +16,17 @@ class NEOSANCTUM_API UGA_EnemyAttackRanger : public UGA_EnemyAttackBase
 
 public:
 	UGA_EnemyAttackRanger();
+
+protected:
+	virtual void InitializeAttack() override;
+	virtual void HandleAttackMontageCompleted() override;
+	virtual void HandleAttackEvent(
+		const FGameplayEventData& Payload) override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Burst",
+		meta = (ClampMin = "1"))
+	int32 BurstCount = 3;
+
+private:
+	int32 CurrentShotCount = 0;
 };

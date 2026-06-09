@@ -16,3 +16,39 @@ UGA_EnemyAttackRanger::UGA_EnemyAttackRanger()
 	ActivationOwnedTags.AddTag(NSGameplayTags::State_Enemy_Combat);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 }
+
+void UGA_EnemyAttackRanger::InitializeAttack()
+{
+	CurrentShotCount = 0;
+	
+	if (UAnimInstance* AnimInstance = GetActorInfo().GetAnimInstance())
+	{
+		AnimInstance->Montage_SetNextSection(
+			TEXT("Fire"),
+			TEXT("Fire"),
+			AttackMontage);
+	}
+}
+
+void UGA_EnemyAttackRanger::HandleAttackMontageCompleted()
+{
+	Super::HandleAttackMontageCompleted();
+}
+
+void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
+{
+	++CurrentShotCount;
+
+	if (UAnimInstance* AnimInstance =
+		GetActorInfo().GetAnimInstance())
+	{
+		const FName NextSection = CurrentShotCount <= BurstCount ? FName(TEXT("Fire")) : NAME_None;
+
+		AnimInstance->Montage_SetNextSection(
+			TEXT("Fire"),
+			NextSection,
+			AttackMontage);
+	}
+	
+	// TODO: 투사체 생성
+}
