@@ -41,7 +41,7 @@ public:
 
 	// 번들 태그 없음 —> 드랍 발생 시 몬스터 사망 애니메이션 동안 온디맨드 로드
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Visual")
-	TSoftObjectPtr<UStaticMesh> DropMesh;
+	TSoftObjectPtr<USkeletalMesh> DropMesh;
 
 	// 레전더리 등급 기믹 GA 확장 대비
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|GAS", meta = (AssetBundles = "InRunData"))
