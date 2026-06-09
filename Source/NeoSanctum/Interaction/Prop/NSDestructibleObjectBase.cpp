@@ -3,6 +3,7 @@
 
 #include "NSDestructibleObjectBase.h"
 #include "AbilitySystemComponent.h"
+#include "GameplayEffectExtension.h"
 #include "GameFramework/GameStateBase.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSDestructibleAttributeSet.h"
@@ -41,6 +42,7 @@ void ANSDestructibleObjectBase::GetLifetimeReplicatedProps(TArray<FLifetimePrope
 
 	DOREPLIFETIME(ANSDestructibleObjectBase, bDestroyed);
 	DOREPLIFETIME(ANSDestructibleObjectBase, DestroyServerTime);
+	DOREPLIFETIME(ANSDestructibleObjectBase, ImpactAnchor);
 }
 
 void ANSDestructibleObjectBase::BeginPlay()
@@ -69,6 +71,22 @@ void ANSDestructibleObjectBase::HandleHealthChanged(const FOnAttributeChangeData
 	}
 
 	bDestroyed = true;
+	
+	ImpactAnchor = GetActorLocation();
+	
+	const FGameplayEffectContextHandle& Ctx = Attributes->LastDamageContext;
+	if (Ctx.IsValid())
+	{
+		if (const FHitResult* Hit = Ctx.GetHitResult())
+		{
+			ImpactAnchor = Hit->ImpactPoint;
+		}
+		else if (const AActor* Causer = Ctx.GetEffectCauser())
+		{
+			ImpactAnchor = Causer->GetActorLocation();
+		}
+	}
+	
 	DestroyServerTime = (GetWorld()->GetGameState())
 		                    ? GetWorld()->GetGameState()->GetServerWorldTimeSeconds()
 		                    : GetWorld()->GetTimeSeconds();
@@ -129,15 +147,38 @@ void ANSDestructibleObjectBase::StartDestruction(float Elapsed)
 	GeometryCollectionComp->SetVisibility(true);
 	GeometryCollectionComp->SetCollisionProfileName(DebrisCollisionProfile);
 	GeometryCollectionComp->SetSimulatePhysics(true);
+	
+	// 클러스터 강제 분해
+	GeometryCollectionComp->CrumbleActiveClusters();
+	
+	//타격자 위치방향에서 임펄스 발생
+	const FVector Center = StaticMeshComp->Bounds.Origin;
+	const FVector ToImpact = FVector(ImpactAnchor) - Center;
 
-
-	GeometryCollectionComp->CrumbleActiveClusters(); // 클러스터 강제 분해
+	FVector ImpulseOrigin = Center;
+	if (!ToImpact.IsNearlyZero())
+	{
+		// 타격 지점 쪽으로 원점을 당겨, 그 반대편으로 잔해가 밀려나게 함
+		ImpulseOrigin = Center + ToImpact.GetSafeNormal() * ImpulseOriginOffset;
+	}
+	
+	if (bShowImpulseDebug)
+	{
+		DrawDebugSphere(GetWorld(), ImpulseOrigin, BreakImpulseRadius, 16, FColor::Red, false, 5.f, 0, 1.5f);
+		// 노랑: 임펄스 원점
+       	DrawDebugSphere(GetWorld(), ImpulseOrigin, 12.f, 8, FColor::Yellow, false, 5.f, 0, 2.f);
+        // 초록: 타격 앵커(공격이 들어온 지점)
+        DrawDebugSphere(GetWorld(), FVector(ImpactAnchor), 12.f, 8, FColor::Green, false, 5.f, 0, 2.f);
+        // 초록 화살표: 앵커 → 원점 (원점이 공격 쪽으로 당겨진 방향 확인)
+        DrawDebugDirectionalArrow(GetWorld(), FVector(ImpactAnchor), ImpulseOrigin, 30.f, FColor::Green, false, 5.f, 0, 2.f);
+	}
+	
 	GeometryCollectionComp->AddRadialImpulse(
-		GetActorLocation(),
-		BreakImpulseRadius,
-		BreakImpulseStrength,
-		ERadialImpulseFalloff::RIF_Linear,
-		false);
-
+		ImpulseOrigin, BreakImpulseRadius, BreakImpulseStrength,
+		ERadialImpulseFalloff::RIF_Linear,true);
+	
+	GeometryCollectionComp->AddImpulse(
+		-ToImpact.GetSafeNormal() * LinearPushStrength, NAME_None,true);
+	
 	// TODO: 파괴 VFX / SFX 트리거
 }

@@ -64,10 +64,16 @@ protected:
 	FName DebrisCollisionProfile = TEXT("DestructedFragment");
 
 	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
-	float BreakImpulseStrength = 60000.f;
+	float BreakImpulseStrength = 150.f;
 
 	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
-	float BreakImpulseRadius = 300.f;
+	float BreakImpulseRadius = 200.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
+	float LinearPushStrength = 100.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
+	float ImpulseOriginOffset = 80.f;
 	
 	UPROPERTY(ReplicatedUsing = OnRep_Destroyed)
 	bool bDestroyed = false;
@@ -75,6 +81,10 @@ protected:
 	/** 파괴된 서버 월드 타임. 늦게 relevant 된 클라가 경과 시간을 계산해 상태를 재구성. */
 	UPROPERTY(Replicated)
 	float DestroyServerTime = 0.f;
+	
+	/** 네트워크 전용 FVector, 마지막 파괴한 Actor위치 저장용*/
+	UPROPERTY(Replicated)
+	FVector_NetQuantize ImpactAnchor = FVector::ZeroVector;
 	
 	UFUNCTION()
 	void OnRep_Destroyed();
@@ -95,4 +105,7 @@ protected:
 private:
 	/** 중복 실행 가드(서버 직접 호출 + OnRep 이 겹치지 않도록). */
 	bool bDestructionStarted = false;
+	
+	UPROPERTY(EditAnywhere, Category = "Destruction|Debug")
+	bool bShowImpulseDebug =  false;
 };
