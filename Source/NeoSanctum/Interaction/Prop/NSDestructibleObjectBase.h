@@ -26,35 +26,73 @@ class NEOSANCTUM_API ANSDestructibleObjectBase : public AActor , public IAbility
 public:
 	ANSDestructibleObjectBase();
 	
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystem; }
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 	virtual void BeginPlay() override;
-	virtual void TriggerDestruction();
+	
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<USceneComponent> Root;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<UStaticMeshComponent> StaticMeshComp;
 
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayDestruction(FVector HitLocation);
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<UGeometryCollectionComponent> GeometryCollectionComp;
 
-	UPROPERTY(VisibleAnywhere, Category="GAS")
-	UAbilitySystemComponent* ASC;
+	UPROPERTY(VisibleAnywhere, Category = "GAS")
+	TObjectPtr<UAbilitySystemComponent> AbilitySystem;
 
-	UPROPERTY(VisibleAnywhere, Category="GAS")
-	UNSDestructibleAttributeSet* DestructibleAttrSet;
+	UPROPERTY()
+	TObjectPtr<UNSDestructibleAttributeSet> Attributes;
+	
+	UPROPERTY(EditAnywhere, Category = "Destruction")
+	float InitialHealth = 100.f;
 
-	UPROPERTY(VisibleAnywhere, Category="Destructible")
-	UGeometryCollectionComponent* GCComp;
+	/** 파괴 후 서버가 액터를 정리하기까지의 시간(잔해 표시 구간).
+	 *  GC 의 Remove-On-Sleep 소멸 시간보다 약간 길게 잡는다. */
+	UPROPERTY(EditAnywhere, Category = "Destruction")
+	float DebrisLifetime = 9.f;
 
-	UPROPERTY(EditAnywhere, Category="Destructible")
-	float MaxHealth = 100.f;
+	/** 이 시간 이후 relevant 된 클라는 잔해 시뮬 없이 숨김만 처리한다
+	 *  (정착된 잔해 위치는 비결정적이라 재현 불가하므로). */
+	UPROPERTY(EditAnywhere, Category = "Destruction")
+	float SettleApproxTime = 3.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Destruction")
+	FName DebrisCollisionProfile = TEXT("DestructedFragment");
 
-	UPROPERTY(EditAnywhere, Category="Destructible")
-	float ImpulseStrength = 300000.f;
+	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
+	float BreakImpulseStrength = 60000.f;
+
+	UPROPERTY(EditAnywhere, Category = "Destruction|Impact")
+	float BreakImpulseRadius = 300.f;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_Destroyed)
+	bool bDestroyed = false;
+
+	/** 파괴된 서버 월드 타임. 늦게 relevant 된 클라가 경과 시간을 계산해 상태를 재구성. */
+	UPROPERTY(Replicated)
+	float DestroyServerTime = 0.f;
+	
+	UFUNCTION()
+	void OnRep_Destroyed();
+	
+	/** Health 변화 콜백(서버에서만 바인딩). 0 이 되면 파괴를 개시. */
+	void HandleHealthChanged(const FOnAttributeChangeData& Data);
+
+	/** 스태틱→GC 교체 + 분해/임팩트. 전 머신 공통으로 호출되는 비주얼 처리.
+	 *  Elapsed = 파괴 이후 경과 시간(늦참 클라 분기에 사용). */
+	void StartDestruction(float Elapsed);
+	
+	/**
+	 * 서버에서 사망 시점에 호출되는 확장 훅. 베이스는 아무것도 안 한다.
+	 * 배럴이 오버라이드해 방사형 데미지를 적용한다.
+	 */
+	virtual void OnServerDestroyed(const FVector& Origin) {}
 
 private:
-	FVector LastHitLocation;
-	bool bIsDestroyed = false;
-
-	void OnHealthChanged(const FOnAttributeChangeData& Data);
-	void OnGEApplied(UAbilitySystemComponent* Source, const FGameplayEffectSpec& Spec, FActiveGameplayEffectHandle Handle);
-
+	/** 중복 실행 가드(서버 직접 호출 + OnRep 이 겹치지 않도록). */
+	bool bDestructionStarted = false;
 };
