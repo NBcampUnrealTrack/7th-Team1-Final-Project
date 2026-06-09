@@ -11,6 +11,7 @@
 class ANSDeathSpectatorPawn;
 class ANSPlayerState;
 class UNSAugmentSelectionComponent;
+class UNSCharacterSelectWidget;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -87,7 +88,18 @@ private:
 	
 	//HUD Attribute Delegate 중복 바인딩 방지
 	bool bHUDAttributeBound = false;
-
+	
+	//캐릭터 선택 위젯 표시
+	void ShowCharacterSelectWidget();
+	
+private:
+	//캐릭터 선택 위젯 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")
+	TSubclassOf<UNSCharacterSelectWidget> CharacterSelectWidgetClass;
+	//캐릭터 선택 위젯 인스턴스
+	UPROPERTY()
+	TObjectPtr<UNSCharacterSelectWidget> CharacterSelectWidget;
+	
 private:
 	// 기본적인 Gameplay 상태일 때의 Input Mode 태그 목록
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
