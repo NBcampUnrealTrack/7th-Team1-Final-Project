@@ -26,6 +26,8 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	
+	USkeletalMeshComponent* GetSkeletalMeshComponent() const {return SkeletalMeshComponent;}
+	
 	// @민재 : 멀티 관련
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
