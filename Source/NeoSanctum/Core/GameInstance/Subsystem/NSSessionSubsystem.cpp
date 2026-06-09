@@ -4,6 +4,7 @@
 #include "NSSessionSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 #include "OnlineSessionSettings.h"
+#include "Kismet/GameplayStatics.h" 
 
 
 void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -15,24 +16,438 @@ void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		SessionInterface = OnlineSubsystem->GetSessionInterface();
 	}
+	
+	// 조인/트래블 실패 시 복구용
+	if (GEngine)
+	{
+		GEngine->OnNetworkFailure().AddUObject(this, &UNSSessionSubsystem::HandleNetworkFailure);
+		GEngine->OnTravelFailure().AddUObject(this, &UNSSessionSubsystem::HandleTravelFailure);
+	}
 }
 
 void UNSSessionSubsystem::Deinitialize()
 {
+	if (GEngine)
+	{
+		GEngine->OnNetworkFailure().RemoveAll(this);
+		GEngine->OnTravelFailure().RemoveAll(this);
+	}
+
+	ClearCreateSessionDelegate();
+	ClearDestroySessionDelegate();
+
+	LastSessionSettings.Reset();
+	SessionInterface.Reset();
+
+	bIsJoining = false;
+	bIsCreatingSession = false;
+	bIsDestroyingSession = false;
+	bHostStartQueued = false;
+	bSwitchingToHost = false;
+	bCreateSessionAfterDestroy = false;
+
 	Super::Deinitialize();
 }
 
 void UNSSessionSubsystem::CreateSession()
 {
-	if (!SessionInterface.IsValid())
+	// 이미 Host 생성/삭제/예약 과정이 진행 중이면 연타 요청 무시
+	if (bIsCreatingSession ||
+		bIsDestroyingSession ||
+		bHostStartQueued ||
+		bSwitchingToHost)
 	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Host 세션 작업이 이미 진행 중이므로 중복 요청 무시"));
+		return;
+	}
+
+	// 같은 프레임의 추가 클릭 차단
+	bSwitchingToHost = true;
+	bHostStartQueued = true;
+	bCreateSessionAfterDestroy = false;
+
+	// Join 중이라면 타임아웃을 기다리지 않고 바로 취소
+	if (bIsJoining || HasPendingNetGame())
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("진행 중인 Join 연결을 취소하고 Host 전환 시작"));
+
+		CancelPendingJoinForHost();
+	}
+
+	// 다음 틱에서 세션 생성을 시작
+	QueueCreateSessionForNextTick();
+}
+
+void UNSSessionSubsystem::JoinSessionByAddress(const FString& Address)
+{
+	const FString TrimmedAddress = Address.TrimStartAndEnd();
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("JoinSessionByAddress 호출: %s"),
+		*TrimmedAddress);
+
+	if (TrimmedAddress.IsEmpty())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("참가 주소가 비어 있음"));
+		OnJoinSessionComplete.Broadcast(false);
+		return;
+	}
+
+	if (bIsJoining)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("이미 Join 시도 중"));
+		return;
+	}
+
+	// Host 생성/삭제 중 ClientTravel이 시작되는 것을 막음
+	if (bIsCreatingSession ||
+		bIsDestroyingSession ||
+		bHostStartQueued ||
+		bSwitchingToHost)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Host 세션 작업 중이므로 Join 요청 거부"));
+		return;
+	}
+
+	UGameInstance* GameInstance = GetGameInstance();
+	APlayerController* PlayerController =
+		GameInstance ? GameInstance->GetFirstLocalPlayerController() : nullptr;
+
+	if (!PlayerController)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PlayerController 없음"));
+		OnJoinSessionComplete.Broadcast(false);
+		return;
+	}
+
+	bIsJoining = true;
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("ClientTravel 호출: %s"),
+		*TrimmedAddress);
+
+	PlayerController->ClientTravel(
+		TrimmedAddress,
+		ETravelType::TRAVEL_Absolute);
+}
+
+void UNSSessionSubsystem::DestroySession()
+{
+	if (bIsCreatingSession ||
+			bIsDestroyingSession ||
+			bHostStartQueued ||
+			bSwitchingToHost)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("다른 세션 작업이 진행 중이므로 DestroySession 요청 거부"));
+
+		OnDestroySessionComplete.Broadcast(false);
+		return;
+	}
+
+	bCreateSessionAfterDestroy = false;
+	StartDestroySession();
+}
+
+void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful)
+{
+	ClearCreateSessionDelegate();
+	bIsCreatingSession = false;
+
+	if (!bWasSuccessful)
+	{
+		bSwitchingToHost = false;
 		OnCreateSessionComplete.Broadcast(false);
 		return;
 	}
 
+	if (HasPendingNetGame())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("세션 생성 완료 후 PendingNetGame 감지됨 ServerTravel 중단"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	const bool bTravelStarted = World->ServerTravel(
+		TEXT("/Game/NeoSanctum/Map/L_HideOut?listen"));
+
+	bSwitchingToHost = false;
+	OnCreateSessionComplete.Broadcast(bTravelStarted);
+}
+
+void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful)
+{
+	ClearDestroySessionDelegate();
+	bIsDestroyingSession = false;
+
+	const bool bShouldCreateAfterDestroy =
+		bCreateSessionAfterDestroy;
+
+	bCreateSessionAfterDestroy = false;
+
+	OnDestroySessionComplete.Broadcast(bWasSuccessful);
+
+	if (!bShouldCreateAfterDestroy)
+	{
+		return;
+	}
+
+	if (!bWasSuccessful)
+	{
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	bHostStartQueued = true;
+	QueueCreateSessionForNextTick();
+}
+
+void UNSSessionSubsystem::HandleNetworkFailure(
+	UWorld* World,
+	UNetDriver* NetDriver,
+	ENetworkFailure::Type FailureType,
+	const FString& ErrorString)
+{
+	const bool bIsPendingDriverFailure =
+		NetDriver &&
+		NetDriver->NetDriverName == FName(TEXT("PendingNetDriver"));
+
+	if (bSwitchingToHost && bIsPendingDriverFailure)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Host 전환을 위해 Pending Join 취소 이벤트 무시: %s"),
+			*ErrorString);
+
+		bIsJoining = false;
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("네트워크 실패 - 타이틀로 복귀: %s"),
+		*ErrorString);
+
+	bIsJoining = false;
+	OnJoinSessionComplete.Broadcast(false);
+
+	if (UWorld* CurrentWorld = GetWorld())
+	{
+		UGameplayStatics::OpenLevel(
+			CurrentWorld,
+			FName(TEXT("L_Title")));
+	}
+
+}
+
+void UNSSessionSubsystem::HandleTravelFailure(
+	UWorld* World,
+	ETravelFailure::Type FailureType,
+	const FString& ErrorString)
+{
+	UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("트래블 실패 - 타이틀로 복귀: %s"),
+			*ErrorString);
+
+	bIsJoining = false;
+	bIsCreatingSession = false;
+	bIsDestroyingSession = false;
+	bHostStartQueued = false;
+	bSwitchingToHost = false;
+	bCreateSessionAfterDestroy = false;
+
+	if (UWorld* CurrentWorld = GetWorld())
+	{
+		UGameplayStatics::OpenLevel(
+			CurrentWorld,
+			FName(TEXT("L_Title")));
+	}
+
+}
+
+bool UNSSessionSubsystem::HasPendingNetGame() const
+{
+	UWorld* World = GetWorld();
+	if (!GEngine || !World)
+	{
+		return false;
+	}
+
+	const FWorldContext* WorldContext =
+		GEngine->GetWorldContextFromWorld(World);
+
+	return WorldContext &&
+		WorldContext->PendingNetGame != nullptr;
+}
+
+void UNSSessionSubsystem::CancelPendingJoinForHost()
+{
+	// Join 상태 해제
+	bIsJoining = false;
+
+	UWorld* World = GetWorld();
+	if (!GEngine || !World)
+	{
+		return;
+	}
+
+	FWorldContext* WorldContext =
+		GEngine->GetWorldContextFromWorld(World);
+
+	if (!WorldContext || !WorldContext->PendingNetGame)
+	{
+		return;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Warning,
+		TEXT("PendingNetGame 취소"));
+
+	GEngine->CancelPending(
+		World,
+		nullptr);
+}
+
+void UNSSessionSubsystem::QueueCreateSessionForNextTick()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		bHostStartQueued = false;
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	World->GetTimerManager().SetTimerForNextTick(
+		this,
+		&UNSSessionSubsystem::StartCreateSession);
+}
+
+void UNSSessionSubsystem::StartCreateSession()
+{
+	// 예약된 Host 작업 실행됨
+	bHostStartQueued = false;
+
+	if (!bSwitchingToHost)
+	{
+		return;
+	}
+
+	if (bIsCreatingSession || bIsDestroyingSession)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("다른 세션 비동기 작업이 진행 중이므로 Host 생성 중단"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	// CancelPending 이후 다음 틱에도 PendingNetGame이 남아 있으면
+	// ServerTravel을 실행하지 않고 실패 처리
+	if (HasPendingNetGame())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("PendingNetGame이 아직 남아 있어 Host 세션 생성 중단"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	if (!SessionInterface.IsValid())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Online Session Interface가 유효하지 않음"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	// 기존 GameSession이 있다면 삭제 완료를 기다린 뒤 새 세션 만듦
 	if (SessionInterface->GetNamedSession(NAME_GameSession))
 	{
-		SessionInterface->DestroySession(NAME_GameSession);
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("기존 GameSession을 제거한 뒤 Host 세션 재생성"));
+
+		bCreateSessionAfterDestroy = true;
+		StartDestroySession();
+		return;
+	}
+
+	UGameInstance* GameInstance = GetGameInstance();
+	const ULocalPlayer* LocalPlayer =
+		GameInstance ? GameInstance->GetFirstGamePlayer() : nullptr;
+
+	if (!LocalPlayer)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("LocalPlayer가 없어 Host 세션을 생성할 수 없음"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+
+	const FUniqueNetIdRepl PreferredUniqueNetId =
+		LocalPlayer->GetPreferredUniqueNetId();
+
+	if (!PreferredUniqueNetId.IsValid())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("LocalPlayer의 UniqueNetId가 유효하지 않음"));
+
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
 	}
 
 	LastSessionSettings = MakeShared<FOnlineSessionSettings>();
@@ -42,63 +457,135 @@ void UNSSessionSubsystem::CreateSession()
 	LastSessionSettings->bShouldAdvertise = true;
 	LastSessionSettings->bUsesPresence = false;
 
-	CreateSessionDelegateHandle = SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(
-		FOnCreateSessionCompleteDelegate::CreateUObject(this, &UNSSessionSubsystem::OnCreateSessionCompleted)
-	);
+	bIsCreatingSession = true;
 
-	const ULocalPlayer* LocalPlayer = GetGameInstance()->GetFirstGamePlayer();
-	SessionInterface->CreateSession(*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, *LastSessionSettings);
-}
+	CreateSessionDelegateHandle =
+		SessionInterface->AddOnCreateSessionCompleteDelegate_Handle(
+			FOnCreateSessionCompleteDelegate::CreateUObject(
+				this,
+				&UNSSessionSubsystem::OnCreateSessionCompleted));
 
-void UNSSessionSubsystem::JoinSessionByAddress(const FString& Address)
-{
-	UE_LOG(LogTemp, Warning, TEXT("JoinSessionByAddress 호출: %s"), *Address);
+	const bool bCreateRequestStarted = SessionInterface->CreateSession(
+		*PreferredUniqueNetId,
+		NAME_GameSession,
+		*LastSessionSettings);
 	
-	APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
-	if (PlayerController)
+	// 완료 델리게이트를 기다리지 않고 정리
+	if (!bCreateRequestStarted)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ClientTravel 호출: %s"), *Address);
-		// 입력받은 주소로 직접 맵 이동
-		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
-		OnJoinSessionComplete.Broadcast(true);
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("CreateSession 요청 시작 불가"));
+
+		ClearCreateSessionDelegate();
+		bIsCreatingSession = false;
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("PlayerController 없음"));
-		OnJoinSessionComplete.Broadcast(false);
-	}
+
 }
 
-void UNSSessionSubsystem::DestroySession()
+void UNSSessionSubsystem::StartDestroySession()
 {
 	if (!SessionInterface.IsValid())
 	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("Online Session Interface가 유효하지 않아서 세션 제거 불가능"));
+
+		const bool bWasRecreatingHost = bCreateSessionAfterDestroy;
+		bCreateSessionAfterDestroy = false;
+		bSwitchingToHost = false;
+
 		OnDestroySessionComplete.Broadcast(false);
+
+		if (bWasRecreatingHost)
+		{
+			OnCreateSessionComplete.Broadcast(false);
+		}
 		return;
 	}
 
-	DestroySessionDelegateHandle = SessionInterface->AddOnDestroySessionCompleteDelegate_Handle(
-		FOnDestroySessionCompleteDelegate::CreateUObject(this, &UNSSessionSubsystem::OnDestroySessionCompleted)
-	);
-
-	SessionInterface->DestroySession(NAME_GameSession);
-}
-
-void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful)
-{
-	SessionInterface->ClearOnCreateSessionCompleteDelegate_Handle(CreateSessionDelegateHandle);
-
-	if (bWasSuccessful)
+	// 제거할 세션이 없으면 Destroy는 성공, Host 재생성 과정이라면 바로 다음 틱에 Create로 넘어감
+	if (!SessionInterface->GetNamedSession(NAME_GameSession))
 	{
-		// 후에 실제 맵 경로로 교체 필요
-		GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_HideOut?listen");
+		const bool bShouldCreateAfterDestroy = bCreateSessionAfterDestroy;
+		bCreateSessionAfterDestroy = false;
+
+		OnDestroySessionComplete.Broadcast(true);
+
+		if (bShouldCreateAfterDestroy)
+		{
+			bHostStartQueued = true;
+			QueueCreateSessionForNextTick();
+		}
+		return;
 	}
 
-	OnCreateSessionComplete.Broadcast(bWasSuccessful);
+	if (bIsDestroyingSession)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("DestroySession 요청 이미 진행 중"));
+		return;
+	}
+
+	bIsDestroyingSession = true;
+
+	DestroySessionDelegateHandle =
+		SessionInterface->AddOnDestroySessionCompleteDelegate_Handle(
+			FOnDestroySessionCompleteDelegate::CreateUObject(
+				this,
+				&UNSSessionSubsystem::OnDestroySessionCompleted));
+
+	const bool bDestroyRequestStarted =
+		SessionInterface->DestroySession(NAME_GameSession);
+
+	if (!bDestroyRequestStarted)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("DestroySession 시작하지 못함"));
+
+		const bool bWasRecreatingHost = bCreateSessionAfterDestroy;
+
+		ClearDestroySessionDelegate();
+		bIsDestroyingSession = false;
+		bCreateSessionAfterDestroy = false;
+		bSwitchingToHost = false;
+
+		OnDestroySessionComplete.Broadcast(false);
+
+		if (bWasRecreatingHost)
+		{
+			OnCreateSessionComplete.Broadcast(false);
+		}
+	}
 }
 
-void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful)
+void UNSSessionSubsystem::ClearCreateSessionDelegate()
 {
-	SessionInterface->ClearOnDestroySessionCompleteDelegate_Handle(DestroySessionDelegateHandle);
-	OnDestroySessionComplete.Broadcast(bWasSuccessful);
+	if (SessionInterface.IsValid() &&
+		CreateSessionDelegateHandle.IsValid())
+	{
+		SessionInterface
+			->ClearOnCreateSessionCompleteDelegate_Handle(
+				CreateSessionDelegateHandle);
+	}
+
+	CreateSessionDelegateHandle.Reset();
+}
+
+void UNSSessionSubsystem::ClearDestroySessionDelegate()
+{
+	if (SessionInterface.IsValid() &&
+		DestroySessionDelegateHandle.IsValid())
+	{
+		SessionInterface
+			->ClearOnDestroySessionCompleteDelegate_Handle(
+				DestroySessionDelegateHandle);
+	}
+
+	DestroySessionDelegateHandle.Reset();
 }
