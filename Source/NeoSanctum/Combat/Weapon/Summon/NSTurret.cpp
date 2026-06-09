@@ -43,8 +43,17 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 }
 
-void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig)
+void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController)
 {
+	OwningPawn = InOwningPawn;
+	OwningController = InOwningController;
+
+	if (OwningPawn)
+	{
+		SetOwner(OwningPawn);
+		SetInstigator(OwningPawn);
+	}
+
 	DetectionRadius = InConfig.DetectionRadius;
 	TargetRefreshInterval = InConfig.TargetRefreshInterval;
 	YawTurnSpeed = InConfig.YawTurnSpeed;

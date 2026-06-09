@@ -103,6 +103,6 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 
 	if (Turret)
 	{
-		Turret->InitializeTurret(TurretConfig);
+		Turret->InitializeTurret(TurretConfig, GetOwningPawn(), GetOwningController());
 	}
 }

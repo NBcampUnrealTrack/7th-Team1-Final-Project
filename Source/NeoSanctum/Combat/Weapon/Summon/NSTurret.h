@@ -8,6 +8,8 @@
 
 class USphereComponent;
 struct FNSTurretConfig;
+class AController;
+class APawn;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor
@@ -17,7 +19,7 @@ class NEOSANCTUM_API ANSTurret : public AActor
 public:
 	ANSTurret();
 
-	void InitializeTurret(const FNSTurretConfig& InConfig);
+	void InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController);
 
 protected:
 	virtual void Tick(float DeltaSeconds) override;
@@ -88,7 +90,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");
-
+	
+protected:
+	// Turret을 소환한 캐릭터 Pawn
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")
+	TObjectPtr<APawn> OwningPawn;
+	
+	// Turret을 소환한 플레이어
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")
+	TObjectPtr<AController> OwningController;
+	
 private:
 	// 콜리전 안에 들어온 Actor 중에 Enemy TeamID를 가진 Actor 세트
 	TSet<TWeakObjectPtr<AActor>> TargetSet;
