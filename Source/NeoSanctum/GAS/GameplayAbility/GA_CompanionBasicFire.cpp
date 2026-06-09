@@ -3,6 +3,8 @@
 
 #include "GA_CompanionBasicFire.h"
 
+#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Companion.h"
 
@@ -23,10 +25,61 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
+	if (!IsValid(GetCombatTarget()))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		
+	}
+	
 }
 
 void UGA_CompanionBasicFire::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
 {
 	Super::ApplyCooldown(Handle, ActorInfo, ActivationInfo);
+}
+
+bool UGA_CompanionBasicFire::CanFireAt(AActor* Target, FVector& OutMuzzle, FVector& OutDir) const
+{
+	if (!Target) return false;
+	
+	const UNSCompanionAttributeSet* Set = GetCompanionSet();
+	if (!Set) return false;
+	
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor) return false;
+	
+	OutMuzzle = AvatarActor->GetActorLocation();
+	
+	const FVector TargetLocation = Target->GetActorLocation();
+	const FVector ToTarget = TargetLocation - OutMuzzle;
+	OutDir = ToTarget.GetSafeNormal();
+	
+	const float DistToTarget = ToTarget.Size();
+	if (DistToTarget > Set->GetAttackRange()) return false;
+	
+	FHitResult Hit;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(AvatarActor);
+	
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+		Hit,
+		OutMuzzle,
+		TargetLocation,
+		ECC_Visibility,
+		CollisionParams);
+	
+	if (bHit && Hit.GetActor() != Target) return false;
+	
+	return true;
+}
+
+void UGA_CompanionBasicFire::FireProjectile(const FVector& Muzzle, const FVector& Dir, AActor* Target)
+{
 }
