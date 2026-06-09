@@ -1,0 +1,77 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "Engine/StreamableManager.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NSDroppedPart.generated.h"
+
+class USphereComponent;
+class USkeletalMeshComponent;
+
+/**
+ * 바닥에 드랍된 파츠 액터
+ * 픽업 처리는 서버 권한(TryPickup)에서만 수행 — 추후 상호작용 시스템이 호출
+ * 재화로도 가능하다면
+ */
+UCLASS()
+class NEOSANCTUM_API ANSDroppedPart : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	ANSDroppedPart();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// 서버에서 스폰 직후 1회 호출 — 파츠 데이터 세팅 및 비주얼 적용
+	void Initialize(const FNSPartData& InPart);
+
+	// 서버 권한에서만 실행. 상호작용 시스템이 인터랙터 폰을 넘겨 호출
+	UFUNCTION(BlueprintCallable, Category = "Part")
+	void TryPickup(APawn* InstigatorPawn);
+
+	const FNSPartData& GetStoredPart() const { return StoredInstance; }
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	UFUNCTION()
+	void OnRep_StoredInstance();
+
+	// DefinitionPtr -> DropMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
+	void SetupVisual();
+
+	UFUNCTION()
+	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	// 로컬 컨트롤 폰이 줍기 범위에 들어옴 — 줍기 프롬프트 표시용
+	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
+	void OnPickupRangeEntered(APawn* Pawn);
+
+	// 로컬 컨트롤 폰이 줍기 범위를 벗어남 — 줍기 프롬프트 숨김용
+	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
+	void OnPickupRangeExited(APawn* Pawn);
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
+	TObjectPtr<USphereComponent> CollisionSphere;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
+	TObjectPtr<USkeletalMeshComponent> MeshComp;
+
+	UPROPERTY(ReplicatedUsing = OnRep_StoredInstance, BlueprintReadOnly, Category = "Part")
+	FNSPartData StoredInstance;
+
+private:
+	// 진행 중인 비주얼(Definition/DropMesh) 비동기 로드 핸들
+	TSharedPtr<FStreamableHandle> VisualLoadHandle;
+};
