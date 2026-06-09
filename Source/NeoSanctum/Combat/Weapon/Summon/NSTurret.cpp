@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "Components/SphereComponent.h"
 #include "GenericTeamAgentInterface.h"
+#include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 
@@ -40,6 +41,19 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetupAttachment(SceneRoot);
 	DetectionSphereComponent->InitSphereRadius(DetectionRadius);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
+}
+
+void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig)
+{
+	DetectionRadius = InConfig.DetectionRadius;
+	TargetRefreshInterval = InConfig.TargetRefreshInterval;
+	YawTurnSpeed = InConfig.YawTurnSpeed;
+	PitchTurnSpeed = InConfig.PitchTurnSpeed;
+
+	if (DetectionSphereComponent)
+	{
+		DetectionSphereComponent->SetSphereRadius(DetectionRadius);
+	}
 }
 
 void ANSTurret::Tick(float DeltaSeconds)

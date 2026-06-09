@@ -3,6 +3,7 @@
 #include "NSTurretSpawner.h"
 
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 
 ANSTurretSpawner::ANSTurretSpawner()
 {
@@ -15,6 +16,13 @@ ANSTurretSpawner::ANSTurretSpawner()
 		// 마찰력
 		Movement->Friction = 0.2f;
 	}
+}
+
+void ANSTurretSpawner::InitializeTurretSpawner(const FNSTurretSpawnerTypeConfig& InConfig)
+{
+	TurretClass = InConfig.TurretClass;
+	MaxSpawnableAngle = InConfig.MaxSpawnableAngle;
+	TurretConfig = InConfig.TurretConfig;
 }
 
 void ANSTurretSpawner::BeginPlay()
@@ -86,10 +94,15 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 	SpawnParams.SpawnCollisionHandlingOverride =
 		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	GetWorld()->SpawnActor<AActor>(
+	ANSTurret* Turret = GetWorld()->SpawnActor<ANSTurret>(
 		TurretClass,
 		SpawnLocation,
 		SpawnRotation,
 		SpawnParams
 	);
+
+	if (Turret)
+	{
+		Turret->InitializeTurret(TurretConfig);
+	}
 }

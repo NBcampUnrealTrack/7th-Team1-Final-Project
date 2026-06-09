@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "NSThrowProjectileBase.h"
+#include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NSTurretSpawner.generated.h"
+
+class ANSTurret;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurretSpawner : public ANSThrowProjectileBase
@@ -13,6 +16,8 @@ class NEOSANCTUM_API ANSTurretSpawner : public ANSThrowProjectileBase
 
 public:
 	ANSTurretSpawner();
+
+	void InitializeTurretSpawner(const FNSTurretSpawnerTypeConfig& InConfig);
 	
 protected:
 	virtual void BeginPlay() override;
@@ -26,11 +31,13 @@ private:
 	void SpawnTurret(const FHitResult& ImpactResult);
 	
 private:
-	UPROPERTY(EditDefaultsOnly, Category = "TurretSpawner")
-	TSubclassOf<AActor> TurretClass;
+	UPROPERTY(VisibleAnywhere, Category = "TurretSpawner")
+	TSubclassOf<ANSTurret> TurretClass;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "TurretSpawner")
+	UPROPERTY(VisibleAnywhere, Category = "TurretSpawner")
 	float MaxSpawnableAngle = 30.0f;
+
+	FNSTurretConfig TurretConfig;
 	
 	bool bSpawned = false;
 };

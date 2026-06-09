@@ -7,6 +7,7 @@
 #include "NSTurret.generated.h"
 
 class USphereComponent;
+struct FNSTurretConfig;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor
@@ -15,6 +16,8 @@ class NEOSANCTUM_API ANSTurret : public AActor
 
 public:
 	ANSTurret();
+
+	void InitializeTurret(const FNSTurretConfig& InConfig);
 
 protected:
 	virtual void Tick(float DeltaSeconds) override;
@@ -71,16 +74,16 @@ protected:
 	TObjectPtr<USphereComponent> DetectionSphereComponent;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Detection")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
 	float DetectionRadius = 1500.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Detection")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
 	float TargetRefreshInterval = 0.25f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Aim")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Aim")
 	float YawTurnSpeed = 360.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Aim")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Aim")
 	float PitchTurnSpeed = 360.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")

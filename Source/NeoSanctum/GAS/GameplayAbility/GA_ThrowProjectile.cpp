@@ -10,6 +10,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
+#include "NeoSanctum/Combat/Projectile/NSTurretSpawner.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_ThrowProjectile::UGA_ThrowProjectile()
@@ -260,6 +261,14 @@ void UGA_ThrowProjectile::SpawnProjectile()
 	if (Projectile)
 	{
 		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
+
+		if (ProjectileAbilityConfig.ProjectileType == EProjectileType::TurretSpawner)
+		{
+			if (ANSTurretSpawner* TurretSpawner = Cast<ANSTurretSpawner>(Projectile))
+			{
+				TurretSpawner->InitializeTurretSpawner(ProjectileAbilityConfig.TurretSpawnerTypeConfig);
+			}
+		}
 	}
 }
 
