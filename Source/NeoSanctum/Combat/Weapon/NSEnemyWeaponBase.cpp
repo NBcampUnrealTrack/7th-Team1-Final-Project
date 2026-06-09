@@ -9,15 +9,13 @@
 ANSEnemyWeaponBase::ANSEnemyWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	
 	bReplicates = true;
 
-	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
-
-	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void ANSEnemyWeaponBase::StartDissolve()
@@ -26,4 +24,20 @@ void ANSEnemyWeaponBase::StartDissolve()
 	{
 		DissolveComponent->StartDissolve();
 	}
+}
+
+bool ANSEnemyWeaponBase::TryGetLeftHandIKTransform(FTransform& OutTransform) const
+{
+	if (!IsValid(WeaponMesh) ||
+		LeftHandIKSocketName.IsNone() ||
+		!WeaponMesh->DoesSocketExist(LeftHandIKSocketName))
+	{
+		return false;
+	}
+
+	OutTransform = WeaponMesh->GetSocketTransform(
+		LeftHandIKSocketName,
+		RTS_World);
+
+	return true;
 }

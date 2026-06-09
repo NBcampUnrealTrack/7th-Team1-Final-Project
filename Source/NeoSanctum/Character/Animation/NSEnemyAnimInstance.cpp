@@ -3,8 +3,11 @@
 
 #include "NSEnemyAnimInstance.h"
 
+#include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
 void UNSEnemyAnimInstance::NativeInitializeAnimation()
 {
@@ -35,5 +38,84 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		GroundSpeed = EnemyCharacter->GetVelocity().Size2D();
 		bIsMoving = GroundSpeed > MovingSpeedThreshold;
+	}
+
+	UpdateLeftHandIK(DeltaSeconds);
+}
+
+void UNSEnemyAnimInstance::UpdateLeftHandIK(float DeltaSeconds)
+{
+	float TargetAlpha = 0.0f;
+
+	if (!IsValid(EnemyCharacter) || EnemyCharacter->IsDead())
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	const UAbilitySystemComponent* ASC = EnemyCharacter->GetAbilitySystemComponent();
+	if (!IsValid(ASC) || !ASC->HasMatchingGameplayTag(NSGameplayTags::State_Enemy_Combat))
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	const ANSEnemyWeaponBase* CurrentWeapon =
+		EnemyCharacter->GetCurrentWeapon();
+
+	if (!IsValid(CurrentWeapon))
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	FTransform SocketWorldTransform;
+	if (!CurrentWeapon->TryGetLeftHandIKTransform(
+		SocketWorldTransform))
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComponent =
+		GetOwningComponent();
+
+	if (!IsValid(MeshComponent) ||
+		!MeshComponent->DoesSocketExist(TEXT("hand_r")))
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	FVector BoneSpaceLocation = FVector::ZeroVector;
+	FRotator BoneSpaceRotation = FRotator::ZeroRotator;
+
+	MeshComponent->TransformToBoneSpace(
+		TEXT("hand_r"),
+		SocketWorldTransform.GetLocation(),
+		SocketWorldTransform.Rotator(),
+		BoneSpaceLocation,
+		BoneSpaceRotation);
+
+	LeftHandIKTransform = FTransform(
+		BoneSpaceRotation,
+		BoneSpaceLocation,
+		FVector::OneVector);
+
+	TargetAlpha = 1.0f;
+	UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+}
+
+void UNSEnemyAnimInstance::UpdateLeftHandIKAlpha(float TargetAlpha, float DeltaSeconds)
+{
+	LeftHandIKAlpha = FMath::FInterpTo(
+		LeftHandIKAlpha,
+		TargetAlpha,
+		DeltaSeconds,
+		LeftHandIKInterpSpeed);
+
+	if (LeftHandIKAlpha <= UE_KINDA_SMALL_NUMBER)
+	{
+		LeftHandIKAlpha = 0.0f;
 	}
 }

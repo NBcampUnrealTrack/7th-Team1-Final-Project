@@ -9,11 +9,20 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "Net/UnrealNetwork.h"
 
 
 UNSEnemyWeaponComponent::UNSEnemyWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
+}
+
+void UNSEnemyWeaponComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UNSEnemyWeaponComponent, CurrentWeapon);
 }
 
 void UNSEnemyWeaponComponent::BeginPlay()
