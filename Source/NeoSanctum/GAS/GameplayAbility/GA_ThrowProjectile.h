@@ -9,6 +9,7 @@
 class UAbilityTask_PlayMontageAndWait;
 class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
+class UGameplayEffect;
 class UStaticMesh;
 class UStaticMeshComponent;
 class ANSThrowProjectileBase;
@@ -34,10 +35,6 @@ struct FNSTurretConfig
 {
 	GENERATED_BODY()
 	
-	// 타겟 탐지 거리
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Motion")
-	float DetectionRadius = 1500.0f;
-	
 	// 타겟 탐지 간격
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Motion")
 	float TargetRefreshInterval = 0.25f;
@@ -50,17 +47,12 @@ struct FNSTurretConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Motion")
 	float PitchTurnSpeed = 360.0f;
 	
-	// 발사 속도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Combat")
-	float FireInterval = 0.25f;
-	
-	// 발사 사거리
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Combat")
-	float TraceRange = 1500.0f;
-	
 	// 발사를 시작하게 되는 타겟과의 최소 각도 차이
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Combat")
 	float FireAngleTolerance = 8.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
+	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 };
 
 USTRUCT(BlueprintType)

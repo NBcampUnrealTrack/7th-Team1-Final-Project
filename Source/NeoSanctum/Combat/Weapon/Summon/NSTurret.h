@@ -3,21 +3,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "GameFramework/Actor.h"
 #include "NSTurret.generated.h"
 
+class UAbilitySystemComponent;
+class UGameplayEffect;
 class USphereComponent;
+class UNSAbilitySystemComponent;
+class UNSTurretAttributeSet;
 struct FNSTurretConfig;
+struct FOnAttributeChangeData;
 class AController;
 class APawn;
 
 UCLASS()
-class NEOSANCTUM_API ANSTurret : public AActor
+class NEOSANCTUM_API ANSTurret : public AActor, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ANSTurret();
+
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	void InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController);
 
@@ -48,12 +56,28 @@ private:
 	bool IsValidTargetActor(const AActor* TargetActor) const;
 	bool CanSeeTarget(const AActor* TargetActor) const;
 	
+private:
+	void InitializeAbilityActorInfo();
+	void ApplyInitialAttributeEffect();
+	
+	void BindAttributeChangeDelegates();
+	void HandleDetectionRangeChanged(const FOnAttributeChangeData& Data);
+	void RefreshDetectionRange();
+	
+private:
 	void InitializeTargets();
 	void UpdateAutoTarget();
 	
 private:
 	void RotateJointToTarget(float DeltaSeconds);
 	void RotateHeadToTarget(float DeltaSeconds);
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UNSAbilitySystemComponent> ASC;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
+	TObjectPtr<UNSTurretAttributeSet> AttributeSet;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
@@ -78,8 +102,6 @@ protected:
 	TObjectPtr<USphereComponent> DetectionSphereComponent;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
-	float DetectionRadius = 1500.0f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
 	float TargetRefreshInterval = 0.25f;
@@ -92,6 +114,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");
+
+	UPROPERTY(Transient)
+	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 	
 protected:
 	// Turret을 소환한 캐릭터 Pawn
@@ -111,4 +136,8 @@ private:
 	
 	// 타겟을 재탐색하는 타이머
 	FTimerHandle TargetRefreshTimerHandle;
+
+	bool bAbilityActorInfoInitialized = false;
+	bool bInitialAttributeEffectApplied = false;
+	bool bAttributeChangeDelegatesBound = false;
 };

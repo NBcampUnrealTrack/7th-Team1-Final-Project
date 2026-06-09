@@ -6,7 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "Components/SphereComponent.h"
 #include "GenericTeamAgentInterface.h"
+#include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 
@@ -18,6 +20,12 @@ ANSTurret::ANSTurret()
 
 	bReplicates = true;
 	SetReplicateMovement(true);
+
+	ASC = CreateDefaultSubobject<UNSAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	AttributeSet = CreateDefaultSubobject<UNSTurretAttributeSet>(TEXT("AttributeSet"));
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -39,8 +47,13 @@ ANSTurret::ANSTurret()
 
 	DetectionSphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphereComponent"));
 	DetectionSphereComponent->SetupAttachment(SceneRoot);
-	DetectionSphereComponent->InitSphereRadius(DetectionRadius);
+	DetectionSphereComponent->InitSphereRadius(0.0f);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
+}
+
+UAbilitySystemComponent* ANSTurret::GetAbilitySystemComponent() const
+{
+	return ASC;
 }
 
 void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController)
@@ -53,16 +66,15 @@ void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwnin
 		SetOwner(OwningPawn);
 		SetInstigator(OwningPawn);
 	}
-
-	DetectionRadius = InConfig.DetectionRadius;
+	
 	TargetRefreshInterval = InConfig.TargetRefreshInterval;
 	YawTurnSpeed = InConfig.YawTurnSpeed;
 	PitchTurnSpeed = InConfig.PitchTurnSpeed;
-
-	if (DetectionSphereComponent)
-	{
-		DetectionSphereComponent->SetSphereRadius(DetectionRadius);
-	}
+	InitialAttributeEffectClass = InConfig.InitialAttributeEffectClass;
+	
+	InitializeAbilityActorInfo();
+	BindAttributeChangeDelegates();
+	ApplyInitialAttributeEffect();
 }
 
 void ANSTurret::Tick(float DeltaSeconds)
@@ -77,9 +89,12 @@ void ANSTurret::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitializeAbilityActorInfo();
+	BindAttributeChangeDelegates();
+	ApplyInitialAttributeEffect();
+
 	if (DetectionSphereComponent)
 	{
-		DetectionSphereComponent->SetSphereRadius(DetectionRadius);
 		DetectionSphereComponent->OnComponentBeginOverlap.AddDynamic(
 			this,
 			&ThisClass::OnDetectionSphereBeginOverlap
@@ -157,6 +172,76 @@ bool ANSTurret::IsValidTargetActor(const AActor* TargetActor) const
 	}
 
 	return true;
+}
+
+void ANSTurret::InitializeAbilityActorInfo()
+{
+	if (!ASC || bAbilityActorInfoInitialized)
+	{
+		return;
+	}
+	
+	ASC->InitAbilityActorInfo(this, this);
+	bAbilityActorInfoInitialized = true;
+}
+
+void ANSTurret::ApplyInitialAttributeEffect()
+{
+	if (!HasAuthority() || !ASC || !InitialAttributeEffectClass || bInitialAttributeEffectApplied)
+	{
+		return;
+	}
+	
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	const FGameplayEffectSpecHandle SpecHandle = 
+		ASC->MakeOutgoingSpec(InitialAttributeEffectClass,1.0f,EffectContext);
+
+	if (SpecHandle.IsValid())
+	{
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+	
+	bInitialAttributeEffectApplied = true;
+	
+	RefreshDetectionRange();
+}
+
+void ANSTurret::BindAttributeChangeDelegates()
+{
+	if (!ASC || !AttributeSet || bAttributeChangeDelegatesBound)
+	{
+		return;
+	}
+	
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSTurretAttributeSet::GetDetectionRangeAttribute()
+	).AddUObject(this, &ThisClass::HandleDetectionRangeChanged);
+	
+	bAttributeChangeDelegatesBound = true;
+}
+
+void ANSTurret::HandleDetectionRangeChanged(const FOnAttributeChangeData& Data)
+{
+	if (DetectionSphereComponent)
+	{
+		DetectionSphereComponent->SetSphereRadius(FMath::Max(Data.NewValue, 0.0f));
+	}
+}
+
+void ANSTurret::RefreshDetectionRange()
+{
+	if (!DetectionSphereComponent || !AttributeSet)
+	{
+		return;
+	}
+	
+	const float NewDetectionRange = AttributeSet->GetDetectionRange();
+	if (NewDetectionRange > 0.0f)
+	{
+		DetectionSphereComponent->SetSphereRadius(NewDetectionRange);
+	}
 }
 
 bool ANSTurret::CanSeeTarget(const AActor* TargetActor) const
