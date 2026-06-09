@@ -159,6 +159,34 @@ bool ANSTurret::IsValidTargetActor(const AActor* TargetActor) const
 	return true;
 }
 
+bool ANSTurret::CanSeeTarget(const AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor) || !GetWorld())
+	{
+		return false;
+	}
+
+	const FVector TraceStart = HeadMeshComponent ? HeadMeshComponent->GetComponentLocation() : GetActorLocation();
+	const FVector TraceEnd = TargetActor->GetActorLocation();
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretLineOfSight), false, this);
+	if (OwningPawn)
+	{
+		QueryParams.AddIgnoredActor(OwningPawn);
+	}
+
+	FHitResult HitResult;
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	return bHit && HitResult.GetActor() == TargetActor;
+}
+
 void ANSTurret::InitializeTargets()
 {
 	if (!DetectionSphereComponent)
@@ -189,6 +217,11 @@ void ANSTurret::UpdateAutoTarget()
 		if (!IsValidTargetActor(TargetActor))
 		{
 			It.RemoveCurrent();
+			continue;
+		}
+
+		if (!CanSeeTarget(TargetActor))
+		{
 			continue;
 		}
 

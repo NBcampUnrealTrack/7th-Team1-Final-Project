@@ -46,6 +46,8 @@ private:
 
 private:
 	bool IsValidTargetActor(const AActor* TargetActor) const;
+	bool CanSeeTarget(const AActor* TargetActor) const;
+	
 	void InitializeTargets();
 	void UpdateAutoTarget();
 	
