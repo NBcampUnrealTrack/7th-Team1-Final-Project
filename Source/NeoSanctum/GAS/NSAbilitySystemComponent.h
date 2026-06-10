@@ -24,6 +24,18 @@ public:
 	// 입력 상태를 강제로 비울 때 사용
 	void ClearAbilityInput();
 	
+public:
+	bool TryGetBaseAbilityStat(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float& OutValue
+	) const;
+	
+	bool IsAbilityStatModifiable(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag
+	) const;
+	
 private:
 	TArray<FGameplayAbilitySpecHandle> InputPressedSpecHandles;
 	TArray<FGameplayAbilitySpecHandle> InputReleasedSpecHandles;
