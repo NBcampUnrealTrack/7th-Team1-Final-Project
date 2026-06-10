@@ -2,7 +2,6 @@
 
 
 #include "GA_CompanionBasicFire.h"
-
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
@@ -43,13 +42,6 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;	
 	}
 	
-	USkeletalMeshComponent* SkeletalMesh = AvatarActor->GetSkeletalMeshComponent();
-	if (!SkeletalMesh)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-	
 	FVector MuzzleSocket;
 	FVector OutDir;
 	
@@ -84,9 +76,54 @@ void UGA_CompanionBasicFire::ApplyCooldown(const FGameplayAbilitySpecHandle Hand
 	
 	float CoolDownInterval = (1.f / Set->GetFireRate());
 	
+	if (!CoolDownSpecHandle.IsValid()) return;
 	CoolDownSpecHandle.Data->SetSetByCallerMagnitude(CoolDownTag, CoolDownInterval);
 	
 	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CoolDownSpecHandle);
+}
+
+FVector UGA_CompanionBasicFire::ComputeAimDirection(const FVector& Muzzle, AActor* Target) const
+{
+	// 타겟이 없다면 직선방향으로 발사되게
+	if (!Target) return FVector::ZeroVector;
+	
+	const FVector ToTarget = Target->GetActorLocation() - Muzzle;
+	
+	// 예측이 필요없다면 적고정상태
+	if (!bPredictiveAim)
+	{
+		// 해당 적방향으로 발사
+		return ToTarget.GetSafeNormal();
+	}
+	
+	const UNSCompanionAttributeSet* Set = GetCompanionSet();
+	if (!Set) return ToTarget.GetSafeNormal();
+	
+	// 타겟과 드론사이의 거리 / 탄환 스피드
+	const float FlightTime = ToTarget.Size() / Set->GetProjectileSpeed();
+	
+	// 목표방향은 타겟위치 + 타겟이 달리는 방향 * 예측한 비행시간
+	FVector ComputePoint = Target->GetActorLocation() + Target->GetVelocity() * FlightTime;
+	
+	// 예측해서 나온 위치의 방향 반환
+	return (ComputePoint - Muzzle).GetSafeNormal();
+}
+
+FVector UGA_CompanionBasicFire::GetMuzzleSocketLocation() const
+{
+	ANSBaseCompanionAI* CompanionAI = Cast<ANSBaseCompanionAI>(GetAvatarActorFromActorInfo());
+	if (!CompanionAI) return FVector::ZeroVector;
+	
+	// 매쉬 캐싱
+	USkeletalMeshComponent* Mesh = CompanionAI->GetSkeletalMeshComponent();
+	
+	// 매쉬가 있고 이름과 일치하는 소켓이 있다면
+	if (Mesh && Mesh->DoesSocketExist(MuzzleSocketName))
+	{
+		// 소켓위치 반환
+		return Mesh->GetSocketLocation(MuzzleSocketName);
+	}
+	return CompanionAI->GetActorLocation();
 }
 
 const UNSCompanionAttributeSet* UGA_CompanionBasicFire::GetCompanionSet() const
@@ -121,11 +158,11 @@ bool UGA_CompanionBasicFire::CanFireAt(AActor* Target, FVector& OutMuzzle, FVect
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	if (!AvatarActor) return false;
 	
-	OutMuzzle = AvatarActor->GetActorLocation();
+	OutMuzzle = GetMuzzleSocketLocation();
 	
 	const FVector TargetLocation = Target->GetActorLocation();
 	const FVector ToTarget = TargetLocation - OutMuzzle;
-	OutDir = ToTarget.GetSafeNormal();
+	OutDir = ComputeAimDirection(OutMuzzle, Target);
 	
 	const float DistToTarget = ToTarget.Size();
 	if (DistToTarget > Set->GetAttackRange()) return false;

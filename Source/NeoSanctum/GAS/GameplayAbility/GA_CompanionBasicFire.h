@@ -30,6 +30,11 @@ public:
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo) const override;
 	
+	// Getter
+	FVector GetMuzzleSocketLocation() const;
+	const UNSCompanionAttributeSet* GetCompanionSet() const;
+	AActor* GetCombatTarget() const;
+	
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
 	TSubclassOf<ANSDroneProjectile> ProjectileClass;
@@ -52,8 +57,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
 	FGameplayTag FireCueTag;
 	
-	const UNSCompanionAttributeSet* GetCompanionSet() const;
-	AActor* GetCombatTarget() const;
+	UPROPERTY(EditDefaultsOnly, Category="Combat")
+	bool bPredictiveAim = false;
+	
+	// @민재 : 타겟 움직임 예측 발사
+	FVector ComputeAimDirection(const FVector& Muzzle, AActor* Target) const;
+	
+	// @민재 : 조준성공 발사위치 반환
 	bool CanFireAt(AActor* Target, FVector& OutMuzzle, FVector& OutDir) const;
+	
+	// @민재 : 실제 탄 발사 함수
 	void FireProjectile(const FVector& Muzzle, const FVector& Dir, AActor* Target);
 };
