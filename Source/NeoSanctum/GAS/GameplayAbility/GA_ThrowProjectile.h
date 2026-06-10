@@ -50,7 +50,12 @@ struct FNSTurretConfig
 	// 발사를 시작하게 되는 타겟과의 최소 각도 차이
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Combat")
 	float FireAngleTolerance = 8.0f;
+	
+	// 데미지 적용 GameplayEffect
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	// Attribute 초기화 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 };
