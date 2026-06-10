@@ -57,7 +57,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	ANSDroneAIController* DroneController = Cast<ANSDroneAIController>(AIController);
 	if (!DroneController || !DronePawn) return;
 	
-	if (AActor* Enemy = FindNearestActor(DronePawn, EnemyClass, CombatDetectionRadius, true))
+	if (AActor* Enemy = FindNearestActor(DronePawn, EnemyClass, CombatDetectionRadius,EnemyObjectTypes, true))
 	{
 		BB->SetValueAsObject(EnemyTargetKey.SelectedKeyName, Enemy);
 		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, ComputeStandoffPosition(DronePawn, Enemy));
@@ -67,7 +67,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	
 	BB->ClearValue(EnemyTargetKey.SelectedKeyName);
 	
-	if (AActor* Currency = FindNearestActor(DronePawn, CurrencyClass, CurrencyDetectionRadius))
+	if (AActor* Currency = FindNearestActor(DronePawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
 	{
 		BB->SetValueAsObject(TargetActorKey.SelectedKeyName, Currency);
 		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, Currency->GetActorLocation());
@@ -86,12 +86,13 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 
 
 AActor* UNSBTService_JudgmentDroneTarget::FindNearestActor(
-	AActor* InActor, TSubclassOf<AActor> FilterClass, float Radius, bool bRequireAliveEnemy) const
+	AActor* InActor, 
+	TSubclassOf<AActor> FilterClass, 
+	float Radius,
+	const TArray<TEnumAsByte<EObjectTypeQuery>>& ObjectTypes,
+	bool bRequireAliveEnemy) const
 {
 	if (!InActor || !FilterClass) return nullptr;
-	
-	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_EngineTraceChannel3));
 	
 	TArray<AActor*> IgnoreActors;
 	IgnoreActors.Add(InActor);

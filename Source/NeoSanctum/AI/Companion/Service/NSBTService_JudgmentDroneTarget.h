@@ -35,6 +35,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
 	TSubclassOf<AActor> CurrencyClass;
 	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
+	TArray<TEnumAsByte<EObjectTypeQuery>> CurrencyObjectTypes;
+	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
 	float CurrencyDetectionRadius = 1500.f;
 	
@@ -61,7 +64,11 @@ protected:
 private:
 	// @민재 : 감지범위구체
 	AActor* FindNearestActor(
-		AActor* InActor, TSubclassOf<AActor> FilterClass, float Radius, bool bRequireAliveEnemy = false) const;
+		AActor* InActor, 
+		TSubclassOf<AActor> FilterClass, 
+		float Radius,
+		const TArray<TEnumAsByte<EObjectTypeQuery>>& ObjectTypes,
+		bool bRequireAliveEnemy = false) const;
 	
 	// @민재 : 적과의 거리 계산
 	FVector ComputeStandoffPosition(const AActor* Drone, const AActor* Enemy) const;
