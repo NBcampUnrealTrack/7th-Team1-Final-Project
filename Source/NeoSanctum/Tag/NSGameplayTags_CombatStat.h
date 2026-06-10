@@ -10,6 +10,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Damage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Cooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ExplosionRadius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ProjectileSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxAmmo);
 }
