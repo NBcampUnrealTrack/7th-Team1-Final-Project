@@ -47,11 +47,13 @@ ANSRangerProjectile::ANSRangerProjectile()
 void ANSRangerProjectile::InitializeProjectile(
 	UAbilitySystemComponent* InSourceASC,
 	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
-	float InSplashDamageEffectLevel)
+	float InSplashDamageEffectLevel,
+	float InExplosionRadius)
 {
 	SourceASC = InSourceASC;
 	SplashDamageEffectClass = InSplashDamageEffectClass;
 	SplashDamageEffectLevel = InSplashDamageEffectLevel;
+	ExplosionRadius = FMath::Max(InExplosionRadius, 0.0f);
 }
 
 void ANSRangerProjectile::BeginPlay()

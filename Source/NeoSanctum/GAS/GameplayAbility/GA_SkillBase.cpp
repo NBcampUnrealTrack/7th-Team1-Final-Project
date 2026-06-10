@@ -5,6 +5,7 @@
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_SkillBase::UGA_SkillBase()
@@ -14,6 +15,34 @@ UGA_SkillBase::UGA_SkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateNo;
 	
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
+}
+
+bool UGA_SkillBase::TryGetBaseAbilityStat(
+	const FGameplayTag& AbilityTag,
+	const FGameplayTag& StatTag,
+	float& OutValue) const
+{
+	const UNSAbilitySystemComponent* NSASC =
+		Cast<UNSAbilitySystemComponent>(GetAbilitySystemComponentFromActorInfo());
+	
+	if (!NSASC)
+	{
+		return false;
+	}
+	
+	return NSASC->TryGetBaseAbilityStat(AbilityTag, StatTag, OutValue);
+}
+
+float UGA_SkillBase::GetBaseAbilityStatOrDefault(
+	const FGameplayTag& AbilityTag,
+	const FGameplayTag& StatTag,
+	float DefaultValue) const
+{
+	float Value = DefaultValue;
+	
+	TryGetBaseAbilityStat(AbilityTag, StatTag, Value);
+	
+	return Value;
 }
 
 UNSAbilitySystemComponent* UGA_SkillBase::GetNSAbilitySystemComponent() const

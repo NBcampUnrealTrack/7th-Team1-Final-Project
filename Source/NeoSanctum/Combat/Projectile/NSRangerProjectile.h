@@ -28,7 +28,8 @@ public:
 	void InitializeProjectile(
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
-		float InSplashDamageEffectLevel
+		float InSplashDamageEffectLevel,
+		float InExplosionRadius
 	);
 	
 	void LaunchProjectile(const FVector& LaunchDirection);

@@ -11,6 +11,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 UGA_RangerProjectileShot::UGA_RangerProjectileShot()
@@ -445,7 +446,18 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
-		Projectile->InitializeProjectile(ASC, SplashDamageEffectClass, SplashDamageEffectLevel);
+		const float ExplosionRadius = GetBaseAbilityStatOrDefault(
+			NSGameplayTags::Ability_Ranger_ProjectileShot,
+			NSGameplayTags::CombatStat_ExplosionRadius,
+			DefaultExplosionRadius
+		);
+		
+		Projectile->InitializeProjectile(
+			ASC,
+			SplashDamageEffectClass,
+			SplashDamageEffectLevel,
+			ExplosionRadius
+		);
 	}
 
 	Projectile->LaunchProjectile(LaunchDirection);

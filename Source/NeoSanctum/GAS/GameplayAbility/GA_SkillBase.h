@@ -29,6 +29,19 @@ public:
 	
 	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
 	
+public:
+	bool TryGetBaseAbilityStat(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float& OutValue
+	) const;
+
+	float GetBaseAbilityStatOrDefault(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float DefaultValue
+	) const;
+	
 protected:
 	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
 	
