@@ -5,6 +5,7 @@
 #include "NeoSanctum/Core/GameState/NSOutGameState.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 
 ANSOutGameMode::ANSOutGameMode()
 {
@@ -17,13 +18,20 @@ ANSOutGameMode::ANSOutGameMode()
 
 void ANSOutGameMode::RequestStartRun_Implementation()
 {
-	ANSOutGameState* NSOutGameState = GetGameState<ANSOutGameState>();
-	if (NSOutGameState)
+	if (!HasAuthority())
 	{
-		if (NSOutGameState->IsAllPlayersReady())
-		{
-			GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
-		}
+		return;
+	}
+	
+	ANSOutGameState* NSGameState = GetGameState<ANSOutGameState>();
+	if (!NSGameState || !NSGameState->IsAllPlayersReady()) 
+	{
+		return;
+	}
+	
+	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		NSGameFlow->StartNewRun();
 	}
 }
 
