@@ -64,6 +64,8 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	DOREPLIFETIME(ANSPlayerState, bIsReady);
 	DOREPLIFETIME(ANSPlayerState, bIsDead);
+	DOREPLIFETIME(ANSPlayerState, RunChoice);
+	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
 }
 
 UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
