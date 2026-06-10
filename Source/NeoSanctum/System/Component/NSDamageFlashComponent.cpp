@@ -10,6 +10,14 @@ UNSDamageFlashComponent::UNSDamageFlashComponent()
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
+void UNSDamageFlashComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	
+	CancelFlash(); // 내부에서 ClearTimer + StopFlash
+	
+	Super::EndPlay(EndPlayReason);
+}
+
 void UNSDamageFlashComponent::PlayFlash()
 {
 	UWorld* World = GetWorld();

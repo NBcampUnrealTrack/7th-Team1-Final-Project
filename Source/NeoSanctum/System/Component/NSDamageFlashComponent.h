@@ -17,6 +17,8 @@ class NEOSANCTUM_API UNSDamageFlashComponent : public UActorComponent
 	
 public:
 	UNSDamageFlashComponent();
+	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	// CueNotify가 호출하는 단일 진입점 (순수 클라 비주얼)
 	UFUNCTION(BlueprintCallable, Category = "Utility|Visuals")
@@ -34,7 +36,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Flash")
 	float FlashDuration = 0.15f;
 
-	// 촤대 불투명도
+	// 최대 불투명도
 	UPROPERTY(EditDefaultsOnly, Category = "Flash")
 	float PeakOpacity = 1.0f;
 	
