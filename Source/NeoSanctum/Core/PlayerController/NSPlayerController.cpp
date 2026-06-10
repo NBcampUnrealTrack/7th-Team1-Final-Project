@@ -22,6 +22,7 @@
 #include "InputCoreTypes.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "VerseVM/VVMRuntimeError.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -191,6 +192,7 @@ void ANSPlayerController::ShowCharacterSelectWidget()
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	SetInputMode(InputMode);
 }
+
 void ANSPlayerController::HideCharacterSelectWidget()
 {
 	if (CharacterSelectWidget)
@@ -258,6 +260,10 @@ void ANSPlayerController::BeginPlay()
 			UIManager->HideTitle();
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
+			
+			UIManager->CreateRunEnd(this);
+			UIManager->HideRunEnd();
+			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
 			bShowMouseCursor = false;
@@ -441,6 +447,15 @@ void ANSPlayerController::Multicast_NotifyRespawn_Implementation()
 	}
 	
 	
+}
+
+void ANSPlayerController::Server_ConfirmVote_Implementation(ENSRunChoice Choice)
+{
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_SubmitRunChoice(GameMode,this, Choice);
+	}
 }
 
 void ANSPlayerController::RequestEnterDeathSpectatorMode()

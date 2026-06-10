@@ -34,6 +34,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyRunStarted();
 	
+	// 투표 확정 입력용
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")
+	void Server_ConfirmVote(ENSRunChoice Choice);
+	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
 	void RequestEnterDeathSpectatorMode();
