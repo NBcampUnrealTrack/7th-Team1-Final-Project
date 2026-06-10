@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 #include "NeoSanctum/Core/Stage/NSStageManager.h"
 #include "NeoSanctum/Core/Stage/NSMonsterPoolManager.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
@@ -124,12 +125,32 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
-	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_HideOut");
+	if (!HasAuthority() || !bStageDecisionPending)
+	{
+		return;
+	}
+	
+	bStageDecisionPending = false;
+
+	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		NSGameFlow->ReturnToHub();
+	}
 }
 
 void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 {
-	GetWorld()->ServerTravel("/Game/NeoSanctum/Map/L_CanyonPlay");
+	if (!HasAuthority() || !bStageDecisionPending)
+	{
+		return;
+	}
+	
+	bStageDecisionPending = false;
+
+	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		NSGameFlow->AdvanceToNextStage();
+	}
 }
 
 void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)

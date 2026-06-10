@@ -59,4 +59,7 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UNSMonsterPoolManager> NSMonsterPoolManager;
+	
+	// 스테이지 완료(전멸, 클리어)시 트래블 UI 연타했을 때 중복 트래블 방지용
+	bool bStageDecisionPending = true;
 };

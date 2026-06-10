@@ -5,6 +5,8 @@
 #include "OnlineSubsystemUtils.h"
 #include "OnlineSessionSettings.h"
 #include "Kismet/GameplayStatics.h" 
+#include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Data/World/NSLevelCatalog.h"
 
 
 void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -196,9 +198,20 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 		return;
 	}
 
-	const bool bTravelStarted = World->ServerTravel(
-		TEXT("/Game/NeoSanctum/Map/L_HideOut?listen"));
+	FString HubPackage;
+	if (UNSLevelCatalog* Catalog = GetLevelCatalog(); Catalog && !Catalog->HubLevel.IsNull())
+	{
+		HubPackage = Catalog->HubLevel.ToSoftObjectPath().GetLongPackageName();
+	}
+	if (HubPackage.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("카탈로그에서 거점 레벨을 찾지 못해서 호스트 트래블 중단"));
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
 
+	const bool bTravelStarted = World->ServerTravel(HubPackage + TEXT("?listen"));
 	bSwitchingToHost = false;
 	OnCreateSessionComplete.Broadcast(bTravelStarted);
 }
@@ -261,14 +274,9 @@ void UNSSessionSubsystem::HandleNetworkFailure(
 
 	bIsJoining = false;
 	OnJoinSessionComplete.Broadcast(false);
-
-	if (UWorld* CurrentWorld = GetWorld())
-	{
-		UGameplayStatics::OpenLevel(
-			CurrentWorld,
-			FName(TEXT("L_Title")));
-	}
-
+	
+	// 연결 실패시 풀백 함수 사용
+	ReturnToTitle();
 }
 
 void UNSSessionSubsystem::HandleTravelFailure(
@@ -289,13 +297,43 @@ void UNSSessionSubsystem::HandleTravelFailure(
 	bSwitchingToHost = false;
 	bCreateSessionAfterDestroy = false;
 
-	if (UWorld* CurrentWorld = GetWorld())
+	// 트래블 실패시 풀백 함수 사용
+	ReturnToTitle();
+}
+
+UNSLevelCatalog* UNSSessionSubsystem::GetLevelCatalog() const
+{
+	if (INSGameInstanceInterface* GameInstanceInterface =
+		Cast<INSGameInstanceInterface>(GetGameInstance()))
 	{
-		UGameplayStatics::OpenLevel(
-			CurrentWorld,
-			FName(TEXT("L_Title")));
+		return GameInstanceInterface->GetLevelCatalog();
+	}
+	
+	return nullptr;
+}
+
+void UNSSessionSubsystem::ReturnToTitle()
+{
+	UWorld* World = GetWorld();
+	if (!World) 
+	{
+		return;
 	}
 
+	if (UNSLevelCatalog* Catalog = GetLevelCatalog())
+	{
+		if (!Catalog->TitleLevel.IsNull())
+		{
+			UGameplayStatics::OpenLevelBySoftObjectPtr(
+				World,
+				Catalog->TitleLevel);
+			return;
+		}
+	}
+	
+	// 복구용 로직
+	UE_LOG(LogTemp, Warning, TEXT("카탈로그 TitleLevel 없음, 폴백 진행"));
+	UGameplayStatics::OpenLevel(World, FName(TEXT("L_Title")));
 }
 
 bool UNSSessionSubsystem::HasPendingNetGame() const
