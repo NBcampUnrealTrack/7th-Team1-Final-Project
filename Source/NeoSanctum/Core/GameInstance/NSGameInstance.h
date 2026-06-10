@@ -8,6 +8,7 @@
 #include "NSGameInstance.generated.h"
 
 class UNSSoundData;
+class UNSLevelCatalog;
 
 UCLASS()
 class NEOSANCTUM_API UNSGameInstance :
@@ -24,14 +25,18 @@ public:
 	
 	virtual void HideLoadingScreen_Implementation() override;
 	
-public:
 	// SoundData 캐싱
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
 	TObjectPtr<UNSSoundData> SoundData;
+	
+	virtual UNSLevelCatalog* GetLevelCatalog() const override { return LevelCatalog; }
 
 private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> LoadingWidget;
+	
+	UPROPERTY(EditDefaultsOnly, Category="GameFlow")
+	TObjectPtr<UNSLevelCatalog> LevelCatalog;
 
 	// 로딩 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
