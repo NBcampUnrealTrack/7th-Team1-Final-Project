@@ -27,6 +27,18 @@ public:
 		const FGameplayEventData* TriggerEventData) override;
 
 protected:
+	bool PlayAttackMontage();
+	void FinishAttackAbility();
+	void CancelAttackAbility();
+
+	virtual void InitializeAttack();
+	virtual void PrepareForAttackMontage();
+	virtual void HandleAttackMontageCompleted();
+	virtual void HandleAttackEvent(const FGameplayEventData& Payload);
+
+	bool TryApplyDamageToTarget(AActor* TargetActor, const FHitResult& HitResult);
+
+private:
 	UFUNCTION()
 	void OnMontageCompleted();
 
@@ -34,7 +46,7 @@ protected:
 	void OnMontageInterrupted();
 
 	UFUNCTION()
-	void OnHitCheckEventReceived(FGameplayEventData Payload);
+	void OnAttackEventReceived(FGameplayEventData Payload);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Assets")
@@ -48,17 +60,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
 	FGameplayTag HitCheckEventTag;
-
-	// 공격 판정 전방 거리
-	float AttackTraceDistance;
-
-	// 공격 판정 구체 반경
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
-	float AttackTraceRadius;
-	
-private:
-	TObjectPtr<UNSEnemyData> EnemyData;
-	
-	// 이번 공격에서 타격 여부 체크
-	bool bHasHitThisAttack;
 };

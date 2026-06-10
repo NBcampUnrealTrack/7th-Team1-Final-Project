@@ -58,6 +58,11 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
 }
 
+ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
+{
+	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
+}
+
 void ANSEnemyCharacterBase::Die()
 {
 	if (bIsDead) return;
@@ -135,7 +140,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
 	{
 		FName RowName = EnemyData->EnemyTag.GetTagName();
-		FNSMonsterAttributeRow* StatRow = 
+		FNSMonsterAttributeRow* StatRow =
 			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
 
 		if (StatRow)

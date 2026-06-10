@@ -9,7 +9,7 @@
 
 class UGameplayAbility;
 class UAnimInstance;
-class UStaticMeshComponent;
+class USkeletalMeshComponent;
 
 USTRUCT(BlueprintType)
 struct FWeaponConfig
@@ -44,12 +44,17 @@ public:
 
 	void StartDissolve();
 
+	bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Visual")
-	TObjectPtr<UStaticMeshComponent> WeaponMesh;
+	TObjectPtr<USkeletalMeshComponent> WeaponMesh;
 
 	UPROPERTY(EditDefaultsOnly)
 	FWeaponConfig WeaponConfig;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|IK")
+	FName LeftHandIKSocketName = TEXT("S_LeftHandIK");
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Components")

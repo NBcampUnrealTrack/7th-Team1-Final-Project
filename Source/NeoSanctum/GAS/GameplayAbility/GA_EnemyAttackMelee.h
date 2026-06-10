@@ -16,4 +16,19 @@ class NEOSANCTUM_API UGA_EnemyAttackMelee : public UGA_EnemyAttackBase
 
 public:
 	UGA_EnemyAttackMelee();
+
+protected:
+	virtual void InitializeAttack() override;
+	virtual void PrepareForAttackMontage() override;
+	virtual void HandleAttackEvent(
+		const FGameplayEventData& Payload) override;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Melee")
+	float AttackTraceDistance = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Melee")
+	float AttackTraceRadius = 8.0f;
+
+private:
+	bool bHasHitThisAttack = false;
 };

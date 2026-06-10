@@ -14,6 +14,7 @@ DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
 class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
+class ANSEnemyWeaponBase;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface,
@@ -38,6 +39,8 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+
+	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
 

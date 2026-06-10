@@ -8,9 +8,6 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "GenericTeamAgentInterface.h"
-#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
-#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
@@ -24,200 +21,176 @@ UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 	bServerRespectsRemoteAbilityCancellation = false;
 	bRetriggerInstancedAbility = false;
 
-	AttackTraceDistance = 100.0f;
-	AttackTraceRadius = 8.0f;
-
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
-void UGA_EnemyAttackBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-                                          const FGameplayAbilityActorInfo* ActorInfo,
-                                          const FGameplayAbilityActivationInfo ActivationInfo,
-                                          const FGameplayEventData* TriggerEventData)
+void UGA_EnemyAttackBase::ActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	bHasHitThisAttack = false;
-
-	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo) ||
+		!IsValid(AttackMontage))
 	{
-		if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(ActorInfo->AvatarActor.Get()))
-		{
-			EnemyData = EnemyChar->GetEnemyData();
-			if (EnemyData)
-			{
-				AttackTraceDistance = EnemyData->MaxAttackRange;
-			}
-		}
-	}
-
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	if (!AttackMontage)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
+	InitializeAttack();
 
-	UAbilityTask_WaitGameplayEvent* EventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
-		this, HitCheckEventTag, nullptr, false, false);
+	UAbilityTask_WaitGameplayEvent* EventTask =
+		UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+			this, HitCheckEventTag, nullptr, false, false);
 
-	if (EventTask)
+	if (IsValid(EventTask))
 	{
-		EventTask->EventReceived.AddDynamic(this, &UGA_EnemyAttackBase::OnHitCheckEventReceived);
+		EventTask->EventReceived.AddDynamic(
+			this, &ThisClass::OnAttackEventReceived);
 		EventTask->ReadyForActivation();
 	}
 
-	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-		this,
-		TEXT("AttackMontageTask"),
-		AttackMontage,
-		1.0f,
-		NAME_None,
-		false,
-		1.0f,
-		0.0f);
-
-	if (MontageTask)
+	if (!PlayAttackMontage())
 	{
-		MontageTask->OnCompleted.AddDynamic(this, &UGA_EnemyAttackBase::OnMontageCompleted);
-		MontageTask->OnInterrupted.AddDynamic(this, &UGA_EnemyAttackBase::OnMontageInterrupted);
-		MontageTask->OnCancelled.AddDynamic(this, &UGA_EnemyAttackBase::OnMontageInterrupted);
-
-		MontageTask->ReadyForActivation();
+		CancelAttackAbility();
 	}
+}
+
+bool UGA_EnemyAttackBase::PlayAttackMontage()
+{
+	if (!IsValid(AttackMontage))
+	{
+		return false;
+	}
+
+	PrepareForAttackMontage();
+
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			TEXT("AttackMontageTask"),
+			AttackMontage,
+			1.0f,
+			NAME_None,
+			false,
+			1.0f,
+			0.0f);
+
+	if (!IsValid(MontageTask))
+	{
+		return false;
+	}
+
+	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnMontageCompleted);
+	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+
+	MontageTask->ReadyForActivation();
+	return true;
+}
+
+void UGA_EnemyAttackBase::InitializeAttack()
+{
+}
+
+void UGA_EnemyAttackBase::PrepareForAttackMontage()
+{
+}
+
+void UGA_EnemyAttackBase::HandleAttackEvent(const FGameplayEventData& Payload)
+{
+}
+
+void UGA_EnemyAttackBase::HandleAttackMontageCompleted()
+{
+	FinishAttackAbility();
+}
+
+void UGA_EnemyAttackBase::OnAttackEventReceived(FGameplayEventData Payload)
+{
+	HandleAttackEvent(Payload);
 }
 
 void UGA_EnemyAttackBase::OnMontageCompleted()
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	HandleAttackMontageCompleted();
 }
 
 void UGA_EnemyAttackBase::OnMontageInterrupted()
 {
-	EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	CancelAttackAbility();
 }
 
-void UGA_EnemyAttackBase::OnHitCheckEventReceived(FGameplayEventData Payload)
+void UGA_EnemyAttackBase::FinishAttackAbility()
 {
-	if (bHasHitThisAttack) return;
-
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	UWorld* World = GetWorld();
-	if (!AvatarActor || !World) return;
-
-
-	// 물리 충돌 판정
-	FVector StartLocation = AvatarActor->GetActorLocation();
-	FVector ForwardVector = AvatarActor->GetActorForwardVector();
-	FVector EndLocation = StartLocation + (ForwardVector * AttackTraceDistance);
-
-	ANSEnemyWeaponBase* AttachedWeapon = nullptr;
-	TArray<AActor*> AttachedActors;
-	AvatarActor->GetAttachedActors(AttachedActors);
-	for (AActor* Actor : AttachedActors)
+	if (IsActive())
 	{
-		if (ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(Actor))
-		{
-			AttachedWeapon = Weapon;
-			break;
-		}
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, false);
+	}
+}
+
+void UGA_EnemyAttackBase::CancelAttackAbility()
+{
+	if (IsActive())
+	{
+		EndAbility(CurrentSpecHandle, CurrentActorInfo, CurrentActivationInfo, true, true);
+	}
+}
+
+bool UGA_EnemyAttackBase::TryApplyDamageToTarget(AActor* TargetActor, const FHitResult& HitResult)
+{
+	AActor* SourceActor = GetAvatarActorFromActorInfo();
+
+	if (!IsValid(SourceActor) ||
+		!IsValid(TargetActor) ||
+		TargetActor == SourceActor)
+	{
+		return false;
 	}
 
-	if (AttachedWeapon)
-	{
-		if (UStaticMeshComponent* WeaponMesh = AttachedWeapon->GetComponentByClass<UStaticMeshComponent>())
-		{
-			FVector SocketStart = WeaponMesh->GetSocketLocation(TEXT("TraceStart"));
-			FVector SocketEnd = WeaponMesh->GetSocketLocation(TEXT("TraceEnd"));
+	const IGenericTeamAgentInterface* SourceTeam = Cast<IGenericTeamAgentInterface>(SourceActor);
+	const IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
 
-			if (!SocketStart.IsZero() || !SocketEnd.IsZero())
-			{
-				StartLocation = SocketStart;
-				EndLocation = SocketEnd;
-			}
-		}
+	if (SourceTeam && TargetTeam &&
+		SourceTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
+	{
+		return false;
 	}
 
-	FHitResult HitResult;
-	FCollisionShape SphereShape = FCollisionShape::MakeSphere(AttackTraceRadius);
-	FCollisionQueryParams QueryParams;
+	IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor);
 
-	// 공격자 자신은 판정에서 제외
-	QueryParams.AddIgnoredActor(AvatarActor);
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC = TargetInterface
+		                                     ? TargetInterface->GetAbilitySystemComponent()
+		                                     : nullptr;
 
-	if (AttachedWeapon)
+	if (!IsValid(SourceASC) ||
+		!IsValid(TargetASC) ||
+		!DamageEffectClass)
 	{
-		QueryParams.AddIgnoredActor(AttachedWeapon);
+		return false;
 	}
 
-	bool bHit = World->SweepSingleByChannel(
-		HitResult,
-		StartLocation,
-		EndLocation,
-		FQuat::Identity,
-		ECC_Pawn, // 캐릭터 레이어 검사
-		SphereShape,
-		QueryParams
-	);
+	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
 
-#if !UE_BUILD_SHIPPING
-	FColor DebugColor = bHit ? FColor::Red : FColor::Green;
-	DrawDebugLine(World, StartLocation, EndLocation, DebugColor,
-	              false, 1.0f, 0, 3.0f);
-	DrawDebugSphere(World, StartLocation, AttackTraceRadius, 8, DebugColor,
-	                false, 1.0f);
-	DrawDebugSphere(World, EndLocation, AttackTraceRadius, 8, DebugColor,
-	                false, 1.0f);
-#endif
+	EffectContext.AddSourceObject(SourceActor);
+	EffectContext.AddHitResult(HitResult);
 
-	// GE 적용
-	if (bHit && HitResult.GetActor())
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, EffectContext);
+
+	if (!SpecHandle.IsValid())
 	{
-		AActor* TargetActor = HitResult.GetActor();
-
-		IGenericTeamAgentInterface* AttackerTeam = Cast<IGenericTeamAgentInterface>(AvatarActor);
-		IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
-
-		if (AttackerTeam && TargetTeam)
-		{
-			if (AttackerTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
-			{
-				return;
-			}
-		}
-
-		if (IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor))
-		{
-			UAbilitySystemComponent* TargetASC = TargetInterface->GetAbilitySystemComponent();
-			UAbilitySystemComponent* AIASC = GetAbilitySystemComponentFromActorInfo();
-
-			if (TargetASC && AIASC && DamageEffectClass)
-			{
-				bHasHitThisAttack = true;
-
-				// GE 발생 정보 생성
-				FGameplayEffectContextHandle EffectContext = AIASC->MakeEffectContext();
-				EffectContext.AddHitResult(HitResult);
-
-				FGameplayEffectSpecHandle NewSpecHandle = AIASC->MakeOutgoingSpec(
-					DamageEffectClass, 1.0f, EffectContext);
-				if (NewSpecHandle.IsValid())
-				{
-					// 타겟 ASC에 GE 적용
-					AIASC->ApplyGameplayEffectSpecToTarget(*NewSpecHandle.Data.Get(), TargetASC);
-					UE_LOG(LogTemp, Log, TEXT("타겟 %s에게 GE 적용"), *TargetActor->GetName());
-				}
-			}
-		}
+		return false;
 	}
 
-	if (GameplayCueTag.IsValid() && bHit)
+	SourceASC->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), TargetASC);
+
+	if (GameplayCueTag.IsValid())
 	{
-		GetAbilitySystemComponentFromActorInfo()->ExecuteGameplayCue(GameplayCueTag, FGameplayCueParameters());
+		SourceASC->ExecuteGameplayCue(GameplayCueTag, FGameplayCueParameters());
 	}
+
+	return true;
 }

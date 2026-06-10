@@ -11,6 +11,7 @@ namespace NSGameplayTags
 
 	// Enemy Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MeleeAttack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_RangerAttack);
 
 	// Enemy Event
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Enemy_Hit);
