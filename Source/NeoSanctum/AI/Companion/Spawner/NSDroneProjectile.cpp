@@ -49,8 +49,6 @@ void ANSDroneProjectile::InitProjectile(const FVector& Direction, APawn* InInsti
 	
 	SetInstigator(InInstigator);
 	SetOwner(InInstigator);
-	
-	SetActorRotation(Direction.Rotation());
 }
 
 void ANSDroneProjectile::BeginPlay()
