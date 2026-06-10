@@ -6,7 +6,7 @@
 #include "UObject/Interface.h"
 #include "NSGameInstanceInterface.generated.h"
 
-
+class UNSLevelCatalog;
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UNSGameInstanceInterface : public UInterface
@@ -21,4 +21,6 @@ class NEOSANCTUM_API INSGameInstanceInterface
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void HideLoadingScreen();
+	
+	virtual UNSLevelCatalog* GetLevelCatalog() const = 0;
 };
