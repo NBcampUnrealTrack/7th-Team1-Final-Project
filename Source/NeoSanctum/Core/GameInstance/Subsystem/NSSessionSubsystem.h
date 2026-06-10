@@ -85,4 +85,7 @@ private:
 
 	// 기존 세션 제거 완료 후 Host 세션을 다시 생성할지 여부
 	bool bCreateSessionAfterDestroy = false;
+	
+	class UNSLevelCatalog* GetLevelCatalog() const;
+	void ReturnToTitle();
 };
