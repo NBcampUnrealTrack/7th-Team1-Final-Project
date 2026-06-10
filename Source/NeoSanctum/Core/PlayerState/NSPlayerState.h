@@ -59,7 +59,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CombatStat")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	TObjectPtr<UNSCombatStatComponent> CombatStatComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
