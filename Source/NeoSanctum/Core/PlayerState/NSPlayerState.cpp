@@ -9,6 +9,7 @@
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
 
 ANSPlayerState::ANSPlayerState()
@@ -22,6 +23,9 @@ ANSPlayerState::ANSPlayerState()
 
 	PlayerAttributeSet = CreateDefaultSubobject<UNSPlayerAttributeSet>(TEXT("PlayerAttributeSet"));
 
+	// 스킬 전투 스탯 DataTable을 캐싱하고 조회하는 컴포넌트
+	CombatStatComponent = CreateDefaultSubobject<UNSCombatStatComponent>(TEXT("CombatStatComponent"));
+	
 	// 진행도 저장,로드 컴포넌트
 	ProgressComponent = CreateDefaultSubobject<UNSPlayerProgressComponent>(TEXT("ProgressComponent"));
 
@@ -76,6 +80,11 @@ UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
 UNSPlayerAttributeSet* ANSPlayerState::GetPlayerAttributeSet() const
 {
 	return PlayerAttributeSet;
+}
+
+UNSCombatStatComponent* ANSPlayerState::GetCombatStatComponent() const
+{
+	return CombatStatComponent;
 }
 
 void ANSPlayerState::Server_SetReady_Implementation()
