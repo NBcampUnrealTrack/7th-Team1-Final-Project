@@ -47,4 +47,8 @@ public:
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
 		const FRotator& Rotation);
+	
+	// 투표 확정 입력 함수 요청
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="GameFlow")
+	void SubmitRunChoice(APlayerController* Voter, ENSRunChoice Choice);
 };
