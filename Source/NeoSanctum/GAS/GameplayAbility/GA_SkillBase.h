@@ -28,8 +28,13 @@ public:
 	UGA_SkillBase();
 	
 	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
+
+protected:
+	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
 	
-public:
+	ANSPlayerState* GetNSPlayerState() const;
+	
+protected:
 	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,
 		const FGameplayTag& StatTag,
@@ -41,11 +46,6 @@ public:
 		const FGameplayTag& StatTag,
 		float DefaultValue
 	) const;
-	
-protected:
-	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
-	
-	ANSPlayerState* GetNSPlayerState() const;
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Activation")
