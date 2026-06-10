@@ -19,8 +19,7 @@ struct FNSCachedAbilityBaseStat
 };
 
 /**
- * 전투 능력치를 관리하고 처리하는 컴포넌트
- * 전투 관련 능력치의 추적, 수정, 조회와 관련된 기능을 캡슐화하는 데 사용
+ * 스킬 전투 스탯 DataTable을 캐싱하고 조회하는 컴포넌트
  */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSCombatStatComponent : public UActorComponent
@@ -30,7 +29,7 @@ class NEOSANCTUM_API UNSCombatStatComponent : public UActorComponent
 public:
 	UNSCombatStatComponent();
 	
-	bool TryGetBaseAbilitySet(
+	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,
 		const FGameplayTag& StatTag,
 		float& OutValue

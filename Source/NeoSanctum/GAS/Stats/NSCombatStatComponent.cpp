@@ -53,7 +53,7 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 			continue;
 		}
 		
-		if (!Row->AbilityTag.IsValid() || Row->StatTag.IsValid())
+		if (!Row->AbilityTag.IsValid() || !Row->StatTag.IsValid())
 		{
 			NS_OBJ_LOG(LogNSGAS, Warning,
 				"유효하지 않은 스킬 스탯 Row입니다. RowName={RowName}, AbilityTag={AbilityTag}, StatTag={StatTag}",
@@ -86,15 +86,15 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 		CachedStat.bModifiable = Row->bModifiable;
 		
 		StatMap.Add(Row->StatTag, CachedStat);
-		
-		NS_OBJ_LOG(LogNSGAS, Log,
-			"스킬 기본 스탯 캐시 생성 완료. AbilityCount={AbilityCount}",
-			("AbilityCount", CachedBaseStatsByAbility.Num())
-		);
 	}
+	
+	NS_OBJ_LOG(LogNSGAS, Log,
+		"스킬 기본 스탯 캐시 생성 완료. AbilityCount={AbilityCount}",
+		("AbilityCount", CachedBaseStatsByAbility.Num())
+	);
 }
 
-bool UNSCombatStatComponent::TryGetBaseAbilitySet(
+bool UNSCombatStatComponent::TryGetBaseAbilityStat(
 	const FGameplayTag& AbilityTag,
 	const FGameplayTag& StatTag,
 	float& OutValue) const
