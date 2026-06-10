@@ -4,6 +4,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
@@ -27,8 +28,14 @@ ANSTurret::ANSTurret()
 
 	AttributeSet = CreateDefaultSubobject<UNSTurretAttributeSet>(TEXT("AttributeSet"));
 
+	HitCollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("HitCollisionComponent"));
+	SetRootComponent(HitCollisionComponent);
+	HitCollisionComponent->InitCapsuleSize(50.0f, 100.0f);
+	HitCollisionComponent->SetCollisionProfileName(TEXT("Pawn"));
+
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
-	SetRootComponent(SceneRoot);
+	SceneRoot->SetupAttachment(HitCollisionComponent);
+	SceneRoot->SetRelativeLocation(FVector(0.0f, 0.0f, -HitCollisionComponent->GetUnscaledCapsuleHalfHeight()));
 
 	BaseMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BaseMeshComponent"));
 	BaseMeshComponent->SetupAttachment(SceneRoot);
@@ -54,6 +61,11 @@ ANSTurret::ANSTurret()
 UAbilitySystemComponent* ANSTurret::GetAbilitySystemComponent() const
 {
 	return ASC;
+}
+
+float ANSTurret::GetSpawnSurfaceOffset() const
+{
+	return HitCollisionComponent ? HitCollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 }
 
 void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController)

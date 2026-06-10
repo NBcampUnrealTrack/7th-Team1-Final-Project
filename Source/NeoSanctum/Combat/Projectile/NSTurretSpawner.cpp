@@ -73,7 +73,9 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 		return;
 	}
 
-	const FVector SpawnLocation = ImpactResult.ImpactPoint;
+	const ANSTurret* TurretCDO = TurretClass->GetDefaultObject<ANSTurret>();
+	const float SpawnSurfaceOffset = TurretCDO ? TurretCDO->GetSpawnSurfaceOffset() : 0.0f;
+	const FVector SpawnLocation = ImpactResult.ImpactPoint + ImpactResult.ImpactNormal.GetSafeNormal() * SpawnSurfaceOffset;
 	const FVector OwnerForward = GetOwningPawn() ? GetOwningPawn()->GetActorForwardVector() : GetActorForwardVector();
 
 	FVector ProjectedForward =

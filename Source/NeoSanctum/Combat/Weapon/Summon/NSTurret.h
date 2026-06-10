@@ -10,6 +10,7 @@
 #include "NSTurret.generated.h"
 
 class UAbilitySystemComponent;
+class UCapsuleComponent;
 class UGameplayEffect;
 class USphereComponent;
 class UNSAbilitySystemComponent;
@@ -32,6 +33,7 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	void InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController);
+	float GetSpawnSurfaceOffset() const;
 	
 public:
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(static_cast<uint8>(ETeamId::Player)); }
@@ -87,6 +89,9 @@ protected:
 	TObjectPtr<UNSTurretAttributeSet> AttributeSet;
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UCapsuleComponent> HitCollisionComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<USceneComponent> SceneRoot;
 
