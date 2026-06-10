@@ -40,6 +40,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<UGeometryCollectionComponent> GeometryCollectionComp;
+	
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<class UNSDamageFlashComponent> DamageFlashComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystem;

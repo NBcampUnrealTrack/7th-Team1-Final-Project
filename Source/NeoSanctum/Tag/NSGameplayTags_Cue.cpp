@@ -7,6 +7,9 @@ namespace NSGameplayTags
 	// Common
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Common_Dash, "GameplayCue.Common.Dash");
 	
+	// Damage
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Damage_Flash, "GameplayCue.Damage.Flash");
+	
 	// Ranger
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_AutoFire_MuzzleFire, "GameplayCue.Ranger.AutoFire.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_AutoFire_Impact, "GameplayCue.Ranger.AutoFire.Impact");
