@@ -7,6 +7,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSDestructibleAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "Net/UnrealNetwork.h"
 
 
@@ -28,6 +29,8 @@ ANSDestructibleObjectBase::ANSDestructibleObjectBase()
 	GeometryCollectionComp->SetVisibility(false);
 	GeometryCollectionComp->SetSimulatePhysics(false);
 	GeometryCollectionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 
 	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystem"));
 	AbilitySystem->SetIsReplicated(true);
