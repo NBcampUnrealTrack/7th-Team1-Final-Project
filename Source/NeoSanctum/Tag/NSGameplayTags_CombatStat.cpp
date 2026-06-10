@@ -4,7 +4,7 @@
 
 namespace NSGameplayTags
 {
-	// 스킬들의 수치를 캐싱하는 태그
+	// 스킬 수치 조회에 사용하는 CombatStat 태그
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Damage,			"CombatStat.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Cooldown,			"CombatStat.Cooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ExplosionRadius,	"CombatStat.ExplosionRadius");

@@ -9,6 +9,6 @@ namespace NSGameplayTags
 	// Cooldown
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Cooldown_Ranger_ProjectileShot);
 	
-	// Base Stats 수정
+	// Damage SetByCaller
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_Base);
 }
