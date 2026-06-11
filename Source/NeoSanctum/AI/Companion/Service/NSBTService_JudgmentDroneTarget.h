@@ -6,6 +6,7 @@
 #include "BehaviorTree/BTService.h"
 #include "NSBTService_JudgmentDroneTarget.generated.h"
 
+enum class EDroneState : uint8;
 class ANSBaseCompanionAI;
 
 UCLASS()
@@ -22,6 +23,9 @@ protected:
 	
 protected:
 	// @민재 : 블랙보드 키 변수 에디터 할당
+	UPROPERTY(EditAnywhere, Category="Blackboard")
+	FBlackboardKeySelector StateKey;
+	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector MoveTargetKey;
 	
@@ -62,6 +66,8 @@ protected:
 	FVector FollowOffset = FVector(-100.f, 0.f, 100.f);
 	
 private:
+	EDroneState EValuateState(ANSBaseCompanionAI* CompanionPawn, UBlackboardComponent* BB) const;
+	
 	// @민재 : 감지범위구체
 	AActor* FindNearestActor(
 		AActor* InActor, 
