@@ -364,7 +364,13 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 	}
 
 	//각 클라이언트에 인런 데이터 로드 지시
-	Client_NotifyRunStarted();
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
+		{
+			PC->Client_NotifyRunStarted();
+		}
+	}
 }
 
 void ANSPlayerController::Client_NotifyRunStarted_Implementation()
