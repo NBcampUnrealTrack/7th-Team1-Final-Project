@@ -36,9 +36,10 @@ void ANSDroppedPart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 void ANSDroppedPart::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &ANSDroppedPart::OnSphereBeginOverlap);
 	CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &ANSDroppedPart::OnSphereEndOverlap);
+
 	SetupVisual();
 }
 
@@ -74,7 +75,8 @@ void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
 		return;
 	}
 	
-	EquipComp->EquipPart(StoredInstance);
+	// 주운 파츠 위치에 기존 장착 파츠를 드랍 — 제자리 교체
+	EquipComp->EquipPart(StoredInstance, GetActorLocation());
 	Destroy();
 }
 
@@ -113,10 +115,10 @@ void ANSDroppedPart::SetupVisual()
 		return;
 	}
 	
-	USkeletalMesh* Mesh = Def->DropMesh.Get();
+	USkeletalMesh* Mesh = Def->PartMesh.Get();
 	if (!Mesh)
 	{
-		const FSoftObjectPath MeshPath = Def->DropMesh.ToSoftObjectPath();
+		const FSoftObjectPath MeshPath = Def->PartMesh.ToSoftObjectPath();
 		if (MeshPath.IsNull())
 		{
 			return;
@@ -127,6 +129,11 @@ void ANSDroppedPart::SetupVisual()
 	}
 	
 	MeshComp->SetSkeletalMesh(Mesh);
+
+	// 파츠 메시는 피벗이 본 위치 기준이라 땅에 닿게 Z 보정
+	const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
+	const float BottomOffsetZ = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
+	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -BottomOffsetZ));
 }
 
 void ANSDroppedPart::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,

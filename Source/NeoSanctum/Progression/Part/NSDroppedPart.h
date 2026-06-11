@@ -6,6 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NSDroppedPart.generated.h"
 
 class USphereComponent;
@@ -27,6 +28,7 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 서버에서 스폰 직후 1회 호출 — 파츠 데이터 세팅 및 비주얼 적용
+	UFUNCTION(BlueprintCallable, Category = "Part") 
 	void Initialize(const FNSPartData& InPart);
 
 	// 서버 권한에서만 실행. 상호작용 시스템이 인터랙터 폰을 넘겨 호출
@@ -42,7 +44,7 @@ protected:
 	UFUNCTION()
 	void OnRep_StoredInstance();
 
-	// DefinitionPtr -> DropMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
+	// DefinitionPtr -> PartMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
 	void SetupVisual();
 
 	UFUNCTION()
@@ -72,6 +74,6 @@ protected:
 	FNSPartData StoredInstance;
 
 private:
-	// 진행 중인 비주얼(Definition/DropMesh) 비동기 로드 핸들
+	// 진행 중인 비주얼(Definition/PartMesh) 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> VisualLoadHandle;
 };
