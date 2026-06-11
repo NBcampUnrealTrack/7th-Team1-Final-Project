@@ -32,6 +32,9 @@ public:
 
 	// 타겟과의 실시간 거리 계산하여 현재 거리에 맞는 GAS 태그 결정 및 반환
 	FGameplayTag GetAttackAbilityTagByDistance();
+	
+	// Blackboard에 저장된 현재 공격 대상을 반환
+	AActor* GetCurrentTargetActor() const;
 
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동

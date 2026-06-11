@@ -100,6 +100,16 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 	return FGameplayTag();
 }
 
+AActor* ANSEnemyAIController::GetCurrentTargetActor() const
+{
+	if (!CachedBBComp)
+	{
+		return nullptr;
+	}
+	
+	return Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+}
+
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
