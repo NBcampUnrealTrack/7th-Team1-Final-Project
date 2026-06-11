@@ -410,25 +410,6 @@ void ANSPlayerController::ExitSpectatorAndRespawn()
 	Multicast_NotifyRespawn();
 }
 
-void ANSPlayerController::Client_ShowRunOverUI_Implementation(bool bIsClear)
-{
-	UNSUIManagerSubsystem* UIManager = GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
-	if (!UIManager)
-	{
-		return;
-	}
-
-	UIManager->CreateRunEnd(this);
-	UIManager->ShowRunEnd();
-	
-	FInputModeUIOnly InputModeData;
-	SetInputMode(InputModeData);
-	bShowMouseCursor = true;
-	
-	UE_LOG(LogTemp, Warning, TEXT("게임 종료 UI: %s"),
-		bIsClear ? TEXT("클리어") : TEXT("전멸"));
-}
-
 void ANSPlayerController::Multicast_NotifyRespawn_Implementation()
 {
 	if (IsLocalController())

@@ -26,9 +26,6 @@ public:
 	void Server_RequestStartRun();
 	
 	void ExitSpectatorAndRespawn();
-	
-	UFUNCTION(Client, Reliable)
-	void Client_ShowRunOverUI(bool bIsClear);
 
 	// 클라이언트에 인런 데이터 로드 지시
 	UFUNCTION(Client, Reliable)
