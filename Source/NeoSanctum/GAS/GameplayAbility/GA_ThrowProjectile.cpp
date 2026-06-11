@@ -33,14 +33,26 @@ void UGA_ThrowProjectile::ActivateAbility(
 		return;
 	}
 
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	if (!AnimMontage)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	if (!ASC)
+	if (!ProjectileClass)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -54,12 +66,6 @@ void UGA_ThrowProjectile::ActivateAbility(
 	if (ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled())
 	{
 		ASC->CallReplicatedTargetDataDelegatesIfSet(Handle, ActivationInfo.GetActivationPredictionKey());
-	}
-	
-	if (!AnimMontage)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
 	}
 
 	// 몽타주 시작
