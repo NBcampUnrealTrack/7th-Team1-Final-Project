@@ -103,6 +103,7 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 	Request.Radius = ProjectileRadius;
 	Request.TraceChannel = ProjectileTraceChannel;
 	Request.SourceActor = Enemy;
+	Request.DamageEffectClass = DamageEffectClass;
 
 	ProjectileManager->FireProjectile(Request);
 }
