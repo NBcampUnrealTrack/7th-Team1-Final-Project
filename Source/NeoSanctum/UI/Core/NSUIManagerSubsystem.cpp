@@ -369,3 +369,12 @@ void UNSUIManagerSubsystem::HideRunEnd()
 		RunEndWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
+
+void UNSUIManagerSubsystem::ClearRunEnd()
+{
+	if (RunEndWidget)
+	{
+		RunEndWidget->RemoveFromParent();
+		RunEndWidget = nullptr;
+	}
+}
