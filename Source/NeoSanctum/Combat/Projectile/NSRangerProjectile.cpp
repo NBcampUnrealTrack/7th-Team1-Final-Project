@@ -10,6 +10,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 
 ANSRangerProjectile::ANSRangerProjectile()
@@ -387,6 +388,17 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 
 		return;
 	}
+	
+	// 모든 대상에게 같은 폭발 데미지를 적용
+	const FGameplayTag DamageTag = NSGameplayTags::Effect_Damage_Base.GetTag();
+	
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageTag, SplashDamage);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"스플래시 데미지 SetByCaller 설정. Damage={Damage}, Tag={Tag}",
+		("Damage", SplashDamage),
+		("Tag", DamageTag.ToString())
+	);
 	
 	int32 AppliedCount = 0;
 	
