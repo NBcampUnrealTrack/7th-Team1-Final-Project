@@ -81,6 +81,12 @@ private:
 	void RotateJointToTarget(float DeltaSeconds);
 	void RotateHeadToTarget(float DeltaSeconds);
 
+private:
+	void TryFire();
+	bool CanFireToCurrentTarget() const;
+	void FireHitscan();
+	FTransform GetMuzzleTransform() const;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSAbilitySystemComponent> ASC;
@@ -126,10 +132,22 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Weapon")
+	float FireAngleTolerance = 10.0f;
+	
+	// 탄 퍼짐 효과를 위한 최대 SpreadAngle
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
+	float MaxSpreadAngle = 10.0f;
+	
+	// 데미지 적용 GameplayEffect
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Weapon")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+	
+protected:
+	// Attribute 초기화 GE
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 
-protected:
 	// Turret을 소환한 캐릭터 Pawn
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")
 	TObjectPtr<APawn> OwningPawn;
@@ -151,4 +169,7 @@ private:
 	bool bAbilityActorInfoInitialized = false;
 	bool bInitialAttributeEffectApplied = false;
 	bool bAttributeChangeDelegatesBound = false;
+
+	float LastFireTime = 0.0f;
+	bool bHasFired = false;
 };

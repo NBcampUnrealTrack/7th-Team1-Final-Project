@@ -6,10 +6,12 @@
 #include "AbilitySystemInterface.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
+#include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 
@@ -39,13 +41,13 @@ ANSTurret::ANSTurret()
 
 	BaseMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BaseMeshComponent"));
 	BaseMeshComponent->SetupAttachment(SceneRoot);
-	
+
 	JointPivotComponent = CreateDefaultSubobject<USceneComponent>(TEXT("JointPivotComponent"));
 	JointPivotComponent->SetupAttachment(BaseMeshComponent);
-	
+
 	JointMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("JointMeshComponent"));
 	JointMeshComponent->SetupAttachment(JointPivotComponent);
-	
+
 	HeadPivotComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HeadPivotComponent"));
 	HeadPivotComponent->SetupAttachment(JointMeshComponent);
 
@@ -70,9 +72,10 @@ float ANSTurret::GetSpawnSurfaceOffset() const
 
 void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController)
 {
+	// 터렛을 소환한 Pawn, Controller 전달
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
-
+	
 	if (OwningPawn)
 	{
 		SetOwner(OwningPawn);
@@ -82,6 +85,8 @@ void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwnin
 	TargetRefreshInterval = InConfig.TargetRefreshInterval;
 	YawTurnSpeed = InConfig.YawTurnSpeed;
 	PitchTurnSpeed = InConfig.PitchTurnSpeed;
+	FireAngleTolerance = InConfig.FireAngleTolerance;
+	DamageEffectClass = InConfig.DamageEffectClass;
 	InitialAttributeEffectClass = InConfig.InitialAttributeEffectClass;
 	
 	InitializeAbilityActorInfo();
@@ -95,6 +100,7 @@ void ANSTurret::Tick(float DeltaSeconds)
 
 	RotateJointToTarget(DeltaSeconds);
 	RotateHeadToTarget(DeltaSeconds);
+	TryFire();
 }
 
 void ANSTurret::BeginPlay()
@@ -207,8 +213,8 @@ void ANSTurret::ApplyInitialAttributeEffect()
 	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 
-	const FGameplayEffectSpecHandle SpecHandle = 
-		ASC->MakeOutgoingSpec(InitialAttributeEffectClass,1.0f,EffectContext);
+	const FGameplayEffectSpecHandle SpecHandle =
+		ASC->MakeOutgoingSpec(InitialAttributeEffectClass, 1.0f, EffectContext);
 
 	if (SpecHandle.IsValid())
 	{
@@ -248,7 +254,7 @@ void ANSTurret::RefreshDetectionRange()
 	{
 		return;
 	}
-	
+
 	const float NewDetectionRange = AttributeSet->GetDetectionRange();
 	if (NewDetectionRange > 0.0f)
 	{
@@ -267,6 +273,8 @@ bool ANSTurret::CanSeeTarget(const AActor* TargetActor) const
 	const FVector TraceEnd = TargetActor->GetActorLocation();
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretLineOfSight), false, this);
+	
+	// 소환자 Ignore 처리
 	if (OwningPawn)
 	{
 		QueryParams.AddIgnoredActor(OwningPawn);
@@ -343,11 +351,13 @@ void ANSTurret::RotateJointToTarget(float DeltaSeconds)
 	{
 		return;
 	}
-
+	
+	
 	const FVector ToTarget = TargetActor->GetActorLocation() - JointPivotComponent->GetComponentLocation();
-	const FVector LocalDirection = JointPivotComponent->GetAttachParent()
-		? JointPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
-		: ToTarget;
+	const FVector LocalDirection =
+		JointPivotComponent->GetAttachParent()
+			? JointPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
+			: ToTarget;
 
 	const FVector FlatLocalDirection(LocalDirection.X, LocalDirection.Y, 0.0f);
 	if (FlatLocalDirection.IsNearlyZero())
@@ -375,9 +385,10 @@ void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 	}
 
 	const FVector ToTarget = TargetActor->GetActorLocation() - HeadPivotComponent->GetComponentLocation();
-	const FVector LocalDirection = HeadPivotComponent->GetAttachParent()
-		? HeadPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
-		: ToTarget;
+	const FVector LocalDirection =
+		HeadPivotComponent->GetAttachParent()
+			? HeadPivotComponent->GetAttachParent()->GetComponentTransform().InverseTransformVectorNoScale(ToTarget)
+			: ToTarget;
 
 	if (LocalDirection.IsNearlyZero())
 	{
@@ -394,4 +405,183 @@ void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 	);
 
 	HeadPivotComponent->SetRelativeRotation(NewRelativeRotation);
+}
+
+void ANSTurret::TryFire()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	const float FireRate = AttributeSet->GetFireRate();
+	if (FireRate <= 0.0f)
+	{
+		return;
+	}
+	
+	const float CurrentTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	const float FireInterval = 1.0f / FireRate;
+	
+	// 발사 타이밍을 먼저 검사하고 아직 쿨다운 중인 경우에 return
+	if (bHasFired && CurrentTime - LastFireTime < FireInterval)
+	{
+		return;
+	}
+	
+	if (!CanFireToCurrentTarget())
+	{
+		return;
+	}
+	
+	bHasFired = true;
+	LastFireTime = CurrentTime;
+	FireHitscan();
+}
+
+bool ANSTurret::CanFireToCurrentTarget() const
+{
+	const AActor* TargetActor = AutoTarget.Get();
+	if (!IsValidTargetActor(TargetActor) || !AttributeSet || !HeadMeshComponent)
+	{
+		return false;
+	}
+
+	const float FireRate = AttributeSet->GetFireRate();
+	const float AttackRange = AttributeSet->GetAttackRange();
+	if (FireRate <= 0.0f || AttackRange <= 0.0f)
+	{
+		return false;
+	}
+
+	const FTransform MuzzleTransform = GetMuzzleTransform();
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
+	const FVector ToTarget = TargetActor->GetActorLocation() - MuzzleLocation;
+
+	if (ToTarget.IsNearlyZero() || ToTarget.SizeSquared() > FMath::Square(AttackRange))
+	{
+		return false;
+	}
+
+	if (!CanSeeTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const float AimDot = FVector::DotProduct(MuzzleForward, ToTarget.GetSafeNormal());
+	const float AimAngle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(AimDot, -1.0f, 1.0f)));
+	
+	// 일정 각도 이내에 적이 있는 경우 발사 가능
+	return AimAngle <= FireAngleTolerance;
+}
+
+void ANSTurret::FireHitscan()
+{
+	if (!GetWorld() || !AttributeSet)
+	{
+		return;
+	}
+
+	const FTransform MuzzleTransform = GetMuzzleTransform();
+	const FVector TraceStart = MuzzleTransform.GetLocation();
+	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
+	
+	const float AttackRange = AttributeSet->GetAttackRange();
+	const float Accuracy = FMath::Clamp(AttributeSet->GetAccuracy(), 0.0f, 1.0f);
+	const float SpreadAngle = FMath::Lerp(MaxSpreadAngle, 0.0f, Accuracy);
+	
+	const FVector ShotDirection = FMath::VRandCone(MuzzleForward, FMath::DegreesToRadians(SpreadAngle));
+	const FVector TraceEnd = TraceStart + ShotDirection * AttackRange;
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretFireHitscan), false, this);
+	
+	// 소환자 Ignore 처리
+	if (OwningPawn)
+	{
+		QueryParams.AddIgnoredActor(OwningPawn);
+	}
+
+	FHitResult HitResult;
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		ECC_Visibility,
+		QueryParams
+	);
+	
+	// 히트된 대상에 GE Damage 적용
+	if (bHit && HitResult.GetActor())
+	{
+		AActor* TargetActor = HitResult.GetActor();
+
+		IGenericTeamAgentInterface* AttackerTeam = Cast<IGenericTeamAgentInterface>(OwningPawn);
+		IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
+
+		if (AttackerTeam && TargetTeam)
+		{
+			if (AttackerTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
+			{
+				return;
+			}
+		}
+
+		if (IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor))
+		{
+			UAbilitySystemComponent* TargetASC = TargetInterface->GetAbilitySystemComponent();
+			UAbilitySystemComponent* TurretASC = GetAbilitySystemComponent();
+
+			if (TargetASC && TurretASC && DamageEffectClass)
+			{
+				// GE 발생 정보 생성
+				FGameplayEffectContextHandle EffectContext = TurretASC->MakeEffectContext();
+				EffectContext.AddHitResult(HitResult);
+
+				FGameplayEffectSpecHandle NewSpecHandle = TurretASC->MakeOutgoingSpec(
+					DamageEffectClass, 1.0f, EffectContext);
+				if (NewSpecHandle.IsValid())
+				{
+					// 타겟 ASC에 GE 적용
+					TurretASC->ApplyGameplayEffectSpecToTarget(*NewSpecHandle.Data.Get(), TargetASC);
+				}
+			}
+		}
+	}
+	
+	// Gameplay Cue 재생
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = this;
+	CueParameters.EffectCauser = this;
+	CueParameters.Location = MuzzleTransform.GetLocation();
+	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
+
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_AutoFire_MuzzleFire, CueParameters);
+
+	// 임시 디버그 라인 처리. 쉬핑할 때는 제거.
+#if !UE_BUILD_SHIPPING
+	
+	const FVector DebugEnd = bHit ? HitResult.ImpactPoint : TraceEnd;
+	
+	DrawDebugLine(
+		GetWorld(),
+		TraceStart,
+		DebugEnd,
+		bHit ? FColor::Red : FColor::Green,
+		false,
+		0.4f,
+		0,
+		1.0f
+	);
+#endif
+}
+
+FTransform ANSTurret::GetMuzzleTransform() const
+{
+	if (HeadMeshComponent && HeadMeshComponent->DoesSocketExist(MuzzleSocketName))
+	{
+		return HeadMeshComponent->GetSocketTransform(MuzzleSocketName);
+	}
+
+	return HeadMeshComponent ? HeadMeshComponent->GetComponentTransform() : GetActorTransform();
 }
