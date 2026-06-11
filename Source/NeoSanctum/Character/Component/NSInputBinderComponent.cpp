@@ -178,6 +178,16 @@ void UNSInputBinderComponent::BindInputActions()
 		&ThisClass::Input_AugmentAction,
 		AugmentInputBindHandles
 	);
+	
+	InputComponent->BindNativeAction(
+		CurrentInputConfig,
+		NSGameplayTags::Input_Native_Interact,
+		ETriggerEvent::Started,
+		this,
+		&ThisClass::Input_Interact,
+		true,
+		NativeInputBindHandles
+	);
 }
 
 void UNSInputBinderComponent::UnbindInputActions()
@@ -316,6 +326,18 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	}
 
 	UIManager->SelectAugmentCardByIndex(CardIndex);
+}
+
+void UNSInputBinderComponent::Input_Interact()
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	ANSPlayerController* PlayerController =
+		OwnerPawn ? Cast<ANSPlayerController>(OwnerPawn->GetController()) : nullptr;
+	if (PlayerController)
+	{
+		PlayerController->TryInteract();
+	}
+	
 }
 
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)

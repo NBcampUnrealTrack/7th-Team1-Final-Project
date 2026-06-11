@@ -43,6 +43,9 @@ public:
 	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
 	void ToggleAugmentationPanel();
 
+	//상호작용 시도(키 입력시 호출)
+	void TryInteract();
+	
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
@@ -90,7 +93,11 @@ private:
 	bool bHUDAttributeBound = false;
 	
 	//캐릭터 선택 위젯 표시
+	UFUNCTION(BlueprintCallable,Category="UI")
 	void ShowCharacterSelectWidget();
+	// 캐릭터 선택 위젯 닫기
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideCharacterSelectWidget();
 	
 private:
 	//캐릭터 선택 위젯 클래스
@@ -99,6 +106,9 @@ private:
 	//캐릭터 선택 위젯 인스턴스
 	UPROPERTY()
 	TObjectPtr<UNSCharacterSelectWidget> CharacterSelectWidget;
+	// 캐릭터 선택 UI가 열려있는지
+	UPROPERTY()
+	bool bCharacterSelectOpen = false;
 	
 private:
 	// 기본적인 Gameplay 상태일 때의 Input Mode 태그 목록

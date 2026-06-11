@@ -5,15 +5,15 @@
 #include "CommonButtonBase.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
-#include "GameFramework/Character.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
-#include "GameFramework/PlayerController.h"
 #include "NSCharacterSlotWidget.h"
+#include "Components/Image.h"
 
 void UNSCharacterSelectWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-
+	
 	if (CharacterDataTable)
 	{
 		CharacterDataTable->GetAllRows<FNSCharacterSelectData>(TEXT("CharacterSelect"), CachedCharacters);
@@ -33,14 +33,9 @@ void UNSCharacterSelectWidget::NativeConstruct()
 	{
 		ConfirmButton->OnClicked().AddUObject(this, &UNSCharacterSelectWidget::ConfirmSelection);
 	}
-
 	HandleCharacterChanged();
 }
 
-void UNSCharacterSelectWidget::SetPreviewActor(ACharacter* InActor)
-{
-	PreviewActor = InActor;
-}
 
 void UNSCharacterSelectWidget::SelectNext()
 {
@@ -64,7 +59,7 @@ void UNSCharacterSelectWidget::FadeAndSwitch()
 	if (!CameraManager) { return; }
 
 	CameraManager->StartCameraFade(0.0f, 1.0f, 0.3f, FLinearColor::Black, false, true);
-
+	
 	GetWorld()->GetTimerManager().SetTimer(FadeTimerHandle, this, &UNSCharacterSelectWidget::OnFadeOutFinished, 0.3f, false);
 }
 
@@ -74,22 +69,9 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 
 	const FNSCharacterSelectData* Data = CachedCharacters[CurrentIndex];
 	if (!Data) { return; }
-
-	// DataAsset 로드 후 메시 교체
-	UNSCharacterData* CharData = Data->CharacterData.LoadSynchronous();
-	if (PreviewActor && CharData)
-	{
-		USkeletalMeshComponent* MeshComp = PreviewActor->GetMesh();
-		if (MeshComp)
-		{
-			USkeletalMesh* Mesh = CharData->SkeletalMesh.LoadSynchronous();
-			if (Mesh)
-			{
-				MeshComp->SetSkeletalMesh(Mesh);
-			}
-		}
-	}
-
+	
+	ApplyPreviewImage(*Data);
+	
 	if (CharacterNameText)
 	{
 		CharacterNameText->SetText(Data->CharacterName);
@@ -104,7 +86,8 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 	{
 		CharacterSwitcher->SetActiveWidgetIndex(CurrentIndex);
 
-		UNSCharacterSlotWidget* CurrentSlot = Cast<UNSCharacterSlotWidget>(CharacterSwitcher->GetWidgetAtIndex(CurrentIndex));
+		UNSCharacterSlotWidget* CurrentSlot = 
+			Cast<UNSCharacterSlotWidget>(CharacterSwitcher->GetWidgetAtIndex(CurrentIndex));
 		if (CurrentSlot)
 		{
 			CurrentSlot->SetCharacterData(*Data);
@@ -125,6 +108,8 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 	const FNSCharacterSelectData* Data = CachedCharacters[CurrentIndex];
 	if (!Data) { return; }
 
+	ApplyPreviewImage(*Data);
+
 	if (CharacterNameText)
 	{
 		CharacterNameText->SetText(Data->CharacterName);
@@ -135,7 +120,7 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 		CharacterDescriptionText->SetText(Data->CharacterDescription);
 	}
 
-	if (CharacterSwitcher)
+	if (CharacterSwitcher && CurrentIndex < CharacterSwitcher->GetChildrenCount())
 	{
 		CharacterSwitcher->SetActiveWidgetIndex(CurrentIndex);
 	}
@@ -143,5 +128,22 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 
 void UNSCharacterSelectWidget::ConfirmSelection()
 {
-	// TODO(담당자): GameInstance 연동 후 구현
+	// TODO(영웅): GameInstance 연동 후 구현
+}
+void UNSCharacterSelectWidget::ApplyPreviewImage(const FNSCharacterSelectData& Data)
+{
+	if (!PreviewImage)
+	{
+		return;
+	}
+	
+	UTexture2D* Texture = Data.PreviewTexture.LoadSynchronous();
+	if (!Texture)
+	{
+		PreviewImage->SetBrushFromTexture(nullptr);
+		PreviewImage->SetVisibility(ESlateVisibility::Hidden);
+		return;
+	}
+	PreviewImage->SetBrushFromTexture(Texture);
+	PreviewImage->SetVisibility(ESlateVisibility::Visible);
 }

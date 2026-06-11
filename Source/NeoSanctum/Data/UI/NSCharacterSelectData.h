@@ -8,6 +8,7 @@
 #include "NSCharacterSelectData.generated.h"
 
 class UNSCharacterData;
+class UTexture2D;
 
 USTRUCT(BlueprintType)
 struct FNSCharacterSelectData : public FTableRowBase
@@ -23,5 +24,8 @@ struct FNSCharacterSelectData : public FTableRowBase
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CharacterSelect")
 	TSoftObjectPtr<UNSCharacterData> CharacterData;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character|Preview")
+	TSoftObjectPtr<UTexture2D> PreviewTexture;
 };
 

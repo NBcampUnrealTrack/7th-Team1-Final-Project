@@ -47,6 +47,8 @@ protected:
 	void Input_AbilityReleased(FGameplayTag InputTag);
 
 	void Input_AugmentAction(FGameplayTag InputTag);
+
+	void Input_Interact();
 	
 protected:
 	UEnhancedInputLocalPlayerSubsystem* GetInputSubsystem() const;
