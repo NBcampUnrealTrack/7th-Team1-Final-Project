@@ -92,6 +92,15 @@ void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwnin
 	InitializeAbilityActorInfo();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
+	
+	// 
+	if (HasActorBegunPlay())
+	{
+		RefreshDetectionRange();
+		InitializeTargets();
+		RestartTargetRefreshTimer();
+		UpdateAutoTarget();
+	}
 }
 
 void ANSTurret::Tick(float DeltaSeconds)
@@ -125,14 +134,7 @@ void ANSTurret::BeginPlay()
 		InitializeTargets();
 	}
 
-	const float RefreshInterval = FMath::Max(TargetRefreshInterval, 0.01f);
-	GetWorldTimerManager().SetTimer(
-		TargetRefreshTimerHandle,
-		this,
-		&ThisClass::UpdateAutoTarget,
-		RefreshInterval,
-		true
-	);
+	RestartTargetRefreshTimer();
 	UpdateAutoTarget();
 }
 
@@ -344,6 +346,20 @@ void ANSTurret::UpdateAutoTarget()
 	SetActorTickEnabled(AutoTarget.IsValid());
 }
 
+void ANSTurret::RestartTargetRefreshTimer()
+{
+	GetWorldTimerManager().ClearTimer(TargetRefreshTimerHandle);
+
+	const float RefreshInterval = FMath::Max(TargetRefreshInterval, 0.01f);
+	GetWorldTimerManager().SetTimer(
+		TargetRefreshTimerHandle,
+		this,
+		&ThisClass::UpdateAutoTarget,
+		RefreshInterval,
+		true
+	);
+}
+
 void ANSTurret::RotateJointToTarget(float DeltaSeconds)
 {
 	AActor* TargetActor = AutoTarget.Get();
@@ -409,7 +425,7 @@ void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 
 void ANSTurret::TryFire()
 {
-	if (!HasAuthority())
+	if (!HasAuthority() || !AttributeSet)
 	{
 		return;
 	}

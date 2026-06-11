@@ -76,6 +76,7 @@ private:
 private:
 	void InitializeTargets();
 	void UpdateAutoTarget();
+	void RestartTargetRefreshTimer();
 
 private:
 	void RotateJointToTarget(float DeltaSeconds);
