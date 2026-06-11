@@ -3,12 +3,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NSProjectileTypes.generated.h"
 
 /**
  * 원거리 공격 GA가 투사체 Manager에 전달하는 발사 요청 정보
  */
+USTRUCT()
 struct FNSProjectileFireRequest
 {
+	GENERATED_BODY()
+	
 	// 투사체 생성 위치
 	FVector StartLocation = FVector::ZeroVector;
 
@@ -28,8 +32,11 @@ struct FNSProjectileFireRequest
  * Actor를 생성하지 않고 Manager의 TArray 안에 구조체 저장
  * 매 Tick마다 CurrentLocation과 LifeTime만 갱신
  */
+USTRUCT()
 struct FNSServerProjectileData
 {
+	GENERATED_BODY()
+	
 	// 현재 투사체 위치
 	FVector CurrentLocation = FVector::ZeroVector;
 
