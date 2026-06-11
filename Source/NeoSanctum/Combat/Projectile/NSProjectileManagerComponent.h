@@ -23,8 +23,8 @@ public:
 	/**
 	 * 새로운 투사체를 서버 배열에 등록한다.
 	 * 
-	 * @param Request 발사 위치, 방향, 속도, 수명
-	 * @return 등록 성공 여부
+	 * @param Request 발사 위치, 방향, 속도, 수명, 충돌 정보
+	 * @return 서버 배열 등록 성공 여부
 	 */
 	bool FireProjectile(const FNSProjectileFireRequest& Request);
 
@@ -38,7 +38,7 @@ protected:
 
 public:
 	/**
-	 * 서버에서 활성 투사체를 이동시키고
+	 * 서버에서 활성 투사체를 이동시키고 충돌을 검사한다.
 	 * 수명이 끝난 투사체를 제거한다.
 	 */
 	virtual void TickComponent(
@@ -51,7 +51,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Server", meta = (ClampMin = "1"))
 	int32 MaxActiveProjectiles = 1000;
 
-	// 서버 이동 결과를 확인하기 위한 Debug Draw
+	// 서버 이동 결과와 충돌 위치를 Debug로 표시할지 결정한다.
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Debug")
 	bool bDrawDebugTrajectory = true;
 

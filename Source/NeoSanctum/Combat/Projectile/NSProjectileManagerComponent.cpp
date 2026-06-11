@@ -60,7 +60,8 @@ bool UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireReques
 	// 이동할 수 없는 잘못된 요청 거부
 	if (NormalizedDirection.IsNearlyZero() ||
 		Request.Speed <= 0.0f ||
-		Request.MaxLifeTime <= 0.0f)
+		Request.MaxLifeTime <= 0.0f ||
+		Request.Radius <= 0.0f)
 	{
 		return false;
 	}
@@ -74,6 +75,9 @@ bool UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireReques
 	Projectile.Speed = Request.Speed;
 	Projectile.LifeTime = 0.0f;
 	Projectile.MaxLifeTime = Request.MaxLifeTime;
+	Projectile.Radius = Request.Radius;
+	Projectile.TraceChannel = Request.TraceChannel;
+	Projectile.SourceActor = Request.SourceActor;
 
 	return true;
 }
@@ -108,6 +112,16 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		// 현재 투사체에 남아 있는 수명
 		const float RemainingLifeTime = Projectile.MaxLifeTime - Projectile.LifeTime;
 
+		// 최대 수명에 도달한 투사체를 배열에서 제거
+		if (RemainingLifeTime <= 0.0f)
+		{
+			ActiveProjectiles.RemoveAtSwap(
+				Index,
+				1,
+				EAllowShrinking::No);
+			continue;
+		}
+
 		// 마지막 프레임에서 최대 수명을 초과한 시간만큼
 		// 더 이동하지 않도록 실제 계산 시간을 제한한다.
 		const float SimulationTime = FMath::Min(DeltaTime, RemainingLifeTime);
@@ -115,34 +129,106 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		// Debug Line의 시작점으로 사용할 이동 전 위치
 		const FVector PreviousLocation = Projectile.CurrentLocation;
 
-		Projectile.CurrentLocation += Projectile.Direction * Projectile.Speed * SimulationTime;
+		// 충돌이 없다고 가정했을 때의 다음 위치
+		const FVector NextLocation = PreviousLocation + Projectile.Direction * Projectile.Speed * SimulationTime;
 
 		Projectile.LifeTime += SimulationTime;
 
+		// Sweep 충돌 검사 옵션
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSProjectile), false);
+
+		// 투사체를 발사한 Enemy 자신은 충돌 검사에서 제외
+		if (AActor* SourceActor = Projectile.SourceActor.Get())
+		{
+			QueryParams.AddIgnoredActor(SourceActor);
+		}
+
+		// 충돌 결과를 받을 구조체
+		FHitResult HitResult;
+
+		// Sweep 충돌 검사
+		const bool bHit = World->SweepSingleByChannel(
+			HitResult,
+			PreviousLocation,
+			NextLocation,
+			FQuat::Identity,
+			Projectile.TraceChannel,
+			FCollisionShape::MakeSphere(Projectile.Radius),
+			QueryParams
+		);
+
+		if (bHit)
+		{
+			Projectile.CurrentLocation = HitResult.Location;
+
+			if (bDrawDebugTrajectory)
+			{
+				// 실제로 충돌한 이동 구간
+				DrawDebugLine(
+					World,
+					PreviousLocation,
+					HitResult.Location,
+					FColor::Yellow,
+					false,
+					1.0f,
+					0,
+					2.0f);
+
+				// 충돌 순간 투사체 Sphere의 위치와 크기
+				DrawDebugSphere(
+					World,
+					HitResult.Location,
+					Projectile.Radius,
+					12,
+					FColor::Red,
+					false,
+					1.0f,
+					0,
+					1.0f);
+
+				// 실제 표면 접촉 지점
+				DrawDebugPoint(
+					World,
+					HitResult.ImpactPoint,
+					12.0f,
+					FColor::Orange,
+					false,
+					1.0f);
+			}
+
+			// 충돌한 투사체 제거
+			ActiveProjectiles.RemoveAtSwap(
+				Index,
+				1,
+				EAllowShrinking::No);
+			continue;
+		}
+
+		// 충돌하지 않은 경우 처리
+		Projectile.CurrentLocation = NextLocation;
+
 		if (bDrawDebugTrajectory)
 		{
-			// 이번 프레임의 이동 구간
 			DrawDebugLine(
 				World,
 				PreviousLocation,
-				Projectile.CurrentLocation,
-				FColor::Cyan,
+				NextLocation,
+				FColor::Green,
 				false,
 				0.0f,
 				0,
 				2.0f);
 
-			// 현재 위치 점
 			DrawDebugPoint(
 				World,
-				Projectile.CurrentLocation,
+				NextLocation,
 				8.0f,
-				FColor::Yellow,
+				FColor::Cyan,
 				false,
 				0.0f);
 		}
 
-		// 최대 수명에 도달한 투사체를 배열에서 제거
+		// 충돌하지 않고 이동 중 최대 수명 도달하여 투사체 제거
 		if (Projectile.LifeTime >= Projectile.MaxLifeTime)
 		{
 			ActiveProjectiles.RemoveAtSwap(
