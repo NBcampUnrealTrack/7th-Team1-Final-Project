@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "GameplayTagContainer.h"
+#include "UObject/PrimaryAssetId.h"
 #include "NSCombatStatTypes.generated.h"
 
 /**
