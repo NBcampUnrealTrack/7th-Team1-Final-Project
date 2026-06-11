@@ -2,6 +2,8 @@
 
 
 #include "NSRunGameState.h"
+
+#include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
@@ -14,6 +16,11 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, WinningChoice);
 	DOREPLIFETIME(ANSRunGameState, NextVotes);
 	DOREPLIFETIME(ANSRunGameState, HubVotes);
+}
+
+ANSRunGameState::ANSRunGameState()
+{
+	ProjectileManagerComponent = CreateDefaultSubobject<UNSProjectileManagerComponent>(TEXT("ProjectileManagerComponent"));
 }
 
 void ANSRunGameState::GetAlivePlayerStates(TArray<ANSPlayerState*>& AlivePlayerStates, const ANSPlayerState* ExcludedPlayerState) const

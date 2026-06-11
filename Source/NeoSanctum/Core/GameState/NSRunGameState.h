@@ -8,6 +8,7 @@
 #include "NSRunGameState.generated.h"
 
 class ANSPlayerState;
+class UNSProjectileManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndPhaseChanged);
 
@@ -20,6 +21,14 @@ class NEOSANCTUM_API ANSRunGameState : public AGameStateBase
 	GENERATED_BODY()
 
 public:
+	ANSRunGameState();
+	
+	// GameMode, GA 등에서 서버 투사체 Manager에 접근하기 위한 Getter
+	UNSProjectileManagerComponent* GetProjectileManagerComponent() const
+	{
+		return ProjectileManagerComponent;
+	}
+	
 	void GetAlivePlayerStates(TArray<ANSPlayerState*>& AlivePlayerStates, const ANSPlayerState* ExcludedPlayerState = nullptr) const;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -58,4 +67,9 @@ public:
 	
 	// 호스트 UI 연동용 헬퍼 함수
 	void SetRunEndPhase(ENSRunEndPhase NewPhase);
+	
+private:
+	// 런 전체에서 서버 투사체를 관리하는 Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNSProjectileManagerComponent> ProjectileManagerComponent;
 };
