@@ -27,14 +27,16 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
-	AActor* Target = GetCombatTarget();
+	AActor* TargetActor = GetCombatTarget();
 	
-	if (!IsValid(Target))
+	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility() TargetName"));
+	if (!TargetActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
+	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()1"));
 	ANSBaseCompanionAI* AvatarActor = Cast<ANSBaseCompanionAI>(ActorInfo->AvatarActor.Get());
 	if (!AvatarActor)
 	{
@@ -44,12 +46,14 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	
 	FVector MuzzleSocket;
 	FVector OutDir;
+	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()2"));
 	
-	if (!CanFireAt(Target, MuzzleSocket, OutDir))
+	if (!CanFireAt(TargetActor, MuzzleSocket, OutDir))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()3"));
 	
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -57,7 +61,8 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 	
-	FireProjectile(MuzzleSocket, OutDir, Target);
+	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()4"));
+	FireProjectile(MuzzleSocket, OutDir, TargetActor);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	
 }
@@ -145,7 +150,10 @@ AActor* UGA_CompanionBasicFire::GetCombatTarget() const
 	UBlackboardComponent* BB = DroneAIController->GetBlackboardComponent();
 	if (!BB) return nullptr;
 	
-	return Cast<AActor>(BB->GetValueAsObject(CombatTargetKeyName));
+	AActor* TargetActor = Cast<AActor>(BB->GetValueAsObject(EnemyTargetKey));
+	if (!TargetActor) return nullptr;
+	
+	return TargetActor;
 }
 
 bool UGA_CompanionBasicFire::CanFireAt(AActor* Target, FVector& OutMuzzle, FVector& OutDir) const

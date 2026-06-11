@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "BehaviorTree/BehaviorTreeTypes.h"
 #include "GA_CompanionBasicFire.generated.h"
 
 
@@ -11,7 +12,7 @@ class UNSCompanionAttributeSet;
 class ANSDroneProjectile;
 class UGameplayEffect;
 
-UCLASS()
+UCLASS(Abstract)
 class NEOSANCTUM_API UGA_CompanionBasicFire : public UGameplayAbility
 {
 	GENERATED_BODY()
@@ -52,7 +53,7 @@ protected:
 	FName MuzzleSocketName;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
-	FName CombatTargetKeyName;
+	FName EnemyTargetKey;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
 	FGameplayTag FireCueTag;
