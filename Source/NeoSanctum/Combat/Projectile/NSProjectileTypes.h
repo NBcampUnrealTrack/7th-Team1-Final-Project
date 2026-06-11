@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "NSProjectileTypes.generated.h"
 
+class UGameplayEffect;
+
 /**
  * 원거리 공격 GA가 투사체 Manager에 전달하는 발사 요청 정보
  */
@@ -33,6 +35,9 @@ struct FNSProjectileFireRequest
 
 	// 투사체를 발사한 Enemy: Enemy가 죽어도 투사체가 Actor의 수명을 강제로 유지하지 않음
 	TWeakObjectPtr<AActor> SourceActor = nullptr;
+	
+	// 충돌 대상에게 적용할 GameplayEffect 클래스
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
 };
 
 /**
@@ -69,4 +74,7 @@ struct FNSServerProjectileData
 
 	// 투사체를 발사한 Enemy
 	TWeakObjectPtr<AActor> SourceActor = nullptr;
+	
+	// 충돌 대상에게 적용할 GameplayEffect 클래스
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
 };
