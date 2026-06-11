@@ -21,7 +21,9 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "InputCoreTypes.h"
 #include "Engine/GameInstance.h"
+#include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "VerseVM/VVMRuntimeError.h"
+#include "Kismet/GameplayStatics.h"
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -147,26 +149,62 @@ void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 
 void ANSPlayerController::ShowCharacterSelectWidget()
 {
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	if (bCharacterSelectOpen)
+	{
+		return;
+	}
+	
+	if (!CharacterSelectWidgetClass)
+	{
+		return;
+	}
+
+	if (!CharacterSelectWidget)
+	{
+		CharacterSelectWidget = CreateWidget<UNSCharacterSelectWidget>(
+			this,
+			CharacterSelectWidgetClass
+		);
+	}
+
 	if (!CharacterSelectWidget)
 	{
 		return;
 	}
-	//중복생성 방지
+
+	if (!CharacterSelectWidget->IsInViewport())
+	{
+		CharacterSelectWidget->AddToViewport();
+	}
+
+	bCharacterSelectOpen = true;
+	
+	SetShowMouseCursor(true);
+
+	FInputModeUIOnly InputMode;
+	InputMode.SetWidgetToFocus(CharacterSelectWidget->TakeWidget());
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(InputMode);
+}
+void ANSPlayerController::HideCharacterSelectWidget()
+{
 	if (CharacterSelectWidget)
 	{
-		return;
+		CharacterSelectWidget->RemoveFromParent();
+		CharacterSelectWidget = nullptr;
 	}
-	CharacterSelectWidget = 
-		CreateWidget<UNSCharacterSelectWidget>(this, CharacterSelectWidgetClass);
-	if (!CharacterSelectWidget)
-	{
-		return;
-	}
-	CharacterSelectWidget->AddToViewport();
-	//마우스 커서 표시
-	SetShowMouseCursor(true);
-	SetInputMode(FInputModeUIOnly());
-}
+	bCharacterSelectOpen = false;
+
+	SetShowMouseCursor(false);
+
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+}	
 
 void ANSPlayerController::BeginPlay()
 {
@@ -618,6 +656,39 @@ void ANSPlayerController::ToggleAugmentationPanel()
 		if (AugmentSelectionComponent)
 		{
 			AugmentSelectionComponent->Server_OpenPanel();
+		}
+	}
+}
+
+void ANSPlayerController::TryInteract()
+{
+	if (bCharacterSelectOpen)
+	{
+		return;
+	}
+
+	APawn* MyPawn = GetPawn();
+	if (!MyPawn)
+	{
+		return;
+	}
+	//주변 엑터에서 Component탐색
+	TArray<AActor*> OverlappingActors;
+	MyPawn->GetOverlappingActors(OverlappingActors);
+	if (OverlappingActors.IsEmpty()) { return; }
+	
+	for (AActor* Actor : OverlappingActors)
+	{
+		if (!Actor)
+		{
+			continue;
+		}
+		UNSInteractionComponent* InteractionComp =
+			Actor->FindComponentByClass<UNSInteractionComponent>();
+		if (InteractionComp && InteractionComp->CanInteract())
+		{
+			InteractionComp->Interact(this);
+			return;
 		}
 	}
 }
