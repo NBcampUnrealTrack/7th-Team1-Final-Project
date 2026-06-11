@@ -180,6 +180,28 @@ bool UNSAbilitySystemComponent::TryGetBaseAbilityStat(
 	return CombatStatComponent->TryGetBaseAbilityStat(AbilityTag, StatTag, OutValue);
 }
 
+bool UNSAbilitySystemComponent::TryGetFinalAbilityStat(
+	const FGameplayTag& AbilityTag,
+	const FGameplayTag& StatTag,
+	float& OutValue) const
+{
+	const ANSPlayerState* NSPlayerState = GetOwner<ANSPlayerState>();
+	
+	if (!NSPlayerState)
+	{
+		return false;
+	}
+	
+	const UNSCombatStatComponent* CombatStatComponent = NSPlayerState->GetCombatStatComponent();
+	
+	if (!CombatStatComponent)
+	{
+		return false;
+	}
+	
+	return CombatStatComponent->TryGetFinalAbilityStat(AbilityTag, StatTag, OutValue);
+}
+
 bool UNSAbilitySystemComponent::IsAbilityStatModifiable(
 	const FGameplayTag& AbilityTag,
 	const FGameplayTag& StatTag) const

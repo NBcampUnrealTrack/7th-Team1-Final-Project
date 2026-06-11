@@ -40,6 +40,18 @@ protected:
 		const FGameplayTag& StatTag,
 		float& OutValue
 	) const;
+	
+	bool TryGetFinalAbilityStat(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float& OutValue
+	) const;
+	
+	float GetFinalAbilityStatOrDefault(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float DefaultValue
+	) const;
 
 	float GetBaseAbilityStatOrDefault(
 		const FGameplayTag& AbilityTag,

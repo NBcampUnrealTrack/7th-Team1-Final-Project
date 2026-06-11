@@ -446,7 +446,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
-		const float ExplosionRadius = GetBaseAbilityStatOrDefault(
+		const float ExplosionRadius = GetFinalAbilityStatOrDefault(
 			NSGameplayTags::Ability_Ranger_ProjectileShot,
 			NSGameplayTags::CombatStat_ExplosionRadius,
 			DefaultExplosionRadius

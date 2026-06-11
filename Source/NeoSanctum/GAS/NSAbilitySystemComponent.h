@@ -31,6 +31,12 @@ public:
 		float& OutValue
 	) const;
 	
+	bool TryGetFinalAbilityStat(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag,
+		float& OutValue
+	) const;
+	
 	bool IsAbilityStatModifiable(
 		const FGameplayTag& AbilityTag,
 		const FGameplayTag& StatTag
