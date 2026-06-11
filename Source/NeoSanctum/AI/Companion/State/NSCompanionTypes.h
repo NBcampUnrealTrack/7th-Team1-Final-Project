@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 UENUM(BlueprintType)
-enum class EDroneState : uint8
+enum class ECompanionState : uint8
 {
 	Follow UMETA(DisplayName = "Follow"),
 	Collect UMETA(DisplayName = "Collect"),
