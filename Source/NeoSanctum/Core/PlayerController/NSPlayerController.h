@@ -26,13 +26,14 @@ public:
 	void Server_RequestStartRun();
 	
 	void ExitSpectatorAndRespawn();
-	
-	UFUNCTION(Client, Reliable)
-	void Client_ShowRunOverUI(bool bIsClear);
 
 	// 클라이언트에 인런 데이터 로드 지시
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyRunStarted();
+	
+	// 투표 확정 입력용
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")
+	void Server_ConfirmVote(ENSRunChoice Choice);
 	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
@@ -42,6 +43,12 @@ public:
 
 	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
 	void ToggleAugmentationPanel();
+	
+	// UI 나올때 플레이어 인풋 제어용
+	UFUNCTION(BlueprintCallable, Category="RunEnd")
+	void EnterRunEndInputMode();
+	UFUNCTION(BlueprintCallable, Category="RunEnd")
+	void ExitRunEndInputMode();
 
 	//상호작용 시도(키 입력시 호출)
 	void TryInteract();

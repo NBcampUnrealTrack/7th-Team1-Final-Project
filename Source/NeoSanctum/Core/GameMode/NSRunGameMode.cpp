@@ -75,7 +75,7 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 		return;
 	}
 
-	HandleRunOver(true);
+	OpenRunEndVote(false);
 }
 
 void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
@@ -107,7 +107,7 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 		}
 	}
 
-	HandleRunOver(false);
+	OpenRunEndVote(true);
 }
 
 void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
@@ -125,12 +125,10 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
-	if (!HasAuthority() || !bStageDecisionPending)
+	if (!HasAuthority())
 	{
 		return;
 	}
-	
-	bStageDecisionPending = false;
 
 	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
 	{
@@ -140,12 +138,10 @@ void ANSRunGameMode::RequestReturnToHub_Implementation()
 
 void ANSRunGameMode::RequestMoveToNextStage_Implementation()
 {
-	if (!HasAuthority() || !bStageDecisionPending)
+	if (!HasAuthority())
 	{
 		return;
 	}
-	
-	bStageDecisionPending = false;
 
 	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
 	{
@@ -195,40 +191,6 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	}
 
 	return Enemy;
-}
-
-void ANSRunGameMode::HandleRunOver(bool bIsClear)
-{
-	UNSGameInstance* NSGameInstance = Cast<UNSGameInstance>(GetGameInstance());
-	if (NSGameInstance)
-	{
-		if (bIsClear)
-		{
-			UE_LOG(LogTemp, Log, TEXT("런 클리어"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Log, TEXT("전멸"));
-		}
-	}
-
-	// 모든 플레이어에게 게임 종료 UI 표시
-	AGameStateBase* CurrentGameState = GetGameState<AGameStateBase>();
-	if (!CurrentGameState)
-	{
-		return;
-	}
-
-	for (APlayerState* PlayerState : CurrentGameState->PlayerArray)
-	{
-		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(
-			PlayerState->GetPlayerController()
-		);
-		if (NSPlayerController)
-		{
-			NSPlayerController->Client_ShowRunOverUI(bIsClear);
-		}
-	}
 }
 
 void ANSRunGameMode::RespawnAllPlayers()
@@ -329,4 +291,126 @@ AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, cons
 void ANSRunGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	// 런 레벨 시작시 캐릭터 자동 스폰 방지용
+}
+
+void ANSRunGameMode::OpenRunEndVote(bool bHubOnly)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState || NSGameState->RunEndPhase != ENSRunEndPhase::None)
+	{	
+		return;
+	}
+	
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		if (ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState))
+		{
+			NSPlayerState->RunChoice =
+				ENSRunChoice::ReturnToHub; NSPlayerState->bVoteConfirmed = false;
+		}
+	}
+	
+	NSGameState->bIsClear           = bHubOnly;
+	NSGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
+	NSGameState->PhaseEndServerTime = NSGameState->GetServerWorldTimeSeconds() + VoteDuration;
+	NSGameState->ForceNetUpdate();
+
+	GetWorldTimerManager().SetTimer(
+		PhaseTimerHandle,
+		this,
+		&ANSRunGameMode::ResolveVote,
+		VoteDuration, 
+		false);
+	
+}
+
+void ANSRunGameMode::HandlePlayerConfirmed()
+{
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState || NSGameState->RunEndPhase != ENSRunEndPhase::Voting)
+	{		
+		return;
+	}	
+	
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		// 투표를 플레이어들이 아직 다 안했다면 진행 X
+		if (!NSPlayerState || !NSPlayerState->bVoteConfirmed)
+		{		
+			return;
+		}
+	}
+	
+	// 플레이어 전원 투표 시작했다면 10초 안 기다리고 즉시 실행
+	ResolveVote();
+}
+
+void ANSRunGameMode::ResolveVote()
+{
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState || NSGameState->RunEndPhase != ENSRunEndPhase::Voting) return;
+	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+
+	int32 Next = 0, Hub = 0;
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		const bool bNext = NSPlayerState && NSPlayerState->bVoteConfirmed
+						   && NSPlayerState->RunChoice == ENSRunChoice::NextStage;
+		bNext ? ++Next : ++Hub;
+	}
+	
+	const bool bGoNext = !NSGameState->bIsClear && (Next > Hub);
+
+	NSGameState->NextVotes        = Next;
+	NSGameState->HubVotes         = Hub;
+	NSGameState->WinningChoice    = bGoNext ? ENSRunChoice::NextStage : ENSRunChoice::ReturnToHub;
+	NSGameState->SetRunEndPhase(ENSRunEndPhase::Result);
+	NSGameState->PhaseEndServerTime = NSGameState->GetServerWorldTimeSeconds() + ResultDisplayDuration;
+	NSGameState->ForceNetUpdate();
+
+	GetWorldTimerManager().SetTimer(
+		PhaseTimerHandle,
+		this,
+		&ANSRunGameMode::OnResultDisplayFinished,
+		ResultDisplayDuration,
+		false);
+}
+
+void ANSRunGameMode::OnResultDisplayFinished()
+{
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	const bool bGoNext = NSGameState && NSGameState->WinningChoice == ENSRunChoice::NextStage;
+	
+	if (NSGameState)
+	{
+		NSGameState->SetRunEndPhase(ENSRunEndPhase::None);
+	}
+
+	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		bGoNext ? NSGameFlow->AdvanceToNextStage() : NSGameFlow->ReturnToHub();
+	}
+}
+
+void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice)
+{
+	if (!HasAuthority() || !Voter)
+	{
+		return;
+	}
+	
+	if (ANSPlayerState* NSPlayerState = Voter->GetPlayerState<ANSPlayerState>())
+	{
+		NSPlayerState->RunChoice = Choice;
+		NSPlayerState->bVoteConfirmed = true;
+	}
+	// 전원 확인 시 ResolveVote
+	HandlePlayerConfirmed();
 }

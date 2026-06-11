@@ -67,6 +67,7 @@ public:
 	void CreateRunEnd(APlayerController* OwningPlayer);
 	void ShowRunEnd();
 	void HideRunEnd();
+	void ClearRunEnd();
 
 	UNSUIManagerSubsystem();
 private:
