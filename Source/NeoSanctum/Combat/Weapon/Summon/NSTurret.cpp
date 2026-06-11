@@ -512,7 +512,7 @@ void ANSTurret::FireHitscan()
 	);
 	
 	// 히트된 대상에 GE Damage 적용
-	if (bHit && HitResult.GetActor())
+	if (bHit && IsValidTargetActor(HitResult.GetActor()))
 	{
 		AActor* TargetActor = HitResult.GetActor();
 
