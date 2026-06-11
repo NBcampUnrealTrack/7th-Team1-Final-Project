@@ -74,6 +74,6 @@ private:
 	FVector ComputeStandoffPosition(const AActor* Drone, const AActor* Enemy) const;
 	
 	// @민재 : 발사 어빌리티 활성화 시도
-	void TryActivateFire(ANSBaseCompanionAI* Drone) const;
+	void TryActivateFire(const ANSBaseCompanionAI* Drone) const;
 	
 };

@@ -60,7 +60,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	if (AActor* Enemy = FindNearestActor(DronePawn, EnemyClass, CombatDetectionRadius,EnemyObjectTypes, true))
 	{
 		BB->SetValueAsObject(EnemyTargetKey.SelectedKeyName, Enemy);
-		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, ComputeStandoffPosition(DronePawn, Enemy));
+		//BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, ComputeStandoffPosition(DronePawn, Enemy));
 		TryActivateFire(DronePawn);
 		return;
 	}
@@ -145,7 +145,7 @@ FVector UNSBTService_JudgmentDroneTarget::ComputeStandoffPosition(const AActor* 
 	return Enemy->GetActorLocation() + (Dir * EnemyDistance);
 }
 
-void UNSBTService_JudgmentDroneTarget::TryActivateFire(ANSBaseCompanionAI* Drone) const
+void UNSBTService_JudgmentDroneTarget::TryActivateFire(const ANSBaseCompanionAI* Drone) const
 {
 	if (!Drone) return;
 	

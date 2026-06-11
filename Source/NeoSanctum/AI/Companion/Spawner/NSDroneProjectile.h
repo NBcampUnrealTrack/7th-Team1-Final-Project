@@ -8,6 +8,7 @@
 #include "NSDroneProjectile.generated.h"
 
 class UProjectileMovementComponent;
+class USphereComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSDroneProjectile : public AActor
