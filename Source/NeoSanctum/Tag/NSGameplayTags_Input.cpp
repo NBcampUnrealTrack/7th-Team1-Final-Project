@@ -15,6 +15,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Look, "Input.Native.Look");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Jump, "Input.Native.Jump");
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Sprint, "Input.Native.Sprint");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Interact, "Input.Native.Interact");
+	
 	
 	// Native Death Input
 	UE_DEFINE_GAMEPLAY_TAG(Input_Native_Death_PrevPlayer, "Input.Native.Death.PrevPlayer");
