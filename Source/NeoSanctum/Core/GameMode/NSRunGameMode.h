@@ -73,9 +73,6 @@ protected:
 	void OnResultDisplayFinished();
 
 private:
-
-	void HandleRunOver(bool bIsClear);
-	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
 	

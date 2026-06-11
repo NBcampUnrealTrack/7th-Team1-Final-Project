@@ -193,40 +193,6 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	return Enemy;
 }
 
-void ANSRunGameMode::HandleRunOver(bool bIsClear)
-{
-	UNSGameInstance* NSGameInstance = Cast<UNSGameInstance>(GetGameInstance());
-	if (NSGameInstance)
-	{
-		if (bIsClear)
-		{
-			UE_LOG(LogTemp, Log, TEXT("런 클리어"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Log, TEXT("전멸"));
-		}
-	}
-
-	// 모든 플레이어에게 게임 종료 UI 표시
-	AGameStateBase* CurrentGameState = GetGameState<AGameStateBase>();
-	if (!CurrentGameState)
-	{
-		return;
-	}
-
-	for (APlayerState* PlayerState : CurrentGameState->PlayerArray)
-	{
-		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(
-			PlayerState->GetPlayerController()
-		);
-		if (NSPlayerController)
-		{
-			NSPlayerController->Client_ShowRunOverUI(bIsClear);
-		}
-	}
-}
-
 void ANSRunGameMode::RespawnAllPlayers()
 {
 	if (!HasAuthority())
