@@ -4,11 +4,14 @@
 #include "GA_ThrowProjectile.h"
 
 #include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
 #include "NeoSanctum/Combat/Projectile/NSTurretSpawner.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -34,6 +37,23 @@ void UGA_ThrowProjectile::ActivateAbility(
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
+	}
+
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
+		Handle,
+		ActivationInfo.GetActivationPredictionKey()
+	).AddUObject(this, &ThisClass::OnTargetDataReadyCallback);
+
+	if (ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled())
+	{
+		ASC->CallReplicatedTargetDataDelegatesIfSet(Handle, ActivationInfo.GetActivationPredictionKey());
 	}
 	
 	if (!AnimMontage)
@@ -114,6 +134,21 @@ void UGA_ThrowProjectile::EndAbility(
 		ThrowProjectileEventTask = nullptr;
 	}
 
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
+		{
+			ASC->AbilityTargetDataSetDelegate(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey()
+			).Remove(OnTargetDataReadyCallbackDelegateHandle);
+
+			OnTargetDataReadyCallbackDelegateHandle.Reset();
+		}
+
+		ASC->ConsumeClientReplicatedTargetData(Handle, ActivationInfo.GetActivationPredictionKey());
+	}
+
 	// 몽타주 종료
 	if (ThrowMontageTask)
 	{
@@ -154,7 +189,21 @@ void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Pay
 void UGA_ThrowProjectile::OnThrowProjectileEventReceived(FGameplayEventData Payload)
 {
 	DestroyHeldMesh();
-	SpawnProjectile();
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	if (ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled())
+	{
+		return;
+	}
+
+	FHitResult AimHitResult;
+	if (!TryBuildProjectileAimTrace(AimHitResult))
+	{
+		return;
+	}
+
+	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResult(AimHitResult);
+	OnTargetDataReadyCallback(TargetDataHandle, FGameplayTag());
 }
 
 void UGA_ThrowProjectile::StartGameplayEventTasks()
@@ -236,28 +285,32 @@ void UGA_ThrowProjectile::DestroyHeldMesh()
 	HoldMeshComponent = nullptr;
 }
 
-void UGA_ThrowProjectile::SpawnProjectile()
+void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 {
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	UWorld* World = GetWorld();
-	
-	if (!AvatarActor || !AvatarActor->HasAuthority() || !World || !ProjectileClass)
+	const FTransform SpawnTransform = GetProjectileSpawnTransform();
+	FVector ThrowDirection = (AimPoint - SpawnTransform.GetLocation()).GetSafeNormal();
+
+	if (ThrowDirection.IsNearlyZero())
 	{
 		return;
 	}
-	
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!AvatarActor || !AvatarActor->HasAuthority() || !World || !ProjectileClass || ThrowDirection.IsNearlyZero())
+	{
+		return;
+	}
+
 	APawn* OwningPawn = Cast<APawn>(AvatarActor);
 	AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
-	const FTransform SpawnTransform = GetProjectileSpawnTransform();
-	const FVector ThrowDirection = GetProjectileThrowDirection();
-	
-	// SpawnActor를 통해 Projectile Actor 스폰
+
 	ANSThrowProjectileBase* Projectile = World->SpawnActor<ANSThrowProjectileBase>(
 		ProjectileClass,
 		SpawnTransform
 	);
-	
-	// Projectile Initialize
+
 	if (Projectile)
 	{
 		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
@@ -284,15 +337,171 @@ FTransform UGA_ThrowProjectile::GetProjectileSpawnTransform() const
 	return AvatarActor ? AvatarActor->GetActorTransform() : FTransform::Identity;
 }
 
-FVector UGA_ThrowProjectile::GetProjectileThrowDirection() const
+bool UGA_ThrowProjectile::TryBuildProjectileAimTrace(FHitResult& OutHitResult) const
 {
+	UWorld* World = GetWorld();
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (!AvatarActor)
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	const APlayerController* PlayerController = Pawn ? Cast<APlayerController>(Pawn->GetController()) : nullptr;
+
+	if (!World || !IsValid(AvatarActor) || !IsValid(PlayerController))
 	{
-		return FVector::ZeroVector;
+		return false;
 	}
 
-	return AvatarActor->GetActorForwardVector();
+	FVector TraceStart;
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+	if (!PlayerCharacter || !PlayerCharacter->TryGetAimTraceStartLocation(TraceStart))
+	{
+		FVector ViewLocation;
+		FRotator ViewRotation;
+		PlayerController->GetPlayerViewPoint(ViewLocation, ViewRotation);
+		TraceStart = ViewLocation;
+	}
+
+	int32 ViewportSizeX = 0;
+	int32 ViewportSizeY = 0;
+	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
+
+	if (ViewportSizeX <= 0 || ViewportSizeY <= 0)
+	{
+		return false;
+	}
+
+	const float CrosshairScreenX = ViewportSizeX * 0.5f;
+	const float CrosshairScreenY = ViewportSizeY * 0.5f;
+
+	FVector DeprojectWorldLocation;
+	FVector DeprojectWorldDirection;
+
+	if (!PlayerController->DeprojectScreenPositionToWorld(
+		CrosshairScreenX,
+		CrosshairScreenY,
+		DeprojectWorldLocation,
+		DeprojectWorldDirection))
+	{
+		return false;
+	}
+
+	const FVector TraceDirection = DeprojectWorldDirection.GetSafeNormal();
+	if (TraceDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	const FVector TraceEnd = TraceStart + TraceDirection * AimTraceRange;
+
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(ThrowProjectileAimTrace),
+		false,
+		AvatarActor
+	);
+
+	const bool bHit = World->LineTraceSingleByChannel(
+		OutHitResult,
+		TraceStart,
+		TraceEnd,
+		ECC_Visibility,
+		QueryParams
+	);
+
+	OutHitResult.TraceStart = TraceStart;
+	OutHitResult.TraceEnd = TraceEnd;
+
+	if (!bHit)
+	{
+		OutHitResult.Location = TraceEnd;
+		OutHitResult.ImpactPoint = TraceEnd;
+	}
+
+	return true;
+}
+
+FGameplayAbilityTargetDataHandle UGA_ThrowProjectile::MakeTargetDataFromHitResult(const FHitResult& HitResult) const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+
+	FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+		new FGameplayAbilityTargetData_SingleTargetHit();
+
+	TargetData->HitResult = HitResult;
+	TargetDataHandle.Add(TargetData);
+
+	return TargetDataHandle;
+}
+
+void UGA_ThrowProjectile::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FGameplayTag ApplicationTag)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FScopedPredictionWindow ScopedPredictionWindow(ASC);
+
+	FGameplayAbilityTargetDataHandle LocalTargetDataHandle = TargetDataHandle;
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	const bool bShouldNotifyServer =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
+
+	if (bShouldNotifyServer)
+	{
+		ASC->CallServerSetReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey(),
+			LocalTargetDataHandle,
+			ApplicationTag,
+			ASC->ScopedPredictionKey
+		);
+	}
+
+	OnThrowProjectileTargetDataReady(LocalTargetDataHandle);
+}
+
+void UGA_ThrowProjectile::OnThrowProjectileTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+	
+	// 
+	FVector AimPoint;
+	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
+	{
+		return;
+	}
+
+	SpawnProjectileAtAimPoint(AimPoint);
+}
+
+bool UGA_ThrowProjectile::TryGetAimPointFromTargetData(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FVector& OutAimPoint) const
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+	if (!TargetData)
+	{
+		return false;
+	}
+
+	const FHitResult* HitResult = TargetData->GetHitResult();
+	if (!HitResult)
+	{
+		return false;
+	}
+
+	OutAimPoint = HitResult->bBlockingHit ? HitResult->ImpactPoint : HitResult->TraceEnd;
+	return true;
 }
 
 void UGA_ThrowProjectile::AddDeactivateHandIKTag()

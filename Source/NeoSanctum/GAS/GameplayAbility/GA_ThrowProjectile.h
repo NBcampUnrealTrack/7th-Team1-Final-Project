@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "GA_SkillBase.h"
 #include "GA_ThrowProjectile.generated.h"
 
@@ -151,11 +152,22 @@ protected:
 	void AttachHeldMesh();
 	void DestroyHeldMesh();
 	
-	void SpawnProjectile();
+	void SpawnProjectileAtAimPoint(const FVector& AimPoint);
 	
 protected:
 	FTransform GetProjectileSpawnTransform() const;
-	FVector GetProjectileThrowDirection() const;
+	
+	bool TryBuildProjectileAimTrace(FHitResult& OutHitResult) const;
+	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	void OnTargetDataReadyCallback(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+		FGameplayTag ApplicationTag
+	);
+	void OnThrowProjectileTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	bool TryGetAimPointFromTargetData(
+		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+		FVector& OutAimPoint
+	) const;
 	
 	void AddDeactivateHandIKTag();
 	void RemoveDeactivateHandIKTag();
@@ -202,6 +214,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Projectile")
 	FName ProjectileSpawnSocketName = TEXT("Weapon_l");
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Aim")
+	float AimTraceRange = 10000.0f;
+
 private:
 	// 몽타주 재생 AbilityTask
 	UPROPERTY(Transient)
@@ -218,6 +233,8 @@ private:
 	// 캐릭터에 잠깐 붙히게 될 MeshComponent
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> HoldMeshComponent;
+
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	bool bDeactivateHandIKTagAdded = false;
 };
