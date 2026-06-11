@@ -35,9 +35,21 @@ bool ANSEnemyWeaponBase::TryGetLeftHandIKTransform(FTransform& OutTransform) con
 		return false;
 	}
 
-	OutTransform = WeaponMesh->GetSocketTransform(
-		LeftHandIKSocketName,
-		RTS_World);
+	OutTransform = WeaponMesh->GetSocketTransform(LeftHandIKSocketName,RTS_World);
 
+	return true;
+}
+
+bool ANSEnemyWeaponBase::TryGetMuzzleTransform(FTransform& OutTransform) const
+{
+	if (!IsValid(WeaponMesh) ||
+		MuzzleSocketName.IsNone() ||
+		!WeaponMesh->DoesSocketExist(MuzzleSocketName))
+	{
+		return false;
+	}
+	
+	OutTransform = WeaponMesh->GetSocketTransform(MuzzleSocketName, RTS_World);
+	
 	return true;
 }
