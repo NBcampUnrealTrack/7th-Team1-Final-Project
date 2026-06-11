@@ -306,6 +306,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 	//심리스 트레블 전 스테이지의 HUD 잔재를 안전하게 청소
 	UIManager->ClearHUD();
+	UIManager->ClearRunEnd();
 
 	FString MapName = GetWorld()->GetName();
 
@@ -317,6 +318,9 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
+		
+		UIManager->CreateRunEnd(this);
+		UIManager->HideRunEnd();
         
 		//마우스 커서 및 입력 모드 제어
 		FInputModeGameOnly InputModeData;
@@ -654,6 +658,40 @@ void ANSPlayerController::ToggleAugmentationPanel()
 			AugmentSelectionComponent->Server_OpenPanel();
 		}
 	}
+}
+
+void ANSPlayerController::EnterRunEndInputMode()
+{
+	// 살아있는 캐릭터면 게임플레이 매핑을 제거하고 UI 태그만 남김
+	if (ANSPlayerCharacterBase* Char =
+		Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder = 
+			Char->GetInputBinderComponent())
+		{
+			FGameplayTagContainer UIOnly;
+			// 게임플레이 태그 제외
+			UIOnly.AddTag(NSGameplayTags::InputMode_UI); 
+			InputBinder->SetActiveInputModeTags(UIOnly);
+		}
+	}
+	SetInputMode(FInputModeUIOnly());
+	bShowMouseCursor = true;
+}
+
+void ANSPlayerController::ExitRunEndInputMode()
+{
+	if (ANSPlayerCharacterBase* Char =
+		Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder =
+			Char->GetInputBinderComponent())
+		{
+			InputBinder->SetActiveInputModeTags(GetGameplayInputModeTags());
+		}
+	}
+	SetInputMode(FInputModeGameOnly());
+	bShowMouseCursor = false;
 }
 
 void ANSPlayerController::TryInteract()

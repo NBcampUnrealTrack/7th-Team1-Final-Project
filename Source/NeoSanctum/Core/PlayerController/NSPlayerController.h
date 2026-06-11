@@ -43,6 +43,12 @@ public:
 
 	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
 	void ToggleAugmentationPanel();
+	
+	// UI 나올때 플레이어 인풋 제어용
+	UFUNCTION(BlueprintCallable, Category="RunEnd")
+	void EnterRunEndInputMode();
+	UFUNCTION(BlueprintCallable, Category="RunEnd")
+	void ExitRunEndInputMode();
 
 	//상호작용 시도(키 입력시 호출)
 	void TryInteract();
