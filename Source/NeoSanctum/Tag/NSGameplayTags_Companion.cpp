@@ -12,4 +12,6 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Data_Companion_Damage, "Data.Companion.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(Data_Companion_CoolDown, "Data.Companion.CoolDown");
 	
+	// 쿨다운 태그
+	UE_DEFINE_GAMEPLAY_TAG(CoolDown_Companion_Fire, "CoolDown.Companion.Fire");
 }

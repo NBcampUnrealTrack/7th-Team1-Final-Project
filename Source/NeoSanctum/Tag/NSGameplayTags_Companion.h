@@ -14,4 +14,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Companion_Damage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Companion_CoolDown);
 	
+	// 쿨다운 태그
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CoolDown_Companion_Fire);
 }
