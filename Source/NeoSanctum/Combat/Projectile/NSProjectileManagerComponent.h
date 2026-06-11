@@ -47,6 +47,18 @@ public:
 		FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
+	/**
+	 * 투사체 충돌 대상을 검사하고 GAS Damage Effect를 적용한다.
+	 * 
+	 * @param Projectile 충돌한 투사체의 서버 데이터
+	 * @param HitResult Sweep 충돌 결과
+	 * @return 대상에게 GameplayEffect를 적용했는지 여부
+	 */
+	bool TryApplyProjectileDamage(
+		const FNSServerProjectileData& Projectile,
+		const FHitResult& HitResult) const;
+
+private:
 	// 서버가 동시에 보관할 수 있는 투사체의 최대 개수
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Server", meta = (ClampMin = "1"))
 	int32 MaxActiveProjectiles = 1000;

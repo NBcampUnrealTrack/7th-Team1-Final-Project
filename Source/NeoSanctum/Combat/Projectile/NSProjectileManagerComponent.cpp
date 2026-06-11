@@ -3,6 +3,10 @@
 
 #include "NSProjectileManagerComponent.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "GameplayEffect.h"
+#include "GenericTeamAgentInterface.h"
 #include "NSProjectileTypes.h"
 
 
@@ -61,7 +65,8 @@ bool UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireReques
 	if (NormalizedDirection.IsNearlyZero() ||
 		Request.Speed <= 0.0f ||
 		Request.MaxLifeTime <= 0.0f ||
-		Request.Radius <= 0.0f)
+		Request.Radius <= 0.0f ||
+		!Request.DamageEffectClass)
 	{
 		return false;
 	}
@@ -78,6 +83,7 @@ bool UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireReques
 	Projectile.Radius = Request.Radius;
 	Projectile.TraceChannel = Request.TraceChannel;
 	Projectile.SourceActor = Request.SourceActor;
+	Projectile.DamageEffectClass = Request.DamageEffectClass;
 
 	return true;
 }
@@ -161,14 +167,18 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		{
 			Projectile.CurrentLocation = HitResult.Location;
 
+			const bool bAppliedDamage = TryApplyProjectileDamage(Projectile, HitResult);
+
 			if (bDrawDebugTrajectory)
 			{
+				const FColor HitColor = bAppliedDamage ? FColor::Purple : FColor::Red;
+
 				// 실제로 충돌한 이동 구간
 				DrawDebugLine(
 					World,
 					PreviousLocation,
 					HitResult.Location,
-					FColor::Yellow,
+					HitColor,
 					false,
 					1.0f,
 					0,
@@ -180,7 +190,7 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 					HitResult.Location,
 					Projectile.Radius,
 					12,
-					FColor::Red,
+					HitColor,
 					false,
 					1.0f,
 					0,
@@ -237,4 +247,72 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 				EAllowShrinking::No);
 		}
 	}
+}
+
+bool UNSProjectileManagerComponent::TryApplyProjectileDamage(
+	const FNSServerProjectileData& Projectile,
+	const FHitResult& HitResult) const
+{
+	AActor* SourceActor = Projectile.SourceActor.Get();
+	AActor* TargetActor = HitResult.GetActor();
+
+	if (!IsValid(SourceActor) ||
+		!IsValid(TargetActor) ||
+		SourceActor == TargetActor ||
+		!Projectile.DamageEffectClass)
+	{
+		return false;
+	}
+
+	const IGenericTeamAgentInterface* SourceTeam = Cast<IGenericTeamAgentInterface>(SourceActor);
+	const IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
+
+	// 같은 팀 피해 적용 X
+	if (SourceTeam &&
+		TargetTeam &&
+		SourceTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
+	{
+		return false;
+	}
+
+	IAbilitySystemInterface* SourceAbilityInterface = Cast<IAbilitySystemInterface>(SourceActor);
+	IAbilitySystemInterface* TargetAbilityInterface = Cast<IAbilitySystemInterface>(TargetActor);
+
+	if (!SourceAbilityInterface || !TargetAbilityInterface)
+	{
+		return false;
+	}
+
+	UAbilitySystemComponent* SourceASC = SourceAbilityInterface->GetAbilitySystemComponent();
+	UAbilitySystemComponent* TargetASC = TargetAbilityInterface->GetAbilitySystemComponent();
+
+	if (!IsValid(SourceASC) ||
+		!IsValid(TargetASC))
+	{
+		return false;
+	}
+
+	// 발사자, 충돌 정보 저장하는 EffectContext 저장
+	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
+	EffectContext.AddSourceObject(SourceActor);
+	EffectContext.AddHitResult(HitResult, true);
+
+	// 발사자의 ASC를 Source로 해 Damage EffectSpec 생성
+	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(
+		Projectile.DamageEffectClass,
+		1.0f,
+		EffectContext);
+
+	if (!SpecHandle.IsValid() ||
+		!SpecHandle.Data.IsValid())
+	{
+		return false;
+	}
+
+	// 서버에서 Source ASC가 Target ASC에 Effect 적용
+	SourceASC->ApplyGameplayEffectSpecToTarget(
+		*SpecHandle.Data.Get(),
+		TargetASC);
+
+	return true;
 }
