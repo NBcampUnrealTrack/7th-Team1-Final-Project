@@ -6,6 +6,8 @@
 #include "BehaviorTree/BTService.h"
 #include "NSBTService_JudgmentDroneTarget.generated.h"
 
+class ANSBaseCompanionAI;
+
 UCLASS()
 class NEOSANCTUM_API UNSBTService_JudgmentDroneTarget : public UBTService
 {
@@ -26,9 +28,15 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector TargetActorKey;
 	
+	UPROPERTY(EditAnywhere, Category="Blackboard")
+	FBlackboardKeySelector EnemyTargetKey;
+	
 	// @민재 : 재화 관련 변수
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
 	TSubclassOf<AActor> CurrencyClass;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
+	TArray<TEnumAsByte<EObjectTypeQuery>> CurrencyObjectTypes;
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
 	float CurrencyDetectionRadius = 1500.f;
@@ -43,12 +51,29 @@ protected:
 	UPROPERTY(EditAnywhere, Category="DroneAI|Combat")
 	float EnemyDistance = 350.f;
 	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Combat")
+	FGameplayTag FireAbilityTag;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Combat")
+	TArray<TEnumAsByte<EObjectTypeQuery>> EnemyObjectTypes;
+	
 	// @민재 : 오너 거리
 	UPROPERTY(EditAnywhere, Category="DroneAI|Follow")
 	FVector FollowOffset = FVector(-100.f, 0.f, 100.f);
 	
 private:
 	// @민재 : 감지범위구체
-	AActor* FindNearestActor(AActor* InActor, TSubclassOf<AActor> FilterClass, float Radius) const;
+	AActor* FindNearestActor(
+		AActor* InActor, 
+		TSubclassOf<AActor> FilterClass, 
+		float Radius,
+		const TArray<TEnumAsByte<EObjectTypeQuery>>& ObjectTypes,
+		bool bRequireAliveEnemy = false) const;
+	
+	// @민재 : 적과의 거리 계산
+	FVector ComputeStandoffPosition(const AActor* Drone, const AActor* Enemy) const;
+	
+	// @민재 : 발사 어빌리티 활성화 시도
+	void TryActivateFire(const ANSBaseCompanionAI* Drone) const;
 	
 };

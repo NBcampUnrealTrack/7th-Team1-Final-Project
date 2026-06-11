@@ -4,10 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "AttributeSet.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "NSBaseCompanionAI.generated.h"
 
+class UGameplayEffect;
+class UNSCompanionAttributeSet;
 class USphereComponent;
 class USkeletalMeshComponent;
 class UFloatingPawnMovement;
@@ -15,13 +17,17 @@ class ANSDroneAIController;
 
 
 UCLASS()
-class NEOSANCTUM_API ANSBaseCompanionAI : public APawn
+class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ANSBaseCompanionAI();
 
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+	USkeletalMeshComponent* GetSkeletalMeshComponent() const {return SkeletalMeshComponent;}
+	
 	// @민재 : 멀티 관련
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -82,7 +88,7 @@ protected:
 	float GroundTraceDistance = 2000.f;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
-	float AltitudeDeadZone = 20.f;			// 떨림 방지 데드존
+	float AltitudeDeadZone = 20.f;
  
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
@@ -149,13 +155,25 @@ protected:
 public:
 	FORCEINLINE UAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return AbilitySystemComponent;}
 	
-	FORCEINLINE UAttributeSet* GetCompanionAttributeSet() const {return AttributeSet;}
+	FORCEINLINE UNSCompanionAttributeSet* GetCompanionAttributeSet() const {return CompanionAttributeSet;}
 	
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UAttributeSet> AttributeSet;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
+	TObjectPtr<UNSCompanionAttributeSet> CompanionAttributeSet;
 
+	UPROPERTY(EditDefaultsOnly, Category="GAS|Init")
+	TSubclassOf<UGameplayEffect> DefaultStatsEffect;
+	
+	UPROPERTY(EditDefaultsOnly, Category="GAS|Init")
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+	
+protected:
+	void InitAbilityActorInfo();
+	void InitializeDefaultStats();
+	void GiveDefaultAbilities();
+	
+	bool bDefaultAbilitiesGranted = false;
 };
