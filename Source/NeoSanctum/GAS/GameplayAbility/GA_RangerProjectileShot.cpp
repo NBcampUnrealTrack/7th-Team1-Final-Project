@@ -29,7 +29,7 @@ void UGA_RangerProjectileShot::ActivateAbility(
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	bIsWaitngForFireMontage = false;
+	bIsWaitingForFireMontage = false;
 	
 	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
 	{
@@ -260,7 +260,7 @@ void UGA_RangerProjectileShot::OnProjectileTargetDataReady(
 	}
 
 	// Montage가 있으면 Montage 콜백에서 Ability 종료
-	if (!bIsWaitngForFireMontage)
+	if (!bIsWaitingForFireMontage)
 	{
 		FinishProjectileShotAbility(false);
 		return;
@@ -486,7 +486,7 @@ bool UGA_RangerProjectileShot::TryGetAttackOriginTransform(FTransform& OutTransf
 
 bool UGA_RangerProjectileShot::PlayFireMontage()
 {
-	bIsWaitngForFireMontage = false;
+	bIsWaitingForFireMontage = false;
 	
 	if (!FireMontage)
 	{
@@ -518,7 +518,7 @@ bool UGA_RangerProjectileShot::PlayFireMontage()
 	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
 	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnFireMontageCancelled);
 	
-	bIsWaitngForFireMontage = true;
+	bIsWaitingForFireMontage = true;
 	
 	MontageTask->ReadyForActivation();
 	return true;
@@ -526,19 +526,19 @@ bool UGA_RangerProjectileShot::PlayFireMontage()
 
 void UGA_RangerProjectileShot::OnFireMontageCancelled()
 {
-	bIsWaitngForFireMontage = false;
+	bIsWaitingForFireMontage = false;
 	FinishProjectileShotAbility(true);
 }
 
 void UGA_RangerProjectileShot::OnFireMontageCompleted()
 {
-	bIsWaitngForFireMontage = false;
+	bIsWaitingForFireMontage = false;
 	FinishProjectileShotAbility(false);
 }
 
 void UGA_RangerProjectileShot::FinishProjectileShotAbility(bool bWasCancelled)
 {
-	bIsWaitngForFireMontage = false;
+	bIsWaitingForFireMontage = false;
 	
 	if (!IsActive())
 	{

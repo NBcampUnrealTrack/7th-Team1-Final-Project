@@ -132,7 +132,7 @@ private:
 	void ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
 private:
-	bool bIsWaitngForFireMontage = false;
+	bool bIsWaitingForFireMontage = false;
 
 private:
 	// Debug
