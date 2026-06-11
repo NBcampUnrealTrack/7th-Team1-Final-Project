@@ -29,6 +29,7 @@ public:
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
 		float InSplashDamageEffectLevel,
+		float InSplashDamage,
 		float InExplosionRadius
 	);
 	
@@ -97,4 +98,6 @@ private:
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
 	
 	float SplashDamageEffectLevel = 1.0f;
+	
+	float SplashDamage = 0.0f;
 };

@@ -48,12 +48,20 @@ void ANSRangerProjectile::InitializeProjectile(
 	UAbilitySystemComponent* InSourceASC,
 	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
 	float InSplashDamageEffectLevel,
+	float InSplashDamage,
 	float InExplosionRadius)
 {
 	SourceASC = InSourceASC;
 	SplashDamageEffectClass = InSplashDamageEffectClass;
 	SplashDamageEffectLevel = InSplashDamageEffectLevel;
+	SplashDamage = FMath::Max(InSplashDamage, 0.0f);
 	ExplosionRadius = FMath::Max(InExplosionRadius, 0.0f);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"Projectile 초기화 완료. Damage={Damage}, Radius={Radius}",
+		("Damage", SplashDamage),
+		("Radius", ExplosionRadius)
+	);
 }
 
 void ANSRangerProjectile::BeginPlay()

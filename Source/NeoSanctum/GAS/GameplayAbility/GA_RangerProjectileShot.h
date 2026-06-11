@@ -65,6 +65,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	float SplashDamageEffectLevel = 1.0f;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
+	float DefaultSplashDamage = 50.0f;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Splash")
 	float DefaultExplosionRadius = 300.0f;
 	

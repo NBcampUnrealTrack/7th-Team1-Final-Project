@@ -446,6 +446,12 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
+		const float SplashDamage = GetFinalAbilityStatOrDefault(
+			NSGameplayTags::Ability_Ranger_ProjectileShot,
+			NSGameplayTags::CombatStat_Damage,
+			DefaultSplashDamage
+		);
+		
 		const float ExplosionRadius = GetFinalAbilityStatOrDefault(
 			NSGameplayTags::Ability_Ranger_ProjectileShot,
 			NSGameplayTags::CombatStat_ExplosionRadius,
@@ -456,6 +462,7 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 			ASC,
 			SplashDamageEffectClass,
 			SplashDamageEffectLevel,
+			SplashDamage,
 			ExplosionRadius
 		);
 	}
