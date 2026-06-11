@@ -20,10 +20,19 @@ struct FNSProjectileFireRequest
 	FVector Direction = FVector::ForwardVector;
 
 	// 투사체 초당 이동 거리
-	float Speed = 1800.0f;
+	float Speed = 1000.0f;
 
 	// 투사체 최대 수명 시간
 	float MaxLifeTime = 5.0f;
+
+	// 투사체 충돌 반지름
+	float Radius = 10.0f;
+
+	// 투사체 Trace Channel
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+
+	// 투사체를 발사한 Enemy: Enemy가 죽어도 투사체가 Actor의 수명을 강제로 유지하지 않음
+	TWeakObjectPtr<AActor> SourceActor = nullptr;
 };
 
 /**
@@ -51,4 +60,13 @@ struct FNSServerProjectileData
 
 	// 투사체 최대 수명 시간
 	float MaxLifeTime = 0.0f;
+
+	// 투사체 충돌 반지름
+	float Radius = 0.0f;
+
+	// 투사체 Trace Channel
+	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+
+	// 투사체를 발사한 Enemy
+	TWeakObjectPtr<AActor> SourceActor = nullptr;
 };
