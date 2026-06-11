@@ -264,6 +264,18 @@ void UNSCombatStatComponent::RebuildModifierSourceCache()
 			continue;
 		}
 		
+		if (Row->Operation == ENSCombatStatModifierOperation::Multiply && Row->Value <= 0.0f)
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning,
+				"유효하지 않은 CombatStat Multiply Modifier Row입니다. RowName={RowName}, SourceDefId={SourceDefId}, Value={Value}",
+				("RowName", RowName.ToString()),
+				("SourceDefId", Row->SourceDefId.ToString()),
+				("Value", Row->Value)
+			);
+
+			continue;
+		}
+		
 		// SourceDefId로 보유 증강과 빠르게 매칭하기 위한 원본 캐시
 		CachedModifierRowsBySource.FindOrAdd(Row->SourceDefId).Add(*Row);
 	}

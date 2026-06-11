@@ -78,7 +78,7 @@ struct FNSCombatStatModifierRow : public FTableRowBase
 	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (ToolTip = "Add일 때는 더할 값, Multiply일 때는 배율입니다. 예: Add 150, Multiply 1.2"))
+		meta = (ToolTip = "Add는 더할 값을 입력합니다. Multiply는 배율을 입력합니다. 1.0은 변화 없음, 1.2는 20% 증가, 0.8은 20% 감소입니다. Multiply는 0보다 커야 합니다."))
 	float Value = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
