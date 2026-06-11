@@ -26,6 +26,9 @@ void UANS_WeaponTraceCheck::NotifyTick(
 
 	for (const FGameplayTag& Tag : EventTags)
 	{
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Tag, EventData);
+		if (Tag.IsValid())
+		{
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Tag, EventData);
+		}
 	}
 }
