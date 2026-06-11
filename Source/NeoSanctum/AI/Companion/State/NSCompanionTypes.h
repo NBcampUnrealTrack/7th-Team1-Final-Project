@@ -1,5 +1,8 @@
 ﻿#pragma once
 
+#include "CoreMinimal.h"
+#include "NSCompanionTypes.generated.h"
+
 UENUM(BlueprintType)
 enum class ECompanionState : uint8
 {
