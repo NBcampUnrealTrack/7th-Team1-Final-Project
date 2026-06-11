@@ -4,9 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "BehaviorTree/BTService.h"
+#include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
 #include "NSBTService_JudgmentDroneTarget.generated.h"
 
-enum class EDroneState : uint8;
+
 class ANSBaseCompanionAI;
 
 UCLASS()
@@ -30,10 +31,10 @@ protected:
 	FBlackboardKeySelector MoveTargetKey;
 	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
-	FBlackboardKeySelector TargetActorKey;
+	FBlackboardKeySelector CurrencyActorKey;
 	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
-	FBlackboardKeySelector EnemyTargetKey;
+	FBlackboardKeySelector EnemyActorKey;
 	
 	// @민재 : 재화 관련 변수
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
@@ -64,9 +65,9 @@ protected:
 	// @민재 : 오너 거리
 	UPROPERTY(EditAnywhere, Category="DroneAI|Follow")
 	FVector FollowOffset = FVector(-100.f, 0.f, 100.f);
-	
+
 private:
-	EDroneState EValuateState(ANSBaseCompanionAI* CompanionPawn, UBlackboardComponent* BB) const;
+	ECompanionState EvaluateState(ANSBaseCompanionAI* CompanionPawn, UBlackboardComponent* BB) const;
 	
 	// @민재 : 감지범위구체
 	AActor* FindNearestActor(

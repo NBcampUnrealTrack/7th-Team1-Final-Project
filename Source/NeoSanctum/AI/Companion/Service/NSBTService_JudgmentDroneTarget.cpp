@@ -22,14 +22,18 @@ UNSBTService_JudgmentDroneTarget::UNSBTService_JudgmentDroneTarget()
 	MoveTargetKey.AddVectorFilter(
 		this, 
 		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget,MoveTargetKey));
-	TargetActorKey.AddObjectFilter(
+	CurrencyActorKey.AddObjectFilter(
 		this, 
-		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, TargetActorKey),
+		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, CurrencyActorKey),
 		AActor::StaticClass());
-	EnemyTargetKey.AddObjectFilter(
+	EnemyActorKey.AddObjectFilter(
 		this,
-		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, EnemyTargetKey),
+		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, EnemyActorKey),
 		AActor::StaticClass());
+	StateKey.AddEnumFilter(
+		this,
+		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget,StateKey),
+		StaticEnum<ECompanionState>());
 }
 
 void UNSBTService_JudgmentDroneTarget::InitializeFromAsset(UBehaviorTree& Asset)
@@ -39,8 +43,9 @@ void UNSBTService_JudgmentDroneTarget::InitializeFromAsset(UBehaviorTree& Asset)
 	if (UBlackboardData* BBAsset = GetBlackboardAsset())
 	{
 		MoveTargetKey.ResolveSelectedKey(*BBAsset);
-		TargetActorKey.ResolveSelectedKey(*BBAsset);
-		EnemyTargetKey.ResolveSelectedKey(*BBAsset);
+		CurrencyActorKey.ResolveSelectedKey(*BBAsset);
+		EnemyActorKey.ResolveSelectedKey(*BBAsset);
+		StateKey.ResolveSelectedKey(*BBAsset);
 	}
 }
 
@@ -53,37 +58,43 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
 	if (!AIController || !BB) return;
 	
-	ANSBaseCompanionAI* DronePawn = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
+	ANSBaseCompanionAI* CompanionPawn = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
 	ANSDroneAIController* DroneController = Cast<ANSDroneAIController>(AIController);
-	if (!DroneController || !DronePawn) return;
+	if (!DroneController || !CompanionPawn) return;
 	
-	if (AActor* Enemy = FindNearestActor(DronePawn, EnemyClass, CombatDetectionRadius,EnemyObjectTypes, true))
-	{
-		BB->SetValueAsObject(EnemyTargetKey.SelectedKeyName, Enemy);
-		//BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, ComputeStandoffPosition(DronePawn, Enemy));
-		TryActivateFire(DronePawn);
-		return;
-	}
-	
-	BB->ClearValue(EnemyTargetKey.SelectedKeyName);
-	
-	if (AActor* Currency = FindNearestActor(DronePawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
-	{
-		BB->SetValueAsObject(TargetActorKey.SelectedKeyName, Currency);
-		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, Currency->GetActorLocation());
-		return;
-	}
-	
-	BB->ClearValue(TargetActorKey.SelectedKeyName);
-	
-	AActor* Owner = DronePawn->GetOwnerPlayer();
-	if (!Owner) return;
+	BB->SetValueAsEnum(StateKey.SelectedKeyName, static_cast<uint8>(EvaluateState(CompanionPawn, BB)));
+}
+
+
+ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanionAI* CompanionPawn,
+	UBlackboardComponent* BB) const
+{
+	AActor* Owner = CompanionPawn->GetOwnerPlayer();
+	if (!Owner) return ECompanionState::Follow;
 	
 	const FVector FollowPos = 
 		Owner->GetActorLocation() + Owner->GetActorRotation().RotateVector(FollowOffset);
 	BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, FollowPos);
+	
+	if (AActor* Enemy = FindNearestActor(CompanionPawn, EnemyClass, CombatDetectionRadius, EnemyObjectTypes, true))
+	{
+		BB->SetValueAsObject(EnemyActorKey.SelectedKeyName, Enemy);
+		return ECompanionState::Combat;
+	}
+	
+	BB->ClearValue(EnemyActorKey.SelectedKeyName);
+	
+	if (AActor* Currency = FindNearestActor(CompanionPawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
+	{
+		BB->SetValueAsObject(CurrencyActorKey.SelectedKeyName, Currency);
+		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, Currency->GetActorLocation());
+		return ECompanionState::Collect;
+	}
+	
+	BB->ClearValue(CurrencyActorKey.SelectedKeyName);
+	
+	return ECompanionState::Follow;
 }
-
 
 AActor* UNSBTService_JudgmentDroneTarget::FindNearestActor(
 	AActor* InActor, 
