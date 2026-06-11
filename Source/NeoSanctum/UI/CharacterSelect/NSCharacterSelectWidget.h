@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CommonActivatableWidget.h"
-#include "NSCharacterSlotWidget.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSCharacterSelectWidget.generated.h"
 
@@ -11,12 +10,13 @@ class UCommonAnimatedSwitcher;
 class UCommonButtonBase;
 class UTextBlock;
 class UNSCharacterSlotWidget;
-
+class UImage;
 
 UCLASS()
 class NEOSANCTUM_API UNSCharacterSelectWidget : public UCommonActivatableWidget
 {
 	GENERATED_BODY()
+
 protected:
 	virtual void NativeConstruct() override;
 
@@ -37,6 +37,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonAnimatedSwitcher> CharacterSwitcher;
+	
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> PreviewImage;	
+
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect")
 	TObjectPtr<UDataTable> CharacterDataTable;
@@ -50,8 +54,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void ConfirmSelection();
 
-	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
-	void SetPreviewActor(ACharacter* InActor);
 
 private:
 	void HandleCharacterChanged();
@@ -63,6 +65,5 @@ private:
 
 	TArray<FNSCharacterSelectData*> CachedCharacters;
 
-	UPROPERTY()
-	TObjectPtr<ACharacter> PreviewActor;
+	void ApplyPreviewImage(const FNSCharacterSelectData& Data);
 };
