@@ -28,6 +28,11 @@ void ANSTurretSpawner::InitializeTurretSpawner(const FNSTurretSpawnerTypeConfig&
 void ANSTurretSpawner::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (SpawnerLifeSpan > 0.0f)
+	{
+		SetLifeSpan(SpawnerLifeSpan);
+	}
 	
 	if (UProjectileMovementComponent* Movement = GetProjectileMovementComponent())
 	{

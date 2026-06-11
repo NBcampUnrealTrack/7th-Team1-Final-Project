@@ -37,6 +37,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "TurretSpawner")
 	float MaxSpawnableAngle = 30.0f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "TurretSpawner")
+	float SpawnerLifeSpan = 8.0f;
+
 	FNSTurretConfig TurretConfig;
 	
 	bool bSpawned = false;
