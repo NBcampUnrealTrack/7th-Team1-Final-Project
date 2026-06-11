@@ -33,6 +33,14 @@ protected:
 	// 투사체 최대 수명 시간
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile", meta = (ClampMin = "0.01"))
 	float ProjectileMaxLifeTime = 5.0f;
+	
+	// 투사체 충돌 반지름
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile", meta = (ClampMin = "0.1"))
+	float ProjectileRadius = 10.0f;
+	
+	// 투사체 Trace Channel
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile")
+	TEnumAsByte<ECollisionChannel> ProjectileTraceChannel = ECC_Visibility;
 
 	// 타겟 조준 높이 보정
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim")

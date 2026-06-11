@@ -100,6 +100,9 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 	Request.Direction = Direction;
 	Request.Speed = ProjectileSpeed;
 	Request.MaxLifeTime = ProjectileMaxLifeTime;
+	Request.Radius = ProjectileRadius;
+	Request.TraceChannel = ProjectileTraceChannel;
+	Request.SourceActor = Enemy;
 
 	ProjectileManager->FireProjectile(Request);
 }
