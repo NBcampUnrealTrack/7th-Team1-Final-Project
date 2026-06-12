@@ -12,7 +12,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
-#include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
@@ -117,12 +116,10 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	
 	InitializeAbilitySystem();
 	
-	if (HasAuthority() && !DebugCharacterData.IsNull())
+	if (HasAuthority())
 	{
-		UNSCharacterData* LoadedCharacterData = DebugCharacterData.LoadSynchronous();
-		LoadDebugCharacterDataAssets(LoadedCharacterData);
-		InitializeFromCharacterData(LoadedCharacterData);
-		return;
+		// PossessedBy 시점에 캐릭터 데이터 적용
+		ApplyCurrentCharacterData();
 	}
 }
 
@@ -137,7 +134,7 @@ void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ANSPlayerCharacterBase, CharacterData);
+	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentCharacterData);
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
 	DOREPLIFETIME(ANSPlayerCharacterBase, bDeathPresentationStarted);
 }
@@ -157,6 +154,32 @@ UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() con
 	return nullptr;
 }
 
+void ANSPlayerCharacterBase::ChangeCharacterData(UNSCharacterData* InCharacterData)
+{
+	if (!InCharacterData)
+	{
+		return;
+	}
+
+	if (!HasAuthority())
+	{
+		Server_ChangeCharacterData(InCharacterData);
+		return;
+	}
+
+	if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+	{
+		NSPlayerState->SetCurrentCharacterData(InCharacterData);
+	}
+
+	InitializeFromCharacterData(InCharacterData);
+}
+
+void ANSPlayerCharacterBase::Server_ChangeCharacterData_Implementation(UNSCharacterData* InCharacterData)
+{
+	ChangeCharacterData(InCharacterData);
+}
+
 void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData* InCharacterData)
 {
 	if (!InCharacterData)
@@ -164,8 +187,14 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 		return;
 	}
 	
-	CharacterData = InCharacterData;
-	LoadDebugCharacterDataAssets(CharacterData);
+	// 데이터를 적용하기에 앞서 서버권한에서 데이터를 한 번 클리어
+	if (HasAuthority())
+	{
+		ClearCharacterDataRuntimeState();
+	}
+	
+	CurrentCharacterData = InCharacterData;
+	LoadCharacterDataAssets(CurrentCharacterData);
 	
 	ApplyCharacterVisual();
 	
@@ -176,6 +205,25 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 		ApplyDefaultGameplayEffects();
 		GiveCharacterDataAbilities();
 		SpawnDefaultWeapon();
+		
+		// 다음 NetUpdateFrequency까지 기다리지말고 바로 업데이트 하기 위한 함수
+		ForceNetUpdate();
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyCurrentCharacterData()
+{
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		return;
+	}
+	
+	// 현재 캐릭터 데이터를 PlayerState로부터 받아와서 적용
+	if (UNSCharacterData* PlayerStateCurrentCharacterData = NSPlayerState->GetCurrentCharacterData())
+	{
+		InitializeFromCharacterData(PlayerStateCurrentCharacterData);
 	}
 }
 
@@ -254,12 +302,14 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	SetActorRotation(NewRotation);
 }
 
-void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(const UNSCharacterData* InCharacterData)
+void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InCharacterData)
 {
 	if (!InCharacterData)
 	{
 		return;
 	}
+	
+	// LoadSynchronous는 임시로 강제로 로딩하기 위함이고, 추후에 비동기로딩 흐름으로 바꿀 예정
 	
 	InCharacterData->SkeletalMesh.LoadSynchronous();
 	InCharacterData->AnimClass.LoadSynchronous();
@@ -277,9 +327,9 @@ void ANSPlayerCharacterBase::LoadDebugCharacterDataAssets(const UNSCharacterData
 	}
 }
 
-void ANSPlayerCharacterBase::OnRep_CharacterData()
+void ANSPlayerCharacterBase::OnRep_CurrentCharacterData()
 {
-	LoadDebugCharacterDataAssets(CharacterData);
+	LoadCharacterDataAssets(CurrentCharacterData);
 	ApplyCharacterVisual();
 }
 
@@ -321,18 +371,18 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 
 void ANSPlayerCharacterBase::ApplyCharacterVisual()
 {
-	if (!CharacterData)
+	if (!CurrentCharacterData)
 	{
 		return;
 	}
 	
-	USkeletalMesh* LoadedMesh = CharacterData->SkeletalMesh.Get();
+	USkeletalMesh* LoadedMesh = CurrentCharacterData->SkeletalMesh.Get();
 	if (LoadedMesh)
 	{
 		GetMesh()->SetSkeletalMesh(LoadedMesh);
 	}
 	
-	UClass* LoadedAnimClass = CharacterData->AnimClass.Get();
+	UClass* LoadedAnimClass = CurrentCharacterData->AnimClass.Get();
 	if (LoadedAnimClass)
 	{
 		GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
@@ -341,12 +391,12 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 
 void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 {
-	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	if (!HasAuthority() || !CurrentCharacterData || !NSAbilitySystemComponent)
 	{
 		return;
 	}
 	
-	TSubclassOf<UGameplayEffect> LoadedEffectClass = CharacterData->InitialAttributeEffect.Get();
+	TSubclassOf<UGameplayEffect> LoadedEffectClass = CurrentCharacterData->InitialAttributeEffect.Get();
 	if (!LoadedEffectClass)
 	{
 		return;
@@ -360,13 +410,18 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	
 	if (SpecHandle.IsValid())
 	{
-		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		const FActiveGameplayEffectHandle EffectHandle =
+			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		if (EffectHandle.IsValid())
+		{
+			CharacterDataEffectHandles.Add(EffectHandle);
+		}
 	}
 }
 
 void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 {
-	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	if (!HasAuthority() || !CurrentCharacterData || !NSAbilitySystemComponent)
 	{
 		return;
 	}
@@ -374,7 +429,7 @@ void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 	
-	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : CharacterData->DefaultGameplayEffects)
+	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : CurrentCharacterData->DefaultGameplayEffects)
 	{
 		TSubclassOf<UGameplayEffect> Effect = DefaultEffect.Get();
 		if (!Effect)
@@ -387,19 +442,24 @@ void ANSPlayerCharacterBase::ApplyDefaultGameplayEffects()
 		
 		if (SpecHandle.IsValid())
 		{
-			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			const FActiveGameplayEffectHandle EffectHandle =
+				NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+			if (EffectHandle.IsValid())
+			{
+				CharacterDataEffectHandles.Add(EffectHandle);
+			}
 		}
 	}
 }
 
 void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
 {
-	if (!HasAuthority() || !CharacterData || !NSAbilitySystemComponent)
+	if (!HasAuthority() || !CurrentCharacterData || !NSAbilitySystemComponent)
 	{
 		return;
 	}
 	
-	for (const FNSCharacterAbilityData& AbilityData : CharacterData->DefaultAbilities)
+	for (const FNSCharacterAbilityData& AbilityData : CurrentCharacterData->DefaultAbilities)
 	{
 		TSubclassOf<UGameplayAbility> LoadedAbilityClass = AbilityData.AbilityClass.Get();
 		if (!LoadedAbilityClass)
@@ -415,18 +475,22 @@ void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
 			AbilitySpec.GetDynamicSpecSourceTags().AddTag(AbilityData.InputTag);			
 		}
 		
-		NSAbilitySystemComponent->GiveAbility(AbilitySpec);
+		const FGameplayAbilitySpecHandle AbilityHandle = NSAbilitySystemComponent->GiveAbility(AbilitySpec);
+		if (AbilityHandle.IsValid())
+		{
+			CharacterDataAbilityHandles.Add(AbilityHandle);
+		}
 	}
 }
 
 void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 {
-	if (!HasAuthority() || !CharacterData)
+	if (!HasAuthority() || !CurrentCharacterData)
 	{
 		return;
 	}
 	
-	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CharacterData->DefaultWeaponClass.Get();
+	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CurrentCharacterData->DefaultWeaponClass.Get();
 	if (!LoadedWeaponClass)
 	{
 		return;
@@ -461,6 +525,48 @@ void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 	);
 	
 	CurrentWeapon = SpawnedWeapon;
+}
+
+void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	// Ability와 Effect Clear
+	if (NSAbilitySystemComponent)
+	{
+		NSAbilitySystemComponent->ClearAbilityInput();
+
+		for (const FGameplayAbilitySpecHandle& AbilityHandle : CharacterDataAbilityHandles)
+		{
+			if (!AbilityHandle.IsValid())
+			{
+				continue;
+			}
+
+			NSAbilitySystemComponent->CancelAbilityHandle(AbilityHandle);
+			NSAbilitySystemComponent->ClearAbility(AbilityHandle);
+		}
+		CharacterDataAbilityHandles.Reset();
+
+		for (const FActiveGameplayEffectHandle& EffectHandle : CharacterDataEffectHandles)
+		{
+			if (EffectHandle.IsValid())
+			{
+				NSAbilitySystemComponent->RemoveActiveGameplayEffect(EffectHandle);
+			}
+		}
+		CharacterDataEffectHandles.Reset();
+	}
+	
+	// 무기를 Destroy
+	if (IsValid(CurrentWeapon))
+	{
+		CurrentWeapon->Destroy();
+	}
+	CurrentWeapon = nullptr;
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)

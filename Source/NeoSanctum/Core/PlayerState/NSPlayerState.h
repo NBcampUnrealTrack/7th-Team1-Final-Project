@@ -14,6 +14,7 @@ class UNSPlayerAttributeSet;
 class UNSPlayerProgressComponent;
 class UNSAugmentInventoryComponent;
 class UNSPermanentSaveGame;
+class UNSCharacterData;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -30,6 +31,7 @@ public:
 	UNSCombatStatComponent* GetCombatStatComponent() const;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void CopyProperties(APlayerState* PlayerState) override;
 	
 	bool IsReady() const { return bIsReady; }
 	bool IsDead() const { return bIsDead; }
@@ -42,7 +44,17 @@ public:
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 
 	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
+
+public:
+	// 캐릭터 데이터 Setter
+	UFUNCTION(BlueprintCallable, Category = "Character|Data")
+	void SetCurrentCharacterData(UNSCharacterData* InCharacterData);
 	
+	// 캐릭터 데이터 Getter
+	UFUNCTION(BlueprintPure, Category = "Character|Data")
+	UNSCharacterData* GetCurrentCharacterData() const;
+	
+public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
 	ENSRunChoice RunChoice = ENSRunChoice::ReturnToHub; 
@@ -68,6 +80,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Augment")
 	TObjectPtr<UNSAugmentInventoryComponent> AugmentInventory;
 	
+	// 기본 캐릭터 데이터 : 기본적으로 Ranger Data를 쓰고 있음
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
+	TSoftObjectPtr<UNSCharacterData> DefaultCharacterData;
+	
 private:
 	void OnSaveDataLoaded(UNSPermanentSaveGame* Data);
 
@@ -77,4 +93,8 @@ private:
 	// 사망 상태 변수
 	UPROPERTY(Replicated)
 	bool bIsDead;
+	
+	// 현재 캐릭터 데이터
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
+	TSoftObjectPtr<UNSCharacterData> CurrentCharacterData;
 };

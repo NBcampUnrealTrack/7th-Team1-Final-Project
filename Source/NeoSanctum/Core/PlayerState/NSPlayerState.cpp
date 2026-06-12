@@ -8,6 +8,7 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
@@ -44,7 +45,10 @@ void ANSPlayerState::BeginPlay()
 	if (!HasAuthority()) return;
 
 	UNSSaveGameSubsystem* SaveSys = GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>();
-	if (!SaveSys) return;
+	if (!SaveSys)
+	{
+		return;
+	}
 
 	// 캐시 데이터가 있으면 바로 적용, 없으면 콜백으로 받음
 	if (SaveSys->GetCachedPermanentData())
@@ -70,6 +74,18 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, bIsDead);
 	DOREPLIFETIME(ANSPlayerState, RunChoice);
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
+	DOREPLIFETIME(ANSPlayerState, CurrentCharacterData);
+}
+
+void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
+	{
+		// SeamlessTravel 이후에도 유지되어야 할 캐릭터 데이터
+		NewPlayerState->CurrentCharacterData = CurrentCharacterData;
+	}
 }
 
 UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
@@ -100,4 +116,26 @@ void ANSPlayerState::SetIsDead(bool bNewIsDead)
 	}
 
 	bIsDead = bNewIsDead;
+}
+
+void ANSPlayerState::SetCurrentCharacterData(UNSCharacterData* InCharacterData)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	CurrentCharacterData = InCharacterData;
+	
+	ForceNetUpdate();
+}
+
+UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
+{
+	if (!CurrentCharacterData.IsNull())
+	{
+		return CurrentCharacterData.LoadSynchronous();
+	}
+
+	return DefaultCharacterData.LoadSynchronous();
 }
