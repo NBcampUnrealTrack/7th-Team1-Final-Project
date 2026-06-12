@@ -389,7 +389,7 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 		return;
 	}
 	
-	// 모든 대상에게 같은 폭발 데미지를 적용
+	// 대상별 거리 감쇠가 없으므로 하나의 Spec에 같은 폭발 데미지 값을 설정
 	const FGameplayTag DamageTag = NSGameplayTags::Effect_Damage_Base.GetTag();
 	
 	DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageTag, SplashDamage);

@@ -4,7 +4,6 @@
 #include "GEC_DamageExecution.h"
 
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 namespace
