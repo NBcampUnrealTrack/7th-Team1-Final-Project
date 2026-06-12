@@ -4,8 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSPlayerProgressComponent.generated.h"
+
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSPlayerProgressComponent : public UActorComponent
@@ -14,56 +15,39 @@ class NEOSANCTUM_API UNSPlayerProgressComponent : public UActorComponent
 
 public:
 	UNSPlayerProgressComponent();
-
-	// 세이브에서 LastSelectedCharacterId 슬롯을 자동 활성화. 슬롯이 없으면 빈 상태로 시작
-	void InitFromSaveData(const UNSPermanentSaveGame* SaveData);
-
-	// 현재 활성 캐릭터 슬롯만 OutSaveData에 기록. 다른 캐릭터 데이터는 Subsystem에서 머지됨
-	void PopulateSaveData(UNSPermanentSaveGame* OutSaveData) const;
-
-	// 캐릭터 전환. SaveData에서 해당 슬롯을 로드하며, 슬롯이 없으면 신규 캐릭터로 빈 상태에서 시작
-	UFUNCTION(BlueprintCallable)
-	void SetActiveCharacter(const FName& InCharacterId, const UNSPermanentSaveGame* SaveData);
-
+	
+	// 컴포넌트 -> 페이로드
+	void BuildPayload(FNSProgressPayload& OutPayload) const; 
+	
+	// 페이로드 -> 컴포넌트
+	void ApplyPayload(const FNSProgressPayload& Payload);
+	
+	// 조회용 함수 (폰 스폰 시 스탯 반영 / UI 사용 용도)
 	UFUNCTION(BlueprintCallable)
 	FName GetActiveCharacterId() const { return ActiveCharacterId; }
-
 	UFUNCTION(BlueprintCallable)
-	bool IsNPCUnlocked(const FName& NPCId) const;
+	bool IsNPCUnlocked(const FName& NPCId) const { return UnlockedNPCIds.Contains(NPCId); }
+	int64 GetCommonCurrency() const { return CommonCurrency; }
+	int64 GetJobCurrency() const { return JobCurrency; }
+	const TArray<FName>& GetEquippedPartIds() const { return EquippedPartIds; }
+	const TMap<FName,int32>& GetCommonSkillLevels() const { return CommonSkillLevels; }
+	const TMap<FName,int32>& GetCharacterSkillLevels() const { return CharacterSkillLevels; }
+	const TMap<FName,int32>& GetPetUpgradeLevels() const { return PetUpgradeLevels; }
+	
 
 	UFUNCTION(BlueprintCallable)
 	void UnlockNPC(const FName& NPCId);
 
-	UFUNCTION(BlueprintCallable)
-	bool IsSkillUnlocked(const FName& SkillId) const;
-
-	UFUNCTION(BlueprintCallable)
-	void UnlockSkill(const FName& SkillId);
-
-	bool IsDirty() const { return bDirty; }
-	void ClearDirty() { bDirty = false; }
-
-protected:
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
 private:
-	// 슬롯 데이터를 컴포넌트 필드로 적재
-	void LoadSlot(const FName& InCharacterId, const UNSPermanentSaveGame* SaveData);
-
-	UPROPERTY(Replicated)
+	// 계정 단위
+	int64 CommonCurrency = 0;
+	TSet<FName> UnlockedNPCIds;
+	TMap<FName,int32> CommonSkillLevels;
+	TMap<FName,int32> PetUpgradeLevels;
+	
+	// 직업(캐릭터) 단위
 	FName ActiveCharacterId;
-
-	UPROPERTY(Replicated)
-	int64 TotalCurrency = 0;
-
-	UPROPERTY(Replicated)
+	int64 JobCurrency = 0;
 	TArray<FName> EquippedPartIds;
-
-	UPROPERTY(Replicated)
-	TArray<FName> UnlockedSkillIds;
-
-	UPROPERTY(Replicated)
-	TArray<FName> UnlockedNPCIds;
-
-	bool bDirty = false;
+	TMap<FName,int32> CharacterSkillLevels;
 };
