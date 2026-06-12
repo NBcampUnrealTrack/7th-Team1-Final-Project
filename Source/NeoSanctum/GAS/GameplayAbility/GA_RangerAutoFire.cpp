@@ -114,7 +114,7 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
-	// FireInterval 동안 Ability를 Active 상태로 유지해 연사 속도를 제한
+	// 최종 FireRate로 계산한 간격 동안 Ability를 Active 상태로 유지해 연사 속도를 제한
 	World->GetTimerManager().SetTimer(
 		FireDelayTimerHandle,
 		this,
