@@ -4,10 +4,12 @@
 #include "NSPlayerState.h"
 
 #include "NSPlayerProgressComponent.h"
+#include "Engine/AssetManager.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
@@ -44,7 +46,10 @@ void ANSPlayerState::BeginPlay()
 	if (!HasAuthority()) return;
 
 	UNSSaveGameSubsystem* SaveSys = GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>();
-	if (!SaveSys) return;
+	if (!SaveSys)
+	{
+		return;
+	}
 
 	// 캐시 데이터가 있으면 바로 적용, 없으면 콜백으로 받음
 	if (SaveSys->GetCachedPermanentData())
@@ -70,6 +75,17 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, bIsDead);
 	DOREPLIFETIME(ANSPlayerState, RunChoice);
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
+	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
+}
+
+void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
+	{
+		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
+	}
 }
 
 UAbilitySystemComponent* ANSPlayerState::GetAbilitySystemComponent() const
@@ -100,4 +116,50 @@ void ANSPlayerState::SetIsDead(bool bNewIsDead)
 	}
 
 	bIsDead = bNewIsDead;
+}
+
+void ANSPlayerState::SetCurrentCharacterData(UNSCharacterData* InCharacterData)
+{
+	SetCurrentCharacterDataId(InCharacterData ? InCharacterData->GetPrimaryAssetId() : FPrimaryAssetId());
+}
+
+void ANSPlayerState::SetCurrentCharacterDataId(FPrimaryAssetId InCharacterDataId)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	CurrentCharacterDataId = InCharacterDataId;
+	
+	ForceNetUpdate();
+}
+
+UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
+{
+	if (CurrentCharacterDataId.IsValid())
+	{
+		if (UNSCharacterData* CurrentCharacterData = LoadCharacterData(CurrentCharacterDataId))
+		{
+			return CurrentCharacterData;
+		}
+	}
+
+	return LoadCharacterData(DefaultCharacterDataId);
+}
+
+UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDataId) const
+{
+	if (!CharacterDataId.IsValid())
+	{
+		return nullptr;
+	}
+
+	const FSoftObjectPath CharacterDataPath = UAssetManager::Get().GetPrimaryAssetPath(CharacterDataId);
+	if (!CharacterDataPath.IsValid())
+	{
+		return nullptr;
+	}
+
+	return Cast<UNSCharacterData>(CharacterDataPath.TryLoad());
 }

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "Abilities/GameplayAbilityTypes.h"
+#include "GameplayEffectTypes.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -44,6 +46,14 @@ public:
 
 	
 public:
+	// 캐릭터 데이터를 변경하는 경우에 호출할 API로 기능할 함수 (UI에서 사용한다면 이 함수를 호출)
+	UFUNCTION(BlueprintCallable, Category = "Character|Data")
+	void ChangeCharacterData(UNSCharacterData* InCharacterData);
+	
+	// 캐릭터 데이터를 변경하도록 요청하는 Server RPC
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Character|Data")
+	void Server_ChangeCharacterData(UNSCharacterData* InCharacterData);
+
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; }
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	UNSSpectatorViewComponent* GetSpectatorViewComponent() const { return SpectatorViewComp; }
@@ -58,8 +68,8 @@ protected:
 	void BindAttributeDelegates();
 	
 	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
-	// 캐릭터 데이터 테스트용 함수
-	void LoadDebugCharacterDataAssets(const UNSCharacterData* InCharacterData);
+	void ApplyCurrentCharacterData();
+	void LoadCharacterDataAssets(const UNSCharacterData* InCharacterData);
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();
@@ -68,9 +78,12 @@ protected:
 	void GiveCharacterDataAbilities();
 	void SpawnDefaultWeapon();
 	
+	// 캐릭터 데이터를 런타임 중에 제거 : 캐릭터 데이터를 적용하는 상황에서 초기에 호출함
+	void ClearCharacterDataRuntimeState();
+	
 protected:
 	UFUNCTION()
-	void OnRep_CharacterData();
+	void OnRep_CurrentCharacterData();
 	
 	UFUNCTION()
 	void OnRep_CurrentWeapon();
@@ -124,14 +137,21 @@ protected:
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
 	
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Debug")
-	TSoftObjectPtr<UNSCharacterData> DebugCharacterData;
+	// 현재 캐릭터 데이터
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentCharacterData, BlueprintReadOnly, Category = "Character|Data")
+	TObjectPtr<const UNSCharacterData> CurrentCharacterData;
 	
-	UPROPERTY(Transient, ReplicatedUsing = OnRep_CharacterData, BlueprintReadOnly, Category = "Character|Data")
-	TObjectPtr<const UNSCharacterData> CharacterData;
-	
+	// 현재 캐릭터 무기
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentWeapon, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<ANSWeaponBase> CurrentWeapon;
+	
+	// AbilitySpecHandle
+	UPROPERTY(Transient)
+	TArray<FGameplayAbilitySpecHandle> CharacterDataAbilityHandles;
+	
+	// EffectHandle
+	UPROPERTY(Transient)
+	TArray<FActiveGameplayEffectHandle> CharacterDataEffectHandles;
 
 protected:
 	// 카메라 방향 캐릭터 회전 설정들
