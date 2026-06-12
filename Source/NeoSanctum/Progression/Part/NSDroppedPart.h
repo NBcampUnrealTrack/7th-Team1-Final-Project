@@ -9,7 +9,6 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NSDroppedPart.generated.h"
 
-class USphereComponent;
 class USkeletalMeshComponent;
 
 /**
@@ -47,26 +46,7 @@ protected:
 	// DefinitionPtr -> PartMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
 	void SetupVisual();
 
-	UFUNCTION()
-	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-
-	UFUNCTION()
-	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-
-	// 로컬 컨트롤 폰이 줍기 범위에 들어옴 — 줍기 프롬프트 표시용
-	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
-	void OnPickupRangeEntered(APawn* Pawn);
-
-	// 로컬 컨트롤 폰이 줍기 범위를 벗어남 — 줍기 프롬프트 숨김용
-	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
-	void OnPickupRangeExited(APawn* Pawn);
-
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
-	TObjectPtr<USphereComponent> CollisionSphere;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
 	TObjectPtr<USkeletalMeshComponent> MeshComp;
 

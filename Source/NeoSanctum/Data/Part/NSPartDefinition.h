@@ -39,9 +39,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Visual", meta = (AssetBundles = "OutRunUI,InRunUI"))
 	TSoftObjectPtr<UTexture2D> Icon;
 
-	// 번들 태그 없음 —> 드랍 발생 시 몬스터 사망 애니메이션 동안 온디맨드 로드
+	// 파츠 외형 메시 — 드랍 액터 표시 + 캐릭터 장착 비주얼 겸용. 번들 태그 없음(온디맨드 로드)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Visual")
-	TSoftObjectPtr<USkeletalMesh> DropMesh;
+	TSoftObjectPtr<USkeletalMesh> PartMesh;
 
 	// 레전더리 등급 기믹 GA 확장 대비
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|GAS", meta = (AssetBundles = "InRunData"))

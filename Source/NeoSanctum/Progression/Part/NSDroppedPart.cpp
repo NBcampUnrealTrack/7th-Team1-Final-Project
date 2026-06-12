@@ -2,7 +2,6 @@
 
 #include "NSDroppedPart.h"
 
-#include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/SkeletalMesh.h"
@@ -17,13 +16,11 @@ ANSDroppedPart::ANSDroppedPart()
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	
-	CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
-	SetRootComponent(CollisionSphere);
-	CollisionSphere->InitSphereRadius(150.f);
-	CollisionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
-	
+	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	MeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComp"));
-	MeshComp->SetupAttachment(CollisionSphere);
+	MeshComp->SetupAttachment(SceneRoot);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
@@ -36,9 +33,6 @@ void ANSDroppedPart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 void ANSDroppedPart::BeginPlay()
 {
 	Super::BeginPlay();
-
-	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &ANSDroppedPart::OnSphereBeginOverlap);
-	CollisionSphere->OnComponentEndOverlap.AddDynamic(this, &ANSDroppedPart::OnSphereEndOverlap);
 
 	SetupVisual();
 }
@@ -134,26 +128,4 @@ void ANSDroppedPart::SetupVisual()
 	const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
 	const float BottomOffsetZ = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
 	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -BottomOffsetZ));
-}
-
-void ANSDroppedPart::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	APawn* Pawn = Cast<APawn>(OtherActor);
-	if (!Pawn || !Pawn->IsLocallyControlled())
-	{
-		return;
-	}
-	OnPickupRangeEntered(Pawn);
-}
-
-void ANSDroppedPart::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	APawn* Pawn = Cast<APawn>(OtherActor);
-	if (!Pawn || !Pawn->IsLocallyControlled())
-	{
-		return;
-	}
-	OnPickupRangeExited(Pawn);
 }

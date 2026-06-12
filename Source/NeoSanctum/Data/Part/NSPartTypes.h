@@ -45,20 +45,20 @@ struct FNSPartData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	TSoftObjectPtr<UNSPartDefinition> DefinitionPtr;
 
 	// 슬롯 식별용
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	ENSPartSlot Slot = ENSPartSlot::Body;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	ENSPartRarity CurrentRarity = ENSPartRarity::Common;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	float CurrentValue = 0.f;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadWrite)
 	int32 RollCount = 0;
 
 	bool IsValid() const { return !DefinitionPtr.IsNull(); }
