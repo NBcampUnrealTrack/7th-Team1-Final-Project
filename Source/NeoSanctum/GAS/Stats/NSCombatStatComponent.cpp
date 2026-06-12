@@ -345,8 +345,8 @@ void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& Mo
 		break;
 		
 	case ENSCombatStatModifierOperation::Multiply:
-		// Multiply는 스택마다 증가분만 누적. (예: 1.2배 2스택 = 1.4배)
-		ModifierSum.MultiplyValue *= 1.0f + (ModifierRow.Value - 1.0f) * static_cast<float>(Stacks);
+		// Multiply는 스택마다 같은 배율을 반복 적용
+		ModifierSum.MultiplyValue *= FMath::Pow(ModifierRow.Value, static_cast<float>(Stacks));
 		break;
 		
 	default:

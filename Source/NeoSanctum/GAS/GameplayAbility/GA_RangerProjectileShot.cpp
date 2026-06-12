@@ -524,7 +524,8 @@ bool UGA_RangerProjectileShot::TryGetFinalCooldownDuration(float& OutCooldownDur
 		return false;
 	}
 	
-	OutCooldownDuration = FMath::Max(FinalCooldownDuration, 0.0f);
+	constexpr float MinCooldownDuration = 0.1f;
+	OutCooldownDuration = FMath::Max(FinalCooldownDuration, MinCooldownDuration);
 	
 	return true;
 }
