@@ -17,7 +17,13 @@ class NEOSANCTUM_API ANSProjectileVisual : public AActor
 
 public:
 	ANSProjectileVisual();
+	
+	void ActivateVisual(
+		const FVector& Location,
+		const FVector& Direction);
 
+	void DeactivateVisual();
+	
 	// 시각 탄환의 위치와 진행 방향을 갱신
 	void SetVisualTransform(
 		const FVector& Location,

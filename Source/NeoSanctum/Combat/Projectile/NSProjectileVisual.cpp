@@ -22,6 +22,17 @@ ANSProjectileVisual::ANSProjectileVisual()
 	ProjectileMesh->SetCanEverAffectNavigation(false);
 }
 
+void ANSProjectileVisual::ActivateVisual(const FVector& Location, const FVector& Direction)
+{
+	SetVisualTransform(Location, Direction);
+	SetActorHiddenInGame(false);
+}
+
+void ANSProjectileVisual::DeactivateVisual()
+{
+	SetActorHiddenInGame(true);
+}
+
 void ANSProjectileVisual::SetVisualTransform(const FVector& Location, const FVector& Direction)
 {
 	const FRotator Rotation = Direction.Rotation();
