@@ -134,6 +134,13 @@ private:
 	// 데미지 감지 가해자 지정
 	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
 	
+	// 원격 클라이언트 서버 Ability 종료 판단
+	bool IsWaitingForRemoteClientTargetData() const;
+	
+private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
+	
+	bool bFireCycleElapsed = false;
+	bool bTargetDataProcessed = false;
 };

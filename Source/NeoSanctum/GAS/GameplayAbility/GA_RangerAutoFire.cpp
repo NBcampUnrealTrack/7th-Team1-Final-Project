@@ -36,6 +36,9 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
+	bFireCycleElapsed = false;
+	bTargetDataProcessed = false;
+	
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 	
 	if (!ASC)
@@ -158,6 +161,13 @@ void UGA_RangerAutoFire::EndAbility(
 
 void UGA_RangerAutoFire::FinishFireCycle()
 {
+	bFireCycleElapsed = true;
+	
+	if (IsWaitingForRemoteClientTargetData() && !bTargetDataProcessed)
+	{
+		return;
+	}
+	
 	EndAbility(
 		GetCurrentAbilitySpecHandle(),
 		GetCurrentActorInfo(),
@@ -316,6 +326,24 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 	}
 
 	OnRangerTargetDataReady(LocalTargetDataHandle);
+	
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		bTargetDataProcessed = true;
+		
+		if (bFireCycleElapsed)
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				false
+			);
+
+			return;
+		}
+	}
 
 	ASC->ConsumeClientReplicatedTargetData(
 		GetCurrentAbilitySpecHandle(),
@@ -964,4 +992,11 @@ void UGA_RangerAutoFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpe
     {
         InSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
     }
+}
+
+bool UGA_RangerAutoFire::IsWaitingForRemoteClientTargetData() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	
+	return ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
 }
