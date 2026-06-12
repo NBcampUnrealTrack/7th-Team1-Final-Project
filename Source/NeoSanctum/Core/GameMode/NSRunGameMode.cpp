@@ -5,7 +5,6 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
-#include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 #include "NeoSanctum/Core/Stage/NSStageManager.h"
 #include "NeoSanctum/Core/Stage/NSMonsterPoolManager.h"
@@ -15,6 +14,8 @@
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
+#include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
+#include "NeoSanctum/Combat/Projectile/NSProjectileReplicationProxy.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -25,6 +26,8 @@ ANSRunGameMode::ANSRunGameMode()
 	PlayerControllerClass = ANSPlayerController::StaticClass();
 	PlayerStateClass = ANSPlayerState::StaticClass();
 	DefaultPawnClass = nullptr;
+
+	ProjectileReplicationProxyClass = ANSProjectileReplicationProxy::StaticClass();
 }
 
 void ANSRunGameMode::BeginPlay()
@@ -42,8 +45,11 @@ void ANSRunGameMode::BeginPlay()
 		
 		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
 	}
-	
-	
+
+	for (TActorIterator<APlayerController> It(GetWorld()); It; ++It)
+	{
+		EnsureProjectileProxy(*It);
+	}
 }
 
 void ANSRunGameMode::NotifyStageCleared_Implementation()
@@ -167,8 +173,8 @@ void ANSRunGameMode::ReturnMonsterToPool_Implementation(ACharacter* Monster)
 }
 
 ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
-	UClass* CharacterClass, 
-	UNSEnemyData* EnemyData, 
+	UClass* CharacterClass,
+	UNSEnemyData* EnemyData,
 	const FVector& Location,
 	const FRotator& Rotation)
 {
@@ -191,6 +197,103 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	}
 
 	return Enemy;
+}
+
+void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	EnsureProjectileProxy(NewPlayer);
+}
+
+void ANSRunGameMode::Logout(AController* Exiting)
+{
+	DestroyProjectileProxy(Cast<APlayerController>(Exiting));
+
+	Super::Logout(Exiting);
+}
+
+void ANSRunGameMode::HandleSeamlessTravelPlayer(AController*& Controller)
+{
+	Super::HandleSeamlessTravelPlayer(Controller);
+
+	EnsureProjectileProxy(Cast<APlayerController>(Controller));
+}
+
+void ANSRunGameMode::EnsureProjectileProxy(APlayerController* PlayerController)
+{
+	if (!HasAuthority() ||
+		!IsValid(PlayerController) ||
+		!ProjectileReplicationProxyClass)
+	{
+		return;
+	}
+
+	if (ANSProjectileReplicationProxy* ExistingProxy = ProjectileProxies.FindRef(PlayerController))
+	{
+		if (IsValid(ExistingProxy))
+		{
+			return;
+		}
+	}
+
+	UNSProjectileManagerComponent* ProjectileManager = GetProjectileManager();
+
+	if (!ProjectileManager)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Owner = PlayerController;
+	SpawnParameters.Instigator = PlayerController->GetPawn();
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ANSProjectileReplicationProxy* Proxy = GetWorld()->SpawnActor<ANSProjectileReplicationProxy>(
+		ProjectileReplicationProxyClass,
+		FTransform::Identity,
+		SpawnParameters);
+
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	ProjectileProxies.Add(PlayerController, Proxy);
+	ProjectileManager->RegisterReplicationProxy(Proxy);
+}
+
+void ANSRunGameMode::DestroyProjectileProxy(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	ANSProjectileReplicationProxy* Proxy = ProjectileProxies.FindRef(PlayerController);
+
+	if (IsValid(Proxy))
+	{
+		if (UNSProjectileManagerComponent* ProjectileManager = GetProjectileManager())
+		{
+			ProjectileManager->UnregisterReplicationProxy(Proxy);
+		}
+
+		Proxy->Destroy();
+	}
+
+	ProjectileProxies.Remove(PlayerController);
+}
+
+UNSProjectileManagerComponent* ANSRunGameMode::GetProjectileManager() const
+{
+	const ANSRunGameState* RunGameState =
+		GetGameState<ANSRunGameState>();
+
+	return RunGameState
+		       ? RunGameState->FindComponentByClass<
+			       UNSProjectileManagerComponent>()
+		       : nullptr;
 }
 
 void ANSRunGameMode::RespawnAllPlayers()
@@ -254,7 +357,7 @@ AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, cons
 				SpawnLocation,
 				SpawnRotation,
 				ECC_Pawn,
-				CharacterCapsule, 
+				CharacterCapsule,
 				QueryParams))
 			{
 				for (const FOverlapResult& Overlap : Overlaps)

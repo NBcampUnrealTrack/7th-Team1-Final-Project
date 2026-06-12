@@ -12,7 +12,16 @@ void UAN_GameplayEvent::Notify(
 {
 	Super::Notify(MeshComp, Animation, EventReference);
 
+	if (!IsValid(MeshComp))
+	{
+		return;
+	}
+	
+	UWorld* World = MeshComp->GetWorld();
+	if (!World || !World->IsGameWorld()) return;
+	
 	AActor* Owner = MeshComp->GetOwner();
+	if (!IsValid(Owner) || !Owner->HasAuthority()) return;
 	
 	FGameplayEventData EventData;
 	EventData.Instigator = Owner;
@@ -20,6 +29,9 @@ void UAN_GameplayEvent::Notify(
 	
 	for (const FGameplayTag& Tag : EventTags)
 	{
-		UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Tag, EventData);
+		if (Tag.IsValid())
+		{
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(Owner, Tag, EventData);
+		}
 	}
 }

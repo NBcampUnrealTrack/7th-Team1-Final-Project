@@ -45,6 +45,8 @@ public:
 	void StartDissolve();
 
 	bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
+	
+	bool TryGetMuzzleTransform(FTransform& OutTransform) const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Visual")
@@ -55,6 +57,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|IK")
 	FName LeftHandIKSocketName = TEXT("S_LeftHandIK");
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Projectile")
+	FName MuzzleSocketName = TEXT("S_Muzzle");
 
 private:
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
