@@ -461,7 +461,6 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 		Projectile->InitializeProjectile(
 			ASC,
 			SplashDamageEffectClass,
-			SplashDamageEffectLevel,
 			SplashDamage,
 			ExplosionRadius
 		);

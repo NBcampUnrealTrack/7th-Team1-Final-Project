@@ -63,9 +63,6 @@ protected:
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
-	float SplashDamageEffectLevel = 1.0f;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	float DefaultSplashDamage = 50.0f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Splash")

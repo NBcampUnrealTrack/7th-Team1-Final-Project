@@ -28,7 +28,6 @@ public:
 	void InitializeProjectile(
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
-		float InSplashDamageEffectLevel,
 		float InSplashDamage,
 		float InExplosionRadius
 	);
@@ -96,8 +95,6 @@ private:
 	
 	UPROPERTY()
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
-	
-	float SplashDamageEffectLevel = 1.0f;
 	
 	float SplashDamage = 0.0f;
 };
