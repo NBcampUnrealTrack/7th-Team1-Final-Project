@@ -16,6 +16,8 @@
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
+#include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
+#include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -57,6 +59,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
+	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -117,6 +120,9 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	InitializeAbilitySystem();
 	
 	if (HasAuthority())
+	BindPartVisual();
+
+	if (HasAuthority())
 	{
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
@@ -128,6 +134,7 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 	Super::OnRep_PlayerState();
 	
 	InitializeAbilitySystem();
+	BindPartVisual();
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -263,6 +270,29 @@ void ANSPlayerCharacterBase::InitializeAbilitySystem()
 		}
 	}
 }
+
+void ANSPlayerCharacterBase::BindPartVisual()
+{
+	if (!PartVisualComp)
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+
+	UNSPartEquipComponent* EquipComp = PS->GetPartEquipComponent();
+	if (!EquipComp)
+	{
+		return;
+	}
+
+	PartVisualComp->BindToEquipComponent(EquipComp, GetMesh());
+}
+
 void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 {
 	if (!bUseCameraFacingRotation || !Controller)

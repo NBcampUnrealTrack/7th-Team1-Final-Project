@@ -24,6 +24,7 @@ class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 class UNSSpectatorViewComponent;
+class UNSPartVisualComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -66,6 +67,9 @@ public:
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
+
+	// Possess후 PartEquipComponent에 VisualComp 연결
+	void BindPartVisual();
 	
 	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
 	void ApplyCurrentCharacterData();
@@ -121,6 +125,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spectator")
 	TObjectPtr<UNSSpectatorViewComponent> SpectatorViewComp;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parts")
+	TObjectPtr<UNSPartVisualComponent> PartVisualComp;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
