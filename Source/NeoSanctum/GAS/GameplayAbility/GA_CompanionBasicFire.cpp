@@ -14,16 +14,30 @@ UGA_CompanionBasicFire::UGA_CompanionBasicFire()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 	
-	AbilityTags.AddTag(NSGameplayTags::Ability_Companion_Fire);
+	FGameplayTagContainer CompanionAbilityTags = GetAssetTags();
+	CompanionAbilityTags.AddTag(NSGameplayTags::Ability_Companion_Active);
+	SetAssetTags(CompanionAbilityTags);
+	
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Companion_Disable);
 	
 	DamageSetTag = NSGameplayTags::Data_Companion_Damage;
 	CoolDownTag = NSGameplayTags::Data_Companion_CoolDown;
 }
 
+bool UGA_CompanionBasicFire::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
+	
+	if (!GetCombatTarget()) return false;
+	
+	return true;
+}
+
 void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-	const FGameplayEventData* TriggerEventData)
+                                             const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+                                             const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
