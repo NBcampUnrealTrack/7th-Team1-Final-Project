@@ -16,10 +16,11 @@ class NEOSANCTUM_API UNSBTTask_DroneMoveTo : public UBTTask_BlackboardBase
 public:
 	UNSBTTask_DroneMoveTo();
 	
-protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
-	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 	virtual void InitializeFromAsset(UBehaviorTree& Asset) override;
+	
+protected:
+	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector MoveTargetKey;

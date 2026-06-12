@@ -205,7 +205,7 @@ void UGA_CompanionBasicFire::FireProjectile(const FVector& Muzzle, const FVector
 	const UNSCompanionAttributeSet* Set = GetCompanionSet();
 	if (!Set) return;
 	
-	FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass);
+	FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
 	if (!DamageSpec.IsValid()) return;
 	
 	DamageSpec.Data->SetSetByCallerMagnitude(DamageSetTag, Set->GetAttackDamage());

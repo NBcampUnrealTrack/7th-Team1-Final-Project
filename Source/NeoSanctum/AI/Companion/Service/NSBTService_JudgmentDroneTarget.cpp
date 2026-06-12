@@ -69,20 +69,22 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanionAI* CompanionPawn,
 	UBlackboardComponent* BB) const
 {
-	AActor* Owner = CompanionPawn->GetOwnerPlayer();
-	if (!Owner) return ECompanionState::Follow;
+	AActor* CompanionOwner = CompanionPawn->GetOwnerPlayer();
+	if (!CompanionOwner) return ECompanionState::Follow;
 	
 	const FVector FollowPos = 
-		Owner->GetActorLocation() + Owner->GetActorRotation().RotateVector(FollowOffset);
+		CompanionOwner->GetActorLocation() + CompanionOwner->GetActorRotation().RotateVector(FollowOffset);
 	BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, FollowPos);
 	
 	if (AActor* Enemy = FindNearestActor(CompanionPawn, EnemyClass, CombatDetectionRadius, EnemyObjectTypes, true))
 	{
 		BB->SetValueAsObject(EnemyActorKey.SelectedKeyName, Enemy);
+		CompanionPawn->SetCurrentEnemy(Enemy);
 		return ECompanionState::Combat;
 	}
 	
 	BB->ClearValue(EnemyActorKey.SelectedKeyName);
+	CompanionPawn->SetCurrentEnemy(nullptr);
 	
 	if (AActor* Currency = FindNearestActor(CompanionPawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
 	{
