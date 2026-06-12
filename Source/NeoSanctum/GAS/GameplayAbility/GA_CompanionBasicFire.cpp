@@ -29,14 +29,12 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	
 	AActor* TargetActor = GetCombatTarget();
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility() TargetName"));
 	if (!TargetActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()1"));
 	ANSBaseCompanionAI* AvatarActor = Cast<ANSBaseCompanionAI>(ActorInfo->AvatarActor.Get());
 	if (!AvatarActor)
 	{
@@ -46,14 +44,12 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	
 	FVector MuzzleSocket;
 	FVector OutDir;
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()2"));
 	
 	if (!CanFireAt(TargetActor, MuzzleSocket, OutDir))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()3"));
 	
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -61,7 +57,6 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()4"));
 	FireProjectile(MuzzleSocket, OutDir, TargetActor);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	
