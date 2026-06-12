@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "SoundSettingWidget.generated.h"
 
+class UCommonTextBlock;
 class UButton;
 class UTextBlock;
 class USlider;
@@ -33,11 +34,8 @@ protected:
 	UFUNCTION()
 	void OnUIVolumeChanged(float Value);
 	
-	UFUNCTION()
-	void OnApplyClicked();
-	
-	UFUNCTION()
-	void OnBackClicked();
+protected:
+	void UpdateVolumeText(UTextBlock* Text, float Value);
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -54,21 +52,14 @@ protected:
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> MasterVolumeText;
+	TObjectPtr<UCommonTextBlock> MasterVolumeText;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> BGMVolumeText;
+	TObjectPtr<UCommonTextBlock> BGMVolumeText;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> SFXVolumeText;
+	TObjectPtr<UCommonTextBlock> SFXVolumeText;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> UIVolumeText;
-	
-protected:
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> ApplyButton;
-	
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UButton> BackButton;
+	TObjectPtr<UCommonTextBlock> UIVolumeText;
 };

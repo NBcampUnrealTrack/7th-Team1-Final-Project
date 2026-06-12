@@ -3,8 +3,9 @@
 
 #include "SoundSettingWidget.h"
 
-#include "Components/Button.h"
+#include "CommonTextBlock.h"
 #include "Components/Slider.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 
 void USoundSettingWidget::NativeConstruct()
 {
@@ -26,37 +27,48 @@ void USoundSettingWidget::NativeConstruct()
 	{
 		UIVolumeSlider->OnValueChanged.AddDynamic(this, &USoundSettingWidget::OnUIVolumeChanged);
 	}
-	
-	if (ApplyButton)
-	{
-		ApplyButton->OnClicked.AddDynamic(this, &USoundSettingWidget::OnApplyClicked);
-	}
-	if (BackButton)
-	{
-		BackButton->OnClicked.AddDynamic(this, &USoundSettingWidget::OnBackClicked);
-	}
 }
 
 void USoundSettingWidget::OnMasterVolumeChanged(float Value)
 {
+	UpdateVolumeText(MasterVolumeText, Value);
+	if (UNSSoundSubsystem* SoundManager = UNSSoundSubsystem::Get(this))
+	{
+		SoundManager->SetMasterVolume(Value);
+	}
 }
 
 void USoundSettingWidget::OnBGMVolumeChanged(float Value)
 {
+	UpdateVolumeText(BGMVolumeText, Value);
+	if (UNSSoundSubsystem* SoundManager = UNSSoundSubsystem::Get(this))
+	{
+		SoundManager->SetCategoryVolume(ENSSoundCategory::BGM, Value);
+	}
 }
 
 void USoundSettingWidget::OnSFXVolumeChanged(float Value)
 {
+	UpdateVolumeText(SFXVolumeText, Value);
+	if (UNSSoundSubsystem* SoundManager = UNSSoundSubsystem::Get(this))
+	{
+		SoundManager->SetCategoryVolume(ENSSoundCategory::SFX, Value);
+	}
 }
 
 void USoundSettingWidget::OnUIVolumeChanged(float Value)
 {
+	UpdateVolumeText(UIVolumeText, Value);
+	if (UNSSoundSubsystem* SoundManager = UNSSoundSubsystem::Get(this))
+	{
+		SoundManager->SetCategoryVolume(ENSSoundCategory::UI, Value);
+	}
 }
 
-void USoundSettingWidget::OnApplyClicked()
+void USoundSettingWidget::UpdateVolumeText(UTextBlock* Text, float Value)
 {
-}
-
-void USoundSettingWidget::OnBackClicked()
-{
+	if (Text)
+	{
+		Text->SetText(FText::FromString(FString::Printf(TEXT("%d%%"), FMath::RoundToInt(Value * 100.f))));
+	}
 }
