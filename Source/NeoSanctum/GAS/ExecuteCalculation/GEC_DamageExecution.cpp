@@ -4,6 +4,7 @@
 #include "GEC_DamageExecution.h"
 
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 namespace
 {
@@ -59,7 +60,15 @@ void UGEC_DamageExecution::Execute_Implementation(
 	SourceBaseDamage = FMath::Max(SourceBaseDamage, 0.0f);
 	TargetDefense = FMath::Max(TargetDefense, 0.0f);
 	
-	const float FinalDamage = FMath::Max(SourceBaseDamage - TargetDefense, 0.0f);
+	const FGameplayTag DamageBaseTag = NSGameplayTags::Effect_Damage_Base.GetTag();
+	
+	const float AppliedBaseDamage = Spec.GetSetByCallerMagnitude(
+		DamageBaseTag,
+		false,
+		SourceBaseDamage
+	);
+	
+	const float FinalDamage = FMath::Max(AppliedBaseDamage - TargetDefense, 0.0f);
 	
 	if (FinalDamage <= 0.0f)
 	{

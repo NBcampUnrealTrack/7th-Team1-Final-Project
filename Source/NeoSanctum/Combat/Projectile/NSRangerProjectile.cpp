@@ -6,10 +6,12 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 
 ANSRangerProjectile::ANSRangerProjectile()
@@ -47,13 +49,19 @@ ANSRangerProjectile::ANSRangerProjectile()
 void ANSRangerProjectile::InitializeProjectile(
 	UAbilitySystemComponent* InSourceASC,
 	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
-	float InSplashDamageEffectLevel,
+	float InSplashDamage,
 	float InExplosionRadius)
 {
 	SourceASC = InSourceASC;
 	SplashDamageEffectClass = InSplashDamageEffectClass;
-	SplashDamageEffectLevel = InSplashDamageEffectLevel;
+	SplashDamage = FMath::Max(InSplashDamage, 0.0f);
 	ExplosionRadius = FMath::Max(InExplosionRadius, 0.0f);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"Projectile 초기화 완료. Damage={Damage}, Radius={Radius}",
+		("Damage", SplashDamage),
+		("Radius", ExplosionRadius)
+	);
 }
 
 void ANSRangerProjectile::BeginPlay()
@@ -369,7 +377,7 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 	const FGameplayEffectSpecHandle DamageSpecHandle =
 		SourceASC->MakeOutgoingSpec(
 			SplashDamageEffectClass,
-			SplashDamageEffectLevel,
+			1.0f,
 			EffectContext
 		);
 	
@@ -379,6 +387,17 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 
 		return;
 	}
+	
+	// 대상별 거리 감쇠가 없으므로 하나의 Spec에 같은 폭발 데미지 값을 설정
+	const FGameplayTag DamageTag = NSGameplayTags::Effect_Damage_Base.GetTag();
+	
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(DamageTag, SplashDamage);
+	
+	NS_ACTOR_LOG(this, LogNSGAS, Log,
+		"스플래시 데미지 SetByCaller 설정. Damage={Damage}, Tag={Tag}",
+		("Damage", SplashDamage),
+		("Tag", DamageTag.ToString())
+	);
 	
 	int32 AppliedCount = 0;
 	
