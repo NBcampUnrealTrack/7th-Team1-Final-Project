@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
@@ -20,6 +21,13 @@ class NEOSANCTUM_API ANSPlayerController : public APlayerController
 	
 public:
 	ANSPlayerController();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bNewReady);
+	
+	// 거점 레디 UI가 호출해야할 함수
+	UFUNCTION(BlueprintCallable, Category="Run")
+	void RequestReady(FName SelectedCharacterId); 
 	
 	// 게임 시작 요청
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -52,6 +60,14 @@ public:
 
 	//상호작용 시도(키 입력시 호출)
 	void TryInteract();
+	
+	// 세이브 데이터 업로드/ 저장용 RPC 함수
+	UFUNCTION(Server, Reliable)
+	void Server_UploadProgress(const FNSProgressPayload& Payload);
+	UFUNCTION(Client, Reliable)
+	void Client_SaveProgress(const FNSProgressPayload& Payload);
+	UFUNCTION(BlueprintCallable, Category="Progress")
+	void UploadLocalProgress(FName SelectedCharacterId);
 	
 private:
 	// 실제로 사망 관전자 상태로 진입
