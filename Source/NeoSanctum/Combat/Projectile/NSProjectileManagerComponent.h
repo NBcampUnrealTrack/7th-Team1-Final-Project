@@ -6,8 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "NSProjectileManagerComponent.generated.h"
 
+class ANSProjectileReplicationProxy;
 struct FNSServerProjectileData;
 struct FNSProjectileFireRequest;
+struct FNSProjectileSpawnEvent;
 
 /**
  * 서버의 모든 Enemy 투사체를 구조체 배열로 관리하는 Component
@@ -21,12 +23,16 @@ public:
 	UNSProjectileManagerComponent();
 
 	/**
-	 * 새로운 투사체를 서버 배열에 등록한다.
+	 * 서버 투사체를 생성하고 발급된 ProjectileId를 반환한다.
 	 * 
 	 * @param Request 발사 위치, 방향, 속도, 수명, 충돌 정보
 	 * @return 서버 배열 등록 성공 여부
 	 */
-	bool FireProjectile(const FNSProjectileFireRequest& Request);
+	int32 FireProjectile(const FNSProjectileFireRequest& Request);
+
+	void RegisterReplicationProxy(ANSProjectileReplicationProxy* Proxy);
+
+	void UnregisterReplicationProxy(ANSProjectileReplicationProxy* Proxy);
 
 protected:
 	/**
@@ -58,6 +64,18 @@ private:
 		const FNSServerProjectileData& Projectile,
 		const FHitResult& HitResult) const;
 
+	int32 AllocateProjectileId();
+
+	FNSProjectileSpawnEvent MakeSpawnEvent(const FNSServerProjectileData& Projectile) const;
+
+	void BroadcastSpawnEvent(const FNSProjectileSpawnEvent& SpawnEvent);
+
+	void BroadcastEndEvent(int32 ProjectileId);
+
+	int32 NextProjectileId = 1;
+
+	TArray<TWeakObjectPtr<ANSProjectileReplicationProxy>> ReplicationProxies;
+
 private:
 	// 서버가 동시에 보관할 수 있는 투사체의 최대 개수
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Server", meta = (ClampMin = "1"))
@@ -65,7 +83,7 @@ private:
 
 	// 서버 이동 결과와 충돌 위치를 Debug로 표시할지 결정한다.
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Debug")
-	bool bDrawDebugTrajectory = true;
+	bool bDrawDebugTrajectory = false;
 
 	// 서버에서 현재 사용하고 있는 모든 투사체 데이터
 	// 각 투사체 Actor를 Spawn하지 않고 이 배열에만 갱신한다.

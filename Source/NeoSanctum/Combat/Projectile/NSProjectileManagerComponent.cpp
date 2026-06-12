@@ -7,12 +7,13 @@
 #include "AbilitySystemInterface.h"
 #include "GameplayEffect.h"
 #include "GenericTeamAgentInterface.h"
+#include "NSProjectileReplicationProxy.h"
 #include "NSProjectileTypes.h"
+#include "GameFramework/GameStateBase.h"
 
 
 UNSProjectileManagerComponent::UNSProjectileManagerComponent()
 {
-	// Tick 기능 사용
 	PrimaryComponentTick.bCanEverTick = true;
 
 	// 게임 시작할 때부터 투사체 위치 지속적으로 갱신
@@ -42,54 +43,51 @@ void UNSProjectileManagerComponent::BeginPlay()
 	ActiveProjectiles.Reserve(MaxActiveProjectiles);
 }
 
-bool UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireRequest& Request)
+int32 UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireRequest& Request)
 {
-	AActor* OwnerActor = GetOwner();
+	UWorld* World = GetWorld();
 
-	// 서버에서만 수행하도록 함.
-	if (!OwnerActor || !OwnerActor->HasAuthority())
+	if (!World ||
+		World->GetNetMode() == NM_Client ||
+		ActiveProjectiles.Num() >= MaxActiveProjectiles)
 	{
-		return false;
-	}
-
-	// 활성 투사체가 설정된 최대 개수에 도달하면 실행 X
-	if (ActiveProjectiles.Num() >= MaxActiveProjectiles)
-	{
-		return false;
+		return INDEX_NONE;
 	}
 
 	// 이동 방향 정규화
 	const FVector NormalizedDirection = Request.Direction.GetSafeNormal();
 
-	// 이동할 수 없는 잘못된 요청 거부
-	if (NormalizedDirection.IsNearlyZero() ||
-		Request.Speed <= 0.0f ||
-		Request.MaxLifeTime <= 0.0f ||
-		Request.Radius <= 0.0f ||
-		!Request.DamageEffectClass)
-	{
-		return false;
-	}
-
-	// 배열에 기본값으로 초기화된 원소를 하나 추가하고 그 원소의 참조를 바로 받음
-	FNSServerProjectileData& Projectile = ActiveProjectiles.AddDefaulted_GetRef();
-
-	// 발사 요청을 서버 런타임 데이터로 복사함
+	FNSServerProjectileData Projectile;
+	Projectile.ProjectileId = AllocateProjectileId();
+	Projectile.SpawnLocation = Request.StartLocation;
 	Projectile.CurrentLocation = Request.StartLocation;
 	Projectile.Direction = NormalizedDirection;
 	Projectile.Speed = Request.Speed;
-	Projectile.LifeTime = 0.0f;
 	Projectile.MaxLifeTime = Request.MaxLifeTime;
 	Projectile.Radius = Request.Radius;
 	Projectile.TraceChannel = Request.TraceChannel;
 	Projectile.SourceActor = Request.SourceActor;
 	Projectile.DamageEffectClass = Request.DamageEffectClass;
 
-	return true;
+	const AGameStateBase* GameState = World->GetGameState();
+	Projectile.ServerFireTime = GameState
+		                            ? GameState->GetServerWorldTimeSeconds()
+		                            : World->GetTimeSeconds();
+
+	const int32 ProjectileId = Projectile.ProjectileId;
+
+	ActiveProjectiles.Add(Projectile);
+
+	// 서버 데이터 생성 직후 각 클라이언트에 시각 생성 이벤트를 전달합니다.
+	BroadcastSpawnEvent(MakeSpawnEvent(Projectile));
+
+	return ProjectileId;
 }
 
-void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
-                                                  FActorComponentTickFunction* ThisTickFunction)
+void UNSProjectileManagerComponent::TickComponent(
+	float DeltaTime,
+	ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -121,6 +119,7 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		// 최대 수명에 도달한 투사체를 배열에서 제거
 		if (RemainingLifeTime <= 0.0f)
 		{
+			BroadcastEndEvent(Projectile.ProjectileId);
 			ActiveProjectiles.RemoveAtSwap(
 				Index,
 				1,
@@ -207,6 +206,7 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 			}
 
 			// 충돌한 투사체 제거
+			BroadcastEndEvent(Projectile.ProjectileId);
 			ActiveProjectiles.RemoveAtSwap(
 				Index,
 				1,
@@ -216,7 +216,6 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 
 		// 충돌하지 않은 경우 처리
 		Projectile.CurrentLocation = NextLocation;
-
 		if (bDrawDebugTrajectory)
 		{
 			DrawDebugLine(
@@ -241,6 +240,7 @@ void UNSProjectileManagerComponent::TickComponent(float DeltaTime, ELevelTick Ti
 		// 충돌하지 않고 이동 중 최대 수명 도달하여 투사체 제거
 		if (Projectile.LifeTime >= Projectile.MaxLifeTime)
 		{
+			BroadcastEndEvent(Projectile.ProjectileId);
 			ActiveProjectiles.RemoveAtSwap(
 				Index,
 				1,
@@ -315,4 +315,86 @@ bool UNSProjectileManagerComponent::TryApplyProjectileDamage(
 		TargetASC);
 
 	return true;
+}
+
+int32 UNSProjectileManagerComponent::AllocateProjectileId()
+{
+	const int32 AllocatedId = NextProjectileId++;
+
+	// int32 오버플로 이후 음수 ID가 발급되는 것 방지
+	if (NextProjectileId <= 0)
+	{
+		NextProjectileId = 1;
+	}
+
+	return AllocatedId;
+}
+
+FNSProjectileSpawnEvent UNSProjectileManagerComponent::MakeSpawnEvent(const FNSServerProjectileData& Projectile) const
+{
+	FNSProjectileSpawnEvent SpawnEvent;
+
+	SpawnEvent.ProjectileId = Projectile.ProjectileId;
+	SpawnEvent.StartLocation = Projectile.SpawnLocation;
+	SpawnEvent.Direction = Projectile.Direction;
+	SpawnEvent.Speed = Projectile.Speed;
+	SpawnEvent.MaxLifeTime = Projectile.MaxLifeTime;
+	SpawnEvent.ServerFireTime = Projectile.ServerFireTime;
+
+	return SpawnEvent;
+}
+
+void UNSProjectileManagerComponent::BroadcastSpawnEvent(const FNSProjectileSpawnEvent& SpawnEvent)
+{
+	ReplicationProxies.RemoveAll(
+		[](const TWeakObjectPtr<ANSProjectileReplicationProxy>& Proxy)
+		{
+			return !Proxy.IsValid();
+		});
+
+	for (const TWeakObjectPtr<ANSProjectileReplicationProxy>& Proxy : ReplicationProxies)
+	{
+		Proxy->SendSpawnEvent(SpawnEvent);
+	}
+}
+
+void UNSProjectileManagerComponent::BroadcastEndEvent(int32 ProjectileId)
+{
+	FNSProjectileEndEvent EndEvent;
+	EndEvent.ProjectileId = ProjectileId;
+
+	ReplicationProxies.RemoveAll(
+		[](const TWeakObjectPtr<ANSProjectileReplicationProxy>& Proxy)
+		{
+			return !Proxy.IsValid();
+		});
+
+	for (const TWeakObjectPtr<ANSProjectileReplicationProxy>& Proxy : ReplicationProxies)
+	{
+		Proxy->SendEndEvent(EndEvent);
+	}
+}
+
+void UNSProjectileManagerComponent::RegisterReplicationProxy(ANSProjectileReplicationProxy* Proxy)
+{
+	if (!IsValid(Proxy) || ReplicationProxies.Contains(Proxy))
+	{
+		return;
+	}
+
+	ReplicationProxies.Add(Proxy);
+
+	/*
+	 * 입장한 클라이언트가 현재 날아가는 투사체도 볼 수 있도록
+	 * 활성 투사체의 생성 정보를 새 Proxy에 전달한다.
+	 */
+	for (const FNSServerProjectileData& Projectile : ActiveProjectiles)
+	{
+		Proxy->SendSpawnEvent(MakeSpawnEvent(Projectile));
+	}
+}
+
+void UNSProjectileManagerComponent::UnregisterReplicationProxy(ANSProjectileReplicationProxy* Proxy)
+{
+	ReplicationProxies.Remove(Proxy);
 }
