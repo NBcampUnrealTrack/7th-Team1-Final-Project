@@ -4,6 +4,7 @@
 #include "NSPlayerState.h"
 
 #include "NSPlayerProgressComponent.h"
+#include "Engine/AssetManager.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -74,7 +75,7 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, bIsDead);
 	DOREPLIFETIME(ANSPlayerState, RunChoice);
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
-	DOREPLIFETIME(ANSPlayerState, CurrentCharacterData);
+	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -83,8 +84,7 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 
 	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
 	{
-		// SeamlessTravel 이후에도 유지되어야 할 캐릭터 데이터
-		NewPlayerState->CurrentCharacterData = CurrentCharacterData;
+		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
 	}
 }
 
@@ -120,22 +120,46 @@ void ANSPlayerState::SetIsDead(bool bNewIsDead)
 
 void ANSPlayerState::SetCurrentCharacterData(UNSCharacterData* InCharacterData)
 {
+	SetCurrentCharacterDataId(InCharacterData ? InCharacterData->GetPrimaryAssetId() : FPrimaryAssetId());
+}
+
+void ANSPlayerState::SetCurrentCharacterDataId(FPrimaryAssetId InCharacterDataId)
+{
 	if (!HasAuthority())
 	{
 		return;
 	}
 
-	CurrentCharacterData = InCharacterData;
+	CurrentCharacterDataId = InCharacterDataId;
 	
 	ForceNetUpdate();
 }
 
 UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
 {
-	if (!CurrentCharacterData.IsNull())
+	if (CurrentCharacterDataId.IsValid())
 	{
-		return CurrentCharacterData.LoadSynchronous();
+		if (UNSCharacterData* CurrentCharacterData = LoadCharacterData(CurrentCharacterDataId))
+		{
+			return CurrentCharacterData;
+		}
 	}
 
-	return DefaultCharacterData.LoadSynchronous();
+	return LoadCharacterData(DefaultCharacterDataId);
+}
+
+UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDataId) const
+{
+	if (!CharacterDataId.IsValid())
+	{
+		return nullptr;
+	}
+
+	const FSoftObjectPath CharacterDataPath = UAssetManager::Get().GetPrimaryAssetPath(CharacterDataId);
+	if (!CharacterDataPath.IsValid())
+	{
+		return nullptr;
+	}
+
+	return Cast<UNSCharacterData>(CharacterDataPath.TryLoad());
 }
