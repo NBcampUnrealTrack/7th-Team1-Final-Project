@@ -8,6 +8,7 @@
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "DrawDebugHelpers.h"
 
 
 ANSDroneProjectile::ANSDroneProjectile()
@@ -44,6 +45,7 @@ void ANSDroneProjectile::InitProjectile(const FVector& Direction, APawn* InInsti
 	const FGameplayEffectSpecHandle& InDamageSpec, float ProjectileSpeed)
 {
 	if (!InDamageSpec.IsValid() || ProjectileSpeed <= 0.f) return;
+	
 	DamageSpecHandle = InDamageSpec;
 	InitialSpeed = ProjectileSpeed;
 	
@@ -77,8 +79,19 @@ void ANSDroneProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 	if (OtherActor == nullptr) return;
 	if (OtherActor == GetInstigator()) return;
 
+	DrawDebugSphere(
+		GetWorld(),
+		Hit.ImpactPoint,
+		5.f,
+		16,
+		FColor::Green,
+		false,
+		2.f);
+	
 	UAbilitySystemComponent* EnemyASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
-	if (EnemyASC && DamageSpecHandle.IsValid())
+	if (!EnemyASC) return;
+	
+	if (DamageSpecHandle.IsValid())
 	{
 		EnemyASC->ApplyGameplayEffectSpecToSelf(*DamageSpecHandle.Data.Get());
 	}

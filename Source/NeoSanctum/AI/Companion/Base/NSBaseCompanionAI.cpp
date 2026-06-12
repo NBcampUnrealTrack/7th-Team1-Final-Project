@@ -277,13 +277,29 @@ void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 {
 	if (!FloatingPawnMovementComponent) return;
 	
-	FVector Vel = FloatingPawnMovementComponent->Velocity;
-	Vel.Z = 0.f;
-	if (Vel.SizeSquared() < FMath::Square(MinSpeedToRotate)) return;
+	if (!HasAuthority()) return;
 	
-	const FRotator Current = GetActorRotation();
-	const FRotator Desired(0.f, Vel.Rotation().Yaw, 0.f);
-	const FRotator NewRot = FMath::RInterpTo(Current, Desired,DeltaSeconds,YawInterpSpeed);
+	const bool bHasEnemy = (GetCurrentEnemy() != nullptr);
+	
+	FRotator Desired;
+	
+	if (bHasEnemy)
+	{
+		FVector ToTarget = CurrentEnemy->GetActorLocation() - GetActorLocation();
+		ToTarget.Z = 0.f;
+		if (ToTarget.SizeSquared() < FMath::Square(CombatYawInterpSpeed)) return;
+		Desired = FRotator(0.f,ToTarget.Rotation().Yaw,0.f);
+	}
+	else
+	{
+		FVector Vel = FloatingPawnMovementComponent->Velocity;
+		Vel.Z = 0.f;
+		if (Vel.SizeSquared() < FMath::Square(MinSpeedToRotate)) return;
+		Desired = FRotator(0.f,Vel.Rotation().Yaw,0.f);
+	}
+	
+	const float InterpSpeed = GetCurrentEnemy() ? CombatYawInterpSpeed : YawInterpSpeed;
+	const FRotator NewRot = FMath::RInterpTo(GetActorRotation(), Desired,DeltaSeconds,InterpSpeed);
 	SetActorRotation(NewRot);
 }
 

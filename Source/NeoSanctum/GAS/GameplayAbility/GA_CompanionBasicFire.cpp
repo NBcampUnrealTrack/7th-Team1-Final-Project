@@ -14,29 +14,41 @@ UGA_CompanionBasicFire::UGA_CompanionBasicFire()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 	
-	AbilityTags.AddTag(NSGameplayTags::Ability_Companion_Fire);
+	FGameplayTagContainer CompanionAbilityTags = GetAssetTags();
+	CompanionAbilityTags.AddTag(NSGameplayTags::Ability_Companion_Active);
+	SetAssetTags(CompanionAbilityTags);
+	
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Companion_Disable);
 	
 	DamageSetTag = NSGameplayTags::Data_Companion_Damage;
 	CoolDownTag = NSGameplayTags::Data_Companion_CoolDown;
 }
 
+bool UGA_CompanionBasicFire::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
+	
+	if (!GetCombatTarget()) return false;
+	
+	return true;
+}
+
 void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
-	const FGameplayEventData* TriggerEventData)
+                                             const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
+                                             const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 	
 	AActor* TargetActor = GetCombatTarget();
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility() TargetName"));
 	if (!TargetActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()1"));
 	ANSBaseCompanionAI* AvatarActor = Cast<ANSBaseCompanionAI>(ActorInfo->AvatarActor.Get());
 	if (!AvatarActor)
 	{
@@ -46,14 +58,12 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 	
 	FVector MuzzleSocket;
 	FVector OutDir;
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()2"));
 	
 	if (!CanFireAt(TargetActor, MuzzleSocket, OutDir))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()3"));
 	
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -61,7 +71,6 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 	
-	UE_LOG(LogTemp, Warning, TEXT("UGA_CompanionBasicFire::ActivateAbility()4"));
 	FireProjectile(MuzzleSocket, OutDir, TargetActor);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 	
@@ -196,7 +205,7 @@ void UGA_CompanionBasicFire::FireProjectile(const FVector& Muzzle, const FVector
 	const UNSCompanionAttributeSet* Set = GetCompanionSet();
 	if (!Set) return;
 	
-	FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass);
+	FGameplayEffectSpecHandle DamageSpec = MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
 	if (!DamageSpec.IsValid()) return;
 	
 	DamageSpec.Data->SetSetByCallerMagnitude(DamageSetTag, Set->GetAttackDamage());

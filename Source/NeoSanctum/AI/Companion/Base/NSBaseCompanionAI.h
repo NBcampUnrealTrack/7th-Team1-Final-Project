@@ -16,6 +16,7 @@ class UFloatingPawnMovement;
 class ANSDroneAIController;
 
 
+
 UCLASS()
 class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
 {
@@ -76,6 +77,9 @@ protected:
 	// @민재 : 드론 회전관련 변수
 	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
 	float YawInterpSpeed = 5.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
+	float CombatYawInterpSpeed = 10.f;
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
 	float MinSpeedToRotate = 50.f;
@@ -176,4 +180,12 @@ protected:
 	void GiveDefaultAbilities();
 	
 	bool bDefaultAbilitiesGranted = false;
+	
+	// @ 민재 : 어빌리티에서 Pawn이 지정하고있는 Enemy접근
+public:
+	void SetCurrentEnemy(AActor* InEnemy) {CurrentEnemy = InEnemy;}
+	AActor* GetCurrentEnemy() const {return CurrentEnemy.Get();}
+protected:
+	UPROPERTY(VisibleAnywhere, Category="GAS|WeakPtr")
+	TWeakObjectPtr<AActor> CurrentEnemy;
 };

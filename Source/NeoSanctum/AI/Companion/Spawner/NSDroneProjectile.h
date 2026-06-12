@@ -18,13 +18,14 @@ class NEOSANCTUM_API ANSDroneProjectile : public AActor
 public:
 	ANSDroneProjectile();
 
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	
 	void InitProjectile(
 		const FVector& Direction, APawn* InInstigator,
 		const FGameplayEffectSpecHandle& InDamageSpec, float ProjectileSpeed);
 	
 protected:
 	virtual void BeginPlay() override;
-	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION()
 	void OnHit(
