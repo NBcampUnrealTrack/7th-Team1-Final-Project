@@ -50,7 +50,16 @@ USTRUCT()
 struct FNSServerProjectileData
 {
 	GENERATED_BODY()
-	
+
+	// 투사체 식별 번호
+	int32 ProjectileId = INDEX_NONE;
+
+	// 최초 투사체 위치
+	FVector SpawnLocation = FVector::ZeroVector;
+
+	// 서버 기준 투사체 발사 시각
+	float ServerFireTime = 0.0f;
+
 	// 현재 투사체 위치
 	FVector CurrentLocation = FVector::ZeroVector;
 
@@ -74,7 +83,54 @@ struct FNSServerProjectileData
 
 	// 투사체를 발사한 Enemy
 	TWeakObjectPtr<AActor> SourceActor = nullptr;
-	
+
 	// 충돌 대상에게 적용할 GameplayEffect 클래스
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+};
+
+
+/**
+ * 서버가 클라이언트에 전달하는 시각 투사체 생성 정보
+ */
+USTRUCT()
+struct FNSProjectileSpawnEvent
+{
+	GENERATED_BODY()
+
+	// 투사체 식별 번호
+	UPROPERTY()
+	int32 ProjectileId = INDEX_NONE;
+
+	// 투사체 시작 위치
+	UPROPERTY()
+	FVector_NetQuantize10 StartLocation = FVector::ZeroVector;
+
+	// 투사체 이동 방향
+	UPROPERTY()
+	FVector_NetQuantizeNormal Direction = FVector::ForwardVector;
+
+	// 투사체 초당 이동 거리
+	UPROPERTY()
+	float Speed = 0.0f;
+
+	// 투사체 최대 수명 시간
+	UPROPERTY()
+	float MaxLifeTime = 0.0f;
+
+	// 서버 기준 투사체 발사 시각
+	UPROPERTY()
+	float ServerFireTime = 0.0f;
+};
+
+/**
+ * 투사체 충돌/수명 종료를 알리는 정보
+ */
+USTRUCT()
+struct FNSProjectileEndEvent
+{
+	GENERATED_BODY()
+
+	// 투사체 식별 번호
+	UPROPERTY()
+	int32 ProjectileId = INDEX_NONE;
 };
