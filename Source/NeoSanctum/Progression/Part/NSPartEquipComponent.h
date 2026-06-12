@@ -33,8 +33,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
-	// 서버 전용 직접 호출
-	void EquipPart(const FNSPartData& NewPart);
+	// 서버 전용 직접 호출. DropLocationOverride 지정 시 기존 파츠를 그 위치에 드랍(줍기 교체용), 미지정 시 캐릭터 발밑
+	void EquipPart(const FNSPartData& NewPart, TOptional<FVector> DropLocationOverride = TOptional<FVector>());
 	void ClearAll();
 
 	bool HasEquippedPart(ENSPartSlot Slot) const;
@@ -55,7 +55,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Part", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float UpgradeSuccessChance = 0.5f;
 
-	// 교체 시 바닥에 스폰할 드랍 액터 클래스. 미지정 시 ANSDroppedPart 기본 사용
+	// 교체 시 바닥에 스폰할 드랍 액터 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	TSubclassOf<ANSDroppedPart> DroppedPartClass;
 
@@ -63,7 +63,7 @@ private:
 	FNSPartData* FindPart(ENSPartSlot Slot);
 	const FNSPartData* FindPart(ENSPartSlot Slot) const;
 
-	void DropPartInSlot(ENSPartSlot Slot, const FVector& Location);
+	void DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> LocationOverride);
 	void SpawnDroppedPart(const FNSPartData& Part, const FVector& Location);
 	void RemovePartEffects(ENSPartSlot Slot);
 

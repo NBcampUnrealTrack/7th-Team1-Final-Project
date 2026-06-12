@@ -49,14 +49,14 @@ void UNSPartEquipComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart)
+void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart, TOptional<FVector> DropLocationOverride)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
 
-	UNSPartDefinition* Def = ResolveDefinition(NewPart);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, NewPart);
 	if (!Def)
 	{
 		return;
@@ -64,11 +64,7 @@ void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart)
 
 	const ENSPartSlot Slot = Def->PartSlot;
 
-	APlayerState* PS = Cast<APlayerState>(GetOwner());
-	APawn* Pawn = PS ? PS->GetPawn() : nullptr;
-	const FVector DropLocation = Pawn ? Pawn->GetActorLocation() : FVector::ZeroVector;
-
-	DropPartInSlot(Slot, DropLocation);
+	DropPartInSlot(Slot, DropLocationOverride);
 
 	FNSPartData Stored = NewPart;
 	Stored.Slot = Slot;
@@ -125,7 +121,7 @@ const FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot) const
 // 드롭 / 효과 제거
 // ================================================================
 
-void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, const FVector& Location)
+void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> LocationOverride)
 {
 	FNSPartData* Existing = FindPart(Slot);
 	if (!Existing)
@@ -139,6 +135,13 @@ void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, const FVector& Loca
 	RemovePartEffects(Slot);
 	EquippedParts.RemoveAll([Slot](const FNSPartData& P) { return P.Slot==Slot; });
 
+	// 파츠 교체할때 위치 변경
+	const APlayerState* PS = Cast<APlayerState>(GetOwner());
+	const APawn* Pawn = PS ? PS->GetPawn() : nullptr;
+	const FVector Location = LocationOverride.IsSet() ? LocationOverride.GetValue()
+		: (Pawn ? Pawn->GetActorLocation() : FVector::ZeroVector);
+	
+	// 실제로 그 위치에 장착한 하츠 드롭
 	SpawnDroppedPart(Dropped, Location);
 }
 
