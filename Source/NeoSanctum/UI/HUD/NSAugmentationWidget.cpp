@@ -14,6 +14,10 @@
 #include "Components/WrapBox.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Components/ScaleBox.h"
+#include "Components/Border.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 
@@ -230,7 +234,7 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 	{
 		return;
 	}
-
+	
 	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
 	{
 		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
@@ -238,27 +242,75 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 		{
 			continue;
 		}
+
 		UTexture2D* Texture = Def->Icon.Get();
 		if (!Texture)
 		{
 			continue;
 		}
 
+		const int32 StackCount = Inv->GetStackCount(Inst.DefId);
 		// SizeBox로 감싸서 텍스처 원본 해상도와 무관하게 일정한 크기로 표시
 		USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		UOverlay* Overlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		UScaleBox* ScaleBox = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
 		UImage* IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		if (!SizeBox || !IconImage)
+
+		if (!SizeBox || !Overlay || !ScaleBox || !IconImage)
 		{
 			continue;
 		}
 		SizeBox->SetWidthOverride(OwnedIconSize.X);
 		SizeBox->SetHeightOverride(OwnedIconSize.Y);
+
+		ScaleBox->SetStretch(EStretch::ScaleToFit);
+		ScaleBox->SetStretchDirection(EStretchDirection::Both);
+
+
 		// SetBrushFromTexture 후 원하는 표시 크기로 재지정
-		IconImage->SetBrushFromTexture(Texture, false);
-		FSlateBrush Brush = IconImage->GetBrush();
-		Brush.ImageSize = OwnedIconSize;
-		IconImage->SetBrush(Brush);
-		SizeBox->AddChild(IconImage);
+		IconImage->SetBrushFromTexture(Texture, true);
+
+		ScaleBox->AddChild(IconImage);
+
+		UOverlaySlot* IconSlot = Overlay->AddChildToOverlay(ScaleBox);
+		if (IconSlot)
+		{
+			IconSlot->SetHorizontalAlignment(HAlign_Fill);
+			IconSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+
+		if (StackCount > 1)
+		{
+			UBorder* CountBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
+			UTextBlock* CountText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+
+			if (CountBadge && CountText)
+			{
+				CountBadge->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.85f));
+				CountBadge->SetPadding(FMargin(4.f, 1.f));
+
+				FSlateFontInfo FontInfo = CountText->GetFont();
+				FontInfo.Size = 14;
+				CountText->SetFont(FontInfo);
+
+				CountText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+				CountText->SetText(FText::Format(
+					NSLOCTEXT("AugmentationWidget", "OwnedAugmentCount", "{0}"),
+					FText::AsNumber(StackCount)
+				));
+
+				CountBadge->AddChild(CountText);
+
+				UOverlaySlot* BadgeSlot = Overlay->AddChildToOverlay(CountBadge);
+				if (BadgeSlot)
+				{
+					BadgeSlot->SetHorizontalAlignment(HAlign_Right);
+					BadgeSlot->SetVerticalAlignment(VAlign_Bottom);
+				}
+			}
+		}
+
+		SizeBox->AddChild(Overlay);
 		OwnedAugmentWrapBox->AddChildToWrapBox(SizeBox);
 	}
 }
