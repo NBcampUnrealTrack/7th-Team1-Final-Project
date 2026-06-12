@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
-#include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NSRunGameMode.generated.h"
 
 class UNSStageManager;
