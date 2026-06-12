@@ -20,6 +20,7 @@ class NEOSANCTUM_API USoundSettingWidget : public UUserWidget
 	
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	
 protected:
 	UFUNCTION()
@@ -36,6 +37,8 @@ protected:
 	
 protected:
 	void UpdateVolumeText(UTextBlock* Text, float Value);
+	
+	void LoadVolumeSettings();
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
