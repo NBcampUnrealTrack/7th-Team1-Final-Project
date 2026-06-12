@@ -525,3 +525,25 @@ void UNSPartEquipComponent::ServerRequestUpgradeRarity_Implementation(ENSPartSlo
 {
 	UpgradeRarity(Slot);
 }
+
+// ===== 테스트용 임시 코드 — 상호작용 시스템 연동 후 삭제 =====
+void UNSPartEquipComponent::ServerRequestPickup_Implementation(ANSDroppedPart* TargetPart)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[PartTest] ServerRequestPickup 서버 도착: Target=%s"), *GetNameSafe(TargetPart));
+
+	if (!TargetPart)
+	{
+		return;
+	}
+
+	const APlayerState* PS = Cast<APlayerState>(GetOwner());
+	APawn* Pawn = PS ? PS->GetPawn() : nullptr;
+	if (!Pawn)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartTest] ServerRequestPickup 실패: PS=%s Pawn 없음"), *GetNameSafe(GetOwner()));
+		return;
+	}
+
+	TargetPart->TryPickup(Pawn);
+}
+// ===== 테스트용 임시 코드 끝 =====
