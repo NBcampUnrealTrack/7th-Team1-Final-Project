@@ -6,6 +6,7 @@ namespace NSGameplayTags
 {
 	// 어빌리티 태그
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Companion_Fire);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Companion_Active);
 	
 	// 스테이트 태그
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Companion_Disable);

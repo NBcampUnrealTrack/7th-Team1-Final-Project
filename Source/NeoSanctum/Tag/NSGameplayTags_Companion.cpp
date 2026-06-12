@@ -4,6 +4,7 @@ namespace NSGameplayTags
 {
 	// 어빌리티 태그
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Companion_Fire, "Ability.Companion.Fire");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Companion_Active, "Ability.Companion.Active");
 	
 	// 스테이트 태그
 	UE_DEFINE_GAMEPLAY_TAG(State_Companion_Disable, "State.Companion.Disable");
