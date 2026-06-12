@@ -279,11 +279,13 @@ void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 	
 	if (!HasAuthority()) return;
 	
+	const bool bHasEnemy = (GetCurrentEnemy() != nullptr);
+	
 	FRotator Desired;
 	
-	if (AActor* Enemy = GetCurrentEnemy())
+	if (bHasEnemy)
 	{
-		FVector ToTarget = Enemy->GetActorLocation() - GetActorLocation();
+		FVector ToTarget = CurrentEnemy->GetActorLocation() - GetActorLocation();
 		ToTarget.Z = 0.f;
 		if (ToTarget.SizeSquared() < FMath::Square(CombatYawInterpSpeed)) return;
 		Desired = FRotator(0.f,ToTarget.Rotation().Yaw,0.f);
