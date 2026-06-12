@@ -8,11 +8,10 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
-#include "WorldPartition/WorldPartitionRuntimeCell.h"
 
 UNSPartEquipComponent::UNSPartEquipComponent()
 {
@@ -23,7 +22,7 @@ UNSPartEquipComponent::UNSPartEquipComponent()
 void UNSPartEquipComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(UNSPartEquipComponent, EquippedParts, COND_OwnerOnly);
+	DOREPLIFETIME(UNSPartEquipComponent, EquippedParts);
 }
 
 void UNSPartEquipComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -129,7 +128,6 @@ void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> 
 		return;
 	}
 
-	// 제거 전 복사 — 드랍 액터에 넘길 데이터
 	const FNSPartData Dropped = *Existing;
 
 	RemovePartEffects(Slot);
@@ -236,7 +234,6 @@ void UNSPartEquipComponent::RemoveAbilitiesForSlot(ENSPartSlot Slot)
 // GE 적용 및 로드
 // ================================================================
 
-
 void UNSPartEquipComponent::ApplyPartEffect(ENSPartSlot Slot)
 {
 	FNSPartData* Part = FindPart(Slot);
@@ -245,7 +242,7 @@ void UNSPartEquipComponent::ApplyPartEffect(ENSPartSlot Slot)
 		return;
 	}
 	
-	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
 	if (!Def || Def->EffectClass.IsNull())
 	{
 		return;
@@ -276,10 +273,10 @@ void UNSPartEquipComponent::Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGame
 	{
 		return;
 	}
-	
+
 	// 리롤같이 스텟변경이 있는경우 대비용으로 기존 GE먼저 제거
 	RemoveGEForSlot(Slot);
-	
+
 	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
 	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(GEClass, 1.f, Context);
 	if (!Spec.IsValid())
@@ -300,7 +297,7 @@ void UNSPartEquipComponent::OnEffectLoaded(ENSPartSlot Slot)
 		return;
 	}
 	
-	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
 	if (!Def)
 	{
 		return;
@@ -326,7 +323,7 @@ void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
 		return;
 	}
 	
-	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
 	if (!Def || Def->GrantedAbilities.Num() == 0)
 	{
 		return;
@@ -372,7 +369,7 @@ void UNSPartEquipComponent::OnAbilitiesLoaded(ENSPartSlot Slot)
 		return;
 	}
 	
-	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
 	if (!Def)
 	{
 		return;
@@ -416,7 +413,7 @@ void UNSPartEquipComponent::RerollStat(ENSPartSlot Slot)
 		return;
 	}
 
-	UNSPartDefinition* Def = ResolveDefinition(*Part);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
 	if (!Def || !Def->bCanReroll)
 	{
 		return;
@@ -453,7 +450,7 @@ void UNSPartEquipComponent::UpgradeRarity(ENSPartSlot Slot)
 	
 	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
 	
-	if (UNSPartDefinition* Def = ResolveDefinition(*Part))
+	if (UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part))
 	{
 		Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
 	}
@@ -496,25 +493,6 @@ UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 		return nullptr;
 	}
 	return ASI->GetAbilitySystemComponent();
-}
-
-UNSPartDefinition* UNSPartEquipComponent::ResolveDefinition(const FNSPartData& Part) const
-{
-	if (Part.DefinitionPtr.IsNull())
-	{
-		return nullptr;
-	}
-	
-	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
-	if (!DataSS)
-	{
-		return Part.DefinitionPtr.Get();
-	}
-	
-	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(Part.DefinitionPtr.ToSoftObjectPath());
-	UNSPartDefinition* Cached = DataSS->GetData<UNSPartDefinition>(Id);
-	
-	return Cached ? Cached : Part.DefinitionPtr.Get();
 }
 
 // ================================================================
