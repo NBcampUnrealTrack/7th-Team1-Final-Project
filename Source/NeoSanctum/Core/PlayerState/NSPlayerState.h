@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NSPlayerState.generated.h"
 
+class UNSCombatStatComponent;
 class UNSAbilitySystemComponent;
 class UNSPlayerAttributeSet;
 class UNSPlayerProgressComponent;
@@ -25,6 +26,8 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	UNSPlayerAttributeSet* GetPlayerAttributeSet() const;
+	
+	UNSCombatStatComponent* GetCombatStatComponent() const;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -55,6 +58,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	TObjectPtr<UNSCombatStatComponent> CombatStatComponent;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSPlayerProgressComponent> ProgressComponent;
