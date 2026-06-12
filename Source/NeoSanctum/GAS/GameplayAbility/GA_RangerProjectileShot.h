@@ -38,15 +38,21 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
-	
+
+	virtual void ApplyCooldown(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) const override;
+
 	bool PlayFireMontage();
-	
+
 	UFUNCTION()
 	void OnFireMontageCancelled();
-	
+
 	UFUNCTION()
 	void OnFireMontageCompleted();
-	
+
 	void FinishProjectileShotAbility(bool bWasCancelled);
 
 protected:
@@ -58,19 +64,19 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	float DefaultSplashDamage = 50.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Splash")
 	float DefaultExplosionRadius = 300.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	TObjectPtr<UAnimMontage> FireMontage;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	float FireMontagePlayRate = 1.0f;
 
@@ -98,7 +104,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugPointSize = 12.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	float DebugAimTraceStartOffset = 200.0f;
 
@@ -117,6 +123,7 @@ private:
 	bool TrySpawnProjectileFromTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
 
+	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 
 private:
@@ -127,10 +134,10 @@ private:
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
 		FVector& OutAimPoint
 	) const;
-	
+
 	// GameplayCue
 	void ExecuteProjectileMuzzleCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
-	
+
 private:
 	bool bIsWaitingForFireMontage = false;
 
