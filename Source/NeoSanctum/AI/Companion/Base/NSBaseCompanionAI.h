@@ -79,6 +79,9 @@ protected:
 	float YawInterpSpeed = 5.f;
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
+	float CombatYawInterpSpeed = 10.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
 	float MinSpeedToRotate = 50.f;
 	
 	// @민재 : 드론 고도 유지위한 변수
