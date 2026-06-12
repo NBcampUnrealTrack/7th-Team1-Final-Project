@@ -47,6 +47,18 @@ protected:
 	void SetupVisual();
 
 protected:
+	// ===== 테스트용 임시 코드 — 몬스터 드랍 연동 후 삭제 =====
+	// 레벨 배치 액터의 디테일 패널에서 지정 시 BeginPlay에서 자동 Initialize
+	UPROPERTY(EditAnywhere, Category = "Part|Debug")
+	TSoftObjectPtr<UNSPartDefinition> DebugDefinition;
+
+	UPROPERTY(EditAnywhere, Category = "Part|Debug")
+	ENSPartRarity DebugRarity = ENSPartRarity::Common;
+
+	UPROPERTY(EditAnywhere, Category = "Part|Debug")
+	float DebugValue = 15.f;
+	// ===== 테스트용 임시 코드 끝 =====
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
 	TObjectPtr<USkeletalMeshComponent> MeshComp;
 

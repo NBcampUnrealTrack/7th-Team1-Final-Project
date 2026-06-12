@@ -34,6 +34,18 @@ void ANSDroppedPart::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// ===== 테스트용 임시 코드 — 몬스터 드랍 연동 후 삭제 =====
+	if (HasAuthority() && !StoredInstance.IsValid() && !DebugDefinition.IsNull())
+	{
+		FNSPartData DebugPart;
+		DebugPart.DefinitionPtr = DebugDefinition;
+		DebugPart.CurrentRarity = DebugRarity;
+		DebugPart.CurrentValue = DebugValue;
+		Initialize(DebugPart);
+		return;
+	}
+	// ===== 테스트용 임시 코드 끝 =====
+
 	SetupVisual();
 }
 
