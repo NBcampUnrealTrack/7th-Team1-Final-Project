@@ -11,7 +11,9 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 UGA_RangerAutoFire::UGA_RangerAutoFire()
 {
@@ -34,17 +36,28 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	bFireCycleElapsed = false;
+	bTargetDataProcessed = false;
+	
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	
+	if (!ASC)
 	{
-		// TODO: 탄약 관련기능이 생기면 0발 때는 재장전 GA에게 이벤트 전달
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 	
-	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-
-	if (!ASC)
+	float FinalFireInterval = 0.0f;
+	
+	if (!TryGetFinalFireInterval(FinalFireInterval))
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		// TODO: 탄약 관련기능이 생기면 0발 때는 재장전 GA에게 이벤트 전달
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
@@ -103,15 +116,13 @@ void UGA_RangerAutoFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
-	const float DelayTime = FMath::Max(FireInterval, 0.01f);
-
-	// FireInterval 동안 Ability를 Active 상태로 유지해 연사 속도를 제한
+	
+	// 최종 FireRate로 계산한 간격 동안 Ability를 Active 상태로 유지해 연사 속도를 제한
 	World->GetTimerManager().SetTimer(
 		FireDelayTimerHandle,
 		this,
 		&ThisClass::FinishFireCycle,
-		DelayTime,
+		FinalFireInterval,
 		false
 	);
 }
@@ -150,6 +161,13 @@ void UGA_RangerAutoFire::EndAbility(
 
 void UGA_RangerAutoFire::FinishFireCycle()
 {
+	bFireCycleElapsed = true;
+	
+	if (IsWaitingForRemoteClientTargetData() && !bTargetDataProcessed)
+	{
+		return;
+	}
+	
 	EndAbility(
 		GetCurrentAbilitySpecHandle(),
 		GetCurrentActorInfo(),
@@ -157,6 +175,33 @@ void UGA_RangerAutoFire::FinishFireCycle()
 		true,
 		false
 	);
+}
+
+bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
+{
+	float FinalFireRate = 0.0f;
+	
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_FireRate,
+		FinalFireRate))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire FireRate CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRate.GetTag().ToString())
+		);
+		
+		return false;
+	}
+	
+	constexpr float MinFireRate = 0.01f;
+	constexpr float MinFireInterval = 0.01f;
+	
+	FinalFireRate = FMath::Max(FinalFireRate, MinFireRate);
+	OutFireInterval = FMath::Max(1.0f / FinalFireRate, MinFireInterval);
+	
+	return true;
 }
 
 void UGA_RangerAutoFire::FireOnce()
@@ -281,6 +326,24 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 	}
 
 	OnRangerTargetDataReady(LocalTargetDataHandle);
+	
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		bTargetDataProcessed = true;
+		
+		if (bFireCycleElapsed)
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				false
+			);
+
+			return;
+		}
+	}
 
 	ASC->ConsumeClientReplicatedTargetData(
 		GetCurrentAbilitySpecHandle(),
@@ -378,18 +441,62 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 		return;
 	}
 	
-	FGameplayEffectSpecHandle DamageSpecHandle = MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
+	float FinalDamage = 0.0f;
 	
-	if (!DamageSpecHandle.IsValid())
+	if (!TryGetFinalDamage(FinalDamage))
 	{
 		return;
 	}
+	
+	FGameplayEffectSpecHandle DamageSpecHandle = 
+		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
+	
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+	
+	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
 	
 	// 데미지 감지 가해자 지정
 	AssignDamageInstigator(DamageSpecHandle);
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+}
+
+bool UGA_RangerAutoFire::TryGetFinalDamage(float& OutDamage)
+{
+	float FinalDamage = 0.0f;
+	
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_Damage,
+		FinalDamage))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+		);
+		
+		return false;
+	}
+	
+	OutDamage = FMath::Max(FinalDamage, 0.0f);
+	
+	return true;
+}
+
+void UGA_RangerAutoFire::ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const
+{
+	if (!InSpecHandle.IsValid() || !InSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+	
+	const float ClampedDamage = FMath::Max(InDamage, 0.0f);
+	InSpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_Damage_Base, ClampedDamage);
 }
 
 void UGA_RangerAutoFire::DrawDebugTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
@@ -885,4 +992,11 @@ void UGA_RangerAutoFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpe
     {
         InSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
     }
+}
+
+bool UGA_RangerAutoFire::IsWaitingForRemoteClientTargetData() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	
+	return ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
 }

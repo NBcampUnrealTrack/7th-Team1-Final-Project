@@ -48,9 +48,6 @@ protected:
 	float FireMontagePlayRate = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	float FireInterval = 0.15f;
-	
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	float TraceRange = 10000.0f;
 	
 	// 클라가 보낸 TraceStart가 서버 기준에서 너무 멀면 거부
@@ -101,6 +98,9 @@ private:
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
 	void ApplyDamageToActor(AActor* TargetActor);
+	bool TryGetFinalDamage(float& OutDamage);
+	bool TryGetFinalFireInterval(float& OutFireInterval);
+	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 	
 	void ExecuteMuzzleFireCue();
 	void ExecuteImpactCue(const FHitResult& HitResult);
@@ -134,6 +134,13 @@ private:
 	// 데미지 감지 가해자 지정
 	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
 	
+	// 원격 클라이언트 서버 Ability 종료 판단
+	bool IsWaitingForRemoteClientTargetData() const;
+	
+private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 	FTimerHandle FireDelayTimerHandle;
+	
+	bool bFireCycleElapsed = false;
+	bool bTargetDataProcessed = false;
 };
