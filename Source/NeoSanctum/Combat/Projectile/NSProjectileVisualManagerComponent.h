@@ -61,5 +61,30 @@ private:
 	// 특정 ID의 시각 투사체를 파괴하고 컨테이너에서 제거
 	void RemoveVisual(int32 ProjectileId);
 
+	
+private:
+	// 게임 시작 시 미리 생성해 둘 Visual Actor 수
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile|Visual Pool", meta = (ClampMin = "0"))
+	int32 InitialPoolSize = 32;
+
+	// 이 인스턴스에서 시각 처리를 수행할지 여부
+	bool bVisualSystemEnabled = false;
+
+	// 풀을 초기 크기만큼 미리 생성
+	void PrewarmPool();
+
+	// 새로운 풀 전용 Visual Actor를 생성
+	ANSProjectileVisual* CreatePooledVisual();
+
+	// 풀에서 Visual Actor 하나를 대여
+	ANSProjectileVisual* AcquireVisual();
+
+	// 사용이 끝난 Visual Actor를 풀에 반납
+	void ReleaseVisual(ANSProjectileVisual* VisualActor);
+
+	// 현재 사용되지 않고 풀에서 대기 중인 Visual Actor들
+	TArray<TWeakObjectPtr<ANSProjectileVisual>> AvailableVisuals;
+
+	// 현재 ProjectileId와 연결되어 사용 중인 Visual Actor들
 	TMap<int32, FNSClientProjectileVisualState> ActiveVisuals;
 };

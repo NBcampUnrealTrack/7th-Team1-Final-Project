@@ -30,19 +30,40 @@ void UNSProjectileVisualManagerComponent::BeginPlay()
 		if (!OwningController || !OwningController->IsLocalController())
 		{
 			SetComponentTickEnabled(false);
+			return;
 		}
 	}
+	
+	// 시각 투사체 관리 시작
+	bVisualSystemEnabled = true;
+	
+	// Actor를 지정한 개수만큼 미리 만들기
+	PrewarmPool();
 }
 
 void UNSProjectileVisualManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	TArray<int32> ProjectileIds;
-	ActiveVisuals.GetKeys(ProjectileIds);
-
-	for (const int32 ProjectileId : ProjectileIds)
+	// 현재 사용 중인 모든 Visual Actor를 파괴
+	for (TPair<int32, FNSClientProjectileVisualState>& Pair : ActiveVisuals)
 	{
-		RemoveVisual(ProjectileId);
+		if (Pair.Value.VisualActor.IsValid())
+		{
+			Pair.Value.VisualActor->Destroy();
+		}
 	}
+
+	ActiveVisuals.Reset();
+
+	// 풀에서 대기 중인 모든 Visual Actor도 파괴
+	for (const TWeakObjectPtr<ANSProjectileVisual>& VisualActor : AvailableVisuals)
+	{
+		if (VisualActor.IsValid())
+		{
+			VisualActor->Destroy();
+		}
+	}
+
+	AvailableVisuals.Reset();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -69,20 +90,14 @@ void UNSProjectileVisualManagerComponent::HandleSpawnEvent(const FNSProjectileSp
 
 	const FVector Location = CalculateLocation(SpawnEvent, ServerTime);
 
-	FActorSpawnParameters SpawnParameters;
-	SpawnParameters.Owner = GetOwner();
-	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	ANSProjectileVisual* VisualActor = GetWorld()->SpawnActor<ANSProjectileVisual>(
-		VisualClass,
-		Location,
-		SpawnEvent.Direction.Rotation(),
-		SpawnParameters);
+	ANSProjectileVisual* VisualActor = AcquireVisual();
 
 	if (!IsValid(VisualActor))
 	{
 		return;
 	}
+	
+	VisualActor->ActivateVisual(Location, SpawnEvent.Direction);
 
 	FNSClientProjectileVisualState VisualState;
 	VisualState.SpawnEvent = SpawnEvent;
@@ -191,8 +206,90 @@ void UNSProjectileVisualManagerComponent::RemoveVisual(int32 ProjectileId)
 
 	if (State->VisualActor.IsValid())
 	{
-		State->VisualActor->Destroy();
+		ReleaseVisual(State->VisualActor.Get());
 	}
 
 	ActiveVisuals.Remove(ProjectileId);
+}
+
+void UNSProjectileVisualManagerComponent::PrewarmPool()
+{
+	if (!VisualClass || InitialPoolSize <= 0)
+	{
+		return;
+	}
+
+	// 메모리 확보
+	AvailableVisuals.Reserve(InitialPoolSize);
+
+	for (int32 Index = 0; Index < InitialPoolSize; ++Index)
+	{
+		if (ANSProjectileVisual* VisualActor = CreatePooledVisual())
+		{
+			AvailableVisuals.Add(VisualActor);
+		}
+	}	
+}
+
+ANSProjectileVisual* UNSProjectileVisualManagerComponent::CreatePooledVisual()
+{
+	UWorld* World = GetWorld();
+
+	if (!World || !VisualClass)
+	{
+		return nullptr;
+	}
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Owner = GetOwner();
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ANSProjectileVisual* VisualActor = World->SpawnActor<ANSProjectileVisual>(
+			VisualClass,
+			FVector::ZeroVector,
+			FRotator::ZeroRotator,
+			SpawnParameters);
+
+	if (IsValid(VisualActor))
+	{
+		// 새로 생성된 Actor 숨김
+		VisualActor->DeactivateVisual();
+	}
+
+	return VisualActor;
+}
+
+ANSProjectileVisual* UNSProjectileVisualManagerComponent::AcquireVisual()
+{
+	/*
+	 * 풀 뒤쪽부터 꺼낸다.
+	 * 유효하지 않은 항목은 버리고 다음 항목을 확인한다.
+	 */
+	while (!AvailableVisuals.IsEmpty())
+	{
+		TWeakObjectPtr<ANSProjectileVisual> PooledVisual = AvailableVisuals.Pop(EAllowShrinking::No);
+
+		if (PooledVisual.IsValid())
+		{
+			return PooledVisual.Get();
+		}
+	}
+
+	/*
+	 * 동시에 필요한 개수가 초기 풀 크기보다 많으면
+	 * 새 Actor 하나를 만들어 풀을 동적으로 확장한다.
+	 */
+	return CreatePooledVisual();
+}
+
+void UNSProjectileVisualManagerComponent::ReleaseVisual(ANSProjectileVisual* VisualActor)
+{
+	if (!IsValid(VisualActor))
+	{
+		return;
+	}
+
+	// 화면에서 숨기고 다음 발사에서 재사용할 수 있게 보관
+	VisualActor->DeactivateVisual();
+	AvailableVisuals.Add(VisualActor);
 }
