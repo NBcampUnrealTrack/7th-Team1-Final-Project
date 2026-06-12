@@ -14,7 +14,6 @@ class UNSAbilitySystemComponent;
 class UNSPlayerAttributeSet;
 class UNSPlayerProgressComponent;
 class UNSAugmentInventoryComponent;
-class UNSPermanentSaveGame;
 class UNSCharacterData;
 class UNSPartEquipComponent;
 
@@ -40,8 +39,7 @@ public:
 	// 사망 상태를 변경하기 위한 Setter
 	void SetIsDead(bool bNewIsDead);
 	
-	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void Server_SetReady();
+	void SetReady(bool bNewReady);
 	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
@@ -99,7 +97,6 @@ protected:
 private:
 	// AssetManager를 통해 ID로 DataAsset을 로드
 	UNSCharacterData* LoadCharacterData(FPrimaryAssetId CharacterDataId) const;
-	void OnSaveDataLoaded(UNSPermanentSaveGame* Data);
 
 	UPROPERTY(Replicated)
 	bool bIsReady;
