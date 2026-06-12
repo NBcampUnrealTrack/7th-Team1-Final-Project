@@ -16,6 +16,7 @@ class UNSPlayerProgressComponent;
 class UNSAugmentInventoryComponent;
 class UNSPermanentSaveGame;
 class UNSCharacterData;
+class UNSPartEquipComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -43,6 +44,7 @@ public:
 	void Server_SetReady();
 	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
+	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
 
 	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
 
@@ -83,6 +85,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSPlayerProgressComponent> ProgressComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parts")
+	TObjectPtr<UNSPartEquipComponent> PartEquipComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Augment")
 	TObjectPtr<UNSAugmentInventoryComponent> AugmentInventory;
