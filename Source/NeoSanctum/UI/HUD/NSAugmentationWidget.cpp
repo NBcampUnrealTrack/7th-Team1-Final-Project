@@ -14,6 +14,9 @@
 #include "Components/WrapBox.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Components/ScaleBox.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 
@@ -230,7 +233,7 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 	{
 		return;
 	}
-
+	
 	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
 	{
 		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
@@ -246,19 +249,34 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 
 		// SizeBox로 감싸서 텍스처 원본 해상도와 무관하게 일정한 크기로 표시
 		USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		UOverlay* Overlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		UScaleBox* ScaleBox = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
 		UImage* IconImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		if (!SizeBox || !IconImage)
+
+		if (!SizeBox || !Overlay || !ScaleBox || !IconImage)
 		{
 			continue;
 		}
 		SizeBox->SetWidthOverride(OwnedIconSize.X);
 		SizeBox->SetHeightOverride(OwnedIconSize.Y);
+
+		ScaleBox->SetStretch(EStretch::ScaleToFit);
+		ScaleBox->SetStretchDirection(EStretchDirection::Both);
+
+
 		// SetBrushFromTexture 후 원하는 표시 크기로 재지정
-		IconImage->SetBrushFromTexture(Texture, false);
-		FSlateBrush Brush = IconImage->GetBrush();
-		Brush.ImageSize = OwnedIconSize;
-		IconImage->SetBrush(Brush);
-		SizeBox->AddChild(IconImage);
+		IconImage->SetBrushFromTexture(Texture, true);
+
+		ScaleBox->AddChild(IconImage);
+
+		UOverlaySlot* IconSlot = Overlay->AddChildToOverlay(ScaleBox);
+		if (IconSlot)
+		{
+			IconSlot->SetHorizontalAlignment(HAlign_Fill);
+			IconSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+
+		SizeBox->AddChild(Overlay);
 		OwnedAugmentWrapBox->AddChildToWrapBox(SizeBox);
 	}
 }
