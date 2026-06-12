@@ -1,0 +1,60 @@
+﻿// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "NSOptionWidget.generated.h"
+
+class USoundSettingWidget;
+class UCommonButtonBase;
+class UWidgetSwitcher;
+
+/**
+ * 옵션창 Widget
+ * WidgetSwitcher를 활용해서 특정 위젯만 활성화하게함
+ */
+UCLASS()
+class NEOSANCTUM_API UNSOptionWidget : public UUserWidget
+{
+	GENERATED_BODY()
+	
+protected:
+	virtual void NativeConstruct() override;
+	
+private:
+	UFUNCTION()
+	void OnClickedSoundCategoryButton();
+	
+	UFUNCTION()
+	void OnClickedGraphicCategoryButton();
+	
+private:
+	void ShowOptionCategoryWidget(UWidget* OptionWidget);
+	
+private:
+	// 활성화 위젯을 변경하는 Switcher
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidgetSwitcher> OptionSwitcher;
+	
+private:
+	// 사운드 카테고리를 선택하기 위한 버튼
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonButtonBase> SoundCategoryButton;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonButtonBase> GraphicCategoryButton;
+	
+	// TODO : 앞으로 다양한 Option Button들이 생기면 여기에 추가
+	
+private:
+	// 사용하는 사운드 세팅 위젯
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USoundSettingWidget> SoundSettingWidget;
+	
+	// 테스트용 임시 그래픽 세팅 위젯
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> GraphicSettingWidget;
+	
+	// TODO : 앞으로 Graphic, Game 등 다양한 세팅 위젯들이 추가될 때 이 곳에 추가
+};
