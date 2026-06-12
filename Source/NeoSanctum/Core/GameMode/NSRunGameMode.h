@@ -10,6 +10,10 @@
 
 class UNSStageManager;
 class UNSMonsterPoolManager;
+class ANSEnemyCharacterBase;
+class UNSEnemyData;
+class UNSProjectileManagerComponent;
+class ANSProjectileReplicationProxy;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -35,6 +39,11 @@ public:
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
 		const FRotator& Rotation) override;
+
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
+	virtual void HandleSeamlessTravelPlayer(AController*& Controller) override;
+
 	virtual void SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice) override;
 	
 	// 룸 생성 완료시 호출
@@ -78,4 +87,24 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UNSMonsterPoolManager> NSMonsterPoolManager;
+
+protected:
+	/**
+	 * 플레이어별로 생성할 Owner-only Proxy 클래스입니다.
+	 * 에디터에서 BP Proxy 클래스를 지정합니다.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
+	TSubclassOf<ANSProjectileReplicationProxy> ProjectileReplicationProxyClass;
+
+private:
+	// 프록시 등록 함수
+	void EnsureProjectileProxy(APlayerController* PlayerController);
+	
+	// 프록시 제거 함수
+	void DestroyProjectileProxy(APlayerController* PlayerController);
+
+	UNSProjectileManagerComponent* GetProjectileManager() const;
+
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSProjectileReplicationProxy>> ProjectileProxies;
 };
