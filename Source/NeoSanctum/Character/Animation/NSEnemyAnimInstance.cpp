@@ -36,8 +36,24 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 
 	if (MovementComponent && EnemyCharacter)
 	{
-		GroundSpeed = EnemyCharacter->GetVelocity().Size2D();
+		const FVector Velocity = EnemyCharacter->GetVelocity();
+		
+		// 수평 속도만 사용하여 Idle과 Walk/Run 구분
+		GroundSpeed = Velocity.Size2D();
 		bIsMoving = GroundSpeed > MovingSpeedThreshold;
+		
+		// 양수면 상승, 음수면 낙하 중
+		VerticalVelocity = Velocity.Z;
+		
+		// LaunchCharacter가 실행되면 MovementMode가 Falling으로 변경됨
+		bIsInAir = MovementComponent->IsFalling();
+	}
+	else
+	{
+		GroundSpeed = 0.0f;
+		VerticalVelocity = 0.0f;
+		bIsMoving = false;
+		bIsInAir = false;
 	}
 
 	UpdateLeftHandIK(DeltaSeconds);
