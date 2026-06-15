@@ -6,6 +6,9 @@ namespace NSGameplayTags
 {
 	// 스킬 수치 조회에 사용하는 CombatStat 태그
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Damage,			"CombatStat.Damage");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Health,			"CombatStat.Health");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxHealth,		"CombatStat.MaxHealth");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Defense,			"CombatStat.Defense");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Cooldown,			"CombatStat.Cooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ExplosionRadius,	"CombatStat.ExplosionRadius");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ProjectileSpeed,	"CombatStat.ProjectileSpeed");
