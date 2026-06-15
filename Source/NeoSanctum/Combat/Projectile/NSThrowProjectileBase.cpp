@@ -51,3 +51,34 @@ void ANSThrowProjectileBase::InitializeThrowActor(
 		ProjectileMovementComponent->Velocity = NormalizedThrowDirection * ProjectileMovementComponent->InitialSpeed;
 	}
 }
+
+void ANSThrowProjectileBase::SetSetByCallerMagnitudes(
+	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
+{
+	// GE SetByCaller payload 저장
+	SetByCallerMagnitudes = InSetByCallerMagnitudes;
+}
+
+void ANSThrowProjectileBase::SetRuntimeStatMagnitudes(
+	const TArray<FNSCombatStatMagnitude>& InRuntimeStatMagnitudes)
+{
+	// 런타임 stat payload 저장
+	RuntimeStatMagnitudes = InRuntimeStatMagnitudes;
+}
+
+bool ANSThrowProjectileBase::TryGetRuntimeStatMagnitude(
+	const FGameplayTag& CombatStatTag,
+	float& OutMagnitude) const
+{
+	// 런타임 stat 값 조회
+	for (const FNSCombatStatMagnitude& RuntimeStatMagnitude : RuntimeStatMagnitudes)
+	{
+		if (RuntimeStatMagnitude.CombatStatTag == CombatStatTag)
+		{
+			OutMagnitude = RuntimeStatMagnitude.Magnitude;
+			return true;
+		}
+	}
+
+	return false;
+}

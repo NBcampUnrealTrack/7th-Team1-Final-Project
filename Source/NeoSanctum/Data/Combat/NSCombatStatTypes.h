@@ -85,3 +85,72 @@ struct FNSCombatStatModifierRow : public FTableRowBase
 		meta = (ToolTip = "이 Row의 사용 여부입니다. Row를 삭제하지 않고 임시로 비활성화할 때 사용합니다."))
 	bool bEnabled = true;
 };
+
+/**
+ * Ability CombatStat 값을 GameplayEffect SetByCaller 태그로 전달하기 위한 구조체
+ * 
+ * 캐릭터가 아닌 개체의 AttributeSet을 Init_GE로 설정하는 경우(예, Turret)의 GE 설정을 
+ * CombatStat 값 기준으로 GE에서 SetByCaller를 통해 받아와서 초기화시키기 위해 제작
+ */
+USTRUCT(BlueprintType)
+struct FNSSetByCallerFromCombatStat
+{
+	GENERATED_BODY()
+
+	// 조회할 CombatStat 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
+		meta = (ToolTip = "조회할 CombatStat 태그. 예: CombatStat.FireRate"))
+	FGameplayTag CombatStatTag;
+
+	// GE에 전달할 SetByCaller 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
+		meta = (ToolTip = "계산된 값을 전달할 GameplayEffect SetByCaller 태그."))
+	FGameplayTag SetByCallerTag;
+};
+
+/**
+ * GameplayEffect Spec에 적용할 SetByCaller
+ */
+USTRUCT(BlueprintType)
+struct FNSSetByCallerMagnitude
+{
+	GENERATED_BODY()
+
+	// 적용할 SetByCaller 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag SetByCallerTag;
+
+	// 전달할 수치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	float Magnitude = 0.0f;
+};
+
+/**
+ * Ability CombatStat 값을 런타임 로직에 전달하기 위한 매핑
+ */
+USTRUCT(BlueprintType)
+struct FNSRuntimeStatFromCombatStat
+{
+	GENERATED_BODY()
+
+	// 조회할 CombatStat 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag CombatStatTag;
+};
+
+/**
+ * 런타임 로직에 적용할 CombatStat 값
+ */
+USTRUCT(BlueprintType)
+struct FNSCombatStatMagnitude
+{
+	GENERATED_BODY()
+
+	// 런타임 값 식별 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag CombatStatTag;
+
+	// 런타임 수치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	float Magnitude = 0.0f;
+};

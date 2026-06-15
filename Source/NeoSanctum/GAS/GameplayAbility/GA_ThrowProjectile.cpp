@@ -59,6 +59,9 @@ void UGA_ThrowProjectile::ActivateAbility(
 		return;
 	}
 
+	// 투척물에 전달할 CombatStat payload 생성
+	RebuildCombatStatPayloads();
+
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
 		Handle,
 		ActivationInfo.GetActivationPredictionKey()
@@ -328,6 +331,9 @@ void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 	if (Projectile)
 	{
 		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
+		// 계산된 payload를 투척물에 전달
+		Projectile->SetSetByCallerMagnitudes(SetByCallerMagnitudes);
+		Projectile->SetRuntimeStatMagnitudes(RuntimeStatMagnitudes);
 
 		if (ProjectileAbilityConfig.ProjectileType == EProjectileType::TurretSpawner)
 		{
@@ -516,6 +522,99 @@ bool UGA_ThrowProjectile::TryGetAimPointFromTargetData(
 
 	OutAimPoint = HitResult->bBlockingHit ? HitResult->ImpactPoint : HitResult->TraceEnd;
 	return true;
+}
+
+bool UGA_ThrowProjectile::TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const
+{
+	if (CombatStatAbilityTag.IsValid())
+	{
+		OutAbilityTag = CombatStatAbilityTag;
+		return true;
+	}
+
+	// 명시 태그가 없으면 Ability AssetTag 사용
+	TArray<FGameplayTag> AssetTags;
+	GetAssetTags().GetGameplayTagArray(AssetTags);
+
+	for (const FGameplayTag& AssetTag : AssetTags)
+	{
+		if (AssetTag.IsValid() && AssetTag.ToString().StartsWith(TEXT("Ability.")))
+		{
+			OutAbilityTag = AssetTag;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UGA_ThrowProjectile::RebuildCombatStatPayloads()
+{
+	// 이전 활성화에서 만든 payload 초기화
+	SetByCallerMagnitudes.Reset();
+	RuntimeStatMagnitudes.Reset();
+
+	if (ProjectileAbilityConfig.SetByCallerMappings.IsEmpty() &&
+		ProjectileAbilityConfig.RuntimeStatMappings.IsEmpty())
+	{
+		return;
+	}
+
+	FGameplayTag AbilityTag;
+	if (!TryGetCombatStatAbilityTag(AbilityTag))
+	{
+		return;
+	}
+
+	// 매핑 설정에 따라 SetByCaller와 runtime payload 분리 생성
+	RebuildSetByCallerMagnitudes(AbilityTag);
+	RebuildRuntimeStatMagnitudes(AbilityTag);
+}
+
+void UGA_ThrowProjectile::RebuildSetByCallerMagnitudes(const FGameplayTag& AbilityTag)
+{
+	// GE SetByCaller로 전달할 값 계산
+	for (const FNSSetByCallerFromCombatStat& Mapping : ProjectileAbilityConfig.SetByCallerMappings)
+	{
+		if (!Mapping.CombatStatTag.IsValid() || !Mapping.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+
+		float Magnitude = 0.0f;
+		if (!TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude))
+		{
+			continue;
+		}
+
+		FNSSetByCallerMagnitude SetByCallerMagnitude;
+		SetByCallerMagnitude.SetByCallerTag = Mapping.SetByCallerTag;
+		SetByCallerMagnitude.Magnitude = Magnitude;
+		SetByCallerMagnitudes.Add(SetByCallerMagnitude);
+	}
+}
+
+void UGA_ThrowProjectile::RebuildRuntimeStatMagnitudes(const FGameplayTag& AbilityTag)
+{
+	// 투척물 로직에서 직접 사용할 값 계산
+	for (const FNSRuntimeStatFromCombatStat& Mapping : ProjectileAbilityConfig.RuntimeStatMappings)
+	{
+		if (!Mapping.CombatStatTag.IsValid())
+		{
+			continue;
+		}
+
+		float Magnitude = 0.0f;
+		if (!TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude))
+		{
+			continue;
+		}
+
+		FNSCombatStatMagnitude RuntimeStatMagnitude;
+		RuntimeStatMagnitude.CombatStatTag = Mapping.CombatStatTag;
+		RuntimeStatMagnitude.Magnitude = Magnitude;
+		RuntimeStatMagnitudes.Add(RuntimeStatMagnitude);
+	}
 }
 
 void UGA_ThrowProjectile::AddDeactivateHandIKTag()

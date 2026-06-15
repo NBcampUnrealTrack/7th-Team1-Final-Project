@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "GA_ThrowProjectile.generated.h"
 
 class UAbilityTask_PlayMontageAndWait;
@@ -69,10 +70,6 @@ struct FNSTurretSpawnerTypeConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TSubclassOf<ANSTurret> TurretClass;
 	
-	// 소환 가능한 최대 경사면 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	float MaxSpawnableAngle = 30.0f;
-	
 	// 터렛 설정 구조체
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FNSTurretConfig TurretConfig;
@@ -96,6 +93,14 @@ struct FNSProjectileAbilityConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|TurretSpawner",
 		meta = (EditCondition = "ProjectileType == EProjectileType::TurretSpawner", EditConditionHides))
 	FNSTurretSpawnerTypeConfig TurretSpawnerTypeConfig;
+
+	// CombatStat 값을 GameplayEffect SetByCaller 값으로 넘기기 위한 매핑
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|SetByCaller")
+	TArray<FNSSetByCallerFromCombatStat> SetByCallerMappings;
+
+	// CombatStat 값을 투척물 런타임 로직 값으로 넘기기 위한 매핑
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|RuntimeStats")
+	TArray<FNSRuntimeStatFromCombatStat> RuntimeStatMappings;
 };
 
 
@@ -168,6 +173,16 @@ protected:
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
 		FVector& OutAimPoint
 	) const;
+
+protected:
+	// CombatStat 조회 기준 Ability 태그 결정
+	bool TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const;
+	// CombatStat 기반 payload 갱신
+	void RebuildCombatStatPayloads();
+	// GE SetByCaller payload 생성
+	void RebuildSetByCallerMagnitudes(const FGameplayTag& AbilityTag);
+	// 투척물 런타임 payload 생성
+	void RebuildRuntimeStatMagnitudes(const FGameplayTag& AbilityTag);
 	
 	void AddDeactivateHandIKTag();
 	void RemoveDeactivateHandIKTag();
@@ -176,6 +191,10 @@ protected:
 	// Ability 설정모음
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Config")
 	FNSProjectileAbilityConfig ProjectileAbilityConfig;
+
+	// CombatStat 조회에 사용할 Ability 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Config")
+	FGameplayTag CombatStatAbilityTag;
 
 	// 애니메이션 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")
@@ -233,6 +252,14 @@ private:
 	// 캐릭터에 잠깐 붙히게 될 MeshComponent
 	UPROPERTY(Transient)
 	TObjectPtr<UStaticMeshComponent> HoldMeshComponent;
+
+	// GE에 전달할 SetByCaller payload
+	UPROPERTY(Transient)
+	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
+
+	// 투척물 로직에 전달할 runtime payload
+	UPROPERTY(Transient)
+	TArray<FNSCombatStatMagnitude> RuntimeStatMagnitudes;
 
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
