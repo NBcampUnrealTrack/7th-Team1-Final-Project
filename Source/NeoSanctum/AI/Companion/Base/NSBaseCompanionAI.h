@@ -6,8 +6,10 @@
 #include "GameFramework/Pawn.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NSBaseCompanionAI.generated.h"
 
+class UNSCompanionDefinition;
 class UGameplayEffect;
 class UNSCompanionAttributeSet;
 class USphereComponent;
@@ -188,4 +190,20 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category="GAS|WeakPtr")
 	TWeakObjectPtr<AActor> CurrentEnemy;
+	
+#pragma region DataDriven
+	
+public:
+	void ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition);
+	
+	void ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel);
+	
+protected:
+	UPROPERTY() 
+	FNSCompanionAbilitySet_GrantedHandles CurrentAbilityHandles;
+	
+	UPROPERTY() 
+	TObjectPtr<UNSCompanionDefinition> CurrentDefinition;
+	
+#pragma endregion
 };
