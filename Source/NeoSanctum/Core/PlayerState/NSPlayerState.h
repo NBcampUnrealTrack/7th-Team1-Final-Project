@@ -57,6 +57,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
 	FPrimaryAssetId GetCurrentCharacterDataId() const { return CurrentCharacterDataId; }
 	
+	// 기존 캐릭터 id 받아오는 용
+	FPrimaryAssetId GetDefaultCharacterDataId() const { return DefaultCharacterDataId; }
+
 	// 캐릭터 데이터 Getter
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
 	UNSCharacterData* GetCurrentCharacterData() const;
