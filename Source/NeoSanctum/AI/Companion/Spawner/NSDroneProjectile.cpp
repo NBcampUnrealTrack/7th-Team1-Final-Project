@@ -26,10 +26,12 @@ ANSDroneProjectile::ANSDroneProjectile()
 	CollisionComp->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
 	CollisionComp->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Block);
 	CollisionComp->SetCollisionResponseToChannel(ECC_GameTraceChannel2, ECR_Block);
+	CollisionComp->SetCanEverAffectNavigation(false);
 	
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
 	MeshComp->SetupAttachment(CollisionComp);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetCanEverAffectNavigation(false);
 	
 	ProjectileMovementComp = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComp->bRotationFollowsVelocity = true;
