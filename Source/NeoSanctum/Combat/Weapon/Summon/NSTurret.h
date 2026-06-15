@@ -43,6 +43,8 @@ public:
 	);
 
 	float GetSpawnSurfaceOffset() const;
+	APawn* GetOwningPawn() const { return OwningPawn; }
+	AController* GetOwningController() const { return OwningController; }
 	
 public:
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(static_cast<uint8>(ETeamId::Player)); }
