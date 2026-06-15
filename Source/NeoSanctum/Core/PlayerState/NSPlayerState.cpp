@@ -63,6 +63,15 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
 	{
 		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
+		
+		UNSPlayerProgressComponent* OldProgress = ProgressComponent;
+		UNSPlayerProgressComponent* NewProgress = NewPlayerState->GetProgressComponent();
+		if (OldProgress && NewProgress)
+		{
+			FNSProgressPayload Payload;
+			OldProgress->BuildPayload(Payload);
+			NewProgress->ApplyPayload(Payload);
+		}
 	}
 }
 
