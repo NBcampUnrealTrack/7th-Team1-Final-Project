@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbilityTargetTypes.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "GA_ThrowProjectile.generated.h"
 
 class UAbilityTask_PlayMontageAndWait;
@@ -96,6 +97,10 @@ struct FNSProjectileAbilityConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|TurretSpawner",
 		meta = (EditCondition = "ProjectileType == EProjectileType::TurretSpawner", EditConditionHides))
 	FNSTurretSpawnerTypeConfig TurretSpawnerTypeConfig;
+
+	// CombatStat 값을 GameplayEffect SetByCaller 값으로 넘기기 위한 초기 Attribute 매핑
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|InitialStats")
+	TArray<FNSInitialAttributeFromCombatStat> InitialStatMappings;
 };
 
 

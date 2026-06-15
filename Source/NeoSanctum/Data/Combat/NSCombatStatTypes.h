@@ -85,3 +85,23 @@ struct FNSCombatStatModifierRow : public FTableRowBase
 		meta = (ToolTip = "이 Row의 사용 여부입니다. Row를 삭제하지 않고 임시로 비활성화할 때 사용합니다."))
 	bool bEnabled = true;
 };
+
+/**
+ * Ability CombatStat 값을 GameplayEffect SetByCaller 태그로 전달하기 위한 구조체
+ * 
+ * 캐릭터가 아닌 개체의 AttributeSet을 Init_GE로 설정하는 경우(예, Turret)의 GE 설정을 
+ * CombatStat 값 기준으로 GE에서 SetByCaller를 통해 받아와서 초기화시키기 위해 제작
+ */
+USTRUCT(BlueprintType)
+struct FNSInitialAttributeFromCombatStat
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
+		meta = (ToolTip = "조회할 CombatStat 태그. 예: CombatStat.FireRate"))
+	FGameplayTag CombatStatTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
+		meta = (ToolTip = "계산된 값을 전달할 GameplayEffect SetByCaller 태그."))
+	FGameplayTag SetByCallerTag;
+};
