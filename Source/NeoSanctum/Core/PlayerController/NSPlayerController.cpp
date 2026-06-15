@@ -194,6 +194,12 @@ void ANSPlayerController::ShowCharacterSelectWidget()
 			this,
 			CharacterSelectWidgetClass
 		);
+		
+		if (CharacterSelectWidget)
+		{
+			CharacterSelectWidget->OnCharacterSelectionConfirmed.AddDynamic(
+				this, &ANSPlayerController::HandleCharacterSelectionConfirmed);
+		}
 	}
 
 	if (!CharacterSelectWidget)
@@ -230,6 +236,13 @@ void ANSPlayerController::HideCharacterSelectWidget()
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
 }	
+
+void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData)
+{
+	CommitCharacterSelection(ConfirmedCharacterData);
+	// 확인 버튼 클릭 후에도 UI화면이 남아있어야 한다면 밑의 함수 제거
+	HideCharacterSelectWidget(); 
+}
 
 void ANSPlayerController::BeginPlay()
 {

@@ -131,7 +131,10 @@ private:
 	// 캐릭터 선택 위젯 닫기
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideCharacterSelectWidget();
-	
+	// 캐릭터 선택 후 핸들러
+	UFUNCTION()
+	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
+
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")
