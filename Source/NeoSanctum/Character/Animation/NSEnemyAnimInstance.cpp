@@ -69,32 +69,32 @@ void UNSEnemyAnimInstance::UpdateLeftHandIK(float DeltaSeconds)
 		return;
 	}
 
-	const UAbilitySystemComponent* ASC = EnemyCharacter->GetAbilitySystemComponent();
-	if (!IsValid(ASC) || !ASC->HasMatchingGameplayTag(NSGameplayTags::State_Enemy_Combat))
-	{
-		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
-		return;
-	}
-
-	const ANSEnemyWeaponBase* CurrentWeapon =
-		EnemyCharacter->GetCurrentWeapon();
+	const ANSEnemyWeaponBase* CurrentWeapon = EnemyCharacter->GetCurrentWeapon();
 
 	if (!IsValid(CurrentWeapon))
 	{
 		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
-
-	FTransform SocketWorldTransform;
-	if (!CurrentWeapon->TryGetLeftHandIKTransform(
-		SocketWorldTransform))
+	
+	const UAbilitySystemComponent* ASC = EnemyCharacter->GetAbilitySystemComponent();
+	const bool bIsInCombat = IsValid(ASC) && ASC->HasMatchingGameplayTag(NSGameplayTags::State_Enemy_Combat);
+	const bool bShouldUseIK = CurrentWeapon->ShouldUseLeftHandIKWhileEquipped() || bIsInCombat;
+	
+	if (!bShouldUseIK)
 	{
 		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
 		return;
 	}
 
-	USkeletalMeshComponent* MeshComponent =
-		GetOwningComponent();
+	FTransform SocketWorldTransform;
+	if (!CurrentWeapon->TryGetLeftHandIKTransform(SocketWorldTransform))
+	{
+		UpdateLeftHandIKAlpha(TargetAlpha, DeltaSeconds);
+		return;
+	}
+
+	USkeletalMeshComponent* MeshComponent = GetOwningComponent();
 
 	if (!IsValid(MeshComponent) ||
 		!MeshComponent->DoesSocketExist(TEXT("hand_r")))

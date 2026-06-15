@@ -30,6 +30,9 @@ struct FWeaponConfig
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config")
 	FTransform RelativeTransform;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config|IK")
+	bool bUseLeftHandIKWhileEquipped = false;
 };
 
 UCLASS()
@@ -47,6 +50,8 @@ public:
 	bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
 	
 	bool TryGetMuzzleTransform(FTransform& OutTransform) const;
+	
+	bool ShouldUseLeftHandIKWhileEquipped() const { return WeaponConfig.bUseLeftHandIKWhileEquipped; }
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon|Visual")
