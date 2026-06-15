@@ -378,3 +378,61 @@ void UNSUIManagerSubsystem::ClearRunEnd()
 		RunEndWidget = nullptr;
 	}
 }
+
+void UNSUIManagerSubsystem::OpenPartPanel()
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+	
+	HUDWidget->OpenPartPanel();
+	bPartPanelOpen = true;
+}
+
+void UNSUIManagerSubsystem::ClosePartPanel()
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+	
+	HUDWidget->ClosePartPanel();
+	bPartPanelOpen = false;
+}
+
+void UNSUIManagerSubsystem::ToggleRunBuildPanel()
+{
+	if (bRunBuildPanelOpen)
+	{
+		CloseRunBuildPanel();
+		return;
+	}
+	OpenRunBuildPanel();
+}
+
+void UNSUIManagerSubsystem::OpenRunBuildPanel()
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+	HUDWidget->OpenRunBuildPanel();
+	
+	bRunBuildPanelOpen = true;
+	bAugmentationPanelOpen = true;
+	bPartPanelOpen = true;
+}
+
+void UNSUIManagerSubsystem::CloseRunBuildPanel()
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+	HUDWidget->CloseRunBuildPanel();
+	
+	bRunBuildPanelOpen = false;
+	bAugmentationPanelOpen = false;
+	bPartPanelOpen = false;
+}

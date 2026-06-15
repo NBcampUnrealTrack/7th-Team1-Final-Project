@@ -6,6 +6,7 @@
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
+#include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -108,6 +109,37 @@ void UNSHUDWidget::CloseAugmentationPanel()
 		return;
 	}
 	AugmentationWidget->ClosePanel();
+}
+
+void UNSHUDWidget::OpenPartPanel()
+{
+	if (!IsValid(PartPanelWidget))
+	{
+		return;
+	}
+	//패널을 열때 장착상태를 최신상태로 표시
+	PartPanelWidget->RefreshEquippedParts();
+	PartPanelWidget->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UNSHUDWidget::ClosePartPanel()
+{
+	if (!IsValid(PartPanelWidget))
+	{
+		return;
+	}
+	PartPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UNSHUDWidget::OpenRunBuildPanel()
+{
+	OpenAugmentationPanel();
+	OpenPartPanel();
+}
+void UNSHUDWidget::CloseRunBuildPanel()
+{
+	CloseAugmentationPanel();
+	ClosePartPanel();
 }
 
 void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)

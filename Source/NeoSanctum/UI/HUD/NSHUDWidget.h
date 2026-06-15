@@ -10,6 +10,8 @@ class UNSHPShieldWidget;
 class UNSGoodsWidget;
 class UNSCrosshairWidget;
 class UNSAugmentationWidget;
+class UNSPartPanelWidget;
+
 
 /**
  * 인게임 HUD 요소를 묶어서 관리하는 위젯
@@ -52,7 +54,19 @@ public:
 	//증강 패널 닫기
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void CloseAugmentationPanel();
-
+	//파츠 패널 열기
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void OpenPartPanel();
+	//파츠 패널 닫기
+	UFUNCTION(BlueprintCallable,Category = "UI")
+	void ClosePartPanel();
+	// 인런 빌드 패널 열기
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void OpenRunBuildPanel();
+	// 인런 빌드 패널 닫음
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void CloseRunBuildPanel();
+	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
@@ -69,5 +83,8 @@ private:
 	//증강 선택 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSAugmentationWidget> AugmentationWidget;
+	//파츠 장착 상태 HUD 위젯
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSPartPanelWidget> PartPanelWidget;
 	
 };
