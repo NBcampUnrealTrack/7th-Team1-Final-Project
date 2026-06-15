@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NSCompanionAbilitySet.generated.h"
 
 UCLASS(BlueprintType, const)
@@ -12,7 +13,7 @@ class NEOSANCTUM_API UNSCompanionAbilitySet : public UDataAsset
 	GENERATED_BODY()
 public:
 	void GiveToAbilitySystem(UAbilitySystemComponent* ASC,
-		FNSCompanionAbilitySet_GameplayAbility* OutGranted,
+		FNSCompanionAbilitySet_GrantedHandles* OutGranted,
 		UObject* SourceObject = nullptr) const;
 	
 protected:
