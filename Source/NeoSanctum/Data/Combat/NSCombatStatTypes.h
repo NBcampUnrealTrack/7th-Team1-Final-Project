@@ -97,10 +97,12 @@ struct FNSSetByCallerFromCombatStat
 {
 	GENERATED_BODY()
 
+	// 조회할 CombatStat 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
 		meta = (ToolTip = "조회할 CombatStat 태그. 예: CombatStat.FireRate"))
 	FGameplayTag CombatStatTag;
 
+	// GE에 전달할 SetByCaller 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
 		meta = (ToolTip = "계산된 값을 전달할 GameplayEffect SetByCaller 태그."))
 	FGameplayTag SetByCallerTag;
@@ -114,9 +116,11 @@ struct FNSSetByCallerMagnitude
 {
 	GENERATED_BODY()
 
+	// 적용할 SetByCaller 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	FGameplayTag SetByCallerTag;
 
+	// 전달할 수치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	float Magnitude = 0.0f;
 };
@@ -129,6 +133,7 @@ struct FNSRuntimeStatFromCombatStat
 {
 	GENERATED_BODY()
 
+	// 조회할 CombatStat 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	FGameplayTag CombatStatTag;
 };
@@ -141,9 +146,11 @@ struct FNSCombatStatMagnitude
 {
 	GENERATED_BODY()
 
+	// 런타임 값 식별 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	FGameplayTag CombatStatTag;
 
+	// 런타임 수치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
 	float Magnitude = 0.0f;
 };
