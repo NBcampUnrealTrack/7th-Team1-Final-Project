@@ -118,6 +118,10 @@ protected:
 	) override;
 
 protected:
+	// 버프 유지 중 대상에게 부여할 State 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|State")
+	FGameplayTag BuffStateTag;
+	
 	// 버프 대상 수집 방식
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target")
 	ENSBuffTargetType TargetType = ENSBuffTargetType::Self;
@@ -137,4 +141,8 @@ protected:
 	// CombatStat 조회에 사용할 Ability 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|SetByCaller")
 	FGameplayTag CombatStatAbilityTag;
+	
+	// 버프 지속시간을 조회할 CombatStat 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Duration")
+	FGameplayTag DurationStatTag;
 };

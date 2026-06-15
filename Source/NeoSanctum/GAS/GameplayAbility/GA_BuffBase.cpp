@@ -3,8 +3,12 @@
 
 #include "GA_BuffBase.h"
 
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
+
 UGA_BuffBase::UGA_BuffBase()
 {
+	DurationStatTag = NSGameplayTags::CombatStat_Duration;
 }
 
 void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
