@@ -7,6 +7,7 @@
 #include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Animation/AnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
@@ -109,10 +110,17 @@ void UGA_ThrowProjectile::InputReleased(
 
 	if (ActorInfo && ActorInfo->IsLocallyControlled())
 	{
-		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
+		USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
+		UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+
+		if (AnimInstance && AnimMontage && AnimInstance->Montage_IsPlaying(AnimMontage))
 		{
-			
-			ASC->CurrentMontageJumpToSection(ReleaseSectionName);
+			AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
+		}
+		else
+		{
+			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		}
 	}
 }
