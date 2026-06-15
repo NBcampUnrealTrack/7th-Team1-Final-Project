@@ -6,6 +6,9 @@
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSCharacterSelectWidget.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
+	FOnCharacterSelectionConfirmed, UNSCharacterData*, ConfirmedCharacterData);
+
 class UCommonAnimatedSwitcher;
 class UCommonButtonBase;
 class UTextBlock;
@@ -66,4 +69,8 @@ private:
 	TArray<FNSCharacterSelectData*> CachedCharacters;
 
 	void ApplyPreviewImage(const FNSCharacterSelectData& Data);
+	
+public:
+	UPROPERTY(BlueprintAssignable, Category = "CharacterSelect")
+	FOnCharacterSelectionConfirmed OnCharacterSelectionConfirmed;
 };
