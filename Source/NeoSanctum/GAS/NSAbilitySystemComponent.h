@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSAbilitySystemComponent.generated.h"
 
 /**
@@ -41,6 +42,18 @@ public:
 		const FGameplayTag& AbilityTag,
 		const FGameplayTag& StatTag
 	) const;
+
+	// CombatStatComponent에 TemporaryModifier 등록
+	FGuid AddTemporaryCombatStatModifier(
+		const FGameplayTag& TargetAbilityTag,
+		const FGameplayTag& StatTag,
+		ENSCombatStatModifierOperation Operation,
+		float Value,
+		float Duration
+	) const;
+
+	// CombatStatComponent의 TemporaryModifier 제거
+	void RemoveTemporaryCombatStatModifier(FGuid Handle) const;
 	
 private:
 	TArray<FGameplayAbilitySpecHandle> InputPressedSpecHandles;
