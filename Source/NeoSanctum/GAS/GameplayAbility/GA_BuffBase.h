@@ -17,6 +17,13 @@ enum class ENSBuffTargetType : uint8
 	Radius
 };
 
+UENUM(BlueprintType)
+enum class ENSBuffApplyType : uint8
+{
+	GameplayEffect,
+	CombatStatModifier
+};
+
 USTRUCT(BlueprintType)
 struct FNSBuffTargetFilter
 {
@@ -36,17 +43,49 @@ struct FNSBuffTargetFilter
 };
 
 USTRUCT(BlueprintType)
-struct FNSBuffEffectEntry
+struct FNSBuffCombatStatModifier
+{
+	GENERATED_BODY()
+
+	// 수정할 대상 Ability 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|CombatStat")
+	FGameplayTag TargetAbilityTag;
+
+	// 수정할 대상 CombatStat 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|CombatStat")
+	FGameplayTag TargetStatTag;
+
+	// 버프 Ability에서 읽어올 수치 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|CombatStat")
+	FGameplayTag SourceValueStatTag;
+
+	// CombatStat 수정 연산
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|CombatStat")
+	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
+};
+
+USTRUCT(BlueprintType)
+struct FNSBuffApplyEntry
 {
 	GENERATED_BODY()
 
 	// 적용 대상 Actor 타입
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Effect")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Apply")
 	TSubclassOf<AActor> TargetActorClass;
 
+	// 버프 적용 방식
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Apply")
+	ENSBuffApplyType ApplyType = ENSBuffApplyType::GameplayEffect;
+
 	// 대상에게 적용할 GameplayEffect
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Effect")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Apply",
+		meta = (EditCondition = "ApplyType == ENSBuffApplyType::GameplayEffect", EditConditionHides))
 	TSubclassOf<UGameplayEffect> EffectClass;
+
+	// 대상에게 적용할 CombatStat 수정 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Buff|Apply",
+		meta = (EditCondition = "ApplyType == ENSBuffApplyType::CombatStatModifier", EditConditionHides))
+	TArray<FNSBuffCombatStatModifier> CombatStatModifiers;
 };
 
 /**
@@ -87,9 +126,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target")
 	FNSBuffTargetFilter TargetFilter;
 
-	// 대상 타입별 적용 GE
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Effect")
-	TArray<FNSBuffEffectEntry> BuffEffectEntries;
+	// 대상 타입별 버프 적용 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Apply")
+	TArray<FNSBuffApplyEntry> BuffApplyEntries;
 
 	// CombatStat 값을 GameplayEffect SetByCaller 값으로 넘기기 위한 매핑
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|SetByCaller")
