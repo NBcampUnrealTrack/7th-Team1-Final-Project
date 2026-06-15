@@ -91,43 +91,43 @@ private:
 		bool& bOutHit
 	) const;
 
-	// 여러 HitResult를 서버로 전달 가능한 TargetDataHandle로 변환한다.
+	// 여러 HitResult를 서버로 전달 가능한 TargetDataHandle로 변환
 	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResults(const TArray<FHitResult>& HitResults) const;
 
-	// TargetData가 준비되면 서버 전송, 로컬 피드백, 서버 대미지 처리를 이어간다.
+	// TargetData가 준비되면 서버 전송, 로컬 피드백, 서버 대미지 처리를 순차적으로 진행
 	void OnTargetDataReadyCallback(
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle,
 		FGameplayTag ApplicationTag
 	);
 
-	// TargetData를 받은 뒤 Cue와 서버 전용 처리를 분기한다.
+	// TargetData를 받은 뒤 Cue와 서버 전용 처리를 분기
 	void OnShotgunTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
-	// 서버에서 펠릿별 TargetData를 검증하고 대미지를 적용한다.
+	// 서버에서 펠릿별 TargetData를 검증하고 대미지를 적용
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
-	// 대상 Actor에게 GameplayEffect 대미지를 적용한다.
+	// 대상 Actor에게 GameplayEffect 대미지를 적용
 	void ApplyDamageToActor(AActor* TargetActor);
 
-	// Damage GameplayEffect의 SetByCaller 값을 설정한다.
+	// Damage GameplayEffect의 SetByCaller 값을 설정
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 
-	// 총구 발사 GameplayCue를 실행한다.
+	// 총구 발사 GameplayCue를 실행
 	void ExecuteMuzzleFireCue();
 
-	// Impact GameplayCue를 실행한다.
+	// Impact GameplayCue를 실행
 	void ExecuteImpactCue(const FHitResult& HitResult);
 
-	// 로컬 예측용 Impact GameplayCue를 실행한다.
+	// 로컬 예측용 Impact GameplayCue를 실행
 	void ExecutePredictedImpactCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
 	// 로컬 조작자인지 판단
 	bool ShouldPlayLocalFeedback() const;
 
-	// 총구와 Hit 지점 사이가 다른 물체에 막혔는지 확인한다.
+	// 총구와 Hit 지점 사이가 다른 물체에 막혔는지 확인
 	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
 
-	// 클라이언트 HitResult를 서버 LineTrace로 재검증한다.
+	// 클라이언트 HitResult를 서버 LineTrace로 재검증
 	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
 
 	// AI 청각 감지용 소음 발생
