@@ -93,7 +93,7 @@ struct FNSCombatStatModifierRow : public FTableRowBase
  * CombatStat 값 기준으로 GE에서 SetByCaller를 통해 받아와서 초기화시키기 위해 제작
  */
 USTRUCT(BlueprintType)
-struct FNSInitialAttributeFromCombatStat
+struct FNSSetByCallerFromCombatStat
 {
 	GENERATED_BODY()
 
@@ -104,4 +104,46 @@ struct FNSInitialAttributeFromCombatStat
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
 		meta = (ToolTip = "계산된 값을 전달할 GameplayEffect SetByCaller 태그."))
 	FGameplayTag SetByCallerTag;
+};
+
+/**
+ * GameplayEffect Spec에 적용할 SetByCaller
+ */
+USTRUCT(BlueprintType)
+struct FNSSetByCallerMagnitude
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag SetByCallerTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	float Magnitude = 0.0f;
+};
+
+/**
+ * Ability CombatStat 값을 런타임 로직에 전달하기 위한 매핑
+ */
+USTRUCT(BlueprintType)
+struct FNSRuntimeStatFromCombatStat
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag CombatStatTag;
+};
+
+/**
+ * 런타임 로직에 적용할 CombatStat 값
+ */
+USTRUCT(BlueprintType)
+struct FNSCombatStatMagnitude
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	FGameplayTag CombatStatTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat")
+	float Magnitude = 0.0f;
 };
