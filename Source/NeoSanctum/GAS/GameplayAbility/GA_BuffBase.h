@@ -119,6 +119,31 @@ protected:
 	) override;
 
 protected:
+	// 버프 대상 적용
+	void ApplyBuffToTargets(const TArray<AActor*>& Targets, float Duration);
+	bool TryApplyBuffToTarget(AActor* TargetActor, float Duration);
+	const FNSBuffApplyEntry* FindBuffApplyEntryForTarget(const AActor* TargetActor) const;
+
+	// CombatStatModifier 방식 적용
+	bool ApplyCombatStatModifierBuff(
+		AActor* TargetActor,
+		const FNSBuffApplyEntry& ApplyEntry,
+		const FGameplayTag& AbilityTag,
+		float Duration
+	);
+
+	// GameplayEffect 방식 적용
+	bool ApplyGameplayEffectBuff(AActor* TargetActor, const FNSBuffApplyEntry& ApplyEntry, float Duration);
+	void ApplySetByCallerMappingsToSpec(FGameplayEffectSpecHandle& SpecHandle, const FGameplayTag& AbilityTag) const;
+
+	// 버프 State 태그 관리
+	bool HasBuffStateTag(const AActor* TargetActor) const;
+	void AddTemporaryBuffStateTag(AActor* TargetActor, float Duration) const;
+
+	// 버프 지속시간 조회
+	bool TryGetBuffDuration(float& OutDuration) const;
+
+protected:
 	// 버프 대상 수집
 	void CollectBuffTargets(TArray<AActor*>& OutTargets) const;
 	void CollectSelfTargets(TArray<AActor*>& OutTargets) const;
