@@ -643,6 +643,13 @@ void ANSPlayerController::SetupInputComponent()
 
 void ANSPlayerController::ToggleAugmentationPanel()
 {
+	//인런에서만 탭 사용
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
+	{
+		return;
+	}
+	
 	UNSUIManagerSubsystem* UIManager = GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
 	if (!UIManager)
 	{
@@ -653,11 +660,13 @@ void ANSPlayerController::ToggleAugmentationPanel()
 	{
 		// 열려있으면 닫음 (토글)
 		UIManager->CloseAugmentationPanel();
+		UIManager->ClosePartPanel();
 	}
 	else
 	{
 		// 패널 UI 표시
 		UIManager->OpenAugmentationPanel();
+		UIManager->OpenPartPanel();
 		// 서버에 대기열 front 오퍼 표시 요청 (대기 있으면 카드가 옴)
 		if (AugmentSelectionComponent)
 		{

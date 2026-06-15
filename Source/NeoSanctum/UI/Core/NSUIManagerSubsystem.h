@@ -8,6 +8,9 @@
 
 class UNSHUDWidget;
 class UDataTable;
+class APlayerController;
+class UUserWidget;
+
 
 /**
  * 게임 전체 UI 생성을 관리하는 서브시스템
@@ -68,6 +71,27 @@ public:
 	void ShowRunEnd();
 	void HideRunEnd();
 	void ClearRunEnd();
+	
+	//파츠 패널 열기
+	void OpenPartPanel();
+	//파츠 패널 닫기
+	void ClosePartPanel();
+	//파츠 패널 열림 여부
+	bool IsPartPanelOpen() const
+	{
+		return bPartPanelOpen;
+	}
+	//인런 빌드 패널을 열거나 닫음
+	void ToggleRunBuildPanel();
+	//인런 빌드 패널을 연다
+	void OpenRunBuildPanel();
+	//인런 빌드 패널을 닫음
+	void CloseRunBuildPanel();
+	//인런 빌드 패널 알림
+	bool IsRunBuildPanelOpen() const
+	{
+		return bRunBuildPanelOpen;
+	}
 
 	UNSUIManagerSubsystem();
 private:
@@ -89,6 +113,10 @@ private:
 	//UI 위젯 정보 테이블
 	UPROPERTY()
 	TObjectPtr<UDataTable> UIWidgetDataTable;
+	
+	bool bPartPanelOpen = false;
+	
+	bool bRunBuildPanelOpen = false;
 	
 protected:
 	//HUD 위젯 블루프린트
