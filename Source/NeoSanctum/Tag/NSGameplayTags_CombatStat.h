@@ -16,4 +16,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DetectionRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Accuracy);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSpawnableAngle);
 }
