@@ -9,4 +9,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Invincible, "State.Invincible");
 	UE_DEFINE_GAMEPLAY_TAG(State_Dashing, "State.Dashing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Deactivate_HandIK, "State.Deactivate.HandIK");
+	
+	// Buff State
+	UE_DEFINE_GAMEPLAY_TAG(State_Buff_EngineerSpeedBuff, "State.Buff.EngineerSpeedBuff");
 }
