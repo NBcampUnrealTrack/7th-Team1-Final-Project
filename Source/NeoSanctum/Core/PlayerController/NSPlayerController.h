@@ -7,6 +7,7 @@
 #include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
@@ -27,7 +28,7 @@ public:
 	
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
-	void RequestReady(FName SelectedCharacterId); 
+	void RequestReady(); 
 	
 	// 게임 시작 요청
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -68,6 +69,15 @@ public:
 	void Client_SaveProgress(const FNSProgressPayload& Payload);
 	UFUNCTION(BlueprintCallable, Category="Progress")
 	void UploadLocalProgress(FName SelectedCharacterId);
+	
+	// 게임모드 호출용: 현재 진행도를 빌드해 소유 클라에 저장
+	void SaveProgressToOwningClient();
+	
+	void CommitCharacterSelection(UNSCharacterData* SelectedCharacterData);
+
+	// 거점 입장시 가장 최근 캐릭터 데이터 읽어오는 용도
+	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
+	void RestoreLastSelectedCharacter();
 	
 private:
 	// 실제로 사망 관전자 상태로 진입
