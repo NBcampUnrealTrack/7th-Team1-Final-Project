@@ -14,6 +14,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_ProjectileShot);
 
 	// Engineer Ability
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_ShotgunFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_SpawnTurret);
 	
 	// Engineer Ability Event Tags

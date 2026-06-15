@@ -1,0 +1,1103 @@
+﻿// Copyright 2026 One Team. All rights reserved.
+
+
+#include "GA_EngineerShotgunFire.h"
+
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
+
+UGA_EngineerShotgunFire::UGA_EngineerShotgunFire()
+{
+	FGameplayTagContainer AssetTags = GetAssetTags();
+	AssetTags.AddTag(NSGameplayTags::Ability_Engineer_ShotgunFire);
+	SetAssetTags(AssetTags);
+
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Deactivate_HandIK);
+	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
+}
+
+void UGA_EngineerShotgunFire::ActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
+{
+	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	bFireCycleElapsed = false;
+	bTargetDataProcessed = false;
+
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	float FinalFireInterval = 0.0f;
+
+	if (!TryGetFinalFireInterval(FinalFireInterval))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	PlayFireMontage();
+
+	if (bLogPredictionKey)
+	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"EngineerShotgunFire 활성화. 로컬조작={LocallyControlled} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
+		);
+	}
+
+	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
+		Handle,
+		ActivationInfo.GetActivationPredictionKey()
+	).AddUObject(this, &ThisClass::OnTargetDataReadyCallback);
+
+	const bool bShouldWaitForClientTargetData = ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+
+	if (bShouldWaitForClientTargetData)
+	{
+		if (bLogPredictionKey)
+		{
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"EngineerShotgunFire 클라이언트 TargetData 대기. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
+			);
+		}
+
+		ASC->CallReplicatedTargetDataDelegatesIfSet(Handle, ActivationInfo.GetActivationPredictionKey());
+	}
+	else
+	{
+		if (bLogPredictionKey)
+		{
+			NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+				"EngineerShotgunFire 로컬 TargetData 생성. 예측키={PredictionKey}",
+				("PredictionKey", GetCurrentPredictionKeyStatus())
+			);
+		}
+
+		FireOnce();
+	}
+
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	World->GetTimerManager().SetTimer(
+		FireDelayTimerHandle,
+		this,
+		&ThisClass::FinishFireCycle,
+		FinalFireInterval,
+		false
+	);
+}
+
+void UGA_EngineerShotgunFire::EndAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(FireDelayTimerHandle);
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
+		{
+			ASC->AbilityTargetDataSetDelegate(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey()
+			).Remove(OnTargetDataReadyCallbackDelegateHandle);
+
+			OnTargetDataReadyCallbackDelegateHandle.Reset();
+		}
+
+		ASC->ConsumeClientReplicatedTargetData(Handle, ActivationInfo.GetActivationPredictionKey());
+	}
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_EngineerShotgunFire::FireOnce()
+{
+	FVector TraceStart;
+	FVector CenterDirection;
+	
+	if (!TryBuildShotgunTraceBasis(TraceStart, CenterDirection))
+	{
+		return;
+	}
+	
+	TArray<FHitResult> PelletHitResults;
+	int32 FinalPelletCount = 0;
+	float FinalSpreadAngleDegrees = 0.0f;
+	float FinalFireRange = 0.0f;
+	
+	if (!TryGetFinalPelletCount(FinalPelletCount))
+	{
+		return;
+	}
+	
+	if (!TryGetFinalSpreadAngleDegrees(FinalSpreadAngleDegrees))
+	{
+		return;
+	}
+	
+	if (!TryGetFinalFireRange(FinalFireRange))
+	{
+		return;
+	}
+	
+	PelletHitResults.Reserve(FinalPelletCount);
+	
+	for (int32 PelletIndex = 0; PelletIndex < FinalPelletCount; ++PelletIndex)
+	{
+		FHitResult HitResult;
+		FVector TraceEnd;
+		bool bHit = false;
+		
+		const FVector PelletDirection =
+			BuildPelletDirection(CenterDirection, PelletIndex, FinalSpreadAngleDegrees);
+		
+		if (!TryBuildPelletTrace(TraceStart, PelletDirection, FinalFireRange, HitResult, TraceEnd, bHit))
+		{
+			continue;
+		}
+		
+		HitResult.TraceStart = TraceStart;
+		HitResult.TraceEnd = TraceEnd;
+		
+		if (!bHit)
+		{
+			HitResult.Location = TraceEnd;
+			HitResult.ImpactPoint = TraceEnd;
+		}
+
+		PelletHitResults.Add(HitResult);
+	}
+	
+	if (PelletHitResults.Num() <= 0)
+	{
+		return;
+	}
+	
+	const FGameplayAbilityTargetDataHandle TargetDataHandle = MakeTargetDataFromHitResults(PelletHitResults);
+	OnTargetDataReadyCallback(TargetDataHandle, FGameplayTag());
+}
+
+void UGA_EngineerShotgunFire::PlayFireMontage()
+{
+	if (!FireMontage)
+	{
+		return;
+	}
+
+	const float MontagePlayRate = FMath::Max(FireMontagePlayRate, 0.01f);
+
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			FireMontage,
+			MontagePlayRate,
+			NAME_None,
+			true
+		);
+
+	if (!MontageTask)
+	{
+		return;
+	}
+
+	MontageTask->ReadyForActivation();
+}
+
+void UGA_EngineerShotgunFire::FinishFireCycle()
+{
+	bFireCycleElapsed = true;
+
+	if (IsWaitingForRemoteClientTargetData() && !bTargetDataProcessed)
+	{
+		return;
+	}
+
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false
+	);
+}
+
+bool UGA_EngineerShotgunFire::TryGetFinalDamage(float& OutDamage)
+{
+	float FinalDamage = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_Damage,
+		FinalDamage))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"EngineerShotgunFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutDamage = FMath::Max(FinalDamage, 0.0f);
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::TryGetFinalFireInterval(float& OutFireInterval)
+{
+	float FinalFireRate = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_FireRate,
+		FinalFireRate))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"EngineerShotgunFire FireRate CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRate.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	constexpr float MinFireRate = 0.01f;
+	constexpr float MinFireInterval = 0.01f;
+
+	FinalFireRate = FMath::Max(FinalFireRate, MinFireRate);
+	OutFireInterval = FMath::Max(1.0f / FinalFireRate, MinFireInterval);
+
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::TryGetFinalFireRange(float& OutFireRange) const
+{
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_FireRange,
+		FinalFireRange))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"EngineerShotgunFire FireRange CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRange.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutFireRange = FMath::Max(FinalFireRange, 0.0f);
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::TryGetFinalPelletCount(int32& OutPelletCount) const
+{
+	float FinalPelletCount = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_PelletCount,
+		FinalPelletCount))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"EngineerShotgunFire PelletCount CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_PelletCount.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutPelletCount = FMath::Max(FMath::RoundToInt(FinalPelletCount), 1);
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::TryGetFinalSpreadAngleDegrees(float& OutSpreadAngleDegrees) const
+{
+	float FinalSpreadAngleDegrees = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_PelletSpread,
+		FinalSpreadAngleDegrees))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"EngineerShotgunFire PelletSpread CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_PelletSpread.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutSpreadAngleDegrees = FMath::Max(FinalSpreadAngleDegrees, 0.0f);
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::TryGetAimTraceStartLocation(FVector& OutLocation) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+
+	return PlayerCharacter->TryGetAimTraceStartLocation(OutLocation);
+}
+
+bool UGA_EngineerShotgunFire::TryGetAttackOriginTransform(FTransform& OutTransform) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor);
+
+	if (!IsValid(PlayerCharacter))
+	{
+		return false;
+	}
+
+	const ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon();
+
+	if (!IsValid(CurrentWeapon))
+	{
+		return false;
+	}
+
+	return CurrentWeapon->TryGetAttackOriginTransform(OutTransform);
+}
+
+bool UGA_EngineerShotgunFire::TryBuildShotgunTraceBasis(
+	FVector& OutTraceStart,
+	FVector& OutCenterDirection) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!IsValid(AvatarActor))
+	{
+		return false;
+	}
+
+	if (!TryGetAimTraceStartLocation(OutTraceStart))
+	{
+		return false;
+	}
+
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	const APlayerController* PlayerController = Pawn ?
+		Cast<APlayerController>(Pawn->GetController()) : nullptr;
+
+	if (!IsValid(PlayerController))
+	{
+		return false;
+	}
+
+	int32 ViewportSizeX = 0;
+	int32 ViewportSizeY = 0;
+	PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
+
+	if (ViewportSizeX <= 0 || ViewportSizeY <= 0)
+	{
+		return false;
+	}
+
+	const float CrosshairScreenX = ViewportSizeX * 0.5f;
+	const float CrosshairScreenY = ViewportSizeY * 0.5f;
+
+	FVector DeprojectWorldLocation;
+	FVector DeprojectWorldDirection;
+
+	if (!PlayerController->DeprojectScreenPositionToWorld(
+		CrosshairScreenX,
+		CrosshairScreenY,
+		DeprojectWorldLocation,
+		DeprojectWorldDirection))
+	{
+		return false;
+	}
+
+	OutCenterDirection = DeprojectWorldDirection.GetSafeNormal();
+
+	return !OutCenterDirection.IsNearlyZero();
+}
+
+FVector UGA_EngineerShotgunFire::BuildPelletDirection(
+	const FVector& CenterDirection,
+	int32 PelletIndex,
+	float FinalSpreadAngleDegrees) const
+{
+	if (PelletIndex == 0)
+	{
+		return CenterDirection;
+	}
+
+	const float ConeHalfAngleRad = FMath::DegreesToRadians(FinalSpreadAngleDegrees * 0.5f);
+	return FMath::VRandCone(CenterDirection, ConeHalfAngleRad).GetSafeNormal();
+}
+
+bool UGA_EngineerShotgunFire::TryBuildPelletTrace(
+	const FVector& TraceStart,
+	const FVector& TraceDirection,
+	float FinalFireRange,
+	FHitResult& OutHitResult,
+	FVector& OutTraceEnd,
+	bool& bOutHit) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!IsValid(AvatarActor) || !World || TraceDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	OutTraceEnd = TraceStart + TraceDirection * FinalFireRange;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	bOutHit = World->LineTraceSingleByChannel(
+		OutHitResult,
+		TraceStart,
+		OutTraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+
+	return true;
+}
+
+FGameplayAbilityTargetDataHandle UGA_EngineerShotgunFire::MakeTargetDataFromHitResults(
+	const TArray<FHitResult>& HitResults) const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+
+	for (const FHitResult& HitResult : HitResults)
+	{
+		FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+			new FGameplayAbilityTargetData_SingleTargetHit();
+
+		TargetData->HitResult = HitResult;
+		TargetDataHandle.Add(TargetData);
+	}
+
+	return TargetDataHandle;
+}
+
+void UGA_EngineerShotgunFire::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FGameplayTag ApplicationTag)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (!ASC)
+	{
+		return;
+	}
+
+	FScopedPredictionWindow ScopedPredictionWindow(ASC);
+	FGameplayAbilityTargetDataHandle LocalTargetDataHandle = TargetDataHandle;
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+
+	if (bLogPredictionKey && ActorInfo)
+	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Log,
+			"EngineerShotgunFire TargetData 준비. 로컬조작={LocallyControlled} TargetData개수={TargetDataNum} 예측키={PredictionKey}",
+			("LocallyControlled", ActorInfo->IsLocallyControlled()),
+			("TargetDataNum", TargetDataHandle.Num()),
+			("PredictionKey", GetCurrentPredictionKeyStatus())
+		);
+	}
+
+	const bool bShouldNotifyServer =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
+
+	if (bShouldNotifyServer)
+	{
+		ASC->CallServerSetReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey(),
+			LocalTargetDataHandle,
+			ApplicationTag,
+			ASC->ScopedPredictionKey
+		);
+	}
+
+	OnShotgunTargetDataReady(LocalTargetDataHandle);
+
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		bTargetDataProcessed = true;
+
+		if (bFireCycleElapsed)
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				false
+			);
+
+			return;
+		}
+	}
+
+	ASC->ConsumeClientReplicatedTargetData(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActivationInfo().GetActivationPredictionKey());
+}
+
+void UGA_EngineerShotgunFire::OnShotgunTargetDataReady(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+
+	const bool bShouldExecuteCue =
+		ActorInfo && (ActorInfo->IsLocallyControlled() || ActorInfo->IsNetAuthority());
+
+	if (bShouldExecuteCue)
+	{
+		ExecuteMuzzleFireCue();
+	}
+
+	if (ShouldPlayLocalFeedback() && bDrawDebugHitscan)
+	{
+		DrawDebugTargetData(TargetDataHandle);
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (ShouldPlayLocalFeedback() && AvatarActor && !AvatarActor->HasAuthority())
+	{
+		ExecutePredictedImpactCue(TargetDataHandle);
+	}
+
+	if (!AvatarActor || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	ReportWeaponNoise(AvatarActor);
+	ProcessTargetDataForDamage(TargetDataHandle);
+}
+
+void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return;
+	}
+
+	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
+
+		if (!TargetData)
+		{
+			continue;
+		}
+
+		const FHitResult* ClientHitResult = TargetData->GetHitResult();
+
+		if (!ClientHitResult || !ClientHitResult->bBlockingHit)
+		{
+			continue;
+		}
+
+		FHitResult ServerHitResult;
+
+		if (!ValidateTargetDataHitResult(*ClientHitResult, ServerHitResult))
+		{
+			continue;
+		}
+
+		FHitResult MuzzleObstructionHitResult;
+
+		if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
+		{
+			ExecuteImpactCue(MuzzleObstructionHitResult);
+			continue;
+		}
+
+		ApplyDamageToActor(ServerHitResult.GetActor());
+		ExecuteImpactCue(ServerHitResult);
+	}
+}
+
+void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
+{
+	if (!TargetActor || !DamageEffectClass)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+
+	if (!SourceASC || !TargetASC)
+	{
+		return;
+	}
+
+	float FinalDamage = 0.0f;
+
+	if (!TryGetFinalDamage(FinalDamage))
+	{
+		return;
+	}
+
+	FGameplayEffectSpecHandle DamageSpecHandle =
+		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
+
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
+	AssignDamageInstigator(DamageSpecHandle);
+
+	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+}
+
+void UGA_EngineerShotgunFire::ApplyDamageSetByCaller(
+	FGameplayEffectSpecHandle& InSpecHandle,
+	float InDamage) const
+{
+	if (!InSpecHandle.IsValid() || !InSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	const float ClampedDamage = FMath::Max(InDamage, 0.0f);
+	InSpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_Damage_Base, ClampedDamage);
+}
+
+void UGA_EngineerShotgunFire::ExecuteMuzzleFireCue()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!ASC || !AvatarActor)
+	{
+		return;
+	}
+
+	FTransform MuzzleTransform;
+
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		MuzzleTransform = FTransform(
+			AvatarActor->GetActorRotation(),
+			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
+		);
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.Location = MuzzleTransform.GetLocation();
+	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
+
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_ShotgunFire_MuzzleFire, CueParameters);
+}
+
+void UGA_EngineerShotgunFire::ExecuteImpactCue(const FHitResult& HitResult)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!ASC || !AvatarActor || !HitResult.bBlockingHit)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.Location = HitResult.ImpactPoint;
+	CueParameters.Normal = HitResult.ImpactNormal;
+
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_ShotgunFire_Impact, CueParameters);
+}
+
+void UGA_EngineerShotgunFire::ExecutePredictedImpactCue(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
+
+		if (!TargetData)
+		{
+			continue;
+		}
+
+		const FHitResult* LocalHitResult = TargetData->GetHitResult();
+
+		if (!LocalHitResult || !LocalHitResult->bBlockingHit)
+		{
+			continue;
+		}
+
+		const FHitResult PredictedImpactHitResult = *LocalHitResult;
+		FHitResult MuzzleObstructionHitResult;
+
+		if (IsMuzzleObstructed(PredictedImpactHitResult, MuzzleObstructionHitResult))
+		{
+			ExecuteImpactCue(MuzzleObstructionHitResult);
+			continue;
+		}
+
+		ExecuteImpactCue(PredictedImpactHitResult);
+	}
+}
+
+bool UGA_EngineerShotgunFire::ShouldPlayLocalFeedback() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+
+	if (!IsValid(Pawn))
+	{
+		return false;
+	}
+
+	return Pawn->IsLocallyControlled();
+}
+
+bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
+	const FHitResult& ServerHitResult,
+	FHitResult& OutObstructionHitResult) const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!IsValid(AvatarActor) || !World)
+	{
+		return false;
+	}
+
+	AActor* TargetActor = ServerHitResult.GetActor();
+
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	FTransform MuzzleTransform;
+
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		return false;
+	}
+
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector AimPoint = ServerHitResult.ImpactPoint;
+	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
+
+	if (ShotDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+	const FVector ObstructionTraceStart = MuzzleLocation - ShotDirection * BackTraceDistance;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	const bool bHit = World->LineTraceSingleByChannel(
+		OutObstructionHitResult,
+		ObstructionTraceStart,
+		AimPoint,
+		TraceChannel,
+		QueryParams
+	);
+
+	const bool bIsObstructed =
+		bHit && OutObstructionHitResult.bBlockingHit && OutObstructionHitResult.GetActor() != TargetActor;
+
+	if (bDrawDebugMuzzleObstruction)
+	{
+		DrawDebugMuzzleObstructionTrace(
+			ObstructionTraceStart,
+			AimPoint,
+			OutObstructionHitResult,
+			bIsObstructed
+		);
+	}
+
+	return bIsObstructed;
+}
+
+bool UGA_EngineerShotgunFire::ValidateTargetDataHitResult(
+	const FHitResult& ClientHitResult,
+	FHitResult& OutServerHitResult) const
+{
+	if (!ClientHitResult.bBlockingHit || !IsValid(ClientHitResult.GetActor()))
+	{
+		return false;
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!AvatarActor || !World || !AvatarActor->HasAuthority())
+	{
+		return false;
+	}
+
+	const FVector TraceStart = ClientHitResult.TraceStart;
+	const FVector TraceEnd = ClientHitResult.TraceEnd;
+
+	if (TraceStart.Equals(TraceEnd))
+	{
+		return false;
+	}
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange))
+	{
+		return false;
+	}
+
+	const float MaxTraceDistance = FinalFireRange + ServerHitLocationTolerance;
+	if (FVector::DistSquared(TraceStart, TraceEnd) > FMath::Square(MaxTraceDistance))
+	{
+		return false;
+	}
+
+	FVector ServerAimTraceStartLocation;
+
+	if (!TryGetAimTraceStartLocation(ServerAimTraceStartLocation))
+	{
+		return false;
+	}
+
+	if (FVector::DistSquared(ServerAimTraceStartLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	{
+		return false;
+	}
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	const bool bServerHit = World->LineTraceSingleByChannel(
+		OutServerHitResult,
+		TraceStart,
+		TraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+
+	if (!bServerHit || !OutServerHitResult.bBlockingHit)
+	{
+		return false;
+	}
+
+	if (OutServerHitResult.GetActor() != ClientHitResult.GetActor())
+	{
+		return false;
+	}
+
+	if (FVector::DistSquared(OutServerHitResult.ImpactPoint, ClientHitResult.ImpactPoint)
+		> FMath::Square(ServerHitLocationTolerance))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void UGA_EngineerShotgunFire::ReportWeaponNoise(const AActor* InAvatarActor)
+{
+	if (APawn* NoiseInstigator = Cast<APawn>(const_cast<AActor*>(InAvatarActor)))
+	{
+		NoiseInstigator->MakeNoise(1.0f, NoiseInstigator, InAvatarActor->GetActorLocation());
+	}
+}
+
+void UGA_EngineerShotgunFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle)
+{
+	if (!InSpecHandle.IsValid())
+	{
+		return;
+	}
+
+	if (AActor* AvatarActor = GetAvatarActorFromActorInfo())
+	{
+		InSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+	}
+}
+
+bool UGA_EngineerShotgunFire::IsWaitingForRemoteClientTargetData() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+
+	return ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+}
+
+void UGA_EngineerShotgunFire::DrawDebugTargetData(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
+
+		if (!TargetData)
+		{
+			continue;
+		}
+
+		const FHitResult* HitResult = TargetData->GetHitResult();
+
+		if (!HitResult)
+		{
+			continue;
+		}
+
+		const FVector TraceStart = HitResult->TraceStart;
+		const FVector TraceEnd = HitResult->TraceEnd;
+
+		if (TraceStart.Equals(TraceEnd))
+		{
+			continue;
+		}
+
+		const bool bHit = HitResult->bBlockingHit;
+		const FVector DebugEnd = bHit ? HitResult->ImpactPoint : TraceEnd;
+		const FColor DebugColor = bHit ? FColor::Red : FColor::Green;
+		const FVector DebugDirection = (DebugEnd - TraceStart).GetSafeNormal();
+
+		if (DebugDirection.IsNearlyZero())
+		{
+			continue;
+		}
+
+		const float DebugDistance = FVector::Dist(TraceStart, DebugEnd);
+		const float AppliedOffset =
+			FMath::Clamp(DebugLineStartOffset, 0.0f, FMath::Max(DebugDistance - 10.0f, 0.0f));
+		const FVector DebugStart = TraceStart + DebugDirection * AppliedOffset;
+
+		DrawDebugLine(
+			World,
+			DebugStart,
+			DebugEnd,
+			DebugColor,
+			false,
+			DebugLineDuration,
+			0,
+			DebugLineThickness
+		);
+
+		if (bHit)
+		{
+			DrawDebugPoint(
+				World,
+				HitResult->ImpactPoint,
+				12.0f,
+				FColor::Red,
+				false,
+				DebugLineDuration
+			);
+		}
+	}
+}
+
+void UGA_EngineerShotgunFire::DrawDebugMuzzleObstructionTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	const FHitResult& ObstructionHitResult,
+	bool bIsObstructed) const
+{
+	UWorld* World = GetWorld();
+
+	if (!World || TraceStart.Equals(TraceEnd))
+	{
+		return;
+	}
+
+	const bool bHit = ObstructionHitResult.bBlockingHit;
+	const FVector DebugEnd = bHit ? ObstructionHitResult.ImpactPoint : TraceEnd;
+	const FColor DebugColor = bIsObstructed ? FColor::Orange : FColor::Cyan;
+
+	DrawDebugLine(
+		World,
+		TraceStart,
+		DebugEnd,
+		DebugColor,
+		false,
+		DebugLineDuration,
+		0,
+		DebugLineThickness
+	);
+
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			ObstructionHitResult.ImpactPoint,
+			14.0f,
+			DebugColor,
+			false,
+			DebugLineDuration
+		);
+	}
+}

@@ -13,4 +13,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ProjectileSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxAmmo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);
 }
