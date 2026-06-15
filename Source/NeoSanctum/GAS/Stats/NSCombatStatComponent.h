@@ -6,6 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "TimerManager.h"
 #include "NSCombatStatComponent.generated.h"
 
 class UNSAugmentInventoryComponent;
@@ -28,6 +29,28 @@ struct FNSCombatStatModifierSum
 {
 	float AddValue = 0.0f;
 	float MultiplyValue = 1.0f;
+};
+
+// 일정 시간 동안 적용되는 CombatStat Modifier
+struct FNSTemporaryCombatStatModifier
+{
+	// 등록된 버프 Modifier를 식별하기 위한 식별자 : Duration이 지난 후에 관련된 버프를 정확하게 제거하기 위함
+	FGuid Handle;
+
+	// 수정할 대상 Ability 태그
+	FGameplayTag TargetAbilityTag;
+
+	// 수정할 대상 CombatStat 태그
+	FGameplayTag StatTag;
+
+	// CombatStat 수정 계산방식 : Buff GA에서 따로 설정할 수 있도록 하는 것이 필요함
+	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
+
+	// 적용할 보정 값
+	float Value = 0.0f;
+
+	// Duration 만료 제거 타이머
+	FTimerHandle ExpireTimerHandle;
 };
 
 /**
@@ -54,6 +77,18 @@ public:
 		const FGameplayTag& StatTag,
 		float& OutValue
 	) const;
+
+	// TemporaryModifier 등록
+	FGuid AddTemporaryCombatStatModifier(
+		const FGameplayTag& TargetAbilityTag,
+		const FGameplayTag& StatTag,
+		ENSCombatStatModifierOperation Operation,
+		float Value,
+		float Duration
+	);
+
+	// TemporaryModifier 제거
+	void RemoveTemporaryCombatStatModifier(FGuid Handle);
 
 protected:
 	virtual void BeginPlay() override;
@@ -83,6 +118,24 @@ protected:
 	void RebuildActiveModifierCache();
 	
 	void ApplyModifierRow(const FNSCombatStatModifierRow& ModifierRow, int32 Stacks);
+
+	// 활성화 TemporaryModifier 캐시를 갱신하는 메서드
+	void RebuildTemporaryModifierCache();
+
+	// Ability/Stat 조합의 TemporaryModifier 조회
+	const FNSCombatStatModifierSum* FindTemporaryModifierSum(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& StatTag
+	) const;
+
+	/** 
+	 * 기존 Final 값에 TemporaryModifier 보정을 적용 
+	 * 일단 최종값에 적용하도록 만들었으나 밸런스상 위험할 가능성이 있다고 생각함
+	 */
+	void ApplyTemporaryModifierToFinalValue(
+		const FNSCombatStatModifierSum& ModifierSum,
+		float& InOutValue
+	) const;
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
@@ -99,6 +152,12 @@ private:
 	TMap<FPrimaryAssetId, TArray<FNSCombatStatModifierRow>> CachedModifierRowsBySource;
 	
 	TMap<FGameplayTag, TMap<FGameplayTag, FNSCombatStatModifierSum>> ActiveModifiersByAbility;
+
+	// 등록된 TemporaryModifier
+	TMap<FGuid, FNSTemporaryCombatStatModifier> TemporaryModifiersByHandle;
+
+	// 태그로 검색할 수 있도록 한 최종 계산용 TemporaryModifier 맵
+	TMap<FGameplayTag, TMap<FGameplayTag, FNSCombatStatModifierSum>> TemporaryModifiersByAbility;
 	
 	TWeakObjectPtr<UNSAugmentInventoryComponent> CachedAugmentInventory;
 };
