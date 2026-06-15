@@ -8,6 +8,7 @@
 #include "GA_BuffBase.generated.h"
 
 class UGameplayEffect;
+class UAbilitySystemComponent;
 
 UENUM(BlueprintType)
 enum class ENSBuffTargetType : uint8
@@ -100,7 +101,7 @@ class NEOSANCTUM_API UGA_BuffBase : public UGA_SkillBase
 
 public:
 	UGA_BuffBase();
-	
+
 protected:
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,
@@ -116,6 +117,26 @@ protected:
 		bool bReplicateEndAbility,
 		bool bWasCancelled
 	) override;
+
+protected:
+	// 버프 대상 수집
+	void CollectBuffTargets(TArray<AActor*>& OutTargets) const;
+	void CollectSelfTargets(TArray<AActor*>& OutTargets) const;
+	void CollectRadiusTargets(TArray<AActor*>& OutTargets) const;
+	void CollectSingleTargetTargets(TArray<AActor*>& OutTargets) const;
+
+protected:
+	// 필터에 통과 대상만 Target에 추가
+	void AddFilteredTarget(AActor* TargetActor, TArray<AActor*>& OutTargets) const;
+	// TargetFilter 조건 확인
+	bool PassesTargetFilter(const AActor* TargetActor) const;
+	// 대상이 ASC를 보유하고 있는지 여부 확인 : ASC가 없는 대상이라면 어차피 버프를 받는 것 자체가 불가능함
+	bool HasTargetAbilitySystem(const AActor* TargetActor) const;
+	
+	// CombatStat 조회 기준 Ability 태그 결정
+	bool TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const;
+	// Radius 수집 범위 조회
+	bool TryGetBuffRadius(float& OutRadius) const;
 
 protected:
 	// 버프 유지 중 대상에게 부여할 State 태그
@@ -145,4 +166,9 @@ protected:
 	// 버프 지속시간을 조회할 CombatStat 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Duration")
 	FGameplayTag DurationStatTag;
+
+	// Radius 수집 범위를 조회할 CombatStat 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target",
+		meta = (EditCondition = "TargetType == ENSBuffTargetType::Radius", EditConditionHides))
+	FGameplayTag RadiusStatTag;
 };
