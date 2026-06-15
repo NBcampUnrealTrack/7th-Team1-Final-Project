@@ -4,6 +4,7 @@
 #include "NSMonsterAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
+#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "Perception/AISense_Damage.h"
 
@@ -18,17 +19,34 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
 		if (RawDamage > 0.0f && DamagedActor && InstigatorActor)
 		{
-			APawn* AttackerPawn = Cast<APawn>(InstigatorActor);
+			AActor* PerceivedActor = InstigatorActor;
+			
+			if (ANSBaseCompanionAI* AttackingDrone = Cast<ANSBaseCompanionAI>(InstigatorActor))
+			{
+				if (AActor* OwnerPlayer = AttackingDrone->GetOwnerPlayer())
+				{
+					PerceivedActor = OwnerPlayer;
+				}
+			}
+			
+			APawn* AttackerPawn = Cast<APawn>(PerceivedActor);
 			if (!AttackerPawn)
 			{
-				if (AController* PC = Cast<AController>(InstigatorActor)) AttackerPawn = PC->GetPawn();
+				if (AController* Controller = Cast<AController>(PerceivedActor))
+				{
+					AttackerPawn = Controller->GetPawn();
+				}
 			}
 
 			if (AttackerPawn)
 			{
 				UAISense_Damage::ReportDamageEvent(
-					DamagedActor->GetWorld(), DamagedActor, AttackerPawn,
-					RawDamage, AttackerPawn->GetActorLocation(), DamagedActor->GetActorLocation()
+					DamagedActor->GetWorld(), 
+					DamagedActor, 
+					AttackerPawn,
+					RawDamage, 
+					AttackerPawn->GetActorLocation(), 
+					DamagedActor->GetActorLocation()
 				);
 			}
 		}
