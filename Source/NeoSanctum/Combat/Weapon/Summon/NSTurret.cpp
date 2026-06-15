@@ -70,11 +70,17 @@ float ANSTurret::GetSpawnSurfaceOffset() const
 	return HitCollisionComponent ? HitCollisionComponent->GetScaledCapsuleHalfHeight() : 0.0f;
 }
 
-void ANSTurret::InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController)
+void ANSTurret::InitializeTurret(
+	const FNSTurretConfig& InConfig,
+	APawn* InOwningPawn,
+	AController* InOwningController,
+	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	// 터렛을 소환한 Pawn, Controller 전달
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
+	// 초기 Attribute GE에 사용할 payload 저장
+	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 	
 	if (OwningPawn)
 	{
@@ -215,17 +221,41 @@ void ANSTurret::ApplyInitialAttributeEffect()
 	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 
-	const FGameplayEffectSpecHandle SpecHandle =
+	FGameplayEffectSpecHandle SpecHandle =
 		ASC->MakeOutgoingSpec(InitialAttributeEffectClass, 1.0f, EffectContext);
 
 	if (SpecHandle.IsValid())
 	{
+		// Attribute 초기화 값 주입
+		ApplySetByCallerMagnitudes(SpecHandle);
 		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 	
 	bInitialAttributeEffectApplied = true;
 	
 	RefreshDetectionRange();
+}
+
+void ANSTurret::ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const
+{
+	// SetByCaller payload를 GE Spec에 주입
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	for (const FNSSetByCallerMagnitude& SetByCallerMagnitude : SetByCallerMagnitudes)
+	{
+		if (!SetByCallerMagnitude.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+
+		SpecHandle.Data->SetSetByCallerMagnitude(
+			SetByCallerMagnitude.SetByCallerTag,
+			SetByCallerMagnitude.Magnitude
+		);
+	}
 }
 
 void ANSTurret::BindAttributeChangeDelegates()

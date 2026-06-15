@@ -6,6 +6,8 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Actor.h"
+#include "GameplayEffectTypes.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSTurret.generated.h"
 
@@ -32,7 +34,14 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-	void InitializeTurret(const FNSTurretConfig& InConfig, APawn* InOwningPawn, AController* InOwningController);
+	// Turret 설정과 초기화 payload 전달
+	void InitializeTurret(
+		const FNSTurretConfig& InConfig,
+		APawn* InOwningPawn,
+		AController* InOwningController,
+		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
+	);
+
 	float GetSpawnSurfaceOffset() const;
 	
 public:
@@ -68,6 +77,8 @@ private:
 private:
 	void InitializeAbilityActorInfo();
 	void ApplyInitialAttributeEffect();
+	// 초기화 GE에 SetByCaller payload 적용
+	void ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const;
 
 	void BindAttributeChangeDelegates();
 	void HandleDetectionRangeChanged(const FOnAttributeChangeData& Data);
@@ -156,6 +167,10 @@ protected:
 	// Turret을 소환한 플레이어
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")
 	TObjectPtr<AController> OwningController;
+
+	// 초기 Attribute GE에 전달할 payload
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|SetByCaller")
+	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
 
 private:
 	// 콜리전 안에 들어온 Actor 중에 Enemy TeamID를 가진 Actor 세트

@@ -4,6 +4,7 @@
 
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 
 ANSTurretSpawner::ANSTurretSpawner()
 {
@@ -21,8 +22,14 @@ ANSTurretSpawner::ANSTurretSpawner()
 void ANSTurretSpawner::InitializeTurretSpawner(const FNSTurretSpawnerTypeConfig& InConfig)
 {
 	TurretClass = InConfig.TurretClass;
-	MaxSpawnableAngle = InConfig.MaxSpawnableAngle;
 	TurretConfig = InConfig.TurretConfig;
+
+	// 데이터 기반 소환 가능 경사각 적용
+	float RuntimeMaxSpawnableAngle = 0.0f;
+	if (TryGetRuntimeStatMagnitude(NSGameplayTags::CombatStat_MaxSpawnableAngle, RuntimeMaxSpawnableAngle))
+	{
+		MaxSpawnableAngle = RuntimeMaxSpawnableAngle;
+	}
 }
 
 void ANSTurretSpawner::BeginPlay()
@@ -110,6 +117,12 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 
 	if (Turret)
 	{
-		Turret->InitializeTurret(TurretConfig, GetOwningPawn(), GetOwningController());
+		// Turret 초기화에 SetByCaller payload 전달
+		Turret->InitializeTurret(
+			TurretConfig,
+			GetOwningPawn(),
+			GetOwningController(),
+			GetSetByCallerMagnitudes()
+		);
 	}
 }

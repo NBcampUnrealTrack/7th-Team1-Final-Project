@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSThrowProjectileBase.generated.h"
 
 class UProjectileMovementComponent;
@@ -25,9 +26,16 @@ public:
 		const FVector& ThrowDirection
 	);
 
+	void SetSetByCallerMagnitudes(const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes);
+	void SetRuntimeStatMagnitudes(const TArray<FNSCombatStatMagnitude>& InRuntimeStatMagnitudes);
+
 protected:
 	APawn* GetOwningPawn() const { return OwningPawn; }
 	AController* GetOwningController() const { return OwningController; }
+	// 자식 투척물이 Turret 등에 전달할 payload
+	const TArray<FNSSetByCallerMagnitude>& GetSetByCallerMagnitudes() const { return SetByCallerMagnitudes; }
+	// 런타임 stat 값 조회
+	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
 	USphereComponent* GetCollisionComponent() const { return CollisionComponent; }
 	UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }
 	UProjectileMovementComponent* GetProjectileMovementComponent() const { return ProjectileMovementComponent; }
@@ -48,4 +56,12 @@ protected:
 	
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
 	TObjectPtr<AController> OwningController;
+
+	// GE에 전달할 SetByCaller payload
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|SetByCaller")
+	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
+
+	// 투척물 로직용 runtime payload
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|RuntimeStats")
+	TArray<FNSCombatStatMagnitude> RuntimeStatMagnitudes;
 };
