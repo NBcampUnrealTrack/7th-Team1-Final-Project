@@ -71,10 +71,7 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 	CurrentWeapon->SetActorRelativeTransform(Config.RelativeTransform);
 
 	// 무기 전용 ABP 적용
-	if (Config.AnimBlueprintClass)
-	{
-		Owner->GetMesh()->SetAnimInstanceClass(Config.AnimBlueprintClass);
-	}
+	ApplyCurrentWeaponAnimClass();
 
 	// 무기 전용 GA 적용
 	if (UAbilitySystemComponent* ASC = Owner->GetAbilitySystemComponent())
@@ -96,6 +93,26 @@ void UNSEnemyWeaponComponent::UnEquipWeapon()
 	{
 		CurrentWeapon->Destroy();
 		CurrentWeapon = nullptr;
+	}
+}
+
+void UNSEnemyWeaponComponent::OnRep_CurrentWeapon()
+{
+	ApplyCurrentWeaponAnimClass();
+}
+
+void UNSEnemyWeaponComponent::ApplyCurrentWeaponAnimClass() const
+{
+	const ANSEnemyCharacterBase* Owner = Cast<ANSEnemyCharacterBase>(GetOwner());
+	if (!Owner || !CurrentWeapon || !Owner->GetMesh())
+	{
+		return;
+	}
+
+	const TSubclassOf<UAnimInstance> AnimBlueprintClass = CurrentWeapon->GetWeaponConfig().AnimBlueprintClass;
+	if (AnimBlueprintClass)
+	{
+		Owner->GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
 	}
 }
 
