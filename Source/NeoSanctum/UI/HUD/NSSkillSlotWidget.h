@@ -27,7 +27,7 @@ class NEOSANCTUM_API UNSSkillSlotWidget : public UCommonUserWidget
 public:
 	//쿨타임 UI표시 시작
 	void StartCooldown(float NewCooldownDuration);
-	//쿨타임 UI 촉화
+	//쿨타임 UI 초기화
 	void ResetCooldown();
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FGameplayTag BoundSkillTag;
@@ -53,7 +53,7 @@ private:
 	//원형 쿨타임
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> CooldownOverlay;
-	// 남은 쿨타임 텍스트
+	//남은 쿨타임 텍스트
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonTextBlock> CooldownText;
 	//충전형 스킬의 남은 횟수 표시
@@ -62,7 +62,7 @@ private:
 	//쿨타임과 머테리얼 연결
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;//(MID : MaterialInstanceDynamic)
-	//우젯 제거시 GMS리스너 해제
+	//위젯 제거시 GMS리스너 해제
 	FGameplayMessageListenerHandle CooldownListenerHandle;
 	//소유 플레이어의 ASC를 캐싱
 	void CacheOwnerASC();
