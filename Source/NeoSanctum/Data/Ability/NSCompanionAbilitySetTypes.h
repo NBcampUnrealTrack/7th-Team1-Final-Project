@@ -6,6 +6,8 @@
 #include "ActiveGameplayEffectHandle.h"
 #include "NSCompanionAbilitySetTypes.generated.h"
 
+class UGameplayAbility;
+
 USTRUCT(BlueprintType)
 struct FNSCompanionAbilitySet_GameplayAbility
 {
