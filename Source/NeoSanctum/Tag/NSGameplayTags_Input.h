@@ -19,7 +19,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Sprint);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Interact);
 	
-	//Native Death Inpu
+	//Native Death Input
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Death_PrevPlayer);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Native_Death_NextPlayer);
 	
@@ -29,6 +29,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_ActiveSkill3);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_Dash);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Ability_Reload);
 	
 	// Augment Input
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Augment_Card1);

@@ -15,6 +15,8 @@ void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxDashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashRegenRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, Ammo, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxAmmo, COND_None, REPNOTIFY_Always);
 }
 
 void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -38,6 +40,14 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 	else if (Attribute == GetDashRegenRateAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetAmmoAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxAmmo());
+	}
+	else if (Attribute == GetMaxAmmoAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -69,6 +79,15 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	{
 		SetDashRegenRate(FMath::Max(GetDashRegenRate(), 0.0f));
 	}
+	else if (Data.EvaluatedData.Attribute == GetAmmoAttribute())
+	{
+		SetAmmo(FMath::Clamp(GetAmmo(), 0.0f, GetMaxAmmo()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetMaxAmmoAttribute())
+	{
+		SetMaxAmmo(FMath::Max(GetMaxAmmo(), 0.0f));
+		SetAmmo(FMath::Clamp(GetAmmo(), 0.0f, GetMaxAmmo()));
+	}
 }
 
 float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
@@ -96,7 +115,6 @@ void UNSPlayerAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMax
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxShield, OldMaxShield);
 }
 
-
 void UNSPlayerAttributeSet::OnRep_DashCount(const FGameplayAttributeData& OldDashCount)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, DashCount, OldDashCount);
@@ -110,4 +128,14 @@ void UNSPlayerAttributeSet::OnRep_MaxDashCount(const FGameplayAttributeData& Old
 void UNSPlayerAttributeSet::OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, DashRegenRate, OldDashRegenRate);
+}
+
+void UNSPlayerAttributeSet::OnRep_Ammo(const FGameplayAttributeData& OldAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Ammo, OldAmmo);
+}
+
+void UNSPlayerAttributeSet::OnRep_MaxAmmo(const FGameplayAttributeData& OldMaxAmmo)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxAmmo, OldMaxAmmo);
 }
