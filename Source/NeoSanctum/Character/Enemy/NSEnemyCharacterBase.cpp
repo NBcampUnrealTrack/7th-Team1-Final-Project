@@ -19,8 +19,14 @@
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	bUseControllerRotationYaw = false;
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	Movement->bOrientRotationToMovement = false;
+	Movement->bUseControllerDesiredRotation = true;
+	Movement->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
