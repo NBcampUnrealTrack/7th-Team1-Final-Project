@@ -7,7 +7,7 @@
 #include "UObject/PrimaryAssetId.h"
 #include "NSRewardTypes.generated.h"
 
-class UNSAugmentRewardPoolData;
+class UNSAugmentPoolDefinition;
 
 /**
  * 몬스터 / 보상 트리거에서 사용할 드랍 항목 데이터
@@ -24,5 +24,5 @@ struct FNSMonsterDropEntry
 	float Weight = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
-	TSoftObjectPtr<UNSAugmentRewardPoolData> AugmentRewardPool;																																
+	TSoftObjectPtr<UNSAugmentPoolDefinition> AugmentPool;																																
 };
