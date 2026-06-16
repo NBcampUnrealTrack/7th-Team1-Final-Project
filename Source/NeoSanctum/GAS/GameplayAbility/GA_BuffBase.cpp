@@ -11,11 +11,14 @@
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_BuffBase::UGA_BuffBase()
 {
 	DurationStatTag = NSGameplayTags::CombatStat_Duration;
+	CooldownStatTag = NSGameplayTags::CombatStat_Cooldown;
+	CooldownSetByCallerTag = NSGameplayTags::Effect_Cooldown_BuffBase;
 	RadiusStatTag = NSGameplayTags::CombatStat_BuffRadius;
 }
 
@@ -58,6 +61,36 @@ void UGA_BuffBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGa
 	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_BuffBase::ApplyCooldown(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (!CooldownGameplayEffectClass || !CooldownSetByCallerTag.IsValid())
+	{
+		return;
+	}
+
+	float CooldownDuration = 0.0f;
+	if (!TryGetBuffCooldown(CooldownDuration))
+	{
+		return;
+	}
+
+	FGameplayEffectSpecHandle CooldownSpecHandle =
+		MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
+
+	if (!CooldownSpecHandle.IsValid() || !CooldownSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	// CombatStat에서 읽은 Cooldown 값을 GE SetByCaller로 전달
+	CooldownSpecHandle.Data->SetSetByCallerMagnitude(CooldownSetByCallerTag, CooldownDuration);
+
+	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CooldownSpecHandle);
 }
 
 void UGA_BuffBase::ApplyBuffToTargets(const TArray<AActor*>& Targets, float Duration)
@@ -323,6 +356,26 @@ bool UGA_BuffBase::TryGetBuffDuration(float& OutDuration) const
 	}
 
 	return TryGetFinalAbilityStat(AbilityTag, DurationStatTag, OutDuration);
+}
+
+bool UGA_BuffBase::TryGetBuffCooldown(float& OutCooldown) const
+{
+	// Cooldown도 CombatStat 데이터에서 조회
+	FGameplayTag AbilityTag;
+	if (!CooldownStatTag.IsValid() || !TryGetCombatStatAbilityTag(AbilityTag))
+	{
+		return false;
+	}
+
+	float CooldownDuration = 0.0f;
+	if (!TryGetFinalAbilityStat(AbilityTag, CooldownStatTag, CooldownDuration))
+	{
+		return false;
+	}
+
+	constexpr float MinCooldownDuration = 0.1f;
+	OutCooldown = FMath::Max(CooldownDuration, MinCooldownDuration);
+	return true;
 }
 
 void UGA_BuffBase::CollectBuffTargets(TArray<AActor*>& OutTargets) const

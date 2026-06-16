@@ -118,6 +118,12 @@ protected:
 		bool bWasCancelled
 	) override;
 
+	virtual void ApplyCooldown(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) const override;
+
 protected:
 	// 버프 대상 적용
 	void ApplyBuffToTargets(const TArray<AActor*>& Targets, float Duration);
@@ -142,6 +148,8 @@ protected:
 
 	// 버프 지속시간 조회
 	bool TryGetBuffDuration(float& OutDuration) const;
+	// 버프 쿨다운 조회
+	bool TryGetBuffCooldown(float& OutCooldown) const;
 
 protected:
 	// 버프 대상 수집
@@ -195,6 +203,14 @@ protected:
 	// 버프 지속시간을 조회할 CombatStat 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Duration")
 	FGameplayTag DurationStatTag;
+
+	// 버프 쿨다운을 조회할 CombatStat 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cooldown")
+	FGameplayTag CooldownStatTag;
+
+	// Cooldown GE에 전달할 SetByCaller 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cooldown")
+	FGameplayTag CooldownSetByCallerTag;
 
 	// Radius 수집 범위를 조회할 CombatStat 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target",
