@@ -138,7 +138,7 @@ protected:
 
 	// 버프 State 태그 관리
 	bool HasBuffStateTag(const AActor* TargetActor) const;
-	void AddTemporaryBuffStateTag(AActor* TargetActor, float Duration) const;
+	void AddTemporaryBuffPresentation(AActor* TargetActor, float Duration) const;
 
 	// 버프 지속시간 조회
 	bool TryGetBuffDuration(float& OutDuration) const;
@@ -167,6 +167,10 @@ protected:
 	// 버프 유지 중 대상에게 부여할 State 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|State")
 	FGameplayTag BuffStateTag;
+
+	// 버프 유지 중 재생할 GameplayCue 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cue")
+	FGameplayTag BuffGameplayCueTag;
 	
 	// 버프 대상 수집 방식
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target")

@@ -104,7 +104,7 @@ bool UGA_BuffBase::TryApplyBuffToTarget(AActor* TargetActor, float Duration)
 
 	if (bApplied)
 	{
-		AddTemporaryBuffStateTag(TargetActor, Duration);
+		AddTemporaryBuffPresentation(TargetActor, Duration);
 	}
 
 	return bApplied;
@@ -259,9 +259,9 @@ bool UGA_BuffBase::HasBuffStateTag(const AActor* TargetActor) const
 	return TargetASC && TargetASC->HasMatchingGameplayTag(BuffStateTag);
 }
 
-void UGA_BuffBase::AddTemporaryBuffStateTag(AActor* TargetActor, float Duration) const
+void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Duration) const
 {
-	if (!BuffStateTag.IsValid() || Duration <= 0.0f)
+	if ((!BuffStateTag.IsValid() && !BuffGameplayCueTag.IsValid()) || Duration <= 0.0f)
 	{
 		return;
 	}
@@ -275,20 +275,37 @@ void UGA_BuffBase::AddTemporaryBuffStateTag(AActor* TargetActor, float Duration)
 		return;
 	}
 
-	TargetASC->AddLooseGameplayTag(BuffStateTag);
+	if (BuffStateTag.IsValid())
+	{
+		TargetASC->AddLooseGameplayTag(BuffStateTag);
+	}
+
+	if (BuffGameplayCueTag.IsValid())
+	{
+		TargetASC->AddGameplayCue(BuffGameplayCueTag);
+	}
 
 	if (UWorld* World = TargetASC->GetWorld())
 	{
 		FTimerHandle TimerHandle;
 		TWeakObjectPtr<UAbilitySystemComponent> WeakASC = TargetASC;
 		const FGameplayTag StateTag = BuffStateTag;
+		const FGameplayTag CueTag = BuffGameplayCueTag;
 		World->GetTimerManager().SetTimer(
 			TimerHandle,
-			FTimerDelegate::CreateWeakLambda(TargetASC, [WeakASC, StateTag]()
+			FTimerDelegate::CreateWeakLambda(TargetASC, [WeakASC, StateTag, CueTag]()
 			{
 				if (UAbilitySystemComponent* ASC = WeakASC.Get())
 				{
-					ASC->RemoveLooseGameplayTag(StateTag);
+					if (StateTag.IsValid())
+					{
+						ASC->RemoveLooseGameplayTag(StateTag);
+					}
+
+					if (CueTag.IsValid())
+					{
+						ASC->RemoveGameplayCue(CueTag);
+					}
 				}
 			}),
 			Duration,
