@@ -8,6 +8,7 @@
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
 void UNSSkillSlotWidget::StartCooldown(float NewCooldownDuration)
 {
@@ -71,11 +72,30 @@ void UNSSkillSlotWidget::HandleCooldownMessage(
 	FGameplayTag Channel, 
 	const FNSSkillCooldownMessage& Message)
 {
-	if (Message.SkillTag != BoundSkillTag)
+	//메시지에 담긴 스킬 태그와 쿨타임을 하나의 컨테이너로 모아 슬롯 태그 쿼리와 비교
+	FGameplayTagContainer MessageTags;
+
+	if (Message.SkillTag.IsValid())
+	{
+		MessageTags.AddTag(Message.SkillTag);
+	}
+
+	if (Message.CooldownTag.IsValid())
+	{
+		MessageTags.AddTag(Message.CooldownTag);
+	}
+	
+	//이 슬롯이 반응해야하는 태그가 아니면 다른 스킬의 쿨타임 메시지이므로 무시
+	if (!CooldownTagQuery.IsEmpty() && !CooldownTagQuery.Matches(MessageTags))
 	{
 		return;
 	}
-
+	
+	//충전형 스킬은 메시지에 포함된 충전수를 갱신
+	UpdateChargeDisplay(
+		Message.CurrentCharge,
+		Message.MaxCharge);
+	// ameplay 쪽에서 전달한 실제 쿨타임 시간으로 UI 카운트다운을 시작한다.
 	StartCooldown(Message.CooldownDuration);
 }
 
@@ -198,6 +218,63 @@ void UNSSkillSlotWidget::UpdateCooldownDisplay(float NewRemainingCooldown, float
 				RemainingCooldown)));
 		CooldownText->SetVisibility(ESlateVisibility::Visible);
 	}
+}
+
+	void UNSSkillSlotWidget::UpdateChargeDisplay(int32 CurrentCharge, int32 MaxCharge)
+{
+	if (!ChargeText)
+	{
+		return;
+	}
+	//최대 충전수가 1이하인 스킬은 충전택스트를 숨김
+	if (MaxCharge <= 1)
+	{
+		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	//GMS로 충전 수를 받은 경우 현재/최대 충전 수를 함께 표시
+	ChargeText->SetText(FText::Format(
+	NSLOCTEXT("SkillSlotWidget", "ChargeFormat", "{0}/{1}"),
+	FText::AsNumber(CurrentCharge),
+	FText::AsNumber(MaxCharge)
+	));
+	
+	ChargeText->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UNSSkillSlotWidget::UpdateDashChargeFromASC()
+{
+	if (!ChargeText)
+	{
+		return;
+	}
+
+	//대쉬 횟수는 ASC의 PlayerAttributeSet에 있으므로 ASC가 없으면 다시 캐싱
+	if (!IsValid(CachedASC))
+	{
+		CacheOwnerASC();
+	}
+
+	if (!IsValid(CachedASC))
+	{
+		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	//대쉬는 별도 쿨타임 GE가 아니라 DashCount Attribute로 사용 가능 횟수를 관리
+	const UNSPlayerAttributeSet* PlayerAttributeSet =
+		CachedASC->GetSet<UNSPlayerAttributeSet>();
+
+	if (!PlayerAttributeSet)
+	{
+		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	const int32 CurrentCharge =
+		FMath::Max<int32>(FMath::FloorToInt(PlayerAttributeSet->GetDashCount()), 0);
+
+	ChargeText->SetText(FText::AsNumber(CurrentCharge));
+	ChargeText->SetVisibility(ESlateVisibility::Visible);
 }
 void UNSSkillSlotWidget::NativeConstruct()
 {

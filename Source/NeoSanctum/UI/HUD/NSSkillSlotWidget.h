@@ -56,6 +56,9 @@ private:
 	// 남은 쿨타임 텍스트
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonTextBlock> CooldownText;
+	//충전형 스킬의 남은 횟수 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> ChargeText;
 	//쿨타임과 머테리얼 연결
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;//(MID : MaterialInstanceDynamic)
