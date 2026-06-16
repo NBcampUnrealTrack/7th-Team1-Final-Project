@@ -168,6 +168,8 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition)
 {
 	if (!HasAuthority() || CurrentDefinition == NewDefinition) return;
+	if (!NewDefinition) return;
+	if (!IsValid(NewDefinition->AbilitySet)) return;
 	
 	CurrentAbilityHandles.TakeFromAbilitySystem(AbilitySystemComponent);
 	
@@ -183,6 +185,11 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 		ContextHandle
 		);
 	
+	if (SpecHandle.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+	
 	if (NewDefinition->CompanionMesh.Get() != nullptr)
 	{
 		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
@@ -194,8 +201,10 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
 		StreamableManager.RequestAsyncLoad(
 			MeshToLoad.ToSoftObjectPath(),
-			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad]()
+			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad, NewDefinition]()
 			{
+				if (NewDefinition != CurrentDefinition) return;
+				
 				if (USkeletalMesh* Loaded = MeshToLoad.Get())
 				{
 					SkeletalMeshComponent->SetSkeletalMesh(Loaded);
@@ -203,10 +212,13 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 			})
 		);
 	}
+	
+	CurrentDefinition = NewDefinition;
 }
 
 void ANSBaseCompanionAI::ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel)
 {
+	if (!HasAuthority()) return;
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
