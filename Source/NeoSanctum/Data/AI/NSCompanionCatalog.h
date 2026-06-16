@@ -20,5 +20,5 @@ public:
 	TArray<TObjectPtr<UNSCompanionDefinition>> Companions;
 	
 	// 태그로 정의 찾기
-	UNSCompanionDefinition* FindByTag(FGameplayTag CompanionTag) const;
+	UNSCompanionDefinition* FindByTag(FGameplayTag InCompanionTag) const;
 };
