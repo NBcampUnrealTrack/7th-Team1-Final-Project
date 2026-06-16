@@ -17,6 +17,12 @@ class NEOSANCTUM_API UNSRewardTriggerData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+	
+	
+public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag TriggerTag;
 
