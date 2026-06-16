@@ -9,11 +9,9 @@
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
-#include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
-#include "NeoSanctum/System/NSSaveGameSubsystem.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -44,30 +42,7 @@ ANSPlayerState::ANSPlayerState()
 void ANSPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// 서버에서만 세이브 데이터 초기화. 복제 프로퍼티로 클라이언트에 전달됨
-	if (!HasAuthority()) return;
-
-	UNSSaveGameSubsystem* SaveSys = GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>();
-	if (!SaveSys)
-	{
-		return;
-	}
-
-	// 캐시 데이터가 있으면 바로 적용, 없으면 콜백으로 받음
-	if (SaveSys->GetCachedPermanentData())
-	{
-		ProgressComponent->InitFromSaveData(SaveSys->GetCachedPermanentData());
-	}
-	else
-	{
-		SaveSys->OnPermanentDataLoaded.AddUObject(this, &ANSPlayerState::OnSaveDataLoaded);
-	}
-}
-
-void ANSPlayerState::OnSaveDataLoaded(UNSPermanentSaveGame* Data)
-{
-	ProgressComponent->InitFromSaveData(Data);
+	
 }
 
 void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -88,6 +63,15 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
 	{
 		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
+		
+		UNSPlayerProgressComponent* OldProgress = ProgressComponent;
+		UNSPlayerProgressComponent* NewProgress = NewPlayerState->GetProgressComponent();
+		if (OldProgress && NewProgress)
+		{
+			FNSProgressPayload Payload;
+			OldProgress->BuildPayload(Payload);
+			NewProgress->ApplyPayload(Payload);
+		}
 	}
 }
 
@@ -106,9 +90,13 @@ UNSCombatStatComponent* ANSPlayerState::GetCombatStatComponent() const
 	return CombatStatComponent;
 }
 
-void ANSPlayerState::Server_SetReady_Implementation()
+void ANSPlayerState::SetReady(bool bNewReady)
 {
-	bIsReady = !bIsReady;
+	if (!HasAuthority())
+	{
+		return;
+	}
+	bIsReady = bNewReady;
 }
 
 void ANSPlayerState::SetIsDead(bool bNewIsDead)

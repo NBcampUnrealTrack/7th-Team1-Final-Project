@@ -490,7 +490,7 @@ void ANSRunGameMode::OnResultDisplayFinished()
 {
 	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
 	const bool bGoNext = NSGameState && NSGameState->WinningChoice == ENSRunChoice::NextStage;
-	
+
 	if (NSGameState)
 	{
 		NSGameState->SetRunEndPhase(ENSRunEndPhase::None);
@@ -498,7 +498,47 @@ void ANSRunGameMode::OnResultDisplayFinished()
 
 	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
 	{
-		bGoNext ? NSGameFlow->AdvanceToNextStage() : NSGameFlow->ReturnToHub();
+		if (bGoNext)
+		{
+			NSGameFlow->AdvanceToNextStage();
+		}
+		else
+		{
+			// 거점 귀환할 때 정보 저장
+			SaveAllPlayersProgress();
+			NSGameFlow->ReturnToHub();
+		}
+	}
+}
+
+void ANSRunGameMode::SaveAllPlayersProgress()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState)
+	{
+		return;
+	}
+
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		if (!NSPlayerState)
+		{
+			continue;
+		}
+
+		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(NSPlayerState->GetPlayerController());
+		if (!NSPlayerController)
+		{
+			continue;
+		}
+
+		NSPlayerController->SaveProgressToOwningClient();
 	}
 }
 

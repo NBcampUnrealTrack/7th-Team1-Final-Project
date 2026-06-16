@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameplayEffectTypes.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
@@ -20,6 +22,13 @@ class NEOSANCTUM_API ANSPlayerController : public APlayerController
 	
 public:
 	ANSPlayerController();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bNewReady);
+	
+	// 거점 레디 UI가 호출해야할 함수
+	UFUNCTION(BlueprintCallable, Category="Run")
+	void RequestReady(); 
 	
 	// 게임 시작 요청
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -52,6 +61,23 @@ public:
 
 	//상호작용 시도(키 입력시 호출)
 	void TryInteract();
+	
+	// 세이브 데이터 업로드/ 저장용 RPC 함수
+	UFUNCTION(Server, Reliable)
+	void Server_UploadProgress(const FNSProgressPayload& Payload);
+	UFUNCTION(Client, Reliable)
+	void Client_SaveProgress(const FNSProgressPayload& Payload);
+	UFUNCTION(BlueprintCallable, Category="Progress")
+	void UploadLocalProgress(FName SelectedCharacterId);
+	
+	// 게임모드 호출용: 현재 진행도를 빌드해 소유 클라에 저장
+	void SaveProgressToOwningClient();
+	
+	void CommitCharacterSelection(UNSCharacterData* SelectedCharacterData);
+
+	// 거점 입장시 가장 최근 캐릭터 데이터 읽어오는 용도
+	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
+	void RestoreLastSelectedCharacter();
 	
 private:
 	// 실제로 사망 관전자 상태로 진입
@@ -105,7 +131,10 @@ private:
 	// 캐릭터 선택 위젯 닫기
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideCharacterSelectWidget();
-	
+	// 캐릭터 선택 후 핸들러
+	UFUNCTION()
+	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
+
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")

@@ -79,6 +79,8 @@ protected:
 	
 	// 투표 결과 UI 표시 후 실제 트래블 진행할 함수
 	void OnResultDisplayFinished();
+	// 인런 진행도 저장용 함수
+	void SaveAllPlayersProgress();
 
 private:
 	UPROPERTY()

@@ -1,98 +1,66 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
-#include "Net/UnrealNetwork.h"
 
 UNSPlayerProgressComponent::UNSPlayerProgressComponent()
 {
-	// 복제 활성화
-	SetIsReplicatedByDefault(true);
 	PrimaryComponentTick.bCanEverTick = false;
-}
-
-void UNSPlayerProgressComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, ActiveCharacterId, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, TotalCurrency, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, EquippedPartIds, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, UnlockedSkillIds, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, UnlockedNPCIds, COND_OwnerOnly);
-}
-
-void UNSPlayerProgressComponent::InitFromSaveData(const UNSPermanentSaveGame* SaveData)
-{
-	if (!SaveData) return;
-
-	LoadSlot(SaveData->LastSelectedCharacterId, SaveData);
-	bDirty = false;
-}
-
-void UNSPlayerProgressComponent::PopulateSaveData(UNSPermanentSaveGame* OutSaveData) const
-{
-	if (!OutSaveData || ActiveCharacterId.IsNone()) return;
-
-	FNSCharacterSaveData& Slot = OutSaveData->Characters.FindOrAdd(ActiveCharacterId);
-	Slot.TotalCurrency = TotalCurrency;
-	Slot.EquippedPartIds = EquippedPartIds;
-	Slot.UnlockedSkillIds = TSet<FName>(UnlockedSkillIds);
-	Slot.UnlockedNPCIds = TSet<FName>(UnlockedNPCIds);
-
-	OutSaveData->LastSelectedCharacterId = ActiveCharacterId;
-}
-
-// 캐릭터 전환 시
-void UNSPlayerProgressComponent::SetActiveCharacter(const FName& InCharacterId, const UNSPermanentSaveGame* SaveData)
-{
-	LoadSlot(InCharacterId, SaveData);
-	// LastSelectedCharacterId가 갱신되도록 저장 트리거
-	bDirty = true;
-}
-
-void UNSPlayerProgressComponent::LoadSlot(const FName& InCharacterId, const UNSPermanentSaveGame* SaveData)
-{
-	ActiveCharacterId = InCharacterId;
-
-	const FNSCharacterSaveData* Slot = (SaveData && !InCharacterId.IsNone())
-		? SaveData->Characters.Find(InCharacterId)
-		: nullptr;
-
-	if (Slot)
-	{
-		TotalCurrency = Slot->TotalCurrency;
-		EquippedPartIds = Slot->EquippedPartIds;
-		UnlockedSkillIds = Slot->UnlockedSkillIds.Array();
-		UnlockedNPCIds = Slot->UnlockedNPCIds.Array();
-	}
-	else
-	{
-		TotalCurrency = 0;
-		EquippedPartIds.Reset();
-		UnlockedSkillIds.Reset();
-		UnlockedNPCIds.Reset();
-	}
-}
-
-bool UNSPlayerProgressComponent::IsNPCUnlocked(const FName& NPCId) const
-{
-	return UnlockedNPCIds.Contains(NPCId);
 }
 
 void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 {
-	if (UnlockedNPCIds.Contains(NPCId)) return;
+	// 계정단위 저장, 서버에서 호출
 	UnlockedNPCIds.Add(NPCId);
-	bDirty = true;
 }
 
-bool UNSPlayerProgressComponent::IsSkillUnlocked(const FName& SkillId) const
+namespace
 {
-	return UnlockedSkillIds.Contains(SkillId);
+	void ConvertMapToArray(const TMap<FName, int32>& SourceMap, TArray<FNSNodeLevel>& OutArray)
+	{
+		OutArray.Reset();
+		OutArray.Reserve(SourceMap.Num());
+		for (const TPair<FName, int32>& NodePair : SourceMap)
+		{
+			FNSNodeLevel NodeLevel;
+			NodeLevel.NodeId = NodePair.Key;
+			NodeLevel.Level = NodePair.Value;
+			OutArray.Add(NodeLevel);
+		}
+	}
+
+	void ConvertArrayToMap(const TArray<FNSNodeLevel>& SourceArray, TMap<FName, int32>& OutMap)
+	{
+		OutMap.Reset();
+		OutMap.Reserve(SourceArray.Num());
+		for (const FNSNodeLevel& NodeLevel : SourceArray)
+		{
+			OutMap.Add(NodeLevel.NodeId, NodeLevel.Level);
+		}
+	}
 }
 
-void UNSPlayerProgressComponent::UnlockSkill(const FName& SkillId)
+void UNSPlayerProgressComponent::BuildPayload(FNSProgressPayload& OutPayload) const
 {
-	if (UnlockedSkillIds.Contains(SkillId)) return;
-	UnlockedSkillIds.Add(SkillId);
-	bDirty = true;
+	OutPayload.CommonCurrency = CommonCurrency;
+	OutPayload.UnlockedNPCIds = UnlockedNPCIds.Array();
+	ConvertMapToArray(CommonSkillLevels, OutPayload.CommonSkillLevels);
+	ConvertMapToArray(PetUpgradeLevels, OutPayload.PetUpgradeLevels);
+
+	OutPayload.ActiveCharacterId = ActiveCharacterId;
+	OutPayload.JobCurrency = JobCurrency;
+	OutPayload.EquippedPartIds = EquippedPartIds;
+	ConvertMapToArray(CharacterSkillLevels, OutPayload.CharacterSkillLevels);
+}
+
+void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
+{
+	CommonCurrency = Payload.CommonCurrency;
+	UnlockedNPCIds = TSet<FName>(Payload.UnlockedNPCIds);
+	ConvertArrayToMap(Payload.CommonSkillLevels, CommonSkillLevels);
+	ConvertArrayToMap(Payload.PetUpgradeLevels, PetUpgradeLevels);
+
+	ActiveCharacterId = Payload.ActiveCharacterId;
+	JobCurrency = Payload.JobCurrency;
+	EquippedPartIds = Payload.EquippedPartIds;
+	ConvertArrayToMap(Payload.CharacterSkillLevels, CharacterSkillLevels);
 }

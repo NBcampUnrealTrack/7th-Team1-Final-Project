@@ -128,7 +128,24 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 
 void UNSCharacterSelectWidget::ConfirmSelection()
 {
-	// TODO(영웅): GameInstance 연동 후 구현
+	if (!CachedCharacters.IsValidIndex(CurrentIndex))
+	{
+		return;
+	}
+
+	const FNSCharacterSelectData* SelectedData = CachedCharacters[CurrentIndex];
+	if (!SelectedData)
+	{
+		return;
+	}
+
+	UNSCharacterData* SelectedCharacterData = SelectedData->CharacterData.LoadSynchronous();
+	if (!SelectedCharacterData)
+	{
+		return;
+	}
+
+	OnCharacterSelectionConfirmed.Broadcast(SelectedCharacterData);
 }
 void UNSCharacterSelectWidget::ApplyPreviewImage(const FNSCharacterSelectData& Data)
 {

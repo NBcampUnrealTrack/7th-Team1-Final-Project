@@ -11,7 +11,10 @@
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/System/NSSaveGameSubsystem.h"
+#include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
@@ -23,8 +26,9 @@
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
-#include "VerseVM/VVMRuntimeError.h"
-#include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "Engine/AssetManager.h"
+
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -40,6 +44,25 @@ ANSPlayerController::ANSPlayerController()
 
 	// 증강 선택 컴포넌트 생성
 	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
+}
+
+void ANSPlayerController::RequestReady()
+{
+	const ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
+	const bool bCurrentlyReady =
+		OwningPlayerState ? OwningPlayerState->IsReady() : false;
+	
+	Server_SetReady(!bCurrentlyReady);
+}
+
+void ANSPlayerController::Server_SetReady_Implementation(bool bNewReady)
+{
+	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!OwningPlayerState)
+	{
+		return;
+	}
+	OwningPlayerState->SetReady(bNewReady);
 }
 
 void ANSPlayerController::BindAttributeToHUD()
@@ -171,6 +194,12 @@ void ANSPlayerController::ShowCharacterSelectWidget()
 			this,
 			CharacterSelectWidgetClass
 		);
+		
+		if (CharacterSelectWidget)
+		{
+			CharacterSelectWidget->OnCharacterSelectionConfirmed.AddDynamic(
+				this, &ANSPlayerController::HandleCharacterSelectionConfirmed);
+		}
 	}
 
 	if (!CharacterSelectWidget)
@@ -207,6 +236,13 @@ void ANSPlayerController::HideCharacterSelectWidget()
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
 }	
+
+void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData)
+{
+	CommitCharacterSelection(ConfirmedCharacterData);
+	// 확인 버튼 클릭 후에도 UI화면이 남아있어야 한다면 밑의 함수 제거
+	HideCharacterSelectWidget(); 
+}
 
 void ANSPlayerController::BeginPlay()
 {
@@ -341,6 +377,11 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
+	}
+	if (MapName.Contains(TEXT("HideOut")))
+	{
+		// 클라가 CachedData 읽어 ChangeCharacterData로 적용
+		RestoreLastSelectedCharacter();
 	}
 }
 
@@ -740,6 +781,233 @@ void ANSPlayerController::TryInteract()
 			return;
 		}
 	}
+}
+
+void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgressPayload& Payload)
+{
+	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!OwningPlayerState)
+	{
+		return;
+	}
+
+	UNSPlayerProgressComponent* ProgressComponent = OwningPlayerState->GetProgressComponent();
+	if (!ProgressComponent)
+	{
+		return;
+	}
+
+	ProgressComponent->ApplyPayload(Payload);
+}
+
+void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPayload& Payload)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
+	if (!SaveSubsystem)
+	{
+		return;
+	}
+
+	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
+	if (!PermanentSave)
+	{
+		return;
+	}
+
+	// 계정 단위 덮어쓰기
+	PermanentSave->CommonCurrency = Payload.CommonCurrency;
+	PermanentSave->UnlockedNPCIds = TSet<FName>(Payload.UnlockedNPCIds);
+
+	PermanentSave->CommonSkillLevels.Reset();
+	for (const FNSNodeLevel& NodeLevel : Payload.CommonSkillLevels)
+	{
+		PermanentSave->CommonSkillLevels.Add(NodeLevel.NodeId, NodeLevel.Level);
+	}
+
+	PermanentSave->PetUpgradeLevels.Reset();
+	for (const FNSNodeLevel& NodeLevel : Payload.PetUpgradeLevels)
+	{
+		PermanentSave->PetUpgradeLevels.Add(NodeLevel.NodeId, NodeLevel.Level);
+	}
+
+	// 활성 캐릭터 슬롯 갱신
+	if (!Payload.ActiveCharacterId.IsNone())
+	{
+		FNSCharacterSaveData& CharacterSlot =
+			PermanentSave->Characters.FindOrAdd(Payload.ActiveCharacterId);
+		CharacterSlot.JobCurrency = Payload.JobCurrency;
+		CharacterSlot.EquippedPartIds = Payload.EquippedPartIds;
+		CharacterSlot.CharacterSkillLevels.Reset();
+		for (const FNSNodeLevel& NodeLevel : Payload.CharacterSkillLevels)
+		{
+			CharacterSlot.CharacterSkillLevels.Add(NodeLevel.NodeId, NodeLevel.Level);
+		}
+		PermanentSave->LastSelectedCharacterId = Payload.ActiveCharacterId;
+	}
+
+	// CachedData를 그대로 넘기므로 머지 분기 없이 그대로 저장됨
+	SaveSubsystem->SavePermanent(PermanentSave, FNSSaveComplete());
+}
+
+void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return;
+	}
+
+	UNSSaveGameSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
+	if (!SaveSubsystem)
+	{
+		return;
+	}
+
+	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
+	if (!PermanentSave)
+	{
+		return;
+	}
+
+	FNSProgressPayload Payload;
+
+	// 계정 단위
+	Payload.CommonCurrency = PermanentSave->CommonCurrency;
+	Payload.UnlockedNPCIds = PermanentSave->UnlockedNPCIds.Array();
+	for (const TPair<FName, int32>& SkillPair : PermanentSave->CommonSkillLevels)
+	{
+		FNSNodeLevel NodeLevel;
+		NodeLevel.NodeId = SkillPair.Key;
+		NodeLevel.Level = SkillPair.Value;
+		Payload.CommonSkillLevels.Add(NodeLevel);
+	}
+	for (const TPair<FName, int32>& PetPair : PermanentSave->PetUpgradeLevels)
+	{
+		FNSNodeLevel NodeLevel;
+		NodeLevel.NodeId = PetPair.Key;
+		NodeLevel.Level = PetPair.Value;
+		Payload.PetUpgradeLevels.Add(NodeLevel);
+	}
+
+	// 활성 캐릭터 슬롯
+	Payload.ActiveCharacterId = SelectedCharacterId;
+	const FNSCharacterSaveData* CharacterSlot = PermanentSave->Characters.Find(SelectedCharacterId);
+	if (CharacterSlot)
+	{
+		Payload.JobCurrency = CharacterSlot->JobCurrency;
+		Payload.EquippedPartIds = CharacterSlot->EquippedPartIds;
+		for (const TPair<FName, int32>& SkillPair : CharacterSlot->CharacterSkillLevels)
+		{
+			FNSNodeLevel NodeLevel;
+			NodeLevel.NodeId = SkillPair.Key;
+			NodeLevel.Level = SkillPair.Value;
+			Payload.CharacterSkillLevels.Add(NodeLevel);
+		}
+	}
+
+	Server_UploadProgress(Payload);
+}
+
+void ANSPlayerController::SaveProgressToOwningClient()
+{
+	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!OwningPlayerState)
+	{
+		return;
+	}
+
+	UNSPlayerProgressComponent* ProgressComponent = OwningPlayerState->GetProgressComponent();
+	if (!ProgressComponent)
+	{
+		return;
+	}
+
+	FNSProgressPayload Payload;
+	ProgressComponent->BuildPayload(Payload);
+	Client_SaveProgress(Payload);
+}
+
+void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCharacterData)
+{
+	if (!SelectedCharacterData)
+	{
+		return;
+	}
+
+	// 캐릭터 변경
+	if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		PlayerCharacter->ChangeCharacterData(SelectedCharacterData);
+	}
+
+	const FName SelectedKey = SelectedCharacterData->GetPrimaryAssetId().PrimaryAssetName;
+
+	// 최근 선택 캐릭터 로컬 저장
+	UGameInstance* GameInstance = GetGameInstance();
+	UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+	if (SaveSubsystem)
+	{
+		UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
+		if (PermanentSave)
+		{
+			PermanentSave->LastSelectedCharacterId = SelectedKey;
+			SaveSubsystem->SavePermanent(PermanentSave, FNSSaveComplete());
+		}
+	}
+
+	// 서버 업로드 (방금 고른 키를 직접 전달)
+	UploadLocalProgress(SelectedKey);
+}
+
+void ANSPlayerController::RestoreLastSelectedCharacter()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+	if (!SaveSubsystem)
+	{
+		return;
+	}
+
+	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
+	if (!PermanentSave || PermanentSave->LastSelectedCharacterId.IsNone())
+	{
+		return;
+	}
+
+	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!OwningPlayerState)
+	{
+		return;
+	}
+
+	// FName -> FPrimaryAssetId
+	const FPrimaryAssetType CharacterType =
+		OwningPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
+	const FPrimaryAssetId RestoredId(CharacterType, PermanentSave->LastSelectedCharacterId);
+
+	const FSoftObjectPath DataPath = UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
+	if (!DataPath.IsValid())
+	{
+		return;
+	}
+
+	UNSCharacterData* RestoredData = Cast<UNSCharacterData>(DataPath.TryLoad());
+	if (!RestoredData)
+	{
+		return;
+	}
+
+	// 동일 커밋 경로 재사용
+	CommitCharacterSelection(RestoredData);
 }
 
 void ANSPlayerController::Debug_EnqueueAugmentOffer()
