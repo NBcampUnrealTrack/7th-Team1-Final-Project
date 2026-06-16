@@ -17,4 +17,18 @@ namespace NSGameplayTags
 	
 	// 쿨다운 태그
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CoolDown_Companion_Fire);
+	
+	// 업그레이드 주체 드론 태그
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Companion_Basic);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Companion_Attack);
+	
+	// 업그레이드 하위 노드 태그
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Upgrade_Companion_Basic);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Upgrade_Companion_AttackDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Upgrade_Companion_FireRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Upgrade_Companion_FireRange);
+	
+	// 공통 사용 업그레이드 태그
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Upgrade);
 }
