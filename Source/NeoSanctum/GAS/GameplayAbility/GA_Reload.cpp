@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -68,7 +69,12 @@ void UGA_Reload::ActivateAbility(
 	// 재장전 중복 실행 방지
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Reloading);
 	AddDeactivateHandIKTag();
-
+	
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(GetWorld()))
+	{
+		SoundSubsystem->PlaySoundAtLocation(ReloadSoundID, ActorInfo->AvatarActor.Get()->GetActorLocation());
+	}
+	
 	PlayReloadMontage(ReloadDuration);
 
 	UWorld* World = GetWorld();

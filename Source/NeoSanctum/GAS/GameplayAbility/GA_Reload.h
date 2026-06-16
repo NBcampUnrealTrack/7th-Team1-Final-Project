@@ -62,6 +62,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload|Animation")
 	float MaxMontagePlayRate = 3.0f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload|Sound")
+	FName ReloadSoundID = NAME_None;
+	
 private:
 	void FinishReload();
 	void PlayReloadMontage(float ReloadDuration);
