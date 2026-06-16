@@ -71,6 +71,45 @@ struct FNSPhaseDefinition
 	TSubclassOf<UGameplayAbility> PhaseTransitionAbility;
 };
 
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackCondition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MinRange = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MaxRange = 300.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	bool bRequireLineOfSight = true;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FName AttackId;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	TSubclassOf<UGameplayAbility> AbilityClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FNSEnemyAttackCondition Condition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Cooldown = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Weight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	int32 Priority = 0;
+};
+
 /**
  * Enemy 초기화 시 필요한 PrimaryDataAsset 입니다.
  */
@@ -130,6 +169,10 @@ public:
 	// 기본 GA
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
+	
+	// 몬스터가 사용할 수 있는 공격 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TArray<FNSEnemyAttackDefinition> AttackList;
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
