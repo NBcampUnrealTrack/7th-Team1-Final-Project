@@ -4,6 +4,8 @@
 #include "GA_Reload.h"
 
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
@@ -30,6 +32,7 @@ void UGA_Reload::ActivateAbility(
 {
 	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
 	{
+		NS_OBJ_LOG(LogNSGAS, Warning, "Reload activation failed. ActorInfo or AvatarActor is invalid.");
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
@@ -38,12 +41,19 @@ void UGA_Reload::ActivateAbility(
 
 	if (!TryGetFinalReloadDuration(ReloadDuration))
 	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Warning,
+			"ReloadSpeed CombatStat lookup failed. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", GetReloadCombatStatAbilityTag().ToString()),
+			("StatTag", ReloadSpeedStatTag.ToString())
+		);
+
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Warning, "Reload CommitAbility failed.");
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
@@ -52,17 +62,22 @@ void UGA_Reload::ActivateAbility(
 
 	if (!ASC)
 	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Warning, "Reload activation failed. ASC is invalid.");
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
 	// 재장전 중복 실행 방지
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Reloading);
+	AddDeactivateHandIKTag();
+
+	PlayReloadMontage(ReloadDuration);
 
 	UWorld* World = GetWorld();
 
 	if (!World)
 	{
+		NS_ACTOR_LOG(ActorInfo->AvatarActor.Get(), LogNSGAS, Warning, "Reload activation failed. World is invalid.");
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
@@ -95,6 +110,8 @@ void UGA_Reload::EndAbility(
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Reloading);
 	}
 
+	RemoveDeactivateHandIKTag();
+
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
@@ -110,6 +127,7 @@ bool UGA_Reload::CheckCost(
 
 	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
 	{
+		NS_OBJ_LOG(LogNSGAS, Warning, "Reload CheckCost failed. ActorInfo or ASC is invalid.");
 		return false;
 	}
 
@@ -118,10 +136,22 @@ bool UGA_Reload::CheckCost(
 
 	if (!AttributeSet)
 	{
+		NS_OBJ_LOG(LogNSGAS, Warning, "Reload CheckCost failed. NSPlayerAttributeSet is missing.");
 		return false;
 	}
 
 	// 탄약이 이미 가득 차 있으면 재장전하지 않음
+	if (AttributeSet->GetAmmo() >= AttributeSet->GetMaxAmmo())
+	{
+		NS_OBJ_LOG(LogNSGAS, Warning,
+			"Reload CheckCost failed. Ammo is already full. Ammo={Ammo}, MaxAmmo={MaxAmmo}",
+			("Ammo", AttributeSet->GetAmmo()),
+			("MaxAmmo", AttributeSet->GetMaxAmmo())
+		);
+
+		return false;
+	}
+
 	return AttributeSet->GetAmmo() < AttributeSet->GetMaxAmmo();
 }
 
@@ -147,6 +177,71 @@ void UGA_Reload::FinishReload()
 		true,
 		false
 	);
+}
+
+void UGA_Reload::PlayReloadMontage(float ReloadDuration)
+{
+	if (!ReloadMontage || ReloadDuration <= 0.0f)
+	{
+		return;
+	}
+
+	const float MontageLength = ReloadMontage->GetPlayLength();
+
+	if (MontageLength <= 0.0f)
+	{
+		return;
+	}
+
+	const float ClampedMaxPlayRate = FMath::Max(MaxMontagePlayRate, 0.01f);
+	const float MontagePlayRate = FMath::Clamp(MontageLength / ReloadDuration, 0.01f, ClampedMaxPlayRate);
+
+	// 실제 재장전 완료는 타이머가 담당하고 몽타주는 시간에 맞춰 재생
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			ReloadMontage,
+			MontagePlayRate,
+			NAME_None,
+			true
+		);
+
+	if (!MontageTask)
+	{
+		return;
+	}
+
+	MontageTask->ReadyForActivation();
+}
+
+void UGA_Reload::AddDeactivateHandIKTag()
+{
+	if (bDeactivateHandIKTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Deactivate_HandIK);
+		bDeactivateHandIKTagAdded = true;
+	}
+}
+
+void UGA_Reload::RemoveDeactivateHandIKTag()
+{
+	if (!bDeactivateHandIKTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Deactivate_HandIK);
+	}
+
+	bDeactivateHandIKTagAdded = false;
 }
 
 bool UGA_Reload::TryGetFinalReloadDuration(float& OutReloadDuration) const

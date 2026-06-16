@@ -6,6 +6,8 @@
 #include "GA_SkillBase.h"
 #include "GA_Reload.generated.h"
 
+class UAnimMontage;
+
 /**
  * 원거리 캐릭터 공용 재장전 Ability
  */
@@ -52,8 +54,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload")
 	float MinReloadDuration = 0.05f;
 
+	// 재장전 몽타주
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload|Animation")
+	TObjectPtr<UAnimMontage> ReloadMontage;
+
+	// 재장전 시간 보정 시 허용할 최대 몽타주 재생속도
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload|Animation")
+	float MaxMontagePlayRate = 3.0f;
+
 private:
 	void FinishReload();
+	void PlayReloadMontage(float ReloadDuration);
+	void AddDeactivateHandIKTag();
+	void RemoveDeactivateHandIKTag();
 	
 private:
 	bool TryGetFinalReloadDuration(float& OutReloadDuration) const;
@@ -61,4 +74,5 @@ private:
 
 private:
 	FTimerHandle ReloadTimerHandle;
+	bool bDeactivateHandIKTagAdded = false;
 };
