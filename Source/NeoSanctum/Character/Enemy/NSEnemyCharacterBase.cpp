@@ -190,16 +190,44 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 					}
 				}
 			}
+			
+			TSet<TObjectPtr<UClass>> GrantedAbilityClasses;
+			
+			auto GiveAbilityOnce = [this, &GrantedAbilityClasses](TSubclassOf<UGameplayAbility> AbilityClass)
+			{
+				if (!ASC || !AbilityClass)
+				{
+					return;
+				}
+
+				UClass* AbilityRawClass = AbilityClass.Get();
+				if (!AbilityRawClass || GrantedAbilityClasses.Contains(AbilityRawClass))
+				{
+					return;
+				}
+
+				GrantedAbilityClasses.Add(AbilityRawClass);
+
+				const UGameplayAbility* AbilityCDO = AbilityClass.GetDefaultObject();
+				if (!AbilityCDO)
+				{
+					return;
+				}
+
+				ASC->GiveAbility(FGameplayAbilitySpec(
+					AbilityClass,
+					1,
+					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
+			};
 
 			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
 			{
-				if (AbilityClass)
-				{
-					ASC->GiveAbility(FGameplayAbilitySpec(
-						AbilityClass,
-						1,
-						static_cast<int32>(AbilityClass.GetDefaultObject()->GetNetExecutionPolicy())));
-				}
+				GiveAbilityOnce(AbilityClass);
+			}
+			
+			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+			{
+				GiveAbilityOnce(AttackDefinition.AbilityClass);
 			}
 		}
 

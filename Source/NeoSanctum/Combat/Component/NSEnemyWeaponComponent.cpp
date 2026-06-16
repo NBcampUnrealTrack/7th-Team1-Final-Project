@@ -74,15 +74,21 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 	ApplyCurrentWeaponAnimClass();
 
 	// 무기 전용 GA 적용
-	if (UAbilitySystemComponent* ASC = Owner->GetAbilitySystemComponent())
+	if (EnemyData->AttackList.IsEmpty())
 	{
-		if (Config.WeaponAbility)
+		if (UAbilitySystemComponent* ASC = Owner->GetAbilitySystemComponent())
 		{
-			ASC->GiveAbility(FGameplayAbilitySpec(
-				Config.WeaponAbility,
-				1,
-				Config.WeaponAbility.GetDefaultObject()->GetNetExecutionPolicy()
-			));
+			if (Config.WeaponAbility)
+			{
+				const UGameplayAbility* AbilityCDO = Config.WeaponAbility.GetDefaultObject();
+				if (AbilityCDO)
+				{
+					ASC->GiveAbility(FGameplayAbilitySpec(
+						Config.WeaponAbility,
+						1,
+						static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
+				}
+			}
 		}
 	}
 }
