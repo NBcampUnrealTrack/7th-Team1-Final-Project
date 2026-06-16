@@ -17,7 +17,31 @@ class USkeletalMeshComponent;
 class UFloatingPawnMovement;
 class ANSDroneAIController;
 
-
+USTRUCT(BlueprintType)
+struct FCompanionUpgradeNode
+{
+	GENERATED_BODY()
+	
+	// 태그로 노드 확인
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag NodeTag;
+	
+	// 노드 최대 레벨
+	UPROPERTY(EditDefaultsOnly)
+	int32 MaxLevel = 5;
+	
+	// 적용할 effect
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayEffect> UpgradeEffect;
+	
+	// SetByCaller로 넘길 태그
+	UPROPERTY(EditDefaultsOnly)
+	FGameplayTag SetByCallerTag;
+	
+	// 레벨당 증가량
+	UPROPERTY(EditDefaultsOnly)
+	float MagnitudePerLevel = 0.f;
+};
 
 UCLASS()
 class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
