@@ -99,6 +99,11 @@ void ANSPlayerState::SetReady(bool bNewReady)
 	bIsReady = bNewReady;
 }
 
+void ANSPlayerState::Server_CollectCurrency_Implementation(int32 DropId)
+{
+	// TODO: 검증 코드 필요
+}
+
 void ANSPlayerState::SetIsDead(bool bNewIsDead)
 {
 	if (!HasAuthority())

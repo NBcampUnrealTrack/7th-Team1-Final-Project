@@ -41,6 +41,10 @@ public:
 	
 	void SetReady(bool bNewReady);
 	
+	// 클라에서 재화 액터에 오버랩 시 호출
+	UFUNCTION(Server, Reliable)
+	void Server_CollectCurrency(int32 DropId);
+	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
 
