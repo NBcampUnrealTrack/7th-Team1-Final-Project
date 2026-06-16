@@ -6,6 +6,9 @@
 
 namespace NSGameplayTags
 {
+	// Types
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Type_Augment);
+	
 	// Rewards
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Trigger_NormalKill);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Trigger_EliteKill);

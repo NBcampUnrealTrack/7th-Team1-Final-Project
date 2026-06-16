@@ -4,6 +4,9 @@
 
 namespace NSGameplayTags
 {
+	// Types
+	UE_DEFINE_GAMEPLAY_TAG(Reward_Type_Augment, "Reward.Type.Augment");
+	
 	// Rewards
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Trigger_NormalKill, "Reward.Trigger.NormalKill");
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Trigger_EliteKill, "Reward.Trigger.EliteKill");

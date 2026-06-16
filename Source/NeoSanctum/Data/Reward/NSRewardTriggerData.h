@@ -9,7 +9,7 @@
 #include "NSRewardTriggerData.generated.h"
 
 /**
- * 몬스터 / 보상 트리거별 드랍 테이블 데이터
+ * 보상 트리거별 보상 데이터
  */
 UCLASS(BlueprintType)
 class NEOSANCTUM_API UNSRewardTriggerData : public UPrimaryDataAsset
@@ -21,5 +21,5 @@ public:
 	FGameplayTag TriggerTag;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
-	TArray<FNSRewardEntry> DropEntries;
+	TArray<FNSRewardEntry> RewardEntries;
 };
