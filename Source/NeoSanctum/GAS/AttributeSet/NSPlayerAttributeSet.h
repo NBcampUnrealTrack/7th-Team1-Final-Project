@@ -44,6 +44,16 @@ public:
 	FGameplayAttributeData DashRegenRate;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, DashRegenRate);
 	
+	// 탄약
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Ammo, Category = "GAS|Attribute")
+	FGameplayAttributeData Ammo;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Ammo);
+	
+	// 최대 탄약
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxAmmo, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxAmmo;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxAmmo);
+	
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
@@ -63,4 +73,10 @@ private:
 	
 	UFUNCTION()
 	void OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate);
+	
+	UFUNCTION()
+	void OnRep_Ammo(const FGameplayAttributeData& OldAmmo);
+	
+	UFUNCTION()
+	void OnRep_MaxAmmo(const FGameplayAttributeData& OldMaxAmmo);
 };
