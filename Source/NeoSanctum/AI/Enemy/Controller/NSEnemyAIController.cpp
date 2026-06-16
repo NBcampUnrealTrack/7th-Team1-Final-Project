@@ -42,7 +42,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		ClearFocus(EAIFocusPriority::Gameplay);
 	}
 
-	GetAttackAbilityTagByDistance();
+	GetAttackAbilityClassByDistance();
 }
 
 ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other) const
@@ -67,67 +67,55 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	return ETeamAttitude::Type::Neutral;
 }
 
-FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
+TSubclassOf<UGameplayAbility> ANSEnemyAIController::GetAttackAbilityClassByDistance()
 {
-	if (!CachedBBComp) return FGameplayTag();
+	if (!CachedBBComp)
+	{
+		return nullptr;
+	}
 
 	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
 	APawn* AIPawn = GetPawn();
-	if (!AIPawn) return FGameplayTag();
-
-	if (!IsValidLivingTarget(TargetActor))
+	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
 		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		return FGameplayTag();
+		return nullptr;
 	}
-
-	if (!TargetActor)
+	
+	ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(AIPawn);
+	if (!EnemyChar || !EnemyChar->GetEnemyData())
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		return FGameplayTag();
+		return nullptr;
 	}
 
+	const UNSEnemyData* EnemyData = EnemyChar->GetEnemyData();
+	
 	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
-	float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
+	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
-	// 공격 사거리 이내인 경우 공격 태그 반환
-	if (ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(AIPawn))
+	const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+	const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
+
+	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
+	const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
+	
+	if (FacingDot < RequiredDot)
 	{
-		if (UNSEnemyData* EnemyData = EnemyChar->GetEnemyData())
-		{
-			const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
-
-			const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
-
-			const float FacingDot = FVector::DotProduct(Forward, ToTarget);
-			const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
-
-			const bool bInRange = Distance >= EnemyData->MinAttackRange && Distance <= EnemyData->MaxAttackRange;
-
-			const bool bFacingTarget = FacingDot >= RequiredDot;
-			const bool bHasLineOfSight = LineOfSightTo(TargetActor);
-
-			if (bInRange && bFacingTarget && bHasLineOfSight)
-			{
-				CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
-
-				if (EnemyData->DefaultWeaponClass)
-				{
-					const ANSEnemyWeaponBase* WeaponCDO = 
-						EnemyData->DefaultWeaponClass->GetDefaultObject<ANSEnemyWeaponBase>();
-
-					if (WeaponCDO)
-					{
-						return WeaponCDO->GetWeaponConfig().AttackAbilityTag;
-					}
-				}
-			}
-		}
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		return nullptr;
 	}
+	
+	if (const FNSEnemyAttackDefinition* SelectedAttack = SelectAttackDefinition(EnemyData, TargetActor, Distance))
+	{
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
+		return SelectedAttack->AbilityClass;
+	}
+	
 
 	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	return FGameplayTag();
+	return nullptr;
 }
 
 AActor* ANSEnemyAIController::GetCurrentTargetActor() const
@@ -229,6 +217,94 @@ bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
 
 	// 체력 데이터가 없거나 체력이 0 이하인 경우 무효 타겟으로 판정
 	if (!bHasHealthAttribute || CurrentHealth <= 0.0f)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
+	const UNSEnemyData* EnemyData,
+	const AActor* TargetActor, 
+	float Distance) const
+{
+	if (!EnemyData)
+	{
+		return nullptr;
+	}
+
+	TArray<const FNSEnemyAttackDefinition*> Candidates;
+	int32 BestPriority = TNumericLimits<int32>::Lowest();
+
+	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	{
+		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, Distance))
+		{
+			continue;
+		}
+
+		if (AttackDefinition.Priority > BestPriority)
+		{
+			BestPriority = AttackDefinition.Priority;
+			Candidates.Reset();
+		}
+
+		if (AttackDefinition.Priority == BestPriority)
+		{
+			Candidates.Add(&AttackDefinition);
+		}
+	}
+
+	if (Candidates.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	float TotalWeight = 0.0f;
+	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
+	{
+		TotalWeight += FMath::Max(Candidate->Weight, 0.0f);
+	}
+
+	if (TotalWeight <= 0.0f)
+	{
+		return Candidates[0];
+	}
+
+	float Pick = FMath::FRandRange(0.0f, TotalWeight);
+
+	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
+	{
+		Pick -= FMath::Max(Candidate->Weight, 0.0f);
+
+		if (Pick <= 0.0f)
+		{
+			return Candidate;
+		}
+	}
+
+	return Candidates.Last();
+}
+
+bool ANSEnemyAIController::CanUseAttackDefinition(
+	const FNSEnemyAttackDefinition& AttackDefinition,
+	const AActor* TargetActor, 
+	float Distance) const
+{
+	if (!AttackDefinition.AbilityClass)
+	{
+		return false;
+	}
+
+	if (Distance < AttackDefinition.Condition.MinRange ||
+		Distance > AttackDefinition.Condition.MaxRange)
+	{
+		return false;
+	}
+
+	if (AttackDefinition.Condition.bRequireLineOfSight &&
+		!LineOfSightTo(TargetActor))
 	{
 		return false;
 	}

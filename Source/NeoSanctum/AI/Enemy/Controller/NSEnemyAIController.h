@@ -4,10 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "GameplayTagContainer.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
+
+class UGameplayAbility;
+class UNSEnemyData;
+class ANSEnemyCharacterBase;
+struct FNSEnemyAttackDefinition;
 
 UCLASS()
 class NEOSANCTUM_API ANSEnemyAIController : public AAIController
@@ -30,8 +34,8 @@ public:
 	// 타 진영을 보았을 때의 적대/우호 규칙 정의 수립
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
-	// 타겟과의 실시간 거리 계산하여 현재 거리에 맞는 GAS 태그 결정 및 반환
-	FGameplayTag GetAttackAbilityTagByDistance();
+	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
+	TSubclassOf<UGameplayAbility> GetAttackAbilityClassByDistance();
 	
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
@@ -47,6 +51,16 @@ protected:
 private:
 	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
 	bool IsValidLivingTarget(const AActor* Target) const;
+	
+	const FNSEnemyAttackDefinition* SelectAttackDefinition(
+		const UNSEnemyData* EnemyData,
+		const AActor* TargetActor,
+		float Distance) const;
+
+	bool CanUseAttackDefinition(
+		const FNSEnemyAttackDefinition& AttackDefinition,
+		const AActor* TargetActor,
+		float Distance) const;
 
 protected:
 	// 시야/청각 설정 컴포넌트

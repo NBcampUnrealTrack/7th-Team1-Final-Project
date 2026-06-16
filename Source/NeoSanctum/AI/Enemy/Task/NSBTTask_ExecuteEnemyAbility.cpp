@@ -27,16 +27,19 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn);
 	if (!ASC) return EBTNodeResult::Failed;
 
-	FGameplayTag AttackTag = AIController->GetAttackAbilityTagByDistance();
-	if (!AttackTag.IsValid()) return EBTNodeResult::Failed;
+	TSubclassOf<UGameplayAbility> AttackAbilityClass = AIController->GetAttackAbilityClassByDistance();
+	if (!AttackAbilityClass)
+	{
+		return EBTNodeResult::Failed;
+	}
 	
 	CachedOwnerComp = &OwnerComp;
 	
 	ASC->OnAbilityEnded.AddUObject(this, &UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
 
-	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 현재 거리 기준 선택된 태그: %s"), *AttackTag.ToString());
+	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 현재 거리 기준 선택된 태그: %s"), *AttackAbilityClass->GetName());
 
-	bool bActivated = ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
 		ASC->OnAbilityEnded.RemoveAll(this);
