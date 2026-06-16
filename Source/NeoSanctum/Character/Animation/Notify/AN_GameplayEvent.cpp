@@ -4,6 +4,7 @@
 #include "AN_GameplayEvent.h"
 
 #include "AbilitySystemBlueprintLibrary.h"
+#include "GameFramework/Pawn.h"
 
 void UAN_GameplayEvent::Notify(
 	USkeletalMeshComponent* MeshComp,
@@ -21,7 +22,14 @@ void UAN_GameplayEvent::Notify(
 	if (!World || !World->IsGameWorld()) return;
 	
 	AActor* Owner = MeshComp->GetOwner();
-	if (!IsValid(Owner) || !Owner->HasAuthority()) return;
+	if (!IsValid(Owner)) return;
+
+	const APawn* OwnerPawn = Cast<APawn>(Owner);
+	const bool bShouldSendEvent =
+		(bSendOnAuthority && Owner->HasAuthority()) ||
+		(bSendOnLocallyControlled && OwnerPawn && OwnerPawn->IsLocallyControlled());
+
+	if (!bShouldSendEvent) return;
 	
 	FGameplayEventData EventData;
 	EventData.Instigator = Owner;
