@@ -12,11 +12,24 @@
 #include "NavigationSystem.h"
 #include "RoomLevel.h"
 #include "Room.h"
+#include "Components/SphereComponent.h"
 
 
 ANSSpawner::ANSSpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
+	SpawnRadiusVisualizer = CreateDefaultSubobject<USphereComponent>(TEXT("SpawnRadiusVisualizer"));
+	// 루트 컴포넌트로 사용
+	SetRootComponent(SpawnRadiusVisualizer);              
+	SpawnRadiusVisualizer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SpawnRadiusVisualizer->SetCollisionProfileName(TEXT("NoCollision"));
+	// 쿠킹시 제외
+	SpawnRadiusVisualizer->bIsEditorOnly = true; 
+	// PIE,게임에서 숨김
+	SpawnRadiusVisualizer->SetHiddenInGame(true); 
+	SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
+	SpawnRadiusVisualizer->SetVisibility(bShowSpawnRadius);
 }
 
 URoom* ANSSpawner::GetOwningRoom()
@@ -144,7 +157,15 @@ void ANSSpawner::ProcessSpawnProbability(UDataTable* SpawnTable)
 
 	SoftCharacterClass = SelectedRow->CharacterClass;
 	SoftEnemyData = SelectedRow->EnemyData;
-	FinalSpawnQuantity = FMath::RandRange(SelectedRow->MinQuantity, SelectedRow->MaxQuantity);
+	// bool 변수 값에 따라 스폰 수량 분기
+	if (bUseFixedSpawnQuantity)
+	{
+		FinalSpawnQuantity = FixedSpawnQuantity;
+	}
+	else
+	{
+		FinalSpawnQuantity = FMath::RandRange(SelectedRow->MinQuantity, SelectedRow->MaxQuantity);
+	}
 }
 
 void ANSSpawner::RequestAsyncLoad()
@@ -225,6 +246,17 @@ void ANSSpawner::ExecuteFinalSpawn()
 	}
 
 	UE_LOG(LogTemp, Log, TEXT("스폰 요청 수량: %d"), FinalSpawnQuantity);
+}
+
+void ANSSpawner::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+	
+	if (SpawnRadiusVisualizer)
+	{
+		SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
+		SpawnRadiusVisualizer->SetVisibility(bShowSpawnRadius);
+	}
 }
 
 FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const

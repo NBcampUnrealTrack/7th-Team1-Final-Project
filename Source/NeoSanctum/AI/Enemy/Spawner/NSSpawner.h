@@ -12,6 +12,7 @@ class UDataTable;
 class ANSEnemyCharacterBase;
 class UNSEnemyData;
 class URoom;
+class USphereComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSSpawner : public AActor
@@ -54,12 +55,20 @@ private:
 
 protected:
 	// 스폰 범위용
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn")
+	UPROPERTY(EditAnywhere, Category = "Spawn")
 	float SpawnRadius = 200.0f;
-
+	
 	// 적 사이 최소 간격
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn")
+	UPROPERTY(EditAnywhere, Category = "Spawn")
 	float MinSpawnSpacing = 90.0f;
+	
+	// 에디터에서 스포너 범위 보여줄지용
+	UPROPERTY(EditAnywhere, Category = "Spawn")
+	bool bShowSpawnRadius = false;
+	
+	// 스폰 반경 시각화용(에디터 전용)
+	UPROPERTY(VisibleAnywhere, Category = "Spawn")
+	TObjectPtr<USphereComponent> SpawnRadiusVisualizer;
 
 	// 로드 실패 시 폴백용
 	UPROPERTY(EditDefaultsOnly, Category = "Fallback")
@@ -71,6 +80,18 @@ protected:
 	// 스폰 타이밍 결정용
 	UPROPERTY(EditAnywhere, Category = "Spawn")
 	int32 SpawnRelevancyThreshold = 0;
+	
+	// 스폰 수량을 데이터테이블 대신 고정값으로 쓸지용
+	UPROPERTY(EditAnywhere, Category = "Spawn")
+	bool bUseFixedSpawnQuantity = false;
+
+	// bUseFixedSpawnQuantity가 true일 때 사용할 고정 스폰 수량
+	// 메타값은 최소값 clamp, bool 변수 값이 false이면 안보이도록 하는 역할
+	UPROPERTY(EditAnywhere, Category = "Spawn",
+		meta = (ClampMin = "0", EditCondition = "bUseFixedSpawnQuantity"))
+	int32 FixedSpawnQuantity = 0;
+	
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 private:
 	TSoftClassPtr<ANSEnemyCharacterBase> SoftCharacterClass;
