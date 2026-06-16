@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
-#include "AttributeSet.h"
+#include "NSBaseAttributeSet.h"
 #include "NSCompanionAttributeSet.generated.h"
 
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
@@ -17,7 +17,7 @@
  * 
  */
 UCLASS()
-class NEOSANCTUM_API UNSCompanionAttributeSet : public UAttributeSet
+class NEOSANCTUM_API UNSCompanionAttributeSet : public UNSBaseAttributeSet
 {
 	GENERATED_BODY()
 
