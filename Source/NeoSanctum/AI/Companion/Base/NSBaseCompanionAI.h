@@ -17,32 +17,6 @@ class USkeletalMeshComponent;
 class UFloatingPawnMovement;
 class ANSDroneAIController;
 
-USTRUCT(BlueprintType)
-struct FCompanionUpgradeNode
-{
-	GENERATED_BODY()
-	
-	// 태그로 노드 확인
-	UPROPERTY(EditDefaultsOnly)
-	FGameplayTag NodeTag;
-	
-	// 노드 최대 레벨
-	UPROPERTY(EditDefaultsOnly)
-	int32 MaxLevel = 5;
-	
-	// 적용할 effect
-	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayEffect> UpgradeEffect;
-	
-	// SetByCaller로 넘길 태그
-	UPROPERTY(EditDefaultsOnly)
-	FGameplayTag SetByCallerTag;
-	
-	// 레벨당 증가량
-	UPROPERTY(EditDefaultsOnly)
-	float MagnitudePerLevel = 0.f;
-};
-
 UCLASS()
 class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
 {
@@ -223,11 +197,17 @@ public:
 	void ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel);
 	
 protected:
+	// 현재 드론이 보유중인 어빌리티 정보
 	UPROPERTY() 
 	FNSCompanionAbilitySet_GrantedHandles CurrentAbilityHandles;
 	
+	// 현재 드론이 적용 되어있는 능력치
 	UPROPERTY() 
 	TObjectPtr<UNSCompanionDefinition> CurrentDefinition;
+	
+	// 단계별 업그레이드가 저장되어있는 MAP
+	UPROPERTY()
+	TMap<FGameplayTag, FActiveGameplayEffectHandle> StatUpgradeHandles;
 	
 #pragma endregion
 };

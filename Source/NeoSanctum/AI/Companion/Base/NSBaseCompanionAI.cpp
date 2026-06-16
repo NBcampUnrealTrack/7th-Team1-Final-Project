@@ -218,7 +218,57 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 
 void ANSBaseCompanionAI::ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel)
 {
-	if (!HasAuthority()) return;
+	// 서버 체크
+	if (!HasAuthority() || !CurrentDefinition) return;
+	
+	// 현재 업그레이드 정보 받아오기 순회
+	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CurrentDefinition->UpgradeNodes)
+	{
+		// 업그레이드가 존재하는 노드 태그 찾기
+		if (CurrentUpgradeNode.NodeTag != NodeTag) continue;
+		
+		// 들어온 업그레이드 레벨 값 정상화 방어 코드
+		NewLevel = FMath::Clamp(NewLevel, 0, CurrentUpgradeNode.MaxLevel);
+		// 실제 적용 수치 
+		float ApplyStat = NewLevel * CurrentUpgradeNode.MagnitudePerLevel;
+		
+		// 현재 적용중인 업그레이드 수치가 있는지 확인
+		if (FActiveGameplayEffectHandle* BeforeEffectHandle = StatUpgradeHandles.Find(CurrentUpgradeNode.NodeTag))
+		{
+			// 있다면 모두 제거
+			AbilitySystemComponent->RemoveActiveGameplayEffect(*BeforeEffectHandle);
+		}
+		
+		if (NewLevel == 0)
+		{
+			StatUpgradeHandles.Remove(CurrentUpgradeNode.NodeTag);
+			break;
+		}
+		
+		// 새로운 contextHandle
+		FGameplayEffectContextHandle ContextHandle =
+				AbilitySystemComponent->MakeEffectContext();
+			
+		// 새로운 SpecHandle
+		FGameplayEffectSpecHandle UpgradeSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		CurrentUpgradeNode.UpgradeEffect,
+		NewLevel,
+		ContextHandle);
+			
+		// SpecHandle을 만드는데 성공했다면
+		if (UpgradeSpecHandle.IsValid())
+		{
+			// setsetbycaller로 값 저장 후 현재 업그레이드 Map에 추가
+			UpgradeSpecHandle.Data->SetSetByCallerMagnitude(CurrentUpgradeNode.SetByCallerTag, ApplyStat);
+			
+			StatUpgradeHandles.Add(
+			NodeTag,
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*UpgradeSpecHandle.Data.Get())
+			);
+		}
+		
+		break;
+	}
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
