@@ -8,6 +8,7 @@ namespace NSGameplayTags
 {
 	// Common Ability
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Dash);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Common_Reload);
 	
 	// Ranger Ability
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_AutoFire);
