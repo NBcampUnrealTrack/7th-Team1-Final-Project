@@ -21,4 +21,12 @@ protected:
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	FGameplayTagContainer EventTags;
+
+	// 서버 권한 Actor에서 Event 전송
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	bool bSendOnAuthority = true;
+
+	// 로컬 조작 Actor에서 Event 전송
+	UPROPERTY(EditAnywhere, Category = "GAS")
+	bool bSendOnLocallyControlled = false;
 };

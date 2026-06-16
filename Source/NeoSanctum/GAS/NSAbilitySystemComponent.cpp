@@ -222,3 +222,52 @@ bool UNSAbilitySystemComponent::IsAbilityStatModifiable(
 
 	return CombatStatComponent->IsAbilityStatModifiable(AbilityTag, StatTag);
 }
+
+FGuid UNSAbilitySystemComponent::AddTemporaryCombatStatModifier(
+	const FGameplayTag& TargetAbilityTag,
+	const FGameplayTag& StatTag,
+	ENSCombatStatModifierOperation Operation,
+	float Value,
+	float Duration) const
+{
+	const ANSPlayerState* NSPlayerState = GetOwner<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		return FGuid();
+	}
+
+	UNSCombatStatComponent* CombatStatComponent = NSPlayerState->GetCombatStatComponent();
+
+	if (!CombatStatComponent)
+	{
+		return FGuid();
+	}
+
+	return CombatStatComponent->AddTemporaryCombatStatModifier(
+		TargetAbilityTag,
+		StatTag,
+		Operation,
+		Value,
+		Duration
+	);
+}
+
+void UNSAbilitySystemComponent::RemoveTemporaryCombatStatModifier(FGuid Handle) const
+{
+	const ANSPlayerState* NSPlayerState = GetOwner<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	UNSCombatStatComponent* CombatStatComponent = NSPlayerState->GetCombatStatComponent();
+
+	if (!CombatStatComponent)
+	{
+		return;
+	}
+
+	CombatStatComponent->RemoveTemporaryCombatStatModifier(Handle);
+}

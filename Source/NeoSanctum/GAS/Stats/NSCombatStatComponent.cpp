@@ -165,6 +165,10 @@ bool UNSCombatStatComponent::TryGetFinalAbilityStat(
 	if (!StatMap)
 	{
 		OutValue = BaseValue;
+		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
+		{
+			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
+		}
 		return true;
 	}
 	
@@ -173,12 +177,90 @@ bool UNSCombatStatComponent::TryGetFinalAbilityStat(
 	if (!ModifierSum)
 	{
 		OutValue = BaseValue;
+		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
+		{
+			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
+		}
 		return true;
 	}
 	
 	// 최종 스탯은 Add 보정을 먼저 더한 뒤 Multiply 보정을 곱함
 	OutValue = (BaseValue + ModifierSum->AddValue) * ModifierSum->MultiplyValue;
+	if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
+	{
+		ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
+	}
+
 	return true;
+}
+
+FGuid UNSCombatStatComponent::AddTemporaryCombatStatModifier(
+	const FGameplayTag& TargetAbilityTag,
+	const FGameplayTag& StatTag,
+	ENSCombatStatModifierOperation Operation,
+	float Value,
+	float Duration)
+{
+	if (!TargetAbilityTag.IsValid() || !StatTag.IsValid() || Duration <= 0.0f)
+	{
+		return FGuid();
+	}
+
+	if (!IsAbilityStatModifiable(TargetAbilityTag, StatTag))
+	{
+		return FGuid();
+	}
+
+	if (Operation == ENSCombatStatModifierOperation::Multiply && Value <= 0.0f)
+	{
+		return FGuid();
+	}
+
+	// Duration 만료 시 자동 제거할 타이머 등록
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return FGuid();
+	}
+
+	FNSTemporaryCombatStatModifier TemporaryModifier;
+	TemporaryModifier.Handle = FGuid::NewGuid();
+	TemporaryModifier.TargetAbilityTag = TargetAbilityTag;
+	TemporaryModifier.StatTag = StatTag;
+	TemporaryModifier.Operation = Operation;
+	TemporaryModifier.Value = Value;
+
+	const FGuid Handle = TemporaryModifier.Handle;
+	World->GetTimerManager().SetTimer(
+		TemporaryModifier.ExpireTimerHandle,
+		FTimerDelegate::CreateUObject(this, &ThisClass::RemoveTemporaryCombatStatModifier, Handle),
+		Duration,
+		false
+	);
+
+	// Modifier 등록 후 최종 계산용 캐시 갱신
+	TemporaryModifiersByHandle.Add(Handle, TemporaryModifier);
+	RebuildTemporaryModifierCache();
+
+	return Handle;
+}
+
+void UNSCombatStatComponent::RemoveTemporaryCombatStatModifier(FGuid Handle)
+{
+	FNSTemporaryCombatStatModifier RemovedModifier;
+	if (!TemporaryModifiersByHandle.RemoveAndCopyValue(Handle, RemovedModifier))
+	{
+		return;
+	}
+
+	// 수동 제거 시 만료 타이머 정리
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(RemovedModifier.ExpireTimerHandle);
+	}
+
+	// 제거 후 최종 계산용 캐시 갱신
+	RebuildTemporaryModifierCache();
 }
 
 void UNSCombatStatComponent::BindAugmentInventory()
@@ -352,4 +434,53 @@ void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& Mo
 	default:
 		break;
 	}
+}
+
+void UNSCombatStatComponent::RebuildTemporaryModifierCache()
+{
+	TemporaryModifiersByAbility.Reset();
+
+	// 활성화된 TemporaryModifier(즉, 버프)를 최종 계산용 캐시에 누적
+	for (const TPair<FGuid, FNSTemporaryCombatStatModifier>& TemporaryModifierPair : TemporaryModifiersByHandle)
+	{
+		const FNSTemporaryCombatStatModifier& TemporaryModifier = TemporaryModifierPair.Value;
+		TMap<FGameplayTag, FNSCombatStatModifierSum>& StatMap =
+			TemporaryModifiersByAbility.FindOrAdd(TemporaryModifier.TargetAbilityTag);
+
+		FNSCombatStatModifierSum& ModifierSum = StatMap.FindOrAdd(TemporaryModifier.StatTag);
+
+		switch (TemporaryModifier.Operation)
+		{
+		case ENSCombatStatModifierOperation::Add:
+			ModifierSum.AddValue += TemporaryModifier.Value;
+			break;
+		case ENSCombatStatModifierOperation::Multiply:
+			ModifierSum.MultiplyValue *= TemporaryModifier.Value;
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+const FNSCombatStatModifierSum* UNSCombatStatComponent::FindTemporaryModifierSum(
+	const FGameplayTag& AbilityTag,
+	const FGameplayTag& StatTag) const
+{
+	const TMap<FGameplayTag, FNSCombatStatModifierSum>* StatMap = TemporaryModifiersByAbility.Find(AbilityTag);
+
+	if (!StatMap)
+	{
+		return nullptr;
+	}
+
+	return StatMap->Find(StatTag);
+}
+
+void UNSCombatStatComponent::ApplyTemporaryModifierToFinalValue(
+	const FNSCombatStatModifierSum& ModifierSum,
+	float& InOutValue) const
+{
+	// 기존 Final 값 위에 TemporaryModifier 보정 적용
+	InOutValue = (InOutValue + ModifierSum.AddValue) * ModifierSum.MultiplyValue;
 }
