@@ -17,6 +17,31 @@ class UBehaviorTree;
 class UStateTree;
 class UEnvQuery;
 
+UENUM(BlueprintType)
+enum class ENSEnemyMovementType : uint8
+{
+	Ground UMETA(DisplayName = "Ground"),
+	Flying UMETA(DisplayName = "Flying"),
+	Stationary UMETA(DisplayName = "Stationary")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyCombatRole : uint8
+{
+	Melee UMETA(DisplayName = "Melee"),
+	Ranged UMETA(DisplayName = "Ranged"),
+	Hybrid UMETA(DisplayName = "Hybrid"),
+	Summoner UMETA(DisplayName = "Summoner")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyRank : uint8
+{
+	Normal UMETA(DisplayName = "Normal"),
+	Elite UMETA(DisplayName = "Elite"),
+	Boss UMETA(DisplayName = "Boss")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -58,13 +83,29 @@ public:
 	UNSEnemyData();
 
 public:
-	// 몬스터 식별 태그
+	// 몬스터 식별 태그 (구조 개선 후 제거 예정)
 	UPROPERTY(EditDefaultsOnly, Category = "Identity")
 	FGameplayTag EnemyTag;
+	
+	// 몬스터 고유 식별자
+	UPROPERTY(EditDefaultsOnly, Category = "Identity")
+	FGameplayTag EnemyId;
 
 	// 몬스터 설명
-	UPROPERTY(EditDefaultsOnly, Category = "Identity")
+	UPROPERTY(EditDefaultsOnly, Category = "Identity", meta = (MultiLine = true))
 	FString Description;
+	
+	// 이동 분류
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyMovementType MovementType = ENSEnemyMovementType::Ground;
+
+	// 전투 역할 분류
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyCombatRole CombatRole = ENSEnemyCombatRole::Melee;
+
+	// 몬스터 등급
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyRank EnemyRank = ENSEnemyRank::Normal;
 
 	// 스켈레탈 메시
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
