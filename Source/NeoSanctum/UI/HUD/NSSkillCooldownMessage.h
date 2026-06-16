@@ -23,23 +23,24 @@ struct FNSSkillCooldownMessage
 {
 	GENERATED_BODY()
 	
-	/*
-	 * 대쉬 
-	 */
-	
-	// 어떤 스킬인지 구분
+	//어떤 스킬인지 구분
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag SkillTag;
+	
+	//실제 적용된 쿨타임 태그
+	//태그를 쿼리로 검사해 어떤 슬롯이 반응할지 판단.
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag CooldownTag;
 
-	// 다음 충전까지 필요한 시간
+	//UI가 표시하는 쿨타임 시간
 	UPROPERTY(BlueprintReadWrite)
 	float CooldownDuration = 0.0f;
 
-	// 현재 사용 가능한 횟수
+	//충전형 스킬에서 현재 사용 가능한 횟수
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentCharge = 0;
 
-	// 최대 충전 횟수
+	//충전형 스킬에서 최대 충전 횟수
 	UPROPERTY(BlueprintReadWrite)
 	int32 MaxCharge = 0;
 };
