@@ -8,7 +8,7 @@
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 
-void UNSCompanionProgressionComponent::ServerTryUpgrade_Implementation(FGameplayTag NodeTag)
+	void UNSCompanionProgressionComponent::ServerTryUpgrade_Implementation(FGameplayTag NodeTag)
 {
 	if (!OwnedCompanion || !Catalog || !SelectedCompanionTag.IsValid()) return;
 	
@@ -40,6 +40,26 @@ void UNSCompanionProgressionComponent::ServerTryUpgrade_Implementation(FGameplay
 		OwnedCompanion->ApplyStatUpgrade(UpgradeNode.NodeTag, NewLevel);
 		break;
 	}
+}
+
+bool UNSCompanionProgressionComponent::CanSelect(FGameplayTag CompanionTag) const
+{
+	if (!Catalog) return false;
+	
+	// 태그 기반 현재 드론 정보 찾기
+	UNSCompanionDefinition* Definition = Catalog->FindByTag(CompanionTag);
+	if (!Definition) return false;
+	
+	// 찾은 정보에서 노드 해금 태그 가져오기 
+	const FGameplayTag ReadCompanionTag = Definition->RequiredCompanionTag;
+	if (!ReadCompanionTag.IsValid()) return true;
+	
+	// 해금 달성 목표 count 읽어오기
+	const int32 ReadUpgradeCount = Definition->RequiredUpgradeCount;
+	const int32 CurrentCount = CompanionUpgradeCounts.FindRef(ReadCompanionTag);
+	
+	// 현재 업그레이드 수치와 목표 업그레이드 수치 비교
+	return CurrentCount >= ReadUpgradeCount;
 }
 
 
