@@ -14,11 +14,9 @@
 UGA_Reload::UGA_Reload()
 {
 	FGameplayTagContainer AssetTags = GetAssetTags();
-	AssetTags.AddTag(NSGameplayTags::Ability_Common_Reload);
 	SetAssetTags(AssetTags);
 
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
-	CombatStatAbilityTag = NSGameplayTags::Ability_Common_Reload;
 	ReloadSpeedStatTag = NSGameplayTags::CombatStat_ReloadSpeed;
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Reloading);
@@ -265,10 +263,5 @@ bool UGA_Reload::TryGetFinalReloadDuration(float& OutReloadDuration) const
 
 FGameplayTag UGA_Reload::GetReloadCombatStatAbilityTag() const
 {
-	if (CombatStatAbilityTag.IsValid())
-	{
-		return CombatStatAbilityTag;
-	}
-
-	return NSGameplayTags::Ability_Common_Reload;
+	return CombatStatAbilityTag;
 }

@@ -6,14 +6,15 @@ namespace NSGameplayTags
 {
 	// Common Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Common_Dash, "Ability.Common.Dash");	
-	UE_DEFINE_GAMEPLAY_TAG(Ability_Common_Reload, "Ability.Common.Reload");
 	
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_Reload, "Ability.Ranger.Reload");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_ProjectileShot, "Ability.Ranger.ProjectileShot");
 
 	// Engineer Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_ShotgunFire, "Ability.Engineer.ShotgunFire");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_Reload, "Ability.Engineer.Reload");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpawnTurret, "Ability.Engineer.SpawnTurret");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpeedBuff, "Ability.Engineer.SpeedBuff")
 	
