@@ -9,7 +9,7 @@
 class UNSAugmentPoolDefinition;
 
 /**
- * 몬스터 / 보상 트리거에서 사용할 드랍 항목 데이터
+ * 보상 트리거에서 사용할 보상 항목 데이터
  */
 USTRUCT(BlueprintType)
 struct FNSRewardEntry
