@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "UObject/PrimaryAssetId.h"
 #include "NSRewardTypes.generated.h"
 
 class UNSAugmentPoolDefinition;
@@ -24,5 +23,5 @@ struct FNSMonsterDropEntry
 	float Weight = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
-	TSoftObjectPtr<UNSAugmentPoolDefinition> AugmentPool;																																
+	TSoftObjectPtr<UNSAugmentPoolDefinition> AugmentPool;
 };
