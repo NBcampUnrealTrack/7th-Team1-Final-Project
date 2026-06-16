@@ -42,10 +42,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile")
 	TEnumAsByte<ECollisionChannel> ProjectileTraceChannel = ECC_Visibility;
 
-	// 타겟 조준 높이 보정
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim")
-	float TargetAimHeightOffset = 50.0f;
-
 private:
 	// 현재 발사 이벤트 수
 	int32 CurrentShotCount = 0;

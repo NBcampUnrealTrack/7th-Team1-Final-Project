@@ -31,6 +31,17 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (IsValidLivingTarget(TargetActor))
+	{
+		SetFocus(TargetActor, EAIFocusPriority::Gameplay);
+	}
+	else
+	{
+		ClearFocus(EAIFocusPriority::Gameplay);
+	}
+
 	GetAttackAbilityTagByDistance();
 }
 
@@ -85,13 +96,31 @@ FGameplayTag ANSEnemyAIController::GetAttackAbilityTagByDistance()
 	{
 		if (UNSEnemyData* EnemyData = EnemyChar->GetEnemyData())
 		{
-			if (Distance <= EnemyData->MaxAttackRange)
+			const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+
+			const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
+
+			const float FacingDot = FVector::DotProduct(Forward, ToTarget);
+			const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
+
+			const bool bInRange = Distance >= EnemyData->MinAttackRange && Distance <= EnemyData->MaxAttackRange;
+
+			const bool bFacingTarget = FacingDot >= RequiredDot;
+			const bool bHasLineOfSight = LineOfSightTo(TargetActor);
+
+			if (bInRange && bFacingTarget && bHasLineOfSight)
 			{
 				CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
-				
-				if (const ANSEnemyWeaponBase* DefaultWeaponCDO = EnemyData->DefaultWeaponClass->GetDefaultObject<ANSEnemyWeaponBase>())
+
+				if (EnemyData->DefaultWeaponClass)
 				{
-					return DefaultWeaponCDO->GetWeaponConfig().AttackAbilityTag;
+					const ANSEnemyWeaponBase* WeaponCDO = 
+						EnemyData->DefaultWeaponClass->GetDefaultObject<ANSEnemyWeaponBase>();
+
+					if (WeaponCDO)
+					{
+						return WeaponCDO->GetWeaponConfig().AttackAbilityTag;
+					}
 				}
 			}
 		}

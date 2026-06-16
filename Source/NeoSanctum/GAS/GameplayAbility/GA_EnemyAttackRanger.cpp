@@ -87,8 +87,7 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 	}
 
 	const FVector StartLocation = MuzzleTransform.GetLocation();
-	const FVector TargetLocation = TargetActor->GetActorLocation() + FVector::UpVector * TargetAimHeightOffset;
-	const FVector Direction = (TargetLocation - StartLocation).GetSafeNormal();
+	const FVector Direction = MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
 
 	if (Direction.IsNearlyZero())
 	{
