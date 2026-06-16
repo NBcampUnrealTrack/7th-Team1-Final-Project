@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSEnemyCharacterBase.generated.h"
 
@@ -41,6 +42,10 @@ public:
 	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
 
 	ANSEnemyWeaponBase* GetCurrentWeapon() const;
+	
+	void SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition);
+	const FNSEnemyAttackDefinition* GetCurrentAttackDefinition() const;
+	void ClearCurrentAttackDefinition();
 
 	FOnEnemyDead OnEnemyDead;
 
@@ -56,6 +61,7 @@ public:
 	
 	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 	void DeactivateForPool();
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -95,6 +101,12 @@ private:
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
+	
+	UPROPERTY(Transient)
+	FNSEnemyAttackDefinition CurrentAttackDefinition;
+
+	UPROPERTY(Transient)
+	bool bHasCurrentAttackDefinition = false;
 	
 	//NavLink 점프 관련 - 이준로 추가
 public:

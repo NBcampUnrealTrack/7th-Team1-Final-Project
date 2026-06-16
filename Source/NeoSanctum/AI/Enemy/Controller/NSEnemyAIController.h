@@ -35,6 +35,7 @@ public:
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
 	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
+	const FNSEnemyAttackDefinition* GetAttackDefinitionByDistance();
 	TSubclassOf<UGameplayAbility> GetAttackAbilityClassByDistance();
 	
 	// Blackboard에 저장된 현재 공격 대상을 반환
@@ -55,12 +56,14 @@ private:
 	const FNSEnemyAttackDefinition* SelectAttackDefinition(
 		const UNSEnemyData* EnemyData,
 		const AActor* TargetActor,
-		float Distance) const;
+		float Distance,
+		bool bHasLineOfSight) const;
 
 	bool CanUseAttackDefinition(
 		const FNSEnemyAttackDefinition& AttackDefinition,
 		const AActor* TargetActor,
-		float Distance) const;
+		float Distance,
+		bool bHasLineOfSight) const;
 
 protected:
 	// 시야/청각 설정 컴포넌트

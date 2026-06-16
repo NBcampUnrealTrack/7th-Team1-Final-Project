@@ -5,10 +5,8 @@
 
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
-#include "GameplayTagContainer.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -67,7 +65,7 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	return ETeamAttitude::Type::Neutral;
 }
 
-TSubclassOf<UGameplayAbility> ANSEnemyAIController::GetAttackAbilityClassByDistance()
+const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
 {
 	if (!CachedBBComp)
 	{
@@ -75,6 +73,7 @@ TSubclassOf<UGameplayAbility> ANSEnemyAIController::GetAttackAbilityClassByDista
 	}
 
 	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	
 	APawn* AIPawn = GetPawn();
 	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
@@ -83,39 +82,49 @@ TSubclassOf<UGameplayAbility> ANSEnemyAIController::GetAttackAbilityClassByDista
 		return nullptr;
 	}
 	
-	ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(AIPawn);
-	if (!EnemyChar || !EnemyChar->GetEnemyData())
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	if (!Enemy || !EnemyData)
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 		return nullptr;
 	}
-
-	const UNSEnemyData* EnemyData = EnemyChar->GetEnemyData();
 	
-	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
-	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
-
 	const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
 	const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
 
 	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
 	const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
 	
-	if (FacingDot < RequiredDot)
+	const bool bFacingTarget = FacingDot >= RequiredDot;
+	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
+
+	if (!bFacingTarget)
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 		return nullptr;
 	}
 	
-	if (const FNSEnemyAttackDefinition* SelectedAttack = SelectAttackDefinition(EnemyData, TargetActor, Distance))
-	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
-		return SelectedAttack->AbilityClass;
-	}
+	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
+	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 	
+	const FNSEnemyAttackDefinition* SelectedAttack = 
+		SelectAttackDefinition(EnemyData, TargetActor, Distance, bHasLineOfSight);
+	
+	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), SelectedAttack != nullptr);
+	return SelectedAttack;
+}
 
-	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	return nullptr;
+TSubclassOf<UGameplayAbility> ANSEnemyAIController::GetAttackAbilityClassByDistance()
+{
+	const FNSEnemyAttackDefinition* SelectedAttack = GetAttackDefinitionByDistance();
+
+	if (!SelectedAttack)
+	{
+		return nullptr;
+	}
+
+	return SelectedAttack->AbilityClass;
 }
 
 AActor* ANSEnemyAIController::GetCurrentTargetActor() const
@@ -132,10 +141,10 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	ANSEnemyCharacterBase* EnemyChar = Cast<ANSEnemyCharacterBase>(InPawn);
-	if (!EnemyChar) return;
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(InPawn);
+	if (!Enemy) return;
 
-	UNSEnemyData* EnemyData = EnemyChar->GetEnemyData();
+	UNSEnemyData* EnemyData = Enemy->GetEnemyData();
 	if (!EnemyData) return;
 
 	if (EnemyData->BehaviorTree)
@@ -227,7 +236,8 @@ bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
 const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
 	const UNSEnemyData* EnemyData,
 	const AActor* TargetActor, 
-	float Distance) const
+	float Distance,
+	bool bHasLineOfSight) const
 {
 	if (!EnemyData)
 	{
@@ -239,7 +249,7 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
 
 	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 	{
-		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, Distance))
+		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, Distance, bHasLineOfSight))
 		{
 			continue;
 		}
@@ -290,8 +300,14 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
 bool ANSEnemyAIController::CanUseAttackDefinition(
 	const FNSEnemyAttackDefinition& AttackDefinition,
 	const AActor* TargetActor, 
-	float Distance) const
+	float Distance,
+	bool bHasLineOfSight) const
 {
+	if (!TargetActor)
+	{
+		return false;
+	}
+	
 	if (!AttackDefinition.AbilityClass)
 	{
 		return false;
@@ -303,8 +319,7 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 		return false;
 	}
 
-	if (AttackDefinition.Condition.bRequireLineOfSight &&
-		!LineOfSightTo(TargetActor))
+	if (AttackDefinition.Condition.bRequireLineOfSight && !bHasLineOfSight)
 	{
 		return false;
 	}

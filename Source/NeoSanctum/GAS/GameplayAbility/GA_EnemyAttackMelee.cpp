@@ -25,8 +25,19 @@ void UGA_EnemyAttackMelee::InitializeAttack()
 	bHasHitThisAttack = false;
 
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+	
+	if (!IsValid(Enemy))
+	{
+		return;
+	}
+	
+	if (const FNSEnemyAttackDefinition* CurrentAttackDefinition = Enemy->GetCurrentAttackDefinition())
+	{
+		AttackTraceDistance = CurrentAttackDefinition->Condition.MaxRange;
+		return;
+	}
 
-	if (IsValid(Enemy) && IsValid(Enemy->GetEnemyData()))
+	if (IsValid(Enemy->GetEnemyData()))
 	{
 		AttackTraceDistance = Enemy->GetEnemyData()->MaxAttackRange;
 	}

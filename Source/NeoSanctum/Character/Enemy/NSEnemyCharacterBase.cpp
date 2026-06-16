@@ -71,6 +71,23 @@ ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
 	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
 }
 
+void ANSEnemyCharacterBase::SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition)
+{
+	CurrentAttackDefinition = InAttackDefinition;
+	bHasCurrentAttackDefinition = true;
+}
+
+const FNSEnemyAttackDefinition* ANSEnemyCharacterBase::GetCurrentAttackDefinition() const
+{
+	return bHasCurrentAttackDefinition ? &CurrentAttackDefinition : nullptr;
+}
+
+void ANSEnemyCharacterBase::ClearCurrentAttackDefinition()
+{
+	CurrentAttackDefinition = FNSEnemyAttackDefinition();
+	bHasCurrentAttackDefinition = false;
+}
+
 void ANSEnemyCharacterBase::Die()
 {
 	if (bIsDead) return;
@@ -78,6 +95,7 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		ClearCurrentAttackDefinition();
 		ApplyDeadVisual();
 		
 		// (이용호 추가) 죽을 때 게임모드에 알림
@@ -320,6 +338,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 
 	bIsInPool = false;
 	bIsDead = false;
+	ClearCurrentAttackDefinition();
 
 	SetActorLocationAndRotation(
 		SpawnLocation,
@@ -353,6 +372,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	}
 
 	bIsInPool = true;
+	ClearCurrentAttackDefinition();
 
 	// 이동 즉시 정지 및 비활성화
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
