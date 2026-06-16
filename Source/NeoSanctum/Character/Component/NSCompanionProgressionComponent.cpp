@@ -62,4 +62,28 @@ bool UNSCompanionProgressionComponent::CanSelect(FGameplayTag CompanionTag) cons
 	return CurrentCount >= ReadUpgradeCount;
 }
 
-
+void UNSCompanionProgressionComponent::ServerTrySelect_Implementation(FGameplayTag CompanionTag)
+{
+	// 해금 검사
+	if (!CanSelect(CompanionTag)) return;
+	
+	// 선택된 드론의 정보 가져오기
+	UNSCompanionDefinition* FindDefinition = Catalog->FindByTag(CompanionTag);
+	if (!FindDefinition) return;
+	
+	// 선택중인 드론 태그 갱신
+	SelectedCompanionTag = CompanionTag;
+	
+	// 현재 소유중인 드론에게 찾은 드론의 정보 적용
+	OwnedCompanion->ApplyDroneDefinition(FindDefinition);
+	
+	for (const FNSCompanionUpgradeNode& CurrentNode : FindDefinition->UpgradeNodes)
+	{
+		const int32 SavedNodeLevel = NodeLevels.FindRef(CurrentNode.NodeTag);
+		if (SavedNodeLevel > 0)
+		{
+			OwnedCompanion->ApplyStatUpgrade(CurrentNode.NodeTag, SavedNodeLevel);
+		}
+	}
+	
+}
