@@ -216,7 +216,7 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 	CurrentDefinition = NewDefinition;
 }
 
-void ANSBaseCompanionAI::ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel)
+void ANSBaseCompanionAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 {
 	// 서버 체크
 	if (!HasAuthority() || !CurrentDefinition) return;

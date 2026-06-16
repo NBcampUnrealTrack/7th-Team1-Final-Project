@@ -194,7 +194,7 @@ protected:
 public:
 	void ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition);
 	
-	void ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel);
+	void ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel);
 	
 protected:
 	// 현재 드론이 보유중인 어빌리티 정보
