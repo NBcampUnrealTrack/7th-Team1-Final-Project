@@ -30,6 +30,10 @@ struct FNSSkillCooldownMessage
 	// 어떤 스킬인지 구분
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag SkillTag;
+	//실제 적용된 쿨타임 태그
+	//태그를 쿼리로 검사해 어떤 슬롯이 반응할지 판단.
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag CooldownTag;
 
 	// 다음 충전까지 필요한 시간
 	UPROPERTY(BlueprintReadWrite)
