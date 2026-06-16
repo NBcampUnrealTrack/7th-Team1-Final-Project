@@ -6,7 +6,11 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
+#include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
+#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
@@ -159,6 +163,50 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 	}
 	
 	bDefaultAbilitiesGranted = true;
+}
+
+void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition)
+{
+	if (!HasAuthority() || CurrentDefinition == NewDefinition) return;
+	
+	CurrentAbilityHandles.TakeFromAbilitySystem(AbilitySystemComponent);
+	
+	NewDefinition->AbilitySet->GiveToAbilitySystem(AbilitySystemComponent, &CurrentAbilityHandles, this);
+	
+	FGameplayEffectContextHandle ContextHandle =
+	AbilitySystemComponent->MakeEffectContext();
+	
+	FGameplayEffectSpecHandle SpecHandle =
+		AbilitySystemComponent->MakeOutgoingSpec(
+		NewDefinition->DefaultStatsEffect,
+		1.f,
+		ContextHandle
+		);
+	
+	if (NewDefinition->CompanionMesh.Get() != nullptr)
+	{
+		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
+	}
+	else
+	{
+		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->CompanionMesh;
+		
+		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+		StreamableManager.RequestAsyncLoad(
+			MeshToLoad.ToSoftObjectPath(),
+			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad]()
+			{
+				if (USkeletalMesh* Loaded = MeshToLoad.Get())
+				{
+					SkeletalMeshComponent->SetSkeletalMesh(Loaded);
+				}
+			})
+		);
+	}
+}
+
+void ANSBaseCompanionAI::ApplyStatUpGrade(FGameplayTag NodeTag, int32 NewLevel)
+{
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
