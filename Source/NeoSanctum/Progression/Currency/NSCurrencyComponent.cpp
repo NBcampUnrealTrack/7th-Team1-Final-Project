@@ -130,6 +130,12 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 	PendingPermanent.Empty();
 }
 
+void UNSCurrencyComponent::ClearWallet()
+{
+	Wallet.Entries.Reset();
+	Wallet.MarkArrayDirty();
+}
+
 int64 UNSCurrencyComponent::GetTemp() const
 {
 	return GetAmount(NSGameplayTags::Currency_Temp);

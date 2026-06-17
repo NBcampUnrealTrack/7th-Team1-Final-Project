@@ -122,10 +122,6 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	if (HasAuthority())
 	{
 		BindPartVisual();
-	}
-	
-	if (HasAuthority())
-	{
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
 	}

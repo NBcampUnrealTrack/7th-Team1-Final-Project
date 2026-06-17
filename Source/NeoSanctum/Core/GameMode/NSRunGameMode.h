@@ -121,7 +121,9 @@ private:
 	void EnsureCurrencyProxy(APlayerController* PlayerController);
 	// 재화 프록시 제거 함수
 	void DestroyCurrencyProxy(APlayerController* PlayerController);
-
+	// 런 종료시 재화쪽 저장 및 클리어
+	void CommitAndClearAllWallets(float Multiplier);
+	
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
 };
