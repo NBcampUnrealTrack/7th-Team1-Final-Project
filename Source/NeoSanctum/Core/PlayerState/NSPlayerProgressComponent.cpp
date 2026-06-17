@@ -13,6 +13,24 @@ void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 	UnlockedNPCIds.Add(NPCId);
 }
 
+void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	CommonCurrency += Amount;
+}
+
+void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	JobCurrency += Amount;
+}
+
 namespace
 {
 	void ConvertMapToArray(const TMap<FName, int32>& SourceMap, TArray<FNSNodeLevel>& OutArray)
