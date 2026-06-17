@@ -77,7 +77,8 @@ public:
 	void AddPermanentDirect(FGameplayTag Type, int64 Amount);
 	// 런 종료시 영구 재화 반영 (클리어 1배율, 전멸 0.5배율)
 	void CommitRunPermanent(float Multiplier);
-	
+	// 지갑 비우기
+	void ClearWallet();
 	
 	int64 GetTemp() const;
 	int GetPermanent(FGameplayTag Type) const;

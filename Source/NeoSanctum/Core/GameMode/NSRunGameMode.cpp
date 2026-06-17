@@ -19,6 +19,7 @@
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 
 
@@ -362,6 +363,34 @@ void ANSRunGameMode::DestroyCurrencyProxy(APlayerController* PlayerController)
 	CurrencyProxies.Remove(PlayerController);
 }
 
+// 거점 귀환 시 영구 재화 커밋 + 지갑 비우기
+void ANSRunGameMode::CommitAndClearAllWallets(float Multiplier)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState)
+	{
+		return;
+	}
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* PS = Cast<ANSPlayerState>(PlayerState);
+		if (!PS)
+		{
+			continue;
+		}
+		if (UNSCurrencyComponent* Currency = PS->GetCurrencyComponent())
+		{
+			Currency->CommitRunPermanent(Multiplier);
+			Currency->ClearWallet();
+		}
+	}
+}
+
 UNSProjectileManagerComponent* ANSRunGameMode::GetProjectileManager() const
 {
 	const ANSRunGameState* RunGameState =
@@ -582,6 +611,9 @@ void ANSRunGameMode::OnResultDisplayFinished()
 		else
 		{
 			// 거점 귀환할 때 정보 저장
+			// bIsClear 확인 필요
+			const float Multiplier = (NSGameState && NSGameState->bIsClear) ? 0.5f : 1.0f;
+			CommitAndClearAllWallets(Multiplier);
 			SaveAllPlayersProgress();
 			NSGameFlow->ReturnToHub();
 		}
