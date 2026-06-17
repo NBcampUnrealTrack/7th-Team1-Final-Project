@@ -30,6 +30,8 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerTrySelect(FGameplayTag CompanionTag);
 	
+	void SetOwnedCompanion(ANSBaseCompanionAI* Owner);
+	
 protected:
 	UPROPERTY()
 	TObjectPtr<ANSBaseCompanionAI> OwnedCompanion;

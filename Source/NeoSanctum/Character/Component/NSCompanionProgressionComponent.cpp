@@ -30,7 +30,11 @@
 		const int32 NewLevel = CurrentNodeLevel + 1;
 		
 		// 업그레이드 적용 후 레벨이 Max레벨보다 높다면 스킵
-		if (NewLevel > MaxNodeLevel) break;
+		if (NewLevel > MaxNodeLevel)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("이미 최대 레벨 입니다."));
+			break;
+		}
 		
 		// 노드 레벨 저장
 		NodeLevels.Add(NodeTag, NewLevel);
@@ -38,6 +42,7 @@
 		CompanionUpgradeCounts.FindOrAdd(SelectedCompanionTag)++;
 		// 소유중인 Companion에 능력치 실제 적용
 		OwnedCompanion->ApplyStatUpgrade(UpgradeNode.NodeTag, NewLevel);
+		UE_LOG(LogTemp, Warning, TEXT("%s 업그레이드 완료"), *UpgradeNode.NodeTag.GetTagName().ToString());
 		break;
 	}
 }
@@ -62,10 +67,20 @@ bool UNSCompanionProgressionComponent::CanSelect(FGameplayTag CompanionTag) cons
 	return CurrentCount >= ReadUpgradeCount;
 }
 
+void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseCompanionAI* Owner)
+{
+	if (!Owner) return;
+	OwnedCompanion = Owner;
+}
+
 void UNSCompanionProgressionComponent::ServerTrySelect_Implementation(FGameplayTag CompanionTag)
 {
 	// 해금 검사
-	if (!CanSelect(CompanionTag)) return;
+	if (!CanSelect(CompanionTag))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("선택한 드론은 해금되지 않았습니다."));
+		return;
+	}
 	
 	// 선택된 드론의 정보 가져오기
 	UNSCompanionDefinition* FindDefinition = Catalog->FindByTag(CompanionTag);
