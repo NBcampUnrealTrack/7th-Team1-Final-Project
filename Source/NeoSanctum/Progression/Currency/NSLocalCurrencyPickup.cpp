@@ -127,9 +127,8 @@ void ANSLocalCurrencyPickup::OnSphereBeginOverlap(UPrimitiveComponent* Overlappe
 	// 즉각 UX -> 먼저 숨기고 서버 검증 요청
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
-
-	// 예시) PS에 추가 
-	// PS->Server_CollectCurrency(DropId);
+	
+	PS->Server_CollectCurrency(DropId);
 }
 
 void ANSLocalCurrencyPickup::EndPlay(const EEndPlayReason::Type EndPlayReason)
