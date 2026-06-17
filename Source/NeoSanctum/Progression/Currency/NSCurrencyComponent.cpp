@@ -84,6 +84,7 @@ void UNSCurrencyComponent::AddRunPermanent(FGameplayTag Type, int64 Amount)
 		return;
 	}
 	const int64 Pending = (PendingPermanent.FindOrAdd(Type) += Amount);
+	AddToWallet(Type, Amount);
 	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
 	UE_LOG(LogTemp, Log, TEXT("[Currency] 영구재화(%s) +%lld 획득 → 대기 누적 %lld (커밋 전)"),
 		*Type.ToString(), Amount, Pending);
@@ -96,6 +97,7 @@ void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
 		return;
 	}
 	PendingPermanent.FindOrAdd(Type) += Amount;
+	AddToWallet(Type, Amount);
 }
 
 void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
