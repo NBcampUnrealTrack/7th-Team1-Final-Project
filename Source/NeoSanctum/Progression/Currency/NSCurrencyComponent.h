@@ -49,9 +49,11 @@ DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPermanentChanged, FGameplayTag /* Type
 /**
  * 어떤 재화를 얼마나 보유하고 있는지 담고있는 컴포넌트
  * 용어 정리
- * 버킷 : 런에서 재화를 습득했을때 들고있는 곳, 임시해좌는 런에서 사용시 차감, 공통/스킬재화는 인런에서 사용불가
- * 지갑 : 아웃런까지 통용되는 재화, 런 종료시 버킷 -> 지갑으로 공통/스킬재화가 반영됨
- */
+ * 버킷(PendingPermanent) : 인런 한정, 런 중 획득한 공통/스킬재화를 임시로 쌓아두는 곳
+ * 지갑(Wallet) : 인런 한정 임시재화(Currency.Temp) 전용, 복제되어 HUD에 실시간 표시
+ *				런에서 사용시 차감되며, 아웃런 진입 시 소멸
+ * 공통/스킬재화의 영구 잔액은 UNSPlayerProgressComponent가 보관
+ * */
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSCurrencyComponent : public UActorComponent
 {

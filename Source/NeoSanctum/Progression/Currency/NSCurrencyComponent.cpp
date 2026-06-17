@@ -2,8 +2,13 @@
 
 
 #include "NSCurrencyComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+
 
 // ================================================================
 // FNSCurrencyWallet 콜백
@@ -90,6 +95,12 @@ void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
 
 void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 {
+	ANSPlayerState* PS = GetOwner<ANSPlayerState>();
+	UNSPlayerProgressComponent* Progress = PS ? PS->GetProgressComponent() : nullptr;
+	if (!Progress)
+	{
+		return;
+	}
 	for (const TPair<FGameplayTag, int64>& Pair : PendingPermanent)
 	{
 		const int64 Committed = static_cast<int64>(Pair.Value * Multiplier);
@@ -97,7 +108,15 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 		{
 			continue;
 		}
-		AddToWallet(Pair.Key, Committed);
+		
+		if (Pair.Key == NSGameplayTags::Currency_Common)
+		{
+			Progress->AddCommonCurrency(Committed);
+		}
+		else if (Pair.Key == NSGameplayTags::Currency_Skill)
+		{
+			Progress->AddJobCurrency(Committed);
+		}
 	}
 	PendingPermanent.Empty();
 }
