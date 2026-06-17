@@ -16,6 +16,10 @@
 #include "Engine/OverlapResult.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileReplicationProxy.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+// 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -28,6 +32,7 @@ ANSRunGameMode::ANSRunGameMode()
 	DefaultPawnClass = nullptr;
 
 	ProjectileReplicationProxyClass = ANSProjectileReplicationProxy::StaticClass();
+	CurrencyReplicationProxyClass = ANSCurrencyReplicationProxy::StaticClass();
 }
 
 void ANSRunGameMode::BeginPlay()
@@ -49,6 +54,7 @@ void ANSRunGameMode::BeginPlay()
 	for (TActorIterator<APlayerController> It(GetWorld()); It; ++It)
 	{
 		EnsureProjectileProxy(*It);
+		EnsureCurrencyProxy(*It);
 	}
 }
 
@@ -204,11 +210,13 @@ void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
 	Super::PostLogin(NewPlayer);
 
 	EnsureProjectileProxy(NewPlayer);
+	EnsureCurrencyProxy(NewPlayer);
 }
 
 void ANSRunGameMode::Logout(AController* Exiting)
 {
 	DestroyProjectileProxy(Cast<APlayerController>(Exiting));
+	DestroyCurrencyProxy(Cast<APlayerController>(Exiting));
 
 	Super::Logout(Exiting);
 }
@@ -218,6 +226,7 @@ void ANSRunGameMode::HandleSeamlessTravelPlayer(AController*& Controller)
 	Super::HandleSeamlessTravelPlayer(Controller);
 
 	EnsureProjectileProxy(Cast<APlayerController>(Controller));
+	EnsureCurrencyProxy(Cast<APlayerController>(Controller));
 }
 
 void ANSRunGameMode::EnsureProjectileProxy(APlayerController* PlayerController)
@@ -283,6 +292,74 @@ void ANSRunGameMode::DestroyProjectileProxy(APlayerController* PlayerController)
 	}
 
 	ProjectileProxies.Remove(PlayerController);
+}
+
+void ANSRunGameMode::EnsureCurrencyProxy(APlayerController* PlayerController)
+{
+	if (!HasAuthority() ||
+		!IsValid(PlayerController) ||
+		!CurrencyReplicationProxyClass)
+	{
+		return;
+	}
+
+	if (ANSCurrencyReplicationProxy* ExistingProxy = CurrencyProxies.FindRef(PlayerController))
+	{
+		if (IsValid(ExistingProxy))
+		{
+			return;
+		}
+	}
+
+	UWorld* World = GetWorld();
+	UNSCurrencyDropSubsystem* DropSys = World ? World->GetSubsystem<UNSCurrencyDropSubsystem>() : nullptr;
+	if (!DropSys)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Owner = PlayerController;
+	SpawnParameters.Instigator = PlayerController->GetPawn();
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ANSCurrencyReplicationProxy* Proxy = World->SpawnActor<ANSCurrencyReplicationProxy>(
+		CurrencyReplicationProxyClass,
+		FTransform::Identity,
+		SpawnParameters);
+
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	CurrencyProxies.Add(PlayerController, Proxy);
+	DropSys->RegisterProxy(Proxy);
+}
+
+void ANSRunGameMode::DestroyCurrencyProxy(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	ANSCurrencyReplicationProxy* Proxy = CurrencyProxies.FindRef(PlayerController);
+
+	if (IsValid(Proxy))
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UNSCurrencyDropSubsystem* DropSys = World->GetSubsystem<UNSCurrencyDropSubsystem>())
+			{
+				DropSys->UnregisterProxy(Proxy);
+			}
+		}
+
+		Proxy->Destroy();
+	}
+
+	CurrencyProxies.Remove(PlayerController);
 }
 
 UNSProjectileManagerComponent* ANSRunGameMode::GetProjectileManager() const
