@@ -13,6 +13,7 @@ class ANSEnemyCharacterBase;
 class UNSEnemyData;
 class UNSProjectileManagerComponent;
 class ANSProjectileReplicationProxy;
+class ANSCurrencyReplicationProxy;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -97,6 +98,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Projectile")
 	TSubclassOf<ANSProjectileReplicationProxy> ProjectileReplicationProxyClass;
 
+	/**
+	 * 플레이어별로 생성할 재화 Owner-only Proxy 클래스입니다.
+	 * PickupClass/VisualData 지정을 위해 BP 서브클래스를 지정합니다.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Currency")
+	TSubclassOf<ANSCurrencyReplicationProxy> CurrencyReplicationProxyClass;
+
 private:
 	// 프록시 등록 함수
 	void EnsureProjectileProxy(APlayerController* PlayerController);
@@ -108,4 +116,12 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSProjectileReplicationProxy>> ProjectileProxies;
+
+	// 재화 프록시 등록 함수
+	void EnsureCurrencyProxy(APlayerController* PlayerController);
+	// 재화 프록시 제거 함수
+	void DestroyCurrencyProxy(APlayerController* PlayerController);
+
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
 };

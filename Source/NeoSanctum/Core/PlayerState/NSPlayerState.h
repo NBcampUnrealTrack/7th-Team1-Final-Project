@@ -16,6 +16,7 @@ class UNSPlayerProgressComponent;
 class UNSAugmentInventoryComponent;
 class UNSCharacterData;
 class UNSPartEquipComponent;
+class UNSCurrencyComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerState : public APlayerState, public IAbilitySystemInterface
@@ -41,7 +42,12 @@ public:
 	
 	void SetReady(bool bNewReady);
 	
+	// 클라에서 재화 액터에 오버랩 시 호출
+	UFUNCTION(Server, Reliable)
+	void Server_CollectCurrency(int32 DropId);
+	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
+	UNSCurrencyComponent* GetCurrencyComponent() const { return CurrencyComponent; }
 	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
 
 	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
@@ -92,6 +98,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Augment")
 	TObjectPtr<UNSAugmentInventoryComponent> AugmentInventory;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Currency")
+	TObjectPtr<UNSCurrencyComponent> CurrencyComponent;
 	
 	// 기본 캐릭터 데이터 ID : 기본적으로 Ranger Data를 쓰고 있음
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")

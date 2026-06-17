@@ -13,6 +13,28 @@ void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 	UnlockedNPCIds.Add(NPCId);
 }
 
+void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	CommonCurrency += Amount;
+	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 공통재화 +%lld 적립 → 영구 누적 %lld"), Amount, CommonCurrency);
+}
+
+void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
+{
+	if (Amount <= 0)
+	{
+		return;
+	}
+	JobCurrency += Amount;
+	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 스킬재화 +%lld 적립 → 영구 누적 %lld"), Amount, JobCurrency);
+}
+
 namespace
 {
 	void ConvertMapToArray(const TMap<FName, int32>& SourceMap, TArray<FNSNodeLevel>& OutArray)

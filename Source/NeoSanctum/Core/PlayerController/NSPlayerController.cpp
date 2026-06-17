@@ -28,12 +28,20 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "Engine/AssetManager.h"
+#include "NeoSanctum/Core/Cheat/NSCheatManager.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
+#include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 
 
 ANSPlayerController::ANSPlayerController()
 {
 	// 기본 태그 초기화
 	DeathSpectatorPawnClass = ANSDeathSpectatorPawn::StaticClass();
+
+	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+	CheatClass = UNSCheatManager::StaticClass();
 
 	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_Gameplay);
 	GameplayInputModeTags.AddTag(NSGameplayTags::InputMode_UI);
@@ -63,6 +71,67 @@ void ANSPlayerController::Server_SetReady_Implementation(bool bNewReady)
 		return;
 	}
 	OwningPlayerState->SetReady(bNewReady);
+}
+
+// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+void ANSPlayerController::Server_DebugSpawnCurrency_Implementation(FGameplayTag Type, ENSCurrencyGrade Grade)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	UNSCurrencyDropSubsystem* DropSys = World->GetSubsystem<UNSCurrencyDropSubsystem>();
+	if (!DropSys)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PC = It->Get();
+		if (!PC || !PC->GetPawn())
+		{
+			continue;
+		}
+
+		// 발밑에 두면 그 위에 선 플레이어가 즉시 자동 획득하므로, 앞쪽으로 떨어뜨려 둠
+		const APawn* DropPawn = PC->GetPawn();
+		const FVector DropLoc = DropPawn->GetActorLocation() + DropPawn->GetActorForwardVector() * 200.f;
+		DropSys->RegisterDrop(Type, Grade, 10, DropLoc, 60.f);
+	}
+}
+
+// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+void ANSPlayerController::Server_DebugCommitPermanent_Implementation()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		const APlayerController* PC = It->Get();
+		if (!PC)
+		{
+			continue;
+		}
+
+		ANSPlayerState* PS = PC->GetPlayerState<ANSPlayerState>();
+		if (!PS)
+		{
+			continue;
+		}
+
+		if (UNSCurrencyComponent* Currency = PS->GetCurrencyComponent())
+		{
+			// 클리어 시뮬레이션: 1배율로 커밋
+			Currency->CommitRunPermanent(1.0f);
+		}
+	}
 }
 
 void ANSPlayerController::BindAttributeToHUD()
@@ -247,11 +316,15 @@ void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* Co
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (!IsLocalController())
 	{
 		return;
 	}
+
+	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+	// 클라에는 CheatManager가 기본 생성되지 않으므로 강제로 생성
+	EnableCheats();
 
 	UGameInstance* GameInstance = GetGameInstance();
 	if (!GameInstance)

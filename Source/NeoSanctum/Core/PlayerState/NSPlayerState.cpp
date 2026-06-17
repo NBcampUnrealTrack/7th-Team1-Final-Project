@@ -9,6 +9,8 @@
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
@@ -34,7 +36,8 @@ ANSPlayerState::ANSPlayerState()
 
 	// 인런 증강 보유 컴포넌트 (인런 종료 시 RunGameMode가 Clear)
 	AugmentInventory = CreateDefaultSubobject<UNSAugmentInventoryComponent>(TEXT("AugmentInventory"));
-
+	CurrencyComponent = CreateDefaultSubobject<UNSCurrencyComponent>(TEXT("CurrencyComponent"));
+	
 	bIsReady = false;
 	bIsDead = false;
 }
@@ -97,6 +100,21 @@ void ANSPlayerState::SetReady(bool bNewReady)
 		return;
 	}
 	bIsReady = bNewReady;
+}
+
+void ANSPlayerState::Server_CollectCurrency_Implementation(int32 DropId)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	if (UNSCurrencyDropSubsystem* DropSys = World->GetSubsystem<UNSCurrencyDropSubsystem>())
+	{
+		DropSys->TryCollect(DropId, this);
+	}
+
 }
 
 void ANSPlayerState::SetIsDead(bool bNewIsDead)
