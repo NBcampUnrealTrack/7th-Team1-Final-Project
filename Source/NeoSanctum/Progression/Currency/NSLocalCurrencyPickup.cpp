@@ -70,28 +70,29 @@ void ANSLocalCurrencyPickup::StartMeshLoad(const UNSCurrencyVisualData* VisualDa
 	{
 		return;
 	}
-	
+
 	SetActorScale3D(FVector(Row->Scale));
-	
+
 	if (UStaticMesh* Mesh = Row->Mesh.Get())
 	{
 		MeshComp->SetStaticMesh(Mesh);
 		return;
 	}
-	
+
 	PendingMeshPath = Row->Mesh.ToSoftObjectPath();
 	if (PendingMeshPath.IsNull())
 	{
 		return;
 	}
-	
+
 	MeshLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(PendingMeshPath,
 		FStreamableDelegate::CreateUObject(this, &ANSLocalCurrencyPickup::OnMeshLoaded));
 }
 
 void ANSLocalCurrencyPickup::OnMeshLoaded()
 {
-	if (UStaticMesh* Mesh = Cast<UStaticMesh>(PendingMeshPath.ResolveObject()))
+	UStaticMesh* Mesh = Cast<UStaticMesh>(PendingMeshPath.ResolveObject());
+	if (Mesh)
 	{
 		MeshComp->SetStaticMesh(Mesh);
 	}

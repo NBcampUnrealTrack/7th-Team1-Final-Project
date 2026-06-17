@@ -3,6 +3,7 @@
 #include "NSCurrencyReplicationProxy.h"
 #include "Components/SceneComponent.h"
 #include "NeoSanctum/Progression/Currency/NSLocalCurrencyPickup.h"
+#include "NeoSanctum/Data/Progression/Currency/NSCurrencyVisualData.h"
 
 ANSCurrencyReplicationProxy::ANSCurrencyReplicationProxy()
 {

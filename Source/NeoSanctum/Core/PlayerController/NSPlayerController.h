@@ -8,6 +8,7 @@
 #include "GameplayTagContainer.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
@@ -25,7 +26,17 @@ public:
 	
 	UFUNCTION(Server, Reliable)
 	void Server_SetReady(bool bNewReady);
-	
+
+	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+	// 치트를 서버 권한으로 실행시키기 위한 통로 (지정한 타입 1종을 각 플레이어 앞에 드랍)
+	UFUNCTION(Server, Reliable)
+	void Server_DebugSpawnCurrency(FGameplayTag Type, ENSCurrencyGrade Grade);
+
+	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
+	// 대기 영구재화를 서버 권한에서 커밋
+	UFUNCTION(Server, Reliable)
+	void Server_DebugCommitPermanent();
+
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
 	void RequestReady(); 

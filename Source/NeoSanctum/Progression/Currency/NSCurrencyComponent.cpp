@@ -58,6 +58,8 @@ void UNSCurrencyComponent::AddTemp(int32 Grade, int64 Amount)
 		return;
 	}
 	AddToWallet(NSGameplayTags::Currency_Temp, Amount);
+	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 임시재화 +%lld 획득 → 현재 보유 %lld"), Amount, GetTemp());
 }
 
 bool UNSCurrencyComponent::TrySpendTemp(int64 Amount)
@@ -81,7 +83,10 @@ void UNSCurrencyComponent::AddRunPermanent(FGameplayTag Type, int64 Amount)
 	{
 		return;
 	}
-	PendingPermanent.FindOrAdd(Type) += Amount;
+	const int64 Pending = (PendingPermanent.FindOrAdd(Type) += Amount);
+	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 영구재화(%s) +%lld 획득 → 대기 누적 %lld (커밋 전)"),
+		*Type.ToString(), Amount, Pending);
 }
 
 void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
@@ -101,6 +106,8 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 	{
 		return;
 	}
+	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 런 종료 영구재화 커밋 시작 (배율 %.2f)"), Multiplier);
 	for (const TPair<FGameplayTag, int64>& Pair : PendingPermanent)
 	{
 		const int64 Committed = static_cast<int64>(Pair.Value * Multiplier);
