@@ -107,6 +107,23 @@ private:
 
 	UPROPERTY(Transient)
 	bool bHasCurrentAttackDefinition = false;
+
+public:
+	void UpdateCombatAimTarget(AActor* TargetActor);
+	void ClearCombatAimTarget();
+
+	bool HasCombatAimTarget() const { return bHasCombatAimTarget; }
+	FVector GetCombatAimTargetLocation() const { return CombatAimTargetLocation; }
+
+protected:
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Aim")
+	bool bHasCombatAimTarget = false;
+
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Aim")
+	FVector CombatAimTargetLocation = FVector::ZeroVector;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Aim")
+	float AimTargetZOffsetRatio = 0.15f;
 	
 	//NavLink 점프 관련 - 이준로 추가
 public:
