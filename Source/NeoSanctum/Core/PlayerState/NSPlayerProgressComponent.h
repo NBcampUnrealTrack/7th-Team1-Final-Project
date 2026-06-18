@@ -44,10 +44,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddJobCurrency(int64 Amount);
 
-	// 런 종료 시 CurrencyComponent가 버킷을 확정 반영할 때 호출
-	void AddCommonCurrency(int64 Amount);
-	void AddJobCurrency(int64 Amount);
-
 private:
 	// 계정 단위
 	int64 CommonCurrency = 0;
