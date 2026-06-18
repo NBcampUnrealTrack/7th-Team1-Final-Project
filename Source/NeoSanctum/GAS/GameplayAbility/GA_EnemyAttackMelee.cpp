@@ -14,7 +14,7 @@ UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 {
 	// Tags 세팅 설정
 	FGameplayTagContainer AssetTags = GetAssetTags();
-	AssetTags.AddTag(NSGameplayTags::Ability_Enemy_MeleeAttack);
+	AssetTags.AddTag(NSGameplayTags::Ability_Enemy_BasicMelee);
 	SetAssetTags(AssetTags);
 
 	ActivationOwnedTags.AddTag(NSGameplayTags::State_Enemy_Combat);
