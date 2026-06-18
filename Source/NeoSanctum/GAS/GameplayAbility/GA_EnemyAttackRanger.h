@@ -32,7 +32,7 @@ protected:
 
 	// 투사체 최대 수명 시간
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile", meta = (ClampMin = "0.01"))
-	float ProjectileMaxLifeTime = 5.0f;
+	float ProjectileMaxLifeTime = 30.0f;
 	
 	// 투사체 충돌 반지름
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile", meta = (ClampMin = "0.1"))
