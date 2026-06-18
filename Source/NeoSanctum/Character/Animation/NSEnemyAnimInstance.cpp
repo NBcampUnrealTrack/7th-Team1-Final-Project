@@ -170,7 +170,17 @@ void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
 
 			TargetPitch = FMath::Clamp(LocalAimRotation.Pitch, -MaxAimPitch, MaxAimPitch);
 			TargetYaw = FMath::Clamp(LocalAimRotation.Yaw, -MaxAimYaw, MaxAimYaw);
-			TargetAlpha = 1.0f;
+
+			const float Distance2D = FVector::Dist2D(
+				EnemyCharacter->GetActorLocation(),
+				EnemyCharacter->GetCombatAimTargetLocation()
+			);
+
+			TargetAlpha = FMath::GetMappedRangeValueClamped(
+				FVector2D(100.0f, 400.0f),
+				FVector2D(0.0f, 1.0f),
+				Distance2D
+			);
 		}
 	}
 

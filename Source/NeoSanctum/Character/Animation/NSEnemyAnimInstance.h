@@ -67,10 +67,10 @@ protected:
 	float AimInterpSpeed = 12.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
-	float MaxAimPitch = 90.0f;
+	float MaxAimPitch = 45.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
-	float MaxAimYaw = 135.0f;
+	float MaxAimYaw = 60.0f;
 
 private:
 	UPROPERTY()
