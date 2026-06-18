@@ -16,6 +16,7 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_ProjectileShot_MuzzleFire, "GameplayCue.Ranger.ProjectileShot.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_ProjectileShot_Impact, "GameplayCue.Ranger.ProjectileShot.Impact");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_Grenade_Explosion, "GameplayCue.Ranger.Grenade.Explosion");
 	
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_SpeedBuff, "GameplayCue.Ranger.SpeedBuff");
 

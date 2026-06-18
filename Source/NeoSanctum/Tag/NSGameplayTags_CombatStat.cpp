@@ -13,6 +13,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Duration,			"CombatStat.Duration");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_BuffRadius,		"CombatStat.BuffRadius");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ExplosionRadius,	"CombatStat.ExplosionRadius");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_bExplodeOnImpact,	"CombatStat.bExplodeOnImpact");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ProjectileSpeed,	"CombatStat.ProjectileSpeed");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_FireRate,			"CombatStat.FireRate");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_FireRateBuff,		"CombatStat.FireRateBuff");

@@ -21,6 +21,7 @@ namespace NSGameplayTags
 
 	// Cooldown
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Cooldown_Ranger_ProjectileShot);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Cooldown_Ranger_Grenade);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Cooldown_BuffBase);
 
 	// Damage SetByCaller
