@@ -11,6 +11,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_Reload, "Ability.Ranger.Reload");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_ProjectileShot, "Ability.Ranger.ProjectileShot");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_SpeedBuff, "Ability.Ranger.SpeedBuff")
 
 	// Engineer Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_ShotgunFire, "Ability.Engineer.ShotgunFire");
