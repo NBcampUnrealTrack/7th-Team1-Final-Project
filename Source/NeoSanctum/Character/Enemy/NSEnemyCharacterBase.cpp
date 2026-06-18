@@ -38,6 +38,10 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	
+	GetCharacterMovement()->bUseRVOAvoidance = true;
+	GetCharacterMovement()->AvoidanceConsiderationRadius = 200.0f;
+	GetCharacterMovement()->AvoidanceWeight = 0.5f;
 }
 
 void ANSEnemyCharacterBase::BeginPlay()
