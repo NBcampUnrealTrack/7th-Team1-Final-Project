@@ -37,6 +37,12 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UnlockNPC(const FName& NPCId);
+	
+	// 인런 재화 적립용 함수들
+	UFUNCTION(BlueprintCallable)
+	void AddCommonCurrency(int64 Amount);
+	UFUNCTION(BlueprintCallable)
+	void AddJobCurrency(int64 Amount);
 
 	// 런 종료 시 CurrencyComponent가 버킷을 확정 반영할 때 호출
 	void AddCommonCurrency(int64 Amount);
