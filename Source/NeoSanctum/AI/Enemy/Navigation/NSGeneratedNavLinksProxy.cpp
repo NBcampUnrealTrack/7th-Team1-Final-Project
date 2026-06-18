@@ -3,9 +3,8 @@
 
 #include "NSGeneratedNavLinksProxy.h"
 
-#include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 
 bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVector& DestPoint)
 {
@@ -24,7 +23,7 @@ bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVect
 		Agent = Controller->GetPawn();
 	}
 
-	ACharacter* Character = Cast<ACharacter>(Agent);
+	ANSEnemyCharacterBase* Character = Cast<ANSEnemyCharacterBase>(Agent);
 
 	if (!Character)
 	{
@@ -32,29 +31,9 @@ bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVect
 		return false;
 	}
 
-	FVector LaunchVelocity = FVector::ZeroVector;
-
-	const bool bFoundVelocity =
-		UGameplayStatics::SuggestProjectileVelocity_CustomArc(
-			Character,                     // World Context Object
-			LaunchVelocity,             // Out Launch Velocity
-			Character->GetActorLocation(), // Start Pos
-			DestPoint,                     // End Pos
-			0.0f,                          // 기본 World Gravity 사용
-			0.5f);                 // 기본 중간 높이 Arc
-
-	if (!bFoundVelocity)
-	{
-		return false;
-	}
-
-	LaunchVelocity.Z += 200.0f;
-
-	Character->LaunchCharacter(
-		LaunchVelocity,
-		true,           // XY Override
-		true); // Z Override
-
+	// 위치(목적지)만 넘기고 점프 계산/실행/착지보정은 캐릭터가 담당.
+	Character->StartNavLinkJump(DestPoint);
+	
 	// 점프 도중 PathFollowing이 이동 속도를 덮어쓰지 않는다.
 	return true;
 }

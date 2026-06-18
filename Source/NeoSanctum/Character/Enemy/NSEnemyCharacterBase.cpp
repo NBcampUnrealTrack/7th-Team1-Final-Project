@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
+#include "NavigationSystem.h"
 #include "Animation/AnimInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
@@ -13,6 +14,7 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
@@ -365,4 +367,64 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	SetActorTickEnabled(false);
+}
+
+void ANSEnemyCharacterBase::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+	
+	if (!bNavLinkJumping)
+	{
+		return;
+	}
+	bNavLinkJumping = false;
+
+	// NavMesh 밖 착지 복구: 가까운 NavMesh 지점으로 스냅
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		const FVector Here = GetActorLocation();
+		FNavLocation NavLoc;
+		if (NavSys->ProjectPointToNavigation(Here, NavLoc, FVector(100.0f, 100.0f, 200.0f)))
+		{
+			const UCapsuleComponent* Capsule = GetCapsuleComponent();
+			const float Radius = Capsule ? Capsule->GetScaledCapsuleRadius() : 50.0f;
+			const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+			// 캡슐 반경 이상 벗어났을 때만 보정 (정상 착지는 그대로 둠)
+			if (FVector::DistSquared2D(Here, NavLoc.Location) > FMath::Square(Radius))
+			{
+				// 투영점은 바닥 높이, 캡슐 절반 높이만큼 올려 박힘 방지
+				SetActorLocation(NavLoc.Location + FVector(0.0f, 0.0f, HalfHeight), false);
+			}
+		}
+	}
+}
+
+void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
+{
+	bNavLinkJumping = true;
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (!Move)
+	{
+		return;
+	}
+
+	// 점프가 순간의 실효 중력으로 계산
+	FVector LaunchVelocity = FVector::ZeroVector;
+	const bool bFoundVelocity =
+		UGameplayStatics::SuggestProjectileVelocity_CustomArc(
+			this,
+			LaunchVelocity,
+			GetActorLocation(),
+			DestPoint,
+			Move->GetGravityZ(), // 실효 중력
+			0.5f);
+
+	if (!bFoundVelocity)
+	{
+		return;
+	}
+
+	bNavLinkJumping = true;
+	LaunchCharacter(LaunchVelocity, true, true); // XY/Z Override
 }

@@ -95,4 +95,16 @@ private:
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
+	
+	//NavLink 점프 관련 - 이준로 추가
+public:
+	virtual void Landed(const FHitResult& Hit) override;
+
+	// NavLink 점프 시작: 점프 플래그를 켜고 LaunchCharacter.
+	UFUNCTION(BlueprintCallable)
+	void StartNavLinkJump(const FVector& DestPoint);
+
+private:
+	// NavLink 점프로 인한 착지인지 확인 (일반 착지엔 NavMesh 보정 개입 X)
+	bool bNavLinkJumping = false;
 };
