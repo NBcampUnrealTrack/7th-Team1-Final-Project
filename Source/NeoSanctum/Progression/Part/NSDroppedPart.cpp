@@ -57,11 +57,14 @@ ANSDroppedPart* ANSDroppedPart::SpawnInWorld(UWorld* World, TSubclassOf<ANSDropp
 		return nullptr;
 	}
 
-	TSubclassOf<ANSDroppedPart> ClassToSpawn = Class ? Class : ANSDroppedPart::StaticClass();
+	if (!Class)
+	{
+		Class = ANSDroppedPart::StaticClass();
+	}
 
 	const FTransform SpawnTransform(FRotator::ZeroRotator, Location);
 	ANSDroppedPart* Dropped = World->SpawnActorDeferred<ANSDroppedPart>(
-		ClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+		Class, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!Dropped)
 	{
 		return nullptr;
