@@ -77,6 +77,22 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 	return UsableAttack != nullptr;
 }
 
+void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition)
+{
+	if (AttackDefinition.Cooldown <= 0.0f || AttackDefinition.AttackId.IsNone())
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	LastAttackTimeById.FindOrAdd(AttackDefinition.AttackId) = World->GetTimeSeconds();
+}
+
 const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
 {
 	const FNSEnemyAttackDefinition* SelectedAttack = FindAttackDefinitionByDistance(true);
@@ -102,6 +118,9 @@ AActor* ANSEnemyAIController::GetCurrentTargetActor() const
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
+	
+	// 쿨다운 시간 초기화
+	LastAttackTimeById.Reset();
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(InPawn);
 	if (!Enemy) return;
@@ -326,6 +345,30 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 	if (AttackDefinition.Condition.bRequireLineOfSight && !bHasLineOfSight)
 	{
 		return false;
+	}
+	
+	if (AttackDefinition.Cooldown > 0.0f)
+	{
+		if (AttackDefinition.AttackId.IsNone())
+		{
+			return false;
+		}
+
+		const float* LastAttackTime = LastAttackTimeById.Find(AttackDefinition.AttackId);
+		if (LastAttackTime)
+		{
+			const UWorld* World = GetWorld();
+			if (!World)
+			{
+				return false;
+			}
+
+			const float ElapsedTime = World->GetTimeSeconds() - *LastAttackTime;
+			if (ElapsedTime < AttackDefinition.Cooldown)
+			{
+				return false;
+			}
+		}
 	}
 
 	return true;

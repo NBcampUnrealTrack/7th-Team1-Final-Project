@@ -63,6 +63,8 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 		return EBTNodeResult::Failed;
 	}
 	
+	AIController->RecordAttackUsed(*SelectedAttack);
+	
 	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
 	{
 		BBComp->SetValueAsBool(TEXT("bIsAttacking"), true);
