@@ -37,6 +37,9 @@ struct FNSRewardDropRow : public FTableRowBase
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
+	FGameplayTag DropGroupTag;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag RewardTypeTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward", meta = (ClampMin = "0.0"))

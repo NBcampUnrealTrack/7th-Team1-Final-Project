@@ -10,6 +10,10 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Type_Currency, "Reward.Type.Currency");
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Type_Part, "Reward.Type.Part");
 	
+	// Drop Groups
+	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Currency, "Reward.DropGroup.Currency");
+	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Part, "Reward.DropGroup.Part");
+	
 	// Rewards
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Trigger_NormalKill, "Reward.Trigger.NormalKill");
 	UE_DEFINE_GAMEPLAY_TAG(Reward_Trigger_EliteKill, "Reward.Trigger.EliteKill");
