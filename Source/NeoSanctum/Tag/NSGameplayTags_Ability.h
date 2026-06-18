@@ -13,6 +13,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_AutoFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_Reload);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_ProjectileShot);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Ranger_SpeedBuff);
 
 	// Engineer Ability
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_ShotgunFire);

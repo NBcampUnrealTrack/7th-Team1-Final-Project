@@ -14,5 +14,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Deactivate_HandIK);
 	
 	// Buff State
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_RangerSpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_EngineerSpeedBuff);
 }
