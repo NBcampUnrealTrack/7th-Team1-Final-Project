@@ -499,3 +499,15 @@ void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
 		GetRunResultTimeSeconds(),
 		RunResultKillCount);
 }
+
+void UNSUIManagerSubsystem::UpdateRunEndVotes(int32 NextVotes, int32 HubVotes)
+{
+	UNSRunResultWidget* RunResultWidget =
+	Cast<UNSRunResultWidget>(RunEndWidget);
+	if (!RunResultWidget)
+	{
+		return;
+	}
+
+	RunResultWidget->SetVoteResult(NextVotes, HubVotes);
+}

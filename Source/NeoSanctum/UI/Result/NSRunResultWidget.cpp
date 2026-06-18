@@ -1,3 +1,14 @@
+// Copyright 2026 One Team. All rights reserved.
+
+
+#include "NSRunResultWidget.h"
+#include "CommonTextBlock.h"
+#include "Components/TextBlock.h"
+#include "CommonButtonBase.h"
+#include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
+
 void UNSRunResultWidget::SetRunResult(
 	bool bCleared,
 	int32 EarnedGoods,
@@ -53,6 +64,64 @@ void UNSRunResultWidget::SetRunResult(
 	SetVoteSubmitted(false);
 }
 
+void UNSRunResultWidget::SetVoteResult(int32 NextVotes, int32 HubVotes)
+{
+	if (NextVotesText)
+	{
+		NextVotesText->SetText(FText::Format(
+			NSLOCTEXT("RunResult", "NextVotesFormat", "Next : {0}"),
+			FText::AsNumber(NextVotes)));
+	}
+
+	if (HubVotesText)
+	{
+		HubVotesText->SetText(FText::Format(
+			NSLOCTEXT("RunResult", "HubVotesFormat", "Hub : {0}"),
+			FText::AsNumber(HubVotes)));
+	}
+}
+
+void UNSRunResultWidget::HandleNextStageClicked()
+{
+	SetSelectedChoice(ENSRunChoice::NextStage);
+}
+
+void UNSRunResultWidget::HandleReturnToHubClicked()
+{
+	SetSelectedChoice(ENSRunChoice::ReturnToHub);
+}
+
+void UNSRunResultWidget::HandleConfirmClicked()
+{
+	ANSPlayerController* PlayerController =
+		Cast<ANSPlayerController>(GetOwningPlayer());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	if (bVoteSubmitted)
+	{
+		PlayerController->Server_CancelVote();
+		SetVoteSubmitted(false);
+		return;
+	}
+
+	if (!bHasSelectedChoice)
+	{
+		return;
+	}
+
+	PlayerController->Server_ConfirmVote(SelectedChoice);
+	SetVoteSubmitted(true);
+}
+
+void UNSRunResultWidget::SetSelectedChoice(ENSRunChoice NewChoice)
+{
+	SelectedChoice = NewChoice;
+	bHasSelectedChoice = true;
+}
+
 FText UNSRunResultWidget::FormatRunTime(float RunTimeSeconds) const
 {
 	const int32 TotalSeconds = FMath::Max(FMath::FloorToInt(RunTimeSeconds), 0);
@@ -71,6 +140,7 @@ void UNSRunResultWidget::NativePreConstruct()
 	//에디터에서 위젯을 열어쓸때 기본표시 상태 확인
 	SetRunResult(false,0,0.0f,0);
 }
+
 void UNSRunResultWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -141,4 +211,43 @@ void UNSRunResultWidget::SetVoteSubmitted(bool bSubmitted)
 	{
 		ReturnToHubButton->SetIsEnabled(!bVoteSubmitted);
 	}
+}
+void UNSRunResultWidget::NativeTick(
+	const FGeometry& MyGeometry,
+	float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	UpdatePhaseTimerText();
+}
+void UNSRunResultWidget::UpdatePhaseTimerText()
+{
+	if (!TimerText)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		TimerText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	ANSRunGameState* RunGameState =
+		World->GetGameState<ANSRunGameState>();
+	if (!RunGameState)
+	{
+		TimerText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	const float RemainingTime = RunGameState->GetPhaseTimeRemaining();
+	const int32 DisplaySeconds = FMath::CeilToInt(RemainingTime);
+
+	TimerText->SetText(FText::Format(
+		NSLOCTEXT("RunResult", "TimerFormat", "{0}"),
+		FText::AsNumber(DisplaySeconds)));
+
+	TimerText->SetVisibility(ESlateVisibility::Visible);
 }

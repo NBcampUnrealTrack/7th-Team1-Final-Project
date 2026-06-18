@@ -1,3 +1,24 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "CommonUserWidget.h"
+#include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
+#include "NSRunResultWidget.generated.h"
+
+class UCommonTextBlock;
+class UTextBlock;
+class UCommonButtonBase;
+
+
+/**
+ * 인런 종료 결과를 표시하는 위젯
+ */
+UCLASS()
+class NEOSANCTUM_API UNSRunResultWidget : public UCommonUserWidget
+{
+	GENERATED_BODY()
 	
 public:
 	//런 종료 결과 데이터를 받아 화면을 갱신
@@ -9,7 +30,32 @@ public:
 		int32 KillCount);
 	UFUNCTION(BlueprintCallable, Category = "UI|RunResult")
     void SetVoteResult(int32 NextVotes, int32 HubVotes);
+    
+protected:
 	virtual void NativePreConstruct() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+	virtual void NativeTick(
+	const FGeometry& MyGeometry,
+	float InDeltaTime) override;
+	
+private:
+	//클리어 / 실패 결과 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> ResultTitleText;
+	
+	//획득 재화 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> EarnedGoodsText;
+	
+	//런 진행 시간 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> RunTimeText;
+	
+	//처치 수 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> KillCountText;
+	
 	//다음 스테이지 버튼
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonButtonBase> NextStageButton;
@@ -33,6 +79,7 @@ public:
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> TimerText;
+	
 	UFUNCTION()
 	void HandleNextStageClicked();
 

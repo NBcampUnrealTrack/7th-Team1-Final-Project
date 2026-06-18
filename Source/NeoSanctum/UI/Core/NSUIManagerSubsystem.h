@@ -97,6 +97,8 @@ public:
 	void ResetRunResultStats();
 	// 결과창에 표시할 데이터를 위젯에 전달
 	void UpdateRunEndResult(bool bCleared);
+	//런 종료 투표 수를 결과창 위젯에 전달
+	void UpdateRunEndVotes(int32 NextVotes, int32 HubVotes);
 
 	float GetRunResultTimeSeconds() const;
 	//런 종료 순간의 플레이 시간을 고정한다
