@@ -8,6 +8,7 @@
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "DrawDebugHelpers.h"
 
 UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 {
@@ -25,12 +26,12 @@ void UGA_EnemyAttackMelee::InitializeAttack()
 	bHasHitThisAttack = false;
 
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
-	
+
 	if (!IsValid(Enemy))
 	{
 		return;
 	}
-	
+
 	if (const FNSEnemyAttackDefinition* CurrentAttackDefinition = Enemy->GetCurrentAttackDefinition())
 	{
 		AttackTraceDistance = CurrentAttackDefinition->Condition.MaxRange;
@@ -100,5 +101,103 @@ void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 	if (bHit && TryApplyDamageToTarget(HitResult.GetActor(), HitResult))
 	{
 		bHasHitThisAttack = true;
+	}
+	
+	DrawAttackTraceDebug(Start, End, bHit, HitResult);
+}
+
+void UGA_EnemyAttackMelee::DrawAttackTraceDebug(
+	const FVector& Start,
+	const FVector& End,
+	bool bHit,
+	const FHitResult& HitResult) const
+{
+	if (!bDrawAttackTraceDebug)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const FColor TraceColor = bHit ? FColor::Red : FColor::Green;
+	const FColor CenterLineColor = FColor::White;
+
+	DrawDebugSphere(
+		World,
+		Start,
+		AttackTraceRadius,
+		16,
+		TraceColor,
+		false,
+		AttackTraceDebugDuration);
+
+	DrawDebugSphere(
+		World,
+		End,
+		AttackTraceRadius,
+		16,
+		TraceColor,
+		false,
+		AttackTraceDebugDuration);
+
+	DrawDebugLine(
+		World,
+		Start,
+		End,
+		CenterLineColor,
+		false,
+		AttackTraceDebugDuration,
+		0,
+		1.5f);
+
+	const FVector SweepVector = End - Start;
+	const float SweepLength = SweepVector.Size();
+
+	if (SweepLength > KINDA_SMALL_NUMBER)
+	{
+		const FVector SweepDirection = SweepVector / SweepLength;
+		const FVector CapsuleCenter = (Start + End) * 0.5f;
+
+		const float CapsuleHalfHeight = (SweepLength * 0.5f) + AttackTraceRadius;
+
+		const FQuat CapsuleRotation =
+			FRotationMatrix::MakeFromZ(SweepDirection).ToQuat();
+
+		DrawDebugCapsule(
+			World,
+			CapsuleCenter,
+			CapsuleHalfHeight,
+			AttackTraceRadius,
+			CapsuleRotation,
+			TraceColor,
+			false,
+			AttackTraceDebugDuration,
+			0,
+			1.5f);
+	}
+
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			HitResult.ImpactPoint,
+			12.0f,
+			FColor::Yellow,
+			false,
+			AttackTraceDebugDuration);
+
+		DrawDebugLine(
+			World,
+			HitResult.TraceStart,
+			HitResult.ImpactPoint,
+			FColor::Yellow,
+			false,
+			AttackTraceDebugDuration,
+			0,
+			2.0f);
 	}
 }
