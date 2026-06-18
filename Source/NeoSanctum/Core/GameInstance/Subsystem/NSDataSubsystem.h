@@ -98,7 +98,7 @@ public:
 	
 	const UNSRewardTriggerData* FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const;
 	
-	const UNSRewardDataRegistry* GetRewardDataRegistry() const; 
+	const UNSRewardDataRegistry* GetRewardDataRegistry() const;
 
 	//맵 이동 중 유지할 플레이어 진행 데이터 저장
 	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
