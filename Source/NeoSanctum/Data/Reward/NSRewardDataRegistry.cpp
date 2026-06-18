@@ -74,5 +74,5 @@ const UNSRewardTriggerData* UNSRewardDataRegistry::FindRewardTriggerDataByTag(co
 
 bool UNSRewardDataRegistry::HasRewardTriggerData(const FGameplayTag& TriggerTag) const
 {
-	return FindRewardTriggerDataByTag(TriggerTag);
+	return FindRewardTriggerDataByTag(TriggerTag) != nullptr;
 }
