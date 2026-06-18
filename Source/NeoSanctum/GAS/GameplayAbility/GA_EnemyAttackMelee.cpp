@@ -34,6 +34,7 @@ void UGA_EnemyAttackMelee::InitializeAttack()
 	if (const FNSEnemyAttackDefinition* CurrentAttackDefinition = Enemy->GetCurrentAttackDefinition())
 	{
 		AttackTraceDistance = CurrentAttackDefinition->Condition.MaxRange;
+		AttackTraceRadius = CurrentAttackDefinition->MeleeTraceRadius;
 		return;
 	}
 

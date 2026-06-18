@@ -26,12 +26,12 @@ enum class ENSEnemyMovementType : uint8
 };
 
 UENUM(BlueprintType)
-enum class ENSEnemyCombatRole : uint8
+enum class ENSEnemyAttackType : uint8
 {
-	Melee UMETA(DisplayName = "Melee"),
-	Ranged UMETA(DisplayName = "Ranged"),
-	Hybrid UMETA(DisplayName = "Hybrid"),
-	Summoner UMETA(DisplayName = "Summoner")
+	MeleeSweep UMETA(DisplayName = "Melee Sweep"),
+	Projectile UMETA(DisplayName = "Projectile"),
+	Hitscan UMETA(DisplayName = "Hitscan"),
+	Area UMETA(DisplayName = "Area")
 };
 
 UENUM(BlueprintType)
@@ -96,6 +96,13 @@ struct FNSEnemyAttackDefinition
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", 
+		meta = (ClampMin = "0.0", EditCondition = "AttackType == ENSEnemyAttackType::MeleeSweep", EditConditionHides))
+	float MeleeTraceRadius = 8.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
 	FNSEnemyAttackCondition Condition;
@@ -137,10 +144,6 @@ public:
 	// 이동 분류
 	UPROPERTY(EditDefaultsOnly, Category = "Classification")
 	ENSEnemyMovementType MovementType = ENSEnemyMovementType::Ground;
-
-	// 전투 역할 분류
-	UPROPERTY(EditDefaultsOnly, Category = "Classification")
-	ENSEnemyCombatRole CombatRole = ENSEnemyCombatRole::Melee;
 
 	// 몬스터 등급
 	UPROPERTY(EditDefaultsOnly, Category = "Classification")
