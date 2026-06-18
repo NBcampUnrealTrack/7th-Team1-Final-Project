@@ -64,6 +64,8 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsDead);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
+	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -96,8 +98,8 @@ void ANSEnemyCharacterBase::Die()
 	{
 		bIsDead = true;
 		ClearCurrentAttackDefinition();
+		ClearCombatAimTarget();
 		ApplyDeadVisual();
-		
 		// (이용호 추가) 죽을 때 게임모드에 알림
 		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
@@ -160,7 +162,6 @@ void ANSEnemyCharacterBase::ApplyDeadVisual()
 void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 {
 	if (!EnemyData) return;
-	
 	// 스탯은 최초, 재사용할 때 항상 초기화
 	// GAS 데이터 테이블 기반 스탯 초기화
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
@@ -177,7 +178,6 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
 		}
 	}
-	
 	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
 	if (bFullInit)
 	{
@@ -319,6 +319,38 @@ void ANSEnemyCharacterBase::OnRep_bIsInPool()
 	SetActorEnableCollision(!bIsInPool);
 }
 
+void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
+{
+	if (!HasAuthority() || !IsValid(TargetActor))
+	{
+		ClearCombatAimTarget();
+		return;
+	}
+
+	FVector BoundsOrigin = TargetActor->GetActorLocation();
+	FVector BoundsExtent = FVector::ZeroVector;
+	TargetActor->GetActorBounds(true, BoundsOrigin, BoundsExtent);
+
+	CombatAimTargetLocation = BoundsOrigin + FVector(
+		0.0f,
+		0.0f,
+		BoundsExtent.Z * AimTargetZOffsetRatio
+	);
+
+	bHasCombatAimTarget = true;
+}
+
+void ANSEnemyCharacterBase::ClearCombatAimTarget()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bHasCombatAimTarget = false;
+	CombatAimTargetLocation = FVector::ZeroVector;
+}
+
 void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
 {
 	if (!HasAuthority() || !InEnemyData)
@@ -339,6 +371,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsInPool = false;
 	bIsDead = false;
 	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
 
 	SetActorLocationAndRotation(
 		SpawnLocation,
@@ -373,6 +406,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 
 	bIsInPool = true;
 	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
 
 	// 이동 즉시 정지 및 비활성화
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
