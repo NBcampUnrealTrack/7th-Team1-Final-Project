@@ -16,6 +16,7 @@ class UCapsuleComponent;
 class UGameplayEffect;
 class USphereComponent;
 class UNSAbilitySystemComponent;
+class UNSDissolveComponent;
 class UNSTurretAttributeSet;
 struct FNSTurretConfig;
 struct FOnAttributeChangeData;
@@ -33,6 +34,7 @@ public:
 	ANSTurret();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// Turret 설정과 초기화 payload 전달
 	void InitializeTurret(
@@ -53,6 +55,11 @@ protected:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 
+protected:
+	// 터렛 비활성화(사망) 연출을 클라이언트에서 한 번 복제해야함.
+	UFUNCTION()
+	void OnRep_DeathPresentationStarted();
+	
 private:
 	UFUNCTION()
 	void OnDetectionSphereBeginOverlap(
@@ -100,6 +107,15 @@ private:
 	bool CanFireToCurrentTarget() const;
 	void FireHitscan();
 	FTransform GetMuzzleTransform() const;
+	
+private:
+	// Health Attribute가 0이 되는 순간 실행
+	void HandleOutOfHealth();
+	
+	// 터렛 비활성화 진입
+	void DeactivateTurret();
+	void ApplyDeathState();
+	void StartDeathPresentation();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -132,6 +148,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<USphereComponent> DetectionSphereComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UNSDissolveComponent> DissolveComponent;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
@@ -190,4 +209,8 @@ private:
 
 	float LastFireTime = 0.0f;
 	bool bHasFired = false;
+	
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_DeathPresentationStarted)
+	bool bDeathPresentationStarted = false;
 };

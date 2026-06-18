@@ -11,9 +11,11 @@
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
+#include "Net/UnrealNetwork.h"
 
 ANSTurret::ANSTurret()
 {
@@ -58,11 +60,20 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetupAttachment(SceneRoot);
 	DetectionSphereComponent->InitSphereRadius(0.0f);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
+
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 }
 
 UAbilitySystemComponent* ANSTurret::GetAbilitySystemComponent() const
 {
 	return ASC;
+}
+
+void ANSTurret::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(ANSTurret, bDeathPresentationStarted);
 }
 
 float ANSTurret::GetSpawnSurfaceOffset() const
@@ -142,6 +153,17 @@ void ANSTurret::BeginPlay()
 
 	RestartTargetRefreshTimer();
 	UpdateAutoTarget();
+}
+
+void ANSTurret::OnRep_DeathPresentationStarted()
+{
+	if (!bDeathPresentationStarted)
+	{
+		return;
+	}
+	
+	ApplyDeathState();
+	StartDeathPresentation();
 }
 
 void ANSTurret::OnDetectionSphereBeginOverlap(
@@ -268,6 +290,10 @@ void ANSTurret::BindAttributeChangeDelegates()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSTurretAttributeSet::GetDetectionRangeAttribute()
 	).AddUObject(this, &ThisClass::HandleDetectionRangeChanged);
+	
+	// 사망처리 바인딩
+	AttributeSet->OnOutOfHealth.RemoveAll(this);
+	AttributeSet->OnOutOfHealth.AddUObject(this, &ANSTurret::HandleOutOfHealth);
 	
 	bAttributeChangeDelegatesBound = true;
 }
@@ -460,6 +486,11 @@ void ANSTurret::TryFire()
 		return;
 	}
 	
+	if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
+	{
+		return;
+	}
+	
 	const float FireRate = AttributeSet->GetFireRate();
 	if (FireRate <= 0.0f)
 	{
@@ -630,4 +661,67 @@ FTransform ANSTurret::GetMuzzleTransform() const
 	}
 
 	return HeadMeshComponent ? HeadMeshComponent->GetComponentTransform() : GetActorTransform();
+}
+
+void ANSTurret::HandleOutOfHealth()
+{
+	DeactivateTurret();
+}
+
+void ANSTurret::DeactivateTurret()
+{
+	if (bDeathPresentationStarted)
+	{
+		return;
+	}
+	
+	ApplyDeathState();
+	StartDeathPresentation();
+}
+
+void ANSTurret::ApplyDeathState()
+{
+	SetActorTickEnabled(false);
+	GetWorldTimerManager().ClearTimer(TargetRefreshTimerHandle);
+
+	TargetSet.Empty();
+	AutoTarget.Reset();
+
+	if (HitCollisionComponent)
+	{
+		HitCollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		HitCollisionComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	if (DetectionSphereComponent)
+	{
+		DetectionSphereComponent->SetGenerateOverlapEvents(false);
+		DetectionSphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+
+	if (!ASC)
+	{
+		return;
+	}
+	
+	// 임시 : 강제로 Dead 상태 태그 부여 -> 이후 GA_Death로 로직을 빼고 GE에서 변경하도록 할 예정 
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Dead);
+}
+
+void ANSTurret::StartDeathPresentation()
+{
+	bDeathPresentationStarted = true;
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = this;
+	CueParameters.EffectCauser = this;
+	CueParameters.Location = this->GetActorLocation();
+	CueParameters.Normal = this->GetActorForwardVector();
+
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_SpawnTurret_Deactivate, CueParameters);
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->StartDissolve(true);
+	}
 }
