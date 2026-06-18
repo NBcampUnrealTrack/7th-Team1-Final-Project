@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
@@ -56,6 +57,7 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsInAir = false;
 	}
 
+	UpdateAimRotation(DeltaSeconds);
 	UpdateLeftHandIK(DeltaSeconds);
 }
 
@@ -134,4 +136,45 @@ void UNSEnemyAnimInstance::UpdateLeftHandIKAlpha(float TargetAlpha, float DeltaS
 	{
 		LeftHandIKAlpha = 0.0f;
 	}
+}
+
+void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
+{
+	float TargetPitch = 0.0f;
+	float TargetYaw = 0.0f;
+	float TargetAlpha = 0.0f;
+
+	if (IsValid(EnemyCharacter) &&
+		!EnemyCharacter->IsDead() &&
+		EnemyCharacter->HasCombatAimTarget())
+	{
+		const ANSEnemyWeaponBase* CurrentWeapon = EnemyCharacter->GetCurrentWeapon();
+
+		FVector AimOrigin = EnemyCharacter->GetActorLocation();
+		FTransform MuzzleTransform;
+
+		if (IsValid(CurrentWeapon) && CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
+		{
+			AimOrigin = MuzzleTransform.GetLocation();
+		}
+
+		const FVector ToTarget = EnemyCharacter->GetCombatAimTargetLocation() - AimOrigin;
+
+		if (!ToTarget.IsNearlyZero())
+		{
+			const FRotator WorldAimRotation = ToTarget.Rotation();
+			const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+				WorldAimRotation,
+				EnemyCharacter->GetActorRotation()
+			);
+
+			TargetPitch = FMath::Clamp(LocalAimRotation.Pitch, -MaxAimPitch, MaxAimPitch);
+			TargetYaw = FMath::Clamp(LocalAimRotation.Yaw, -MaxAimYaw, MaxAimYaw);
+			TargetAlpha = 1.0f;
+		}
+	}
+
+	AimPitch = FMath::FInterpTo(AimPitch, TargetPitch, DeltaSeconds, AimInterpSpeed);
+	AimYaw = FMath::FInterpTo(AimYaw, TargetYaw, DeltaSeconds, AimInterpSpeed);
+	AimAlpha = FMath::FInterpTo(AimAlpha, TargetAlpha, DeltaSeconds, AimInterpSpeed);
 }
