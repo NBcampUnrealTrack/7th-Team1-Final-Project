@@ -38,7 +38,7 @@ public:
 
 	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
 	const FNSEnemyAttackDefinition* GetAttackDefinitionByDistance();
-	TSubclassOf<UGameplayAbility> GetAttackAbilityClassByDistance();
+	
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
 
@@ -52,18 +52,8 @@ protected:
 private:
 	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
 	bool IsValidLivingTarget(const AActor* Target) const;
-
-	bool TryBuildAttackEvaluationContext(
-		const UNSEnemyData*& OutEnemyData,
-		AActor*& OutTargetActor,
-		float& OutDistance,
-		bool& bOutHasLineOfSight);
-
-	const FNSEnemyAttackDefinition* SelectAttackDefinition(
-		const UNSEnemyData* EnemyData,
-		const AActor* TargetActor,
-		float Distance,
-		bool bHasLineOfSight) const;
+	
+	const FNSEnemyAttackDefinition* FindAttackDefinitionByDistance(bool bSelectWeightedAttack);
 
 	bool CanUseAttackDefinition(
 		const FNSEnemyAttackDefinition& AttackDefinition,
