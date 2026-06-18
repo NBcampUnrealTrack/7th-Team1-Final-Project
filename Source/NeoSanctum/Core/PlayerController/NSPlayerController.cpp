@@ -60,8 +60,24 @@ void ANSPlayerController::RequestReady()
 	const ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
 	const bool bCurrentlyReady =
 		OwningPlayerState ? OwningPlayerState->IsReady() : false;
+	const bool bNewReady = !bCurrentlyReady;
 	
-	Server_SetReady(!bCurrentlyReady);
+	// 레디 ON 전환 시: 허브에서의 최신 변경분(강화/파츠 구매 등)을 서버 컴포넌트로 업로드
+	if (bNewReady)
+	{
+		UGameInstance* GameInstance = GetGameInstance();
+		UNSSaveGameSubsystem* SaveSubsystem =
+			GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+		UNSPermanentSaveGame* PermanentSave =
+			SaveSubsystem ? SaveSubsystem->GetCachedPermanentData() : nullptr;
+
+		if (PermanentSave && !PermanentSave->LastSelectedCharacterId.IsNone())
+		{
+			UploadLocalProgress(PermanentSave->LastSelectedCharacterId);
+		}
+	}
+	
+	Server_SetReady(bNewReady);
 }
 
 void ANSPlayerController::Server_SetReady_Implementation(bool bNewReady)
@@ -637,9 +653,38 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	if (MapName.Contains(TEXT("HideOut")))
 	{
 		// 클라가 CachedData 읽어 ChangeCharacterData로 적용
-		RestoreLastSelectedCharacter();
-		
+		UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
+		if (SaveSubsystem)
+		{
+			if (SaveSubsystem->GetCachedPermanentData())
+			{
+				// 로드가 완료되었다면 즉시 복원
+				RestoreLastSelectedCharacter();
+			}
+			else if (!PermanentDataLoadedHandle.IsValid())
+			{
+				// 로드가 아직 안되었다면 완료 후 복원되도록 바인딩
+				PermanentDataLoadedHandle = SaveSubsystem->OnPermanentDataLoaded.AddUObject(
+					this, &ANSPlayerController::HandlePermanentDataLoaded);
+			}
+		}
 	}
+}
+
+void ANSPlayerController::HandlePermanentDataLoaded(UNSPermanentSaveGame* Data)
+{
+	// 로드 완료 후 1회만 복원하고 바인딩 해제
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UNSSaveGameSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UNSSaveGameSubsystem>())
+		{
+			SaveSubsystem->OnPermanentDataLoaded.Remove(PermanentDataLoadedHandle);
+		}
+	}
+	PermanentDataLoadedHandle.Reset();
+
+	RestoreLastSelectedCharacter();
 }
 
 void ANSPlayerController::Server_RequestStartRun_Implementation()
