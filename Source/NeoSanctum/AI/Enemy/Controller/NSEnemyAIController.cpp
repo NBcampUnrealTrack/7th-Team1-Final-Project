@@ -40,7 +40,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		ClearFocus(EAIFocusPriority::Gameplay);
 	}
 
-	GetAttackAbilityClassByDistance();
+	CanUseAnyAttackByDistance();
 }
 
 ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other) const
@@ -65,29 +65,63 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 	return ETeamAttitude::Type::Neutral;
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
+bool ANSEnemyAIController::CanUseAnyAttackByDistance()
+{
+	AActor* TargetActor = nullptr;
+	const UNSEnemyData* EnemyData = nullptr;
+	float Distance = 0.0f;
+	bool bHasLineOfSight = false;
+
+	if (!TryBuildAttackEvaluationContext(EnemyData, TargetActor, Distance, bHasLineOfSight))
+	{
+		return false;
+	}
+
+	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	{
+		if (CanUseAttackDefinition(AttackDefinition, TargetActor, Distance, bHasLineOfSight))
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), true);
+			return true;
+		}
+	}
+
+	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	return false;
+}
+
+bool ANSEnemyAIController::TryBuildAttackEvaluationContext(
+	const UNSEnemyData*& OutEnemyData,
+	AActor*& OutTargetActor,
+	float& OutDistance,
+	bool& bOutHasLineOfSight)
 {
 	if (!CachedBBComp)
 	{
-		return nullptr;
+		return false;
 	}
 
 	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
-	
 	APawn* AIPawn = GetPawn();
 	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
 		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		return nullptr;
+		return false;
 	}
 	
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-	if (!Enemy || !EnemyData)
+	if (!Enemy)
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		return nullptr;
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	if (!EnemyData)
+	{
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		return false;
 	}
 	
 	const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
@@ -95,23 +129,41 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDista
 
 	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
 	const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
-	
 	const bool bFacingTarget = FacingDot >= RequiredDot;
 	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
 
 	if (!bFacingTarget)
 	{
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		return nullptr;
+		return false;
 	}
-	
 	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
 	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
-	
-	const FNSEnemyAttackDefinition* SelectedAttack = 
+
+	OutTargetActor = TargetActor;
+	OutEnemyData = EnemyData;
+	OutDistance = Distance;
+	bOutHasLineOfSight = bHasLineOfSight;
+
+	return true;
+}
+
+const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
+{
+	AActor* TargetActor = nullptr;
+	const UNSEnemyData* EnemyData = nullptr;
+	float Distance = 0.0f;
+	bool bHasLineOfSight = false;
+
+	if (!TryBuildAttackEvaluationContext(EnemyData, TargetActor, Distance, bHasLineOfSight))
+	{
+		return nullptr;
+	}
+
+	const FNSEnemyAttackDefinition* SelectedAttack =
 		SelectAttackDefinition(EnemyData, TargetActor, Distance, bHasLineOfSight);
-	
 	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), SelectedAttack != nullptr);
+	
 	return SelectedAttack;
 }
 
@@ -235,7 +287,7 @@ bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
 
 const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
 	const UNSEnemyData* EnemyData,
-	const AActor* TargetActor, 
+	const AActor* TargetActor,
 	float Distance,
 	bool bHasLineOfSight) const
 {
@@ -299,7 +351,7 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::SelectAttackDefinition(
 
 bool ANSEnemyAIController::CanUseAttackDefinition(
 	const FNSEnemyAttackDefinition& AttackDefinition,
-	const AActor* TargetActor, 
+	const AActor* TargetActor,
 	float Distance,
 	bool bHasLineOfSight) const
 {
