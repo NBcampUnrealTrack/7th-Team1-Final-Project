@@ -21,6 +21,7 @@ public:
 protected:
 	void UpdateLeftHandIK(float DeltaSeconds);
 	void UpdateLeftHandIKAlpha(float TargetAlpha, float DeltaSeconds);
+	void UpdateAimRotation(float DeltaSeconds);
 
 protected:
 	// 이동 속도
@@ -51,6 +52,25 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Hand IK", meta = (ClampMin = "0.0"))
 	float LeftHandIKInterpSpeed = 12.0f;
+
+protected:
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimPitch = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimYaw = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	float AimAlpha = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float AimInterpSpeed = 12.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MaxAimPitch = 90.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MaxAimYaw = 135.0f;
 
 private:
 	UPROPERTY()
