@@ -36,6 +36,8 @@ protected:
 	const TArray<FNSSetByCallerMagnitude>& GetSetByCallerMagnitudes() const { return SetByCallerMagnitudes; }
 	// 런타임 stat 값 조회
 	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
+	// RuntimeStat float 값을 boolean 옵션처럼 사용할 때 0 초과면 true로 변환
+	bool TryGetRuntimeStatBool(const FGameplayTag& CombatStatTag, bool& OutValue) const;
 	USphereComponent* GetCollisionComponent() const { return CollisionComponent; }
 	UStaticMeshComponent* GetMeshComponent() const { return MeshComponent; }
 	UProjectileMovementComponent* GetProjectileMovementComponent() const { return ProjectileMovementComponent; }
