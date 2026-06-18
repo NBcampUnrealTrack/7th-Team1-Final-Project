@@ -757,6 +757,11 @@ void ADungeonGeneratorBase::OnStateEnd(EGenerationState State)
 		{
 			DungeonLog_Info("Rebuild navmesh");
 
+			// [NS FIX] 늦게 스트리밍되는 방의 NavMeshBoundsVolume이 Build 시점에 빠지는 레이스 방지.
+			// RebuildAll->GatherNavigationBounds는 "월드에 존재하며 컴포넌트 등록을 마친" 볼륨만 수집하므로,
+			// 모든 스트리밍 레벨의 AddToWorld가 끝날 때 까지 강제로 정지.
+			GetWorld()->FlushLevelStreaming();
+
 			nav->RemoveNavigationBuildLock(ENavigationBuildLock::Custom, UNavigationSystemV1::ELockRemovalRebuildAction::NoRebuild);
 			nav->Build();
 		}
