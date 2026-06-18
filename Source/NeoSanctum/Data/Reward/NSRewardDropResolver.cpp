@@ -14,20 +14,25 @@ void UNSRewardDropResolver::ResolveDropResultsFromTable(
 {
 	OutResults.Reset();
 	
-	if (!IsValid(DropTable))
+	if (!DropTable)
 	{
 		NS_LOG(LogNS, Warning, "DropTable이 유효하지 않습니다.");
 		return;
 	}
 	
-	NS_LOG(LogNS, Warning,
-		"DropTable의 RowStruct가 FNSRewardDropRow가 아닙니다. DropTable={DropTable}",
-		("DropTable", GetNameSafe(DropTable))
-	);
+	if (DropTable->GetRowStruct() != FNSRewardDropRow::StaticStruct())
+	{
+		NS_LOG(LogNS, Warning,
+				"DropTable의 RowStruct가 FNSRewardDropRow가 아닙니다. DropTable={DropTable}",
+				("DropTable", GetNameSafe(DropTable))
+		);
+		return;
+	}
 	
 	TArray<FNSRewardDropRow*> Rows;
+	// 모든 행을 읽어 Rows에 추가
 	DropTable->GetAllRows<FNSRewardDropRow>(
-		TEXT("UNSRewardDropResolver::ResloveDropResultsFromTable"), Rows);
+		TEXT("UNSRewardDropResolver::ResolveDropResultsFromTable"), Rows);
 	
 	TMap<FGameplayTag, TArray<const FNSRewardDropRow*>> RowsByGroup;
 	
@@ -56,9 +61,9 @@ void UNSRewardDropResolver::ResolveDropResultsFromTable(
 		return;
 	}
 	
-	for (const TPair<FGameplayTag, TArray<const FNSRewardDropRow*>>& GroupPiar : RowsByGroup)
+	for (const TPair<FGameplayTag, TArray<const FNSRewardDropRow*>>& GroupPair : RowsByGroup)
 	{
-		const FNSRewardDropRow* SelectedRow = SelectDropRow(GroupPiar.Value, RandomStream);
+		const FNSRewardDropRow* SelectedRow = SelectDropRow(GroupPair.Value, RandomStream);
 		
 		if (!SelectedRow)
 		{
