@@ -383,6 +383,16 @@ void ANSPlayerController::HandleRunEndPhaseChanged()
 	}
 }
 
+void ANSPlayerController::Debug_ForceRunClear()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	Server_DebugForceRunClear();
+}
+
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -391,6 +401,18 @@ void ANSPlayerController::Server_CancelVote_Implementation()
 		INSRunGameModeInterface::Execute_CancelRunChoice(GameMode, this);
 	}
 }
+
+void ANSPlayerController::Server_DebugForceRunClear_Implementation()
+{
+	AGameModeBase* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode() : nullptr;
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_NotifyStageCleared(GameMode);
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("[RunEnd Debug] 강제 클리어 요청"));
+}
+
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -447,9 +469,7 @@ void ANSPlayerController::BeginPlay()
 			UIManager->HideTitle();
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
-			
-			UIManager->CreateRunEnd(this);
-			UIManager->HideRunEnd();
+			UIManager->ResetRunResultStats();
 			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
@@ -459,6 +479,7 @@ void ANSPlayerController::BeginPlay()
 	//HUD 생성 이후 Attribute 값 연결
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
+	BindRunEndPhase();
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -505,9 +526,6 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-		
-		UIManager->CreateRunEnd(this);
-		UIManager->HideRunEnd();
         
 		//마우스 커서 및 입력 모드 제어
 		FInputModeGameOnly InputModeData;
@@ -571,6 +589,12 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 	{
 		Data->EnterRun();
 	}
+	if (UNSUIManagerSubsystem* UIManager =
+		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
+	{
+		UIManager->ResetRunResultStats();
+	}
+
 }
 
 void ANSPlayerController::ExitSpectatorAndRespawn()
@@ -831,6 +855,8 @@ void ANSPlayerController::SetupInputComponent()
 
 	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
 	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
+	// 디버그: k키로 런 클리어 화면 확인, TODO: 테스트 종료 후 제거
+	InputComponent->BindKey(EKeys::K, IE_Pressed, this, &ANSPlayerController::Debug_ForceRunClear);
 }
 
 void ANSPlayerController::ToggleAugmentationPanel()

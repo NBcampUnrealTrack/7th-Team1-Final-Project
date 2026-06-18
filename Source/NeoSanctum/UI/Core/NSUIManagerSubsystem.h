@@ -10,6 +10,7 @@ class UNSHUDWidget;
 class UDataTable;
 class APlayerController;
 class UUserWidget;
+class UNSRunResultWidget;
 
 
 /**
@@ -95,14 +96,20 @@ public:
 	
 	//런 시작 시 결과 표시용 집계값을 초기화
 	void ResetRunResultStats();
+	// 결과창에 표시할 처치 수를 증가
+	void AddRunResultKillCount(int32 Amount = 1);
 	// 결과창에 표시할 데이터를 위젯에 전달
 	void UpdateRunEndResult(bool bCleared);
 	//런 종료 투표 수를 결과창 위젯에 전달
 	void UpdateRunEndVotes(int32 NextVotes, int32 HubVotes);
 
+	int32 GetRunResultGoods() const { return RunResultGoods; }
+	int32 GetRunResultKillCount() const { return RunResultKillCount; }
 	float GetRunResultTimeSeconds() const;
+	
 	//런 종료 순간의 플레이 시간을 고정한다
 	void CacheRunResultTime();
+	
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관
@@ -142,6 +149,7 @@ private:
 
 	//플레이 시간을 이미 고정했는지 여부
 	bool bRunResultTimeCached = false;
+	
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
