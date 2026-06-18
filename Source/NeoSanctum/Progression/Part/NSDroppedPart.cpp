@@ -49,6 +49,29 @@ void ANSDroppedPart::BeginPlay()
 	SetupVisual();
 }
 
+ANSDroppedPart* ANSDroppedPart::SpawnInWorld(UWorld* World, TSubclassOf<ANSDroppedPart> Class,
+	const FNSPartData& Part, const FVector& Location)
+{
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	TSubclassOf<ANSDroppedPart> ClassToSpawn = Class ? Class : ANSDroppedPart::StaticClass();
+
+	const FTransform SpawnTransform(FRotator::ZeroRotator, Location);
+	ANSDroppedPart* Dropped = World->SpawnActorDeferred<ANSDroppedPart>(
+		ClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	if (!Dropped)
+	{
+		return nullptr;
+	}
+
+	Dropped->Initialize(Part);
+	Dropped->FinishSpawning(SpawnTransform);
+	return Dropped;
+}
+
 void ANSDroppedPart::Initialize(const FNSPartData& InPart)
 {
 	if (!HasAuthority())

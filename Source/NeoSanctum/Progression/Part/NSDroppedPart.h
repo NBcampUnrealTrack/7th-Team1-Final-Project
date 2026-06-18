@@ -23,6 +23,10 @@ class NEOSANCTUM_API ANSDroppedPart : public AActor
 
 public:
 	ANSDroppedPart();
+	
+	// 월드 좌표에 파츠를 스폰, 장착 교체/몬스터 드랍 공용 진입점
+	static ANSDroppedPart* SpawnInWorld(UWorld* World, TSubclassOf<ANSDroppedPart> Class,
+		const FNSPartData& Part, const FVector& Location);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
