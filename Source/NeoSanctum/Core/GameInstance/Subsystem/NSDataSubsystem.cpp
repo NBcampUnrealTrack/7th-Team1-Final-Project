@@ -6,6 +6,7 @@
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
+#include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 const FPrimaryAssetType UNSDataSubsystem::PlayerAssetType			= FPrimaryAssetType(TEXT("NSPlayerData"));
