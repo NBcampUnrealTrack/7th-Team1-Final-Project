@@ -49,6 +49,21 @@ UNSDataSubsystem* UNSDataSubsystem::Get(const UObject* WorldContextObject)
 	return GI->GetSubsystem<UNSDataSubsystem>();
 }
 
+const UNSRewardTriggerData* UNSDataSubsystem::FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const
+{
+	if (!IsValid(RewardDataRegistry))
+	{
+		return nullptr;
+	}
+	
+	return RewardDataRegistry->FindRewardTriggerDataByTag(TriggerTag);
+}
+
+const UNSRewardDataRegistry* UNSDataSubsystem::GetRewardDataRegistry() const
+{
+	return RewardDataRegistry;
+}
+
 // ================================================================
 // 전환 진입점
 // ================================================================
@@ -192,7 +207,7 @@ void UNSDataSubsystem::StartLoadRun()
 	SetPhase(ENSDataLoadPhase::LoadingRun);
 
 	const TArray<FPrimaryAssetType> Types =
-		{ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType };
+		{ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType, RewardTriggerAssetType };
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -211,7 +226,13 @@ void UNSDataSubsystem::StartLoadRun()
 
 void UNSDataSubsystem::OnRunAssetsLoaded()
 {
-	CacheLoaded({ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType });
+	CacheLoaded({
+		MonsterAssetType,
+		AugmentAssetType,
+		AugmentPoolAssetType, 
+		PartAssetType,
+		RewardTriggerAssetType}
+	);
 	BuildRewardDataRegistry();
 	
 	SetPhase(ENSDataLoadPhase::RunReady);
@@ -269,7 +290,13 @@ void UNSDataSubsystem::UnloadRun()
 		RewardDataRegistry = nullptr;
 	}
 	
-	UnloadByTypes({ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType });
+	UnloadByTypes({
+		MonsterAssetType, 
+		AugmentAssetType, 
+		AugmentPoolAssetType, 
+		PartAssetType, 
+		RewardTriggerAssetType }
+	);
 }
 
 void UNSDataSubsystem::UnloadAll()

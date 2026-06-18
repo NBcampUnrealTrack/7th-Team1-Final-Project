@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
