@@ -145,28 +145,7 @@ void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> 
 
 void UNSPartEquipComponent::SpawnDroppedPart(const FNSPartData& Part, const FVector& Location)
 {
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	TSubclassOf<ANSDroppedPart> ClassToSpawn = DroppedPartClass;
-	if (!ClassToSpawn)
-	{
-		ClassToSpawn = ANSDroppedPart::StaticClass();
-	}
-
-	const FTransform SpawnTransform(FRotator::ZeroRotator, Location);
-	ANSDroppedPart* Dropped = World->SpawnActorDeferred<ANSDroppedPart>(
-		ClassToSpawn, SpawnTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
-	if (!Dropped)
-	{
-		return;
-	}
-
-	Dropped->Initialize(Part);
-	Dropped->FinishSpawning(SpawnTransform);
+	ANSDroppedPart::SpawnInWorld(GetWorld(), DroppedPartClass, Part, Location);
 }
 
 void UNSPartEquipComponent::RemovePartEffects(ENSPartSlot Slot)
