@@ -146,6 +146,16 @@ private:
 	UFUNCTION()
 	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
 
+	//RunGameState의 런 종료 페이즈 변경시 델리게이트 바인딩
+	void BindRunEndPhase();
+	
+	//런 종료 페이즈가 바뀌었을때 결과창 표시 상태 갱신
+	UFUNCTION()
+	void HandleRunEndPhaseChanged();
+	//현재 바인딩한 RunGameState를 캐싱
+	UPROPERTY()
+	TObjectPtr<ANSRunGameState> CachedRunGameState;
+	
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")

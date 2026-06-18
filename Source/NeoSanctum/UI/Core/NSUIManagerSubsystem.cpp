@@ -8,6 +8,36 @@
 #include "Engine/DataTable.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
+#include "NeoSanctum/UI/Result/NSRunResultWidget.h"
+
+float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
+{
+	if (bRunResultTimeCached)
+	{
+		return CachedRunResultTimeSeconds;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World || RunStartWorldTimeSeconds < 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Max(
+		World->GetTimeSeconds() - RunStartWorldTimeSeconds,
+		0.0f);
+}
+
+void UNSUIManagerSubsystem::CacheRunResultTime()
+{
+	if (bRunResultTimeCached)
+	{
+		return;
+	}
+
+	CachedRunResultTimeSeconds = GetRunResultTimeSeconds();
+	bRunResultTimeCached = true;
+}
 
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()
 {
@@ -435,4 +465,37 @@ void UNSUIManagerSubsystem::CloseRunBuildPanel()
 	bRunBuildPanelOpen = false;
 	bAugmentationPanelOpen = false;
 	bPartPanelOpen = false;
+}
+
+void UNSUIManagerSubsystem::ResetRunResultStats()
+{
+	RunResultGoods = 0;
+	RunResultKillCount = 0;
+
+	CachedRunResultTimeSeconds = 0.0f;
+	bRunResultTimeCached = false;
+
+	UWorld* World = GetWorld();
+	RunStartWorldTimeSeconds = World ? World->GetTimeSeconds() : -1.0f;
+}
+
+void UNSUIManagerSubsystem::AddRunResultKillCount(int32 Amount)
+{
+	RunResultKillCount += FMath::Max(Amount, 0);
+}
+
+void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
+{
+	UNSRunResultWidget* RunResultWidget =
+		Cast<UNSRunResultWidget>(RunEndWidget);
+	if (!RunResultWidget)
+	{
+		return;
+	}
+
+	RunResultWidget->SetRunResult(
+		bCleared,
+		RunResultGoods,
+		GetRunResultTimeSeconds(),
+		RunResultKillCount);
 }

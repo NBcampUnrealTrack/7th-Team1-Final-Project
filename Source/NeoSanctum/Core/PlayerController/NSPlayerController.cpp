@@ -313,6 +313,75 @@ void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* Co
 	HideCharacterSelectWidget(); 
 }
 
+void ANSPlayerController::BindRunEndPhase()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	ANSRunGameState* RunGameState =
+		World->GetGameState<ANSRunGameState>();
+	if (!IsValid(RunGameState))
+	{
+		return;
+	}
+	
+	CachedRunGameState = RunGameState;
+	
+	//중복 바인딩 방지
+	RunGameState->OnRunEndPhaseChanged.RemoveDynamic(this,
+	&ANSPlayerController::HandleRunEndPhaseChanged);
+	RunGameState->OnRunEndPhaseChanged.AddDynamic(this,
+		&ANSPlayerController::HandleRunEndPhaseChanged);
+	
+	//이미 Result상태라면 바인딩 직후 동기화
+	HandleRunEndPhaseChanged();
+}
+
+void ANSPlayerController::HandleRunEndPhaseChanged()
+{
+	if (!IsValid(CachedRunGameState) || !GetGameInstance())
+	{
+		return;
+	}
+	
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>();
+	if (!UIManager)
+	{
+		return;
+	}
+	
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[RunEnd UI] Phase=%d, bIsClear=%d, WinningChoice=%d"),
+		static_cast<int32>(CachedRunGameState->RunEndPhase),
+		CachedRunGameState->bIsClear ? 1 : 0,
+		static_cast<int32>(CachedRunGameState->WinningChoice)
+	);
+	
+	switch (CachedRunGameState->RunEndPhase)
+	{
+	case ENSRunEndPhase::Voting:
+	case ENSRunEndPhase::Result:
+		UIManager->CreateRunEnd(this);
+		UIManager->CacheRunResultTime();
+		UIManager->UpdateRunEndResult(CachedRunGameState->bIsClear);
+		UIManager->UpdateRunEndVotes(
+			CachedRunGameState->NextVotes,
+			CachedRunGameState->HubVotes);
+		UIManager->ShowRunEnd();
+		EnterRunEndInputMode();
+		break;
+		
+	case ENSRunEndPhase::None :
+		default:
+			UIManager->HideRunEnd();
+			break;
+	}
+}
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();

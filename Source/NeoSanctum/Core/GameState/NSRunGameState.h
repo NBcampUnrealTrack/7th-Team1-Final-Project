@@ -52,11 +52,14 @@ public:
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
 	ENSRunChoice WinningChoice = ENSRunChoice::ReturnToHub;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
+	UPROPERTY(ReplicatedUsing=OnRep_RunEndVotes, BlueprintReadOnly, Category="RunEnd")
 	int32 NextVotes = 0;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
+	UPROPERTY(ReplicatedUsing=OnRep_RunEndVotes, BlueprintReadOnly, Category="RunEnd")
 	int32 HubVotes = 0;
+
+	UFUNCTION()
+	void OnRep_RunEndVotes();
 
 	// UI 카운트다운용 남은 초 계산 (Voting의 10초, Result의 3초)
 	UFUNCTION(BlueprintPure, Category="RunEnd")

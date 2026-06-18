@@ -92,7 +92,15 @@ public:
 	{
 		return bRunBuildPanelOpen;
 	}
+	
+	//런 시작 시 결과 표시용 집계값을 초기화
+	void ResetRunResultStats();
+	// 결과창에 표시할 데이터를 위젯에 전달
+	void UpdateRunEndResult(bool bCleared);
 
+	float GetRunResultTimeSeconds() const;
+	//런 종료 순간의 플레이 시간을 고정한다
+	void CacheRunResultTime();
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관
@@ -118,6 +126,20 @@ private:
 	
 	bool bRunBuildPanelOpen = false;
 	
+	//런 결과창에 표시할 획득 재화
+	int32 RunResultGoods = 0;
+
+	//런 결과창에 표시할 처치 수
+	int32 RunResultKillCount = 0;
+
+	//런 시작 시점의 월드 시간
+	float RunStartWorldTimeSeconds = -1.0f;
+	
+	//런 종료 순간에 고정된 플레이 시간
+	float CachedRunResultTimeSeconds = 0.0f;
+
+	//플레이 시간을 이미 고정했는지 여부
+	bool bRunResultTimeCached = false;
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
