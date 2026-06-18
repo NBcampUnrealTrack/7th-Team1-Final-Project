@@ -30,14 +30,25 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	AActor* TargetActor = GetCurrentTargetActor();
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
 	if (IsValidLivingTarget(TargetActor))
 	{
 		SetFocus(TargetActor, EAIFocusPriority::Gameplay);
+
+		if (Enemy)
+		{
+			Enemy->UpdateCombatAimTarget(TargetActor);
+		}
 	}
 	else
 	{
 		ClearFocus(EAIFocusPriority::Gameplay);
+
+		if (Enemy)
+		{
+			Enemy->ClearCombatAimTarget();
+		}
 	}
 
 	CanUseAnyAttackByDistance();
