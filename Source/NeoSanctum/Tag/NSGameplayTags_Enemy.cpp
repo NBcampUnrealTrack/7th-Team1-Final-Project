@@ -8,6 +8,8 @@ namespace NSGameplayTags
 	// Enemy Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_BasicMelee, "Ability.Enemy.BasicMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_DoubleMelee, "Ability.Enemy.DoubleMelee");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TripleMelee, "Ability.Enemy.TripleMelee");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_StrongMelee, "Ability.Enemy.StrongMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_RangerAttack, "Ability.Enemy.RangerAttack");
 
 	// Enemy Event
