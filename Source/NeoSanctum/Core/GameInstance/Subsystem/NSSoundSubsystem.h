@@ -42,6 +42,9 @@ struct FNSActiveSound
 
 	UPROPERTY()
 	FName SocketName = NAME_None;
+
+	UPROPERTY()
+	float PitchMultiplier = 1.f;
 };
 
 UCLASS()
@@ -63,18 +66,19 @@ public:
 
 	// 어디서든 동일한 볼륨으로 들리는 사운드 재생
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
-	UAudioComponent* PlaySound2D(FName SoundID, float FadeIn = 1.f);
+	UAudioComponent* PlaySound2D(FName SoundID, float FadeIn = 1.f, float PitchMultiplier = 1.f);
 
 	// 특정 위치에서 재생하는 사운드
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
-	UAudioComponent* PlaySoundAtLocation(FName SoundID, FVector Location);
+	UAudioComponent* PlaySoundAtLocation(FName SoundID, FVector Location, float PitchMultiplier = 1.f);
 
 	// 특정 소켓에 붙어서 함께 이동하는 사운드
 	UFUNCTION(BlueprintCallable, Category = "Sound|Play")
 	UAudioComponent* PlaySoundAttached(
 		FName SoundID,
 		USceneComponent* AttachToComponent,
-		FName SocketName = NAME_None
+		FName SocketName = NAME_None,
+		float PitchMultiplier = 1.f
 	);
 
 public:
@@ -116,25 +120,28 @@ private:
 	const FNSSoundDataTableRow* FindSoundRow(FName SoundID) const;
 
 	// 단발성 사운드 플레이 관련 헬퍼
-	void PlayOneShot2D(const FNSSoundDataTableRow& SoundRow) const;
+	void PlayOneShot2D(const FNSSoundDataTableRow& SoundRow, float PitchMultiplier = 1.f) const;
 
 	// 루프 사운드 플레이 관련 헬퍼
 	UAudioComponent* PlayLoop2D(
 		FName SoundID,
 		const FNSSoundDataTableRow& SoundRow,
-		float FadeIn = -1.f
+		float FadeIn = -1.f,
+		float PitchMultiplier = 1.f
 	);
 	// 특정 위치에서 재생되는 루프 사운드 헬퍼
 	UAudioComponent* PlayLoopAtLocation(
 		FName SoundID,
 		const FNSSoundDataTableRow& SoundRow,
-		FVector Location
+		FVector Location,
+		float PitchMultiplier = 1.f
 	);
 	// 특정 소켓에 부착되어 이동하는 루프 사운드 헬퍼
 	UAudioComponent* PlayLoopAttached(
 		FName SoundID,
 		const FNSSoundDataTableRow& SoundRow,
-		USceneComponent* AttachToComponent, FName SocketName
+		USceneComponent* AttachToComponent, FName SocketName,
+		float PitchMultiplier = 1.f
 	);
 	// 루프 사운드를 ActiveSounds 배열에 등록하기 위한
 	void RegisterLoop(
@@ -143,7 +150,8 @@ private:
 		ENSActiveSoundMode Mode,
 		FVector Location = FVector::ZeroVector,
 		USceneComponent* AttachToComponent = nullptr,
-		FName SocketName = NAME_None
+		FName SocketName = NAME_None,
+		float PitchMultiplier = 1.f
 	);
 	// 사운드 루프를 걸기 위한 콜백
 	void OnLoopFinished(UAudioComponent* FinishedComponent);
@@ -154,6 +162,8 @@ private:
 
 	// 최종 볼륨값 반환 : SoundRow의 기본 볼륨 * MasterVolume * 해당 사운드의 카테고리 볼륨
 	float GetFinalVolume(const FNSSoundDataTableRow& SoundRow) const;
+	// 최종 재생속도 반환 : SoundRow의 기본 Pitch * 호출 시점의 재생속도 배율
+	float GetFinalPitch(const FNSSoundDataTableRow& SoundRow, float PitchMultiplier) const;
 	// 카테고리 볼륨 설정 Initialize
 	void InitializeCategoryVolumes();
 	// 볼륨 설정을 직접 적용시키는 함수 : 주로 루프 재생되는 사운드에서 한 루프가 끝나고 나면 다시 볼륨을 조정해줘야하기 때문에 사용
