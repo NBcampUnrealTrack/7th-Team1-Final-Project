@@ -5,14 +5,16 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
-const FPrimaryAssetType UNSDataSubsystem::PlayerAssetType        = FPrimaryAssetType(TEXT("NSPlayerData"));
-const FPrimaryAssetType UNSDataSubsystem::HubAssetType           = FPrimaryAssetType(TEXT("NSHubData"));
-const FPrimaryAssetType UNSDataSubsystem::PartAssetType         = FPrimaryAssetType(TEXT("NSPartData"));
-const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType      = FPrimaryAssetType(TEXT("NSMonsterData"));
-const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType      = FPrimaryAssetType(TEXT("NSAugmentData"));
-const FPrimaryAssetType UNSDataSubsystem::AugmentPoolAssetType  = FPrimaryAssetType(TEXT("NSAugmentPool"));
+const FPrimaryAssetType UNSDataSubsystem::PlayerAssetType			= FPrimaryAssetType(TEXT("NSPlayerData"));
+const FPrimaryAssetType UNSDataSubsystem::HubAssetType				= FPrimaryAssetType(TEXT("NSHubData"));
+const FPrimaryAssetType UNSDataSubsystem::PartAssetType				= FPrimaryAssetType(TEXT("NSPartData"));
+const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType			= FPrimaryAssetType(TEXT("NSMonsterData"));
+const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType			= FPrimaryAssetType(TEXT("NSAugmentData"));
+const FPrimaryAssetType UNSDataSubsystem::AugmentPoolAssetType		= FPrimaryAssetType(TEXT("NSAugmentPool"));
+const FPrimaryAssetType UNSDataSubsystem::RewardTriggerAssetType	= FPrimaryAssetType(TEXT("NSRewardTriggerData"));
 // TODO: 레벨 전용 GA가 있다면 아웃런, 인런 구분해서 여기서 추가해서 사용하게끔
 
 // DataAsset의 meta=(AssetBundles="...") 와 반드시 일치
@@ -210,8 +212,23 @@ void UNSDataSubsystem::StartLoadRun()
 void UNSDataSubsystem::OnRunAssetsLoaded()
 {
 	CacheLoaded({ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType });
+	BuildRewardDataRegistry();
+	
 	SetPhase(ENSDataLoadPhase::RunReady);
 	OnRunGameDataReady.Broadcast();
+}
+
+void UNSDataSubsystem::BuildRewardDataRegistry()
+{
+	if (!IsValid(RewardDataRegistry))
+	{
+		RewardDataRegistry = NewObject<UNSRewardDataRegistry>(this);
+	}
+	
+	const TArray<UNSRewardTriggerData*> RewardTriggerDataList =
+		GetAllDataOfType<UNSRewardTriggerData>(RewardTriggerAssetType);
+	
+	RewardDataRegistry->Build(RewardTriggerDataList);
 }
 
 // ================================================================
@@ -245,6 +262,13 @@ void UNSDataSubsystem::UnloadRun()
 		RunHandle->ReleaseHandle();
 		RunHandle.Reset();
 	}
+	
+	if (IsValid(RewardDataRegistry))
+	{
+		RewardDataRegistry->Reset();
+		RewardDataRegistry = nullptr;
+	}
+	
 	UnloadByTypes({ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType });
 }
 

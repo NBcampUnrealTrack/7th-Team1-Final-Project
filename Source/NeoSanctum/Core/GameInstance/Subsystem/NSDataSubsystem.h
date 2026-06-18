@@ -8,6 +8,9 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSDataSubsystem.generated.h"
 
+class UNSRewardDataRegistry;
+class UNSRewardTriggerData;
+
 UENUM(BlueprintType)
 enum class ENSDataLoadPhase : uint8
 {
@@ -75,7 +78,7 @@ public:
 	// 거점지역 -> 인런 진입 시 호출 (OutGame 언로드 -> Run 로드)
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
 	void EnterRun();
-
+	
 	// 인런 -> 거점지역 복귀 시 호출 (Run 언로드 -> OutGame 재로드)
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
 	void ReturnToOutGame();
@@ -91,6 +94,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "NS|DataSubsystem")
 	bool IsRunReady() const { return CurrentPhase == ENSDataLoadPhase::RunReady; }
+	
+	const UNSRewardTriggerData* FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const;
+	
+	const UNSRewardDataRegistry* GetRewardDataRegistry() const; 
 
 	//맵 이동 중 유지할 플레이어 진행 데이터 저장
 	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
@@ -132,6 +139,7 @@ public:
 	static const FPrimaryAssetType MonsterAssetType;
 	static const FPrimaryAssetType AugmentAssetType;
 	static const FPrimaryAssetType AugmentPoolAssetType;
+	static const FPrimaryAssetType RewardTriggerAssetType;
 
 private:
 	// 로드 시 함께 끌어올 AssetBundle 목록 (DataAsset meta=(AssetBundles=...) 와 일치)
@@ -151,7 +159,8 @@ private:
 
 	void StartLoadRun();
 	void OnRunAssetsLoaded();
-
+	void BuildRewardDataRegistry();
+	
 	void UnloadCommon();
 	void UnloadOutGame();
 	void UnloadRun();
@@ -177,6 +186,9 @@ private:
 
 	UPROPERTY()
 	TMap<FPrimaryAssetId, TObjectPtr<UObject>> DataCache;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<UNSRewardDataRegistry> RewardDataRegistry;
 
 	// 비동기 로드 핸들 관리
 	TSharedPtr<FStreamableHandle> CommonHandle;
