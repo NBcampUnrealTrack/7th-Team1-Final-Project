@@ -72,7 +72,11 @@ void UGA_Reload::ActivateAbility(
 	
 	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(GetWorld()))
 	{
-		SoundSubsystem->PlaySoundAtLocation(ReloadSoundID, ActorInfo->AvatarActor.Get()->GetActorLocation());
+		SoundSubsystem->PlaySoundAtLocation(
+			ReloadSoundID,
+			ActorInfo->AvatarActor.Get()->GetActorLocation(),
+			CalculateReloadPlayRate(ReloadDuration)
+		);
 	}
 	
 	PlayReloadMontage(ReloadDuration);
@@ -197,16 +201,13 @@ void UGA_Reload::PlayReloadMontage(float ReloadDuration)
 		return;
 	}
 
-	const float ClampedMaxPlayRate = FMath::Max(MaxMontagePlayRate, 0.01f);
-	const float MontagePlayRate = FMath::Clamp(MontageLength / ReloadDuration, 0.01f, ClampedMaxPlayRate);
-
 	// 실제 재장전 완료는 타이머가 담당하고 몽타주는 시간에 맞춰 재생
 	UAbilityTask_PlayMontageAndWait* MontageTask =
 		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
 			this,
 			NAME_None,
 			ReloadMontage,
-			MontagePlayRate,
+			CalculateReloadPlayRate(ReloadDuration),
 			NAME_None,
 			true
 		);
@@ -217,6 +218,27 @@ void UGA_Reload::PlayReloadMontage(float ReloadDuration)
 	}
 
 	MontageTask->ReadyForActivation();
+}
+
+float UGA_Reload::CalculateReloadPlayRate(float ReloadDuration) const
+{
+	if (ReloadDuration <= 0.0f)
+	{
+		return 1.0f;
+	}
+
+	float PlayRate = 1.0f / ReloadDuration;
+	if (ReloadMontage)
+	{
+		const float MontageLength = ReloadMontage->GetPlayLength();
+		if (MontageLength > 0.0f)
+		{
+			PlayRate = MontageLength / ReloadDuration;
+		}
+	}
+
+	const float ClampedMaxPlayRate = FMath::Max(MaxMontagePlayRate, 0.01f);
+	return FMath::Clamp(PlayRate, 0.01f, ClampedMaxPlayRate);
 }
 
 void UGA_Reload::AddDeactivateHandIKTag()

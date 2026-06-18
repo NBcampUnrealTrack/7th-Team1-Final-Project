@@ -50,7 +50,7 @@ UAudioComponent* UNSSoundSubsystem::PlayBGM(FName SoundID, float FadeIn)
 	return PlaySound2D(SoundID, FadeIn);
 }
 
-UAudioComponent* UNSSoundSubsystem::PlaySound2D(FName SoundID, float FadeIn)
+UAudioComponent* UNSSoundSubsystem::PlaySound2D(FName SoundID, float FadeIn, float PitchMultiplier)
 {
 	const FNSSoundDataTableRow* SoundRow = FindSoundRow(SoundID);
 	if (!SoundRow || !SoundRow->Sound)
@@ -60,14 +60,14 @@ UAudioComponent* UNSSoundSubsystem::PlaySound2D(FName SoundID, float FadeIn)
 
 	if (SoundRow->bLoop)
 	{
-		return PlayLoop2D(SoundID, *SoundRow, FadeIn);
+		return PlayLoop2D(SoundID, *SoundRow, FadeIn, PitchMultiplier);
 	}
 
-	PlayOneShot2D(*SoundRow);
+	PlayOneShot2D(*SoundRow, PitchMultiplier);
 	return nullptr;
 }
 
-UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector Location)
+UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector Location, float PitchMultiplier)
 {
 	const FNSSoundDataTableRow* SoundRow = FindSoundRow(SoundID);
 	if (!SoundRow || !SoundRow->Sound)
@@ -77,7 +77,7 @@ UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector L
 
 	if (SoundRow->bLoop)
 	{
-		return PlayLoopAtLocation(SoundID, *SoundRow, Location);
+		return PlayLoopAtLocation(SoundID, *SoundRow, Location, PitchMultiplier);
 	}
 
 	UGameplayStatics::PlaySoundAtLocation(
@@ -85,7 +85,7 @@ UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector L
 		SoundRow->Sound,
 		Location,
 		GetFinalVolume(*SoundRow),
-		SoundRow->Pitch,
+		GetFinalPitch(*SoundRow, PitchMultiplier),
 		SoundRow->StartTime,
 		SoundRow->Attenuation,
 		SoundRow->Concurrency
@@ -97,7 +97,8 @@ UAudioComponent* UNSSoundSubsystem::PlaySoundAtLocation(FName SoundID, FVector L
 UAudioComponent* UNSSoundSubsystem::PlaySoundAttached(
 	FName SoundID,
 	USceneComponent* AttachToComponent,
-	FName SocketName
+	FName SocketName,
+	float PitchMultiplier
 )
 {
 	const FNSSoundDataTableRow* SoundRow = FindSoundRow(SoundID);
@@ -108,7 +109,7 @@ UAudioComponent* UNSSoundSubsystem::PlaySoundAttached(
 
 	if (SoundRow->bLoop)
 	{
-		return PlayLoopAttached(SoundID, *SoundRow, AttachToComponent, SocketName);
+		return PlayLoopAttached(SoundID, *SoundRow, AttachToComponent, SocketName, PitchMultiplier);
 	}
 
 	return UGameplayStatics::SpawnSoundAttached(
@@ -120,7 +121,7 @@ UAudioComponent* UNSSoundSubsystem::PlaySoundAttached(
 		EAttachLocation::KeepRelativeOffset,
 		true,
 		GetFinalVolume(*SoundRow),
-		SoundRow->Pitch,
+		GetFinalPitch(*SoundRow, PitchMultiplier),
 		SoundRow->StartTime,
 		SoundRow->Attenuation,
 		SoundRow->Concurrency,
@@ -264,13 +265,13 @@ const FNSSoundDataTableRow* UNSSoundSubsystem::FindSoundRow(FName SoundID) const
 	return SoundData->SoundDataTable->FindRow<FNSSoundDataTableRow>(SoundID, TEXT("NSSoundSubsystem"));
 }
 
-void UNSSoundSubsystem::PlayOneShot2D(const FNSSoundDataTableRow& SoundRow) const
+void UNSSoundSubsystem::PlayOneShot2D(const FNSSoundDataTableRow& SoundRow, float PitchMultiplier) const
 {
 	UGameplayStatics::PlaySound2D(
 		GetGameInstance(),
 		SoundRow.Sound,
 		GetFinalVolume(SoundRow),
-		SoundRow.Pitch,
+		GetFinalPitch(SoundRow, PitchMultiplier),
 		SoundRow.StartTime,
 		SoundRow.Concurrency
 	);
@@ -279,7 +280,8 @@ void UNSSoundSubsystem::PlayOneShot2D(const FNSSoundDataTableRow& SoundRow) cons
 UAudioComponent* UNSSoundSubsystem::PlayLoop2D(
 	FName SoundID,
 	const FNSSoundDataTableRow& SoundRow,
-	float FadeIn
+	float FadeIn,
+	float PitchMultiplier
 )
 {
 	if (!SoundRow.bAllowMultiple)
@@ -291,7 +293,7 @@ UAudioComponent* UNSSoundSubsystem::PlayLoop2D(
 		GetGameInstance(),
 		SoundRow.Sound,
 		GetFinalVolume(SoundRow),
-		SoundRow.Pitch,
+		GetFinalPitch(SoundRow, PitchMultiplier),
 		SoundRow.StartTime,
 		nullptr,
 		true
@@ -302,7 +304,8 @@ UAudioComponent* UNSSoundSubsystem::PlayLoop2D(
 		return nullptr;
 	}
 
-	RegisterLoop(NewComponent, SoundID, SoundRow.Category, ENSActiveSoundMode::TwoDimension);
+	RegisterLoop(NewComponent, SoundID, SoundRow.Category, ENSActiveSoundMode::TwoDimension,
+	             FVector::ZeroVector, nullptr, NAME_None, PitchMultiplier);
 
 	const float FadeInTime = FadeIn >= 0.f ? FadeIn : SoundRow.FadeInTime;
 	if (FadeInTime > 0.f)
@@ -316,7 +319,8 @@ UAudioComponent* UNSSoundSubsystem::PlayLoop2D(
 UAudioComponent* UNSSoundSubsystem::PlayLoopAtLocation(
 	FName SoundID,
 	const FNSSoundDataTableRow& SoundRow,
-	FVector Location
+	FVector Location,
+	float PitchMultiplier
 )
 {
 	if (!SoundRow.bAllowMultiple)
@@ -330,14 +334,15 @@ UAudioComponent* UNSSoundSubsystem::PlayLoopAtLocation(
 		Location,
 		FRotator::ZeroRotator,
 		GetFinalVolume(SoundRow),
-		SoundRow.Pitch,
+		GetFinalPitch(SoundRow, PitchMultiplier),
 		SoundRow.StartTime,
 		SoundRow.Attenuation,
 		SoundRow.Concurrency,
 		true
 	);
 
-	RegisterLoop(NewComponent, SoundID, SoundRow.Category, ENSActiveSoundMode::AtLocation, Location);
+	RegisterLoop(NewComponent, SoundID, SoundRow.Category, ENSActiveSoundMode::AtLocation, Location,
+	             nullptr, NAME_None, PitchMultiplier);
 	return NewComponent;
 }
 
@@ -345,7 +350,8 @@ UAudioComponent* UNSSoundSubsystem::PlayLoopAttached(
 	FName SoundID,
 	const FNSSoundDataTableRow& SoundRow,
 	USceneComponent* AttachToComponent,
-	FName SocketName
+	FName SocketName,
+	float PitchMultiplier
 )
 {
 	if (!SoundRow.bAllowMultiple)
@@ -362,7 +368,7 @@ UAudioComponent* UNSSoundSubsystem::PlayLoopAttached(
 		EAttachLocation::KeepRelativeOffset,
 		true,
 		GetFinalVolume(SoundRow),
-		SoundRow.Pitch,
+		GetFinalPitch(SoundRow, PitchMultiplier),
 		SoundRow.StartTime,
 		SoundRow.Attenuation,
 		SoundRow.Concurrency,
@@ -370,7 +376,7 @@ UAudioComponent* UNSSoundSubsystem::PlayLoopAttached(
 	);
 
 	RegisterLoop(NewComponent, SoundID, SoundRow.Category, ENSActiveSoundMode::Attached, FVector::ZeroVector,
-	             AttachToComponent, SocketName);
+	             AttachToComponent, SocketName, PitchMultiplier);
 	return NewComponent;
 }
 
@@ -379,7 +385,8 @@ void UNSSoundSubsystem::RegisterLoop(
 	FName SoundID, ENSSoundCategory Category,
 	ENSActiveSoundMode Mode, FVector Location,
 	USceneComponent* AttachToComponent,
-	FName SocketName
+	FName SocketName,
+	float PitchMultiplier
 )
 {
 	if (!Component || SoundID.IsNone())
@@ -395,6 +402,7 @@ void UNSSoundSubsystem::RegisterLoop(
 	ActiveSound.Location = Location;
 	ActiveSound.AttachComponent = AttachToComponent;
 	ActiveSound.SocketName = SocketName;
+	ActiveSound.PitchMultiplier = PitchMultiplier;
 	Component->OnAudioFinishedNative.AddUObject(this, &UNSSoundSubsystem::OnLoopFinished);
 }
 
@@ -423,15 +431,16 @@ void UNSSoundSubsystem::OnLoopFinished(UAudioComponent* FinishedComponent)
 	switch (FinishedSound.Mode)
 	{
 	case ENSActiveSoundMode::TwoDimension:
-		PlayLoop2D(FinishedSound.SoundID, *SoundRow, 0.f);
+		PlayLoop2D(FinishedSound.SoundID, *SoundRow, 0.f, FinishedSound.PitchMultiplier);
 		break;
 	case ENSActiveSoundMode::AtLocation:
-		PlayLoopAtLocation(FinishedSound.SoundID, *SoundRow, FinishedSound.Location);
+		PlayLoopAtLocation(FinishedSound.SoundID, *SoundRow, FinishedSound.Location, FinishedSound.PitchMultiplier);
 		break;
 	case ENSActiveSoundMode::Attached:
 		if (USceneComponent* AttachComponent = FinishedSound.AttachComponent.Get())
 		{
-			PlayLoopAttached(FinishedSound.SoundID, *SoundRow, AttachComponent, FinishedSound.SocketName);
+			PlayLoopAttached(FinishedSound.SoundID, *SoundRow, AttachComponent, FinishedSound.SocketName,
+			                 FinishedSound.PitchMultiplier);
 		}
 		break;
 	default:
@@ -476,6 +485,11 @@ void UNSSoundSubsystem::StopAllLoops(float FadeOut)
 float UNSSoundSubsystem::GetFinalVolume(const FNSSoundDataTableRow& SoundRow) const
 {
 	return SoundRow.Volume * MasterVolume * GetCategoryVolume(SoundRow.Category);
+}
+
+float UNSSoundSubsystem::GetFinalPitch(const FNSSoundDataTableRow& SoundRow, float PitchMultiplier) const
+{
+	return SoundRow.Pitch * FMath::Max(PitchMultiplier, 0.01f);
 }
 
 

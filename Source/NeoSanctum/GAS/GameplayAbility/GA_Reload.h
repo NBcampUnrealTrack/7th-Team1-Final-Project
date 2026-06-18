@@ -68,6 +68,7 @@ protected:
 private:
 	void FinishReload();
 	void PlayReloadMontage(float ReloadDuration);
+	float CalculateReloadPlayRate(float ReloadDuration) const;
 	void AddDeactivateHandIKTag();
 	void RemoveDeactivateHandIKTag();
 	
