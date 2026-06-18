@@ -126,6 +126,12 @@ private:
 	// 런 종료시 재화쪽 저장 및 클리어
 	void CommitAndClearAllWallets(float Multiplier);
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Currency")
+	float ClearMultiplier = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Currency")
+	float FailMultiplier = 0.5f;
+	
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
 };
