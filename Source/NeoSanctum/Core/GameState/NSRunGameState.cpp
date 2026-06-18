@@ -44,6 +44,12 @@ void ANSRunGameState::OnRep_RunEndVotes()
 {
 	OnRunEndPhaseChanged.Broadcast();
 }
+
+void ANSRunGameState::OnRep_PhaseEndServerTime()
+{
+	OnRunEndPhaseChanged.Broadcast();
+}
+
 float ANSRunGameState::GetPhaseTimeRemaining() const
 {
 	return FMath::Max(0.f, PhaseEndServerTime - GetServerWorldTimeSeconds());

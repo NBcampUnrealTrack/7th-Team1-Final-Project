@@ -45,8 +45,8 @@ public:
 	bool bIsClear = false;                               
 
 	// 현재 페이즈 종료 서버시각
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
-	float PhaseEndServerTime = 0.0f;             
+	UPROPERTY(ReplicatedUsing=OnRep_PhaseEndServerTime, BlueprintReadOnly, Category="RunEnd")
+	float PhaseEndServerTime = 0.0f;        
 
 	// Result 단계에서 표시
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
@@ -67,6 +67,9 @@ public:
 	
 	UFUNCTION()
 	void OnRep_RunEndPhase();
+	
+	UFUNCTION()
+	void OnRep_PhaseEndServerTime();
 	
 	// 호스트 UI 연동용 헬퍼 함수
 	void SetRunEndPhase(ENSRunEndPhase NewPhase);
