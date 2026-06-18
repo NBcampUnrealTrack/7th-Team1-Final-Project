@@ -4,9 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+#include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NSRunGameModeInterface.generated.h"
 
-
+class ACharacter;
+class AController;
+class APlayerController;
+class ANSEnemyCharacterBase;
+class UNSEnemyData;
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UNSRunGameModeInterface : public UInterface { GENERATED_BODY() };
@@ -51,4 +56,7 @@ public:
 	// 투표 확정 입력 함수 요청
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="GameFlow")
 	void SubmitRunChoice(APlayerController* Voter, ENSRunChoice Choice);
+	// 투표 취소 입력 함수 요청
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="GameFlow")
+	void CancelRunChoice(APlayerController* Voter);
 };

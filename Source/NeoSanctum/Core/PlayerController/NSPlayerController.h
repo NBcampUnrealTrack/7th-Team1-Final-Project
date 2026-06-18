@@ -15,6 +15,7 @@ class ANSDeathSpectatorPawn;
 class ANSPlayerState;
 class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
+class ANSRunGameState;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -54,6 +55,9 @@ public:
 	// 투표 확정 입력용
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")
 	void Server_ConfirmVote(ENSRunChoice Choice);
+	
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RunEnd")
+	void Server_CancelVote();
 	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
@@ -146,6 +150,25 @@ private:
 	UFUNCTION()
 	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
 
+	//RunGameState의 런 종료 페이즈 변경시 델리게이트 바인딩
+	void BindRunEndPhase();
+	
+	//런 종료 페이즈가 바뀌었을때 결과창 표시 상태 갱신
+	UFUNCTION()
+	void HandleRunEndPhaseChanged();
+	
+	//현재 바인딩한 RunGameState를 캐싱
+	UPROPERTY()
+	TObjectPtr<ANSRunGameState> CachedRunGameState;
+	
+	//테스트용 : 클리어
+	void Debug_ForceRunClear();
+	
+	//클라이언트 입력으로 호출된 클리어 테스트를 서버에서 처리한다
+	UFUNCTION(Server, Reliable)
+	void Server_DebugForceRunClear();
+
+	
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")

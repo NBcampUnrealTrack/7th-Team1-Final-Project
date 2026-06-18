@@ -45,18 +45,21 @@ public:
 	bool bIsClear = false;                               
 
 	// 현재 페이즈 종료 서버시각
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
-	float PhaseEndServerTime = 0.0f;             
+	UPROPERTY(ReplicatedUsing=OnRep_PhaseEndServerTime, BlueprintReadOnly, Category="RunEnd")
+	float PhaseEndServerTime = 0.0f;        
 
 	// Result 단계에서 표시
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
 	ENSRunChoice WinningChoice = ENSRunChoice::ReturnToHub;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
+	UPROPERTY(ReplicatedUsing=OnRep_RunEndVotes, BlueprintReadOnly, Category="RunEnd")
 	int32 NextVotes = 0;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
+	UPROPERTY(ReplicatedUsing=OnRep_RunEndVotes, BlueprintReadOnly, Category="RunEnd")
 	int32 HubVotes = 0;
+
+	UFUNCTION()
+	void OnRep_RunEndVotes();
 
 	// UI 카운트다운용 남은 초 계산 (Voting의 10초, Result의 3초)
 	UFUNCTION(BlueprintPure, Category="RunEnd")
@@ -64,6 +67,9 @@ public:
 	
 	UFUNCTION()
 	void OnRep_RunEndPhase();
+	
+	UFUNCTION()
+	void OnRep_PhaseEndServerTime();
 	
 	// 호스트 UI 연동용 헬퍼 함수
 	void SetRunEndPhase(ENSRunEndPhase NewPhase);

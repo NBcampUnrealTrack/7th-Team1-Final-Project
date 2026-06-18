@@ -8,6 +8,36 @@
 #include "Engine/DataTable.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
+#include "NeoSanctum/UI/Result/NSRunResultWidget.h"
+
+float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
+{
+	if (bRunResultTimeCached)
+	{
+		return CachedRunResultTimeSeconds;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World || RunStartWorldTimeSeconds < 0.0f)
+	{
+		return 0.0f;
+	}
+
+	return FMath::Max(
+		World->GetTimeSeconds() - RunStartWorldTimeSeconds,
+		0.0f);
+}
+
+void UNSUIManagerSubsystem::CacheRunResultTime()
+{
+	if (bRunResultTimeCached)
+	{
+		return;
+	}
+
+	CachedRunResultTimeSeconds = GetRunResultTimeSeconds();
+	bRunResultTimeCached = true;
+}
 
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()
 {
@@ -125,11 +155,13 @@ void UNSUIManagerSubsystem::HideHUD()
 
 void UNSUIManagerSubsystem::UpdateRunInGoods(int32 NewGoodsAmount)
 {
-	//TODO(영웅) 실제 런 내부 재화 데이터 연동
+	RunResultGoods = FMath::Max(NewGoodsAmount, 0);
+
 	if (!HUDWidget)
 	{
 		return;
 	}
+
 	HUDWidget->UpdateRunInGoods(NewGoodsAmount);
 }
 
@@ -335,31 +367,52 @@ void UNSUIManagerSubsystem::CreateRunEnd(APlayerController* OwningPlayer)
 	{
 		return;
 	}
-	
+
 	if (RunEndWidget)
 	{
-		return; 
+		return;
 	}
-	
-	FString RunEndPath = TEXT("/Game/NeoSanctum/UI/WBP_TestRunEnd.WBP_TestRunEnd_C");
-	UClass* LoadedRunEndClass = StaticLoadClass(UUserWidget::StaticClass(), nullptr, *RunEndPath);
 
-	if (LoadedRunEndClass)
+	TSubclassOf<UUserWidget> WidgetClassToUse =
+		GetWidgetClassFromTable(TEXT("RunEnd"));
+
+	if (!WidgetClassToUse)
 	{
-		RunEndWidget = CreateWidget<UUserWidget>(OwningPlayer, LoadedRunEndClass);
-		if (RunEndWidget)
-		{
-			RunEndWidget->AddToViewport();
-		}
+		WidgetClassToUse = RunEndWidgetClass;
 	}
+
+	if (!WidgetClassToUse)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[RunEnd UI] RunEnd 위젯 클래스를 찾을 수 없습니다."));
+		return;
+	}
+
+	RunEndWidget = CreateWidget<UUserWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
+
+	if (!RunEndWidget)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[RunEnd UI] RunEnd 위젯 생성에 실패했습니다."));
+		return;
+	}
+
+	RunEndWidget->AddToViewport();
+
+	RunEndWidget->SetVisibility(ESlateVisibility::Collapsed);
+
 }
 
 void UNSUIManagerSubsystem::ShowRunEnd()
 {
-	if (RunEndWidget)
+
+	if (!RunEndWidget)
 	{
-		RunEndWidget->SetVisibility(ESlateVisibility::Visible);
+		return;
 	}
+
+	RunEndWidget->SetVisibility(ESlateVisibility::Visible);
+
 }
 
 void UNSUIManagerSubsystem::HideRunEnd()
@@ -436,3 +489,49 @@ void UNSUIManagerSubsystem::CloseRunBuildPanel()
 	bAugmentationPanelOpen = false;
 	bPartPanelOpen = false;
 }
+
+void UNSUIManagerSubsystem::ResetRunResultStats()
+{
+	RunResultGoods = 0;
+	RunResultKillCount = 0;
+
+	CachedRunResultTimeSeconds = 0.0f;
+	bRunResultTimeCached = false;
+
+	UWorld* World = GetWorld();
+	RunStartWorldTimeSeconds = World ? World->GetTimeSeconds() : -1.0f;
+}
+
+void UNSUIManagerSubsystem::AddRunResultKillCount(int32 Amount)
+{
+	RunResultKillCount += FMath::Max(Amount, 0);
+}
+
+void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
+{
+	UNSRunResultWidget* RunResultWidget =
+		Cast<UNSRunResultWidget>(RunEndWidget);
+	if (!RunResultWidget)
+	{
+		return;
+	}
+
+	RunResultWidget->SetRunResult(
+		bCleared,
+		RunResultGoods,
+		GetRunResultTimeSeconds(),
+		RunResultKillCount);
+}
+
+void UNSUIManagerSubsystem::UpdateRunEndVotes(int32 NextVotes, int32 HubVotes)
+{
+	UNSRunResultWidget* RunResultWidget =
+	Cast<UNSRunResultWidget>(RunEndWidget);
+	if (!RunResultWidget)
+	{
+		return;
+	}
+
+	RunResultWidget->SetVoteResult(NextVotes, HubVotes);
+}
+
