@@ -23,8 +23,8 @@ UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 
 void UGA_EnemyAttackMelee::InitializeAttack()
 {
-	bHasHitThisAttack = false;
-
+	DamagedTraceWindowIds.Reset();
+	
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
 
 	if (!IsValid(Enemy))
@@ -39,18 +39,16 @@ void UGA_EnemyAttackMelee::InitializeAttack()
 	}
 }
 
-void UGA_EnemyAttackMelee::PrepareForAttackMontage()
-{
-	bHasHitThisAttack = false;
-}
-
 void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 {
-	if (bHasHitThisAttack)
+	const UObject* TraceWindow = Payload.OptionalObject.Get();
+	const uint32 TraceWindowId = IsValid(TraceWindow) ? TraceWindow->GetUniqueID() : 0;
+
+	if (TraceWindowId != 0 && DamagedTraceWindowIds.Contains(TraceWindowId))
 	{
 		return;
 	}
-
+	
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
 
 	UWorld* World = GetWorld();
@@ -100,10 +98,11 @@ void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 
 	if (bHit && TryApplyDamageToTarget(HitResult.GetActor(), HitResult))
 	{
-		bHasHitThisAttack = true;
+		if (TraceWindowId != 0)
+		{
+			DamagedTraceWindowIds.Add(TraceWindowId);
+		}
 	}
-	
-	DrawAttackTraceDebug(Start, End, bHit, HitResult);
 }
 
 void UGA_EnemyAttackMelee::DrawAttackTraceDebug(

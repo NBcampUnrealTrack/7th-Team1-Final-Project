@@ -19,7 +19,6 @@ public:
 
 protected:
 	virtual void InitializeAttack() override;
-	virtual void PrepareForAttackMontage() override;
 	virtual void HandleAttackEvent(
 		const FGameplayEventData& Payload) override;
 	
@@ -27,9 +26,8 @@ protected:
 	float AttackTraceRadius = 8.0f;
 
 private:
-	bool bHasHitThisAttack = false;
-
-private:
+	TSet<uint32> DamagedTraceWindowIds;
+	
 	// 디버그 설정
 	void DrawAttackTraceDebug(
 		const FVector& Start,
