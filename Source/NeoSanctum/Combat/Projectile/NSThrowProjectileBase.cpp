@@ -5,6 +5,7 @@
 
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 
 ANSThrowProjectileBase::ANSThrowProjectileBase()
 {
@@ -46,6 +47,18 @@ void ANSThrowProjectileBase::InitializeThrowActor(
 
 	if (!ThrowDirection.IsNearlyZero())
 	{
+		// CombatStat.ProjectileSpeed가 전달되면 CDO 기본 속도 대신 데이터 기반 속도로 투척
+		float RuntimeProjectileSpeed = 0.0f;
+		if (TryGetRuntimeStatMagnitude(NSGameplayTags::CombatStat_ProjectileSpeed, RuntimeProjectileSpeed) &&
+			RuntimeProjectileSpeed > 0.0f)
+		{
+			ProjectileMovementComponent->InitialSpeed = RuntimeProjectileSpeed;
+			ProjectileMovementComponent->MaxSpeed = FMath::Max(
+				ProjectileMovementComponent->MaxSpeed,
+				RuntimeProjectileSpeed
+			);
+		}
+
 		const FVector NormalizedThrowDirection = ThrowDirection.GetSafeNormal();
 		SetActorRotation(NormalizedThrowDirection.Rotation());
 		ProjectileMovementComponent->Velocity = NormalizedThrowDirection * ProjectileMovementComponent->InitialSpeed;
@@ -81,4 +94,19 @@ bool ANSThrowProjectileBase::TryGetRuntimeStatMagnitude(
 	}
 
 	return false;
+}
+
+bool ANSThrowProjectileBase::TryGetRuntimeStatBool(
+	const FGameplayTag& CombatStatTag,
+	bool& OutValue) const
+{
+	// DataTable이 float Value만 지원하기 때문에 boolean 옵션은 0 초과를 true로 해석
+	float Magnitude = 0.0f;
+	if (!TryGetRuntimeStatMagnitude(CombatStatTag, Magnitude))
+	{
+		return false;
+	}
+
+	OutValue = Magnitude > 0.0f;
+	return true;
 }

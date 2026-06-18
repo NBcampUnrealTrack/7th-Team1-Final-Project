@@ -29,7 +29,26 @@ struct FNSExplosiveTypeConfig
 {
 	GENERATED_BODY()
 
-	// TODO : 폭발 Projectile 관련 설정
+	// 데미지 적용 GameplayEffect
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+	
+	// 폭발 사운드/VFX GameplayCue
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	FGameplayTag ExplosionCueTag;
+	
+	// 투척 후 폭발까지 걸리는 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	float FuseTime = 2.0f;
+	
+	// 지형/액터 충돌 시 즉시 폭발할지 여부
+	// RuntimeStatMappings에 CombatStat.bExplodeOnImpact가 있으면 해당 float 값을 bool로 변환해 이 값을 덮어씀
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	bool bExplodeOnImpact = false;
+	
+	// 투척 액터 최대 생존 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Explosive")
+	float LifeSpanAfterThrow = 8.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -84,6 +103,10 @@ struct FNSProjectileAbilityConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig")
 	EProjectileType ProjectileType = EProjectileType::Explosive;
 	
+	// 발사할 Projectile 클래스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig")
+	TSubclassOf<ANSThrowProjectileBase> ProjectileClass;
+
 	// 폭발물타입 설정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|Explosive",
 		meta = (EditCondition = "ProjectileType == EProjectileType::Explosive", EditConditionHides))
@@ -139,6 +162,12 @@ protected:
 		bool bWasCancelled
 	) override;
 
+	virtual void ApplyCooldown(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) const override;
+
 protected:
 	UFUNCTION()
 	void OnThrowMontageCompleted();
@@ -177,6 +206,8 @@ protected:
 protected:
 	// CombatStat 조회 기준 Ability 태그 결정
 	bool TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const;
+	// CombatStat 기반 쿨타임 계산
+	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	// CombatStat 기반 payload 갱신
 	void RebuildCombatStatPayloads();
 	// GE SetByCaller payload 생성
@@ -195,6 +226,14 @@ protected:
 	// CombatStat 조회에 사용할 Ability 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Config")
 	FGameplayTag CombatStatAbilityTag;
+	
+	// 버프 쿨다운을 조회할 CombatStat 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Cooldown")
+	FGameplayTag CooldownStatTag;
+
+	// Cooldown GE에 전달할 SetByCaller 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Cooldown")
+	FGameplayTag CooldownSetByCallerTag;
 
 	// 애니메이션 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")
@@ -223,11 +262,6 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Projectile")
 	FTransform HoldRelativeTransform = FTransform::Identity;
-
-protected:
-	// 발사할 Projectile 클래스
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Projectile")
-	TSubclassOf<ANSThrowProjectileBase> ProjectileClass;
 
 	// Projectile 발사 위치 소켓
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Projectile")
@@ -264,4 +298,10 @@ private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	bool bDeactivateHandIKTagAdded = false;
+
+	// Release 섹션으로 한 번 진입한 뒤 반복된 입력을 통해 동일한 몽타주 섹션을 재실행하지 않기 위한 플래그
+	bool bReleaseRequested = false;
+
+	// 하나의 Ability 활성화 중 Release Notify가 여러 번 들어와도 Projectile은 한 번만 스폰하기 위한 플래그
+	bool bProjectileThrown = false;
 };

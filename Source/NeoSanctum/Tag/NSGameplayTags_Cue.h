@@ -18,6 +18,7 @@ namespace NSGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_ProjectileShot_MuzzleFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_ProjectileShot_Impact);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_Grenade_Explosion);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_SpeedBuff);
 	

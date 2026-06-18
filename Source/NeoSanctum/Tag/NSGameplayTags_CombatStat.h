@@ -15,6 +15,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Duration);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_BuffRadius);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ExplosionRadius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_bExplodeOnImpact);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ProjectileSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRateBuff);

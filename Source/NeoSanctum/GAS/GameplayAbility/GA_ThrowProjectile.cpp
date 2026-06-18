@@ -13,8 +13,10 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/Projectile/NSGrenade.h"
 #include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
 #include "NeoSanctum/Combat/Projectile/NSTurretSpawner.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_ThrowProjectile::UGA_ThrowProjectile()
@@ -47,7 +49,7 @@ void UGA_ThrowProjectile::ActivateAbility(
 		return;
 	}
 
-	if (!ProjectileClass)
+	if (!ProjectileAbilityConfig.ProjectileClass)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -58,6 +60,10 @@ void UGA_ThrowProjectile::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	// Ability가 새로 활성화될 때 이전 입력/Notify 처리 상태를 초기화
+	bReleaseRequested = false;
+	bProjectileThrown = false;
 
 	// 투척물에 전달할 CombatStat payload 생성
 	RebuildCombatStatPayloads();
@@ -111,6 +117,12 @@ void UGA_ThrowProjectile::InputReleased(
 {
 	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
 
+	// Release 섹션 재생 중 추가 입력이 들어오면 같은 섹션으로 다시 점프하지 않음
+	if (bReleaseRequested)
+	{
+		return;
+	}
+
 	if (ActorInfo && ActorInfo->IsLocallyControlled())
 	{
 		const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
@@ -119,6 +131,7 @@ void UGA_ThrowProjectile::InputReleased(
 
 		if (AnimInstance && AnimMontage && AnimInstance->Montage_IsPlaying(AnimMontage))
 		{
+			bReleaseRequested = true;
 			AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
 		}
 		else
@@ -138,6 +151,10 @@ void UGA_ThrowProjectile::EndAbility(
 	// TODO : 프리뷰 종료
 	DestroyHeldMesh();
 	RemoveDeactivateHandIKTag();
+
+	// Ability 종료 시 다음 활성화를 위해 입력/투척 게이트를 정리
+	bReleaseRequested = false;
+	bProjectileThrown = false;
 
 	if (AttachProjectileEventTask)
 	{
@@ -176,6 +193,34 @@ void UGA_ThrowProjectile::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
+void UGA_ThrowProjectile::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
+{
+	if (!CooldownGameplayEffectClass || !CooldownSetByCallerTag.IsValid())
+	{
+		return;
+	}
+
+	float CooldownDuration = 0.0f;
+	if (!TryGetFinalCooldownDuration(CooldownDuration))
+	{
+		return;
+	}
+
+	FGameplayEffectSpecHandle CooldownSpecHandle =
+		MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
+
+	if (!CooldownSpecHandle.IsValid() || !CooldownSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	// CombatStat에서 읽은 Cooldown 값을 GE SetByCaller로 전달
+	CooldownSpecHandle.Data->SetSetByCallerMagnitude(CooldownSetByCallerTag, CooldownDuration);
+
+	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CooldownSpecHandle);
+}
+
 void UGA_ThrowProjectile::OnThrowMontageCompleted()
 {
 	EndAbility(
@@ -205,6 +250,13 @@ void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Pay
 
 void UGA_ThrowProjectile::OnThrowProjectileEventReceived(FGameplayEventData Payload)
 {
+	// Release AnimNotify가 중복 발생해도 한 번의 Ability 활성화에서 Projectile은 한 번만 던짐
+	if (bProjectileThrown)
+	{
+		return;
+	}
+
+	bProjectileThrown = true;
 	DestroyHeldMesh();
 
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
@@ -315,7 +367,8 @@ void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 
-	if (!AvatarActor || !AvatarActor->HasAuthority() || !World || !ProjectileClass || ThrowDirection.IsNearlyZero())
+	if (!AvatarActor || !AvatarActor->HasAuthority() || !World ||
+		!ProjectileAbilityConfig.ProjectileClass || ThrowDirection.IsNearlyZero())
 	{
 		return;
 	}
@@ -324,18 +377,26 @@ void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 	AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
 
 	ANSThrowProjectileBase* Projectile = World->SpawnActor<ANSThrowProjectileBase>(
-		ProjectileClass,
+		ProjectileAbilityConfig.ProjectileClass,
 		SpawnTransform
 	);
 
 	if (Projectile)
 	{
-		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
 		// 계산된 payload를 투척물에 전달
 		Projectile->SetSetByCallerMagnitudes(SetByCallerMagnitudes);
 		Projectile->SetRuntimeStatMagnitudes(RuntimeStatMagnitudes);
+		Projectile->InitializeThrowActor(OwningPawn, OwningController, ThrowDirection);
 
-		if (ProjectileAbilityConfig.ProjectileType == EProjectileType::TurretSpawner)
+		// 공통 ThrowProjectileBase 스폰 이후 타입별 추가 설정을 주입
+		if (ProjectileAbilityConfig.ProjectileType == EProjectileType::Explosive)
+		{
+			if (ANSGrenade* Grenade = Cast<ANSGrenade>(Projectile))
+			{
+				Grenade->InitializeGrenade(ProjectileAbilityConfig.ExplosiveTypeConfig);
+			}
+		}
+		else if (ProjectileAbilityConfig.ProjectileType == EProjectileType::TurretSpawner)
 		{
 			if (ANSTurretSpawner* TurretSpawner = Cast<ANSTurretSpawner>(Projectile))
 			{
@@ -546,6 +607,24 @@ bool UGA_ThrowProjectile::TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag
 	}
 
 	return false;
+}
+
+bool UGA_ThrowProjectile::TryGetFinalCooldownDuration(float& OutCooldownDuration) const
+{
+	float FinalCooldownDuration = 0.0f;
+	
+	if (!TryGetFinalAbilityStat(
+		CombatStatAbilityTag,
+		CooldownStatTag,
+		FinalCooldownDuration))
+	{		
+		return false;
+	}
+	
+	constexpr float MinCooldownDuration = 0.1f;
+	OutCooldownDuration = FMath::Max(FinalCooldownDuration, MinCooldownDuration);
+	
+	return true;
 }
 
 void UGA_ThrowProjectile::RebuildCombatStatPayloads()
