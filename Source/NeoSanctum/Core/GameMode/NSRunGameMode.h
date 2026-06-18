@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NSRunGameMode.generated.h"
 
+enum class ENSRunChoice : uint8;
 class UNSStageManager;
 class UNSMonsterPoolManager;
 class ANSEnemyCharacterBase;
@@ -14,6 +15,7 @@ class UNSEnemyData;
 class UNSProjectileManagerComponent;
 class ANSProjectileReplicationProxy;
 class ANSCurrencyReplicationProxy;
+class APlayerController;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -45,6 +47,7 @@ public:
 	virtual void HandleSeamlessTravelPlayer(AController*& Controller) override;
 
 	virtual void SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice) override;
+	virtual void CancelRunChoice_Implementation(APlayerController* PlayerController) override;
 	
 	// 룸 생성 완료시 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
@@ -58,7 +61,6 @@ public:
 
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 	
-	// 에디터에서 수정 가능한 EndRun UI 투표 시간 및 투표 결과 보여줄 시간
 	UPROPERTY(EditAnywhere, Category="RunEnd")
 	float VoteDuration = 10.0f;
 	UPROPERTY(EditAnywhere, Category="RunEnd")

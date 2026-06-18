@@ -71,3 +71,74 @@ void UNSRunResultWidget::NativePreConstruct()
 	//에디터에서 위젯을 열어쓸때 기본표시 상태 확인
 	SetRunResult(false,0,0.0f,0);
 }
+void UNSRunResultWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	
+	SetRunResult(false,0,0.0f,0);
+	SetVoteSubmitted(false);
+	
+	if (NextStageButton)
+	{
+		NextStageButton->OnClicked().AddUObject(
+			this,
+			&UNSRunResultWidget::HandleNextStageClicked);
+	}
+
+	if (ReturnToHubButton)
+	{
+		ReturnToHubButton->OnClicked().AddUObject(
+			this,
+			&UNSRunResultWidget::HandleReturnToHubClicked);
+	}
+
+	if (ConfirmButton)
+	{
+		ConfirmButton->OnClicked().AddUObject(
+			this,
+			&UNSRunResultWidget::HandleConfirmClicked);
+	}
+}
+
+void UNSRunResultWidget::NativeDestruct()
+{
+	if (NextStageButton)
+	{
+		NextStageButton->OnClicked().RemoveAll(this);
+	}
+
+	if (ReturnToHubButton)
+	{
+		ReturnToHubButton->OnClicked().RemoveAll(this);
+	}
+
+	if (ConfirmButton)
+	{
+		ConfirmButton->OnClicked().RemoveAll(this);
+	}
+	
+	Super::NativeDestruct();
+}
+
+void UNSRunResultWidget::SetVoteSubmitted(bool bSubmitted)
+{
+	bVoteSubmitted = bSubmitted;
+
+	if (ConfirmButtonText)
+	{
+		ConfirmButtonText->SetText(
+			bVoteSubmitted
+				? NSLOCTEXT("RunResult", "CancelVote", "취소")
+				: NSLOCTEXT("RunResult", "ConfirmVote", "확인"));
+	}
+	
+	if (NextStageButton)
+	{
+		NextStageButton->SetIsEnabled(!bVoteSubmitted);
+	}
+
+	if (ReturnToHubButton)
+	{
+		ReturnToHubButton->SetIsEnabled(!bVoteSubmitted);
+	}
+}

@@ -11,6 +11,7 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "GameFramework/PlayerStart.h"
 #include "EngineUtils.h"
 #include "Engine/OverlapResult.h"
@@ -134,8 +135,16 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 	{
 		NSStageManager->HandleEnemyKilled();
 	}
-}
 
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager =
+			GameInstance->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->AddRunResultKillCount();
+		}
+	}
+}
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
 	if (!HasAuthority())
@@ -497,6 +506,62 @@ AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, cons
 	return Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
+void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerController)
+{
+	if (!HasAuthority() || !PlayerController)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState =
+		PlayerController->GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	if (!NSPlayerState->bVoteConfirmed)
+	{
+		return;
+	}
+
+	ANSRunGameState* RunGameState = GetGameState<ANSRunGameState>();
+	if (!RunGameState)
+	{
+		return;
+	}
+
+	NSPlayerState->bVoteConfirmed = false;
+
+	//취소 시 현재 집계값에서 해당 플레이어의 표를 제거한다.
+	if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
+	{
+		RunGameState->NextVotes = FMath::Max(RunGameState->NextVotes - 1, 0);
+	}
+	else
+	{
+		RunGameState->HubVotes = FMath::Max(RunGameState->HubVotes - 1, 0);
+	}
+
+	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
+
+	RunGameState->PhaseEndServerTime =
+		RunGameState->GetServerWorldTimeSeconds() + VoteDuration;
+
+	RunGameState->OnRep_PhaseEndServerTime();
+
+	RunGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
+	RunGameState->ForceNetUpdate();
+	RunGameState->OnRep_RunEndVotes();
+	
+	GetWorldTimerManager().SetTimer(
+		PhaseTimerHandle,
+		this,
+		&ANSRunGameMode::ResolveVote,
+		VoteDuration,
+		false);
+}
+
 void ANSRunGameMode::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	// 런 레벨 시작시 캐릭터 자동 스폰 방지용
@@ -519,16 +584,18 @@ void ANSRunGameMode::OpenRunEndVote(bool bHubOnly)
 	{
 		if (ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState))
 		{
-			NSPlayerState->RunChoice =
-				ENSRunChoice::ReturnToHub; NSPlayerState->bVoteConfirmed = false;
+			NSPlayerState->RunChoice = ENSRunChoice::ReturnToHub;
+			NSPlayerState->bVoteConfirmed = false;
 		}
 	}
 	
-	NSGameState->bIsClear           = bHubOnly;
+	NSGameState->bIsClear = !bHubOnly;
+	NSGameState->PhaseEndServerTime =
+		NSGameState->GetServerWorldTimeSeconds() + VoteDuration;
+	NSGameState->OnRep_PhaseEndServerTime();
 	NSGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
-	NSGameState->PhaseEndServerTime = NSGameState->GetServerWorldTimeSeconds() + VoteDuration;
 	NSGameState->ForceNetUpdate();
-
+	
 	GetWorldTimerManager().SetTimer(
 		PhaseTimerHandle,
 		this,
@@ -575,13 +642,19 @@ void ANSRunGameMode::ResolveVote()
 		bNext ? ++Next : ++Hub;
 	}
 	
-	const bool bGoNext = !NSGameState->bIsClear && (Next > Hub);
+	const bool bGoNext = NSGameState->bIsClear && (Next > Hub);
 
-	NSGameState->NextVotes        = Next;
-	NSGameState->HubVotes         = Hub;
-	NSGameState->WinningChoice    = bGoNext ? ENSRunChoice::NextStage : ENSRunChoice::ReturnToHub;
+	NSGameState->NextVotes = Next;
+	NSGameState->HubVotes = Hub;
+	NSGameState->WinningChoice = bGoNext
+		? ENSRunChoice::NextStage
+		: ENSRunChoice::ReturnToHub;
+	NSGameState->PhaseEndServerTime =
+		NSGameState->GetServerWorldTimeSeconds() + ResultDisplayDuration;
+
+	NSGameState->OnRep_PhaseEndServerTime();
+
 	NSGameState->SetRunEndPhase(ENSRunEndPhase::Result);
-	NSGameState->PhaseEndServerTime = NSGameState->GetServerWorldTimeSeconds() + ResultDisplayDuration;
 	NSGameState->ForceNetUpdate();
 
 	GetWorldTimerManager().SetTimer(

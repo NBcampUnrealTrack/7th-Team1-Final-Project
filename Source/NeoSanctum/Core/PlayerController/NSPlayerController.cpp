@@ -382,6 +382,15 @@ void ANSPlayerController::HandleRunEndPhaseChanged()
 			break;
 	}
 }
+
+void ANSPlayerController::Server_CancelVote_Implementation()
+{
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_CancelRunChoice(GameMode, this);
+	}
+}
 void ANSPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
