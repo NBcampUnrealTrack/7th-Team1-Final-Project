@@ -192,4 +192,21 @@ void UNSCurrencyComponent::NotifyWalletEntryChanged(const FNSCurrencyEntry& Entr
 	OnPermanenetChanged.Broadcast(Entry.CurrencyType, Entry.Amount);
 }
 
+void UNSCurrencyComponent::CopyRunStateFrom(const UNSCurrencyComponent* Source)
+{
+	if (!Source)
+	{
+		return;
+	}
+	
+	// 서버 전용 런 누적 버킷
+	PendingPermanent = Source->PendingPermanent;
+	
+	// 지갑(임시재화 표시) — FastArray 정석대로 엔트리 재구성
+	for (const FNSCurrencyEntry& Entry : Source->Wallet.Entries)
+	{
+		AddToWallet(Entry.CurrencyType, Entry.Amount);
+	}
+}
+
 

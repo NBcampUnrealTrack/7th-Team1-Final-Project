@@ -75,6 +75,11 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 			OldProgress->BuildPayload(Payload);
 			NewProgress->ApplyPayload(Payload);
 		}
+		
+		if (UNSCurrencyComponent* NewCurrency = NewPlayerState->GetCurrencyComponent())
+		{
+			NewCurrency->CopyRunStateFrom(CurrencyComponent);
+		}
 	}
 }
 
