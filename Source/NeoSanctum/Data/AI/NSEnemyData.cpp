@@ -2,10 +2,3 @@
 
 
 #include "NSEnemyData.h"
-
-UNSEnemyData::UNSEnemyData()
-{
-	DrawScale = FVector(1.0f, 1.0f, 1.0f);
-	MinAttackRange = 0.0f;
-	MaxAttackRange = 300.0f;
-}

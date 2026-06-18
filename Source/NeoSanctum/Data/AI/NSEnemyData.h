@@ -126,13 +126,6 @@ class NEOSANCTUM_API UNSEnemyData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	UNSEnemyData();
-
-public:
-	// 몬스터 식별 태그 (구조 개선 후 제거 예정)
-	UPROPERTY(EditDefaultsOnly, Category = "Identity")
-	FGameplayTag EnemyTag;
-	
 	// 몬스터 고유 식별자
 	UPROPERTY(EditDefaultsOnly, Category = "Identity")
 	FGameplayTag EnemyId;
@@ -155,7 +148,7 @@ public:
 
 	// 몬스터 크기 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
-	FVector DrawScale;
+	FVector DrawScale = FVector(1.0f, 1.0f, 1.0f);
 
 	// 무기
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
@@ -185,14 +178,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	TObjectPtr<UEnvQuery> EQSQuery;
-
-	// 최소 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
-	float MinAttackRange;
-
-	// 최대 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
-	float MaxAttackRange;
 
 	// 보스 페이즈
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseSystem")

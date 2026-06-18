@@ -2,10 +2,6 @@
 
 
 #include "NSEnemyWeaponComponent.h"
-
-#include "AbilitySystemComponent.h"
-#include "GameplayAbilitySpec.h"
-#include "Abilities/GameplayAbility.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -72,25 +68,6 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 
 	// 무기 전용 ABP 적용
 	ApplyCurrentWeaponAnimClass();
-
-	// 무기 전용 GA 적용
-	if (EnemyData->AttackList.IsEmpty())
-	{
-		if (UAbilitySystemComponent* ASC = Owner->GetAbilitySystemComponent())
-		{
-			if (Config.WeaponAbility)
-			{
-				const UGameplayAbility* AbilityCDO = Config.WeaponAbility.GetDefaultObject();
-				if (AbilityCDO)
-				{
-					ASC->GiveAbility(FGameplayAbilitySpec(
-						Config.WeaponAbility,
-						1,
-						static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
-				}
-			}
-		}
-	}
 }
 
 void UNSEnemyWeaponComponent::UnEquipWeapon()

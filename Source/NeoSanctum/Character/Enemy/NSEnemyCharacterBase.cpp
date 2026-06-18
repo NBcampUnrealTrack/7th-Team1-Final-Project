@@ -165,7 +165,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	// GAS 데이터 테이블 기반 스탯 초기화
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
 	{
-		FName RowName = EnemyData->EnemyTag.GetTagName();
+		FName RowName = EnemyData->EnemyId.GetTagName();
 		FNSMonsterAttributeRow* StatRow =
 			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
 

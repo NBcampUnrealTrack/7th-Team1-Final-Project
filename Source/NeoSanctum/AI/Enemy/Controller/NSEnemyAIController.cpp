@@ -131,13 +131,7 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	if (EnemyData->BehaviorTree)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
-
 		CachedBBComp = GetBlackboardComponent();
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsFloat(TEXT("MinAttackRange"), EnemyData->MinAttackRange);
-			CachedBBComp->SetValueAsFloat(TEXT("MaxAttackRange"), EnemyData->MaxAttackRange);
-		}
 	}
 }
 
