@@ -12,13 +12,14 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_Reload, "Ability.Ranger.Reload");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_ProjectileShot, "Ability.Ranger.ProjectileShot");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_Grenade, "Ability.Ranger.Grenade");
-	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_SpeedBuff, "Ability.Ranger.SpeedBuff")
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_SpeedBuff, "Ability.Ranger.SpeedBuff");
 
 	// Engineer Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_ShotgunFire, "Ability.Engineer.ShotgunFire");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_Reload, "Ability.Engineer.Reload");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpawnTurret, "Ability.Engineer.SpawnTurret");
-	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpeedBuff, "Ability.Engineer.SpeedBuff")
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpeedBuff, "Ability.Engineer.SpeedBuff");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_Barrier, "Ability.Engineer.Barrier");
 	
 	// Engineer Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Engineer_AttachTurretSpawner, "Event.Engineer.AttachTurretSpawner");

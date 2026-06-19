@@ -21,6 +21,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_Reload);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_SpawnTurret);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_SpeedBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Engineer_Barrier);
 	
 	// Engineer Ability Event Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Engineer_AttachTurretSpawner);
