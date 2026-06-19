@@ -45,13 +45,20 @@ void UGA_EngineerBarrier::ActivateAbility(
 		return;
 	}
 
+	float BarrierHealth = 0.0f;
+	if (!TryGetBarrierHealth(BarrierHealth))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	SpawnBarrierActor(ActorInfo, BarrierRadius);
+	SpawnBarrierActor(ActorInfo, BarrierRadius, BarrierHealth);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
@@ -134,9 +141,32 @@ bool UGA_EngineerBarrier::TryGetBarrierRadius(float& OutBarrierRadius) const
 	return true;
 }
 
+bool UGA_EngineerBarrier::TryGetBarrierHealth(float& OutBarrierHealth) const
+{
+	float FinalBarrierHealth = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_MaxHealth,
+		FinalBarrierHealth))
+	{
+		if (!TryGetFinalAbilityStat(
+			AbilityTag,
+			NSGameplayTags::CombatStat_Health,
+			FinalBarrierHealth))
+		{
+			return false;
+		}
+	}
+
+	OutBarrierHealth = FinalBarrierHealth;
+	return true;
+}
+
 void UGA_EngineerBarrier::SpawnBarrierActor(
 	const FGameplayAbilityActorInfo* ActorInfo,
-	float BarrierRadius)
+	float BarrierRadius,
+	float BarrierHealth)
 {
 	AActor* AvatarActor = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
 	if (!AvatarActor || !AvatarActor->HasAuthority())
@@ -191,7 +221,7 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 		SpawnedBarrier->SetActorRelativeTransform(AttachRelativeTransform);
 	}
 
-	SpawnedBarrier->InitializeBarrier(OwningPawn, OwningController, BarrierRadius);
+	SpawnedBarrier->InitializeBarrier(OwningPawn, OwningController, BarrierRadius, BarrierHealth);
 	SpawnedBarrier->FinishSpawning(SpawnedBarrier->GetActorTransform());
 	SpawnedBarrier->ForceNetUpdate();
 	ActiveBarrier = SpawnedBarrier;

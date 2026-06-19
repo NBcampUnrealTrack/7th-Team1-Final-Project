@@ -43,7 +43,12 @@ protected:
 private:
 	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
-	void SpawnBarrierActor(const FGameplayAbilityActorInfo* ActorInfo, float BarrierRadius);
+	bool TryGetBarrierHealth(float& OutBarrierHealth) const;
+	void SpawnBarrierActor(
+		const FGameplayAbilityActorInfo* ActorInfo,
+		float BarrierRadius,
+		float BarrierHealth
+	);
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")

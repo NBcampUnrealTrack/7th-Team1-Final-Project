@@ -3,7 +3,11 @@
 
 #include "NSBarrier.h"
 
+#include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NiagaraComponent.h"
 
 ANSBarrier::ANSBarrier()
@@ -12,6 +16,12 @@ ANSBarrier::ANSBarrier()
 
 	bReplicates = true;
 	SetReplicateMovement(false);
+
+	ASC = CreateDefaultSubobject<UNSAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	AttributeSet = CreateDefaultSubobject<UNSBaseAttributeSet>(TEXT("AttributeSet"));
 
 	BarrierCollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("BarrierCollisionComponent"));
 	SetRootComponent(BarrierCollisionComponent);
@@ -25,13 +35,20 @@ ANSBarrier::ANSBarrier()
 	BarrierNiagaraComponent->SetAutoActivate(true);
 }
 
+UAbilitySystemComponent* ANSBarrier::GetAbilitySystemComponent() const
+{
+	return ASC;
+}
+
 void ANSBarrier::InitializeBarrier(
 	APawn* InOwningPawn,
 	AController* InOwningController,
-	float InRadius)
+	float InRadius,
+	float InMaxHealth)
 {
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
+	CurrentMaxHealth = InMaxHealth;
 
 	if (OwningPawn)
 	{
@@ -40,13 +57,62 @@ void ANSBarrier::InitializeBarrier(
 	}
 
 	ApplyRadius(InRadius);
+	InitializeAbilityActorInfo();
+	ApplyInitialAttributeEffect();
 }
 
 void ANSBarrier::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitializeAbilityActorInfo();
 	ApplyRadius(CurrentRadius);
+	ApplyInitialAttributeEffect();
+}
+
+void ANSBarrier::InitializeAbilityActorInfo()
+{
+	if (!ASC || bAbilityActorInfoInitialized)
+	{
+		return;
+	}
+
+	ASC->InitAbilityActorInfo(this, this);
+
+	if (AttributeSet)
+	{
+		AttributeSet->OnOutOfHealth.AddUObject(this, &ThisClass::HandleOutOfHealth);
+	}
+
+	bAbilityActorInfoInitialized = true;
+}
+
+void ANSBarrier::ApplyInitialAttributeEffect()
+{
+	if (!HasAuthority() || !ASC || !InitialAttributeEffectClass || bInitialAttributeEffectApplied)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+		InitialAttributeEffectClass,
+		1.0f,
+		EffectContext
+	);
+
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_MaxHealth, CurrentMaxHealth);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_Health, CurrentMaxHealth);
+
+	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	bInitialAttributeEffectApplied = true;
 }
 
 void ANSBarrier::ApplyRadius(float InRadius)
@@ -64,5 +130,14 @@ void ANSBarrier::ApplyRadius(float InRadius)
 		const float VisualScale = Radius / DefaultRadius;
 		BarrierNiagaraComponent->SetRelativeScale3D(FVector(VisualScale));
 		BarrierNiagaraComponent->SetVariableFloat(TEXT("User.BarrierRadius"), Radius);
+	}
+}
+
+void ANSBarrier::HandleOutOfHealth()
+{
+	// 연출이 들어오기 전까지는 즉시 파괴함.
+	if (HasAuthority())
+	{
+		Destroy();
 	}
 }
