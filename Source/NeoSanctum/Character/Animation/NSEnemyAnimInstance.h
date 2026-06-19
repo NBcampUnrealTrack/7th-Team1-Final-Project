@@ -79,6 +79,39 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float MaxAimYaw = 60.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MuzzleYawCorrectionGain = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MaxMuzzleYawCorrection = 15.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float MuzzleYawErrorDeadZone = 0.75f;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator AimBoneRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float AimYawScale = 1.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
+	float AimPitchScale = -1.0f;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator Spine01AimRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator Spine02AimRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator Spine03AimRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator ClavicleAimRotation;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
+	FRotator UpperArmAimRotation;
+
 private:
 	UPROPERTY()
 	TObjectPtr<ANSEnemyCharacterBase> EnemyCharacter;

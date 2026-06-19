@@ -72,7 +72,7 @@ protected:
 
 	// 타겟을 정면으로 바라봤다고 판정할 최대 각도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI|Combat", meta = (ClampMin = "0.0", ClampMax = "90.0"))
-	float AttackFacingAngleDegrees = 12.0f;
+	float AttackFacingAngleDegrees = 2.0f;
 
 private:
 	// 타겟 액터
