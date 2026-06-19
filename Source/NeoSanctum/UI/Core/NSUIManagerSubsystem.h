@@ -121,7 +121,21 @@ public:
 	
 	//인런 재화 UI 표시
 	void ShowInRunGoods();
+
+	//아웃런 재화 UI 표시
+	void ShowOutRunGoods();
+	
 	void RefreshOutRunGoods();
+
+	int32 GetRunResultCommonGoods() const { return RunResultCommonGoods; }
+	int32 GetRunResultSkillGoods() const { return RunResultSkillGoods; }
+	
+	//런 결과창에 표시할 영구재화 획득량 갱신
+	void UpdateRunResultCommonGoods(int32 NewAmount);
+
+	//런 결과창에 표시할 스킬재화 획득량 갱신
+	void UpdateRunResultSkillGoods(int32 NewAmount);
+	
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관
@@ -161,6 +175,12 @@ private:
 
 	//플레이 시간을 이미 고정했는지 여부
 	bool bRunResultTimeCached = false;
+	
+	//런 결과창에 표시할 공통 영구재화 획득량
+	int32 RunResultCommonGoods = 0;
+
+	//런 결과창에 표시할 스킬재화 획득량
+	int32 RunResultSkillGoods = 0;
 	
 protected:
 	//HUD 위젯 블루프린트

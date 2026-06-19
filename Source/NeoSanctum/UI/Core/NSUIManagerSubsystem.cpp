@@ -39,6 +39,16 @@ void UNSUIManagerSubsystem::CacheRunResultTime()
 	bRunResultTimeCached = true;
 }
 
+void UNSUIManagerSubsystem::UpdateRunResultCommonGoods(int32 NewAmount)
+{
+	RunResultCommonGoods = FMath::Max(NewAmount, 0);
+}
+
+void UNSUIManagerSubsystem::UpdateRunResultSkillGoods(int32 NewAmount)
+{
+	RunResultSkillGoods = FMath::Max(NewAmount, 0);
+}
+
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()
 {
 	static ConstructorHelpers::FObjectFinder<UDataTable>
@@ -494,6 +504,9 @@ void UNSUIManagerSubsystem::ResetRunResultStats()
 {
 	RunResultGoods = 0;
 	RunResultKillCount = 0;
+	
+	RunResultCommonGoods = 0;
+	RunResultSkillGoods = 0;
 
 	CachedRunResultTimeSeconds = 0.0f;
 	bRunResultTimeCached = false;
@@ -519,6 +532,8 @@ void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
 	RunResultWidget->SetRunResult(
 		bCleared,
 		RunResultGoods,
+		RunResultCommonGoods,
+		RunResultSkillGoods,
 		GetRunResultTimeSeconds(),
 		RunResultKillCount);
 }
@@ -564,6 +579,19 @@ void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
 
 	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
 }
+
+void UNSUIManagerSubsystem::ShowInRunGoods()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Goods UI] UIManager ShowInRunGoods"));
+
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+
+	HUDWidget->ShowInRunGoods();
+}
+
 void UNSUIManagerSubsystem::ShowOutRunGoods()
 {
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] UIManager ShowOutRunGoods"));

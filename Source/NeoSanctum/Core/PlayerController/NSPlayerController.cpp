@@ -616,6 +616,24 @@ void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Am
 		return;
 	}
 }
+
+void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!IsValid(NSPlayerState))
+	{
+		return;
+	}
+
+	DataSubsystem->ApplyCachedProgressTo(
+		NSPlayerState->GetProgressComponent());
+}
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
