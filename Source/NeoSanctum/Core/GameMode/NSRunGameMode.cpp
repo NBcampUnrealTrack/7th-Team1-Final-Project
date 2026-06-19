@@ -20,8 +20,12 @@
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
+#include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 
 ANSRunGameMode::ANSRunGameMode()
@@ -51,6 +55,9 @@ void ANSRunGameMode::BeginPlay()
 		);
 		
 		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
+		
+		// 서버 보상 Roll이 매 실행마다 같은 순서로 고정되지 않도록 초기 시드 결정
+		RewardRandomStream.Initialize(FMath::Rand());
 	}
 
 	for (TActorIterator<APlayerController> It(GetWorld()); It; ++It)
@@ -164,7 +171,95 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 			UIManager->AddRunResultKillCount();
 		}
 	}
+	
+	HandleEnemyReward(DeadEnemy);
 }
+
+void ANSRunGameMode::HandleEnemyReward(ACharacter* DeadEnemy)
+{
+	FGameplayTag TriggerTag;
+	
+	if (!TryGetRewardTriggerTagFromEnemy(DeadEnemy, TriggerTag))
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		NS_LOG(LogNS, Warning,
+			"Enemy Reward 처리에 필요한 DataSubsystem이 유효하지 않습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+	
+	const UNSRewardDataRegistry* RewardDataRegistry = DataSubsystem->GetRewardDataRegistry();
+	if (!RewardDataRegistry)
+	{
+		NS_LOG(LogNS, Warning,
+			"Enemy Reward 처리에 필요한 RewardDataRegistry가 유효하지 않습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+	
+	UNSRewardHandler::HandleRewardTrigger(
+		GetWorld(),
+		RewardDataRegistry,
+		TriggerTag,
+		DeadEnemy->GetActorLocation(),
+		RewardRandomStream,
+		RewardDroppedPartClass,
+		RewardCurrencyDropDuration
+	);
+}
+
+bool ANSRunGameMode::TryGetRewardTriggerTagFromEnemy(
+	const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const
+{
+	OutTriggerTag = FGameplayTag();
+	
+	const ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(DeadEnemy);
+	if (!IsValid(EnemyCharacter))
+	{
+		return false;
+	}
+	
+	const UNSEnemyData* EnemyData = EnemyCharacter->GetEnemyData();
+	if (!EnemyData)
+	{
+		NS_LOG(LogNS, Warning,
+			"Enemy Reward Trigger를 결정할 수 없습니다. EnemyData가 유효하지 않습니다. Enemy={Enemy}",
+			("Enemy", GetNameSafe(DeadEnemy))
+		);
+		return false;
+	}
+
+	switch (EnemyData->EnemyRank)
+	{
+	case ENSEnemyRank::Normal:
+		OutTriggerTag = NSGameplayTags::Reward_Trigger_NormalKill;
+		return true;
+		
+	case ENSEnemyRank::Elite:
+		OutTriggerTag = NSGameplayTags::Reward_Trigger_EliteKill;
+		return true;
+		
+	case ENSEnemyRank::Boss:
+		OutTriggerTag = NSGameplayTags::Reward_Trigger_BossKill;
+		return true;
+		
+	default:
+		NS_LOG(LogNS, Warning,
+			"처리되지 않은 EnemyRank입니다. Enemy={Enemy}, EnemyRank={EnemyRank}",
+			("Enemy", GetNameSafe(DeadEnemy)),
+			("EnemyRank", static_cast<int32>(EnemyData->EnemyRank))
+		);
+		return false;
+	}
+}
+
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
 	if (!HasAuthority())
