@@ -162,49 +162,33 @@ void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
 
 		if (!ToTarget.IsNearlyZero())
 		{
-			const float Distance2D = ToTarget.Size2D();
-
-			TargetAlpha = FMath::GetMappedRangeValueClamped(
-				FVector2D(100.0f, 400.0f),
-				FVector2D(0.0f, 1.0f),
-				Distance2D
-			);
-			
 			const FRotator WorldAimRotation = ToTarget.Rotation();
-			if (IsValid(CurrentWeapon) &&
-			    CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
-			{
-			    // 실제 총구 방향과 목표 방향 사이에 남은 오차
-			    const FRotator AimError = UKismetMathLibrary::NormalizedDeltaRotator(
-			    	WorldAimRotation,
-			    	MuzzleTransform.GetRotation().Rotator());
-				
-			    TargetPitch = FMath::Clamp(
-			        AimPitch + AimError.Pitch,
-			        -MaxAimPitch,
-			        MaxAimPitch);
+			
+			const FRotator ReferenceRotation(0.0f, EnemyCharacter->GetActorRotation().Yaw, 0.0f);
 
-			    TargetYaw = FMath::Clamp(
-			        AimYaw + AimError.Yaw,
-			        -MaxAimYaw,
-			        MaxAimYaw);
-			}
-			else
-			{
-			    const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
-			            WorldAimRotation,
-			            EnemyCharacter->GetActorRotation());
+			const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+				WorldAimRotation,
+				ReferenceRotation);
 
-			    TargetPitch = FMath::Clamp(
-			        LocalAimRotation.Pitch,
-			        -MaxAimPitch,
-			        MaxAimPitch);
+			TargetPitch = FMath::Clamp(LocalAimRotation.Pitch, -MaxAimPitch, MaxAimPitch);
+			TargetYaw = FMath::Clamp(LocalAimRotation.Yaw, -MaxAimYaw, MaxAimYaw);
 
-			    TargetYaw = FMath::Clamp(
-			        LocalAimRotation.Yaw,
-			        -MaxAimYaw,
-			        MaxAimYaw);
-			}
+			TargetAlpha = 1.0f;
+		}
+	}
+
+	constexpr float AimDeadZoneDegrees = 0.35f;
+
+	if (TargetAlpha > 0.0f)
+	{
+		if (FMath::Abs(TargetPitch - AimPitch) < AimDeadZoneDegrees)
+		{
+			TargetPitch = AimPitch;
+		}
+
+		if (FMath::Abs(TargetYaw - AimYaw) < AimDeadZoneDegrees)
+		{
+			TargetYaw = AimYaw;
 		}
 	}
 
