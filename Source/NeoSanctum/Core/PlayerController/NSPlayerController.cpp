@@ -681,6 +681,15 @@ void ANSPlayerController::BeginPlay()
 			UIManager->HideTitle();
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
+			if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+			{
+				if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+				{
+					DataSubsystem->ApplyCachedProgressTo(
+						NSPlayerState->GetProgressComponent());
+				}
+			}
+			UIManager->ShowOutRunGoods();
 			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
@@ -751,11 +760,43 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-        
-		//마우스 커서 및 입력 모드 제어
-		FInputModeGameOnly InputModeData;
-		SetInputMode(InputModeData);
-		bShowMouseCursor = false;
+		
+
+	if (MapName.Contains(TEXT("HideOut")))
+	{
+		// 거점 복귀 후 새 PlayerState에 클라이언트 캐시 진행 데이터를 적용한다.
+		ApplyCachedProgressToLocalPlayerState();
+
+		// 거점에서는 아웃런 재화 UI 표시
+		UIManager->ShowOutRunGoods();
+
+		// PlayerState 초기화가 한 프레임 늦는 경우를 대비해서 다음 틱에 한 번 더 적용한다.
+		GetWorldTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				ApplyCachedProgressToLocalPlayerState();
+
+				UNSUIManagerSubsystem* NextTickUIManager =
+					GetGameInstance()
+					? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+					: nullptr;
+
+				if (NextTickUIManager)
+				{
+					NextTickUIManager->ShowOutRunGoods();
+				}
+			}));
+	}
+	else
+	{
+		// 인런에서는 인런 재화 UI 표시
+		UIManager->ShowInRunGoods();
+	}
+
+	// 마우스 커서 및 입력 모드 제어
+	FInputModeGameOnly InputModeData;
+	SetInputMode(InputModeData);
+	SetShowMouseCursor(false);
 
 		if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(NewPawn))
 		{

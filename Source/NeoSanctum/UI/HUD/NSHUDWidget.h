@@ -12,6 +12,7 @@ class UNSCrosshairWidget;
 class UNSAugmentationWidget;
 class UNSPartPanelWidget;
 class UNSAmmoWidget;
+class UNSOutRunGoodsWidget;
 
 
 /**
@@ -79,6 +80,11 @@ public:
 	//인런 스킬 재화 UI 갱신
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void UpdateRunSkillGoods(int32 NewGoodsAmount);
+
+	//아웃런 재화 UI 표시
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowOutRunGoods();
+	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
@@ -89,6 +95,9 @@ private:
 	//재화 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSGoodsWidget> GoodsWidget;
+	//아웃런 재화 HUD 위젯
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSOutRunGoodsWidget> OutRunGoodsWidget;
 	//조준점 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSCrosshairWidget> CrosshairWidget;
@@ -102,4 +111,6 @@ private:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSAmmoWidget> AmmoWidget;
 	
+protected:
+	virtual void NativeConstruct() override;
 };

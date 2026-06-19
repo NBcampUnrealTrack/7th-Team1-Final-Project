@@ -8,6 +8,7 @@
 #include "NSAugmentationWidget.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 #include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
+#include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -163,6 +164,23 @@ void UNSHUDWidget::RequestRerollAugment()
 
 	AugmentationWidget->RequestRerollAugment();
 }
+
+void UNSHUDWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	
+	
+	if (GoodsWidget)
+	{
+		GoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (OutRunGoodsWidget)
+	{
+		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
 {
 	if (!AmmoWidget)
@@ -190,4 +208,19 @@ void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
 	}
 
 	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
+}
+
+void UNSHUDWidget::ShowOutRunGoods()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowOutRunGoods"));
+	if (GoodsWidget)
+	{
+		GoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (OutRunGoodsWidget)
+	{
+		OutRunGoodsWidget->RefreshGoods();
+		OutRunGoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
 }

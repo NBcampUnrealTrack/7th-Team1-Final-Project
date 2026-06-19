@@ -564,3 +564,23 @@ void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
 
 	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
 }
+void UNSUIManagerSubsystem::ShowOutRunGoods()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Goods UI] UIManager ShowOutRunGoods"));
+
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+
+	HUDWidget->ShowOutRunGoods();
+}
+void UNSUIManagerSubsystem::RefreshOutRunGoods()
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+
+	HUDWidget->ShowOutRunGoods();
+}

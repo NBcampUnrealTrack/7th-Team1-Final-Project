@@ -17,6 +17,7 @@ class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
 class ANSRunGameState;
+class UNSCurrencyComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -192,6 +193,10 @@ private:
 	
 	//영구 재화 버킷 변경시 HUD 갱신
 	void OnPermanentCurrencyChanged(FGameplayTag Type, int64 Amount);
+	
+	//클라이언트 캐시에 저장된 진행 데이터를 현재 PlayerState에 적용
+	void ApplyCachedProgressToLocalPlayerState();
+	
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
 private:
 	//캐릭터 선택 위젯 클래스
