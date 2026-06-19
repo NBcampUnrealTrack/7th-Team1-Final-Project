@@ -29,7 +29,7 @@ public:
 	bool IsNPCUnlocked(const FName& NPCId) const { return UnlockedNPCIds.Contains(NPCId); }
 	int64 GetCommonCurrency() const { return CommonCurrency; }
 	int64 GetJobCurrency() const { return JobCurrency; }
-	const TArray<FName>& GetEquippedPartIds() const { return EquippedPartIds; }
+	const FNSPartSaveData& GetEquippedPart() const { return EquippedPart; }
 	const TMap<FName,int32>& GetCommonSkillLevels() const { return CommonSkillLevels; }
 	const TMap<FName,int32>& GetCharacterSkillLevels() const { return CharacterSkillLevels; }
 	const TMap<FName,int32>& GetPetUpgradeLevels() const { return PetUpgradeLevels; }
@@ -37,9 +37,11 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UnlockNPC(const FName& NPCId);
-
-	// 런 종료 시 CurrencyComponent가 버킷을 확정 반영할 때 호출
+	
+	// 인런 재화 적립용 함수들
+	UFUNCTION(BlueprintCallable)
 	void AddCommonCurrency(int64 Amount);
+	UFUNCTION(BlueprintCallable)
 	void AddJobCurrency(int64 Amount);
 
 private:
@@ -52,6 +54,6 @@ private:
 	// 직업(캐릭터) 단위
 	FName ActiveCharacterId;
 	int64 JobCurrency = 0;
-	TArray<FName> EquippedPartIds;
+	FNSPartSaveData EquippedPart;
 	TMap<FName,int32> CharacterSkillLevels;
 };

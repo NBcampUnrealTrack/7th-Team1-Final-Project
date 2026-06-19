@@ -15,24 +15,24 @@ void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 
 void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
 {
-	if (Amount <= 0)
+	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
-	CommonCurrency += Amount;
-	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
-	UE_LOG(LogTemp, Log, TEXT("[Currency] 공통재화 +%lld 적립 → 영구 누적 %lld"), Amount, CommonCurrency);
+	
+	// 음수 잔액 방지
+	CommonCurrency = FMath::Max<int64>(0, CommonCurrency + Amount);
 }
 
 void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
 {
-	if (Amount <= 0)
+	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
-	JobCurrency += Amount;
-	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
-	UE_LOG(LogTemp, Log, TEXT("[Currency] 스킬재화 +%lld 적립 → 영구 누적 %lld"), Amount, JobCurrency);
+	
+	// 음수 잔액 방지
+	JobCurrency = FMath::Max<int64>(0, JobCurrency + Amount);
 }
 
 namespace
@@ -70,7 +70,7 @@ void UNSPlayerProgressComponent::BuildPayload(FNSProgressPayload& OutPayload) co
 
 	OutPayload.ActiveCharacterId = ActiveCharacterId;
 	OutPayload.JobCurrency = JobCurrency;
-	OutPayload.EquippedPartIds = EquippedPartIds;
+	OutPayload.EquippedPart = EquippedPart;
 	ConvertMapToArray(CharacterSkillLevels, OutPayload.CharacterSkillLevels);
 }
 
@@ -83,6 +83,6 @@ void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
 
 	ActiveCharacterId = Payload.ActiveCharacterId;
 	JobCurrency = Payload.JobCurrency;
-	EquippedPartIds = Payload.EquippedPartIds;
+	EquippedPart = Payload.EquippedPart;
 	ConvertArrayToMap(Payload.CharacterSkillLevels, CharacterSkillLevels);
 }

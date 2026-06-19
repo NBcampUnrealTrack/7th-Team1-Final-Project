@@ -89,6 +89,9 @@ public:
 	
 	// FastArray 콜백이 부르는 전파 함수
 	void NotifyWalletEntryChanged(const FNSCurrencyEntry& Entry);
+	
+	// 인런 스테이지간 트래블 시 런 누적 상태(버킷+지갑)를 이어받기
+	void CopyRunStateFrom(const UNSCurrencyComponent* Source);
 private:
 	// 지갑에 추가
 	void AddToWallet(FGameplayTag Type, int64 Amount);

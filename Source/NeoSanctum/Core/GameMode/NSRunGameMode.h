@@ -84,6 +84,12 @@ protected:
 	void OnResultDisplayFinished();
 	// 인런 진행도 저장용 함수
 	void SaveAllPlayersProgress();
+	
+	// 인런 보상 재화용 변수
+	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
+	int64 StageClearCommonReward = 0;
+	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
+	int64 StageClearJobReward = 0;
 
 private:
 	UPROPERTY()

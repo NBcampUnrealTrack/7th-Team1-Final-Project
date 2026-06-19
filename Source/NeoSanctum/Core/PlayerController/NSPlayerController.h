@@ -15,6 +15,7 @@ class ANSDeathSpectatorPawn;
 class ANSPlayerState;
 class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
+class UNSPermanentSaveGame;
 class ANSRunGameState;
 
 UCLASS()
@@ -218,6 +219,10 @@ private:
 	// 증강 추첨/선택 로직을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "NS|Augment")
 	TObjectPtr<UNSAugmentSelectionComponent> AugmentSelectionComponent;
+	
+	// 로드 완료 후 데이터 복원되도록 할 용도
+	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);
+	FDelegateHandle PermanentDataLoadedHandle;
 
 protected:
 	virtual void BeginPlay() override;

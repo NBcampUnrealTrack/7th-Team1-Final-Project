@@ -21,6 +21,8 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -124,6 +126,29 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		BindPartVisual();
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
+		
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSPlayerProgressComponent* Progress = PS->GetProgressComponent())
+			{
+				const FNSPartSaveData& Equipped = Progress->GetEquippedPart();
+				if (!Equipped.Definition.IsNull())
+				{
+					// 정의 1개 동기 로드
+					Equipped.Definition.LoadSynchronous(); 
+					FNSPartData Part;
+					Part.DefinitionPtr = Equipped.Definition;
+					Part.CurrentRarity = Equipped.Rarity;
+					// 저장값 그대로(값 변경 X)
+					Part.CurrentValue  = Equipped.Value;
+					// Slot은 EquipPart가 정의에서 채움, RollCount 기본 0
+					if (UNSPartEquipComponent* EquipComp = PS->GetPartEquipComponent())
+					{
+						EquipComp->EquipPart(Part);
+					}
+				}
+			}
+		}
 	}
 }
 

@@ -88,6 +88,26 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 		UE_LOG(LogTemp, Warning, TEXT("적 카운팅 불일치 현재 남은 적: %d"), ActualAliveEnemies);
 		return;
 	}
+	
+	// 스테이지 클리어 영구재화(공용/직업)를 각 플레이어 버킷에 적립
+	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
+	{
+		for (APlayerState* PlayerState : NSGameState->PlayerArray)
+		{
+			if (ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState))
+			{
+				if (UNSCurrencyComponent* Currency = NSPlayerState->GetCurrencyComponent())
+				{
+					Currency->AddPermanentDirect(
+						NSGameplayTags::Currency_Common,
+						StageClearCommonReward);
+					Currency->AddPermanentDirect(
+						NSGameplayTags::Currency_Skill,
+						StageClearJobReward);
+				}
+			}
+		}
+	}
 
 	OpenRunEndVote(false);
 }
