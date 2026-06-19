@@ -43,10 +43,12 @@ void ANSBarrier::InitializeBarrier(
 	APawn* InOwningPawn,
 	AController* InOwningController,
 	float InRadius,
+	float InDuration,
 	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
+	CurrentDuration = InDuration;
 	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 
 	if (OwningPawn)
@@ -60,6 +62,7 @@ void ANSBarrier::InitializeBarrier(
 
 	if (HasActorBegunPlay())
 	{
+		ApplyDuration(CurrentDuration);
 		ApplyInitialAttributeEffect();
 	}
 }
@@ -70,7 +73,15 @@ void ANSBarrier::BeginPlay()
 
 	InitializeAbilityActorInfo();
 	ApplyRadius(CurrentRadius);
+	ApplyDuration(CurrentDuration);
 	ApplyInitialAttributeEffect();
+}
+
+void ANSBarrier::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
+
+	Super::EndPlay(EndPlayReason);
 }
 
 void ANSBarrier::InitializeAbilityActorInfo()
@@ -146,9 +157,36 @@ void ANSBarrier::ApplyRadius(float InRadius)
 	}
 }
 
+void ANSBarrier::ApplyDuration(float InDuration)
+{
+	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
+	CurrentDuration = FMath::Max(InDuration, 0.0f);
+
+	if (!HasAuthority() || CurrentDuration <= 0.0f)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		DurationTimerHandle,
+		this,
+		&ThisClass::DestroyBarrier,
+		CurrentDuration,
+		false
+	);
+}
+
 void ANSBarrier::HandleOutOfHealth()
 {
 	// 연출이 들어오기 전까지는 즉시 파괴함.
+	if (HasAuthority())
+	{
+		DestroyBarrier();
+	}
+}
+
+void ANSBarrier::DestroyBarrier()
+{
 	if (HasAuthority())
 	{
 		Destroy();

@@ -30,6 +30,7 @@ public:
 		APawn* InOwningPawn,
 		AController* InOwningController,
 		float InRadius,
+		float InDuration,
 		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
 	);
 	
@@ -39,12 +40,15 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	void InitializeAbilityActorInfo();
 	void ApplyInitialAttributeEffect();
 	void ApplyRadius(float InRadius);
+	void ApplyDuration(float InDuration);
 	void HandleOutOfHealth();
+	void DestroyBarrier();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -73,6 +77,9 @@ private:
 	float CurrentRadius = 150.0f;
 
 	UPROPERTY(Transient)
+	float CurrentDuration = 0.0f;
+
+	UPROPERTY(Transient)
 	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
 
 	UPROPERTY(Transient)
@@ -80,6 +87,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<AController> OwningController;
+
+	FTimerHandle DurationTimerHandle;
 
 	bool bAbilityActorInfoInitialized = false;
 	bool bInitialAttributeEffectApplied = false;

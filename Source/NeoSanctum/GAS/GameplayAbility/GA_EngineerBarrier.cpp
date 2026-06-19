@@ -44,6 +44,13 @@ void UGA_EngineerBarrier::ActivateAbility(
 		return;
 	}
 
+	float BarrierDuration = 0.0f;
+	if (!TryGetBarrierDuration(BarrierDuration))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -51,7 +58,7 @@ void UGA_EngineerBarrier::ActivateAbility(
 	}
 
 	RebuildSetByCallerMagnitudes();
-	SpawnBarrierActor(ActorInfo, BarrierRadius, SetByCallerMagnitudes);
+	SpawnBarrierActor(ActorInfo, BarrierRadius, BarrierDuration, SetByCallerMagnitudes);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
@@ -134,6 +141,22 @@ bool UGA_EngineerBarrier::TryGetBarrierRadius(float& OutBarrierRadius) const
 	return true;
 }
 
+bool UGA_EngineerBarrier::TryGetBarrierDuration(float& OutBarrierDuration) const
+{
+	float FinalBarrierDuration = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_Duration,
+		FinalBarrierDuration))
+	{
+		return false;
+	}
+
+	OutBarrierDuration = FMath::Max(FinalBarrierDuration, 0.0f);
+	return true;
+}
+
 void UGA_EngineerBarrier::RebuildSetByCallerMagnitudes()
 {
 	SetByCallerMagnitudes.Reset();
@@ -164,6 +187,7 @@ void UGA_EngineerBarrier::RebuildSetByCallerMagnitudes()
 void UGA_EngineerBarrier::SpawnBarrierActor(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	float BarrierRadius,
+	float BarrierDuration,
 	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	AActor* AvatarActor = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
@@ -223,6 +247,7 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 		OwningPawn,
 		OwningController,
 		BarrierRadius,
+		BarrierDuration,
 		InSetByCallerMagnitudes
 	);
 	SpawnedBarrier->FinishSpawning(SpawnedBarrier->GetActorTransform());

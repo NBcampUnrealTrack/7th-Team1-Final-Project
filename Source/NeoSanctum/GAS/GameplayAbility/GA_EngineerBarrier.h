@@ -57,10 +57,12 @@ protected:
 private:
 	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
+	bool TryGetBarrierDuration(float& OutBarrierDuration) const;
 	void RebuildSetByCallerMagnitudes();
 	void SpawnBarrierActor(
 		const FGameplayAbilityActorInfo* ActorInfo,
 		float BarrierRadius,
+		float BarrierDuration,
 		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
 	);
 	
