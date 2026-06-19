@@ -110,6 +110,12 @@ public:
 	//런 종료 순간의 플레이 시간을 고정한다
 	void CacheRunResultTime();
 	
+	//탄약 UI 갱신
+	void UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo);
+	
+	//리로드 상태 UI 갱신
+	void SetReloading(bool bReloading);
+	
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관

@@ -535,3 +535,22 @@ void UNSUIManagerSubsystem::UpdateRunEndVotes(int32 NextVotes, int32 HubVotes)
 	RunResultWidget->SetVoteResult(NextVotes, HubVotes);
 }
 
+void UNSUIManagerSubsystem::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	HUDWidget->UpdateAmmo(CurrentAmmo, MaxAmmo);
+}
+
+void UNSUIManagerSubsystem::SetReloading(bool bReloading)
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	HUDWidget->SetReloading(bReloading);
+}
