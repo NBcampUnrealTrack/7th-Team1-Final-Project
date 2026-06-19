@@ -2,7 +2,6 @@
 
 #include "NSRewardDataRegistry.h"
 
-#include "NSRewardDropResolver.h"
 #include "NSRewardTriggerData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
@@ -76,43 +75,4 @@ const UNSRewardTriggerData* UNSRewardDataRegistry::FindRewardTriggerDataByTag(co
 bool UNSRewardDataRegistry::HasRewardTriggerData(const FGameplayTag& TriggerTag) const
 {
 	return FindRewardTriggerDataByTag(TriggerTag) != nullptr;
-}
-
-void UNSRewardDataRegistry::ResolveDropResultByTriggerTag(
-	const FGameplayTag& TriggerTag,
-	FRandomStream& RandomStream,
-	TArray<FNSRewardDropResult>& OutResults) const
-{
-	OutResults.Reset();
-	
-	const UNSRewardTriggerData* RewardTriggerData = FindRewardTriggerDataByTag(TriggerTag);
-	
-	if (!RewardTriggerData)
-	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"RewardTriggerData를 찾을 수 없습니다. TriggerTag={TriggerTag}",
-			("TriggerTag", TriggerTag.ToString())
-		);
-		return;
-	}
-	
-	const UDataTable* DropTable = RewardTriggerData->DropTable.Get();
-	
-	if (!DropTable)
-	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"RewardTriggerData의 DropTable이 로드되어 있지 않습니다. TriggerTag={TriggerTag}, Asset={Asset}",
-			("TriggerTag", TriggerTag.ToString()),
-			("Asset", GetNameSafe(RewardTriggerData))
-		);
-		return;
-	}
-	
-	UNSRewardDropResolver::ResolveDropResultsFromTable(DropTable, RandomStream, OutResults);
-	
-	NS_OBJ_LOG(LogNS, Log,
-		"RewardDrop 판정을 완료했습니다. TriggerTag={TriggerTag}, ResultCount={ResultCount}",
-		("TriggerTag", TriggerTag.ToString()),
-		("ResultCount", OutResults.Num())
-	);
 }

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "NSRewardTypes.h"
 #include "UObject/Object.h"
 #include "NSRewardDataRegistry.generated.h"
 
@@ -26,13 +25,7 @@ public:
 	const UNSRewardTriggerData* FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const;
 	
 	bool HasRewardTriggerData(const FGameplayTag& TriggerTag) const;
-	
-	void ResolveDropResultByTriggerTag(
-		const FGameplayTag& TriggerTag,
-		FRandomStream& RandomStream,
-		TArray<FNSRewardDropResult>& OutResults
-	) const;
-	
+
 private:
 	// Registry는 데이터 소유자가 아니므로, 로드된 RewardTriggerData를 약한 참조로 색인
 	UPROPERTY(Transient)

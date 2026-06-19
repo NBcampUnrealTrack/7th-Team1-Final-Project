@@ -9,7 +9,6 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 void UNSRewardHandler::HandleRewardTrigger(
@@ -211,7 +210,7 @@ void UNSRewardHandler::HandleCurrencyDropResult(
 		return;
 	}
 	
-	// TODO: @원종 임시로 CurrenyGrade를 None으로 테스트
+	// TODO: @원종 임시로 CurrencyGrade를 None으로 테스트
 	const int32 DropId = CurrencyDropSubsystem->RegisterDrop(
 		DropResult.CurrencyTag,
 		ENSCurrencyGrade::None,
