@@ -69,8 +69,11 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Character Data")
+	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_EnemyData, Category = "Character Data")
 	TObjectPtr<UNSEnemyData> EnemyData;
+
+	UFUNCTION()
+	void OnRep_EnemyData();
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
@@ -91,6 +94,7 @@ protected:
 	//(이용호 추가)
 	void ApplyAliveVisual();
 	void ApplyDeadVisual();
+	void ApplyVisualData();
 	void InitializeFromData(bool bFullInit);
 
 private:

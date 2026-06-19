@@ -146,6 +146,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TObjectPtr<USkeletalMesh> SkeletalMesh;
 
+	// 캐릭터 애니메이션 블루프린트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TSubclassOf<UAnimInstance> AnimClass;
+
 	// 몬스터 크기 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	FVector DrawScale = FVector(1.0f, 1.0f, 1.0f);

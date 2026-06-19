@@ -70,6 +70,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
+	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -136,6 +137,11 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 	}
 }
 
+void ANSEnemyCharacterBase::OnRep_EnemyData()
+{
+	ApplyVisualData();
+}
+
 void ANSEnemyCharacterBase::ApplyDeadVisual()
 {
 	// 물리 캡슐 콜리전 비활성화
@@ -163,6 +169,26 @@ void ANSEnemyCharacterBase::ApplyDeadVisual()
 	OnEnemyDead.Broadcast();
 }
 
+void ANSEnemyCharacterBase::ApplyVisualData()
+{
+	if (!EnemyData || !GetMesh())
+	{
+		return;
+	}
+
+	if (EnemyData->SkeletalMesh)
+	{
+		GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+	}
+
+	if (EnemyData->AnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(EnemyData->AnimClass);
+	}
+
+	SetActorScale3D(EnemyData->DrawScale);
+}
+
 void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 {
 	if (!EnemyData) return;
@@ -185,15 +211,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
 	if (bFullInit)
 	{
-		// Visual 동적 로딩
-		if (GetMesh())
-		{
-			if (EnemyData->SkeletalMesh)
-			{
-				GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
-			}
-		}
-		SetActorScale3D(EnemyData->DrawScale);
+		ApplyVisualData();
 
 		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
 		if (HasAuthority())
@@ -262,7 +280,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			}
 		}
 
-		// 무기 장착, ABP와 공격 어빌리티 부여
+		// 무기 장착
 		if (WeaponComponent)
 		{
 			WeaponComponent->EquipWeapon();

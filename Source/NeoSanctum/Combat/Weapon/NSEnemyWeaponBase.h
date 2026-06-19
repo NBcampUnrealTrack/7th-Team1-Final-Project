@@ -7,16 +7,12 @@
 #include "GameFramework/Actor.h"
 #include "NSEnemyWeaponBase.generated.h"
 
-class UAnimInstance;
 class USkeletalMeshComponent;
 
 USTRUCT(BlueprintType)
 struct FWeaponConfig
 {
 	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config")
-	TSubclassOf<UAnimInstance> AnimBlueprintClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Weapon Config")
 	FName EquipSocketName = TEXT("WeaponSocket_R");
