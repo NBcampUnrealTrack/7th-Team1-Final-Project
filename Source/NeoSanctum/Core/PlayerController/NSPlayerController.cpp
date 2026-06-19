@@ -491,6 +491,149 @@ void ANSPlayerController::OnReloadingTagChanged(const FGameplayTag CallbackTag, 
 	}
 }
 
+void ANSPlayerController::BindCurrencyToHUD()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+	
+	UNSCurrencyComponent* CurrencyComponent =
+		NSPlayerState->GetCurrencyComponent();
+	if (!CurrencyComponent)
+	{
+		return;
+	}
+	
+	CachedCurrencyComponent = CurrencyComponent;
+	
+	//중복 방지
+	CurrencyComponent->OnTempChanged.RemoveAll(this);
+	CurrencyComponent->OnPermanenetChanged.RemoveAll(this);
+
+	CurrencyComponent->OnTempChanged.AddUObject(
+		this,
+		&ANSPlayerController::OnTempCurrencyChanged);
+
+	CurrencyComponent->OnPermanenetChanged.AddUObject(
+		this,
+		&ANSPlayerController::OnPermanentCurrencyChanged);
+
+	UpdateHUDCurrency();
+}
+
+void ANSPlayerController::UpdateHUDCurrency()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UNSCurrencyComponent* CurrencyComponent =
+		CachedCurrencyComponent.Get();
+	
+	if (!CurrencyComponent)
+	{
+		ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+		CurrencyComponent = NSPlayerState
+			? NSPlayerState->GetCurrencyComponent()
+			: nullptr;
+	}
+
+	if (!CurrencyComponent)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	//임시 재화
+	UIManager->UpdateRunInGoods(
+		static_cast<int32>(CurrencyComponent->GetTemp()));
+
+	//이번 런에서 얻은 공통 영구 재화
+	UIManager->UpdateRunOutGoods(
+		static_cast<int32>(CurrencyComponent->GetPermanent(
+			NSGameplayTags::Currency_Common)));
+
+	//이번 런에서 얻은 스킬 재화
+	UIManager->UpdateRunSkillGoods(
+		static_cast<int32>(CurrencyComponent->GetPermanent(
+			NSGameplayTags::Currency_Skill)));
+}
+
+void ANSPlayerController::OnTempCurrencyChanged(int64 Amount)
+{
+	UNSUIManagerSubsystem* UIManager =
+	GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+	: nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	UIManager->UpdateRunInGoods(static_cast<int32>(Amount));
+}
+
+void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Amount)
+{
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (Type == NSGameplayTags::Currency_Common)
+	{
+		UIManager->UpdateRunOutGoods(static_cast<int32>(Amount));
+		UIManager->UpdateRunResultCommonGoods(static_cast<int32>(Amount));
+		return;
+	}
+
+	if (Type == NSGameplayTags::Currency_Skill)
+	{
+		UIManager->UpdateRunSkillGoods(static_cast<int32>(Amount));
+		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
+		return;
+	}
+}
+
+void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!IsValid(NSPlayerState))
+	{
+		return;
+	}
+
+	DataSubsystem->ApplyCachedProgressTo(
+		NSPlayerState->GetProgressComponent());
+}
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -556,6 +699,15 @@ void ANSPlayerController::BeginPlay()
 			UIManager->HideTitle();
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
+			if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+			{
+				if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+				{
+					DataSubsystem->ApplyCachedProgressTo(
+						NSPlayerState->GetProgressComponent());
+				}
+			}
+			UIManager->ShowOutRunGoods();
 			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
@@ -568,6 +720,7 @@ void ANSPlayerController::BeginPlay()
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
 			UIManager->ResetRunResultStats();
+			UIManager->ShowInRunGoods();
 			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
@@ -579,6 +732,7 @@ void ANSPlayerController::BeginPlay()
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
 	UpdateHUDAmmo();
+	BindCurrencyToHUD();
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -625,11 +779,43 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-        
-		//마우스 커서 및 입력 모드 제어
-		FInputModeGameOnly InputModeData;
-		SetInputMode(InputModeData);
-		bShowMouseCursor = false;
+		
+
+	if (MapName.Contains(TEXT("HideOut")))
+	{
+		// 거점 복귀 후 새 PlayerState에 클라이언트 캐시 진행 데이터를 적용한다.
+		ApplyCachedProgressToLocalPlayerState();
+
+		// 거점에서는 아웃런 재화 UI 표시
+		UIManager->ShowOutRunGoods();
+
+		// PlayerState 초기화가 한 프레임 늦는 경우를 대비해서 다음 틱에 한 번 더 적용한다.
+		GetWorldTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(this, [this]()
+			{
+				ApplyCachedProgressToLocalPlayerState();
+
+				UNSUIManagerSubsystem* NextTickUIManager =
+					GetGameInstance()
+					? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+					: nullptr;
+
+				if (NextTickUIManager)
+				{
+					NextTickUIManager->ShowOutRunGoods();
+				}
+			}));
+	}
+	else
+	{
+		// 인런에서는 인런 재화 UI 표시
+		UIManager->ShowInRunGoods();
+	}
+
+	// 마우스 커서 및 입력 모드 제어
+	FInputModeGameOnly InputModeData;
+	SetInputMode(InputModeData);
+	SetShowMouseCursor(false);
 
 		if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(NewPawn))
 		{
@@ -643,6 +829,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		BindAttributeToHUD();
 		UpdateHUDHealthAndShield();
 		UpdateHUDAmmo();
+		BindCurrencyToHUD();
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
@@ -726,6 +913,8 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
 	{
 		UIManager->ResetRunResultStats();
+		UIManager->ShowHUD();
+		UIManager->ShowInRunGoods();
 	}
 
 }
