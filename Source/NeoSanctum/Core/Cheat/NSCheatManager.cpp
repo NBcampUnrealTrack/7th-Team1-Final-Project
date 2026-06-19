@@ -1,10 +1,18 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSCheatManager.h"
+
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Part/NSDroppedPart.h"
+#include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
+class UNSRewardDataRegistry;
+class UNSDataSubsystem;
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
 void UNSCheatManager::Debug_SpawnTemp()
 {
@@ -54,4 +62,86 @@ void UNSCheatManager::Debug_CommitPermanent()
 	}
 
 	OwningPC->Server_DebugCommitPermanent();
+}
+
+void UNSCheatManager::Debug_RewardNormal()
+{
+	HandleRewardTriggerCheat(NSGameplayTags::Reward_Trigger_NormalKill);
+}
+
+void UNSCheatManager::Debug_RewardElite()
+{
+	HandleRewardTriggerCheat(NSGameplayTags::Reward_Trigger_EliteKill);
+}
+
+void UNSCheatManager::Debug_RewardBoss()
+{
+	HandleRewardTriggerCheat(NSGameplayTags::Reward_Trigger_BossKill);
+}
+
+void UNSCheatManager::Debug_RewardLevelUp()
+{
+	HandleRewardTriggerCheat(NSGameplayTags::Reward_Trigger_LevelUp);
+}
+
+void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
+{
+	APlayerController* OwningPlayerController = GetOuterAPlayerController();
+	if (!OwningPlayerController)
+	{
+		return;
+	}
+
+	UWorld* World = OwningPlayerController->GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	if (World->GetNetMode() == NM_Client)
+	{
+		NS_LOG(LogNS, Warning,
+			"Reward 치트는 PlayerController Server RPC 없이 서버/호스트에서만 실행할 수 있습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(OwningPlayerController);
+	if (!DataSubsystem)
+	{
+		NS_LOG(LogNS, Warning,
+			"Reward 치트 처리에 필요한 DataSubsystem을 찾을 수 없습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+
+	const UNSRewardDataRegistry* RewardDataRegistry = DataSubsystem->GetRewardDataRegistry();
+	if (!RewardDataRegistry)
+	{
+		NS_LOG(LogNS, Warning,
+			"Reward 치트 처리에 필요한 RewardDataRegistry가 유효하지 않습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+
+	const APawn* Pawn = OwningPlayerController->GetPawn();
+	const FVector DropLocation = Pawn
+		? Pawn->GetActorLocation() + Pawn->GetActorForwardVector() * 200.f
+		: FVector::ZeroVector;
+
+	FRandomStream RandomStream;
+	RandomStream.Initialize(FMath::Rand());
+
+	UNSRewardHandler::HandleRewardTrigger(
+		World,
+		RewardDataRegistry,
+		TriggerTag,
+		DropLocation,
+		RandomStream,
+		ANSDroppedPart::StaticClass(),
+		60.0f
+	);
 }

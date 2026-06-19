@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/CheatManager.h"
 #include "NSCheatManager.generated.h"
 
@@ -32,4 +33,23 @@ public:
 	// 대기 중인 영구재화(공통/스킬)를 ProgressComponent에 커밋 (런 종료 시뮬레이션)
 	UFUNCTION(Exec)
 	void Debug_CommitPermanent();
+	
+	// 테스트용 임시 코드 (Reward Trigger 테스트 — 실제 보상 트리거 연결 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_RewardNormal();
+
+	// 테스트용 임시 코드 (Reward Trigger 테스트 — 실제 보상 트리거 연결 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_RewardElite();
+
+	// 테스트용 임시 코드 (Reward Trigger 테스트 — 실제 보상 트리거 연결 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_RewardBoss();
+
+	// 테스트용 임시 코드 (Reward Trigger 테스트 — 실제 보상 트리거 연결 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_RewardLevelUp();
+
+private:
+	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };

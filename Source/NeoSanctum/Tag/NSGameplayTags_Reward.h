@@ -7,7 +7,14 @@
 namespace NSGameplayTags
 {
 	// Types
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Type_None);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Type_Augment);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Type_Currency);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Type_Part);
+	
+	// Drop Groups
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_DropGroup_Currency);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_DropGroup_Part);
 	
 	// Rewards
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Trigger_NormalKill);
