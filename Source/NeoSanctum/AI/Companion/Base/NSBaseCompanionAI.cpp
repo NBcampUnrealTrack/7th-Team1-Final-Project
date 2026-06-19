@@ -6,7 +6,12 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Engine/AssetManager.h"
+#include "Engine/StreamableManager.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
+#include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
+#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
@@ -70,6 +75,14 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	
 	CachedAIController = DroneAIController;
 	
+	GetWorldTimerManager().SetTimer(
+		CheckDistanceToOwnerTimer,
+		this,
+		&ANSBaseCompanionAI::CheckDistanceToOwner,
+		0.25f,
+		true);
+	
+	
 	InitAbilityActorInfo();
 	InitializeDefaultStats();
 	GiveDefaultAbilities();
@@ -97,6 +110,40 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 	FVector SteeringDirection = ChooseSteeringDirection();  
   
 	AddMovementInput(SteeringDirection, 1.0f);
+}
+
+void ANSBaseCompanionAI::CheckDistanceToOwner()
+{
+	if (!OwnerPlayer) return;
+	
+	// 오너와 거리 계산
+	if (FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation()) > FMath::Square(MaxDistance))
+	{
+		// 오너 쪽 순간이동
+		// @TODO 민재 : 재화 탐색으로 인한 거리 멀어질시 텔포x
+		TeleportToOwner();
+	}
+}
+
+void ANSBaseCompanionAI::TeleportToOwner()
+{
+	// 서버 및 오너 존재 체크
+	if (!HasAuthority() || !OwnerPlayer) return;
+	
+	// Owner도착 지점 값 가져오기
+	const FVector Target = OwnerPlayer->GetActorLocation();
+	
+	// 텔레포트전 이동속도 0 세팅
+	if (FloatingPawnMovementComponent)
+	{
+		FloatingPawnMovementComponent->Velocity = FVector::ZeroVector;
+	}
+	
+	// 텔레포트 적용
+	SetActorLocation(Target, false, nullptr, ETeleportType::TeleportPhysics);
+	
+	bHasValidGround = false;
+	
 }
 
 void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
@@ -159,6 +206,112 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 	}
 	
 	bDefaultAbilitiesGranted = true;
+}
+
+void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition)
+{
+	if (!HasAuthority() || !NewDefinition) return;
+	if (CurrentDefinition == NewDefinition) return;
+	if (!IsValid(NewDefinition->AbilitySet)) return;
+	
+	CurrentAbilityHandles.TakeFromAbilitySystem(AbilitySystemComponent);
+	
+	NewDefinition->AbilitySet->GiveToAbilitySystem(AbilitySystemComponent, &CurrentAbilityHandles, this);
+	
+	FGameplayEffectContextHandle ContextHandle =
+	AbilitySystemComponent->MakeEffectContext();
+	
+	FGameplayEffectSpecHandle SpecHandle =
+		AbilitySystemComponent->MakeOutgoingSpec(
+		NewDefinition->DefaultStatsEffect,
+		1.f,
+		ContextHandle
+		);
+	
+	if (SpecHandle.IsValid())
+	{
+		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
+	
+	if (NewDefinition->CompanionMesh.Get() != nullptr)
+	{
+		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
+	}
+	else
+	{
+		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->CompanionMesh;
+		
+		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+		StreamableManager.RequestAsyncLoad(
+			MeshToLoad.ToSoftObjectPath(),
+			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad, NewDefinition]()
+			{
+				if (NewDefinition != CurrentDefinition) return;
+				
+				if (USkeletalMesh* Loaded = MeshToLoad.Get())
+				{
+					SkeletalMeshComponent->SetSkeletalMesh(Loaded);
+				}
+			})
+		);
+	}
+	
+	CurrentDefinition = NewDefinition;
+}
+
+void ANSBaseCompanionAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
+{
+	// 서버 체크
+	if (!HasAuthority() || !CurrentDefinition) return;
+	
+	// 현재 업그레이드 정보 받아오기 순회
+	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CurrentDefinition->UpgradeNodes)
+	{
+		// 업그레이드가 존재하는 노드 태그 찾기
+		if (CurrentUpgradeNode.NodeTag != NodeTag) continue;
+		
+		// 들어온 업그레이드 레벨 값 정상화 방어 코드
+		NewLevel = FMath::Clamp(NewLevel, 0, CurrentUpgradeNode.MaxLevel);
+		// 실제 적용 수치 
+		float ApplyStat = NewLevel * CurrentUpgradeNode.MagnitudePerLevel;
+		
+		// 현재 적용중인 업그레이드 수치가 있는지 확인
+		if (FActiveGameplayEffectHandle* BeforeEffectHandle = StatUpgradeHandles.Find(CurrentUpgradeNode.NodeTag))
+		{
+			// 있다면 모두 제거
+			AbilitySystemComponent->RemoveActiveGameplayEffect(*BeforeEffectHandle);
+		}
+		
+		if (NewLevel == 0)
+		{
+			StatUpgradeHandles.Remove(CurrentUpgradeNode.NodeTag);
+			break;
+		}
+		
+		// 새로운 contextHandle
+		FGameplayEffectContextHandle ContextHandle =
+				AbilitySystemComponent->MakeEffectContext();
+			
+		// 새로운 SpecHandle
+		FGameplayEffectSpecHandle UpgradeSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+		CurrentUpgradeNode.UpgradeEffect,
+		NewLevel,
+		ContextHandle);
+			
+		// SpecHandle을 만드는데 성공했다면
+		if (UpgradeSpecHandle.IsValid())
+		{
+			// setsetbycaller로 값 저장 후 현재 업그레이드 Map에 추가
+			UpgradeSpecHandle.Data->SetSetByCallerMagnitude(CurrentUpgradeNode.SetByCallerTag, ApplyStat);
+			
+			StatUpgradeHandles.Add(
+			NodeTag,
+			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*UpgradeSpecHandle.Data.Get())
+			);
+		}
+		
+		break;
+	}
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)

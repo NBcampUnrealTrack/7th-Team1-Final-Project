@@ -6,16 +6,16 @@
 #include "GameFramework/Pawn.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NSBaseCompanionAI.generated.h"
 
+class UNSCompanionDefinition;
 class UGameplayEffect;
 class UNSCompanionAttributeSet;
 class USphereComponent;
 class USkeletalMeshComponent;
 class UFloatingPawnMovement;
 class ANSDroneAIController;
-
-
 
 UCLASS()
 class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
@@ -37,8 +37,24 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	// @민재 : 드론 움직임 함수 BT연동
-	UFUNCTION(BlueprintCallable, Category = "Drone|Movement")
+	UFUNCTION()
 	void MoveTowards(const FVector& TargetLocation);
+	
+#pragma region 일정거리 멀어질시 순간이동
+	
+	UFUNCTION()
+	void CheckDistanceToOwner();
+	
+	UFUNCTION()
+	void TeleportToOwner();
+	
+protected:
+	FTimerHandle CheckDistanceToOwnerTimer;
+	
+	UPROPERTY(EditDefaultsOnly, Category="DroneAI")
+	float MaxDistance = 500.f;
+	
+#pragma endregion
 	
 protected:
 	// @민재 : 고도유지 이동관련 함수
@@ -188,4 +204,26 @@ public:
 protected:
 	UPROPERTY(VisibleAnywhere, Category="GAS|WeakPtr")
 	TWeakObjectPtr<AActor> CurrentEnemy;
+	
+#pragma region DataDriven
+	
+public:
+	void ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition);
+	
+	void ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel);
+	
+protected:
+	// 현재 드론이 보유중인 어빌리티 정보
+	UPROPERTY() 
+	FNSCompanionAbilitySet_GrantedHandles CurrentAbilityHandles;
+	
+	// 현재 드론이 적용 되어있는 능력치
+	UPROPERTY() 
+	TObjectPtr<UNSCompanionDefinition> CurrentDefinition;
+	
+	// 단계별 업그레이드가 저장되어있는 MAP
+	UPROPERTY()
+	TMap<FGameplayTag, FActiveGameplayEffectHandle> StatUpgradeHandles;
+	
+#pragma endregion
 };
