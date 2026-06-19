@@ -26,5 +26,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_MuzzleFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_Impact);
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_Deactivate)
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpeedBuff);
 }
