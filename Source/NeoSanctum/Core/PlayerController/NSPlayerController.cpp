@@ -17,6 +17,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
@@ -166,6 +167,19 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
+	
+	ASC->GetGameplayAttributeValueChangeDelegate(
+	UNSPlayerAttributeSet::GetAmmoAttribute()
+).AddUObject(this, &ANSPlayerController::OnAmmoChanged);
+
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSPlayerAttributeSet::GetMaxAmmoAttribute()
+	).AddUObject(this, &ANSPlayerController::OnMaxAmmoChanged);
+	
+	ASC->RegisterGameplayTagEvent(
+	NSGameplayTags::State_Reloading,
+	EGameplayTagEventType::NewOrRemoved
+).AddUObject(this, &ANSPlayerController::OnReloadingTagChanged);
 	
 	bHUDAttributeBound = true;
 }
@@ -393,6 +407,74 @@ void ANSPlayerController::Debug_ForceRunClear()
 	Server_DebugForceRunClear();
 }
 
+void ANSPlayerController::UpdateHUDAmmo()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	const UNSPlayerAttributeSet* PlayerAttributeSet =
+		NSPlayerState->GetPlayerAttributeSet();
+	if (!PlayerAttributeSet)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	UIManager->UpdateAmmo(
+		FMath::FloorToInt(PlayerAttributeSet->GetAmmo()),
+		FMath::FloorToInt(PlayerAttributeSet->GetMaxAmmo()));
+}
+
+void ANSPlayerController::OnAmmoChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDAmmo();
+}
+
+void ANSPlayerController::OnMaxAmmoChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDAmmo();
+}
+
+void ANSPlayerController::OnReloadingTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	UIManager->SetReloading(NewCount > 0);
+
+	if (NewCount <= 0)
+	{
+		UpdateHUDAmmo();
+	}
+}
+
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -480,6 +562,7 @@ void ANSPlayerController::BeginPlay()
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
+	UpdateHUDAmmo();
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -543,14 +626,19 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//캐릭터가 새로 배치되었으니 체력/실드 등 GAS 어트리뷰트 값을 HUD에 연동
 		BindAttributeToHUD();
 		UpdateHUDHealthAndShield();
+		UpdateHUDAmmo();
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
+		GetWorldTimerManager().SetTimerForNextTick(
+	this,
+	&ANSPlayerController::UpdateHUDAmmo);
 	}
 	if (MapName.Contains(TEXT("HideOut")))
 	{
 		// 클라가 CachedData 읽어 ChangeCharacterData로 적용
 		RestoreLastSelectedCharacter();
+		
 	}
 }
 

@@ -168,6 +168,17 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugForceRunClear();
 
+	//현재 탄약 값을 읽어 HUD에 반영
+	void UpdateHUDAmmo();
+
+	//탄약 변경시 갱신
+	void OnAmmoChanged(const FOnAttributeChangeData& Data);
+
+	//최대 탄약 변경시 갱신
+	void OnMaxAmmoChanged(const FOnAttributeChangeData& Data);
+	
+	//리로드 태그 변경시 탄약 UI 상태 갱신
+	void OnReloadingTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	
 private:
 	//캐릭터 선택 위젯 클래스
