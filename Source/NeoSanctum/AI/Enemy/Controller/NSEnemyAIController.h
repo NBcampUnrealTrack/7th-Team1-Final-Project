@@ -8,6 +8,8 @@
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
+class UNSEnemyData;
+class ANSEnemyCharacterBase;
 struct FNSEnemyAttackDefinition;
 
 UCLASS()
@@ -81,4 +83,23 @@ private:
 	
 	// AttackId별 마지막 사용 시간
 	TMap<FName, float> LastAttackTimeById;
+	
+private:
+	void UpdateRetreatState(
+	const ANSEnemyCharacterBase* Enemy,
+	const AActor* TargetActor);
+
+	float GetMinimumAttackRange(const UNSEnemyData* EnemyData) const;
+
+	FName ShouldRetreatKey = TEXT("bShouldRetreat");
+	FName RetreatLocationKey = TEXT("RetreatLocation");
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatExitBuffer = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatStepDistance = 250.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatDestinationAcceptanceRadius = 75.0f;
 };
