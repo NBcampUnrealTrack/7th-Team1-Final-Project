@@ -3,10 +3,12 @@
 
 #include "NSRewardHandler.h"
 
+#include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -57,7 +59,7 @@ void UNSRewardHandler::HandleRewardTrigger(
 		return;
 	}
 	
-	HandleRewardEntries(*RewardTriggerData, TriggerTag);
+	HandleRewardEntries(World, *RewardTriggerData, TriggerTag);
 	
 	if (RewardTriggerData->DropTable.IsNull())
 	{
@@ -90,7 +92,9 @@ void UNSRewardHandler::HandleRewardTrigger(
 }
 
 void UNSRewardHandler::HandleRewardEntries(
-	const UNSRewardTriggerData& RewardTriggerData, const FGameplayTag& TriggerTag)
+	UWorld* World,
+	const UNSRewardTriggerData& RewardTriggerData,
+	const FGameplayTag& TriggerTag)
 {
 	for (const FNSRewardEntry& RewardEntry : RewardTriggerData.RewardEntries)
 	{
@@ -101,10 +105,10 @@ void UNSRewardHandler::HandleRewardEntries(
 		
 		if (RewardEntry.RewardTypeTag == NSGameplayTags::Reward_Type_Augment)
 		{
-			NS_LOG(LogNS, Log,
-				"Augment RewardEntry가 감지되었습니다. TriggerTag={TriggerTag}, AugmentPool={AugmentPool}",
-				("TriggerTag", TriggerTag.ToString()),
-				("AugmentPool", RewardEntry.AugmentPool.ToSoftObjectPath().ToString())
+			HandleAugmentRewardEntry(
+				World,
+				RewardEntry,
+				TriggerTag
 			);
 			continue;
 		}
@@ -115,6 +119,85 @@ void UNSRewardHandler::HandleRewardEntries(
 			("RewardType", RewardEntry.RewardTypeTag.ToString())
 		);
 	}
+}
+
+
+void UNSRewardHandler::HandleAugmentRewardEntry(
+	UWorld* World,
+	const FNSRewardEntry& RewardEntry,
+	const FGameplayTag& TriggerTag)
+{
+	if (!World)
+	{
+		return;
+	}
+	
+	if (RewardEntry.AugmentPool.IsNull())
+	{
+		NS_LOG(LogNS, Warning,
+			"Augment RewardEntry의 AugmentPool이 비어 있습니다. TriggerTag={TriggerTag}",
+			("TriggerTag", TriggerTag.ToString())
+		);
+		return;
+	}
+	
+	// Run 데이터 선로드가 보장되지 않는 테스트 상황에서도 PoolTag 확인을 위해 fallback으로 동기 로드
+	UNSAugmentPoolDefinition* AugmentPool = RewardEntry.AugmentPool.Get();
+	
+	if (!AugmentPool)
+	{
+		AugmentPool = RewardEntry.AugmentPool.LoadSynchronous();
+	}
+	
+	if (!AugmentPool)
+	{
+		NS_LOG(LogNS, Warning,
+			"AugmentPool을 로드할 수 없습니다. TriggerTag={TriggerTag}, AugmentPool={AugmentPool}",
+			("TriggerTag", TriggerTag.ToString()),
+			("AugmentPool", RewardEntry.AugmentPool.ToSoftObjectPath().ToString())
+		);
+		return;
+	}
+	
+	if (!AugmentPool->PoolTag.IsValid())
+	{
+		NS_LOG(LogNS, Warning,
+			"AugmentPool의 PoolTag가 유효하지 않습니다. TriggerTag={TriggerTag}, AugmentPool={AugmentPool}",
+			("TriggerTag", TriggerTag.ToString()),
+			("AugmentPool", GetNameSafe(AugmentPool))
+		);
+		return;
+	}
+	
+	int32 EnqueuedCount = 0;
+	
+	// 협동 보상 기준으로 모든 플레이어에게 동일한 증강 선택권을 지급
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PlayerController = Iterator->Get();
+		if (!PlayerController)
+		{
+			continue;
+		}
+		
+		UNSAugmentSelectionComponent* AugmentSelectionComponent =
+			PlayerController->FindComponentByClass<UNSAugmentSelectionComponent>();
+		
+		if (!AugmentSelectionComponent)
+		{
+			continue;
+		}
+		
+		AugmentSelectionComponent->EnqueueOffer(AugmentPool->PoolTag);
+		++EnqueuedCount;
+	}
+	
+	NS_LOG(LogNS, Log,
+		"Augment 보상 선택권을 적재했습니다. TriggerTag={TriggerTag}, PoolTag={PoolTag}, PlayerCount={PlayerCount}",
+		("TriggerTag", TriggerTag.ToString()),
+		("PoolTag", AugmentPool->PoolTag.ToString()),
+		("PlayerCount", EnqueuedCount)
+	);
 }
 
 void UNSRewardHandler::HandleDropResults(

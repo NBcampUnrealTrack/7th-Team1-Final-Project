@@ -33,7 +33,11 @@ public:
 	);
 	
 private:
-	static void HandleRewardEntries(const UNSRewardTriggerData& RewardTriggerData, const FGameplayTag& TriggerTag);
+	static void HandleRewardEntries(
+		UWorld* World,
+		const UNSRewardTriggerData& RewardTriggerData, 
+		const FGameplayTag& TriggerTag
+	);
 	
 	static void HandleDropResults(
 		UWorld* World,
@@ -42,6 +46,12 @@ private:
 		FRandomStream& RandomStream,
 		TSubclassOf<ANSDroppedPart> DroppedPartClass,
 		float CurrencyDropDuration
+	);
+	
+	static void HandleAugmentRewardEntry(
+		UWorld* World,
+		const FNSRewardEntry& RewardEntry,
+		const FGameplayTag& TriggerTag
 	);
 	
 	static void HandleCurrencyDropResult(
