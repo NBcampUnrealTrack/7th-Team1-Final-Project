@@ -70,7 +70,7 @@ void UNSPlayerProgressComponent::BuildPayload(FNSProgressPayload& OutPayload) co
 
 	OutPayload.ActiveCharacterId = ActiveCharacterId;
 	OutPayload.JobCurrency = JobCurrency;
-	OutPayload.EquippedPartIds = EquippedPartIds;
+	OutPayload.EquippedPart = EquippedPart;
 	ConvertMapToArray(CharacterSkillLevels, OutPayload.CharacterSkillLevels);
 }
 
@@ -83,6 +83,6 @@ void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
 
 	ActiveCharacterId = Payload.ActiveCharacterId;
 	JobCurrency = Payload.JobCurrency;
-	EquippedPartIds = Payload.EquippedPartIds;
+	EquippedPart = Payload.EquippedPart;
 	ConvertArrayToMap(Payload.CharacterSkillLevels, CharacterSkillLevels);
 }
