@@ -349,15 +349,16 @@ void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
 		return;
 	}
 
-	FVector BoundsOrigin = TargetActor->GetActorLocation();
-	FVector BoundsExtent = FVector::ZeroVector;
-	TargetActor->GetActorBounds(true, BoundsOrigin, BoundsExtent);
+	FVector AimBoundsOrigin = TargetActor->GetActorLocation();
+	FVector AimBoundsExtent = FVector::ZeroVector;
+	
+	if (const UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(TargetActor->GetRootComponent()))
+	{
+		AimBoundsOrigin = RootPrimitive->Bounds.Origin;
+		AimBoundsExtent = RootPrimitive->Bounds.BoxExtent;
+	}
 
-	CombatAimTargetLocation = BoundsOrigin + FVector(
-		0.0f,
-		0.0f,
-		BoundsExtent.Z * AimTargetZOffsetRatio
-	);
+	CombatAimTargetLocation = AimBoundsOrigin + FVector::UpVector * (AimBoundsExtent.Z * AimTargetZOffsetRatio);
 
 	bHasCombatAimTarget = true;
 }
