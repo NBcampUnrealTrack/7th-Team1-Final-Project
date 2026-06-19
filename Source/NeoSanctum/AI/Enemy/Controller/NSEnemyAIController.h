@@ -8,6 +8,8 @@
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
+class UNSEnemyData;
+class ANSEnemyCharacterBase;
 struct FNSEnemyAttackDefinition;
 
 UCLASS()
@@ -70,7 +72,7 @@ protected:
 
 	// 타겟을 정면으로 바라봤다고 판정할 최대 각도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI|Combat", meta = (ClampMin = "0.0", ClampMax = "90.0"))
-	float AttackFacingAngleDegrees = 12.0f;
+	float AttackFacingAngleDegrees = 2.0f;
 
 private:
 	// 타겟 액터
@@ -81,4 +83,21 @@ private:
 	
 	// AttackId별 마지막 사용 시간
 	TMap<FName, float> LastAttackTimeById;
+	
+private:
+	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
+
+	float GetMinimumAttackRange(const UNSEnemyData* EnemyData) const;
+
+	FName ShouldRetreatKey = TEXT("bShouldRetreat");
+	FName RetreatLocationKey = TEXT("RetreatLocation");
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatExitBuffer = 100.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatStepDistance = 250.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
+	float RetreatDestinationAcceptanceRadius = 75.0f;
 };

@@ -88,7 +88,34 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 
 	const FVector StartLocation = MuzzleTransform.GetLocation();
 	const FVector Direction = MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+	
+	/* // 디버그
+	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
+	
+	const FVector DesiredDirection =
+	(Enemy->GetCombatAimTargetLocation() - StartLocation).GetSafeNormal();
 
+	DrawDebugLine(
+		GetWorld(),
+		StartLocation,
+		StartLocation + MuzzleForward * 1000.0f,
+		FColor::Red,
+		false,
+		1.0f,
+		0,
+		3.0f);
+
+	DrawDebugLine(
+		GetWorld(),
+		StartLocation,
+		StartLocation + DesiredDirection * 1000.0f,
+		FColor::Green,
+		false,
+		1.0f,
+		0,
+		3.0f);
+	*/
+	
 	if (Direction.IsNearlyZero())
 	{
 		return;

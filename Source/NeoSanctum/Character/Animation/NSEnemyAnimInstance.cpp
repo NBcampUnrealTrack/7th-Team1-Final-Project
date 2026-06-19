@@ -48,13 +48,24 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		
 		// LaunchCharacter가 실행되면 MovementMode가 Falling으로 변경됨
 		bIsInAir = MovementComponent->IsFalling();
+		
+		const FVector LocalVelocity = EnemyCharacter->GetActorTransform().InverseTransformVectorNoScale(Velocity);
+
+		LocalForwardSpeed = LocalVelocity.X - 300.0f;
+
+		const bool bActuallyMovingBackward = LocalForwardSpeed < -MovingSpeedThreshold;
+
+		bIsRetreating = EnemyCharacter->IsRetreating() && bActuallyMovingBackward && !bIsInAir;
 	}
 	else
 	{
 		GroundSpeed = 0.0f;
 		VerticalVelocity = 0.0f;
+		LocalForwardSpeed = 0.0f;
+		
 		bIsMoving = false;
 		bIsInAir = false;
+		bIsRetreating = false;
 	}
 
 	UpdateAimRotation(DeltaSeconds);
@@ -162,53 +173,87 @@ void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
 
 		if (!ToTarget.IsNearlyZero())
 		{
-			const float Distance2D = ToTarget.Size2D();
-
-			TargetAlpha = FMath::GetMappedRangeValueClamped(
-				FVector2D(100.0f, 400.0f),
-				FVector2D(0.0f, 1.0f),
-				Distance2D
-			);
-			
 			const FRotator WorldAimRotation = ToTarget.Rotation();
+			
+			const FRotator ReferenceRotation(0.0f, EnemyCharacter->GetActorRotation().Yaw, 0.0f);
+
+			const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+				WorldAimRotation,
+				ReferenceRotation);
+
+			TargetPitch = FMath::Clamp(LocalAimRotation.Pitch, -MaxAimPitch, MaxAimPitch);
+			
+			const float RawTargetYaw = LocalAimRotation.Yaw;
+			float CorrectedTargetYaw = RawTargetYaw;
+
 			if (IsValid(CurrentWeapon) &&
-			    CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
+				CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
 			{
-			    // 실제 총구 방향과 목표 방향 사이에 남은 오차
-			    const FRotator AimError = UKismetMathLibrary::NormalizedDeltaRotator(
-			    	WorldAimRotation,
-			    	MuzzleTransform.GetRotation().Rotator());
-				
-			    TargetPitch = FMath::Clamp(
-			        AimPitch + AimError.Pitch,
-			        -MaxAimPitch,
-			        MaxAimPitch);
+				const float MuzzleRelativeYaw = FRotator::NormalizeAxis(
+					MuzzleTransform.Rotator().Yaw -
+					ReferenceRotation.Yaw);
 
-			    TargetYaw = FMath::Clamp(
-			        AimYaw + AimError.Yaw,
-			        -MaxAimYaw,
-			        MaxAimYaw);
+				// 현재 AimYaw를 제외한 애니메이션 자체의 총구 편차를 추정
+				float AnimationYawOffset = FRotator::NormalizeAxis(
+					MuzzleRelativeYaw - AimYaw);
+
+				if (FMath::Abs(AnimationYawOffset) <
+					MuzzleYawErrorDeadZone)
+				{
+					AnimationYawOffset = 0.0f;
+				}
+
+				AnimationYawOffset = FMath::Clamp(
+					AnimationYawOffset,
+					-MaxMuzzleYawCorrection,
+					MaxMuzzleYawCorrection);
+
+				// 총구가 오른쪽으로 벗어나면 AimYaw를 왼쪽으로 보정
+				CorrectedTargetYaw -=
+					AnimationYawOffset * MuzzleYawCorrectionGain;
 			}
-			else
-			{
-			    const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
-			            WorldAimRotation,
-			            EnemyCharacter->GetActorRotation());
 
-			    TargetPitch = FMath::Clamp(
-			        LocalAimRotation.Pitch,
-			        -MaxAimPitch,
-			        MaxAimPitch);
+			TargetYaw = FMath::Clamp(
+				CorrectedTargetYaw,
+				-MaxAimYaw,
+				MaxAimYaw);
 
-			    TargetYaw = FMath::Clamp(
-			        LocalAimRotation.Yaw,
-			        -MaxAimYaw,
-			        MaxAimYaw);
-			}
+			TargetAlpha = 1.0f;
+		}
+	}
+
+	constexpr float AimDeadZoneDegrees = 0.35f;
+
+	if (TargetAlpha > 0.0f)
+	{
+		if (FMath::Abs(TargetPitch - AimPitch) < AimDeadZoneDegrees)
+		{
+			TargetPitch = AimPitch;
+		}
+
+		if (FMath::Abs(TargetYaw - AimYaw) < AimDeadZoneDegrees)
+		{
+			TargetYaw = AimYaw;
 		}
 	}
 
 	AimPitch = FMath::FInterpTo(AimPitch, TargetPitch, DeltaSeconds, AimInterpSpeed);
-	AimYaw = FMath::FInterpTo(AimYaw, TargetYaw, DeltaSeconds, AimInterpSpeed);
+	AimYaw = FMath::FInterpTo(AimYaw, 0.0f, DeltaSeconds, AimInterpSpeed);
 	AimAlpha = FMath::FInterpTo(AimAlpha, TargetAlpha, DeltaSeconds, AimInterpSpeed);
+	
+	auto MakeWeightedAimRotation =
+	[this](float PitchWeight, float YawWeight)
+	{
+		return FRotator(
+			0.0f,
+			AimYaw * AimYawScale * YawWeight,
+			AimPitch * AimPitchScale * PitchWeight);
+	};
+
+	// 각 축의 가중치 합계가 약 1.0이 되도록 분배
+	Spine01AimRotation = MakeWeightedAimRotation(0.15f, 0.0f);
+	Spine02AimRotation = MakeWeightedAimRotation(0.25f, 0.0f);
+	Spine03AimRotation = MakeWeightedAimRotation(0.30f, 0.0f);
+	ClavicleAimRotation = MakeWeightedAimRotation(0.20f, 0.0f);
+	UpperArmAimRotation = MakeWeightedAimRotation(0.10f, 0.0f);
 }

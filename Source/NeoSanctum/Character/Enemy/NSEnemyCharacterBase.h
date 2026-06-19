@@ -140,4 +140,12 @@ public:
 private:
 	// NavLink 점프로 인한 착지인지 확인 (일반 착지엔 NavMesh 보정 개입 X)
 	bool bNavLinkJumping = false;
+	
+public:
+	void SetRetreating(bool bInRetreating);
+	bool IsRetreating() const { return bIsRetreating; }
+
+protected:
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Movement")
+	bool bIsRetreating = false;
 };

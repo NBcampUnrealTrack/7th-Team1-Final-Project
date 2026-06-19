@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
+#include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -39,6 +40,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		if (Enemy)
 		{
 			Enemy->UpdateCombatAimTarget(TargetActor);
+			UpdateRetreatState(Enemy, TargetActor);
 		}
 	}
 	else
@@ -48,6 +50,13 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		if (Enemy)
 		{
 			Enemy->ClearCombatAimTarget();
+			Enemy->SetRetreating(false);
+		}
+		
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+			CachedBBComp->ClearValue(RetreatLocationKey);
 		}
 	}
 
@@ -377,4 +386,111 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 	}
 
 	return true;
+}
+
+void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor)
+{
+	if (!CachedBBComp || !Enemy || !IsValid(TargetActor))
+	{
+		return;
+	}
+
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	const float MinRange = GetMinimumAttackRange(EnemyData);
+
+	// Melee Attack인 경우
+	if (MinRange <= 0.0f)
+	{
+		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+		CachedBBComp->ClearValue(RetreatLocationKey);
+		Enemy->SetRetreating(false);
+		return;
+	}
+
+	const FVector EnemyLocation = Enemy->GetActorLocation();
+	const FVector TargetLocation = TargetActor->GetActorLocation();
+
+	const float Distance = FVector::Dist(
+		EnemyLocation,
+		TargetLocation);
+
+	const bool bWasRetreating = CachedBBComp->GetValueAsBool(ShouldRetreatKey);
+
+	// 경계에서 전진/후퇴 반복 방지
+	const float ExitRange = MinRange + RetreatExitBuffer;
+
+	const bool bShouldRetreat = bWasRetreating
+		? Distance < ExitRange
+		: Distance < MinRange;
+
+	CachedBBComp->SetValueAsBool(ShouldRetreatKey, bShouldRetreat);
+	
+	Enemy->SetRetreating(bShouldRetreat);
+
+	if (!bShouldRetreat)
+	{
+		CachedBBComp->ClearValue(RetreatLocationKey);
+		return;
+	}
+
+	const FVector CurrentDestination = CachedBBComp->GetValueAsVector(RetreatLocationKey);
+
+	const bool bDestinationReached = FVector::DistSquared2D(
+			EnemyLocation,
+			CurrentDestination) <= FMath::Square(RetreatDestinationAcceptanceRadius);
+	
+	const bool bHasRetreatDestination = CachedBBComp->IsVectorValueSet(RetreatLocationKey);
+	
+	// 처음 후퇴 시 / 기존 후퇴 지점 도착 시
+	if (bWasRetreating && bHasRetreatDestination && !bDestinationReached)
+	{
+		return;
+	}
+
+	FVector AwayDirection = (EnemyLocation - TargetLocation).GetSafeNormal2D();
+
+	if (AwayDirection.IsNearlyZero())
+	{
+		AwayDirection = -Enemy->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	const float RequiredDistance = FMath::Max(
+	ExitRange - Distance,
+	RetreatStepDistance);
+
+	const FVector DesiredLocation = EnemyLocation + AwayDirection * RequiredDistance;
+
+	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+
+	FNavLocation ProjectedLocation;
+
+	if (NavigationSystem &&
+		NavigationSystem->ProjectPointToNavigation(DesiredLocation, ProjectedLocation))
+	{
+		CachedBBComp->SetValueAsVector(RetreatLocationKey, ProjectedLocation.Location);
+	}
+}
+
+float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData) const
+{
+	if (!EnemyData)
+	{
+		return 0.0f;
+	}
+
+	float MinimumRange = TNumericLimits<float>::Max();
+	bool bFoundAttack = false;
+
+	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	{
+		if (!Attack.AbilityClass)
+		{
+			continue;
+		}
+
+		bFoundAttack = true;
+		MinimumRange = FMath::Min(MinimumRange, Attack.Condition.MinRange);
+	}
+
+	return bFoundAttack ? MinimumRange : 0.0f;
 }

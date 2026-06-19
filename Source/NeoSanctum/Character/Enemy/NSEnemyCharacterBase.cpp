@@ -71,6 +71,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -102,6 +103,7 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		SetRetreating(false);
 		ClearCurrentAttackDefinition();
 		ClearCombatAimTarget();
 		ApplyDeadVisual();
@@ -349,15 +351,16 @@ void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
 		return;
 	}
 
-	FVector BoundsOrigin = TargetActor->GetActorLocation();
-	FVector BoundsExtent = FVector::ZeroVector;
-	TargetActor->GetActorBounds(true, BoundsOrigin, BoundsExtent);
+	FVector AimBoundsOrigin = TargetActor->GetActorLocation();
+	FVector AimBoundsExtent = FVector::ZeroVector;
+	
+	if (const UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(TargetActor->GetRootComponent()))
+	{
+		AimBoundsOrigin = RootPrimitive->Bounds.Origin;
+		AimBoundsExtent = RootPrimitive->Bounds.BoxExtent;
+	}
 
-	CombatAimTargetLocation = BoundsOrigin + FVector(
-		0.0f,
-		0.0f,
-		BoundsExtent.Z * AimTargetZOffsetRatio
-	);
+	CombatAimTargetLocation = AimBoundsOrigin + FVector::UpVector * (AimBoundsExtent.Z * AimTargetZOffsetRatio);
 
 	bHasCombatAimTarget = true;
 }
@@ -394,7 +397,8 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsDead = false;
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
-
+	
+	SetRetreating(false);
 	SetActorLocationAndRotation(
 		SpawnLocation,
 		SpawnRotation,
@@ -427,6 +431,8 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	}
 
 	bIsInPool = true;
+	SetRetreating(false);
+	
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 
@@ -531,4 +537,14 @@ void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
 
 	bNavLinkJumping = true;
 	LaunchCharacter(LaunchVelocity, true, true); // XY/Z Override
+}
+
+void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
+{
+		if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsRetreating = bInRetreating;
 }
