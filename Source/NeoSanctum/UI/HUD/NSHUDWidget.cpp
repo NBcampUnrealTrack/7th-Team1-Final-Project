@@ -7,6 +7,7 @@
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
+#include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -162,4 +163,22 @@ void UNSHUDWidget::RequestRerollAugment()
 
 	AugmentationWidget->RequestRerollAugment();
 }
+void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (!AmmoWidget)
+	{
+		return;
+	}
 
+	AmmoWidget->SetAmmo(CurrentAmmo, MaxAmmo);
+}
+
+void UNSHUDWidget::SetReloading(bool bReloading)
+{
+	if (!AmmoWidget)
+	{
+		return;
+	}
+
+	AmmoWidget->SetReloading(bReloading);
+}

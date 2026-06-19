@@ -11,6 +11,7 @@ class UNSGoodsWidget;
 class UNSCrosshairWidget;
 class UNSAugmentationWidget;
 class UNSPartPanelWidget;
+class UNSAmmoWidget;
 
 
 /**
@@ -67,6 +68,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void CloseRunBuildPanel();
 	
+	//탄약 UI 갱신
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo);
+	
+	//리로드 상태 UI 갱신
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetReloading(bool bReloading);
+	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
@@ -86,5 +95,8 @@ private:
 	//파츠 장착 상태 HUD 위젯
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSPartPanelWidget> PartPanelWidget;
+	//탄약 HUD 위젯
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSAmmoWidget> AmmoWidget;
 	
 };
