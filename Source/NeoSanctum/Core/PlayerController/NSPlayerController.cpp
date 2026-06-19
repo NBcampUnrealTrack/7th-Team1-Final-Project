@@ -1315,13 +1315,13 @@ void ANSPlayerController::TryInteract()
 		{
 			continue;
 		}
-		UNSInteractionComponent* InteractionComp =
-			Actor->FindComponentByClass<UNSInteractionComponent>();
-		if (InteractionComp && InteractionComp->CanInteract())
-		{
-			InteractionComp->Interact(this);
-			return;
-		}
+		// UNSInteractionComponent* InteractionComp =
+		// 	Actor->FindComponentByClass<UNSInteractionComponent>();
+		// if (InteractionComp && InteractionComp->CanInteract())
+		// {
+		// 	InteractionComp->Interact(this);
+		// 	return;
+		// }
 	}
 }
 
