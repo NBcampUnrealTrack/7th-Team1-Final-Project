@@ -1153,7 +1153,6 @@ void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPa
 		FNSCharacterSaveData& CharacterSlot =
 			PermanentSave->Characters.FindOrAdd(Payload.ActiveCharacterId);
 		CharacterSlot.JobCurrency = Payload.JobCurrency;
-		CharacterSlot.EquippedPartIds = Payload.EquippedPartIds;
 		CharacterSlot.CharacterSkillLevels.Reset();
 		for (const FNSNodeLevel& NodeLevel : Payload.CharacterSkillLevels)
 		{
@@ -1212,7 +1211,20 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 	if (CharacterSlot)
 	{
 		Payload.JobCurrency = CharacterSlot->JobCurrency;
-		Payload.EquippedPartIds = CharacterSlot->EquippedPartIds;
+		// 캐릭터 장착 참조(정의,등급)로 계정 인벤토리에서 풀 데이터(값,강화) 해석
+		if (CharacterSlot && !CharacterSlot->EquippedPartDefinition.IsNull())
+		{
+			const FNSPartSaveData* Owned = PermanentSave->OwnedParts.FindByPredicate(
+				[CharacterSlot](const FNSPartSaveData& P)
+				{
+					return P.Definition == CharacterSlot->EquippedPartDefinition
+						&& P.Rarity == CharacterSlot->EquippedPartRarity;
+				});
+			if (Owned)
+			{
+				Payload.EquippedPart = *Owned;
+			}
+		}
 		for (const TPair<FName, int32>& SkillPair : CharacterSlot->CharacterSkillLevels)
 		{
 			FNSNodeLevel NodeLevel;
