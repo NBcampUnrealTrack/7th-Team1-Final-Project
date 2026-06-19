@@ -11,10 +11,11 @@ ANSBarrier::ANSBarrier()
 	PrimaryActorTick.bCanEverTick = false;
 
 	bReplicates = true;
-	SetReplicateMovement(true);
+	SetReplicateMovement(false);
 
 	BarrierCollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("BarrierCollisionComponent"));
 	SetRootComponent(BarrierCollisionComponent);
+	CurrentRadius = DefaultRadius;
 	BarrierCollisionComponent->InitSphereRadius(DefaultRadius);
 	BarrierCollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BarrierCollisionComponent->SetGenerateOverlapEvents(false);
@@ -45,12 +46,13 @@ void ANSBarrier::BeginPlay()
 {
 	Super::BeginPlay();
 
-	ApplyRadius(DefaultRadius);
+	ApplyRadius(CurrentRadius);
 }
 
 void ANSBarrier::ApplyRadius(float InRadius)
 {
 	const float Radius = FMath::Max(InRadius, MinimumRadius);
+	CurrentRadius = Radius;
 
 	if (BarrierCollisionComponent)
 	{

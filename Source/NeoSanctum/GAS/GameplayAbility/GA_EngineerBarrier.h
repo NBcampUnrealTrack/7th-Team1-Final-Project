@@ -43,10 +43,11 @@ protected:
 private:
 	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
+	void SpawnBarrierActor(const FGameplayAbilityActorInfo* ActorInfo, float BarrierRadius);
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
-	TObjectPtr<ANSBarrier> BarrierActor;
+	TSubclassOf<ANSBarrier> BarrierClass;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	FGameplayTag AbilityTag;
@@ -56,4 +57,14 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	float MinimumBarrierRadius = 150.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
+	FName AttachSocketName = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
+	FTransform AttachRelativeTransform = FTransform::Identity;
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<ANSBarrier> ActiveBarrier;
 };

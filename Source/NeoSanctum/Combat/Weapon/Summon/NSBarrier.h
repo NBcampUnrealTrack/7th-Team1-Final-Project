@@ -48,6 +48,9 @@ protected:
 
 private:
 	UPROPERTY(Transient)
+	float CurrentRadius = 150.0f;
+
+	UPROPERTY(Transient)
 	TObjectPtr<APawn> OwningPawn;
 
 	UPROPERTY(Transient)
