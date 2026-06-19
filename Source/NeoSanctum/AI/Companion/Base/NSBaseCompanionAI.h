@@ -37,8 +37,24 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	
 	// @민재 : 드론 움직임 함수 BT연동
-	UFUNCTION(BlueprintCallable, Category = "Drone|Movement")
+	UFUNCTION()
 	void MoveTowards(const FVector& TargetLocation);
+	
+#pragma region 일정거리 멀어질시 순간이동
+	
+	UFUNCTION()
+	void CheckDistanceToOwner();
+	
+	UFUNCTION()
+	void TeleportToOwner();
+	
+protected:
+	FTimerHandle CheckDistanceToOwnerTimer;
+	
+	UPROPERTY(EditDefaultsOnly, Category="DroneAI")
+	float MaxDistance = 500.f;
+	
+#pragma endregion
 	
 protected:
 	// @민재 : 고도유지 이동관련 함수

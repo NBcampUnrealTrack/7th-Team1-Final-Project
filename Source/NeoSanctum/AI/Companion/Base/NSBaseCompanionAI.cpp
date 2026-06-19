@@ -6,6 +6,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
@@ -74,6 +75,14 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	
 	CachedAIController = DroneAIController;
 	
+	GetWorldTimerManager().SetTimer(
+		CheckDistanceToOwnerTimer,
+		this,
+		&ANSBaseCompanionAI::CheckDistanceToOwner,
+		0.25f,
+		true);
+	
+	
 	InitAbilityActorInfo();
 	InitializeDefaultStats();
 	GiveDefaultAbilities();
@@ -101,6 +110,40 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 	FVector SteeringDirection = ChooseSteeringDirection();  
   
 	AddMovementInput(SteeringDirection, 1.0f);
+}
+
+void ANSBaseCompanionAI::CheckDistanceToOwner()
+{
+	if (!OwnerPlayer) return;
+	
+	// 오너와 거리 계산
+	if (FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation()) > FMath::Square(MaxDistance))
+	{
+		// 오너 쪽 순간이동
+		// @TODO 민재 : 재화 탐색으로 인한 거리 멀어질시 텔포x
+		TeleportToOwner();
+	}
+}
+
+void ANSBaseCompanionAI::TeleportToOwner()
+{
+	// 서버 및 오너 존재 체크
+	if (!HasAuthority() || !OwnerPlayer) return;
+	
+	// Owner도착 지점 값 가져오기
+	const FVector Target = OwnerPlayer->GetActorLocation();
+	
+	// 텔레포트전 이동속도 0 세팅
+	if (FloatingPawnMovementComponent)
+	{
+		FloatingPawnMovementComponent->Velocity = FVector::ZeroVector;
+	}
+	
+	// 텔레포트 적용
+	SetActorLocation(Target, false, nullptr, ETeleportType::TeleportPhysics);
+	
+	bHasValidGround = false;
+	
 }
 
 void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
@@ -167,8 +210,8 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 
 void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition)
 {
-	if (!HasAuthority() || CurrentDefinition == NewDefinition) return;
-	if (!NewDefinition) return;
+	if (!HasAuthority() || !NewDefinition) return;
+	if (CurrentDefinition == NewDefinition) return;
 	if (!IsValid(NewDefinition->AbilitySet)) return;
 	
 	CurrentAbilityHandles.TakeFromAbilitySystem(AbilitySystemComponent);
