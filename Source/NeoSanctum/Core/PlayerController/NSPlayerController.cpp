@@ -720,6 +720,7 @@ void ANSPlayerController::BeginPlay()
 			UIManager->CreateHUD(this);
 			UIManager->ShowHUD();
 			UIManager->ResetRunResultStats();
+			UIManager->ShowInRunGoods();
 			
 			FInputModeGameOnly InputModeData;
 			SetInputMode(InputModeData);
@@ -912,6 +913,8 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
 	{
 		UIManager->ResetRunResultStats();
+		UIManager->ShowHUD();
+		UIManager->ShowInRunGoods();
 	}
 
 }

@@ -80,6 +80,10 @@ public:
 	//인런 스킬 재화 UI 갱신
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void UpdateRunSkillGoods(int32 NewGoodsAmount);
+	
+	//인런 재화 UI 표시
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowInRunGoods();
 
 	//아웃런 재화 UI 표시
 	UFUNCTION(BlueprintCallable, Category = "UI")

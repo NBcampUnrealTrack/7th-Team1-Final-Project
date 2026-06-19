@@ -200,6 +200,7 @@ void UNSHUDWidget::SetReloading(bool bReloading)
 
 	AmmoWidget->SetReloading(bReloading);
 }
+
 void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
 {
 	if (!GoodsWidget)
@@ -208,6 +209,20 @@ void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
 	}
 
 	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
+}
+
+void UNSHUDWidget::ShowInRunGoods()
+{
+	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowInRunGoods"));
+	if (GoodsWidget)
+	{
+		GoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	if (OutRunGoodsWidget)
+	{
+		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UNSHUDWidget::ShowOutRunGoods()
