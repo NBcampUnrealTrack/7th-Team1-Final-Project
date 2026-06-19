@@ -705,7 +705,7 @@ void ANSRunGameMode::OnResultDisplayFinished()
 		{
 			// 거점 귀환할 때 정보 저장
 			// bIsClear 확인 필요
-			const float Multiplier = (NSGameState && NSGameState->bIsClear) ? FailMultiplier : ClearMultiplier;
+			const float Multiplier = (NSGameState && NSGameState->bIsClear) ? ClearMultiplier : FailMultiplier;
 			CommitAndClearAllWallets(Multiplier);
 			SaveAllPlayersProgress();
 			NSGameFlow->ReturnToHub();

@@ -8,6 +8,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 
 
 // ================================================================
@@ -113,6 +114,11 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 	for (const TPair<FGameplayTag, int64>& Pair : PendingPermanent)
 	{
 		const int64 Committed = static_cast<int64>(Pair.Value * Multiplier);
+		UE_LOG(LogTemp, Log, TEXT("[Currency] 커밋 대상 Type=%s Pending=%lld Committed=%lld"),
+		*Pair.Key.ToString(),
+		Pair.Value,
+		Committed);
+
 		if (Committed <= 0)
 		{
 			continue;
@@ -126,6 +132,13 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 		{
 			Progress->AddJobCurrency(Committed);
 		}
+	}
+	FNSProgressPayload Payload;
+	Progress->BuildPayload(Payload);
+
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->SetCachedProgressPayload(Payload);
 	}
 	PendingPermanent.Empty();
 }
