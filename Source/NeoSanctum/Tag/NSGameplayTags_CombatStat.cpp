@@ -25,5 +25,6 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_FireRange,		"CombatStat.FireRange");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DetectionRange,	"CombatStat.DetectionRange");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Accuracy,			"CombatStat.Accuracy");
-	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSpawnableAngle, "CombatStat.MaxSpawnableAngle");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSpawnableAngle,"CombatStat.MaxSpawnableAngle");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Radius,			"CombatStat.Radius");
 }
