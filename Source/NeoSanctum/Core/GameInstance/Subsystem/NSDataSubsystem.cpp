@@ -2,7 +2,7 @@
 
 
 #include "NSDataSubsystem.h"
-
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -88,6 +88,33 @@ void UNSDataSubsystem::ReturnToOutGame()
 	}
 	UnloadRun();
 	StartLoadOutGame();
+}
+
+void UNSDataSubsystem::SetCachedProgressPayload(const FNSProgressPayload& Payload)
+{
+	CachedProgressPayload = Payload;
+	bHasCachedProgressPayload = true;
+}
+
+bool UNSDataSubsystem::GetCachedProgressPayload(FNSProgressPayload& OutPayload) const
+{
+	if (!bHasCachedProgressPayload)
+	{
+		return false;
+	}
+
+	OutPayload = CachedProgressPayload;
+	return true;
+}
+
+void UNSDataSubsystem::ApplyCachedProgressTo(class UNSPlayerProgressComponent* ProgressComponent) const
+{
+	if (!ProgressComponent || !bHasCachedProgressPayload)
+	{
+		return;
+	}
+
+	ProgressComponent->ApplyPayload(CachedProgressPayload);
 }
 
 // ================================================================

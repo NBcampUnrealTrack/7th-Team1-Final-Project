@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Engine/StreamableManager.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSDataSubsystem.generated.h"
 
 UENUM(BlueprintType)
@@ -91,6 +92,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "NS|DataSubsystem")
 	bool IsRunReady() const { return CurrentPhase == ENSDataLoadPhase::RunReady; }
 
+	//맵 이동 중 유지할 플레이어 진행 데이터 저장
+	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
+
+	//저장된 플레이어 진행 데이터가 있으면 반환
+	bool GetCachedProgressPayload(FNSProgressPayload& OutPayload) const;
+
+	//저장된 플레이어 진행 데이터를 ProgressComponent에 적용
+	void ApplyCachedProgressTo(class UNSPlayerProgressComponent* ProgressComponent) const;
+	
 	// ================================================================
 	// 델리게이트
 	// ================================================================
@@ -155,6 +165,11 @@ private:
 	void UnloadByTypes(const TArray<FPrimaryAssetType>& Types);
 
 	void SetPhase(ENSDataLoadPhase NewPhase);
+	
+	//맵 이동 후 새 PlayerState에 다시 적용할 진행 데이터
+	FNSProgressPayload CachedProgressPayload;
+
+	bool bHasCachedProgressPayload = false;
 
 	// ================================================================
 	// 상태
