@@ -41,7 +41,8 @@ public:
 		const FNSTurretConfig& InConfig,
 		APawn* InOwningPawn,
 		AController* InOwningController,
-		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
+		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes,
+		const TArray<FNSCombatStatMagnitude>& InRuntimeStatMagnitudes
 	);
 
 	float GetSpawnSurfaceOffset() const;
@@ -116,6 +117,8 @@ private:
 	void DeactivateTurret();
 	void ApplyDeathState();
 	void StartDeathPresentation();
+	void StartLifetimeTimer();
+	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -193,6 +196,9 @@ protected:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|SetByCaller")
 	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
 
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|RuntimeStats")
+	TArray<FNSCombatStatMagnitude> RuntimeStatMagnitudes;
+
 private:
 	// 콜리전 안에 들어온 Actor 중에 Enemy TeamID를 가진 Actor 세트
 	TSet<TWeakObjectPtr<AActor>> TargetSet;
@@ -202,6 +208,8 @@ private:
 
 	// 타겟을 재탐색하는 타이머
 	FTimerHandle TargetRefreshTimerHandle;
+
+	FTimerHandle LifetimeTimerHandle;
 
 	bool bAbilityActorInfoInitialized = false;
 	bool bInitialAttributeEffectApplied = false;

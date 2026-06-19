@@ -122,7 +122,8 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 			TurretConfig,
 			GetOwningPawn(),
 			GetOwningController(),
-			GetSetByCallerMagnitudes()
+			GetSetByCallerMagnitudes(),
+			GetRuntimeStatMagnitudes()
 		);
 	}
 }

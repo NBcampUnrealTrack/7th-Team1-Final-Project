@@ -34,6 +34,7 @@ protected:
 	AController* GetOwningController() const { return OwningController; }
 	// 자식 투척물이 Turret 등에 전달할 payload
 	const TArray<FNSSetByCallerMagnitude>& GetSetByCallerMagnitudes() const { return SetByCallerMagnitudes; }
+	const TArray<FNSCombatStatMagnitude>& GetRuntimeStatMagnitudes() const { return RuntimeStatMagnitudes; }
 	// 런타임 stat 값 조회
 	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
 	// RuntimeStat float 값을 boolean 옵션처럼 사용할 때 0 초과면 true로 변환

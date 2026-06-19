@@ -12,6 +12,7 @@
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -85,13 +86,15 @@ void ANSTurret::InitializeTurret(
 	const FNSTurretConfig& InConfig,
 	APawn* InOwningPawn,
 	AController* InOwningController,
-	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
+	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes,
+	const TArray<FNSCombatStatMagnitude>& InRuntimeStatMagnitudes)
 {
 	// 터렛을 소환한 Pawn, Controller 전달
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
 	// 초기 Attribute GE에 사용할 payload 저장
 	SetByCallerMagnitudes = InSetByCallerMagnitudes;
+	RuntimeStatMagnitudes = InRuntimeStatMagnitudes;
 	
 	if (OwningPawn)
 	{
@@ -109,6 +112,7 @@ void ANSTurret::InitializeTurret(
 	InitializeAbilityActorInfo();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
+	StartLifetimeTimer();
 	
 	// 
 	if (HasActorBegunPlay())
@@ -136,6 +140,7 @@ void ANSTurret::BeginPlay()
 	InitializeAbilityActorInfo();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
+	StartLifetimeTimer();
 
 	if (DetectionSphereComponent)
 	{
@@ -683,6 +688,7 @@ void ANSTurret::ApplyDeathState()
 {
 	SetActorTickEnabled(false);
 	GetWorldTimerManager().ClearTimer(TargetRefreshTimerHandle);
+	GetWorldTimerManager().ClearTimer(LifetimeTimerHandle);
 
 	TargetSet.Empty();
 	AutoTarget.Reset();
@@ -706,6 +712,41 @@ void ANSTurret::ApplyDeathState()
 	
 	// 임시 : 강제로 Dead 상태 태그 부여 -> 이후 GA_Death로 로직을 빼고 GE에서 변경하도록 할 예정 
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Dead);
+}
+
+void ANSTurret::StartLifetimeTimer()
+{
+	GetWorldTimerManager().ClearTimer(LifetimeTimerHandle);
+
+	float Duration = 0.0f;
+	if (!TryGetRuntimeStatMagnitude(NSGameplayTags::CombatStat_Duration, Duration) || Duration <= 0.0f)
+	{
+		return;
+	}
+
+	GetWorldTimerManager().SetTimer(
+		LifetimeTimerHandle,
+		this,
+		&ThisClass::DeactivateTurret,
+		Duration,
+		false
+	);
+}
+
+bool ANSTurret::TryGetRuntimeStatMagnitude(
+	const FGameplayTag& CombatStatTag,
+	float& OutMagnitude) const
+{
+	for (const FNSCombatStatMagnitude& RuntimeStatMagnitude : RuntimeStatMagnitudes)
+	{
+		if (RuntimeStatMagnitude.CombatStatTag == CombatStatTag)
+		{
+			OutMagnitude = RuntimeStatMagnitude.Magnitude;
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ANSTurret::StartDeathPresentation()
