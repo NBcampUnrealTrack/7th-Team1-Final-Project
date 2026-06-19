@@ -71,6 +71,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -102,6 +103,7 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		SetRetreating(false);
 		ClearCurrentAttackDefinition();
 		ClearCombatAimTarget();
 		ApplyDeadVisual();
@@ -395,7 +397,8 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsDead = false;
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
-
+	
+	SetRetreating(false);
 	SetActorLocationAndRotation(
 		SpawnLocation,
 		SpawnRotation,
@@ -428,6 +431,8 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	}
 
 	bIsInPool = true;
+	SetRetreating(false);
+	
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 
@@ -532,4 +537,14 @@ void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
 
 	bNavLinkJumping = true;
 	LaunchCharacter(LaunchVelocity, true, true); // XY/Z Override
+}
+
+void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
+{
+		if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsRetreating = bInRetreating;
 }

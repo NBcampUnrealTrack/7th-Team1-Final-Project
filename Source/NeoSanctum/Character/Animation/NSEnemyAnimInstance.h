@@ -39,6 +39,13 @@ protected:
 	// 상승/낙하 구분을 위한 Z축 속도
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float VerticalVelocity = 0.0f;
+	
+	// 후퇴 여부
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	bool bIsRetreating = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	float LocalForwardSpeed = 0.0f;
 
 	// 이동 기준 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")

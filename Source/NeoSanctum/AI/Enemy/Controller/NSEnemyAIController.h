@@ -85,9 +85,7 @@ private:
 	TMap<FName, float> LastAttackTimeById;
 	
 private:
-	void UpdateRetreatState(
-	const ANSEnemyCharacterBase* Enemy,
-	const AActor* TargetActor);
+	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
 
 	float GetMinimumAttackRange(const UNSEnemyData* EnemyData) const;
 

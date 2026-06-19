@@ -50,6 +50,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		if (Enemy)
 		{
 			Enemy->ClearCombatAimTarget();
+			Enemy->SetRetreating(false);
 		}
 		
 		if (CachedBBComp)
@@ -387,9 +388,7 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 	return true;
 }
 
-void ANSEnemyAIController::UpdateRetreatState(
-	const ANSEnemyCharacterBase* Enemy, 
-	const AActor* TargetActor)
+void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor)
 {
 	if (!CachedBBComp || !Enemy || !IsValid(TargetActor))
 	{
@@ -404,6 +403,7 @@ void ANSEnemyAIController::UpdateRetreatState(
 	{
 		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
 		CachedBBComp->ClearValue(RetreatLocationKey);
+		Enemy->SetRetreating(false);
 		return;
 	}
 
@@ -423,9 +423,9 @@ void ANSEnemyAIController::UpdateRetreatState(
 		? Distance < ExitRange
 		: Distance < MinRange;
 
-	CachedBBComp->SetValueAsBool(
-		ShouldRetreatKey,
-		bShouldRetreat);
+	CachedBBComp->SetValueAsBool(ShouldRetreatKey, bShouldRetreat);
+	
+	Enemy->SetRetreating(bShouldRetreat);
 
 	if (!bShouldRetreat)
 	{
@@ -433,15 +433,16 @@ void ANSEnemyAIController::UpdateRetreatState(
 		return;
 	}
 
-	const FVector CurrentDestination =
-		CachedBBComp->GetValueAsVector(RetreatLocationKey);
+	const FVector CurrentDestination = CachedBBComp->GetValueAsVector(RetreatLocationKey);
 
 	const bool bDestinationReached = FVector::DistSquared2D(
 			EnemyLocation,
 			CurrentDestination) <= FMath::Square(RetreatDestinationAcceptanceRadius);
-
+	
+	const bool bHasRetreatDestination = CachedBBComp->IsVectorValueSet(RetreatLocationKey);
+	
 	// 처음 후퇴 시 / 기존 후퇴 지점 도착 시
-	if (bWasRetreating && !bDestinationReached)
+	if (bWasRetreating && bHasRetreatDestination && !bDestinationReached)
 	{
 		return;
 	}

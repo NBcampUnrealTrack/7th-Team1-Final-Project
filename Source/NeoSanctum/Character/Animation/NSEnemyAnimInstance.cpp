@@ -48,13 +48,24 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		
 		// LaunchCharacter가 실행되면 MovementMode가 Falling으로 변경됨
 		bIsInAir = MovementComponent->IsFalling();
+		
+		const FVector LocalVelocity = EnemyCharacter->GetActorTransform().InverseTransformVectorNoScale(Velocity);
+
+		LocalForwardSpeed = LocalVelocity.X - 300.0f;
+
+		const bool bActuallyMovingBackward = LocalForwardSpeed < -MovingSpeedThreshold;
+
+		bIsRetreating = EnemyCharacter->IsRetreating() && bActuallyMovingBackward && !bIsInAir;
 	}
 	else
 	{
 		GroundSpeed = 0.0f;
 		VerticalVelocity = 0.0f;
+		LocalForwardSpeed = 0.0f;
+		
 		bIsMoving = false;
 		bIsInAir = false;
+		bIsRetreating = false;
 	}
 
 	UpdateAimRotation(DeltaSeconds);
