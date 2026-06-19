@@ -1,11 +1,10 @@
-﻿﻿// Copyright 2026 One Team. All rights reserved.
+﻿// Copyright 2026 One Team. All rights reserved.
 
 
 #include "GA_EngineerBarrier.h"
 
 #include "GameFramework/Character.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSBarrier.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 
 UGA_EngineerBarrier::UGA_EngineerBarrier()

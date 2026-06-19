@@ -57,7 +57,11 @@ void ANSBarrier::InitializeBarrier(
 
 	ApplyRadius(InRadius);
 	InitializeAbilityActorInfo();
-	ApplyInitialAttributeEffect();
+
+	if (HasActorBegunPlay())
+	{
+		ApplyInitialAttributeEffect();
+	}
 }
 
 void ANSBarrier::BeginPlay()
