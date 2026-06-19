@@ -34,7 +34,26 @@ protected:
 		bool bWasCancelled
 	) override;
 	
+	virtual void ApplyCooldown(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo
+) const override;
+	
+private:
+	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
+	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
+	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	TObjectPtr<ANSBarrier> BarrierActor;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
+	FGameplayTag AbilityTag;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
+	FGameplayTag CooldownEffectTag;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
+	float MinimumBarrierRadius = 150.0f;
 };
