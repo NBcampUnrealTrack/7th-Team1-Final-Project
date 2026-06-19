@@ -32,9 +32,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progression|Upgrade")
 	bool UpgradePet(FName PetNodeId, int32 NewLevel, int64 Cost);
 	
-	// 인런 진입시 파츠 교체용
-	UFUNCTION(BlueprintCallable, Category = "Progression|Loadout")
-	void SetEquippedPart(FName CharacterId, FName PartId);
+	// 장착: 소유 검증 후 캐릭터 장착 참조 설정
+	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
+	void SetEquippedPart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	
 	// ---------- 조회 (UI 표시용) ----------
 	
@@ -54,8 +54,15 @@ public:
 	int32 GetPetLevel(FName PetNodeId) const;
 
 	// 장착 파츠가 없으면 NAME_None 반환
-	UFUNCTION(BlueprintPure, Category = "Progression|Query")
-	FName GetEquippedPart(FName CharacterId) const;
+	UFUNCTION(BlueprintPure, Category = "Progression|Part")
+	FNSPartSaveData GetEquippedPart(FName CharacterId) const;
+	
+	// 구매: 미소유면 값 1회 롤해 인벤토리에 추가
+	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
+	bool PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost);
+	UFUNCTION(BlueprintPure, Category = "Progression|Part")
+	bool IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const;
+	const TArray<FNSPartSaveData>& GetOwnedParts() const;
 
 
 private:
