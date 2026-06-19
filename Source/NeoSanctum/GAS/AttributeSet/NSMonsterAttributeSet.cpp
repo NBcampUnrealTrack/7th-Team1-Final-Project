@@ -28,24 +28,15 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 					PerceivedActor = OwnerPlayer;
 				}
 			}
-			
-			APawn* AttackerPawn = Cast<APawn>(PerceivedActor);
-			if (!AttackerPawn)
-			{
-				if (AController* Controller = Cast<AController>(PerceivedActor))
-				{
-					AttackerPawn = Controller->GetPawn();
-				}
-			}
 
-			if (AttackerPawn)
+			if (PerceivedActor)
 			{
 				UAISense_Damage::ReportDamageEvent(
 					DamagedActor->GetWorld(), 
 					DamagedActor, 
-					AttackerPawn,
+					PerceivedActor,
 					RawDamage, 
-					AttackerPawn->GetActorLocation(), 
+					PerceivedActor->GetActorLocation(), 
 					DamagedActor->GetActorLocation()
 				);
 			}

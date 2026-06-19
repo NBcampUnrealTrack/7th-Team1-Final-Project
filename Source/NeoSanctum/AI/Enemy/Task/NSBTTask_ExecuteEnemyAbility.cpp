@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 
 UNSBTTask_ExecuteEnemyAbility::UNSBTTask_ExecuteEnemyAbility()
 {
@@ -23,25 +24,46 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 
 	APawn* TargetPawn = AIController->GetPawn();
 	if (!TargetPawn) return EBTNodeResult::Failed;
+	
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(TargetPawn);
+	if (!Enemy) return EBTNodeResult::Failed;
 
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn);
 	if (!ASC) return EBTNodeResult::Failed;
+	
+	const FNSEnemyAttackDefinition* SelectedAttack = AIController->GetAttackDefinitionByDistance();
+	if (!SelectedAttack)
+	{
+		return EBTNodeResult::Failed;
+	}
 
-	FGameplayTag AttackTag = AIController->GetAttackAbilityTagByDistance();
-	if (!AttackTag.IsValid()) return EBTNodeResult::Failed;
+	TSubclassOf<UGameplayAbility> AttackAbilityClass = SelectedAttack->AbilityClass;
+	if (!AttackAbilityClass)
+	{
+		return EBTNodeResult::Failed;
+	}
+	
+	Enemy->SetCurrentAttackDefinition(*SelectedAttack);
 	
 	CachedOwnerComp = &OwnerComp;
+	CachedAttackAbilityClass = AttackAbilityClass;
 	
 	ASC->OnAbilityEnded.AddUObject(this, &UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
 
-	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 현재 거리 기준 선택된 태그: %s"), *AttackTag.ToString());
+	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 선택된 공격: %s / GA: %s"),
+		*SelectedAttack->AttackId.ToString(),
+		*AttackAbilityClass->GetName());
 
-	bool bActivated = ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(AttackTag));
+	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
+		Enemy->ClearCurrentAttackDefinition();
 		ASC->OnAbilityEnded.RemoveAll(this);
+		CachedAttackAbilityClass = nullptr;
 		return EBTNodeResult::Failed;
 	}
+	
+	AIController->RecordAttackUsed(*SelectedAttack);
 	
 	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
 	{
@@ -56,6 +78,13 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 {
 	if (!CachedOwnerComp) return;
 	
+	if (CachedAttackAbilityClass &&
+		AbilityEndedData.AbilityThatEnded &&
+		!AbilityEndedData.AbilityThatEnded->IsA(CachedAttackAbilityClass))
+	{
+		return;
+	}
+	
 	if (UBlackboardComponent* BBComp = CachedOwnerComp->GetBlackboardComponent())
 	{
 		BBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
@@ -66,12 +95,19 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 	{
 		if (APawn* TargetPawn = AIController->GetPawn())
 		{
+			if (ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(TargetPawn))
+			{
+				Enemy->ClearCurrentAttackDefinition();
+			}
+			
 			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn))
 			{
 				ASC->OnAbilityEnded.RemoveAll(this);
 			}
 		}
 	}
+	
+	CachedAttackAbilityClass = nullptr;
 
 	// 애니메이션 종료
 	FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);

@@ -22,4 +22,7 @@ public:
 protected:
 	UPROPERTY(EditAnywhere, Category = "GAS")
 	FGameplayTagContainer EventTags;
+
+private:
+	void SendWeaponTraceEvent(USkeletalMeshComponent* MeshComp) const;
 };

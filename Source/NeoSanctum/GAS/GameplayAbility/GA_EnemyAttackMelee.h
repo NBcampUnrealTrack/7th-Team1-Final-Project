@@ -19,16 +19,25 @@ public:
 
 protected:
 	virtual void InitializeAttack() override;
-	virtual void PrepareForAttackMontage() override;
 	virtual void HandleAttackEvent(
 		const FGameplayEventData& Payload) override;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Melee")
+	
 	float AttackTraceDistance = 100.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Melee")
 	float AttackTraceRadius = 8.0f;
 
 private:
-	bool bHasHitThisAttack = false;
+	TSet<uint32> DamagedTraceWindowIds;
+	
+	// 디버그 설정
+	void DrawAttackTraceDebug(
+		const FVector& Start,
+		const FVector& End,
+		bool bHit,
+		const FHitResult& HitResult) const;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Debug")
+	bool bDrawAttackTraceDebug = false;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Debug", meta = (ClampMin = "0.0"))
+	float AttackTraceDebugDuration = 1.0f;
 };

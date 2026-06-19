@@ -4,10 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
-#include "GameplayTagContainer.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
+
+struct FNSEnemyAttackDefinition;
 
 UCLASS()
 class NEOSANCTUM_API ANSEnemyAIController : public AAIController
@@ -16,7 +17,6 @@ class NEOSANCTUM_API ANSEnemyAIController : public AAIController
 
 public:
 	ANSEnemyAIController();
-	
 	virtual void Tick(float DeltaTime) override;
 
 	/*
@@ -30,11 +30,18 @@ public:
 	// 타 진영을 보았을 때의 적대/우호 규칙 정의 수립
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
-	// 타겟과의 실시간 거리 계산하여 현재 거리에 맞는 GAS 태그 결정 및 반환
-	FGameplayTag GetAttackAbilityTagByDistance();
+	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
+	const FNSEnemyAttackDefinition* GetAttackDefinitionByDistance();
 	
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
+	
+public:
+	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
+	bool CanUseAnyAttackByDistance();
+	
+	// 공격이 실제로 활성화된 뒤 쿨다운 시작 시간을 기록
+	void RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition);
 
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
@@ -43,10 +50,18 @@ protected:
 	// 시각 센서가 갱신될 때 블랙보드로 데이터를 전달할 콜백 함수
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
-	
+
 private:
 	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
 	bool IsValidLivingTarget(const AActor* Target) const;
+	
+	const FNSEnemyAttackDefinition* FindAttackDefinitionByDistance(bool bSelectWeightedAttack);
+
+	bool CanUseAttackDefinition(
+		const FNSEnemyAttackDefinition& AttackDefinition,
+		const AActor* TargetActor,
+		float Distance,
+		bool bHasLineOfSight) const;
 
 protected:
 	// 시야/청각 설정 컴포넌트
@@ -63,4 +78,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBlackboardComponent> CachedBBComp;
+	
+	// AttackId별 마지막 사용 시간
+	TMap<FName, float> LastAttackTimeById;
 };

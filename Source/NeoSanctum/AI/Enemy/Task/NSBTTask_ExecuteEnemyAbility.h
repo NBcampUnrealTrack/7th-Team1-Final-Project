@@ -7,6 +7,8 @@
 #include "BehaviorTree/BTTaskNode.h"
 #include "NSBTTask_ExecuteEnemyAbility.generated.h"
 
+class UGameplayAbility;
+
 UCLASS()
 class NEOSANCTUM_API UNSBTTask_ExecuteEnemyAbility : public UBTTaskNode
 {
@@ -22,4 +24,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBehaviorTreeComponent> CachedOwnerComp;
+	
+	UPROPERTY(Transient)
+	TSubclassOf<UGameplayAbility> CachedAttackAbilityClass;
 };

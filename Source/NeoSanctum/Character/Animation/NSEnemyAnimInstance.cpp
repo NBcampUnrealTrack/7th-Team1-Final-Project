@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
@@ -56,6 +57,7 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsInAir = false;
 	}
 
+	UpdateAimRotation(DeltaSeconds);
 	UpdateLeftHandIK(DeltaSeconds);
 }
 
@@ -134,4 +136,79 @@ void UNSEnemyAnimInstance::UpdateLeftHandIKAlpha(float TargetAlpha, float DeltaS
 	{
 		LeftHandIKAlpha = 0.0f;
 	}
+}
+
+void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
+{
+	float TargetPitch = 0.0f;
+	float TargetYaw = 0.0f;
+	float TargetAlpha = 0.0f;
+
+	if (IsValid(EnemyCharacter) &&
+		!EnemyCharacter->IsDead() &&
+		EnemyCharacter->HasCombatAimTarget())
+	{
+		const ANSEnemyWeaponBase* CurrentWeapon = EnemyCharacter->GetCurrentWeapon();
+
+		FVector AimOrigin = EnemyCharacter->GetActorLocation();
+		FTransform MuzzleTransform;
+
+		if (IsValid(CurrentWeapon) && CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
+		{
+			AimOrigin = MuzzleTransform.GetLocation();
+		}
+
+		const FVector ToTarget = EnemyCharacter->GetCombatAimTargetLocation() - AimOrigin;
+
+		if (!ToTarget.IsNearlyZero())
+		{
+			const float Distance2D = ToTarget.Size2D();
+
+			TargetAlpha = FMath::GetMappedRangeValueClamped(
+				FVector2D(100.0f, 400.0f),
+				FVector2D(0.0f, 1.0f),
+				Distance2D
+			);
+			
+			const FRotator WorldAimRotation = ToTarget.Rotation();
+			if (IsValid(CurrentWeapon) &&
+			    CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
+			{
+			    // 실제 총구 방향과 목표 방향 사이에 남은 오차
+			    const FRotator AimError = UKismetMathLibrary::NormalizedDeltaRotator(
+			    	WorldAimRotation,
+			    	MuzzleTransform.GetRotation().Rotator());
+				
+			    TargetPitch = FMath::Clamp(
+			        AimPitch + AimError.Pitch,
+			        -MaxAimPitch,
+			        MaxAimPitch);
+
+			    TargetYaw = FMath::Clamp(
+			        AimYaw + AimError.Yaw,
+			        -MaxAimYaw,
+			        MaxAimYaw);
+			}
+			else
+			{
+			    const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+			            WorldAimRotation,
+			            EnemyCharacter->GetActorRotation());
+
+			    TargetPitch = FMath::Clamp(
+			        LocalAimRotation.Pitch,
+			        -MaxAimPitch,
+			        MaxAimPitch);
+
+			    TargetYaw = FMath::Clamp(
+			        LocalAimRotation.Yaw,
+			        -MaxAimYaw,
+			        MaxAimYaw);
+			}
+		}
+	}
+
+	AimPitch = FMath::FInterpTo(AimPitch, TargetPitch, DeltaSeconds, AimInterpSpeed);
+	AimYaw = FMath::FInterpTo(AimYaw, TargetYaw, DeltaSeconds, AimInterpSpeed);
+	AimAlpha = FMath::FInterpTo(AimAlpha, TargetAlpha, DeltaSeconds, AimInterpSpeed);
 }

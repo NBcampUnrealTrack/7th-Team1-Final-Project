@@ -2,10 +2,6 @@
 
 
 #include "NSEnemyWeaponComponent.h"
-
-#include "AbilitySystemComponent.h"
-#include "GameplayAbilitySpec.h"
-#include "Abilities/GameplayAbility.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -69,22 +65,6 @@ void UNSEnemyWeaponComponent::EquipWeapon()
 
 	// 무기 고유의 Transform 적용
 	CurrentWeapon->SetActorRelativeTransform(Config.RelativeTransform);
-
-	// 무기 전용 ABP 적용
-	ApplyCurrentWeaponAnimClass();
-
-	// 무기 전용 GA 적용
-	if (UAbilitySystemComponent* ASC = Owner->GetAbilitySystemComponent())
-	{
-		if (Config.WeaponAbility)
-		{
-			ASC->GiveAbility(FGameplayAbilitySpec(
-				Config.WeaponAbility,
-				1,
-				Config.WeaponAbility.GetDefaultObject()->GetNetExecutionPolicy()
-			));
-		}
-	}
 }
 
 void UNSEnemyWeaponComponent::UnEquipWeapon()
@@ -95,27 +75,6 @@ void UNSEnemyWeaponComponent::UnEquipWeapon()
 		CurrentWeapon = nullptr;
 	}
 }
-
-void UNSEnemyWeaponComponent::OnRep_CurrentWeapon()
-{
-	ApplyCurrentWeaponAnimClass();
-}
-
-void UNSEnemyWeaponComponent::ApplyCurrentWeaponAnimClass() const
-{
-	const ANSEnemyCharacterBase* Owner = Cast<ANSEnemyCharacterBase>(GetOwner());
-	if (!Owner || !CurrentWeapon || !Owner->GetMesh())
-	{
-		return;
-	}
-
-	const TSubclassOf<UAnimInstance> AnimBlueprintClass = CurrentWeapon->GetWeaponConfig().AnimBlueprintClass;
-	if (AnimBlueprintClass)
-	{
-		Owner->GetMesh()->SetAnimInstanceClass(AnimBlueprintClass);
-	}
-}
-
 
 void UNSEnemyWeaponComponent::OnOwnerDead()
 {

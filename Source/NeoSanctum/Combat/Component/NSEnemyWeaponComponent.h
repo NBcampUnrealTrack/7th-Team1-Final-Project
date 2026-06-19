@@ -33,12 +33,8 @@ protected:
 	virtual void BeginPlay() override;
 
 private:
-	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentWeapon)
+	UPROPERTY(Transient, Replicated)
 	TObjectPtr<ANSEnemyWeaponBase> CurrentWeapon;
 
-	UFUNCTION()
-	void OnRep_CurrentWeapon();
-
-	void ApplyCurrentWeaponAnimClass() const;
 	void OnOwnerDead();
 };

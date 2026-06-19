@@ -38,6 +38,10 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	
+	GetCharacterMovement()->bUseRVOAvoidance = true;
+	GetCharacterMovement()->AvoidanceConsiderationRadius = 200.0f;
+	GetCharacterMovement()->AvoidanceWeight = 0.5f;
 }
 
 void ANSEnemyCharacterBase::BeginPlay()
@@ -64,11 +68,31 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsDead);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
+	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
+	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
 {
 	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
+}
+
+void ANSEnemyCharacterBase::SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition)
+{
+	CurrentAttackDefinition = InAttackDefinition;
+	bHasCurrentAttackDefinition = true;
+}
+
+const FNSEnemyAttackDefinition* ANSEnemyCharacterBase::GetCurrentAttackDefinition() const
+{
+	return bHasCurrentAttackDefinition ? &CurrentAttackDefinition : nullptr;
+}
+
+void ANSEnemyCharacterBase::ClearCurrentAttackDefinition()
+{
+	CurrentAttackDefinition = FNSEnemyAttackDefinition();
+	bHasCurrentAttackDefinition = false;
 }
 
 void ANSEnemyCharacterBase::Die()
@@ -78,8 +102,9 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		ClearCurrentAttackDefinition();
+		ClearCombatAimTarget();
 		ApplyDeadVisual();
-		
 		// (이용호 추가) 죽을 때 게임모드에 알림
 		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
@@ -112,6 +137,11 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 	}
 }
 
+void ANSEnemyCharacterBase::OnRep_EnemyData()
+{
+	ApplyVisualData();
+}
+
 void ANSEnemyCharacterBase::ApplyDeadVisual()
 {
 	// 물리 캡슐 콜리전 비활성화
@@ -139,15 +169,34 @@ void ANSEnemyCharacterBase::ApplyDeadVisual()
 	OnEnemyDead.Broadcast();
 }
 
+void ANSEnemyCharacterBase::ApplyVisualData()
+{
+	if (!EnemyData || !GetMesh())
+	{
+		return;
+	}
+
+	if (EnemyData->SkeletalMesh)
+	{
+		GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+	}
+
+	if (EnemyData->AnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(EnemyData->AnimClass);
+	}
+
+	SetActorScale3D(EnemyData->DrawScale);
+}
+
 void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 {
 	if (!EnemyData) return;
-	
 	// 스탯은 최초, 재사용할 때 항상 초기화
 	// GAS 데이터 테이블 기반 스탯 초기화
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
 	{
-		FName RowName = EnemyData->EnemyTag.GetTagName();
+		FName RowName = EnemyData->EnemyId.GetTagName();
 		FNSMonsterAttributeRow* StatRow =
 			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
 
@@ -159,19 +208,10 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
 		}
 	}
-	
 	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
 	if (bFullInit)
 	{
-		// Visual 동적 로딩
-		if (GetMesh())
-		{
-			if (EnemyData->SkeletalMesh)
-			{
-				GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
-			}
-		}
-		SetActorScale3D(EnemyData->DrawScale);
+		ApplyVisualData();
 
 		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
 		if (HasAuthority())
@@ -190,16 +230,44 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 					}
 				}
 			}
+			
+			TSet<TObjectPtr<UClass>> GrantedAbilityClasses;
+			
+			auto GiveAbilityOnce = [this, &GrantedAbilityClasses](TSubclassOf<UGameplayAbility> AbilityClass)
+			{
+				if (!ASC || !AbilityClass)
+				{
+					return;
+				}
+
+				UClass* AbilityRawClass = AbilityClass.Get();
+				if (!AbilityRawClass || GrantedAbilityClasses.Contains(AbilityRawClass))
+				{
+					return;
+				}
+
+				GrantedAbilityClasses.Add(AbilityRawClass);
+
+				const UGameplayAbility* AbilityCDO = AbilityClass.GetDefaultObject();
+				if (!AbilityCDO)
+				{
+					return;
+				}
+
+				ASC->GiveAbility(FGameplayAbilitySpec(
+					AbilityClass,
+					1,
+					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
+			};
 
 			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
 			{
-				if (AbilityClass)
-				{
-					ASC->GiveAbility(FGameplayAbilitySpec(
-						AbilityClass,
-						1,
-						static_cast<int32>(AbilityClass.GetDefaultObject()->GetNetExecutionPolicy())));
-				}
+				GiveAbilityOnce(AbilityClass);
+			}
+			
+			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+			{
+				GiveAbilityOnce(AttackDefinition.AbilityClass);
 			}
 		}
 
@@ -212,7 +280,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			}
 		}
 
-		// 무기 장착, ABP와 공격 어빌리티 부여
+		// 무기 장착
 		if (WeaponComponent)
 		{
 			WeaponComponent->EquipWeapon();
@@ -273,6 +341,38 @@ void ANSEnemyCharacterBase::OnRep_bIsInPool()
 	SetActorEnableCollision(!bIsInPool);
 }
 
+void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
+{
+	if (!HasAuthority() || !IsValid(TargetActor))
+	{
+		ClearCombatAimTarget();
+		return;
+	}
+
+	FVector BoundsOrigin = TargetActor->GetActorLocation();
+	FVector BoundsExtent = FVector::ZeroVector;
+	TargetActor->GetActorBounds(true, BoundsOrigin, BoundsExtent);
+
+	CombatAimTargetLocation = BoundsOrigin + FVector(
+		0.0f,
+		0.0f,
+		BoundsExtent.Z * AimTargetZOffsetRatio
+	);
+
+	bHasCombatAimTarget = true;
+}
+
+void ANSEnemyCharacterBase::ClearCombatAimTarget()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bHasCombatAimTarget = false;
+	CombatAimTargetLocation = FVector::ZeroVector;
+}
+
 void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
 {
 	if (!HasAuthority() || !InEnemyData)
@@ -292,6 +392,8 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 
 	bIsInPool = false;
 	bIsDead = false;
+	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
 
 	SetActorLocationAndRotation(
 		SpawnLocation,
@@ -325,6 +427,8 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	}
 
 	bIsInPool = true;
+	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
 
 	// 이동 즉시 정지 및 비활성화
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())

@@ -17,6 +17,31 @@ class UBehaviorTree;
 class UStateTree;
 class UEnvQuery;
 
+UENUM(BlueprintType)
+enum class ENSEnemyMovementType : uint8
+{
+	Ground UMETA(DisplayName = "Ground"),
+	Flying UMETA(DisplayName = "Flying"),
+	Stationary UMETA(DisplayName = "Stationary")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyAttackType : uint8
+{
+	MeleeSweep UMETA(DisplayName = "Melee Sweep"),
+	Projectile UMETA(DisplayName = "Projectile"),
+	Hitscan UMETA(DisplayName = "Hitscan"),
+	Area UMETA(DisplayName = "Area")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyRank : uint8
+{
+	Normal UMETA(DisplayName = "Normal"),
+	Elite UMETA(DisplayName = "Elite"),
+	Boss UMETA(DisplayName = "Boss")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -46,6 +71,52 @@ struct FNSPhaseDefinition
 	TSubclassOf<UGameplayAbility> PhaseTransitionAbility;
 };
 
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackCondition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MinRange = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MaxRange = 300.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	bool bRequireLineOfSight = true;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FName AttackId;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	TSubclassOf<UGameplayAbility> AbilityClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", 
+		meta = (ClampMin = "0.0", EditCondition = "AttackType == ENSEnemyAttackType::MeleeSweep", EditConditionHides))
+	float MeleeTraceRadius = 8.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FNSEnemyAttackCondition Condition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Cooldown = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Weight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	int32 Priority = 0;
+};
+
 /**
  * Enemy 초기화 시 필요한 PrimaryDataAsset 입니다.
  */
@@ -55,24 +126,33 @@ class NEOSANCTUM_API UNSEnemyData : public UPrimaryDataAsset
 	GENERATED_BODY()
 
 public:
-	UNSEnemyData();
-
-public:
-	// 몬스터 식별 태그
+	// 몬스터 고유 식별자
 	UPROPERTY(EditDefaultsOnly, Category = "Identity")
-	FGameplayTag EnemyTag;
+	FGameplayTag EnemyId;
 
 	// 몬스터 설명
-	UPROPERTY(EditDefaultsOnly, Category = "Identity")
+	UPROPERTY(EditDefaultsOnly, Category = "Identity", meta = (MultiLine = true))
 	FString Description;
+	
+	// 이동 분류
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyMovementType MovementType = ENSEnemyMovementType::Ground;
+
+	// 몬스터 등급
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyRank EnemyRank = ENSEnemyRank::Normal;
 
 	// 스켈레탈 메시
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	TObjectPtr<USkeletalMesh> SkeletalMesh;
 
+	// 캐릭터 애니메이션 블루프린트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TSubclassOf<UAnimInstance> AnimClass;
+
 	// 몬스터 크기 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
-	FVector DrawScale;
+	FVector DrawScale = FVector(1.0f, 1.0f, 1.0f);
 
 	// 무기
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
@@ -89,6 +169,10 @@ public:
 	// 기본 GA
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
+	
+	// 몬스터가 사용할 수 있는 공격 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TArray<FNSEnemyAttackDefinition> AttackList;
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	TObjectPtr<UBehaviorTree> BehaviorTree;
@@ -98,14 +182,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	TObjectPtr<UEnvQuery> EQSQuery;
-
-	// 최소 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
-	float MinAttackRange;
-
-	// 최대 공격 사거리
-	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
-	float MaxAttackRange;
 
 	// 보스 페이즈
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseSystem")
