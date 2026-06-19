@@ -167,22 +167,27 @@ void UGA_Reload::FinishReload()
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	const bool bIsNetAuthority = ActorInfo && ActorInfo->IsNetAuthority();
+	const bool bIsPredictingClient =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !bIsNetAuthority;
 
-	if (ActorInfo && ActorInfo->IsNetAuthority() && ASC)
+	if ((bIsNetAuthority || bIsPredictingClient) && ASC)
 	{
 		if (const UNSPlayerAttributeSet* AttributeSet = ASC->GetSet<UNSPlayerAttributeSet>())
 		{
-			// 서버에서 최종 탄약 수 복구
+			// 서버는 확정값을 적용하고, 로컬 클라이언트는 같은 완료 시점의 예측값만 반영한다.
 			const float MaxAmmo = FMath::Max(AttributeSet->GetMaxAmmo(), 0.0f);
 			ASC->ApplyModToAttribute(UNSPlayerAttributeSet::GetAmmoAttribute(), EGameplayModOp::Override, MaxAmmo);
 		}
 	}
 
+	const bool bReplicateEndAbility = bIsNetAuthority;
+
 	EndAbility(
 		GetCurrentAbilitySpecHandle(),
 		GetCurrentActorInfo(),
 		GetCurrentActivationInfo(),
-		true,
+		bReplicateEndAbility,
 		false
 	);
 }
