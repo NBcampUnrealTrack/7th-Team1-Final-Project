@@ -181,6 +181,18 @@ private:
 	//리로드 태그 변경시 탄약 UI 상태 갱신
 	void OnReloadingTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	
+	//PlayerState의 재화 컴포넌트를 HUD에 연결
+	void BindCurrencyToHUD();
+	
+	//현재 재화 값을 한번 읽어서 HUD에 반영
+	void UpdateHUDCurrency();
+	
+	//임시 재화 변경시 HUD갱신
+	void OnTempCurrencyChanged(int64 Amount);
+	
+	//영구 재화 버킷 변경시 HUD 갱신
+	void OnPermanentCurrencyChanged(FGameplayTag Type, int64 Amount);
+	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")

@@ -554,3 +554,13 @@ void UNSUIManagerSubsystem::SetReloading(bool bReloading)
 
 	HUDWidget->SetReloading(bReloading);
 }
+
+void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+
+	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
+}

@@ -182,3 +182,12 @@ void UNSHUDWidget::SetReloading(bool bReloading)
 
 	AmmoWidget->SetReloading(bReloading);
 }
+void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
+{
+	if (!GoodsWidget)
+	{
+		return;
+	}
+
+	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
+}

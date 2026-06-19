@@ -491,6 +491,131 @@ void ANSPlayerController::OnReloadingTagChanged(const FGameplayTag CallbackTag, 
 	}
 }
 
+void ANSPlayerController::BindCurrencyToHUD()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+	
+	UNSCurrencyComponent* CurrencyComponent =
+		NSPlayerState->GetCurrencyComponent();
+	if (!CurrencyComponent)
+	{
+		return;
+	}
+	
+	CachedCurrencyComponent = CurrencyComponent;
+	
+	//중복 방지
+	CurrencyComponent->OnTempChanged.RemoveAll(this);
+	CurrencyComponent->OnPermanenetChanged.RemoveAll(this);
+
+	CurrencyComponent->OnTempChanged.AddUObject(
+		this,
+		&ANSPlayerController::OnTempCurrencyChanged);
+
+	CurrencyComponent->OnPermanenetChanged.AddUObject(
+		this,
+		&ANSPlayerController::OnPermanentCurrencyChanged);
+
+	UpdateHUDCurrency();
+}
+
+void ANSPlayerController::UpdateHUDCurrency()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UNSCurrencyComponent* CurrencyComponent =
+		CachedCurrencyComponent.Get();
+	
+	if (!CurrencyComponent)
+	{
+		ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+		CurrencyComponent = NSPlayerState
+			? NSPlayerState->GetCurrencyComponent()
+			: nullptr;
+	}
+
+	if (!CurrencyComponent)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	//임시 재화
+	UIManager->UpdateRunInGoods(
+		static_cast<int32>(CurrencyComponent->GetTemp()));
+
+	//이번 런에서 얻은 공통 영구 재화
+	UIManager->UpdateRunOutGoods(
+		static_cast<int32>(CurrencyComponent->GetPermanent(
+			NSGameplayTags::Currency_Common)));
+
+	//이번 런에서 얻은 스킬 재화
+	UIManager->UpdateRunSkillGoods(
+		static_cast<int32>(CurrencyComponent->GetPermanent(
+			NSGameplayTags::Currency_Skill)));
+}
+
+void ANSPlayerController::OnTempCurrencyChanged(int64 Amount)
+{
+	UNSUIManagerSubsystem* UIManager =
+	GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+	: nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	UIManager->UpdateRunInGoods(static_cast<int32>(Amount));
+}
+
+void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Amount)
+{
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (Type == NSGameplayTags::Currency_Common)
+	{
+		UIManager->UpdateRunOutGoods(static_cast<int32>(Amount));
+		UIManager->UpdateRunResultCommonGoods(static_cast<int32>(Amount));
+		return;
+	}
+
+	if (Type == NSGameplayTags::Currency_Skill)
+	{
+		UIManager->UpdateRunSkillGoods(static_cast<int32>(Amount));
+		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
+		return;
+	}
+}
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -579,6 +704,7 @@ void ANSPlayerController::BeginPlay()
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
 	UpdateHUDAmmo();
+	BindCurrencyToHUD();
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -643,6 +769,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		BindAttributeToHUD();
 		UpdateHUDHealthAndShield();
 		UpdateHUDAmmo();
+		BindCurrencyToHUD();
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);

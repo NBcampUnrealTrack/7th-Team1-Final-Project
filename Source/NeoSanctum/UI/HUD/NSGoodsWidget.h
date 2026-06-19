@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "NSGoodsWidget.generated.h"
 
+class UCommonTextBlock;
 class UTextBlock;
 class UImage;
 
@@ -40,12 +41,14 @@ public:
 	//런 시작시 초기화
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ResetRunInGoodsAmount();
-	// 런 인 재화 UI 데이터
+	//런 인 재화 UI 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Goods")
 	FDataTableRowHandle RunInGoodsUIDataRow;
-	// 런 아웃 재화 UI 데이터
+	//런 아웃 재화 UI 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Goods")
 	FDataTableRowHandle RunOutGoodsUIDataRow;
+	//인런에서 얻은 스킬 재화 표시
+	void SetRunSkillGoodsAmount(int32 NewGoodsAmount);
 private:
 	//런 인에서 사용하는 휘발성재화
 	int32 CurrentRunInGoodsAmount = 0;
@@ -57,11 +60,15 @@ private:
 	//런 아웃 재화 텍스트
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UTextBlock> RunOutGoodsText;
+	//런 스킬재화 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> RunSkillGoodsText;
 	
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UImage> RunInGoodsIcon;
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UImage> RunOutGoodsIcon;
+
 	
 	//DataTable에서 재화 아이콘 적용
 	void ApplyGoodsUIData();

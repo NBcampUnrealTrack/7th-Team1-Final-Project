@@ -4,6 +4,7 @@
 #include "NSGoodsWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "CommonTextBlock.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
 
 void UNSGoodsWidget::SetRunInGoodsAmount(int32 NewGoodsAmount)
@@ -108,4 +109,15 @@ void UNSGoodsWidget::NativeConstruct()
 	//실제 값이 들어오기 전 기본 상태
 	SetRunInGoodsAmount(0);
 	SetRunOutGoodsAmount(0);
+	SetRunSkillGoodsAmount(0);
+}
+void UNSGoodsWidget::SetRunSkillGoodsAmount(int32 NewGoodsAmount)
+{
+	if (!RunSkillGoodsText)
+	{
+		return;
+	}
+
+	RunSkillGoodsText->SetText(
+		FText::AsNumber(FMath::Max(NewGoodsAmount, 0)));
 }

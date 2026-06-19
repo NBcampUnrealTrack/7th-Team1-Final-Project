@@ -76,6 +76,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetReloading(bool bReloading);
 	
+	//인런 스킬 재화 UI 갱신
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void UpdateRunSkillGoods(int32 NewGoodsAmount);
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
