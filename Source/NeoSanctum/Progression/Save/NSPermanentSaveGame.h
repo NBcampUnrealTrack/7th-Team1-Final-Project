@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSPermanentSaveGame.generated.h"
 
 // 캐릭터의 영구 저장 데이터
@@ -16,9 +17,11 @@ struct FNSCharacterSaveData
 	UPROPERTY(SaveGame, BlueprintReadOnly)
 	int64 JobCurrency = 0;   
 	
-	// 장착한 파츠
+	// 장착 파츠 1개 — 소유 인벤토리의 (정의,등급) 참조, Definition이 null이면 미장착
 	UPROPERTY(SaveGame, BlueprintReadOnly)
-	TArray<FName> EquippedPartIds;
+	TSoftObjectPtr<UNSPartDefinition> EquippedPartDefinition;
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	ENSPartRarity EquippedPartRarity = ENSPartRarity::Common;
 	
 	// 캐릭터별 스킬 (스킬종류, 레벨)
 	UPROPERTY(SaveGame, BlueprintReadOnly)
@@ -47,6 +50,9 @@ public:
 	// 가장 최근에 플레이한 캐릭터 ID
 	UPROPERTY(SaveGame)
 	FName LastSelectedCharacterId;
+	// 소유 파츠 인벤토리 (계정 공유, 키 = 정의+등급)
+	UPROPERTY(SaveGame)
+	TArray<FNSPartSaveData> OwnedParts;
 	
 	// 직업 단위
 	// Key : 캐릭터 FName, Value : 세이브 데이터
