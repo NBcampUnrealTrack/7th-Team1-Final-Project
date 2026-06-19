@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSBarrier.generated.h"
 
 class UAbilitySystemComponent;
@@ -29,7 +30,7 @@ public:
 		APawn* InOwningPawn,
 		AController* InOwningController,
 		float InRadius,
-		float InMaxHealth
+		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
 	);
 	
 public:
@@ -72,7 +73,7 @@ private:
 	float CurrentRadius = 150.0f;
 
 	UPROPERTY(Transient)
-	float CurrentMaxHealth = 1.0f;
+	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
 
 	UPROPERTY(Transient)
 	TObjectPtr<APawn> OwningPawn;

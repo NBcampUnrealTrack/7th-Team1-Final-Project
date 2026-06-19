@@ -1,4 +1,4 @@
-﻿// Copyright 2026 One Team. All rights reserved.
+﻿﻿// Copyright 2026 One Team. All rights reserved.
 
 
 #include "GA_EngineerBarrier.h"
@@ -32,7 +32,7 @@ void UGA_EngineerBarrier::ActivateAbility(
 		return;
 	}
 
-	if (!BarrierClass)
+	if (!BarrierAbilityConfig.BarrierClass)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
@@ -45,20 +45,14 @@ void UGA_EngineerBarrier::ActivateAbility(
 		return;
 	}
 
-	float BarrierHealth = 0.0f;
-	if (!TryGetBarrierHealth(BarrierHealth))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	SpawnBarrierActor(ActorInfo, BarrierRadius, BarrierHealth);
+	RebuildSetByCallerMagnitudes();
+	SpawnBarrierActor(ActorInfo, BarrierRadius, SetByCallerMagnitudes);
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
@@ -141,32 +135,37 @@ bool UGA_EngineerBarrier::TryGetBarrierRadius(float& OutBarrierRadius) const
 	return true;
 }
 
-bool UGA_EngineerBarrier::TryGetBarrierHealth(float& OutBarrierHealth) const
+void UGA_EngineerBarrier::RebuildSetByCallerMagnitudes()
 {
-	float FinalBarrierHealth = 0.0f;
-
-	if (!TryGetFinalAbilityStat(
-		AbilityTag,
-		NSGameplayTags::CombatStat_MaxHealth,
-		FinalBarrierHealth))
+	SetByCallerMagnitudes.Reset();
+	
+	for (const FNSSetByCallerFromCombatStat& Mapping : BarrierAbilityConfig.SetByCallerMappings)
 	{
+		if (!Mapping.CombatStatTag.IsValid() || !Mapping.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+		
+		float Magnitude = 0.0f;
 		if (!TryGetFinalAbilityStat(
 			AbilityTag,
-			NSGameplayTags::CombatStat_Health,
-			FinalBarrierHealth))
+			Mapping.CombatStatTag,
+			Magnitude))
 		{
-			return false;
+			continue;
 		}
+		
+		FNSSetByCallerMagnitude SetByCallerMagnitude;
+		SetByCallerMagnitude.SetByCallerTag = Mapping.SetByCallerTag;
+		SetByCallerMagnitude.Magnitude = Magnitude;
+		SetByCallerMagnitudes.Add(SetByCallerMagnitude);
 	}
-
-	OutBarrierHealth = FinalBarrierHealth;
-	return true;
 }
 
 void UGA_EngineerBarrier::SpawnBarrierActor(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	float BarrierRadius,
-	float BarrierHealth)
+	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	AActor* AvatarActor = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
 	if (!AvatarActor || !AvatarActor->HasAuthority())
@@ -175,7 +174,7 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 	}
 
 	UWorld* World = AvatarActor->GetWorld();
-	if (!World || !BarrierClass)
+	if (!World || !BarrierAbilityConfig.BarrierClass)
 	{
 		return;
 	}
@@ -190,7 +189,7 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 	AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
 
 	ANSBarrier* SpawnedBarrier = World->SpawnActorDeferred<ANSBarrier>(
-		BarrierClass,
+		BarrierAbilityConfig.BarrierClass,
 		AvatarActor->GetActorTransform(),
 		AvatarActor,
 		OwningPawn,
@@ -221,7 +220,12 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 		SpawnedBarrier->SetActorRelativeTransform(AttachRelativeTransform);
 	}
 
-	SpawnedBarrier->InitializeBarrier(OwningPawn, OwningController, BarrierRadius, BarrierHealth);
+	SpawnedBarrier->InitializeBarrier(
+		OwningPawn,
+		OwningController,
+		BarrierRadius,
+		InSetByCallerMagnitudes
+	);
 	SpawnedBarrier->FinishSpawning(SpawnedBarrier->GetActorTransform());
 	SpawnedBarrier->ForceNetUpdate();
 	ActiveBarrier = SpawnedBarrier;

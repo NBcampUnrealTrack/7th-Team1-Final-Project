@@ -7,7 +7,6 @@
 #include "Components/SphereComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NiagaraComponent.h"
 
 ANSBarrier::ANSBarrier()
@@ -44,11 +43,11 @@ void ANSBarrier::InitializeBarrier(
 	APawn* InOwningPawn,
 	AController* InOwningController,
 	float InRadius,
-	float InMaxHealth)
+	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
-	CurrentMaxHealth = InMaxHealth;
+	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 
 	if (OwningPawn)
 	{
@@ -108,8 +107,18 @@ void ANSBarrier::ApplyInitialAttributeEffect()
 		return;
 	}
 
-	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_MaxHealth, CurrentMaxHealth);
-	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_Health, CurrentMaxHealth);
+	for (const FNSSetByCallerMagnitude& SetByCallerMagnitude : SetByCallerMagnitudes)
+	{
+		if (!SetByCallerMagnitude.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+
+		SpecHandle.Data->SetSetByCallerMagnitude(
+			SetByCallerMagnitude.SetByCallerTag,
+			SetByCallerMagnitude.Magnitude
+		);
+	}
 
 	ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	bInitialAttributeEffectApplied = true;

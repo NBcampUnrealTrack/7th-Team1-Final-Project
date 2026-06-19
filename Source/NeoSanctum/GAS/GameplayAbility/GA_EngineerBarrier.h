@@ -4,9 +4,23 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "GA_EngineerBarrier.generated.h"
 
 class ANSBarrier;
+
+USTRUCT(BlueprintType)
+struct FNSBarrierAbilityConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
+	TSubclassOf<ANSBarrier> BarrierClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier|SetByCaller")
+	TArray<FNSSetByCallerFromCombatStat> SetByCallerMappings;
+};
+
 /**
  * 
  */
@@ -43,16 +57,16 @@ protected:
 private:
 	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
-	bool TryGetBarrierHealth(float& OutBarrierHealth) const;
+	void RebuildSetByCallerMagnitudes();
 	void SpawnBarrierActor(
 		const FGameplayAbilityActorInfo* ActorInfo,
 		float BarrierRadius,
-		float BarrierHealth
+		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
 	);
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
-	TSubclassOf<ANSBarrier> BarrierClass;
+	FNSBarrierAbilityConfig BarrierAbilityConfig;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	FGameplayTag AbilityTag;
@@ -70,6 +84,9 @@ protected:
 	FTransform AttachRelativeTransform = FTransform::Identity;
 
 private:
+	UPROPERTY(Transient)
+	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
+
 	UPROPERTY(Transient)
 	TObjectPtr<ANSBarrier> ActiveBarrier;
 };
