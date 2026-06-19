@@ -162,25 +162,49 @@ void UNSEnemyAnimInstance::UpdateAimRotation(float DeltaSeconds)
 
 		if (!ToTarget.IsNearlyZero())
 		{
-			const FRotator WorldAimRotation = ToTarget.Rotation();
-			const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
-				WorldAimRotation,
-				EnemyCharacter->GetActorRotation()
-			);
-
-			TargetPitch = FMath::Clamp(LocalAimRotation.Pitch, -MaxAimPitch, MaxAimPitch);
-			TargetYaw = FMath::Clamp(LocalAimRotation.Yaw, -MaxAimYaw, MaxAimYaw);
-
-			const float Distance2D = FVector::Dist2D(
-				EnemyCharacter->GetActorLocation(),
-				EnemyCharacter->GetCombatAimTargetLocation()
-			);
+			const float Distance2D = ToTarget.Size2D();
 
 			TargetAlpha = FMath::GetMappedRangeValueClamped(
 				FVector2D(100.0f, 400.0f),
 				FVector2D(0.0f, 1.0f),
 				Distance2D
 			);
+			
+			const FRotator WorldAimRotation = ToTarget.Rotation();
+			if (IsValid(CurrentWeapon) &&
+			    CurrentWeapon->TryGetMuzzleTransform(MuzzleTransform))
+			{
+			    // 실제 총구 방향과 목표 방향 사이에 남은 오차
+			    const FRotator AimError = UKismetMathLibrary::NormalizedDeltaRotator(
+			    	WorldAimRotation,
+			    	MuzzleTransform.GetRotation().Rotator());
+				
+			    TargetPitch = FMath::Clamp(
+			        AimPitch + AimError.Pitch,
+			        -MaxAimPitch,
+			        MaxAimPitch);
+
+			    TargetYaw = FMath::Clamp(
+			        AimYaw + AimError.Yaw,
+			        -MaxAimYaw,
+			        MaxAimYaw);
+			}
+			else
+			{
+			    const FRotator LocalAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(
+			            WorldAimRotation,
+			            EnemyCharacter->GetActorRotation());
+
+			    TargetPitch = FMath::Clamp(
+			        LocalAimRotation.Pitch,
+			        -MaxAimPitch,
+			        MaxAimPitch);
+
+			    TargetYaw = FMath::Clamp(
+			        LocalAimRotation.Yaw,
+			        -MaxAimYaw,
+			        MaxAimYaw);
+			}
 		}
 	}
 
