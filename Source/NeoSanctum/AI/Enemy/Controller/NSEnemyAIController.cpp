@@ -858,3 +858,25 @@ void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
 
 	UpdateCurrentTargetBlackboard();
 }
+
+void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
+{
+	AActor* PreviousTarget = CurrentCombatTarget.Get();
+
+	if (bBlockReacquisition && PreviousTarget && GetWorld())
+	{
+		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
+	}
+
+	CurrentCombatTarget.Reset();
+	bAttackStartedOnCurrentTarget = false;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	}
+}
