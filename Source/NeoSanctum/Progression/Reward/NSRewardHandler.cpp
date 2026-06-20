@@ -408,11 +408,14 @@ void UNSRewardHandler::HandlePartDropResult(
 			continue;
 		}
 		
+		// 동일한 보상 결과에서 생성되는 파츠가 겹치지 않도록 개별 발사 정보를 발생
+		const FNSDropLaunchData LaunchData = MakeDropLaunchData(World, DropLocation, RandomStream);
+		
 		ANSDroppedPart* DroppedPart = ANSDroppedPart::SpawnInWorld(
 			World,
 			DroppedPartClass,
 			PartData,
-			DropLocation
+			LaunchData
 		);
 		
 		if (!DroppedPart)
