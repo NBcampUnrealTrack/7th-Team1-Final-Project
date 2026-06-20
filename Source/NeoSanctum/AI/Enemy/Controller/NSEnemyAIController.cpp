@@ -114,6 +114,8 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 
 void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition)
 {
+	NotifyAttackStarted();
+	
 	if (AttackDefinition.Cooldown <= 0.0f || AttackDefinition.AttackId.IsNone())
 	{
 		return;
