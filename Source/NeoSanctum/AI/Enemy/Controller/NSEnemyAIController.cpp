@@ -507,6 +507,18 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 	return bFoundAttack ? MinimumRange : 0.0f;
 }
 
+
+void ANSEnemyAIController::NotifyAttackStarted()
+{
+	if (!CurrentCombatTarget.IsValid() || !GetWorld())
+	{
+		return;
+	}
+
+	bAttackStartedOnCurrentTarget = true;
+	LastCombatProgressTime = GetWorld()->GetTimeSeconds();
+}
+
 void ANSEnemyAIController::UpdateTargetSelection()
 {
 	UWorld* World = GetWorld();
