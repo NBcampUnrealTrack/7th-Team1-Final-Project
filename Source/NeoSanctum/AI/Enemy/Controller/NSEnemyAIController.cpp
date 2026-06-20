@@ -172,34 +172,36 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	if (!CachedBBComp || !Actor) return;
-
-	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
-	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
-	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
-
-	// 감지된 대상이 플레이어인지 재검증
-	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile && IsValidLivingTarget(Actor))
+	// 타깃이 존재하지 않으면 반환
+	if (!Actor)
 	{
-		// 시각
-		if (Stimulus.Type == SightID)
-		{
-			// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
-			AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
-
-			// 블랙보드 TargetActor 키에 실시간 업데이트
-			CachedBBComp->SetValueAsObject(TargetActorKey, Target);
-		}
-
-		// 청각 / 데미지
-		else if (Stimulus.Type == HearingID || Stimulus.Type == DamageID)
-		{
-			if (Stimulus.WasSuccessfullySensed())
-			{
-				CachedBBComp->SetValueAsObject(TargetActorKey, Actor);
-			}
-		}
+		return;
 	}
+
+	// 타깃 액터가 아군 혹은 중립인 경우 반환
+	if (GetTeamAttitudeTo(*Actor) != ETeamAttitude::Hostile)
+	{
+		return;
+	}
+
+	// 타깃이 될 수 없으면 반환
+	if (!IsValidLivingTarget(Actor))
+	{
+		ThreatRecords.Remove(Actor);
+
+		if (CurrentCombatTarget == Actor)
+		{
+			ClearCurrentCombatTarget(false);
+		}
+
+		return;
+	}
+
+	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영
+	UpdateThreatFromStimulus(Actor, Stimulus);
+
+	// 새로 감지된 타깃은 다음 Tick까지 기다리지 않고 평가
+	UpdateTargetSelection();
 }
 
 bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
@@ -508,4 +510,58 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 	}
 
 	return bFoundAttack ? MinimumRange : 0.0f;
+}
+
+void ANSEnemyAIController::UpdateTargetSelection()
+{
+}
+
+void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus)
+{
+	// 월드 혹은 타깃이 존재하지 않으면 반환
+	UWorld* World = GetWorld();
+	if (!World || !Actor)
+	{
+		return;
+	}
+
+	const double CurrentTime = World->GetTimeSeconds();
+	FNSTargetThreatRecord& Record = ThreatRecords.FindOrAdd(Actor);
+	Record.TargetActor = Actor;
+
+	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
+	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
+	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
+
+	if (Stimulus.Type == SightID)
+	{
+		Record.bCurrentlyVisible = Stimulus.WasSuccessfullySensed();
+
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastSeenTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+		}
+	}
+	else if (Stimulus.Type == HearingID)
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastStimulusTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+		}
+	}
+	else if (Stimulus.Type == DamageID)
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastStimulusTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+
+			FNSThreatDamageSample& DamageSample = Record.DamageSamples.AddDefaulted_GetRef();
+
+			DamageSample.Timestamp = CurrentTime;
+			DamageSample.Damage = FMath::Max(Stimulus.Strength, 0.0f);
+		}
+	}
 }
