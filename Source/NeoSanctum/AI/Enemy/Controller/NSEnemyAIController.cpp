@@ -604,6 +604,23 @@ void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
 }
 
 
+float ANSEnemyAIController::GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const
+{
+	const double DamageCutoff = CurrentTime - DamageThreatWindow;
+
+	float TotalDamage = 0.0f;
+
+	for (const FNSThreatDamageSample& Sample : Record.DamageSamples)
+	{
+		if (Sample.Timestamp >= DamageCutoff)
+		{
+			TotalDamage += Sample.Damage;
+		}
+	}
+
+	return TotalDamage;
+}
+
 bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const
 {
 	if (!Record.TargetActor.IsValid())
