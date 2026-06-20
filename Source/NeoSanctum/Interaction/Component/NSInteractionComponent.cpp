@@ -3,7 +3,7 @@
 #include "NSInteractionComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
-#include "../../UI/Interaction/NSInteractionPromptWidget.h"
+#include "NeoSanctum/UI/Interaction/NSInteractionPromptWidget.h"
 #include "Components/WidgetComponent.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
 
