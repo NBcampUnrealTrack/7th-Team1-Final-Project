@@ -3,7 +3,6 @@
 #include "NSCurrencyReplicationProxy.h"
 #include "Components/SceneComponent.h"
 #include "NeoSanctum/Progression/Currency/NSLocalCurrencyPickup.h"
-#include "NeoSanctum/Data/Progression/Currency/NSCurrencyVisualData.h"
 
 ANSCurrencyReplicationProxy::ANSCurrencyReplicationProxy()
 {
@@ -58,7 +57,10 @@ void ANSCurrencyReplicationProxy::Client_SpawnCurrency_Implementation(const FNSC
 		return;
 	}
 	
-	const FTransform SpawnTM(FRotator::ZeroRotator, Event.Location);
+	// 포물선 발사 재화는 시작 위치에서 생성해 Deferred Spawn 완료 시 착지 위치로 되돌아가는 현상을 방지
+	const FVector SpawnLocation = Event.LaunchData.IsValid() ? Event.LaunchData.StartLocation : Event.Location;
+	
+	const FTransform SpawnTM(FRotator::ZeroRotator, SpawnLocation);
 	
 	ANSLocalCurrencyPickup* Pickup = GetWorld()->SpawnActorDeferred<ANSLocalCurrencyPickup>(
 		PickupClass, SpawnTM, this, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);

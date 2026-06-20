@@ -3,6 +3,7 @@
 
 #include "NSRewardHandler.h"
 
+#include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
@@ -288,7 +289,9 @@ FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 	
 	LaunchData.StartLocation = Origin + FVector(0.0f, 0.0f, StartHeightOffset);
 	LaunchData.TargetLocation = Origin + HorizontalOffset;
-	LaunchData.StartServerTime = World->GetTimeSeconds();
+	const AGameStateBase* GameState = World->GetGameState();
+	
+	LaunchData.StartServerTime = GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
 	LaunchData.FlightDuration = RandomStream.FRandRange(MinFlightDuration, MaxFlightDuration);
 	LaunchData.ArcHeight = ArcHeight;
 	
