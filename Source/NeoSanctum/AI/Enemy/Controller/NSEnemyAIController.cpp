@@ -566,6 +566,44 @@ void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStim
 	}
 }
 
+void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
+{
+	for (auto It = ThreatRecords.CreateIterator(); It; ++It)
+	{
+		FNSTargetThreatRecord& Record = It.Value();
+		AActor* TargetActor = Record.TargetActor.Get();
+
+		if (!IsValidLivingTarget(TargetActor))
+		{
+			It.RemoveCurrent();
+			continue;
+		}
+
+		const double DamageCutoff = CurrentTime - DamageThreatWindow;
+
+		Record.DamageSamples.RemoveAll(
+			[DamageCutoff](const FNSThreatDamageSample& Sample)
+			{
+				return Sample.Timestamp < DamageCutoff;
+			});
+
+		if (!IsThreatRecordRelevant(Record, CurrentTime))
+		{
+			It.RemoveCurrent();
+		}
+	}
+
+	for (auto It = ReacquireBlockedUntil.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid() ||
+			It.Value() <= CurrentTime)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
+
+
 bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const
 {
 	if (!Record.TargetActor.IsValid())
