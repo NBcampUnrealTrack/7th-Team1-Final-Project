@@ -880,3 +880,27 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
 	}
 }
+
+void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	AActor* TargetActor = CurrentCombatTarget.Get();
+
+	if (!IsValidLivingTarget(TargetActor))
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		return;
+	}
+
+	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+
+	if (const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor))
+	{
+		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
+	}
+}
