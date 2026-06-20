@@ -1,6 +1,5 @@
 // Copyright 2026 One Team. All rights reserved.
 
-
 #include "NSInteractionComponent.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -101,15 +100,16 @@ void UNSInteractionComponent::UpdateActiveTarget()
 void UNSInteractionComponent::TryInteract()
 {
 	APlayerController* PC = GetOwnerController();
-	if (!PC || !ActiveTarget)
+	AActor* Target = ActiveTarget.Get();
+	if (!PC || !Target)
 	{
 		return;
 	}
-	if (!INSInteractable::Execute_CanInteract(ActiveTarget, PC))
+	if (!INSInteractable::Execute_CanInteract(Target, PC))
 	{
 		return;
 	}
-	INSInteractable::Execute_OnInteract(ActiveTarget, PC);
+	INSInteractable::Execute_OnInteract(Target, PC);
 }
 
 void UNSInteractionComponent::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
