@@ -68,6 +68,7 @@ public:
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
 	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 
 	// 시각 센서가 갱신될 때 블랙보드로 데이터를 전달할 콜백 함수
 	UFUNCTION()

@@ -162,7 +162,16 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
 		CachedBBComp = GetBlackboardComponent();
+		ResetTargetingState();
 	}
+}
+
+void ANSEnemyAIController::OnUnPossess()
+{
+	ResetTargetingState();
+	CachedBBComp = nullptr;
+	
+	Super::OnUnPossess();
 }
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
