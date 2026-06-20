@@ -218,10 +218,17 @@ void UNSRewardHandler::HandleDropResults(
 	{
 		if (DropResult.RewardTypeTag == NSGameplayTags::Reward_Type_Currency)
 		{
+			// 서버가 발사 정보를 한 번 결정해 모든 클라이언트가 같은 재화 궤적을 재생
+			const FNSDropLaunchData LaunchData = MakeDropLaunchData(
+				World,
+				DropLocation,
+				RandomStream
+			);
+			
 			HandleCurrencyDropResult(
 				World,
 				DropResult,
-				DropLocation,
+				LaunchData,
 				CurrencyDropDuration
 			);
 			continue;
@@ -252,10 +259,46 @@ void UNSRewardHandler::HandleDropResults(
 	}
 }
 
+FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
+	const FVector& Origin,
+	FRandomStream& RandomStream)
+{
+	FNSDropLaunchData LaunchData;
+	
+	if (!World)
+	{
+		return LaunchData;
+	}
+	
+	constexpr float StartHeightOffset = 30.0f;
+	constexpr float MinLaunchDistance = 140.0f;
+	constexpr float MaxLaunchDistance = 220.0f;
+	constexpr float ArcHeight = 140.0f;
+	constexpr float MinFlightDuration = 0.35f;
+	constexpr float MaxFlightDuration = 0.45f;
+	
+	const float LaunchAngle = RandomStream.FRandRange(0.0f, UE_TWO_PI);
+	const float LaunchDistance = RandomStream.FRandRange(MinLaunchDistance, MaxLaunchDistance);
+	
+	const FVector HorizontalOffset(
+		FMath::Cos(LaunchAngle) * LaunchDistance,
+		FMath::Sin(LaunchAngle) * LaunchDistance,
+		0.0f
+	);
+	
+	LaunchData.StartLocation = Origin + FVector(0.0f, 0.0f, StartHeightOffset);
+	LaunchData.TargetLocation = Origin + HorizontalOffset;
+	LaunchData.StartServerTime = World->GetTimeSeconds();
+	LaunchData.FlightDuration = RandomStream.FRandRange(MinFlightDuration, MaxFlightDuration);
+	LaunchData.ArcHeight = ArcHeight;
+	
+	return LaunchData;
+}
+
 void UNSRewardHandler::HandleCurrencyDropResult(
 	UWorld* World,
 	const FNSRewardDropResult& DropResult,
-	const FVector& DropLocation,
+	const FNSDropLaunchData& LaunchData,
 	float CurrencyDropDuration)
 {
 	if (!World)
@@ -298,8 +341,9 @@ void UNSRewardHandler::HandleCurrencyDropResult(
 		DropResult.CurrencyTag,
 		ENSCurrencyGrade::None,
 		static_cast<int64>(DropResult.Quantity),
-		DropLocation,
-		CurrencyDropDuration
+		LaunchData.TargetLocation,
+		CurrencyDropDuration,
+		LaunchData
 	);
 	
 	if (DropId == INDEX_NONE)
