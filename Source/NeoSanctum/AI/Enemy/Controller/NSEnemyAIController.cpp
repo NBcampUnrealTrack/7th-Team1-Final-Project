@@ -142,12 +142,7 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDista
 
 AActor* ANSEnemyAIController::GetCurrentTargetActor() const
 {
-	if (!CachedBBComp)
-	{
-		return nullptr;
-	}
-	
-	return Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	return CurrentCombatTarget.Get();
 }
 
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
