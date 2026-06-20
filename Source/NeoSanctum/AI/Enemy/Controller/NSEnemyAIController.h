@@ -12,6 +12,28 @@ class UNSEnemyData;
 class ANSEnemyCharacterBase;
 struct FNSEnemyAttackDefinition;
 
+// 타임스탬프 데미지
+struct FNSThreatDamageSample
+{
+	double Timestamp = 0.0;
+	float Damage = 0.0f;
+};
+
+// 최근 일정 시간의 데미지를 기록해 위험도 측정
+struct FNSTargetThreatRecord
+{
+	TWeakObjectPtr<AActor> TargetActor;
+
+	TArray<FNSThreatDamageSample> DamageSamples;
+
+	FVector LastKnownLocation = FVector::ZeroVector;
+
+	double LastSeenTime = -1.0;
+	double LastStimulusTime = -1.0;
+
+	bool bCurrentlyVisible = false;
+};
+
 UCLASS()
 class NEOSANCTUM_API ANSEnemyAIController : public AAIController
 {
