@@ -5,13 +5,15 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StaticMesh.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyVisualData.h"
 
 ANSLocalCurrencyPickup::ANSLocalCurrencyPickup()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	bReplicates = false;
 	AActor::SetReplicateMovement(false);
 	
@@ -41,6 +43,11 @@ void ANSLocalCurrencyPickup::Initialize(const FNSCurrencySpawnEvent& Event, cons
 	
 	CollisionSphere->OnComponentBeginOverlap.AddDynamic(this, &ANSLocalCurrencyPickup::OnSphereBeginOverlap);
 	
+	if (Event.LaunchData.IsValid())
+	{
+		StartDropLaunch(Event.LaunchData);
+	}
+	
 	if (Event.Duration > 0.f)
 	{
 		GetWorldTimerManager().SetTimer(ExpireTimer, this, &ANSLocalCurrencyPickup::HandleExpire, Event.Duration, false);
@@ -56,7 +63,90 @@ void ANSLocalCurrencyPickup::RestoreVisual()
 {
 	bCollectRequested = false;
 	SetActorHiddenInGame(false);
-	SetActorEnableCollision(true);
+	
+	if (!bIsLaunching)
+	{
+		CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	}
+}
+
+void ANSLocalCurrencyPickup::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	UpdateDropLaunch();
+}
+
+void ANSLocalCurrencyPickup::StartDropLaunch(const FNSDropLaunchData& InLaunchData)
+{
+	LaunchData = InLaunchData;
+	
+	// 늦게 접속한 클라이언트도 서버 시작 시간을 기준으로 현재 궤적 위치를 계산
+	const float ElapsedTime = FMath::Max(0.0f, GetServerWorldTimeSeconds() - LaunchData.StartServerTime);
+	
+	if (ElapsedTime >= LaunchData.FlightDuration)
+	{
+		SetActorLocation(LaunchData.TargetLocation);
+		FinishDropLaunch();
+		return;
+	}
+	
+	bIsLaunching = true;
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetActorLocation(LaunchData.StartLocation);
+	SetActorTickEnabled(true);
+	
+	UpdateDropLaunch();
+}
+
+void ANSLocalCurrencyPickup::UpdateDropLaunch()
+{
+	if (!bIsLaunching)
+	{
+		return;
+	}
+	
+	const float ElapsedTime = FMath::Max(0.0f, GetServerWorldTimeSeconds() - LaunchData.StartServerTime);
+	
+	const float Alpha = FMath::Clamp(
+		ElapsedTime / LaunchData.FlightDuration,
+		0.0f,
+		1.0f
+	);
+	
+	const FVector StartLocation = LaunchData.StartLocation;
+	const FVector TargetLocation = LaunchData.TargetLocation;
+	
+	FVector CurrentLocation = FMath::Lerp(StartLocation, TargetLocation, Alpha);
+	
+	CurrentLocation.Z += 4.0f * LaunchData.ArcHeight * Alpha * (1.0f - Alpha);
+	
+	SetActorLocation(CurrentLocation);
+	
+	if (Alpha >= 1.0f)
+	{
+		FinishDropLaunch();
+	}
+}
+
+void ANSLocalCurrencyPickup::FinishDropLaunch()
+{
+	bIsLaunching = false;
+	SetActorLocation(LaunchData.TargetLocation);
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	SetActorTickEnabled(false);
+}
+
+float ANSLocalCurrencyPickup::GetServerWorldTimeSeconds() const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return 0.0f;
+	}
+	
+	const AGameStateBase* GameState = World->GetGameState();
+	return GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
 }
 
 void ANSLocalCurrencyPickup::StartMeshLoad(const UNSCurrencyVisualData* VisualData)
@@ -104,9 +194,9 @@ void ANSLocalCurrencyPickup::HandleExpire()
 }
 
 void ANSLocalCurrencyPickup::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Sweep)
+                                                  UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Sweep)
 {
-	if (bCollectRequested)
+	if (bIsLaunching || bCollectRequested)
 	{
 		return;
 	}

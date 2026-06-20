@@ -33,6 +33,7 @@ public:
 	// 검증 실패 -> 다시 보이게
 	void RestoreVisual();
 protected:
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	UFUNCTION()
@@ -44,6 +45,10 @@ private:
 	void StartMeshLoad(const UNSCurrencyVisualData* VisualData);
 	void OnMeshLoaded();
 	void HandleExpire();
+	void StartDropLaunch(const FNSDropLaunchData& InLaunchData);
+	void UpdateDropLaunch();
+	void FinishDropLaunch();
+	float GetServerWorldTimeSeconds() const;
 	
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USphereComponent> CollisionSphere;
@@ -61,6 +66,9 @@ private:
 	FSoftObjectPath PendingMeshPath;
 	TSharedPtr<FStreamableHandle> MeshLoadHandle;
 	FTimerHandle ExpireTimer;
+	
+	FNSDropLaunchData LaunchData;
+	bool bIsLaunching = false;
 	
 	bool bCollectRequested = false;
 };
