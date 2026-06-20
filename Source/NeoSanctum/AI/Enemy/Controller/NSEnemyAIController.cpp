@@ -833,3 +833,28 @@ bool ANSEnemyAIController::ShouldSwitchTarget(AActor* CandidateTarget, double Cu
 	return CandidateDistance <= CurrentDistance * DistanceSwitchRatio;
 }
 
+void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
+{
+	if (!IsValidLivingTarget(NewTarget) || CurrentCombatTarget == NewTarget)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	CurrentCombatTarget = NewTarget;
+
+	const double CurrentTime = World->GetTimeSeconds();
+
+	CurrentTargetSelectedTime = CurrentTime;
+	LastTargetSwitchTime = CurrentTime;
+	LastCombatProgressTime = CurrentTime;
+
+	bAttackStartedOnCurrentTarget = false;
+
+	UpdateCurrentTargetBlackboard();
+}
