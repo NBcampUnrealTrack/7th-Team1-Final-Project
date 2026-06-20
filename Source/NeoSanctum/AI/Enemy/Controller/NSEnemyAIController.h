@@ -43,9 +43,7 @@ public:
 	ANSEnemyAIController();
 	virtual void Tick(float DeltaTime) override;
 
-	/*
-	 * AI Controller가 적을 필터링하기 위한 TeamId 조회
-	 */
+	// AI Controller가 적을 필터링하기 위한 TeamId 조회
 	virtual FGenericTeamId GetGenericTeamId() const override
 	{
 		return FGenericTeamId(static_cast<uint8>(ETeamId::Enemy));
@@ -88,22 +86,22 @@ private:
 		bool bHasLineOfSight) const;
 
 protected:
-	// 시야/청각 설정 컴포넌트
+	/* 시야/청각 설정 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent;
 
-	// 타겟을 정면으로 바라봤다고 판정할 최대 각도
+	/* 타겟을 정면으로 바라봤다고 판정할 최대 각도 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI|Combat", meta = (ClampMin = "0.0", ClampMax = "90.0"))
 	float AttackFacingAngleDegrees = 2.0f;
 
 private:
-	// 타겟 액터
+	/* 타겟 액터 키 이름 */
 	FName TargetActorKey = TEXT("TargetActor");
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBlackboardComponent> CachedBBComp;
 	
-	// AttackId별 마지막 사용 시간
+	/* AttackId별 마지막 사용 시간 */
 	TMap<FName, float> LastAttackTimeById;
 	
 private:
@@ -167,77 +165,77 @@ private:
 protected:
 	/* 설정 변수 */
 
-	// 타깃 선택 로직을 다시 평가하는 최소 간격
+	/* 타깃 선택 로직을 다시 평가하는 최소 간격 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.05"))
 	float TargetEvaluationInterval = 0.25f;
 
-	// 시야에서 사라진 타깃을 계속 기억하는 시간
+	/* 시야에서 사라진 타깃을 계속 기억하는 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
 	float SightMemoryDuration = 2.0f;
 
-	// 청각 등 비시각 감지 정보를 유지하는 시간
+	/* 청각 등 비시각 감지 정보를 유지하는 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
 	float StimulusMemoryDuration = 3.0f;
 
-	// 누적 피해 Threat 계산에 포함할 최근 시간 범위
+	/* 누적 피해 Threat 계산에 포함할 최근 시간 범위 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
 	float DamageThreatWindow = 10.0f;
 
-	// 새 타깃 선택 직후 타깃 변경을 막는 최소 시간
+	/* 새 타깃 선택 직후 타깃 변경을 막는 최소 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
 	float InitialTargetLockDuration = 2.5f;
 
-	// 한 번 타깃을 변경한 뒤 다시 변경할 수 있을 때까지의 시간
+	/* 한 번 타깃을 변경한 뒤 다시 변경할 수 있을 때까지의 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
 	float TargetSwitchCooldown = 2.0f;
 
-	// 새 타깃의 피해 Threat가 현재 타깃보다 얼마나 높아야 전환할지 기준
+	/* 새 타깃의 피해 Threat가 현재 타깃보다 얼마나 높아야 전환할지 기준 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "1.0"))
 	float DamageThreatSwitchRatio = 1.25f;
 
-	// 피해 기록이 없을 때 새 타깃이 얼마나 더 가까워야 전환할지 기준
+	/* 피해 기록이 없을 때 새 타깃이 얼마나 더 가까워야 전환할지 기준 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float DistanceSwitchRatio = 0.7f;
 
-	// 공격하지 못한 상태로 타깃을 계속 추적할 수 있는 최대 시간
+	/* 공격하지 못한 상태로 타깃을 계속 추적할 수 있는 최대 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
 	float MaxPursuitWithoutAttackDuration = 10.0f;
 
-	// 추적 제한으로 포기한 타깃을 다시 선택하지 않는 시간
+	/* 추적 제한으로 포기한 타깃을 다시 선택하지 않는 시간 */
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
 	float TargetReacquireCooldown = 2.0f;
 
 private:
 	/* 런타임 변수 */
 
-	// 감지한 타깃별 시야, 위치, 피해 기록을 보관
+	/* 감지한 타깃별 시야, 위치, 피해 기록을 보관 */
 	TMap<TWeakObjectPtr<AActor>, FNSTargetThreatRecord> ThreatRecords;
 
-	// 어그로가 해제된 타깃을 다시 선택할 수 있는 시간을 기록
+	/* 어그로가 해제된 타깃을 다시 선택할 수 있는 시간을 기록 */
 	TMap<TWeakObjectPtr<AActor>, double> ReacquireBlockedUntil;
 
-	// 현재 AI가 선택한 전투 타깃
+	/* 현재 AI가 선택한 전투 타깃 */
 	TWeakObjectPtr<AActor> CurrentCombatTarget;
 
-	// 현재 타깃이 선택된 시점
+	/* 현재 타깃이 선택된 시점 */
 	double CurrentTargetSelectedTime = 0.0;
 
-	// 마지막으로 타깃을 변경한 시점
+	/* 마지막으로 타깃을 변경한 시점 */
 	double LastTargetSwitchTime = 0.0;
 
-	// 현재 타깃을 향해 공격을 시작했거나 전투 진행이 발생한 마지막 시점
+	/* 현재 타깃을 향해 공격을 시작했거나 전투 진행이 발생한 마지막 시점 */
 	double LastCombatProgressTime = 0.0;
 
-	// 다음 타깃 평가를 실행할 시점
+	/* 다음 타깃 평가를 실행할 시점 */
 	double NextTargetEvaluationTime = 0.0;
 
-	// 현재 타깃을 대상으로 한 공격이 한 번이라도 시작됐는지 여부
+	/* 현재 타깃을 대상으로 한 공격이 한 번이라도 시작됐는지 여부 */
 	bool bAttackStartedOnCurrentTarget = false;
 
-	// 마지막으로 확인한 타깃 위치를 저장할 Blackboard 키 이름
+	/* 마지막으로 확인한 타깃 위치를 저장할 Blackboard 키 이름 */
 	FName TargetLastKnownLocationKey = TEXT("TargetLastKnownLocation");
 
-	// 현재 타깃이 시야에 보이는지 저장할 Blackboard 키 이름
+	/* 현재 타깃이 시야에 보이는지 저장할 Blackboard 키 이름 */
 	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
 	
 #pragma endregion 
