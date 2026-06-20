@@ -888,6 +888,28 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	}
 }
 
+void ANSEnemyAIController::ResetTargetingState()
+{
+	ThreatRecords.Reset();
+	ReacquireBlockedUntil.Reset();
+	CurrentCombatTarget.Reset();
+
+	CurrentTargetSelectedTime = 0.0;
+	LastTargetSwitchTime = 0.0;
+	LastCombatProgressTime = 0.0;
+	NextTargetEvaluationTime = 0.0;
+
+	bAttackStartedOnCurrentTarget = false;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+	}
+}
+
 void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 {
 	if (!CachedBBComp)
