@@ -701,3 +701,74 @@ bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& R
 
 	return !Record.DamageSamples.IsEmpty();
 }
+
+bool ANSEnemyAIController::ShouldSwitchTarget(AActor* CandidateTarget, double CurrentTime) const
+{
+	AActor* CurrentTarget = CurrentCombatTarget.Get();
+
+	if (!CandidateTarget || CandidateTarget == CurrentTarget)
+	{
+		return false;
+	}
+
+	if (!IsValidLivingTarget(CurrentTarget))
+	{
+		return true;
+	}
+
+	if (CurrentTime - LastTargetSwitchTime < TargetSwitchCooldown)
+	{
+		return false;
+	}
+
+	const bool bInitialLockFinished = bAttackStartedOnCurrentTarget ||
+		CurrentTime - CurrentTargetSelectedTime >= InitialTargetLockDuration;
+
+	if (!bInitialLockFinished)
+	{
+		return false;
+	}
+
+	const FNSTargetThreatRecord* CurrentRecord = ThreatRecords.Find(CurrentTarget);
+	const FNSTargetThreatRecord* CandidateRecord = ThreatRecords.Find(CandidateTarget);
+
+	if (!CandidateRecord)
+	{
+		return false;
+	}
+
+	if (!CurrentRecord)
+	{
+		return true;
+	}
+
+	const float CurrentDamage = GetRecentDamageThreat(*CurrentRecord, CurrentTime);
+	const float CandidateDamage = GetRecentDamageThreat(*CandidateRecord, CurrentTime);
+
+	if (CandidateDamage > 0.0f)
+	{
+		if (CurrentDamage <= 0.0f)
+		{
+			return true;
+		}
+
+		return CandidateDamage >= CurrentDamage * DamageThreatSwitchRatio;
+	}
+
+	if (CurrentDamage > 0.0f)
+	{
+		return false;
+	}
+
+	const APawn* EnemyPawn = GetPawn();
+	if (!EnemyPawn)
+	{
+		return false;
+	}
+
+	const float CurrentDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CurrentTarget->GetActorLocation());
+	const float CandidateDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CandidateTarget->GetActorLocation());
+
+	return CandidateDistance <= CurrentDistance * DistanceSwitchRatio;
+}
+
