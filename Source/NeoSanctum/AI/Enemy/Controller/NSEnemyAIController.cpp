@@ -514,6 +514,67 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 
 void ANSEnemyAIController::UpdateTargetSelection()
 {
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const double CurrentTime = World->GetTimeSeconds();
+
+	PruneThreatRecords(CurrentTime);
+
+	AActor* CurrentTarget = CurrentCombatTarget.Get();
+
+	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+
+	if (CurrentTarget && !IsValidLivingTarget(CurrentTarget))
+	{
+		ClearCurrentCombatTarget(false);
+		CurrentTarget = nullptr;
+	}
+
+	// 공격 애니메이션 도중에는 유효한 타깃을 변경하지 않음
+	if (CurrentTarget && bIsAttacking)
+	{
+		UpdateCurrentTargetBlackboard();
+		return;
+	}
+
+	// 공격 없이 추적만 10초 이상 지속 시 현재 타깃에서 제거
+	if (CurrentTarget &&
+		CurrentTime - LastCombatProgressTime >= MaxPursuitWithoutAttackDuration)
+	{
+		ClearCurrentCombatTarget(true);
+		CurrentTarget = nullptr;
+	}
+
+	// 시야 기억, 피해 기록, 청각 기록이 모두 만료되면 현재 타깃에서 제거
+	if (CurrentTarget && !ThreatRecords.Contains(CurrentTarget))
+	{
+		ClearCurrentCombatTarget(false);
+		CurrentTarget = nullptr;
+	}
+
+	AActor* BestTarget = FindBestTarget(CurrentTime);
+
+	if (!CurrentTarget)
+	{
+		if (BestTarget)
+		{
+			SetCurrentCombatTarget(BestTarget);
+		}
+
+		return;
+	}
+
+	if (BestTarget && ShouldSwitchTarget(BestTarget, CurrentTime))
+	{
+		SetCurrentCombatTarget(BestTarget);
+		return;
+	}
+
+	UpdateCurrentTargetBlackboard();
 }
 
 void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus)
