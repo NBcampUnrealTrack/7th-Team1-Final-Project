@@ -29,6 +29,21 @@ ANSEnemyAIController::ANSEnemyAIController()
 void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	const double CurrentTime = World->GetTimeSeconds();
+
+	if (CurrentTime >= NextTargetEvaluationTime)
+	{
+		UpdateTargetSelection();
+
+		NextTargetEvaluationTime = CurrentTime + TargetEvaluationInterval;
+	}
 
 	AActor* TargetActor = GetCurrentTargetActor();
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
