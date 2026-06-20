@@ -565,3 +565,30 @@ void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStim
 		}
 	}
 }
+
+bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const
+{
+	if (!Record.TargetActor.IsValid())
+	{
+		return false;
+	}
+
+	if (Record.bCurrentlyVisible)
+	{
+		return true;
+	}
+
+	if (Record.LastSeenTime >= 0.0 &&
+		CurrentTime - Record.LastSeenTime <= SightMemoryDuration)
+	{
+		return true;
+	}
+
+	if (Record.LastStimulusTime >= 0.0 &&
+		CurrentTime - Record.LastStimulusTime <= StimulusMemoryDuration)
+	{
+		return true;
+	}
+
+	return !Record.DamageSamples.IsEmpty();
+}
