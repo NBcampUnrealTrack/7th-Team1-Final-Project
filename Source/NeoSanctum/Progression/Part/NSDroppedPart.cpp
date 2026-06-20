@@ -13,8 +13,12 @@
 
 ANSDroppedPart::ANSDroppedPart()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	bReplicates = true;
+	
+	// 서버가 갱신한 포물선 위치를 클라이언트에도 복제
+	SetReplicateMovement(true);
 	
 	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SetRootComponent(SceneRoot);
@@ -49,8 +53,15 @@ void ANSDroppedPart::BeginPlay()
 	SetupVisual();
 }
 
+void ANSDroppedPart::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	UpdateDropLaunch();
+}
+
 ANSDroppedPart* ANSDroppedPart::SpawnInWorld(UWorld* World, TSubclassOf<ANSDroppedPart> Class,
-	const FNSPartData& Part, const FVector& Location)
+                                             const FNSPartData& Part, const FVector& Location)
 {
 	if (!World)
 	{
@@ -75,6 +86,108 @@ ANSDroppedPart* ANSDroppedPart::SpawnInWorld(UWorld* World, TSubclassOf<ANSDropp
 	return Dropped;
 }
 
+void ANSDroppedPart::StartDropLaunch(const FNSDropLaunchData& InLaunchData)
+{
+	if (!HasAuthority() || !InLaunchData.IsValid())
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	LaunchData = InLaunchData;
+	LaunchStartWorldTime = World->GetTimeSeconds();
+	bIsLaunching = true;
+	
+	SetActorLocation(LaunchData.StartLocation);
+	SetActorTickEnabled(true);
+	ForceNetUpdate();
+}
+
+void ANSDroppedPart::UpdateDropLaunch()
+{
+	if (!HasAuthority() || !bIsLaunching)
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		FinishDropLaunch();
+		return;
+	}
+	
+	const float ElapsedTime = FMath::Max(0.0f, World->GetTimeSeconds() - LaunchStartWorldTime);
+	
+	const float Alpha = FMath::Clamp(ElapsedTime / LaunchData.FlightDuration, 0.0f, 1.0f);
+	
+	const FVector StartLocation = LaunchData.StartLocation;
+	const FVector TargetLocation = LaunchData.TargetLocation;
+	
+	FVector CurrentLocation = FMath::Lerp(StartLocation, TargetLocation, Alpha);
+	
+	CurrentLocation.Z += 4.0f * LaunchData.ArcHeight * Alpha * (1.0f - Alpha);
+	
+	SetActorLocation(CurrentLocation);
+	
+	if (Alpha >= 1.0f)
+	{
+		FinishDropLaunch();
+	}
+}
+
+void ANSDroppedPart::FinishDropLaunch()
+{
+	bIsLaunching = false;
+	
+	SetActorLocation(LaunchData.TargetLocation);
+	SetActorTickEnabled(false);
+	ForceNetUpdate();
+}
+
+ANSDroppedPart* ANSDroppedPart::SpawnInWorld(
+	UWorld* World,
+	TSubclassOf<ANSDroppedPart> Class,
+	const FNSPartData& Part,
+	const FNSDropLaunchData& InLaunchData)
+{
+	if (!World || !InLaunchData.IsValid())
+	{
+		return nullptr;
+	}
+	
+	if (!Class)
+	{
+		Class = ANSDroppedPart::StaticClass();
+	}
+	
+	const FTransform SpawnTransform(FRotator::ZeroRotator, InLaunchData.StartLocation);
+	
+	ANSDroppedPart* Dropped = World->SpawnActorDeferred<ANSDroppedPart>(
+		Class,
+		SpawnTransform,
+		nullptr,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	);
+	
+	if (!Dropped)
+	{
+		return nullptr;
+	}
+	
+	Dropped->Initialize(Part);
+	Dropped->FinishSpawning(SpawnTransform);
+	Dropped->StartDropLaunch(InLaunchData);
+	
+	return Dropped;
+}
+
 void ANSDroppedPart::Initialize(const FNSPartData& InPart)
 {
 	if (!HasAuthority())
@@ -88,6 +201,10 @@ void ANSDroppedPart::Initialize(const FNSPartData& InPart)
 void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
 {
 	if (!HasAuthority())
+	{
+		return;
+	}
+	if (bIsLaunching)
 	{
 		return;
 	}

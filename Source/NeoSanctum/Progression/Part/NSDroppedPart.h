@@ -7,6 +7,7 @@
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSDroppedPart.generated.h"
 
 class USkeletalMeshComponent;
@@ -27,6 +28,14 @@ public:
 	// 월드 좌표에 파츠를 스폰, 장착 교체/몬스터 드랍 공용 진입점
 	static ANSDroppedPart* SpawnInWorld(UWorld* World, TSubclassOf<ANSDroppedPart> Class,
 		const FNSPartData& Part, const FVector& Location);
+	
+	// 발사 시작점에서 생성한 뒤 TargetLocation까지 포물선으로 이동하는 파츠 스폰 경로
+	static ANSDroppedPart* SpawnInWorld(
+		UWorld* World,
+		TSubclassOf<ANSDroppedPart> Class,
+		const FNSPartData& Part,
+		const FNSDropLaunchData& InLaunchData
+	);
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -42,6 +51,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION()
@@ -49,6 +59,10 @@ protected:
 
 	// DefinitionPtr -> PartMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
 	void SetupVisual();
+	
+	void StartDropLaunch(const FNSDropLaunchData& InLaunchData);
+	void UpdateDropLaunch();
+	void FinishDropLaunch();
 
 protected:
 	// ===== 테스트용 임시 코드 — 몬스터 드랍 연동 후 삭제 =====
@@ -70,6 +84,10 @@ protected:
 	FNSPartData StoredInstance;
 
 private:
+	FNSDropLaunchData LaunchData;
+	float LaunchStartWorldTime = 0.0f;
+	float bIsLaunching = false;
+	
 	// 진행 중인 비주얼(Definition/PartMesh) 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> VisualLoadHandle;
 };
