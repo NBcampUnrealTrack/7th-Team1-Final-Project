@@ -54,6 +54,9 @@ ANSPlayerController::ANSPlayerController()
 
 	// 증강 선택 컴포넌트 생성
 	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
+	
+	// 상호작용 컴포넌트
+	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
 }
 
 void ANSPlayerController::RequestReady()
@@ -1299,30 +1302,19 @@ void ANSPlayerController::TryInteract()
 		return;
 	}
 
-	APawn* MyPawn = GetPawn();
-	if (!MyPawn)
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	if (!PlayerCharacter)
 	{
 		return;
 	}
-	//주변 엑터에서 Component탐색
-	TArray<AActor*> OverlappingActors;
-	MyPawn->GetOverlappingActors(OverlappingActors);
-	if (OverlappingActors.IsEmpty()) { return; }
-	
-	for (AActor* Actor : OverlappingActors)
+
+	UNSInteractionComponent* Interaction = PlayerCharacter->FindComponentByClass<UNSInteractionComponent>();
+	if (!Interaction)
 	{
-		if (!Actor)
-		{
-			continue;
-		}
-		// UNSInteractionComponent* InteractionComp =
-		// 	Actor->FindComponentByClass<UNSInteractionComponent>();
-		// if (InteractionComp && InteractionComp->CanInteract())
-		// {
-		// 	InteractionComp->Interact(this);
-		// 	return;
-		// }
+		return;
 	}
+
+	Interaction->TryInteract();
 }
 
 void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgressPayload& Payload)

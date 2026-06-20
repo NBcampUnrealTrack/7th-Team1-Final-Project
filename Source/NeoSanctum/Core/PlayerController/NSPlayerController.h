@@ -17,6 +17,7 @@ class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
 class ANSRunGameState;
+class UNSInteractionComponent;
 class UNSCurrencyComponent;
 
 UCLASS()
@@ -247,6 +248,8 @@ private:
 	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);
 	FDelegateHandle PermanentDataLoadedHandle;
 
+	UPROPERTY(VisibleAnywhere, Category = "Interaction")
+	TObjectPtr<UNSInteractionComponent> InteractionComp;
 protected:
 	virtual void BeginPlay() override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
