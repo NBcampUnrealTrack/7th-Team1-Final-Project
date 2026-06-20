@@ -61,9 +61,8 @@ protected:
 	
 private:
 	UPROPERTY()
-	TArray<TObjectPtr<AActor>> Candidates;
+	TArray<TWeakObjectPtr<AActor>> Candidates;
 	
 	UPROPERTY()
-	TObjectPtr<AActor> ActiveTarget;
+	TWeakObjectPtr<AActor> ActiveTarget;
 };
-
