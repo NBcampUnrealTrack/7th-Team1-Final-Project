@@ -603,6 +603,60 @@ void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
 	}
 }
 
+AActor* ANSEnemyAIController::FindBestTarget(double CurrentTime) const
+{
+	const APawn* EnemyPawn = GetPawn();
+	if (!EnemyPawn)
+	{
+		return nullptr;
+	}
+
+	AActor* BestDamageTarget = nullptr;
+	float BestDamageThreat = 0.0f;
+	float BestDamageTargetDistanceSq = TNumericLimits<float>::Max();
+
+	AActor* NearestTarget = nullptr;
+	float NearestDistanceSq = TNumericLimits<float>::Max();
+
+	for (const auto& Pair : ThreatRecords)
+	{
+		AActor* TargetActor = Pair.Key.Get();
+		const FNSTargetThreatRecord& Record = Pair.Value;
+
+		if (!IsValidLivingTarget(TargetActor) || !IsThreatRecordRelevant(Record, CurrentTime))
+		{
+			continue;
+		}
+
+		if (const double* BlockedUntil = ReacquireBlockedUntil.Find(Pair.Key))
+		{
+			if (*BlockedUntil > CurrentTime)
+			{
+				continue;
+			}
+		}
+
+		const float DistanceSq = FVector::DistSquared(EnemyPawn->GetActorLocation(), TargetActor->GetActorLocation());
+		const float DamageThreat = GetRecentDamageThreat(Record, CurrentTime);
+
+		if (DamageThreat > BestDamageThreat ||
+			(FMath::IsNearlyEqual(DamageThreat, BestDamageThreat) &&
+			 DistanceSq < BestDamageTargetDistanceSq))
+		{
+			BestDamageThreat = DamageThreat;
+			BestDamageTarget = TargetActor;
+			BestDamageTargetDistanceSq = DistanceSq;
+		}
+
+		if (DistanceSq < NearestDistanceSq)
+		{
+			NearestTarget = TargetActor;
+			NearestDistanceSq = DistanceSq;
+		}
+	}
+
+	return BestDamageThreat > 0.0f ? BestDamageTarget : NearestTarget;
+}
 
 float ANSEnemyAIController::GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const
 {
