@@ -16,3 +16,12 @@ bool UNSMeleeAttackReservationComponent::IsEnemyValid(const ANSEnemyCharacterBas
 {
 	return IsValid(Enemy) && !Enemy->IsDead() && !Enemy->IsInPool();
 }
+
+bool UNSMeleeAttackReservationComponent::IsReacquireBlocked(
+	ANSEnemyCharacterBase* Enemy,
+	double CurrentTime) const
+{
+	const double* BlockedUntil = ReacquireBlockedUntil.Find(Enemy);
+
+	return BlockedUntil && *BlockedUntil > CurrentTime;
+}
