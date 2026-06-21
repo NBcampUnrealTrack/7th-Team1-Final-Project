@@ -30,11 +30,13 @@ ANSRangerProjectile::ANSRangerProjectile()
 	CollisionComponent->SetCollisionResponseToAllChannels(ECR_Block);
 	CollisionComponent->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	CollisionComponent->SetNotifyRigidBodyCollision(true);
+	CollisionComponent->SetCanEverAffectNavigation(false);
 	CollisionComponent->OnComponentHit.AddDynamic(this, &ThisClass::OnProjectileHit);
 	
 	VisualMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMeshComponent"));
 	VisualMeshComponent->SetupAttachment(CollisionComponent);
 	VisualMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	VisualMeshComponent->SetCanEverAffectNavigation(false);
 	VisualMeshComponent->SetGenerateOverlapEvents(false);
 	
 	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
