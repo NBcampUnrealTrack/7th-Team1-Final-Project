@@ -3,12 +3,19 @@
 #include "NSInteractableNPCBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "Components/SphereComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 
 
 ANSInteractableNPCBase::ANSInteractableNPCBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	
+	DetectionCollision =
+  CreateDefaultSubobject<USphereComponent>(TEXT("DetectionCollision"));
+	DetectionCollision->SetupAttachment(GetRootComponent());
+	DetectionCollision->SetSphereRadius(DetectionRadius);
+	DetectionCollision->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
 }
 
 bool ANSInteractableNPCBase::CanInteract_Implementation(APlayerController* Interactor) const
