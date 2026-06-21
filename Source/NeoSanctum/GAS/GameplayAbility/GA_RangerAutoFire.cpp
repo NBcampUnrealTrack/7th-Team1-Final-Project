@@ -402,23 +402,36 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 
 	const FHitResult* ClientHitResult = TargetData->GetHitResult();
 
-	if (!ClientHitResult || !ClientHitResult->bBlockingHit)
+	if (!ClientHitResult)
 	{
 		return;
 	}
 
 	FHitResult ServerHitResult;
+	bool bServerAimHit = false;
 	
-	if (!ValidateTargetDataHitResult(*ClientHitResult, ServerHitResult))
+	if (!IsTargetDataTraceValid(*ClientHitResult, ServerHitResult, bServerAimHit))
 	{
 		return;
 	}
 	
+	const FVector AimPoint = bServerAimHit 
+		? FVector(ServerHitResult.ImpactPoint) 
+		: FVector(ClientHitResult->TraceEnd);
+	
+	const AActor* AimTraceActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
+	
 	FHitResult MuzzleObstructionHitResult;
 	
-	if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
+	if (IsMuzzleObstructed(AimPoint, AimTraceActor, MuzzleObstructionHitResult))
 	{
+		ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
 		ExecuteImpactCue(MuzzleObstructionHitResult);
+		return;
+	}
+	
+	if (!bServerAimHit)
+	{
 		return;
 	}
 	
@@ -796,23 +809,30 @@ void UGA_RangerAutoFire::ExecutePredictedImpactCue(const FGameplayAbilityTargetD
 	
 	const FHitResult* LocalHitResult = TargetData->GetHitResult();
 	
-	if (!LocalHitResult || !LocalHitResult->bBlockingHit)
+	if (!LocalHitResult)
 	{
 		return;
 	}
 	
-	// 로컬 피드백용 ImpactCue이므로 실제 데미지 판정은 서버에서 다시 검증
-	const FHitResult PredictedImpactHitResult = *LocalHitResult;
+	const FVector Aimpoint = LocalHitResult->bBlockingHit
+		? FVector(LocalHitResult->ImpactPoint)
+		: FVector(LocalHitResult->TraceEnd);
+	
+	const AActor* AimTargetActor = LocalHitResult->bBlockingHit ? LocalHitResult->GetActor() : nullptr;
+	
 	FHitResult MuzzleObstructionHitResult;
 	
 	// 총구가 막힌 상황이면 조준 대상이 아니라 실제로 막힌 지점에 ImpactCue 표시
-	if (IsMuzzleObstructed(PredictedImpactHitResult, MuzzleObstructionHitResult))
+	if (IsMuzzleObstructed(Aimpoint, AimTargetActor, MuzzleObstructionHitResult))
 	{
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
 	
-	ExecuteImpactCue(PredictedImpactHitResult);
+	if (LocalHitResult->bBlockingHit)
+	{
+		ExecuteImpactCue(*LocalHitResult);
+	}
 }
 
 bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) const
@@ -836,19 +856,14 @@ bool UGA_RangerAutoFire::TryGetAttackOriginTransform(FTransform& OutTransform) c
 }
 
 bool UGA_RangerAutoFire::IsMuzzleObstructed(
-	const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const
+	const FVector& AimPoint,
+	const AActor* AimTargetActor,
+	FHitResult& OutObstructionHitResult) const
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 	
 	if (!IsValid(AvatarActor) || !World)
-	{
-		return false;
-	}
-	
-	AActor* TargetActor = ServerHitResult.GetActor();
-	
-	if (!IsValid(TargetActor))
 	{
 		return false;
 	}
@@ -861,8 +876,6 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 	}
 	
 	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
-	const FVector AimPoint = ServerHitResult.ImpactPoint;
-	
 	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
 	
 	if (ShotDirection.IsNearlyZero())
@@ -884,8 +897,9 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 		QueryParams
 	);
 	
-	const bool bIsObstructed =
-		bHit && OutObstructionHitResult.bBlockingHit && OutObstructionHitResult.GetActor() != TargetActor;
+	const bool bHitAimTarget = IsValid(AimTargetActor) && OutObstructionHitResult.GetActor() == AimTargetActor;
+	
+	const bool bIsObstructed = bHit && OutObstructionHitResult.bBlockingHit && !bHitAimTarget;
 	
 	if (bDrawDebugMuzzleObstruction)
 	{
@@ -900,14 +914,12 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 	return bIsObstructed;
 }
 
-bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
+bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	const FHitResult& ClientHitResult,
-	FHitResult& OutServerHitResult) const
+	FHitResult& OutServerHitResult,
+	bool& bOutServerAimHit) const
 {
-	if (!ClientHitResult.bBlockingHit || !IsValid(ClientHitResult.GetActor()))
-	{
-		return false;
-	}
+	bOutServerAimHit = false;
 	
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
@@ -946,7 +958,7 @@ bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
 	
-	const bool bServerHit = World->LineTraceSingleByChannel(
+	bOutServerAimHit = World->LineTraceSingleByChannel(
 		OutServerHitResult,
 		TraceStart,
 		TraceEnd,
@@ -954,7 +966,12 @@ bool UGA_RangerAutoFire::ValidateTargetDataHitResult(
 		QueryParams
 	);
 	
-	if (!bServerHit || !OutServerHitResult.bBlockingHit)
+	if (!ClientHitResult.bBlockingHit)
+	{
+		return true;
+	}
+	
+	if (!bOutServerAimHit || !OutServerHitResult.bBlockingHit)
 	{
 		return false;
 	}

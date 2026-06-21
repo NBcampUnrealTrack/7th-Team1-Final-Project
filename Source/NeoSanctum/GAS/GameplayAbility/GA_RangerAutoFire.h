@@ -125,8 +125,16 @@ private:
 	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
-	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
-	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
+	bool IsMuzzleObstructed(
+		const FVector& AimPoint,
+		const AActor* AimTargetActor, 
+		FHitResult& OutObstructionHitResult
+	) const;
+	bool IsTargetDataTraceValid(
+		const FHitResult& ClientHitResult,
+		FHitResult& OutServerHitResult,
+		bool& bOutServerAimHit
+	) const;
 	
 	// AI 청각 감지용 소음 발생
 	void ReportWeaponNoise(const AActor* InAvatarActor);
