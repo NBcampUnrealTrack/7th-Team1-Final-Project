@@ -1057,6 +1057,44 @@ void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCoo
 	CancelMeleeReservationRequest(bStartReacquireCooldown);
 }
 
+void ANSEnemyAIController::UpdateMeleeReservationState()
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		SetMeleeReservationBlackboard(false, true);
+		return;
+	}
+
+	AActor* CurrentTarget = GetCurrentTargetActor();
+	if (!CurrentTarget)
+	{
+		CancelMeleeReservationRequest(false);
+		return;
+	}
+
+	UNSMeleeAttackReservationComponent* Component =
+		CurrentTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+	if (!Component)
+	{
+		if (MeleeReservationTarget.IsValid())
+		{
+			CancelMeleeReservationRequest(false);
+		}
+
+		SetMeleeReservationBlackboard(false, true);
+		return;
+	}
+
+	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != CurrentTarget)
+	{
+		CancelMeleeReservationRequest(false);
+		return;
+	}
+
+	const bool bReserved = HasMeleeAttackReservation();
+	SetMeleeReservationBlackboard(bReserved, bReserved);
+}
+
 void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCooldown)
 {
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
