@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -1297,6 +1298,11 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	}
 
 	ProgressComponent->ApplyPayload(Payload);
+	// 업로드로 서버 ProgressComponent가 갱신된 직후, 현재 폰이 있으면 즉시 적용
+	if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		PlayerCharacter->ApplyEquippedPart();
+	}
 }
 
 void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPayload& Payload)
@@ -1519,6 +1525,28 @@ void ANSPlayerController::RestoreLastSelectedCharacter()
 
 	// 동일 커밋 경로 재사용
 	CommitCharacterSelection(RestoredData);
+}
+
+void ANSPlayerController::EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
+{
+	// 파사드는 클라 로컬 저장이라 로컬 컨트롤러에서만
+	if (!IsLocalController())
+	{
+		return; 
+	}
+	
+	UNSProgressionSubsystem* Prog = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>()
+		: nullptr;
+	if (!Prog)
+	{
+		return;
+	}
+	
+	// 로컬 CachedData 저장
+	Prog->SetEquippedPart(CharacterId, Definition, Rarity);   
+	// 서버 업로드
+	UploadLocalProgress(CharacterId);       
 }
 
 void ANSPlayerController::Debug_EnqueueAugmentOffer()

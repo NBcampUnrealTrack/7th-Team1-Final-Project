@@ -96,6 +96,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
 	void RestoreLastSelectedCharacter();
 	
+	// 거점 라이브 장착(로컬 저장,서버 업로드), UI 호출용 함수
+	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
+	void EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
+	
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
