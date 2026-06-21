@@ -8,6 +8,7 @@
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -943,6 +944,18 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
 		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
 	}
+}
+
+bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		return false;
+	}
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	return TargetActor && TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
 }
 
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
