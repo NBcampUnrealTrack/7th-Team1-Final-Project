@@ -125,14 +125,14 @@ void UNSMeleeAttackReservationComponent::MarkAttackStarted(ANSEnemyCharacterBase
 	Reservation->ExpirationTime = GetWorld()->GetTimeSeconds() + AttackReservationSafetyTimeout;
 }
 
-void UNSMeleeAttackReservationComponent::ReleaseReservation(
-	ANSEnemyCharacterBase* Enemy,
-	bool bStartReacquireCooldown)
+void UNSMeleeAttackReservationComponent::ReleaseReservation(ANSEnemyCharacterBase* Enemy, bool bStartReacquireCooldown)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority() || !Enemy || !GetWorld())
 	{
 		return;
 	}
+	
+	const double CurrentTime = GetWorld()->GetTimeSeconds();
 
 	const int32 RemovedActiveCount = ActiveReservations.RemoveAll(
 		[Enemy](const FActiveReservation& Reservation)
@@ -148,11 +148,7 @@ void UNSMeleeAttackReservationComponent::ReleaseReservation(
 
 	if (bStartReacquireCooldown && RemovedActiveCount > 0)
 	{
-		const float MinCooldown = FMath::Min(ReacquireCooldownMin, ReacquireCooldownMax);
-		const float MaxCooldown = FMath::Max(ReacquireCooldownMin, ReacquireCooldownMax);
-
-		ReacquireBlockedUntil.FindOrAdd(Enemy) = GetWorld()->GetTimeSeconds() +
-			FMath::FRandRange(MinCooldown, MaxCooldown);
+		StartReacquireCooldown(Enemy, CurrentTime);
 	}
 
 	PromoteQueuedRequests(GetWorld()->GetTimeSeconds());
@@ -175,7 +171,13 @@ void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTim
 				return true;
 			}
 
-			return Reservation.ExpirationTime <= CurrentTime;
+			if (Reservation.ExpirationTime > CurrentTime)
+			{
+				return false;
+			}
+			
+			StartReacquireCooldown(Enemy, CurrentTime);
+			return true;
 		});
 
 	QueuedRequests.RemoveAll(
@@ -288,4 +290,20 @@ int32 UNSMeleeAttackReservationComponent::FindBestQueuedRequestIndex(double Curr
 	}
 
 	return BestIndex;
+}
+
+void UNSMeleeAttackReservationComponent::StartReacquireCooldown(ANSEnemyCharacterBase* Enemy, double CurrentTime)
+{
+	if (!IsEnemyValid(Enemy))
+	{
+		return;
+	}
+
+	const float MinCooldown = FMath::Min(ReacquireCooldownMin, ReacquireCooldownMax);
+	const float MaxCooldown = FMath::Max(ReacquireCooldownMin, ReacquireCooldownMax);
+
+	const double NewBlockedUntil = CurrentTime + FMath::FRandRange(MinCooldown, MaxCooldown);
+
+	double& BlockedUntil = ReacquireBlockedUntil.FindOrAdd(Enemy);
+	BlockedUntil = FMath::Max(BlockedUntil, NewBlockedUntil);
 }

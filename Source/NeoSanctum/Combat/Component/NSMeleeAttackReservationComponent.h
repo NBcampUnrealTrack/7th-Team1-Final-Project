@@ -103,6 +103,9 @@ private:
 
 	/* 최근 피격 여부와 대기시간을 기준으로 가장 우선순위가 높은 요청 인덱스를 찾는 함수 */
 	int32 FindBestQueuedRequestIndex(double CurrentTime) const;
+	
+	/* 몬스터가 다시 예약을 획득할 수 없는 시간을 설정하는 함수 */
+	void StartReacquireCooldown(ANSEnemyCharacterBase* Enemy, double CurrentTime);
 
 private:
 	/* 해당 타깃에 동시에 접근하거나 공격할 수 있는 최대 근접 몬스터 수 */
