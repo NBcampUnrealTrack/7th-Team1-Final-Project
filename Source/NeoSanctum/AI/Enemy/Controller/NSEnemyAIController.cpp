@@ -946,6 +946,45 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 	}
 }
 
+bool ANSEnemyAIController::RequestMeleeAttackReservation()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!Enemy || !TargetActor || !UsesMeleeAttackReservation())
+	{
+		return false;
+	}
+
+	UNSMeleeAttackReservationComponent* Component = 
+		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+
+	// 컴포넌트 없는 타깃은 EQS만 적용하고 접근 허용
+	if (!Component)
+	{
+		CancelMeleeReservationRequest(false);
+		SetMeleeReservationBlackboard(false, true);
+		return true;
+	}
+
+	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != TargetActor)
+	{
+		CancelMeleeReservationRequest(false);
+	}
+
+	MeleeReservationTarget = TargetActor;
+
+	const ENSMeleeReservationRequestResult Result = 
+		Component->RequestReservation(Enemy, GetLatestDamageTimeFromCurrentTarget());
+
+	const bool bReserved = Result == ENSMeleeReservationRequestResult::Reserved;
+
+	SetMeleeReservationBlackboard(bReserved, bReserved);
+
+	return Result != ENSMeleeReservationRequestResult::Rejected;
+}
+
 bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
 {
 	if (!UsesMeleeAttackReservation())
