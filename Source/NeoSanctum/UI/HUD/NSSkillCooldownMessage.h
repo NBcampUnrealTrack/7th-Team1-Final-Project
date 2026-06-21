@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "NativeGameplayTags.h"
+#include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NSSkillCooldownMessage.generated.h"
 
 
@@ -22,24 +23,37 @@ USTRUCT(BlueprintType)
 struct FNSSkillCooldownMessage
 {
 	GENERATED_BODY()
+
+	// 주현 : 슬롯 기준으로 쿨다운 UI를 갱신하기 위한 SkillSlotTag
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag SkillSlotTag;
+
+	// 주현 : 쿨다운 상태 데이터 묶음
+	UPROPERTY(BlueprintReadWrite)
+	FSkillCooldownUIData CooldownData;
 	
+	// 주현 : 기존 UI를 위해 임시 유지
 	//어떤 스킬인지 구분
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag SkillTag;
 	
+	// 주현 : 기존 UI를 위해 임시 유지
 	//실제 적용된 쿨타임 태그
 	//태그를 쿼리로 검사해 어떤 슬롯이 반응할지 판단.
 	UPROPERTY(BlueprintReadWrite)
 	FGameplayTag CooldownTag;
 
+	// 주현 : 기존 UI를 위해 임시 유지
 	//UI가 표시하는 쿨타임 시간
 	UPROPERTY(BlueprintReadWrite)
 	float CooldownDuration = 0.0f;
 
+	// 주현 : 기존 UI를 위해 임시 유지
 	//충전형 스킬에서 현재 사용 가능한 횟수
 	UPROPERTY(BlueprintReadWrite)
 	int32 CurrentCharge = 0;
 
+	// 주현 : 기존 UI를 위해 임시 유지
 	//충전형 스킬에서 최대 충전 횟수
 	UPROPERTY(BlueprintReadWrite)
 	int32 MaxCharge = 0;
