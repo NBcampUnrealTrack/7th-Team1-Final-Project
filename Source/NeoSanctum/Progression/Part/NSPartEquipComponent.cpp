@@ -332,6 +332,12 @@ void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
 		}
 	}
 	
+	if (Paths.Num() == 0)
+	{
+		OnAbilitiesLoaded(Slot);
+		return;
+	}
+	
 	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 		Paths, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnAbilitiesLoaded,
 			Slot));
