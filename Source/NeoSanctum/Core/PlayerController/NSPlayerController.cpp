@@ -54,9 +54,6 @@ ANSPlayerController::ANSPlayerController()
 
 	// 증강 선택 컴포넌트 생성
 	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
-	
-	// 상호작용 컴포넌트
-	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
 }
 
 void ANSPlayerController::RequestReady()
