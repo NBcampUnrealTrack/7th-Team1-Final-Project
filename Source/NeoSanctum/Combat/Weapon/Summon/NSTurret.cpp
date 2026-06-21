@@ -8,6 +8,8 @@
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
@@ -37,7 +39,7 @@ ANSTurret::ANSTurret()
 	HitCollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("HitCollisionComponent"));
 	SetRootComponent(HitCollisionComponent);
 	HitCollisionComponent->InitCapsuleSize(50.0f, 100.0f);
-	HitCollisionComponent->SetCollisionProfileName(TEXT("Pawn"));
+	HitCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::PlayerTurret);
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SceneRoot->SetupAttachment(HitCollisionComponent);
@@ -61,6 +63,10 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphereComponent"));
 	DetectionSphereComponent->SetupAttachment(SceneRoot);
 	DetectionSphereComponent->InitSphereRadius(0.0f);
+	DetectionSphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	DetectionSphereComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DetectionSphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::Enemy, ECR_Overlap);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
@@ -349,15 +355,15 @@ bool ANSTurret::CanSeeTarget(const AActor* TargetActor) const
 	}
 
 	FHitResult HitResult;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
 		TraceStart,
 		TraceEnd,
-		ECC_Visibility,
+		NSCollisionChannels::CombatSight,
 		QueryParams
 	);
 
-	return bHit && HitResult.GetActor() == TargetActor;
+	return !bHit || HitResult.GetActor() == TargetActor;
 }
 
 void ANSTurret::InitializeTargets()
@@ -590,11 +596,11 @@ void ANSTurret::FireHitscan()
 	}
 
 	FHitResult HitResult;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
 		TraceStart,
 		TraceEnd,
-		ECC_Visibility,
+		NSCollisionChannels::WeaponTrace,
 		QueryParams
 	);
 	
