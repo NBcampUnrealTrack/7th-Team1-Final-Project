@@ -11,3 +11,8 @@ UNSMeleeAttackReservationComponent::UNSMeleeAttackReservationComponent()
 	SetIsReplicatedByDefault(false);
 }
 
+
+bool UNSMeleeAttackReservationComponent::IsEnemyValid(const ANSEnemyCharacterBase* Enemy) const
+{
+	return IsValid(Enemy) && !Enemy->IsDead() && !Enemy->IsInPool();
+}
