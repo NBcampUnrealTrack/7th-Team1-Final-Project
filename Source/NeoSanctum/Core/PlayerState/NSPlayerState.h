@@ -4,11 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "UObject/PrimaryAssetId.h"
 #include "NSPlayerState.generated.h"
 
+class UNSCompanionDefinition;
+class UNSCompanionProgressionComponent;
 class UNSCombatStatComponent;
 class UNSAbilitySystemComponent;
 class UNSPlayerAttributeSet;
@@ -60,6 +63,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Character|Data")
 	void SetCurrentCharacterDataId(FPrimaryAssetId InCharacterDataId);
 
+	// @민재 : TagSetter
+	void SetCurrentCompanionDefinitionTag(FGameplayTag CompanionTag);
+	
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
 	FPrimaryAssetId GetCurrentCharacterDataId() const { return CurrentCharacterDataId; }
 	
@@ -69,6 +75,10 @@ public:
 	// 캐릭터 데이터 Getter
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
 	UNSCharacterData* GetCurrentCharacterData() const;
+	
+	// @민재 : Companion 데이터 Getter
+	UFUNCTION(BlueprintPure, Category = "Character|Data")
+	UNSCompanionDefinition* GetCurrentCompanionDefinition() const;
 	
 public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
@@ -102,14 +112,25 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Currency")
 	TObjectPtr<UNSCurrencyComponent> CurrencyComponent;
 	
+	// @민재 : Companion업그레이드 관련 Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
+	TObjectPtr<UNSCompanionProgressionComponent> CompanionProgressionComponent;
+	
 	// 기본 캐릭터 데이터 ID : 기본적으로 Ranger Data를 쓰고 있음
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
 	FPrimaryAssetId DefaultCharacterDataId;
+	
+	// @민재 기본 Companion 데이터 ID : 기본 스캔 드론
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
+	FGameplayTag DefaultCompanionDefinitionTag;
 	
 private:
 	// AssetManager를 통해 ID로 DataAsset을 로드
 	UNSCharacterData* LoadCharacterData(FPrimaryAssetId CharacterDataId) const;
 
+	// @민재 : AssetManager 방식 동일
+	UNSCompanionDefinition* LoadCompanionDefinition(FGameplayTag CompanionTag) const;
+	
 	UPROPERTY(Replicated)
 	bool bIsReady;
 
@@ -120,4 +141,8 @@ private:
 	// 현재 캐릭터 데이터 ID
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
 	FPrimaryAssetId CurrentCharacterDataId;
+	
+	// @민재 : companion 데이터 ID
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
+	FGameplayTag CurrentCompanionDefinitionTag;
 };
