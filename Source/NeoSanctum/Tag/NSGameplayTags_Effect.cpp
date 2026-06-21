@@ -17,6 +17,11 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Buff_FireRate, "Effect.Buff.FireRate");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Buff_ReloadSpeed, "Effect.Buff.ReloadSpeed");
 	
+	// SkillSlot Recharge SetByCaller
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Recharge_Skill1Count, "Effect.Recharge.Skill1Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Recharge_Skill2Count, "Effect.Recharge.Skill2Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Recharge_Skill3Count, "Effect.Recharge.Skill3Count");
+	
 	// Cooldown
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Cooldown_Ranger_ProjectileShot, "Effect.Cooldown.Ranger.ProjectileShot");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Cooldown_Ranger_Grenade, "Effect.Cooldown.Ranger.Grenade");

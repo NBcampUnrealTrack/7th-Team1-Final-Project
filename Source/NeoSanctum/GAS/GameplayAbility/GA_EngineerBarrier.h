@@ -8,6 +8,7 @@
 #include "GA_EngineerBarrier.generated.h"
 
 class ANSBarrier;
+class UGameplayEffect;
 
 USTRUCT(BlueprintType)
 struct FNSBarrierAbilityConfig
@@ -16,6 +17,9 @@ struct FNSBarrierAbilityConfig
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	TSubclassOf<ANSBarrier> BarrierClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier|Attribute")
+	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier|SetByCaller")
 	TArray<FNSSetByCallerFromCombatStat> SetByCallerMappings;
@@ -48,14 +52,7 @@ protected:
 		bool bWasCancelled
 	) override;
 	
-	virtual void ApplyCooldown(
-	const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo
-) const override;
-	
 private:
-	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetBarrierRadius(float& OutBarrierRadius) const;
 	bool TryGetBarrierDuration(float& OutBarrierDuration) const;
 	void RebuildSetByCallerMagnitudes();
@@ -69,12 +66,6 @@ private:
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	FNSBarrierAbilityConfig BarrierAbilityConfig;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
-	FGameplayTag AbilityTag;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
-	FGameplayTag CooldownEffectTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Engineer|Barrier")
 	float MinimumBarrierRadius = 150.0f;

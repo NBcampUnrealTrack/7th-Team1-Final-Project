@@ -31,6 +31,7 @@ public:
 		AController* InOwningController,
 		float InRadius,
 		float InDuration,
+		TSubclassOf<UGameplayEffect> InInitialAttributeEffectClass,
 		const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes
 	);
 	
@@ -69,7 +70,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	float MinimumRadius = 50.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier|Attribute")
+	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 
 private:

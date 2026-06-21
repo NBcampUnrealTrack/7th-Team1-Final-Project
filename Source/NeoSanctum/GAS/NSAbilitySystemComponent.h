@@ -5,7 +5,11 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NSAbilitySystemComponent.generated.h"
+
+class UGameplayEffect;
+struct FGameplayEffectRemovalInfo;
 
 /**
  * InputTag 기반 Ability 입력 처리 담당을 위한 ASC.
@@ -25,6 +29,13 @@ public:
 	// 입력 상태를 강제로 비울 때 사용
 	void ClearAbilityInput();
 	
+	// 스킬 슬롯별 재충전 진입점
+	void StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown);
+
+	// 슬롯 쿨다운 UI 데이터 조회
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Skill|Cooldown")
+	bool GetSkillCooldownUIData(const FGameplayTag& SkillSlotTag, FSkillCooldownUIData& OutData) const;
+
 public:
 	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,
@@ -56,6 +67,45 @@ public:
 	void RemoveTemporaryCombatStatModifier(FGuid Handle) const;
 	
 private:
+	// 해당 슬롯의 스킬이 이미 재충전 중인지 판단
+	bool IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const;
+	// 해당 슬롯의 스킬이 이미 MaxCount인지 판단
+	bool IsSkillCountFull(const FGameplayTag& SkillSlotTag) const;
+	// 슬롯에 맞는 현재/최대 충전 수 조회
+	bool TryGetSkillCountForSlot(const FGameplayTag& SkillSlotTag, int32& OutCurrentCount, int32& OutMaxCount) const;
+	
+	// 슬롯에 해당하는 Recharge GE를 찾아 반환하는 함수
+	TSubclassOf<UGameplayEffect> GetRechargeGEClassForSlot(const FGameplayTag& SkillSlotTag) const;
+	// 슬롯에 해당하는 SetByCaller Effect Tag 반환
+	FGameplayTag GetRechargeEffectTagForSlot(const FGameplayTag& SkillSlotTag) const;
+	
+	// Recharge GE 제거 시 충전 완료 여부를 처리
+	void HandleSkillRechargeEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo, FGameplayTag SkillSlotTag);
+	// 충전 완료 후 Count 회복 및 다음 충전 시작
+	void FinishSkillRecharge(const FGameplayTag& SkillSlotTag);
+	// 슬롯 쿨다운 UI 변경 메시지 전송
+	void BroadcastSkillCooldownUIData(const FGameplayTag& SkillSlotTag) const;
+	// 슬롯에 맞는 SkillCount를 증가
+	void AddSkillCountForSlot(const FGameplayTag& SkillSlotTag, float Amount);
+	
+	// 다음 충전에 사용할 Cooldown을 슬롯별로 저장
+	void CacheSkillRechargeCooldown(const FGameplayTag& SkillSlotTag, float Cooldown);
+	// 슬롯에 저장된 마지막 Recharge Cooldown 조회
+	float GetCachedSkillRechargeCooldown(const FGameplayTag& SkillSlotTag) const;
+
+private:
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Skill|Recharge")
+	TSubclassOf<UGameplayEffect> Skill1RechargeGEClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Skill|Recharge")
+	TSubclassOf<UGameplayEffect> Skill2RechargeGEClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Skill|Recharge")
+	TSubclassOf<UGameplayEffect> Skill3RechargeGEClass;
+
+	// 연속 충전을 위해 슬롯별 마지막 Cooldown을 보관
+	TMap<FGameplayTag, float> CachedSkillRechargeCooldowns;
+	
 	TArray<FGameplayAbilitySpecHandle> InputPressedSpecHandles;
 	TArray<FGameplayAbilitySpecHandle> InputReleasedSpecHandles;
 	TArray<FGameplayAbilitySpecHandle> InputHeldSpecHandles;

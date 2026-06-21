@@ -44,11 +44,13 @@ void ANSBarrier::InitializeBarrier(
 	AController* InOwningController,
 	float InRadius,
 	float InDuration,
+	TSubclassOf<UGameplayEffect> InInitialAttributeEffectClass,
 	const TArray<FNSSetByCallerMagnitude>& InSetByCallerMagnitudes)
 {
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
 	CurrentDuration = InDuration;
+	InitialAttributeEffectClass = InInitialAttributeEffectClass;
 	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 
 	if (OwningPawn)

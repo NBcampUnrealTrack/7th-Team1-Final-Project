@@ -162,12 +162,6 @@ protected:
 		bool bWasCancelled
 	) override;
 
-	virtual void ApplyCooldown(
-		const FGameplayAbilitySpecHandle Handle,
-		const FGameplayAbilityActorInfo* ActorInfo,
-		const FGameplayAbilityActivationInfo ActivationInfo
-	) const override;
-
 protected:
 	UFUNCTION()
 	void OnThrowMontageCompleted();
@@ -204,10 +198,6 @@ protected:
 	) const;
 
 protected:
-	// CombatStat 조회 기준 Ability 태그 결정
-	bool TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const;
-	// CombatStat 기반 쿨타임 계산
-	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	// CombatStat 기반 payload 갱신
 	void RebuildCombatStatPayloads();
 	// GE SetByCaller payload 생성
@@ -222,18 +212,6 @@ protected:
 	// Ability 설정모음
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Config")
 	FNSProjectileAbilityConfig ProjectileAbilityConfig;
-
-	// CombatStat 조회에 사용할 Ability 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Config")
-	FGameplayTag CombatStatAbilityTag;
-	
-	// 버프 쿨다운을 조회할 CombatStat 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Cooldown")
-	FGameplayTag CooldownStatTag;
-
-	// Cooldown GE에 전달할 SetByCaller 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Cooldown")
-	FGameplayTag CooldownSetByCallerTag;
 
 	// 애니메이션 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Throw|Montage")

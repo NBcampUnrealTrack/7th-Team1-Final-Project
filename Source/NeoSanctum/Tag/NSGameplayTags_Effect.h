@@ -18,6 +18,11 @@ namespace NSGameplayTags
 	// Buff SetByCaller
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Buff_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Buff_ReloadSpeed);
+	
+	// SkillSlot Recharge SetByCaller
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Recharge_Skill1Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Recharge_Skill2Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Recharge_Skill3Count);
 
 	// Cooldown
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Cooldown_Ranger_ProjectileShot);

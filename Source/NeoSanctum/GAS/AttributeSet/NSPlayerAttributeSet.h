@@ -54,6 +54,29 @@ public:
 	FGameplayAttributeData MaxAmmo;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxAmmo);
 	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxSkill1Count, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxSkill1Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxSkill1Count);
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Skill1Count, Category = "GAS|Attribute")
+	FGameplayAttributeData Skill1Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Skill1Count);
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxSkill2Count, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxSkill2Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxSkill2Count);
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Skill2Count, Category = "GAS|Attribute")
+	FGameplayAttributeData Skill2Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Skill2Count);
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxSkill3Count, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxSkill3Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxSkill3Count);
+	
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Skill3Count, Category = "GAS|Attribute")
+	FGameplayAttributeData Skill3Count;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Skill3Count);
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
@@ -79,4 +102,22 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MaxAmmo(const FGameplayAttributeData& OldMaxAmmo);
+	
+	UFUNCTION()
+	void OnRep_Skill1Count(const FGameplayAttributeData& OldSkill1Count);
+	
+	UFUNCTION()
+	void OnRep_MaxSkill1Count(const FGameplayAttributeData& OldMaxSkill1Count);
+	
+	UFUNCTION()
+	void OnRep_Skill2Count(const FGameplayAttributeData& OldSkill2Count);
+	
+	UFUNCTION()
+	void OnRep_MaxSkill2Count(const FGameplayAttributeData& OldMaxSkill2Count);
+	
+	UFUNCTION()
+	void OnRep_Skill3Count(const FGameplayAttributeData& OldSkill3Count);
+	
+	UFUNCTION()
+	void OnRep_MaxSkill3Count(const FGameplayAttributeData& OldMaxSkill3Count);
 };

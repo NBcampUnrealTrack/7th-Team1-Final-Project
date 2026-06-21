@@ -7,6 +7,7 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_SkillBase::UGA_SkillBase()
@@ -16,6 +17,22 @@ UGA_SkillBase::UGA_SkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateNo;
 	
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
+}
+
+bool UGA_SkillBase::CommitAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	FGameplayTagContainer* OptionalRelevantTags)
+{
+	const bool bCommitted = Super::CommitAbility(Handle, ActorInfo, ActivationInfo, OptionalRelevantTags);
+	if (bCommitted)
+	{
+		// Cost 소모가 확정된 뒤에 충전 회복을 시작
+		StartRechargeIfNeeded();
+	}
+
+	return bCommitted;
 }
 
 bool UGA_SkillBase::TryGetBaseAbilityStat(
@@ -72,6 +89,49 @@ float UGA_SkillBase::GetBaseAbilityStatOrDefault(
 	TryGetBaseAbilityStat(AbilityTag, StatTag, Value);
 	
 	return Value;
+}
+
+float UGA_SkillBase::GetCooldownStatOrDefault() const
+{
+	if (!SkillAbilityTag.IsValid())
+	{
+		return DefaultCooldown;
+	}
+	
+	// 최종 스탯 기준으로 반환
+	return GetFinalAbilityStatOrDefault(
+		SkillAbilityTag,
+		NSGameplayTags::CombatStat_Cooldown,
+		DefaultCooldown
+	);
+}
+
+void UGA_SkillBase::StartRechargeIfNeeded()
+{
+	if (!SkillSlotTag.IsValid())
+	{
+		return;
+	}
+
+	if (!HasAuthority(&CurrentActivationInfo))
+	{
+		return;
+	}
+
+	UNSAbilitySystemComponent* NSASC = GetNSAbilitySystemComponent();
+	if (!NSASC)
+	{
+		return;
+	}
+
+	const float Cooldown = GetCooldownStatOrDefault();
+	if (Cooldown <= 0.0f)
+	{
+		return;
+	}
+	
+	// 실제로 해당 스킬 슬롯의 Recharge를 시작
+	NSASC->StartSkillRecharge(SkillSlotTag, Cooldown);
 }
 
 UNSAbilitySystemComponent* UGA_SkillBase::GetNSAbilitySystemComponent() const

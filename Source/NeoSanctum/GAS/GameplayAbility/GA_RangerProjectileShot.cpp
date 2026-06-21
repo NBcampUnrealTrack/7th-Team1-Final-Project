@@ -13,7 +13,6 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 {
@@ -93,41 +92,6 @@ void UGA_RangerProjectileShot::EndAbility(
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
-
-void UGA_RangerProjectileShot::ApplyCooldown(
-	const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo) const
-{
-	if (!CooldownGameplayEffectClass)
-	{
-		return;
-	}
-	
-	float CooldownDuration = 0.0f;
-	
-	if (!TryGetFinalCooldownDuration(CooldownDuration))
-	{
-		return;
-	}
-	
-	FGameplayEffectSpecHandle CooldownSpecHandle =
-		MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
-	
-	if (!CooldownSpecHandle.IsValid() || !CooldownSpecHandle.Data.IsValid())
-	{
-		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning, "ProjectileShot Cooldown Spec 생성 실패");
-		
-		return;
-	}
-	
-	CooldownSpecHandle.Data->SetSetByCallerMagnitude(
-		NSGameplayTags::Effect_Cooldown_Ranger_ProjectileShot,
-		CooldownDuration
-	);
-	
-	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CooldownSpecHandle);
 }
 
 void UGA_RangerProjectileShot::FireProjectileShot()
@@ -483,13 +447,13 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 	if (ASC)
 	{
 		const float SplashDamage = GetFinalAbilityStatOrDefault(
-			NSGameplayTags::Ability_Ranger_ProjectileShot,
+			SkillAbilityTag,
 			NSGameplayTags::CombatStat_Damage,
 			DefaultSplashDamage
 		);
 		
 		const float ExplosionRadius = GetFinalAbilityStatOrDefault(
-			NSGameplayTags::Ability_Ranger_ProjectileShot,
+			SkillAbilityTag,
 			NSGameplayTags::CombatStat_ExplosionRadius,
 			DefaultExplosionRadius
 		);
@@ -503,30 +467,6 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 	}
 
 	Projectile->LaunchProjectile(LaunchDirection);
-	return true;
-}
-
-bool UGA_RangerProjectileShot::TryGetFinalCooldownDuration(float& OutCooldownDuration) const
-{
-	float FinalCooldownDuration = 0.0f;
-	
-	if (!TryGetFinalAbilityStat(
-		NSGameplayTags::Ability_Ranger_ProjectileShot,
-		NSGameplayTags::CombatStat_Cooldown,
-		FinalCooldownDuration))
-	{
-		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
-			"ProjectileShot Cooldown CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
-			("AbilityTag", NSGameplayTags::Ability_Ranger_ProjectileShot.GetTag().ToString()),
-			("StatTag", NSGameplayTags::CombatStat_Cooldown.GetTag().ToString())
-		);
-		
-		return false;
-	}
-	
-	constexpr float MinCooldownDuration = 0.1f;
-	OutCooldownDuration = FMath::Max(FinalCooldownDuration, MinCooldownDuration);
-	
 	return true;
 }
 
