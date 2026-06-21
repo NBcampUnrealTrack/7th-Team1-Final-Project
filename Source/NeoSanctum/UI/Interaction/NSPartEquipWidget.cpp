@@ -71,7 +71,7 @@ void UNSPartEquipWidget::EquipSelectedPart(int32 SelectableIndex)
 					const FNSPartValueRange* Range = Def->ValueRange.Find(ENSPartRarity::Common);
 					NewPart.CurrentValue = Range ? Range->Min : 0.f;
 
-					Equip->ServerRequestEquip(NewPart);
+					Equip->Server_RequestEquip(NewPart);
 					StrongThis->bDirty = true;
 			}));
 }
