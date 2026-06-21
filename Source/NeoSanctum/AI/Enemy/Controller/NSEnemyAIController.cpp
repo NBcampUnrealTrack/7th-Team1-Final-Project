@@ -865,6 +865,11 @@ void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
 	{
 		return;
 	}
+	
+	if (CurrentCombatTarget.IsValid() && CurrentCombatTarget.Get() != NewTarget)
+	{
+		CancelMeleeReservationRequest(false);
+	}
 
 	CurrentCombatTarget = NewTarget;
 
@@ -887,6 +892,8 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	{
 		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
 	}
+	
+	CancelMeleeReservationRequest(false);
 
 	CurrentCombatTarget.Reset();
 	bAttackStartedOnCurrentTarget = false;
@@ -903,6 +910,8 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 
 void ANSEnemyAIController::ResetTargetingState()
 {
+	CancelMeleeReservationRequest(false);
+	
 	ThreatRecords.Reset();
 	ReacquireBlockedUntil.Reset();
 	CurrentCombatTarget.Reset();
