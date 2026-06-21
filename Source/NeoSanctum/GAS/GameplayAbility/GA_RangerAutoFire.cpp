@@ -985,7 +985,7 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
 	
-	const bool bHit = World->LineTraceSingleByChannel(
+	bool bHit = World->LineTraceSingleByChannel(
 		OutObstructionHitResult,
 		ObstructionTraceStart,
 		AimPoint,
