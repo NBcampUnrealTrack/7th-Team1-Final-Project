@@ -9,6 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -131,6 +132,10 @@ void ANSRangerProjectile::FindSplashTargetActors(
 	
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Player);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::DestructibleObject);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::PlayerConstruct);
 	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplash), false);
 	QueryParams.AddIgnoredActor(this);
@@ -247,9 +252,6 @@ bool ANSRangerProjectile::IsSplashTargetOccluded(const FVector& TraceStart, cons
 	
 	const FVector TraceEnd = TargetActor->GetActorLocation();
 	
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(RangerProjectileSplashOcclusion), false);
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(TargetActor);
@@ -268,11 +270,11 @@ bool ANSRangerProjectile::IsSplashTargetOccluded(const FVector& TraceStart, cons
 	}
 	
 	FHitResult OcclusionHit;
-	const bool bBlocked = World->LineTraceSingleByObjectType(
+	bool bBlocked = World->LineTraceSingleByChannel(
 		OcclusionHit,
 		TraceStart,
 		TraceEnd,
-		ObjectQueryParams,
+		NSCollisionChannels::ExplosionTrace,
 		QueryParams
 	);
 	
