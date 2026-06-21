@@ -11,6 +11,23 @@ UNSMeleeAttackReservationComponent::UNSMeleeAttackReservationComponent()
 	SetIsReplicatedByDefault(false);
 }
 
+void UNSMeleeAttackReservationComponent::TickComponent(
+	float DeltaTime,
+	ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld())
+	{
+		return;
+	}
+
+	const double CurrentTime = GetWorld()->GetTimeSeconds();
+
+	CleanupInvalidEntries(CurrentTime);
+	PromoteQueuedRequests(CurrentTime);
+}
 
 ENSMeleeReservationRequestResult UNSMeleeAttackReservationComponent::RequestReservation(
 	ANSEnemyCharacterBase* Enemy,
