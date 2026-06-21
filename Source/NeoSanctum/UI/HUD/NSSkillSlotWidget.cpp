@@ -4,11 +4,12 @@
 #include "CommonTextBlock.h"
 #include "Components/Image.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "NSSkillCooldownMessage.h"
+#include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 
 void UNSSkillSlotWidget::StartCooldown(float NewCooldownDuration)
 {
@@ -297,7 +298,7 @@ void UNSSkillSlotWidget::NativeConstruct()
 	
 	CooldownListenerHandle = 
 		MessageSubsystem.RegisterListener<FNSSkillCooldownMessage>(
-			TAG_Message_UI_SkillCooldown_Start,
+			NSGameplayTags::Message_UI_SkillCooldown_Changed,
 			this,
 			&ThisClass::HandleCooldownMessage);
 }
