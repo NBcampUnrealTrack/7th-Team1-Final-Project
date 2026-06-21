@@ -985,6 +985,23 @@ bool ANSEnemyAIController::RequestMeleeAttackReservation()
 	return Result != ENSMeleeReservationRequestResult::Rejected;
 }
 
+bool ANSEnemyAIController::HasMeleeAttackReservation()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* ReservedTarget = MeleeReservationTarget.Get();
+
+	if (!Enemy || !ReservedTarget)
+	{
+		return false;
+	}
+
+	UNSMeleeAttackReservationComponent* Component = 
+		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+
+	return Component && Component->HasReservation(Enemy);
+}
+
 bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
 {
 	if (!UsesMeleeAttackReservation())
