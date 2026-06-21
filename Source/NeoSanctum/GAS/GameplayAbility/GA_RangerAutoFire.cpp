@@ -21,6 +21,8 @@ UGA_RangerAutoFire::UGA_RangerAutoFire()
 	AssetTags.AddTag(NSGameplayTags::Ability_Ranger_AutoFire);
 	SetAssetTags(AssetTags);
 	
+	// 입력을 유지하면 Ability가 한 발 단위로 다시 활성화.
+	// 내부 반복 타이머가 아니라 Ability 활성화 주기로 연사를 구성.
 	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
 }
 
@@ -36,6 +38,8 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
+	// 한 발 발사 주기마다 종료 조건을 새로 추적.
+	// 원격 클라이언트는 Timer 종료와 TargetData 수신 순서가 달라질 수 있음.
 	bFireCycleElapsed = false;
 	bTargetDataProcessed = false;
 	
@@ -163,6 +167,8 @@ void UGA_RangerAutoFire::FinishFireCycle()
 {
 	bFireCycleElapsed = true;
 	
+	// 원격 클라이언트의 경우 FireInterval이 먼저 끝날 수 있음.
+	// TargetData를 아직 처리하지 않았다면 수신 완료 시점까지 Ability 종료를 미룬다.
 	if (IsWaitingForRemoteClientTargetData() && !bTargetDataProcessed)
 	{
 		return;
@@ -195,6 +201,8 @@ bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
 		return false;
 	}
 	
+	// FireRate가 0 이하이거나 데이터가 비정상이어도
+	// 0으로 나누거나 즉시 재활성화되는 상황을 방지.
 	constexpr float MinFireRate = 0.01f;
 	constexpr float MinFireInterval = 0.01f;
 	
@@ -206,6 +214,9 @@ bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
 
 void UGA_RangerAutoFire::FireOnce()
 {
+	// 로컬 Trace는 TargetData 생성용.
+	// 실제 명중 판정과 데미지는 서버에서 다시 검증.
+	
 	FHitResult HitResult;
 	FVector TraceStart;
 	FVector TraceEnd;
@@ -220,7 +231,8 @@ void UGA_RangerAutoFire::FireOnce()
 	HitResult.TraceStart = TraceStart;
 	HitResult.TraceEnd = TraceEnd;
 	
-	// Miss도 TargetData 흐름에 태우기 위해 Trace 정보를 채워둠
+	// 명중하지 않아도 TraceStart / TraceEnd를 전달해야
+	// 서버가 허공 조준에 대한 총구 막힘 판정을 수행할 수 있다.
 	if (!bHit)
 	{
 		HitResult.Location = TraceEnd;
@@ -283,6 +295,7 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 		return;
 	}
 
+	// TargetData RPC와 현재 Ability 활성화를 같은 PredictionKey 흐름으로 묶는다.
 	FScopedPredictionWindow ScopedPredictionWindow(ASC);
 
 	FGameplayAbilityTargetDataHandle LocalTargetDataHandle = TargetDataHandle;
@@ -302,7 +315,8 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 	const bool bShouldNotifyServer =
 		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
 
-	// 원격 클라이언트만 아래 분기 실행
+	// 원격 클라이언트만 TargetData를 서버 Ability로 전송.
+	// 리슨 서버 호스트는 같은 인스턴스에서 직접 처리.
 	if (bShouldNotifyServer)
 	{
 		if (bLogPredictionKey && ActorInfo)
@@ -327,6 +341,8 @@ void UGA_RangerAutoFire::OnTargetDataReadyCallback(
 
 	OnRangerTargetDataReady(LocalTargetDataHandle);
 	
+	// 원격 클라이언트 TargetData 처리가 끝났음을 기록.
+	// FireInterval Timer가 먼저 끝난 경우 여기서 Ability 종료를 이어서 처리.
 	if (IsWaitingForRemoteClientTargetData())
 	{
 		bTargetDataProcessed = true;
@@ -357,6 +373,7 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 	const bool bShouldExecuteCue = 
 		ActorInfo && (ActorInfo->IsLocallyControlled() || ActorInfo->IsNetAuthority());
 	
+	// 발사 연출은 로컬 조작자와 서버 권한 경로에서 처리.
 	if (bShouldExecuteCue)
 	{
 		ExecuteMuzzleFireCue();
@@ -369,11 +386,13 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 	
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	
+	// 로컬 클라이언트는 서버 결과를 기다리지 않고 ImpactCue를 예측 재생.
 	if (ShouldPlayLocalFeedback() && AvatarActor && !AvatarActor->HasAuthority())
 	{
 		ExecutePredictedImpactCue(TargetDataHandle);
 	}
 	
+	// 소음과 GameplayEffect 데미지는 서버 권한으로만 처리.
 	if (!AvatarActor || !AvatarActor->HasAuthority())
 	{
 		return;
@@ -412,6 +431,8 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 	FVector ServerTraceEnd;
 	bool bServerAimHit = false;
 	
+	// 클라이언트 TargetData는 입력 검증에만 사용하고,
+	// 실제 명중 판정은 서버 Canonical Aim Trace 결과를 사용.
 	if (!TryBuildServerAimTrace(
 		ServerHitResult,
 		ServerTraceStart,
@@ -431,6 +452,7 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 	
+	// 조준 Trace가 빗나가도 서버 기준 TraceEnd까지 총구 막힘 검사는 수행.
 	const FVector AimPoint = bServerAimHit ? FVector(ServerHitResult.ImpactPoint) : ServerTraceEnd;
 	const AActor* AimTargetActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
 	
@@ -477,6 +499,8 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 		return;
 	}
 	
+	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달.
+	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용.
 	FGameplayEffectSpecHandle DamageSpecHandle = 
 		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
 	
@@ -686,6 +710,8 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		return false;
 	}
 	
+	// Trace 시작점은 카메라 위치를 사용하고,
+	// 방향은 화면 중앙 Deproject 결과를 사용해 크로스헤어 조준과 일치시킨다.
 	if (!TryGetAimTraceStartLocation(OutTraceStart))
 	{
 		return false;
@@ -731,6 +757,8 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		return false;
 	}
 
+	// 서버 검증에서 같은 최대 사거리를 사용할 수 있도록
+	// 조준 방향과 TraceRange로 끝점을 명시적으로 구성.
 	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
 	
 	FCollisionQueryParams QueryParams;
@@ -769,6 +797,8 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 		return false;
 	}
 	
+	// 서버는 Viewport Deproject를 사용할 수 없으므로,
+	// 서버가 보유한 BaseAimRotation으로 판정용 조준 방향을 구성.
 	const FVector ServerAimDirection = Pawn->GetBaseAimRotation().Vector().GetSafeNormal();
 	
 	if (ServerAimDirection.IsNearlyZero())
@@ -939,6 +969,9 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 	}
 	
 	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	
+	// 서버 Canonical AimPoint를 기준으로 총구 실제 발사 경로를 검사.
+	// 조준 Trace가 허공인 경우에도 총구 앞 엄폐물을 처리할 수 있어야 함.
 	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
 	
 	if (ShotDirection.IsNearlyZero())
@@ -1004,6 +1037,7 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 		return false;
 	}
 	
+	// 클라이언트가 서버 조준 방향과 무관한 TraceEnd를 전달하는 것을 방지.
 	const FVector ClientTraceDirection = (ClientTraceEnd - ClientTraceStart).GetSafeNormal();
 	
 	const FVector ServerTraceDirection = (ServerTraceEnd - ServerTraceStart).GetSafeNormal();
@@ -1034,6 +1068,8 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 		return false;
 	}
 	
+	// 허공 TargetData도 방향 검증을 통과했다면 허용.
+	// 이후 총구 막힘과 실제 데미지는 서버 Canonical Trace 결과만 사용.
 	if (!ClientHitResult.bBlockingHit)
 	{
 		return true;
