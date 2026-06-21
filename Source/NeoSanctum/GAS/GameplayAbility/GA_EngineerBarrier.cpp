@@ -72,64 +72,12 @@ void UGA_EngineerBarrier::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_EngineerBarrier::ApplyCooldown(
-	const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo
-) const
-{
-	if (!CooldownGameplayEffectClass)
-	{
-		return;
-	}
-	
-	float CooldownDuration = 0.0f;
-	
-	if (!TryGetFinalCooldownDuration(CooldownDuration))
-	{
-		return;
-	}
-	
-	FGameplayEffectSpecHandle CooldownSpecHandle =
-		MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
-	
-	if (!CooldownSpecHandle.IsValid() || !CooldownSpecHandle.Data.IsValid())
-	{
-		return;
-	}
-	
-	CooldownSpecHandle.Data->SetSetByCallerMagnitude(
-		CooldownEffectTag,
-		CooldownDuration
-	);
-	
-	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CooldownSpecHandle);
-}
-
-bool UGA_EngineerBarrier::TryGetFinalCooldownDuration(float& OutCooldownDuration) const
-{
-	float FinalCooldownDuration = 0.0f;
-	
-	if (!TryGetFinalAbilityStat(
-		AbilityTag,
-		NSGameplayTags::CombatStat_Cooldown,
-		FinalCooldownDuration))
-	{
-		return false;
-	}
-	
-	constexpr float MinCooldownDuration = 0.1f;
-	OutCooldownDuration = FMath::Max(FinalCooldownDuration, MinCooldownDuration);
-	
-	return true;
-}
-
 bool UGA_EngineerBarrier::TryGetBarrierRadius(float& OutBarrierRadius) const
 {
 	float FinalBarrierRadius = 0.0f;
 	
 	if (!TryGetFinalAbilityStat(
-		AbilityTag,
+		SkillAbilityTag,
 		NSGameplayTags::CombatStat_Radius,
 		FinalBarrierRadius))
 	{
@@ -146,7 +94,7 @@ bool UGA_EngineerBarrier::TryGetBarrierDuration(float& OutBarrierDuration) const
 	float FinalBarrierDuration = 0.0f;
 
 	if (!TryGetFinalAbilityStat(
-		AbilityTag,
+		SkillAbilityTag,
 		NSGameplayTags::CombatStat_Duration,
 		FinalBarrierDuration))
 	{
@@ -170,7 +118,7 @@ void UGA_EngineerBarrier::RebuildSetByCallerMagnitudes()
 		
 		float Magnitude = 0.0f;
 		if (!TryGetFinalAbilityStat(
-			AbilityTag,
+			SkillAbilityTag,
 			Mapping.CombatStatTag,
 			Magnitude))
 		{
@@ -248,6 +196,7 @@ void UGA_EngineerBarrier::SpawnBarrierActor(
 		OwningController,
 		BarrierRadius,
 		BarrierDuration,
+		BarrierAbilityConfig.InitialAttributeEffectClass,
 		InSetByCallerMagnitudes
 	);
 	SpawnedBarrier->FinishSpawning(SpawnedBarrier->GetActorTransform());
