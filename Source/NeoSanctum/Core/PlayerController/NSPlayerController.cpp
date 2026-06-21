@@ -16,6 +16,8 @@
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
+#include "EngineUtils.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -151,6 +153,38 @@ void ANSPlayerController::Server_DebugCommitPermanent_Implementation()
 		}
 	}
 }
+
+// ===== 테스트용 임시 코드 — 인런 구출 NPC(M3) 구현 후 삭제 =====
+void ANSPlayerController::Debug_UnlockAllNPCs()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+
+	UNSPlayerProgressComponent* Progress = PS->GetProgressComponent();
+	if (!Progress)
+	{
+		return;
+	}
+
+	int32 Count = 0;
+	for (TActorIterator<ANSInteractableNPCBase> It(World); It; ++It)
+	{
+		Progress->UnlockNPC(It->GetNPCId());
+		++Count;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("[Debug] 거점 NPC %d개 해금 — 범위 밖으로 나갔다 다시 들어오면 프롬프트 표시"), Count);
+}
+// ===== 테스트용 임시 코드 끝 =====
 
 void ANSPlayerController::BindAttributeToHUD()
 {
