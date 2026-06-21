@@ -39,12 +39,6 @@ protected:
 		bool bWasCancelled
 	) override;
 
-	virtual void ApplyCooldown(
-		const FGameplayAbilitySpecHandle Handle,
-		const FGameplayAbilityActorInfo* ActorInfo,
-		const FGameplayAbilityActivationInfo ActivationInfo
-	) const override;
-
 	bool PlayFireMontage();
 
 	UFUNCTION()
@@ -123,7 +117,6 @@ private:
 	bool TrySpawnProjectileFromTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
 	bool TrySpawnProjectileAtAimPoint(const FVector& AimPoint) const;
 
-	bool TryGetFinalCooldownDuration(float& OutCooldownDuration) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 
 private:
