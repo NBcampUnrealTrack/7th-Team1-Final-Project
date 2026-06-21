@@ -83,6 +83,8 @@ private:
 	void HandleSkillRechargeEffectRemoved(const FGameplayEffectRemovalInfo& RemovalInfo, FGameplayTag SkillSlotTag);
 	// 충전 완료 후 Count 회복 및 다음 충전 시작
 	void FinishSkillRecharge(const FGameplayTag& SkillSlotTag);
+	// 슬롯 쿨다운 UI 변경 메시지 전송
+	void BroadcastSkillCooldownUIData(const FGameplayTag& SkillSlotTag) const;
 	// 슬롯에 맞는 SkillCount를 증가
 	void AddSkillCountForSlot(const FGameplayTag& SkillSlotTag, float Amount);
 	

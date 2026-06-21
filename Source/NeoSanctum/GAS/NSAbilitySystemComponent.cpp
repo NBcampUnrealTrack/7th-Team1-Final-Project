@@ -4,9 +4,11 @@
 #include "NSAbilitySystemComponent.h"
 
 #include "GameplayAbility/GA_SkillBase.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Slot.h"
 #include "Stats/NSCombatStatComponent.h"
 
@@ -210,6 +212,8 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 	{
 		return;
 	}
+
+	BroadcastSkillCooldownUIData(SkillSlotTag);
 
 	// Duration 만료 시 SkillCount 회복 처리
 	if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =
@@ -422,6 +426,7 @@ void UNSAbilitySystemComponent::FinishSkillRecharge(const FGameplayTag& SkillSlo
 
 	// 충전 하나를 회복
 	AddSkillCountForSlot(SkillSlotTag, 1.0f);
+	BroadcastSkillCooldownUIData(SkillSlotTag);
 
 	if (IsSkillCountFull(SkillSlotTag))
 	{
@@ -430,6 +435,26 @@ void UNSAbilitySystemComponent::FinishSkillRecharge(const FGameplayTag& SkillSlo
 
 	// 아직 최대치가 아니면 다음 충전을 이어서 시작
 	StartSkillRecharge(SkillSlotTag, GetCachedSkillRechargeCooldown(SkillSlotTag));
+}
+
+void UNSAbilitySystemComponent::BroadcastSkillCooldownUIData(const FGameplayTag& SkillSlotTag) const
+{
+	// GMS로 전달할 슬롯 쿨다운 상태를 구성
+	FSkillCooldownUIData CooldownData;
+	if (!GetSkillCooldownUIData(SkillSlotTag, CooldownData))
+	{
+		return;
+	}
+
+	FNSSkillCooldownMessage Message;
+	Message.SkillSlotTag = SkillSlotTag;
+	Message.CooldownData = CooldownData;
+
+	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(this);
+	MessageSubsystem.BroadcastMessage(
+		NSGameplayTags::Message_UI_SkillCooldown_Changed,
+		Message
+	);
 }
 
 void UNSAbilitySystemComponent::AddSkillCountForSlot(const FGameplayTag& SkillSlotTag, float Amount)
