@@ -12,6 +12,61 @@ UNSMeleeAttackReservationComponent::UNSMeleeAttackReservationComponent()
 }
 
 
+ENSMeleeReservationRequestResult UNSMeleeAttackReservationComponent::RequestReservation(
+	ANSEnemyCharacterBase* Enemy,
+	double LastDamagedTime)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld() || !IsEnemyValid(Enemy))
+	{
+		return ENSMeleeReservationRequestResult::Rejected;
+	}
+
+	const double CurrentTime = GetWorld()->GetTimeSeconds();
+
+	CleanupInvalidEntries(CurrentTime);
+
+	for (const FActiveReservation& Reservation : ActiveReservations)
+	{
+		if (Reservation.Enemy == Enemy)
+		{
+			return ENSMeleeReservationRequestResult::Reserved;
+		}
+	}
+
+	FQueuedRequest* ExistingRequest = QueuedRequests.FindByPredicate(
+		[Enemy](const FQueuedRequest& Request)
+		{
+			return Request.Enemy == Enemy;
+		});
+
+	if (ExistingRequest)
+	{
+		ExistingRequest->LastDamagedTime = FMath::Max(
+			ExistingRequest->LastDamagedTime,
+			LastDamagedTime);
+	}
+	else
+	{
+		FQueuedRequest& Request = QueuedRequests.AddDefaulted_GetRef();
+
+		Request.Enemy = Enemy;
+		Request.RequestTime = CurrentTime;
+		Request.LastDamagedTime = LastDamagedTime;
+	}
+
+	PromoteQueuedRequests(CurrentTime);
+
+	const bool bReserved = ActiveReservations.ContainsByPredicate(
+		[Enemy](const FActiveReservation& Reservation)
+		{
+			return Reservation.Enemy == Enemy;
+		});
+
+	return bReserved
+		       ? ENSMeleeReservationRequestResult::Reserved
+		       : ENSMeleeReservationRequestResult::Queued;
+}
+
 bool UNSMeleeAttackReservationComponent::HasReservation(ANSEnemyCharacterBase* Enemy)
 {
 	if (!GetWorld())
