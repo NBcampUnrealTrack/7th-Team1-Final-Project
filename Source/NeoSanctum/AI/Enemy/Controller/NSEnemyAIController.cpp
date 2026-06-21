@@ -1034,6 +1034,24 @@ bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
 	return TargetActor && TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
 }
 
+void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* ReservedTarget = MeleeReservationTarget.Get();
+
+	if (!Enemy || !ReservedTarget)
+	{
+		return;
+	}
+
+	if (UNSMeleeAttackReservationComponent* Component =
+		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+	{
+		Component->MarkAttackStarted(Enemy);
+	}
+}
+
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
