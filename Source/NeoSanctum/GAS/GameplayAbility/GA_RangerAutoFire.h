@@ -10,8 +10,12 @@ class UAnimMontage;
 class UGameplayEffect;
 
 /**
- * 원거리 캐릭터 기본 공격
- * 한 번 활성화될 때 한 발을 발사하고, 입력 유지 중 반복 활성화
+ * 입력 유지 동안 한 발 단위로 반복 활성화되는 레인저 기본 연사 Ability.
+ *
+ * 로컬 조작자는 화면 중앙 조준 결과를 TargetData로 생성하고,
+ * 서버는 TargetData를 검증한 뒤 Canonical Aim Trace 기준으로 실제 명중과 데미지를 판정한다.
+ *
+ * 총구가 장애물에 막힌 경우에는 조준 대상보다 총구 앞 장애물을 우선 처리한다.
  */
 UCLASS()
 class NEOSANCTUM_API UGA_RangerAutoFire : public UGA_SkillBase
@@ -38,30 +42,40 @@ protected:
 	) override;
 
 protected:
+	// AutoFire 데미지 전달에 사용할 GameplayEffect 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	// 한 발 발사 시 재생할 연출용 몽타주
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	TObjectPtr<UAnimMontage> FireMontage;
 	
+	// 몽타주 재생 속도. 실제 연사 간격은 FireRate CombatStat이 결정.
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	float FireMontagePlayRate = 1.0f;
 	
+	// 클라이언트 조준 Trace와 서버 Canonical Aim Trace의 최대 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	float TraceRange = 10000.0f;
 	
-	// 클라가 보낸 TraceStart가 서버 기준에서 너무 멀면 거부
+	// 클라이언트가 보낸 TraceStart와 서버 카메라 기준 시작점의 최대 허용 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerTraceStartTolerance = 300.0f;
 	
-	// 클라 Hit 위치와 서버 재 Trace Hit 위치가 너무 다르면 거부
+	// 클라이언트 Trace 방향과 서버 Canonical Aim 방향의 최대 허용 각도
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation",
+		meta = (ClampMin = "0.0", ClampMax = "45.0"))
+	float ServerAimDirectionToleranceDegrees = 15.0f;
+	
+	// 클라이언트 Hit 위치와 서버 Canonical Trace Hit 위치의 최대 허용 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerHitLocationTolerance = 200.0f;
 	
-	// 총구가 벽에 살짝 파고든 상황까지 잡기 위해 Trace 시작점을 뒤로 당기는 거리
+	// 총구가 벽에 가까운 경우도 감지하도록 총구 막힘 Trace 시작점을 뒤로 보정하는 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float MuzzleObstructionBackTraceDistance = 100.0f;
 	
+	// 조준 Trace와 총구 막힘 Trace에 공통으로 사용할 Collision 채널
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
 	
@@ -85,16 +99,24 @@ protected:
 	bool bLogPredictionKey = false;
 	
 private:
+	// 현재 활성화된 한 발 발사 주기를 종료.
 	void FinishFireCycle();
 
+	// 로컬 화면 중앙 조준 결과로 TargetData를 생성.
 	void FireOnce();
 	
 	void PlayFireMontage();
 	
 	FGameplayAbilityTargetDataHandle MakeTargetDataFromHitResult(const FHitResult& HitResult) const;
+	
+	// 클라이언트 또는 서버에서 전달받은 TargetData의 공통 진입점.
 	void OnTargetDataReadyCallback(
 		const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ApplicationTag);
+	
+	// 발사 연출, 로컬 예측 피드백, 서버 권한 처리를 역할별로 분기.
 	void OnRangerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	
+	// 서버 Canonical Aim Trace와 총구 막힘 결과를 기준으로 실제 데미지를 적용.
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
 	void ApplyDamageToActor(AActor* TargetActor);
@@ -114,19 +136,42 @@ private:
 		bool bIsObstructed
 	) const;
 
-	// 로컬 조작자인지 판단
+	// 로컬 소유자에게만 표시해야 하는 예측 피드백인지 확인.
 	bool ShouldPlayLocalFeedback() const;
+	
+	// 로컬 플레이어 화면 중앙 기준으로 조준 TargetData를 생성.
 	bool TryBuildHitscanTrace(
 		FHitResult& OutHitResult,
 		FVector& OutTraceStart,
 		FVector& OutTraceEnd,
 		bool& bOutHit) const;
 	
+	// 서버가 보유한 조준 정보로 권한 판정용 Canonical Aim Trace를 생성
+	bool TryBuildServerAimTrace(
+		FHitResult& OutHitResult,
+		FVector& OutTraceStart,
+		FVector& OutTraceEnd,
+		bool& bOutHit
+	) const;
+	
 	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
-	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
-	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
+	// 총구와 조준 지점 사이에 조준 대상보다 먼저 맞는 장애물이 있는지 확인.
+	bool IsMuzzleObstructed(
+		const FVector& AimPoint,
+		const AActor* AimTargetActor, 
+		FHitResult& OutObstructionHitResult
+	) const;
+	
+	// 클라이언트 TargetData가 서버 Canonical Aim Trace와 일치하는지 검증.
+	bool IsTargetDataTraceValid(
+		const FHitResult& ClientHitResult,
+		const FHitResult& ServerHitResult,
+		const FVector& ServerTraceStart,
+		const FVector& ServerTraceEnd,
+		bool bServerAimHit
+	) const;
 	
 	// AI 청각 감지용 소음 발생
 	void ReportWeaponNoise(const AActor* InAvatarActor);
