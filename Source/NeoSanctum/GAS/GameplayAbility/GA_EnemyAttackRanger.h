@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_EnemyAttackBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_EnemyAttackRanger.generated.h"
 
 /**
@@ -40,7 +41,7 @@ protected:
 	
 	// 투사체 Trace Channel
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile")
-	TEnumAsByte<ECollisionChannel> ProjectileTraceChannel = ECC_Visibility;
+	TEnumAsByte<ECollisionChannel> ProjectileTraceChannel = NSCollisionChannels::EnemyProjectile;
 
 private:
 	// 현재 발사 이벤트 수
