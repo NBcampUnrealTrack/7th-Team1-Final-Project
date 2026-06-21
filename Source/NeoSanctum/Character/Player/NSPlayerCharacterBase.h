@@ -26,6 +26,7 @@ class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 class UNSSpectatorViewComponent;
 class UNSPartVisualComponent;
+class UNSInteractionComponent;
 class UNSMeleeAttackReservationComponent;
 
 UCLASS()
@@ -133,6 +134,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parts")
 	TObjectPtr<UNSPartVisualComponent> PartVisualComp;
+
+	// 상호작용 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<UNSInteractionComponent> InteractionComp;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
