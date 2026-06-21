@@ -57,7 +57,7 @@ public:
 	TObjectPtr<UNSCompanionAbilitySet> AbilitySet;
 	
 	UPROPERTY(EditDefaultsOnly)
-	TSubclassOf<UGameplayEffect> DefaultStatsEffect;
+	TSubclassOf<UGameplayEffect> TypeStatsEffect;
 	
 	//해금 전제조건 게이팅
 	UPROPERTY(EditDefaultsOnly)

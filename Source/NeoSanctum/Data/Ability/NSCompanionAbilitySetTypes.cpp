@@ -10,7 +10,7 @@ void FNSCompanionAbilitySet_GrantedHandles::AddAbilitySpecHandle(const FGameplay
 	AbilitySpecHandles.Add(SpecHandle);
 }
 
-void FNSCompanionAbilitySet_GrantedHandles::AddGameplayEffectEffectHandle(const FActiveGameplayEffectHandle& EffectHandle)
+void FNSCompanionAbilitySet_GrantedHandles::AddGameplayEffectHandle(const FActiveGameplayEffectHandle& EffectHandle)
 {
 	if (!EffectHandle.IsValid()) return;
 	GameplayEffectHandles.Add(EffectHandle);

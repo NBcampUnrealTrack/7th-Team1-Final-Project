@@ -26,7 +26,7 @@ struct FNSCompanionAbilitySet_GrantedHandles
 	GENERATED_BODY()
 	
 	void AddAbilitySpecHandle(const FGameplayAbilitySpecHandle& SpecHandle);
-	void AddGameplayEffectEffectHandle(const FActiveGameplayEffectHandle& EffectHandle);
+	void AddGameplayEffectHandle(const FActiveGameplayEffectHandle& EffectHandle);
 	void TakeFromAbilitySystem(UAbilitySystemComponent* ASC);
 	
 protected:

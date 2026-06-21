@@ -70,6 +70,9 @@ bool UNSCompanionProgressionComponent::CanSelect(FGameplayTag CompanionTag) cons
 void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseCompanionAI* Owner)
 {
 	if (!Owner) return;
+		
+	if (OwnedCompanion) return;
+		
 	OwnedCompanion = Owner;
 }
 
