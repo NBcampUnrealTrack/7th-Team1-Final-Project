@@ -1057,6 +1057,23 @@ void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCoo
 	CancelMeleeReservationRequest(bStartReacquireCooldown);
 }
 
+void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCooldown)
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	{
+		if (UNSMeleeAttackReservationComponent* Component =
+				ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+		{
+			Component->ReleaseReservation(Enemy, bStartReacquireCooldown);
+		}
+	}
+
+	MeleeReservationTarget.Reset();
+	SetMeleeReservationBlackboard(false, false);
+}
+
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
