@@ -20,7 +20,7 @@ class USphereComponent;
  * 재화로도 가능하다면
  */
 UCLASS()
-class NEOSANCTUM_API ANSDroppedPart : public AActor
+class NEOSANCTUM_API ANSDroppedPart : public AActor, public INSInteractable
 {
 	GENERATED_BODY()
 
