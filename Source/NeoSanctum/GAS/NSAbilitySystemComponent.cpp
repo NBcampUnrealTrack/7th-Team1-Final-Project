@@ -223,6 +223,66 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 	}
 }
 
+bool UNSAbilitySystemComponent::GetSkillCooldownUIData(
+	const FGameplayTag& SkillSlotTag,
+	FSkillCooldownUIData& OutData) const
+{
+	// UI가 바로 사용할 수 있도록 슬롯 기준 쿨다운 상태를 구성
+	OutData = FSkillCooldownUIData();
+	OutData.SkillSlotTag = SkillSlotTag;
+
+	if (!SkillSlotTag.IsValid())
+	{
+		return false;
+	}
+
+	if (!TryGetSkillCountForSlot(SkillSlotTag, OutData.CurrentCount, OutData.MaxCount))
+	{
+		return false;
+	}
+
+	const FGameplayTag RechargeEffectTag = GetRechargeEffectTagForSlot(SkillSlotTag);
+	if (!RechargeEffectTag.IsValid())
+	{
+		return true;
+	}
+
+	// Recharge GE의 남은 시간과 전체 시간을 조회
+	FGameplayTagContainer RechargeEffectTags;
+	RechargeEffectTags.AddTag(RechargeEffectTag);
+
+	FGameplayEffectQuery RechargeQuery;
+	RechargeQuery.OwningTagQuery = FGameplayTagQuery::MakeQuery_MatchAnyTags(RechargeEffectTags);
+
+	const TArray<TPair<float, float>> RechargeTimes =
+		GetActiveEffectsTimeRemainingAndDuration(RechargeQuery);
+
+	for (const TPair<float, float>& RechargeTime : RechargeTimes)
+	{
+		const float RemainingTime = RechargeTime.Key;
+		const float TotalTime = RechargeTime.Value;
+
+		if (RemainingTime > OutData.RemainingTime)
+		{
+			OutData.RemainingTime = FMath::Max(RemainingTime, 0.0f);
+			OutData.TotalTime = FMath::Max(TotalTime, 0.0f);
+		}
+	}
+
+	OutData.bIsRecharging = OutData.RemainingTime > 0.0f && OutData.TotalTime > 0.0f;
+	if (OutData.bIsRecharging)
+	{
+		// 0.0에서 시작해 1.0으로 차오르는 형태의 진행도
+		OutData.NormalizedProgress = FMath::Clamp(
+			1.0f - (OutData.RemainingTime / OutData.TotalTime),
+			0.0f,
+			1.0f
+		);
+	}
+
+	return true;
+}
+
 bool UNSAbilitySystemComponent::IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const
 {
 	const FGameplayTag RechargeEffectTag = GetRechargeEffectTagForSlot(SkillSlotTag);
@@ -258,6 +318,45 @@ bool UNSAbilitySystemComponent::IsSkillCountFull(const FGameplayTag& SkillSlotTa
 	}
 
 	return true;
+}
+
+bool UNSAbilitySystemComponent::TryGetSkillCountForSlot(
+	const FGameplayTag& SkillSlotTag,
+	int32& OutCurrentCount,
+	int32& OutMaxCount) const
+{
+	// 슬롯 태그를 PlayerAttributeSet의 SkillCount Attribute로 매핑
+	OutCurrentCount = 0;
+	OutMaxCount = 0;
+
+	const UNSPlayerAttributeSet* PlayerAttributeSet = GetSet<UNSPlayerAttributeSet>();
+	if (!PlayerAttributeSet)
+	{
+		return false;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill1))
+	{
+		OutCurrentCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetSkill1Count()), 0);
+		OutMaxCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetMaxSkill1Count()), 0);
+		return true;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill2))
+	{
+		OutCurrentCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetSkill2Count()), 0);
+		OutMaxCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetMaxSkill2Count()), 0);
+		return true;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill3))
+	{
+		OutCurrentCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetSkill3Count()), 0);
+		OutMaxCount = FMath::Max(FMath::FloorToInt(PlayerAttributeSet->GetMaxSkill3Count()), 0);
+		return true;
+	}
+
+	return false;
 }
 
 TSubclassOf<UGameplayEffect> UNSAbilitySystemComponent::GetRechargeGEClassForSlot(

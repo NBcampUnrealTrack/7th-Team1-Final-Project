@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NSAbilitySystemComponent.generated.h"
 
 class UGameplayEffect;
@@ -30,6 +31,10 @@ public:
 	
 	// 스킬 슬롯별 재충전 진입점
 	void StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown);
+
+	// 슬롯 쿨다운 UI 데이터 조회
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Skill|Cooldown")
+	bool GetSkillCooldownUIData(const FGameplayTag& SkillSlotTag, FSkillCooldownUIData& OutData) const;
 
 public:
 	bool TryGetBaseAbilityStat(
@@ -66,6 +71,8 @@ private:
 	bool IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const;
 	// 해당 슬롯의 스킬이 이미 MaxCount인지 판단
 	bool IsSkillCountFull(const FGameplayTag& SkillSlotTag) const;
+	// 슬롯에 맞는 현재/최대 충전 수 조회
+	bool TryGetSkillCountForSlot(const FGameplayTag& SkillSlotTag, int32& OutCurrentCount, int32& OutMaxCount) const;
 	
 	// 슬롯에 해당하는 Recharge GE를 찾아 반환하는 함수
 	TSubclassOf<UGameplayEffect> GetRechargeGEClassForSlot(const FGameplayTag& SkillSlotTag) const;
