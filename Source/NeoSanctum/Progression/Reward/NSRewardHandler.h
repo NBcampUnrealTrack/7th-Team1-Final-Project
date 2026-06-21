@@ -55,6 +55,12 @@ private:
 		FRandomStream& RandomStream
 	);
 	
+	static bool TryFindDropGroundLocation(
+		UWorld* World,
+		const FVector& CandidateTargetLocation,
+		FVector& OutGroundLocation
+	);
+	
 	static void HandleAugmentRewardEntry(
 		UWorld* World,
 		const FNSRewardEntry& RewardEntry,

@@ -260,6 +260,54 @@ void UNSRewardHandler::HandleDropResults(
 	}
 }
 
+bool UNSRewardHandler::TryFindDropGroundLocation(
+	UWorld* World,
+	const FVector& CandidateTargetLocation,
+	FVector& OutGroundLocation)
+{
+	if (!World)
+	{
+		return false;
+	}
+
+	constexpr float GroundTraceStartOffset = 300.0f;
+	constexpr float GroundTraceDepth = 1000.0f;
+	constexpr float MinGroundNormalZ = 0.7f;
+
+	const FVector TraceStart = CandidateTargetLocation
+		+ FVector::UpVector * GroundTraceStartOffset;
+
+	const FVector TraceEnd = CandidateTargetLocation
+		- FVector::UpVector * GroundTraceDepth;
+
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(RewardDropGroundTrace),
+		false
+	);
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+	FHitResult GroundHit;
+
+	const bool bFoundGround = World->LineTraceSingleByObjectType(
+		GroundHit,
+		TraceStart,
+		TraceEnd,
+		ObjectQueryParams,
+		QueryParams
+	);
+
+	if (!bFoundGround || GroundHit.ImpactNormal.Z < MinGroundNormalZ)
+	{
+		return false;
+	}
+
+	OutGroundLocation = GroundHit.ImpactPoint;
+	return true;
+}
+
 FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 	const FVector& Origin,
 	FRandomStream& RandomStream)
@@ -287,8 +335,22 @@ FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 		0.0f
 	);
 	
+	const FVector CandidateTargetLocation = Origin + HorizontalOffset;
+	
 	LaunchData.StartLocation = Origin + FVector(0.0f, 0.0f, StartHeightOffset);
-	LaunchData.TargetLocation = Origin + HorizontalOffset;
+	
+	FVector GroundTargetLocation;
+	
+	if (TryFindDropGroundLocation(World, CandidateTargetLocation, GroundTargetLocation))
+	{
+		LaunchData.TargetLocation = GroundTargetLocation;
+	}
+	else
+	{
+		// 지면을 찾지 못한 후본느 원점에 떨어뜨려 월드 밖 드랍을 방지
+		LaunchData.TargetLocation = Origin;
+	}
+	
 	const AGameStateBase* GameState = World->GetGameState();
 	
 	LaunchData.StartServerTime = GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
