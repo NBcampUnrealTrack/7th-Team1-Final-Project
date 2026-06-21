@@ -647,23 +647,53 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 
 		const FHitResult* ClientHitResult = TargetData->GetHitResult();
 
-		if (!ClientHitResult || !ClientHitResult->bBlockingHit)
+		if (!ClientHitResult)
 		{
 			continue;
 		}
 
 		FHitResult ServerHitResult;
+		FVector ServerTraceStart;
+		FVector ServerTraceEnd;
+		bool bServerAimHit = false;
 
-		if (!ValidateTargetDataHitResult(*ClientHitResult, ServerHitResult))
+		// RangerAutoFire와 동일하게 서버 기준 Trace를 다시 구성
+		if (!TryBuildServerPelletTrace(
+			*ClientHitResult,
+			ServerHitResult,
+			ServerTraceStart,
+			ServerTraceEnd,
+			bServerAimHit))
 		{
 			continue;
 		}
 
+		// 클라이언트 TargetData는 입력 검증에만 사용하고 실제 판정은 서버 Trace를 기준으로 처리
+		if (!IsTargetDataTraceValid(
+			*ClientHitResult,
+			ServerHitResult,
+			ServerTraceStart,
+			ServerTraceEnd,
+			bServerAimHit))
+		{
+			continue;
+		}
+
+		// 카메라 Trace가 허공을 향해도 총구 Trace가 막힌 대상은 데미지 대상으로 처리
+		const FVector AimPoint = bServerAimHit ? FVector(ServerHitResult.ImpactPoint) : ServerTraceEnd;
+		const AActor* AimTargetActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
+
 		FHitResult MuzzleObstructionHitResult;
 
-		if (IsMuzzleObstructed(ServerHitResult, MuzzleObstructionHitResult))
+		if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 		{
+			ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
 			ExecuteImpactCue(MuzzleObstructionHitResult);
+			continue;
+		}
+
+		if (!bServerAimHit)
+		{
 			continue;
 		}
 
@@ -783,17 +813,28 @@ void UGA_EngineerShotgunFire::ExecutePredictedImpactCue(
 
 		const FHitResult* LocalHitResult = TargetData->GetHitResult();
 
-		if (!LocalHitResult || !LocalHitResult->bBlockingHit)
+		if (!LocalHitResult)
 		{
 			continue;
 		}
 
 		const FHitResult PredictedImpactHitResult = *LocalHitResult;
+		const FVector AimPoint = PredictedImpactHitResult.bBlockingHit ?
+			FVector(PredictedImpactHitResult.ImpactPoint) :
+			FVector(PredictedImpactHitResult.TraceEnd);
+		const AActor* AimTargetActor = PredictedImpactHitResult.bBlockingHit ?
+			PredictedImpactHitResult.GetActor() :
+			nullptr;
 		FHitResult MuzzleObstructionHitResult;
 
-		if (IsMuzzleObstructed(PredictedImpactHitResult, MuzzleObstructionHitResult))
+		if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 		{
 			ExecuteImpactCue(MuzzleObstructionHitResult);
+			continue;
+		}
+
+		if (!PredictedImpactHitResult.bBlockingHit)
+		{
 			continue;
 		}
 
@@ -815,20 +856,14 @@ bool UGA_EngineerShotgunFire::ShouldPlayLocalFeedback() const
 }
 
 bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
-	const FHitResult& ServerHitResult,
+	const FVector& AimPoint,
+	const AActor* AimTargetActor,
 	FHitResult& OutObstructionHitResult) const
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 
 	if (!IsValid(AvatarActor) || !World)
-	{
-		return false;
-	}
-
-	AActor* TargetActor = ServerHitResult.GetActor();
-
-	if (!IsValid(TargetActor))
 	{
 		return false;
 	}
@@ -841,7 +876,6 @@ bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
 	}
 
 	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
-	const FVector AimPoint = ServerHitResult.ImpactPoint;
 	const FVector ShotDirection = (AimPoint - MuzzleLocation).GetSafeNormal();
 
 	if (ShotDirection.IsNearlyZero())
@@ -863,8 +897,9 @@ bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
 		QueryParams
 	);
 
-	const bool bIsObstructed =
-		bHit && OutObstructionHitResult.bBlockingHit && OutObstructionHitResult.GetActor() != TargetActor;
+	const bool bHitAimTarget =
+		IsValid(AimTargetActor) && OutObstructionHitResult.GetActor() == AimTargetActor;
+	const bool bIsObstructed = bHit && OutObstructionHitResult.bBlockingHit && !bHitAimTarget;
 
 	if (bDrawDebugMuzzleObstruction)
 	{
@@ -879,15 +914,14 @@ bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
 	return bIsObstructed;
 }
 
-bool UGA_EngineerShotgunFire::ValidateTargetDataHitResult(
+bool UGA_EngineerShotgunFire::TryBuildServerPelletTrace(
 	const FHitResult& ClientHitResult,
-	FHitResult& OutServerHitResult) const
+	FHitResult& OutHitResult,
+	FVector& OutTraceStart,
+	FVector& OutTraceEnd,
+	bool& bOutHit) const
 {
-	if (!ClientHitResult.bBlockingHit || !IsValid(ClientHitResult.GetActor()))
-	{
-		return false;
-	}
-
+	// RangerAutoFire의 서버 Trace 생성 단계와 같은 역할
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
 	UWorld* World = GetWorld();
 
@@ -896,10 +930,58 @@ bool UGA_EngineerShotgunFire::ValidateTargetDataHitResult(
 		return false;
 	}
 
-	const FVector TraceStart = ClientHitResult.TraceStart;
-	const FVector TraceEnd = ClientHitResult.TraceEnd;
+	OutTraceStart = ClientHitResult.TraceStart;
+	OutTraceEnd = ClientHitResult.TraceEnd;
+	bOutHit = false;
 
-	if (TraceStart.Equals(TraceEnd))
+	if (!TryGetAimTraceStartLocation(OutTraceStart))
+	{
+		return false;
+	}
+
+	const FVector ClientTraceDirection =
+		(FVector(ClientHitResult.TraceEnd) - FVector(ClientHitResult.TraceStart)).GetSafeNormal();
+
+	if (ClientTraceDirection.IsNearlyZero())
+	{
+		return false;
+	}
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange))
+	{
+		return false;
+	}
+
+	OutTraceEnd = OutTraceStart + ClientTraceDirection * FinalFireRange;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	bOutHit = World->LineTraceSingleByChannel(
+		OutHitResult,
+		OutTraceStart,
+		OutTraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+
+	return true;
+}
+
+bool UGA_EngineerShotgunFire::IsTargetDataTraceValid(
+	const FHitResult& ClientHitResult,
+	const FHitResult& ServerHitResult,
+	const FVector& ServerTraceStart,
+	const FVector& ServerTraceEnd,
+	bool bServerAimHit) const
+{
+	// RangerAutoFire와 동일하게 클라이언트 TargetData와 서버 Trace 결과를 비교 검증
+	const FVector ClientTraceStart = ClientHitResult.TraceStart;
+	const FVector ClientTraceEnd = ClientHitResult.TraceEnd;
+
+	if (ClientTraceStart.Equals(ClientTraceEnd))
 	{
 		return false;
 	}
@@ -912,45 +994,37 @@ bool UGA_EngineerShotgunFire::ValidateTargetDataHitResult(
 	}
 
 	const float MaxTraceDistance = FinalFireRange + ServerHitLocationTolerance;
-	if (FVector::DistSquared(TraceStart, TraceEnd) > FMath::Square(MaxTraceDistance))
+	if (FVector::DistSquared(ClientTraceStart, ClientTraceEnd) > FMath::Square(MaxTraceDistance))
 	{
 		return false;
 	}
 
-	FVector ServerAimTraceStartLocation;
-
-	if (!TryGetAimTraceStartLocation(ServerAimTraceStartLocation))
+	if (FVector::DistSquared(ServerTraceStart, ClientTraceStart) > FMath::Square(ServerTraceStartTolerance))
 	{
 		return false;
 	}
 
-	if (FVector::DistSquared(ServerAimTraceStartLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	if (!bServerAimHit || !ServerHitResult.bBlockingHit)
+	{
+		return !ClientHitResult.bBlockingHit;
+	}
+
+	if (!ClientHitResult.bBlockingHit)
+	{
+		return true;
+	}
+
+	if (!IsValid(ClientHitResult.GetActor()))
 	{
 		return false;
 	}
 
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(AvatarActor);
-
-	const bool bServerHit = World->LineTraceSingleByChannel(
-		OutServerHitResult,
-		TraceStart,
-		TraceEnd,
-		TraceChannel,
-		QueryParams
-	);
-
-	if (!bServerHit || !OutServerHitResult.bBlockingHit)
+	if (ServerHitResult.GetActor() != ClientHitResult.GetActor())
 	{
 		return false;
 	}
 
-	if (OutServerHitResult.GetActor() != ClientHitResult.GetActor())
-	{
-		return false;
-	}
-
-	if (FVector::DistSquared(OutServerHitResult.ImpactPoint, ClientHitResult.ImpactPoint)
+	if (FVector::DistSquared(ServerHitResult.ImpactPoint, ClientHitResult.ImpactPoint)
 		> FMath::Square(ServerHitLocationTolerance))
 	{
 		return false;

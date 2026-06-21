@@ -124,11 +124,30 @@ private:
 	// 로컬 조작자인지 판단
 	bool ShouldPlayLocalFeedback() const;
 
-	// 총구와 Hit 지점 사이가 다른 물체에 막혔는지 확인
-	bool IsMuzzleObstructed(const FHitResult& ServerHitResult, FHitResult& OutObstructionHitResult) const;
+	// 총구와 조준 지점 사이가 다른 물체에 막혔는지 확인
+	bool IsMuzzleObstructed(
+		const FVector& AimPoint,
+		const AActor* AimTargetActor,
+		FHitResult& OutObstructionHitResult
+	) const;
 
-	// 클라이언트 HitResult를 서버 LineTrace로 재검증
-	bool ValidateTargetDataHitResult(const FHitResult& ClientHitResult, FHitResult& OutServerHitResult) const;
+	// 서버 권한 판정용 펠릿 Trace를 생성
+	bool TryBuildServerPelletTrace(
+		const FHitResult& ClientHitResult,
+		FHitResult& OutHitResult,
+		FVector& OutTraceStart,
+		FVector& OutTraceEnd,
+		bool& bOutHit
+	) const;
+
+	// 클라이언트 TargetData가 서버 Trace와 일치하는지 검증
+	bool IsTargetDataTraceValid(
+		const FHitResult& ClientHitResult,
+		const FHitResult& ServerHitResult,
+		const FVector& ServerTraceStart,
+		const FVector& ServerTraceEnd,
+		bool bServerAimHit
+	) const;
 
 	// AI 청각 감지용 소음 발생
 	void ReportWeaponNoise(const AActor* InAvatarActor);
