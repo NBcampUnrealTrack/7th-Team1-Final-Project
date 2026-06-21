@@ -7,6 +7,8 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/SphereComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
@@ -26,6 +28,45 @@ ANSDroppedPart::ANSDroppedPart()
 	MeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(SceneRoot);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	DetectionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionCollision"));
+	DetectionCollision->SetupAttachment(SceneRoot);
+	DetectionCollision->SetSphereRadius(InteractRadius);
+	DetectionCollision->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+}
+
+bool ANSDroppedPart::CanInteract_Implementation(APlayerController* Interactor) const
+{
+	return StoredInstance.IsValid();
+}
+
+bool ANSDroppedPart::OnInteract_Implementation(APlayerController* Interactor)
+{
+	if (!Interactor)
+	{
+		return false;
+	}
+
+	APlayerState* PS = Interactor->PlayerState;
+	if (!PS)
+	{
+		return false;
+	}
+
+	UNSPartEquipComponent* EquipComp = PS->FindComponentByClass<UNSPartEquipComponent>();
+	if (!EquipComp)
+	{
+		return false;
+	}
+
+	// 클라에서 실행되므로 Server RPC 경유 —> 실제 줍기는 서버 TryPickup
+	EquipComp->Server_RequestPickup(this);
+	return true;
+}
+
+FText ANSDroppedPart::GetPromptText_Implementation() const
+{
+	return PromptText;
 }
 
 void ANSDroppedPart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -212,6 +253,22 @@ void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
 	{
 		return;
 	}
+	const float DistSq = FVector::DistSquared(InstigatorPawn->GetActorLocation(), GetActorLocation());
+	if (DistSq > FMath::Square(InteractRadius))
+	{
+		return;
+	}
+	
+	APlayerController* PC = Cast<APlayerController>(InstigatorPawn->GetController());
+	if (!PC)
+	{
+		return;
+	}
+	if (!INSInteractable::Execute_CanInteract(this, PC))
+	{
+		return;
+	}
+	
 	ANSPlayerState* PS = InstigatorPawn->GetPlayerState<ANSPlayerState>();
 	if (!PS)
 	{
@@ -284,3 +341,4 @@ void ANSDroppedPart::SetupVisual()
 	const float BottomOffsetZ = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
 	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -BottomOffsetZ));
 }
+

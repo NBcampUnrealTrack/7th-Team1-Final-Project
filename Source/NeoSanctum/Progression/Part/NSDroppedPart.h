@@ -7,10 +7,12 @@
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Interaction/Core/NSInteractable.h"
 #include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSDroppedPart.generated.h"
 
 class USkeletalMeshComponent;
+class USphereComponent;
 
 /**
  * 바닥에 드랍된 파츠 액터
@@ -90,4 +92,26 @@ private:
 	
 	// 진행 중인 비주얼(Definition/PartMesh) 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> VisualLoadHandle;
+	
+// ================================================================
+// 데이터 접근 API
+// ================================================================
+public:
+	// 상호작용 인터페이스 구현부
+	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
+	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
+	virtual FText GetPromptText_Implementation() const override;
+protected:
+	// 상호작용 감지용 콜리전
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
+	TObjectPtr<USphereComponent> DetectionCollision;
+
+	// 서버 줍기 재검증 시 허용 거리(변조 방지)
+	UPROPERTY(EditAnywhere, Category = "Part")
+	float InteractRadius = 250.f;
+
+	// 프롬프트 액션 문구
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FText PromptText = FText::FromString(TEXT("줍기"));
+	
 };
