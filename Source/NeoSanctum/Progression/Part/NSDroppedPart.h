@@ -55,6 +55,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION()
 	void OnRep_StoredInstance();
@@ -101,14 +102,19 @@ public:
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
 	virtual FText GetPromptText_Implementation() const override;
+	virtual FVector GetPromptWorldLocation_Implementation() const override;
 protected:
 	// 상호작용 감지용 콜리전
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
 	TObjectPtr<USphereComponent> DetectionCollision;
 
+	// 프롬프트 위젯이 뜰 위치
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
+	TObjectPtr<USceneComponent> PromptAnchor;
+
 	// 서버 줍기 재검증 시 허용 거리(변조 방지)
 	UPROPERTY(EditAnywhere, Category = "Part")
-	float InteractRadius = 250.f;
+	float InteractRadius = 100.f;
 
 	// 프롬프트 액션 문구
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
