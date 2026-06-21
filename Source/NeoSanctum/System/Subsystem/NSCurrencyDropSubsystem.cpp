@@ -103,6 +103,16 @@ bool UNSCurrencyDropSubsystem::TryCollect(int32 DropId, ANSPlayerState* Collecto
 		return false;
 	}
 	
+	if (Entry->LaunchData.IsValid())
+	{
+		const float LaunchEndTime = Entry->LaunchData.StartServerTime + Entry->LaunchData.FlightDuration;
+		
+		if (Now < LaunchEndTime)
+		{
+			return false;
+		}
+	}
+	
 	if (Entry->CollectedPlayer.Contains(Collector))
 	{
 		return false;
