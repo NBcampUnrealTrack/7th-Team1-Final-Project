@@ -173,6 +173,9 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 		return;
 	}
 
+	// 연속 충전 재시작에 사용할 Cooldown 저장
+	CacheSkillRechargeCooldown(SkillSlotTag, Cooldown);
+
 	if (IsSkillRechargeActive(SkillSlotTag))
 	{
 		return;
@@ -201,7 +204,23 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 	
 	// 이미 찾아 둔 RechargeGE의 Duration을 Cooldown으로 적용
 	SpecHandle.Data->SetDuration(Cooldown, true);
-	ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	const FActiveGameplayEffectHandle RechargeEffectHandle =
+		ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	if (!RechargeEffectHandle.IsValid())
+	{
+		return;
+	}
+
+	// Duration 만료 시 SkillCount 회복 처리
+	if (FOnActiveGameplayEffectRemoved_Info* RemovedDelegate =
+		OnGameplayEffectRemoved_InfoDelegate(RechargeEffectHandle))
+	{
+		RemovedDelegate->AddUObject(
+			this,
+			&ThisClass::HandleSkillRechargeEffectRemoved,
+			SkillSlotTag
+		);
+	}
 }
 
 bool UNSAbilitySystemComponent::IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const
@@ -280,6 +299,106 @@ FGameplayTag UNSAbilitySystemComponent::GetRechargeEffectTagForSlot(const FGamep
 	}
 
 	return FGameplayTag();
+}
+
+void UNSAbilitySystemComponent::HandleSkillRechargeEffectRemoved(
+	const FGameplayEffectRemovalInfo& RemovalInfo,
+	FGameplayTag SkillSlotTag)
+{
+	// 강제 제거된 GE는 충전 완료로 보지 않음
+	if (RemovalInfo.bPrematureRemoval)
+	{
+		return;
+	}
+
+	FinishSkillRecharge(SkillSlotTag);
+}
+
+void UNSAbilitySystemComponent::FinishSkillRecharge(const FGameplayTag& SkillSlotTag)
+{
+	if (!IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+
+	// 충전 하나를 회복
+	AddSkillCountForSlot(SkillSlotTag, 1.0f);
+
+	if (IsSkillCountFull(SkillSlotTag))
+	{
+		return;
+	}
+
+	// 아직 최대치가 아니면 다음 충전을 이어서 시작
+	StartSkillRecharge(SkillSlotTag, GetCachedSkillRechargeCooldown(SkillSlotTag));
+}
+
+void UNSAbilitySystemComponent::AddSkillCountForSlot(const FGameplayTag& SkillSlotTag, float Amount)
+{
+	if (Amount <= 0.0f)
+	{
+		return;
+	}
+
+	const UNSPlayerAttributeSet* PlayerAttributeSet = GetSet<UNSPlayerAttributeSet>();
+	if (!PlayerAttributeSet)
+	{
+		return;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill1))
+	{
+		// Skill1Count를 MaxSkill1Count 이하로 회복
+		const float NewValue = FMath::Min(
+			PlayerAttributeSet->GetSkill1Count() + Amount,
+			PlayerAttributeSet->GetMaxSkill1Count()
+		);
+		SetNumericAttributeBase(UNSPlayerAttributeSet::GetSkill1CountAttribute(), NewValue);
+		return;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill2))
+	{
+		// Skill2Count를 MaxSkill2Count 이하로 회복
+		const float NewValue = FMath::Min(
+			PlayerAttributeSet->GetSkill2Count() + Amount,
+			PlayerAttributeSet->GetMaxSkill2Count()
+		);
+		SetNumericAttributeBase(UNSPlayerAttributeSet::GetSkill2CountAttribute(), NewValue);
+		return;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill3))
+	{
+		// Skill3Count를 MaxSkill3Count 이하로 회복
+		const float NewValue = FMath::Min(
+			PlayerAttributeSet->GetSkill3Count() + Amount,
+			PlayerAttributeSet->GetMaxSkill3Count()
+		);
+		SetNumericAttributeBase(UNSPlayerAttributeSet::GetSkill3CountAttribute(), NewValue);
+	}
+}
+
+void UNSAbilitySystemComponent::CacheSkillRechargeCooldown(const FGameplayTag& SkillSlotTag, float Cooldown)
+{
+	if (!SkillSlotTag.IsValid() || Cooldown <= 0.0f)
+	{
+		return;
+	}
+
+	CachedSkillRechargeCooldowns.FindOrAdd(SkillSlotTag) = Cooldown;
+}
+
+float UNSAbilitySystemComponent::GetCachedSkillRechargeCooldown(const FGameplayTag& SkillSlotTag) const
+{
+	// 저장된 값이 없으면 재시작하지 않도록 0 반환
+	const float* Cooldown = CachedSkillRechargeCooldowns.Find(SkillSlotTag);
+	if (!Cooldown)
+	{
+		return 0.0f;
+	}
+
+	return *Cooldown;
 }
 
 bool UNSAbilitySystemComponent::TryGetBaseAbilityStat(
