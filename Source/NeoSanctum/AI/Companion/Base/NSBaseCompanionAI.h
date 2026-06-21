@@ -164,6 +164,8 @@ public:
 	void SetOwnerPlayer(AActor* Actor);
 	AActor* GetOwnerPlayer() { return OwnerPlayer;}
 	
+	void SetPendingDefinition(const UNSCompanionDefinition* InDefinition);
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "AI|CachedData")
 	TObjectPtr<ANSDroneAIController> CachedAIController;
@@ -208,18 +210,19 @@ protected:
 #pragma region DataDriven
 	
 public:
-	void ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition);
+	void ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition);
 	
 	void ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel);
 	
 protected:
+	// @민재 : 스폰엑터 디퍼드에서 PS로부터 정보를 전달 받으면 될것같음
 	// 현재 드론이 보유중인 어빌리티 정보
 	UPROPERTY() 
 	FNSCompanionAbilitySet_GrantedHandles CurrentAbilityHandles;
 	
-	// 현재 드론이 적용 되어있는 능력치
-	UPROPERTY() 
-	TObjectPtr<UNSCompanionDefinition> CurrentDefinition;
+	// 현재 드론의 타입 정보
+	UPROPERTY(Transient) 
+	TObjectPtr<const UNSCompanionDefinition> CurrentDefinition;
 	
 	// 단계별 업그레이드가 저장되어있는 MAP
 	UPROPERTY()
