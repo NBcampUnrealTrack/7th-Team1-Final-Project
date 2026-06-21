@@ -6,6 +6,8 @@
 #include "NSPlayerProgressComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "Engine/AssetManager.h"
+#include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
+#include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -14,6 +16,8 @@
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
+
+#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -32,6 +36,10 @@ ANSPlayerState::ANSPlayerState()
 	// 진행도 저장,로드 컴포넌트
 	ProgressComponent = CreateDefaultSubobject<UNSPlayerProgressComponent>(TEXT("ProgressComponent"));
 
+	// @민재 : Companion 진행도
+	CompanionProgressionComponent = CreateDefaultSubobject<UNSCompanionProgressionComponent>(
+		TEXT("CompanionProgressionComponent"));
+	
 	PartEquipComponent = CreateDefaultSubobject<UNSPartEquipComponent>(TEXT("PartEquipComponent"));
 
 	// 인런 증강 보유 컴포넌트 (인런 종료 시 RunGameMode가 Clear)
@@ -57,6 +65,7 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, RunChoice);
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
 	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
+	DOREPLIFETIME(ANSPlayerState, CurrentCompanionDefinitionTag);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -66,6 +75,7 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 	if (ANSPlayerState* NewPlayerState = Cast<ANSPlayerState>(PlayerState))
 	{
 		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
+		NewPlayerState->CurrentCompanionDefinitionTag = CurrentCompanionDefinitionTag;
 		
 		UNSPlayerProgressComponent* OldProgress = ProgressComponent;
 		UNSPlayerProgressComponent* NewProgress = NewPlayerState->GetProgressComponent();
@@ -177,3 +187,46 @@ UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDat
 
 	return Cast<UNSCharacterData>(CharacterDataPath.TryLoad());
 }
+
+#pragma region Companion
+
+void ANSPlayerState::SetCurrentCompanionDefinitionTag(FGameplayTag CompanionTag)
+{
+	if (!HasAuthority()) return;
+	
+	CurrentCompanionDefinitionTag = CompanionTag;
+	
+	ForceNetUpdate();
+}
+
+UNSCompanionDefinition* ANSPlayerState::GetCurrentCompanionDefinition() const
+{
+	if (CurrentCompanionDefinitionTag.IsValid())
+	{
+		if (UNSCompanionDefinition* CurrentCompanionData = LoadCompanionDefinition(CurrentCompanionDefinitionTag))
+		{
+			return CurrentCompanionData;
+		}
+	}
+	// 기본값 폴백
+	return LoadCompanionDefinition(DefaultCompanionDefinitionTag);
+}
+
+UNSCompanionDefinition* ANSPlayerState::LoadCompanionDefinition(FGameplayTag CompanionTag) const
+{
+	if (!CompanionTag.IsValid())
+	{
+		return nullptr;
+	}
+	
+	if (!IsValid(CompanionProgressionComponent)) return nullptr;
+	
+	if (!CompanionProgressionComponent->Catalog) return nullptr;
+	
+	UNSCompanionDefinition* CompanionDefinition = CompanionProgressionComponent->Catalog->FindByTag(CompanionTag);
+	if (!CompanionDefinition) return nullptr;
+	
+	return CompanionDefinition;
+}
+
+#pragma endregion
