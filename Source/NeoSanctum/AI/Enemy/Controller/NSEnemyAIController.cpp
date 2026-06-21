@@ -1095,3 +1095,24 @@ bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 
 	return false;
 }
+
+double ANSEnemyAIController::GetLatestDamageTimeFromCurrentTarget() const
+{
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor);
+
+	if (!Record)
+	{
+		return -1.0;
+	}
+
+	double LatestTime = -1.0;
+
+	for (const FNSThreatDamageSample& Sample : Record->DamageSamples)
+	{
+		LatestTime = FMath::Max(LatestTime, Sample.Timestamp);
+	}
+
+	return LatestTime;
+}
