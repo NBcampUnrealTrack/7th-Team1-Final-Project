@@ -22,6 +22,7 @@ struct FNSTurretConfig;
 struct FOnAttributeChangeData;
 class AController;
 class APawn;
+class UNSMeleeAttackReservationComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor,
@@ -154,6 +155,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<UNSDissolveComponent> DissolveComponent;
+	
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UNSMeleeAttackReservationComponent> MeleeAttackReservationComponent;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Detection")
