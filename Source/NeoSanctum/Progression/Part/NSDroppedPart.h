@@ -86,7 +86,7 @@ protected:
 private:
 	FNSDropLaunchData LaunchData;
 	float LaunchStartWorldTime = 0.0f;
-	float bIsLaunching = false;
+	bool bIsLaunching = false;
 	
 	// 진행 중인 비주얼(Definition/PartMesh) 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> VisualLoadHandle;
