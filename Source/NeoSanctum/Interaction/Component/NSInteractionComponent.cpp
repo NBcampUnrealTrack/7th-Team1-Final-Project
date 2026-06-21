@@ -10,6 +10,8 @@
 UNSInteractionComponent::UNSInteractionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	// 오버랩 됐을때만 틱이 돌게
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 	
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	DetectionSphere->SetSphereRadius(DetectionRadius);
@@ -90,6 +92,10 @@ void UNSInteractionComponent::UpdateActiveTarget()
 	{
 		HidePrompt();
 		ActiveTarget = nullptr;
+		if (Candidates.Num() == 0)
+		{
+			SetComponentTickEnabled(false);
+		}
 		return;
 	}
 	
@@ -124,20 +130,10 @@ void UNSInteractionComponent::OnSphereBeginOverlap(UPrimitiveComponent* Overlapp
 		return;
 	}
 	
-	APlayerController* PC = GetOwnerController();
-	if (!PC)
-	{
-		return;
-	}
-	
-	// 상호작용 불가시 후보에서 제외
-	if (!INSInteractable::Execute_CanInteract(OtherActor, PC))
-	{
-		UE_LOG(LogTemp, Verbose, TEXT("[Interactor] 상호작용 불가 대상 감지 : %s"), *OtherActor->GetName());
-		return;
-	}
-	
+	// 모두 후보로 등록
 	Candidates.AddUnique(OtherActor);
+	// 틱 돌리기
+	SetComponentTickEnabled(true);
 }
 
 void UNSInteractionComponent::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
@@ -148,6 +144,12 @@ void UNSInteractionComponent::OnSphereEndOverlap(UPrimitiveComponent* Overlapped
 		return;
 	}
 	Candidates.Remove(OtherActor);
+	if (Candidates.Num() == 0)
+	{
+		HidePrompt();
+		ActiveTarget = nullptr;
+		SetComponentTickEnabled(false);
+	}
 }
 
 void UNSInteractionComponent::ShowPromptFor(AActor* Target)
@@ -157,7 +159,8 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 		return;
 	}
 	
-	const FVector TargetLocation = Target->GetActorLocation() + FVector(0.f, 0.f, PromptHeightOffset);
+	// 대상이 지정한 프롬프트 앵커 위치에 그대로 배치 (에디터에서 WYSIWYG로 조정)
+	const FVector TargetLocation = INSInteractable::Execute_GetPromptWorldLocation(Target);
 	PromptWidgetComponent->SetWorldLocation(TargetLocation);
 	
 	UNSInteractionPromptWidget* Widget = Cast<UNSInteractionPromptWidget>(PromptWidgetComponent->GetUserWidgetObject());

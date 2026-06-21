@@ -49,10 +49,7 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	float DetectionRadius = 200.f;
-	
-	UPROPERTY(EditDefaultsOnly, Category="Interaction")
-	float PromptHeightOffset = 100.f;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	FText InteractionKeyText = FText::FromString(TEXT("F"));
 
