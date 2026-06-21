@@ -29,6 +29,14 @@ public:
 	
 	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
 
+	// Cost/Cooldown Commit 성공 시점에 스킬 충전 회복을 시작하도록 함
+	virtual bool CommitAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		FGameplayTagContainer* OptionalRelevantTags = nullptr
+	) override;
+
 protected:
 	UNSAbilitySystemComponent* GetNSAbilitySystemComponent() const;
 	

@@ -19,6 +19,22 @@ UGA_SkillBase::UGA_SkillBase()
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 }
 
+bool UGA_SkillBase::CommitAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	FGameplayTagContainer* OptionalRelevantTags)
+{
+	const bool bCommitted = Super::CommitAbility(Handle, ActorInfo, ActivationInfo, OptionalRelevantTags);
+	if (bCommitted)
+	{
+		// Cost 소모가 확정된 뒤에 충전 회복을 시작
+		StartRechargeIfNeeded();
+	}
+
+	return bCommitted;
+}
+
 bool UGA_SkillBase::TryGetBaseAbilityStat(
 	const FGameplayTag& AbilityTag,
 	const FGameplayTag& StatTag,
