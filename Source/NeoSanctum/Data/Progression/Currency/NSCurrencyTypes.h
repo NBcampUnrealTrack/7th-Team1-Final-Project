@@ -85,6 +85,7 @@ struct FNSCurrencySpawnEvent
 	FVector_NetQuantize10 Location = FVector::ZeroVector;
 	
 	// 클라이언트에서 동일한 포물선 궤적을 재생하기 위한 서버 결정 발사 정보
+	UPROPERTY()
 	FNSDropLaunchData LaunchData;
 
 	// 만료까지 남은 시간
