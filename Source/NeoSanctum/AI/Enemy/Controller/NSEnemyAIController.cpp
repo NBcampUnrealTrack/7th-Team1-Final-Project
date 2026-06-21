@@ -985,7 +985,7 @@ bool ANSEnemyAIController::RequestMeleeAttackReservation()
 	return Result != ENSMeleeReservationRequestResult::Rejected;
 }
 
-bool ANSEnemyAIController::HasMeleeAttackReservation()
+bool ANSEnemyAIController::HasMeleeAttackReservation() const
 {
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
@@ -1000,6 +1000,26 @@ bool ANSEnemyAIController::HasMeleeAttackReservation()
 		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
 
 	return Component && Component->HasReservation(Enemy);
+}
+
+bool ANSEnemyAIController::CanApproachMeleeTarget() const
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		return true;
+	}
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!TargetActor)
+	{
+		return false;
+	}
+
+	const bool bReservationRequired = 
+		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
+
+	return !bReservationRequired || this->HasMeleeAttackReservation();
 }
 
 bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const

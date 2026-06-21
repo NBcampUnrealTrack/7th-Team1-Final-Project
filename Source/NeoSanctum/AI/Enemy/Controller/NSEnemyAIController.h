@@ -249,7 +249,7 @@ public:
 	bool RequestMeleeAttackReservation();
 
 	/* 현재 몬스터가 타깃의 활성 근접 공격 예약을 보유하고 있는지 확인하는 함수 */
-	bool HasMeleeAttackReservation();
+	bool HasMeleeAttackReservation() const;
 
 	/* 예약이 필요 없거나 활성 예약을 보유하여 현재 타깃에게 접근할 수 있는지 확인하는 함수 */
 	bool CanApproachMeleeTarget() const;
