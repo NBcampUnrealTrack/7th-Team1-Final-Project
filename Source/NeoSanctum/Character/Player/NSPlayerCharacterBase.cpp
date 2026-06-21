@@ -64,9 +64,9 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
 	
-	MeleeAttackReservationComponent = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
-		TEXT("MeleeAttackReservationComponent"));
-	MeleeAttackReservationComponent->SetMaxConcurrentAttackers(3);
+	MeleeAttackReservationComp = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
+		TEXT("MeleeAttackReservationComp"));
+	MeleeAttackReservationComp->SetMaxConcurrentAttackers(3);
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));

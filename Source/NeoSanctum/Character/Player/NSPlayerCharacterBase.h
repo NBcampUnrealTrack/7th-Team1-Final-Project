@@ -147,7 +147,7 @@ protected:
 protected:
 	// 몬스터 근접 공격 예약 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
-	TObjectPtr<UNSMeleeAttackReservationComponent> MeleeAttackReservationComponent;
+	TObjectPtr<UNSMeleeAttackReservationComponent> MeleeAttackReservationComp;
 	
 protected:
 	// 현재 캐릭터 데이터
