@@ -140,6 +140,12 @@ void UNSMeleeAttackReservationComponent::ReleaseReservation(
 
 	PromoteQueuedRequests(GetWorld()->GetTimeSeconds());
 }
+
+void UNSMeleeAttackReservationComponent::SetMaxConcurrentAttackers(int32 InMaxAttackers)
+{
+	MaxConcurrentAttackers = FMath::Max(InMaxAttackers, 1);
+}
+
 void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTime)
 {
 	ActiveReservations.RemoveAll(
