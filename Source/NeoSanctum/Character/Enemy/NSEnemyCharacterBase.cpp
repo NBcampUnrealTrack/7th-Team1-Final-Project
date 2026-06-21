@@ -15,6 +15,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
@@ -24,6 +25,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	bUseControllerRotationYaw = false;
+	GetCapsuleComponent()->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	Movement->bOrientRotationToMovement = false;
@@ -296,8 +298,7 @@ void ANSEnemyCharacterBase::ApplyAliveVisual()
 
 	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
 	{
-		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		CapsuleComp->SetCollisionResponseToAllChannels(ECR_Block);
+		CapsuleComp->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
 	}
 
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
