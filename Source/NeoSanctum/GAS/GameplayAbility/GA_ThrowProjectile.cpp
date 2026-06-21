@@ -193,34 +193,6 @@ void UGA_ThrowProjectile::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
-void UGA_ThrowProjectile::ApplyCooldown(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo) const
-{
-	if (!CooldownGameplayEffectClass || !CooldownSetByCallerTag.IsValid())
-	{
-		return;
-	}
-
-	float CooldownDuration = 0.0f;
-	if (!TryGetFinalCooldownDuration(CooldownDuration))
-	{
-		return;
-	}
-
-	FGameplayEffectSpecHandle CooldownSpecHandle =
-		MakeOutgoingGameplayEffectSpec(CooldownGameplayEffectClass, GetAbilityLevel());
-
-	if (!CooldownSpecHandle.IsValid() || !CooldownSpecHandle.Data.IsValid())
-	{
-		return;
-	}
-
-	// CombatStat에서 읽은 Cooldown 값을 GE SetByCaller로 전달
-	CooldownSpecHandle.Data->SetSetByCallerMagnitude(CooldownSetByCallerTag, CooldownDuration);
-
-	ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, CooldownSpecHandle);
-}
-
 void UGA_ThrowProjectile::OnThrowMontageCompleted()
 {
 	EndAbility(
@@ -585,48 +557,6 @@ bool UGA_ThrowProjectile::TryGetAimPointFromTargetData(
 	return true;
 }
 
-bool UGA_ThrowProjectile::TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const
-{
-	if (CombatStatAbilityTag.IsValid())
-	{
-		OutAbilityTag = CombatStatAbilityTag;
-		return true;
-	}
-
-	// 명시 태그가 없으면 Ability AssetTag 사용
-	TArray<FGameplayTag> AssetTags;
-	GetAssetTags().GetGameplayTagArray(AssetTags);
-
-	for (const FGameplayTag& AssetTag : AssetTags)
-	{
-		if (AssetTag.IsValid() && AssetTag.ToString().StartsWith(TEXT("Ability.")))
-		{
-			OutAbilityTag = AssetTag;
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool UGA_ThrowProjectile::TryGetFinalCooldownDuration(float& OutCooldownDuration) const
-{
-	float FinalCooldownDuration = 0.0f;
-	
-	if (!TryGetFinalAbilityStat(
-		CombatStatAbilityTag,
-		CooldownStatTag,
-		FinalCooldownDuration))
-	{		
-		return false;
-	}
-	
-	constexpr float MinCooldownDuration = 0.1f;
-	OutCooldownDuration = FMath::Max(FinalCooldownDuration, MinCooldownDuration);
-	
-	return true;
-}
-
 void UGA_ThrowProjectile::RebuildCombatStatPayloads()
 {
 	// 이전 활성화에서 만든 payload 초기화
@@ -639,15 +569,14 @@ void UGA_ThrowProjectile::RebuildCombatStatPayloads()
 		return;
 	}
 
-	FGameplayTag AbilityTag;
-	if (!TryGetCombatStatAbilityTag(AbilityTag))
+	if (!SkillAbilityTag.IsValid())
 	{
 		return;
 	}
 
 	// 매핑 설정에 따라 SetByCaller와 runtime payload 분리 생성
-	RebuildSetByCallerMagnitudes(AbilityTag);
-	RebuildRuntimeStatMagnitudes(AbilityTag);
+	RebuildSetByCallerMagnitudes(SkillAbilityTag);
+	RebuildRuntimeStatMagnitudes(SkillAbilityTag);
 }
 
 void UGA_ThrowProjectile::RebuildSetByCallerMagnitudes(const FGameplayTag& AbilityTag)
