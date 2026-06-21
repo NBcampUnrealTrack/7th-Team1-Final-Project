@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemInterface.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Actor.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBarrier.generated.h"
 
 class UAbilitySystemComponent;
@@ -17,7 +19,8 @@ class UNiagaraComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSBarrier : public AActor,
-                                 public IAbilitySystemInterface
+                                 public IAbilitySystemInterface,
+                                 public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -25,6 +28,10 @@ public:
 	ANSBarrier();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual FGenericTeamId GetGenericTeamId() const override
+	{
+		return FGenericTeamId(static_cast<uint8>(ETeamId::Player));
+	}
 
 	void InitializeBarrier(
 		APawn* InOwningPawn,
