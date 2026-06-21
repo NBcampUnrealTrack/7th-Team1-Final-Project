@@ -1116,3 +1116,14 @@ double ANSEnemyAIController::GetLatestDamageTimeFromCurrentTarget() const
 
 	return LatestTime;
 }
+
+void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, bool bCanApproach)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->SetValueAsBool(HasMeleeAttackReservationKey, bHasReservation);
+	CachedBBComp->SetValueAsBool(CanApproachMeleeTargetKey, bCanApproach);
+}
