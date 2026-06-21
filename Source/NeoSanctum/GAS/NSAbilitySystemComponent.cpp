@@ -5,6 +5,9 @@
 
 #include "GameplayAbility/GA_SkillBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Slot.h"
 #include "Stats/NSCombatStatComponent.h"
 
 void UNSAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag& InputTag)
@@ -156,6 +159,127 @@ void UNSAbilitySystemComponent::ClearAbilityInput()
 	InputPressedSpecHandles.Reset();
 	InputReleasedSpecHandles.Reset();
 	InputHeldSpecHandles.Reset();
+}
+
+void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown)
+{
+	if (!IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+
+	if (!SkillSlotTag.IsValid() || Cooldown <= 0.0f)
+	{
+		return;
+	}
+
+	if (IsSkillRechargeActive(SkillSlotTag))
+	{
+		return;
+	}
+
+	if (IsSkillCountFull(SkillSlotTag))
+	{
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> RechargeGEClass = GetRechargeGEClassForSlot(SkillSlotTag);
+	if (!RechargeGEClass)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle Context = MakeEffectContext();
+	Context.AddSourceObject(GetOwner());
+
+	FGameplayEffectSpecHandle SpecHandle = MakeOutgoingSpec(RechargeGEClass, 1.0f, Context);
+
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+	
+	// 이미 찾아 둔 RechargeGE의 Duration을 Cooldown으로 적용
+	SpecHandle.Data->SetDuration(Cooldown, true);
+	ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+}
+
+bool UNSAbilitySystemComponent::IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const
+{
+	const FGameplayTag RechargeEffectTag = GetRechargeEffectTagForSlot(SkillSlotTag);
+	if (!RechargeEffectTag.IsValid())
+	{
+		return false;
+	}
+
+	return HasMatchingGameplayTag(RechargeEffectTag);
+}
+
+bool UNSAbilitySystemComponent::IsSkillCountFull(const FGameplayTag& SkillSlotTag) const
+{
+	const UNSPlayerAttributeSet* PlayerAttributeSet = GetSet<UNSPlayerAttributeSet>();
+	if (!PlayerAttributeSet)
+	{
+		return true;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill1))
+	{
+		return PlayerAttributeSet->GetSkill1Count() >= PlayerAttributeSet->GetMaxSkill1Count();
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill2))
+	{
+		return PlayerAttributeSet->GetSkill2Count() >= PlayerAttributeSet->GetMaxSkill2Count();
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill3))
+	{
+		return PlayerAttributeSet->GetSkill3Count() >= PlayerAttributeSet->GetMaxSkill3Count();
+	}
+
+	return true;
+}
+
+TSubclassOf<UGameplayEffect> UNSAbilitySystemComponent::GetRechargeGEClassForSlot(
+	const FGameplayTag& SkillSlotTag) const
+{
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill1))
+	{
+		return Skill1RechargeGEClass;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill2))
+	{
+		return Skill2RechargeGEClass;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill3))
+	{
+		return Skill3RechargeGEClass;
+	}
+	
+	return nullptr;
+}
+
+FGameplayTag UNSAbilitySystemComponent::GetRechargeEffectTagForSlot(const FGameplayTag& SkillSlotTag) const
+{
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill1))
+	{
+		return NSGameplayTags::Effect_Recharge_Skill1Count;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill2))
+	{
+		return NSGameplayTags::Effect_Recharge_Skill2Count;
+	}
+
+	if (SkillSlotTag.MatchesTagExact(NSGameplayTags::SkillSlot_Skill3))
+	{
+		return NSGameplayTags::Effect_Recharge_Skill3Count;
+	}
+
+	return FGameplayTag();
 }
 
 bool UNSAbilitySystemComponent::TryGetBaseAbilityStat(

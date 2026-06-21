@@ -59,6 +59,12 @@ protected:
 		float DefaultValue
 	) const;
 	
+	// 스킬 데이터의 쿨다운 태그에 따른 Value 찾아오기 : FinalAbilityStat 기준으로 적용
+   	float GetCooldownStatOrDefault() const;
+	
+	// 조건에 맞는 경우에 스킬의 재충전(Cooldown)을 시작 
+	void StartRechargeIfNeeded();
+	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Activation")
 	ENSAbilityActivationPolicy ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
@@ -70,4 +76,18 @@ protected:
 	// 현재 Prediction Key가 추가 예측에 유효한지 확인하는 함수
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "GAS|Debug")
 	bool IsPredictionKeyValidForMorePrediction() const;
+	
+protected:
+	// 스킬 어빌리티 태그
+	// TODO: 스킬에 산재되어있는 Ability Tag를 여기로 통일하는 리팩토링
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Skill")
+	FGameplayTag SkillAbilityTag;
+	
+	// 스킬 슬롯 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Skill")
+	FGameplayTag SkillSlotTag;
+	
+	// Default Cooldown Fallback : CombatStat.Cooldown 태그로 Value를 매핑해뒀다면 적용되지 않음.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Skill")
+	float DefaultCooldown = 5.0f;
 };
