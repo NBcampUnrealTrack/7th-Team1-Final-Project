@@ -4,6 +4,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "AttributeSet.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
@@ -236,6 +237,55 @@ bool ANSTurret::IsValidTargetActor(const AActor* TargetActor) const
 	}
 
 	return true;
+}
+
+bool ANSTurret::CanDamageHitActor(const AActor* HitActor) const
+{
+	if (!IsValid(HitActor) || HitActor == this)
+	{
+		return false;
+	}
+
+	// Player 팀 대상은 사격 피해에서 제외
+	const IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(HitActor);
+	if (TargetTeam &&
+		TargetTeam->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Player)))
+	{
+		return false;
+	}
+
+	const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(HitActor);
+	const UAbilitySystemComponent* TargetASC =
+		AbilitySystemInterface ? AbilitySystemInterface->GetAbilitySystemComponent() : nullptr;
+
+	if (!TargetASC || TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
+	{
+		return false;
+	}
+
+	// Health Attribute를 가진 생존 대상만 피해 허용
+	for (const UAttributeSet* SpawnedAttributeSet : TargetASC->GetSpawnedAttributes())
+	{
+		if (!SpawnedAttributeSet)
+		{
+			continue;
+		}
+
+		FProperty* HealthProperty = SpawnedAttributeSet->GetClass()->FindPropertyByName(TEXT("Health"));
+		if (!HealthProperty)
+		{
+			continue;
+		}
+
+		const FGameplayAttribute HealthAttribute(HealthProperty);
+		if (TargetASC->HasAttributeSetForAttribute(HealthAttribute) &&
+			TargetASC->GetNumericAttribute(HealthAttribute) > 0.0f)
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ANSTurret::InitializeAbilityActorInfo()
@@ -605,20 +655,9 @@ void ANSTurret::FireHitscan()
 	);
 	
 	// 히트된 대상에 GE Damage 적용
-	if (bHit && IsValidTargetActor(HitResult.GetActor()))
+	if (bHit && CanDamageHitActor(HitResult.GetActor()))
 	{
 		AActor* TargetActor = HitResult.GetActor();
-
-		IGenericTeamAgentInterface* AttackerTeam = Cast<IGenericTeamAgentInterface>(OwningPawn);
-		IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
-
-		if (AttackerTeam && TargetTeam)
-		{
-			if (AttackerTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
-			{
-				return;
-			}
-		}
 
 		if (IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor))
 		{

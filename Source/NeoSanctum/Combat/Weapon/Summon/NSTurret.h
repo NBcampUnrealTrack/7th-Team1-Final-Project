@@ -83,6 +83,8 @@ private:
 
 private:
 	bool IsValidTargetActor(const AActor* TargetActor) const;
+	// 터렛 사격에 피격된 대상의 피해 가능 여부를 판정하는 함수
+	bool CanDamageHitActor(const AActor* HitActor) const;
 	bool CanSeeTarget(const AActor* TargetActor) const;
 
 private:
