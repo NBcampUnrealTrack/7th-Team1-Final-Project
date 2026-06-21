@@ -1052,6 +1052,11 @@ void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
 	}
 }
 
+void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCooldown)
+{
+	CancelMeleeReservationRequest(bStartReacquireCooldown);
+}
+
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
