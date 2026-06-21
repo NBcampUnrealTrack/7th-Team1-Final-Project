@@ -42,6 +42,37 @@ void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTim
 	}
 }
 
+void UNSMeleeAttackReservationComponent::PromoteQueuedRequests(double CurrentTime)
+{
+	while (ActiveReservations.Num() < MaxConcurrentAttackers)
+	{
+		const int32 BestRequestIndex = FindBestQueuedRequestIndex(CurrentTime);
+
+		if (!QueuedRequests.IsValidIndex(BestRequestIndex))
+		{
+			return;
+		}
+
+		const FQueuedRequest Request = QueuedRequests[BestRequestIndex];
+
+		QueuedRequests.RemoveAt(BestRequestIndex);
+
+		ANSEnemyCharacterBase* Enemy = Request.Enemy.Get();
+
+		if (!IsEnemyValid(Enemy))
+		{
+			continue;
+		}
+
+		FActiveReservation& Reservation = ActiveReservations.AddDefaulted_GetRef();
+
+		Reservation.Enemy = Enemy;
+		Reservation.Phase = ENSMeleeReservationPhase::Approaching;
+
+		Reservation.ExpirationTime = CurrentTime + ApproachReservationDuration;
+	}
+}
+
 bool UNSMeleeAttackReservationComponent::IsEnemyValid(const ANSEnemyCharacterBase* Enemy) const
 {
 	return IsValid(Enemy) && !Enemy->IsDead() && !Enemy->IsInPool();
