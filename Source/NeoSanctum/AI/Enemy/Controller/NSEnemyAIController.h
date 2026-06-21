@@ -12,6 +12,28 @@ class UNSEnemyData;
 class ANSEnemyCharacterBase;
 struct FNSEnemyAttackDefinition;
 
+// 타임스탬프 데미지
+struct FNSThreatDamageSample
+{
+	double Timestamp = 0.0;
+	float Damage = 0.0f;
+};
+
+// 최근 일정 시간의 데미지를 기록해 위험도 측정
+struct FNSTargetThreatRecord
+{
+	TWeakObjectPtr<AActor> TargetActor;
+
+	TArray<FNSThreatDamageSample> DamageSamples;
+
+	FVector LastKnownLocation = FVector::ZeroVector;
+
+	double LastSeenTime = -1.0;
+	double LastStimulusTime = -1.0;
+
+	bool bCurrentlyVisible = false;
+};
+
 UCLASS()
 class NEOSANCTUM_API ANSEnemyAIController : public AAIController
 {
@@ -21,9 +43,7 @@ public:
 	ANSEnemyAIController();
 	virtual void Tick(float DeltaTime) override;
 
-	/*
-	 * AI Controller가 적을 필터링하기 위한 TeamId 조회
-	 */
+	// AI Controller가 적을 필터링하기 위한 TeamId 조회
 	virtual FGenericTeamId GetGenericTeamId() const override
 	{
 		return FGenericTeamId(static_cast<uint8>(ETeamId::Enemy));
@@ -48,6 +68,7 @@ public:
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
 	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 
 	// 시각 센서가 갱신될 때 블랙보드로 데이터를 전달할 콜백 함수
 	UFUNCTION()
@@ -66,22 +87,22 @@ private:
 		bool bHasLineOfSight) const;
 
 protected:
-	// 시야/청각 설정 컴포넌트
+	/* 시야/청각 설정 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComponent;
 
-	// 타겟을 정면으로 바라봤다고 판정할 최대 각도
+	/* 타겟을 정면으로 바라봤다고 판정할 최대 각도 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI|Combat", meta = (ClampMin = "0.0", ClampMax = "90.0"))
 	float AttackFacingAngleDegrees = 2.0f;
 
 private:
-	// 타겟 액터
+	/* 타겟 액터 키 이름 */
 	FName TargetActorKey = TEXT("TargetActor");
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBlackboardComponent> CachedBBComp;
 	
-	// AttackId별 마지막 사용 시간
+	/* AttackId별 마지막 사용 시간 */
 	TMap<FName, float> LastAttackTimeById;
 	
 private:
@@ -100,4 +121,123 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
 	float RetreatDestinationAcceptanceRadius = 75.0f;
+
+#pragma region 몬스터 어그로 관리
+public:
+	/* 함수 */
+	
+	// 현재 타깃을 향한 공격이 시작됐음을 기록하고 추적 제한 시간을 갱신하는 함수
+	void NotifyAttackStarted();
+	
+private:
+	// 현재 Threat 정보를 평가해 타깃 선택·유지·전환·해제를 처리하는 함수
+	void UpdateTargetSelection();
+
+	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영하는 함수
+	void UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus);
+
+	// 만료된 피해 기록, 무효 타깃, 재선택 제한 정보를 정리하는 함수
+	void PruneThreatRecords(double CurrentTime);
+
+	// 피해량 우선, 피해가 없으면 거리 우선으로 가장 적합한 타깃을 찾는 함수
+	AActor* FindBestTarget(double CurrentTime) const;
+
+	// 설정된 시간 안에 특정 타깃이 가한 누적 피해량을 계산하는 함수
+	float GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const;
+
+	// 시야·최근 감지·피해 기록을 기준으로 해당 타깃을 계속 기억할지 판단하는 함수
+	bool IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const;
+
+	// 타깃 잠금시간과 Threat 차이를 확인해 현재 타깃을 교체할지 결정하는 함수
+	bool ShouldSwitchTarget(AActor* CandidateTarget, double CurrentTime) const;
+
+	// 새 전투 타깃을 지정하고 선택 시간과 Blackboard 상태를 초기화하는 함수
+	void SetCurrentCombatTarget(AActor* NewTarget);
+
+	// 현재 타깃과 관련 Blackboard 값을 제거하고 필요하면 재선택을 잠시 차단하는 함수
+	void ClearCurrentCombatTarget(bool bBlockReacquisition);
+
+	// Threat, 타깃, 타이머 등 Controller의 모든 타깃 관리 상태를 초기화하는 함수
+	void ResetTargetingState();
+
+	// 현재 타깃, 마지막 위치, 시야 여부를 Blackboard에 반영하는 함수
+	void UpdateCurrentTargetBlackboard();
+
+protected:
+	/* 설정 변수 */
+
+	/* 타깃 선택 로직을 다시 평가하는 최소 간격 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.05"))
+	float TargetEvaluationInterval = 0.25f;
+
+	/* 시야에서 사라진 타깃을 계속 기억하는 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
+	float SightMemoryDuration = 2.0f;
+
+	/* 청각 등 비시각 감지 정보를 유지하는 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
+	float StimulusMemoryDuration = 3.0f;
+
+	/* 누적 피해 Threat 계산에 포함할 최근 시간 범위 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
+	float DamageThreatWindow = 10.0f;
+
+	/* 새 타깃 선택 직후 타깃 변경을 막는 최소 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
+	float InitialTargetLockDuration = 2.5f;
+
+	/* 한 번 타깃을 변경한 뒤 다시 변경할 수 있을 때까지의 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
+	float TargetSwitchCooldown = 2.0f;
+
+	/* 새 타깃의 피해 Threat가 현재 타깃보다 얼마나 높아야 전환할지 기준 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "1.0"))
+	float DamageThreatSwitchRatio = 1.25f;
+
+	/* 피해 기록이 없을 때 새 타깃이 얼마나 더 가까워야 전환할지 기준 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float DistanceSwitchRatio = 0.7f;
+
+	/* 공격하지 못한 상태로 타깃을 계속 추적할 수 있는 최대 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
+	float MaxPursuitWithoutAttackDuration = 10.0f;
+
+	/* 추적 제한으로 포기한 타깃을 다시 선택하지 않는 시간 */
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
+	float TargetReacquireCooldown = 2.0f;
+
+private:
+	/* 런타임 변수 */
+
+	/* 감지한 타깃별 시야, 위치, 피해 기록을 보관 */
+	TMap<TWeakObjectPtr<AActor>, FNSTargetThreatRecord> ThreatRecords;
+
+	/* 어그로가 해제된 타깃을 다시 선택할 수 있는 시간을 기록 */
+	TMap<TWeakObjectPtr<AActor>, double> ReacquireBlockedUntil;
+
+	/* 현재 AI가 선택한 전투 타깃 */
+	TWeakObjectPtr<AActor> CurrentCombatTarget;
+
+	/* 현재 타깃이 선택된 시점 */
+	double CurrentTargetSelectedTime = 0.0;
+
+	/* 마지막으로 타깃을 변경한 시점 */
+	double LastTargetSwitchTime = 0.0;
+
+	/* 현재 타깃을 향해 공격을 시작했거나 전투 진행이 발생한 마지막 시점 */
+	double LastCombatProgressTime = 0.0;
+
+	/* 다음 타깃 평가를 실행할 시점 */
+	double NextTargetEvaluationTime = 0.0;
+
+	/* 현재 타깃을 대상으로 한 공격이 한 번이라도 시작됐는지 여부 */
+	bool bAttackStartedOnCurrentTarget = false;
+
+	/* 마지막으로 확인한 타깃 위치를 저장할 Blackboard 키 이름 */
+	FName TargetLastKnownLocationKey = TEXT("TargetLastKnownLocation");
+
+	/* 현재 타깃이 시야에 보이는지 저장할 Blackboard 키 이름 */
+	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
+	
+#pragma endregion 
 };

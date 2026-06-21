@@ -29,6 +29,21 @@ ANSEnemyAIController::ANSEnemyAIController()
 void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	const double CurrentTime = World->GetTimeSeconds();
+
+	if (CurrentTime >= NextTargetEvaluationTime)
+	{
+		UpdateTargetSelection();
+
+		NextTargetEvaluationTime = CurrentTime + TargetEvaluationInterval;
+	}
 
 	AActor* TargetActor = GetCurrentTargetActor();
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
@@ -99,6 +114,8 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 
 void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition)
 {
+	NotifyAttackStarted();
+	
 	if (AttackDefinition.Cooldown <= 0.0f || AttackDefinition.AttackId.IsNone())
 	{
 		return;
@@ -127,12 +144,7 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDista
 
 AActor* ANSEnemyAIController::GetCurrentTargetActor() const
 {
-	if (!CachedBBComp)
-	{
-		return nullptr;
-	}
-	
-	return Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	return CurrentCombatTarget.Get();
 }
 
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
@@ -152,39 +164,50 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
 		CachedBBComp = GetBlackboardComponent();
+		ResetTargetingState();
 	}
+}
+
+void ANSEnemyAIController::OnUnPossess()
+{
+	ResetTargetingState();
+	CachedBBComp = nullptr;
+	
+	Super::OnUnPossess();
 }
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	if (!CachedBBComp || !Actor) return;
-
-	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
-	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
-	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
-
-	// 감지된 대상이 플레이어인지 재검증
-	if (GetTeamAttitudeTo(*Actor) == ETeamAttitude::Type::Hostile && IsValidLivingTarget(Actor))
+	// 타깃이 존재하지 않으면 반환
+	if (!Actor)
 	{
-		// 시각
-		if (Stimulus.Type == SightID)
-		{
-			// 시야에 적이 들어왔으면 주소 저장, 시야에서 완전히 놓쳤으면 nullptr 처리
-			AActor* Target = Stimulus.WasSuccessfullySensed() ? Actor : nullptr;
-
-			// 블랙보드 TargetActor 키에 실시간 업데이트
-			CachedBBComp->SetValueAsObject(TargetActorKey, Target);
-		}
-
-		// 청각 / 데미지
-		else if (Stimulus.Type == HearingID || Stimulus.Type == DamageID)
-		{
-			if (Stimulus.WasSuccessfullySensed())
-			{
-				CachedBBComp->SetValueAsObject(TargetActorKey, Actor);
-			}
-		}
+		return;
 	}
+
+	// 타깃 액터가 아군 혹은 중립인 경우 반환
+	if (GetTeamAttitudeTo(*Actor) != ETeamAttitude::Hostile)
+	{
+		return;
+	}
+
+	// 타깃이 될 수 없으면 반환
+	if (!IsValidLivingTarget(Actor))
+	{
+		ThreatRecords.Remove(Actor);
+
+		if (CurrentCombatTarget == Actor)
+		{
+			ClearCurrentCombatTarget(false);
+		}
+
+		return;
+	}
+
+	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영
+	UpdateThreatFromStimulus(Actor, Stimulus);
+
+	// 새로 감지된 타깃은 다음 Tick까지 기다리지 않고 평가
+	UpdateTargetSelection();
 }
 
 bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
@@ -493,4 +516,431 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 	}
 
 	return bFoundAttack ? MinimumRange : 0.0f;
+}
+
+
+void ANSEnemyAIController::NotifyAttackStarted()
+{
+	if (!CurrentCombatTarget.IsValid() || !GetWorld())
+	{
+		return;
+	}
+
+	bAttackStartedOnCurrentTarget = true;
+	LastCombatProgressTime = GetWorld()->GetTimeSeconds();
+}
+
+void ANSEnemyAIController::UpdateTargetSelection()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const double CurrentTime = World->GetTimeSeconds();
+
+	PruneThreatRecords(CurrentTime);
+
+	AActor* CurrentTarget = CurrentCombatTarget.Get();
+
+	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+
+	if (CurrentTarget && !IsValidLivingTarget(CurrentTarget))
+	{
+		ClearCurrentCombatTarget(false);
+		CurrentTarget = nullptr;
+	}
+
+	// 공격 애니메이션 도중에는 유효한 타깃을 변경하지 않음
+	if (CurrentTarget && bIsAttacking)
+	{
+		UpdateCurrentTargetBlackboard();
+		return;
+	}
+
+	// 공격 없이 추적만 10초 이상 지속 시 현재 타깃에서 제거
+	if (CurrentTarget &&
+		CurrentTime - LastCombatProgressTime >= MaxPursuitWithoutAttackDuration)
+	{
+		ClearCurrentCombatTarget(true);
+		CurrentTarget = nullptr;
+	}
+
+	// 시야 기억, 피해 기록, 청각 기록이 모두 만료되면 현재 타깃에서 제거
+	if (CurrentTarget && !ThreatRecords.Contains(CurrentTarget))
+	{
+		ClearCurrentCombatTarget(false);
+		CurrentTarget = nullptr;
+	}
+
+	AActor* BestTarget = FindBestTarget(CurrentTime);
+
+	if (!CurrentTarget)
+	{
+		if (BestTarget)
+		{
+			SetCurrentCombatTarget(BestTarget);
+		}
+
+		return;
+	}
+
+	if (BestTarget && ShouldSwitchTarget(BestTarget, CurrentTime))
+	{
+		SetCurrentCombatTarget(BestTarget);
+		return;
+	}
+
+	UpdateCurrentTargetBlackboard();
+}
+
+void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus)
+{
+	// 월드 혹은 타깃이 존재하지 않으면 반환
+	UWorld* World = GetWorld();
+	if (!World || !Actor)
+	{
+		return;
+	}
+
+	const double CurrentTime = World->GetTimeSeconds();
+	FNSTargetThreatRecord& Record = ThreatRecords.FindOrAdd(Actor);
+	Record.TargetActor = Actor;
+
+	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
+	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
+	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
+
+	if (Stimulus.Type == SightID)
+	{
+		Record.bCurrentlyVisible = Stimulus.WasSuccessfullySensed();
+
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastSeenTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+		}
+	}
+	else if (Stimulus.Type == HearingID)
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastStimulusTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+		}
+	}
+	else if (Stimulus.Type == DamageID)
+	{
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Record.LastStimulusTime = CurrentTime;
+			Record.LastKnownLocation = Actor->GetActorLocation();
+
+			FNSThreatDamageSample& DamageSample = Record.DamageSamples.AddDefaulted_GetRef();
+
+			DamageSample.Timestamp = CurrentTime;
+			DamageSample.Damage = FMath::Max(Stimulus.Strength, 0.0f);
+		}
+	}
+}
+
+void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
+{
+	for (auto It = ThreatRecords.CreateIterator(); It; ++It)
+	{
+		FNSTargetThreatRecord& Record = It.Value();
+		AActor* TargetActor = Record.TargetActor.Get();
+
+		if (!IsValidLivingTarget(TargetActor))
+		{
+			It.RemoveCurrent();
+			continue;
+		}
+
+		const double DamageCutoff = CurrentTime - DamageThreatWindow;
+
+		Record.DamageSamples.RemoveAll(
+			[DamageCutoff](const FNSThreatDamageSample& Sample)
+			{
+				return Sample.Timestamp < DamageCutoff;
+			});
+
+		if (!IsThreatRecordRelevant(Record, CurrentTime))
+		{
+			It.RemoveCurrent();
+		}
+	}
+
+	for (auto It = ReacquireBlockedUntil.CreateIterator(); It; ++It)
+	{
+		if (!It.Key().IsValid() ||
+			It.Value() <= CurrentTime)
+		{
+			It.RemoveCurrent();
+		}
+	}
+}
+
+AActor* ANSEnemyAIController::FindBestTarget(double CurrentTime) const
+{
+	const APawn* EnemyPawn = GetPawn();
+	if (!EnemyPawn)
+	{
+		return nullptr;
+	}
+
+	AActor* BestDamageTarget = nullptr;
+	float BestDamageThreat = 0.0f;
+	float BestDamageTargetDistanceSq = TNumericLimits<float>::Max();
+
+	AActor* NearestTarget = nullptr;
+	float NearestDistanceSq = TNumericLimits<float>::Max();
+
+	for (const auto& Pair : ThreatRecords)
+	{
+		AActor* TargetActor = Pair.Key.Get();
+		const FNSTargetThreatRecord& Record = Pair.Value;
+
+		if (!IsValidLivingTarget(TargetActor) || !IsThreatRecordRelevant(Record, CurrentTime))
+		{
+			continue;
+		}
+
+		if (const double* BlockedUntil = ReacquireBlockedUntil.Find(Pair.Key))
+		{
+			if (*BlockedUntil > CurrentTime)
+			{
+				continue;
+			}
+		}
+
+		const float DistanceSq = FVector::DistSquared(EnemyPawn->GetActorLocation(), TargetActor->GetActorLocation());
+		const float DamageThreat = GetRecentDamageThreat(Record, CurrentTime);
+
+		if (DamageThreat > BestDamageThreat ||
+			(FMath::IsNearlyEqual(DamageThreat, BestDamageThreat) &&
+			 DistanceSq < BestDamageTargetDistanceSq))
+		{
+			BestDamageThreat = DamageThreat;
+			BestDamageTarget = TargetActor;
+			BestDamageTargetDistanceSq = DistanceSq;
+		}
+
+		if (DistanceSq < NearestDistanceSq)
+		{
+			NearestTarget = TargetActor;
+			NearestDistanceSq = DistanceSq;
+		}
+	}
+
+	return BestDamageThreat > 0.0f ? BestDamageTarget : NearestTarget;
+}
+
+float ANSEnemyAIController::GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const
+{
+	const double DamageCutoff = CurrentTime - DamageThreatWindow;
+
+	float TotalDamage = 0.0f;
+
+	for (const FNSThreatDamageSample& Sample : Record.DamageSamples)
+	{
+		if (Sample.Timestamp >= DamageCutoff)
+		{
+			TotalDamage += Sample.Damage;
+		}
+	}
+
+	return TotalDamage;
+}
+
+bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const
+{
+	if (!Record.TargetActor.IsValid())
+	{
+		return false;
+	}
+
+	if (Record.bCurrentlyVisible)
+	{
+		return true;
+	}
+
+	if (Record.LastSeenTime >= 0.0 &&
+		CurrentTime - Record.LastSeenTime <= SightMemoryDuration)
+	{
+		return true;
+	}
+
+	if (Record.LastStimulusTime >= 0.0 &&
+		CurrentTime - Record.LastStimulusTime <= StimulusMemoryDuration)
+	{
+		return true;
+	}
+
+	return !Record.DamageSamples.IsEmpty();
+}
+
+bool ANSEnemyAIController::ShouldSwitchTarget(AActor* CandidateTarget, double CurrentTime) const
+{
+	AActor* CurrentTarget = CurrentCombatTarget.Get();
+
+	if (!CandidateTarget || CandidateTarget == CurrentTarget)
+	{
+		return false;
+	}
+
+	if (!IsValidLivingTarget(CurrentTarget))
+	{
+		return true;
+	}
+
+	if (CurrentTime - LastTargetSwitchTime < TargetSwitchCooldown)
+	{
+		return false;
+	}
+
+	const bool bInitialLockFinished = bAttackStartedOnCurrentTarget ||
+		CurrentTime - CurrentTargetSelectedTime >= InitialTargetLockDuration;
+
+	if (!bInitialLockFinished)
+	{
+		return false;
+	}
+
+	const FNSTargetThreatRecord* CurrentRecord = ThreatRecords.Find(CurrentTarget);
+	const FNSTargetThreatRecord* CandidateRecord = ThreatRecords.Find(CandidateTarget);
+
+	if (!CandidateRecord)
+	{
+		return false;
+	}
+
+	if (!CurrentRecord)
+	{
+		return true;
+	}
+
+	const float CurrentDamage = GetRecentDamageThreat(*CurrentRecord, CurrentTime);
+	const float CandidateDamage = GetRecentDamageThreat(*CandidateRecord, CurrentTime);
+
+	if (CandidateDamage > 0.0f)
+	{
+		if (CurrentDamage <= 0.0f)
+		{
+			return true;
+		}
+
+		return CandidateDamage >= CurrentDamage * DamageThreatSwitchRatio;
+	}
+
+	if (CurrentDamage > 0.0f)
+	{
+		return false;
+	}
+
+	const APawn* EnemyPawn = GetPawn();
+	if (!EnemyPawn)
+	{
+		return false;
+	}
+
+	const float CurrentDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CurrentTarget->GetActorLocation());
+	const float CandidateDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CandidateTarget->GetActorLocation());
+
+	return CandidateDistance <= CurrentDistance * DistanceSwitchRatio;
+}
+
+void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
+{
+	if (!IsValidLivingTarget(NewTarget) || CurrentCombatTarget == NewTarget)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	CurrentCombatTarget = NewTarget;
+
+	const double CurrentTime = World->GetTimeSeconds();
+
+	CurrentTargetSelectedTime = CurrentTime;
+	LastTargetSwitchTime = CurrentTime;
+	LastCombatProgressTime = CurrentTime;
+
+	bAttackStartedOnCurrentTarget = false;
+
+	UpdateCurrentTargetBlackboard();
+}
+
+void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
+{
+	AActor* PreviousTarget = CurrentCombatTarget.Get();
+
+	if (bBlockReacquisition && PreviousTarget && GetWorld())
+	{
+		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
+	}
+
+	CurrentCombatTarget.Reset();
+	bAttackStartedOnCurrentTarget = false;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	}
+}
+
+void ANSEnemyAIController::ResetTargetingState()
+{
+	ThreatRecords.Reset();
+	ReacquireBlockedUntil.Reset();
+	CurrentCombatTarget.Reset();
+
+	CurrentTargetSelectedTime = 0.0;
+	LastTargetSwitchTime = 0.0;
+	LastCombatProgressTime = 0.0;
+	NextTargetEvaluationTime = 0.0;
+
+	bAttackStartedOnCurrentTarget = false;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+	}
+}
+
+void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	AActor* TargetActor = CurrentCombatTarget.Get();
+
+	if (!IsValidLivingTarget(TargetActor))
+	{
+		CachedBBComp->ClearValue(TargetActorKey);
+		return;
+	}
+
+	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+
+	if (const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor))
+	{
+		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
+	}
 }
