@@ -65,6 +65,9 @@ public:
 public:
 	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId(static_cast<uint8>(ETeamId::Player)); }
 	
+	// 저장된 장착 파츠를 현재 폰에 적용
+	void ApplyEquippedPart();
+	
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();

@@ -131,29 +131,8 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		BindPartVisual();
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
-		
-		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
-		{
-			if (UNSPlayerProgressComponent* Progress = PS->GetProgressComponent())
-			{
-				const FNSPartSaveData& Equipped = Progress->GetEquippedPart();
-				if (!Equipped.Definition.IsNull())
-				{
-					// 정의 1개 동기 로드
-					Equipped.Definition.LoadSynchronous(); 
-					FNSPartData Part;
-					Part.DefinitionPtr = Equipped.Definition;
-					Part.CurrentRarity = Equipped.Rarity;
-					// 저장값 그대로(값 변경 X)
-					Part.CurrentValue  = Equipped.Value;
-					// Slot은 EquipPart가 정의에서 채움, RollCount 기본 0
-					if (UNSPartEquipComponent* EquipComp = PS->GetPartEquipComponent())
-					{
-						EquipComp->EquipPart(Part);
-					}
-				}
-			}
-		}
+		// 저장된 장착 파츠 적용
+		ApplyEquippedPart();
 	}
 }
 
@@ -272,6 +251,44 @@ bool ANSPlayerCharacterBase::TryGetAimTraceStartLocation(FVector& OutLocation) c
 	
 	OutLocation = GetPawnViewLocation();
 	return true;
+}
+
+void ANSPlayerCharacterBase::ApplyEquippedPart()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	
+	UNSPlayerProgressComponent* ProgressComp = PS->GetProgressComponent();
+	UNSPartEquipComponent* EquipComp = PS->GetPartEquipComponent();
+	if (!ProgressComp || !EquipComp)
+	{
+		return;
+	}
+
+	// 기존 진입 파츠 제거(드랍 없음) — 교체/해제 모두 깨끗한 시작점
+	EquipComp->ClearAll();
+
+	const FNSPartSaveData& Equipped = ProgressComp->GetEquippedPart();
+	if (Equipped.Definition.IsNull())
+	{
+		return; 
+	}
+
+	Equipped.Definition.LoadSynchronous();
+	
+	FNSPartData Part;
+	Part.DefinitionPtr = Equipped.Definition;
+	Part.CurrentRarity = Equipped.Rarity;
+	Part.CurrentValue  = Equipped.Value;
+	EquipComp->EquipPart(Part);   
 }
 
 void ANSPlayerCharacterBase::InitializeAbilitySystem()
