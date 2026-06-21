@@ -17,7 +17,13 @@ class NEOSANCTUM_API UNSBTTask_ExecuteEnemyAbility : public UBTTaskNode
 public:
 	UNSBTTask_ExecuteEnemyAbility();
 
-	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+	virtual EBTNodeResult::Type ExecuteTask(
+		UBehaviorTreeComponent& OwnerComp, 
+		uint8* NodeMemory) override;
+	
+	virtual EBTNodeResult::Type AbortTask(
+		UBehaviorTreeComponent& OwnerComp,
+		uint8* NodeMemory) override;
 	
 private:
 	void OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData);
@@ -27,4 +33,7 @@ private:
 	
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayAbility> CachedAttackAbilityClass;
+	
+	// 현재 실행 중인 공격이 근접 공격 예약을 사용하는지 기록해, 공격 종료·실패·중단 시 예약 반환 여부
+	bool bUsesMeleeReservation = false;
 };

@@ -8,6 +8,7 @@
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -41,6 +42,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	if (CurrentTime >= NextTargetEvaluationTime)
 	{
 		UpdateTargetSelection();
+		UpdateMeleeReservationState();
 
 		NextTargetEvaluationTime = CurrentTime + TargetEvaluationInterval;
 	}
@@ -863,6 +865,11 @@ void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
 	{
 		return;
 	}
+	
+	if (CurrentCombatTarget.IsValid() && CurrentCombatTarget.Get() != NewTarget)
+	{
+		CancelMeleeReservationRequest(false);
+	}
 
 	CurrentCombatTarget = NewTarget;
 
@@ -885,6 +892,8 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	{
 		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
 	}
+	
+	CancelMeleeReservationRequest(false);
 
 	CurrentCombatTarget.Reset();
 	bAttackStartedOnCurrentTarget = false;
@@ -901,6 +910,8 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 
 void ANSEnemyAIController::ResetTargetingState()
 {
+	CancelMeleeReservationRequest(false);
+	
 	ThreatRecords.Reset();
 	ReacquireBlockedUntil.Reset();
 	CurrentCombatTarget.Reset();
@@ -943,4 +954,224 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
 		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
 	}
+}
+
+bool ANSEnemyAIController::RequestMeleeAttackReservation()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!Enemy || !TargetActor || !UsesMeleeAttackReservation())
+	{
+		return false;
+	}
+
+	UNSMeleeAttackReservationComponent* Component = 
+		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+
+	// 컴포넌트 없는 타깃은 EQS만 적용하고 접근 허용
+	if (!Component)
+	{
+		CancelMeleeReservationRequest(false);
+		SetMeleeReservationBlackboard(false, true);
+		return true;
+	}
+
+	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != TargetActor)
+	{
+		CancelMeleeReservationRequest(false);
+	}
+
+	MeleeReservationTarget = TargetActor;
+
+	const ENSMeleeReservationRequestResult Result = 
+		Component->RequestReservation(Enemy, GetLatestDamageTimeFromCurrentTarget());
+
+	const bool bReserved = Result == ENSMeleeReservationRequestResult::Reserved;
+
+	SetMeleeReservationBlackboard(bReserved, bReserved);
+
+	return Result != ENSMeleeReservationRequestResult::Rejected;
+}
+
+bool ANSEnemyAIController::HasMeleeAttackReservation() const
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* ReservedTarget = MeleeReservationTarget.Get();
+
+	if (!Enemy || !ReservedTarget)
+	{
+		return false;
+	}
+
+	UNSMeleeAttackReservationComponent* Component = 
+		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+
+	return Component && Component->HasReservation(Enemy);
+}
+
+bool ANSEnemyAIController::CanApproachMeleeTarget() const
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		return true;
+	}
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!TargetActor)
+	{
+		return false;
+	}
+
+	const bool bReservationRequired = 
+		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
+
+	return !bReservationRequired || this->HasMeleeAttackReservation();
+}
+
+bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		return false;
+	}
+
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	return TargetActor && TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
+}
+
+void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	AActor* ReservedTarget = MeleeReservationTarget.Get();
+
+	if (!Enemy || !ReservedTarget)
+	{
+		return;
+	}
+
+	if (UNSMeleeAttackReservationComponent* Component =
+		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+	{
+		Component->MarkAttackStarted(Enemy);
+	}
+}
+
+void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCooldown)
+{
+	CancelMeleeReservationRequest(bStartReacquireCooldown);
+}
+
+void ANSEnemyAIController::UpdateMeleeReservationState()
+{
+	if (!UsesMeleeAttackReservation())
+	{
+		SetMeleeReservationBlackboard(false, true);
+		return;
+	}
+
+	AActor* CurrentTarget = GetCurrentTargetActor();
+	if (!CurrentTarget)
+	{
+		CancelMeleeReservationRequest(false);
+		return;
+	}
+
+	UNSMeleeAttackReservationComponent* Component =
+		CurrentTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+	if (!Component)
+	{
+		if (MeleeReservationTarget.IsValid())
+		{
+			CancelMeleeReservationRequest(false);
+		}
+
+		SetMeleeReservationBlackboard(false, true);
+		return;
+	}
+
+	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != CurrentTarget)
+	{
+		CancelMeleeReservationRequest(false);
+		return;
+	}
+
+	const bool bReserved = HasMeleeAttackReservation();
+	SetMeleeReservationBlackboard(bReserved, bReserved);
+}
+
+void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCooldown)
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	{
+		if (UNSMeleeAttackReservationComponent* Component =
+				ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+		{
+			Component->ReleaseReservation(Enemy, bStartReacquireCooldown);
+		}
+	}
+
+	MeleeReservationTarget.Reset();
+	SetMeleeReservationBlackboard(false, false);
+}
+
+bool ANSEnemyAIController::UsesMeleeAttackReservation() const
+{
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	const UNSEnemyData* EnemyData = Enemy ? Enemy->GetEnemyData() : nullptr;
+
+	if (!EnemyData)
+	{
+		return false;
+	}
+
+	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	{
+		if (Attack.AttackType == ENSEnemyAttackType::MeleeSweep)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+double ANSEnemyAIController::GetLatestDamageTimeFromCurrentTarget() const
+{
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor);
+
+	if (!Record)
+	{
+		return -1.0;
+	}
+
+	double LatestTime = -1.0;
+
+	for (const FNSThreatDamageSample& Sample : Record->DamageSamples)
+	{
+		LatestTime = FMath::Max(LatestTime, Sample.Timestamp);
+	}
+
+	return LatestTime;
+}
+
+void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, bool bCanApproach)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->SetValueAsBool(HasMeleeAttackReservationKey, bHasReservation);
+	CachedBBComp->SetValueAsBool(CanApproachMeleeTargetKey, bCanApproach);
 }

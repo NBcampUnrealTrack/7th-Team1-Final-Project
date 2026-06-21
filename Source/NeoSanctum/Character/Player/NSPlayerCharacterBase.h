@@ -25,6 +25,7 @@ class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
 class UNSSpectatorViewComponent;
 class UNSPartVisualComponent;
+class UNSMeleeAttackReservationComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -142,6 +143,11 @@ protected:
 	// Player 전용 Attribute Set
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AbilitySystem")
 	TObjectPtr<UNSPlayerAttributeSet> PlayerAttributeSet;
+	
+protected:
+	// 몬스터 근접 공격 예약 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
+	TObjectPtr<UNSMeleeAttackReservationComponent> MeleeAttackReservationComp;
 	
 protected:
 	// 현재 캐릭터 데이터

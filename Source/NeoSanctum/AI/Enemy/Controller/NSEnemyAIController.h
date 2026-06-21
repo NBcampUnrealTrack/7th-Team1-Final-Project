@@ -240,4 +240,58 @@ private:
 	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
 	
 #pragma endregion 
+#pragma region 근접 공격 예약
+
+public:
+	/* 함수 */
+	
+	/* 현재 전투 타깃에 근접 공격 예약을 요청하고 요청 처리 가능 여부를 반환하는 함수 */
+	bool RequestMeleeAttackReservation();
+
+	/* 현재 몬스터가 타깃의 활성 근접 공격 예약을 보유하고 있는지 확인하는 함수 */
+	bool HasMeleeAttackReservation() const;
+
+	/* 예약이 필요 없거나 활성 예약을 보유하여 현재 타깃에게 접근할 수 있는지 확인하는 함수 */
+	bool CanApproachMeleeTarget() const;
+
+	/* 현재 타깃에 예약 컴포넌트가 있고 이 몬스터가 근접 예약 대상인지 확인하는 함수 */
+	bool CurrentTargetRequiresMeleeReservation() const;
+
+	/* 실제 공격 시작을 예약 컴포넌트에 알려 예약 단계를 공격 중으로 전환하는 함수 */
+	void NotifyMeleeReservationAttackStarted();
+
+	/* 현재 활성 예약과 대기 요청을 반환하고 선택적으로 재획득 쿨다운을 적용하는 함수 */
+	void ReleaseMeleeAttackReservation(bool bStartReacquireCooldown = true);
+
+private:
+	/* 현재 타깃과 예약 상태를 확인하여 예약 요청 및 블랙보드 값을 갱신하는 함수 */
+	void UpdateMeleeReservationState();
+
+	/* 예약 중인 타깃에 대한 활성 예약 또는 대기 요청을 취소하고 상태를 초기화하는 함수 */
+	void CancelMeleeReservationRequest(bool bStartReacquireCooldown);
+
+	/* 근접 몬스터 판정 함수 */
+	bool UsesMeleeAttackReservation() const;
+
+	/* 현재 타깃으로부터 마지막으로 피해를 받은 시간을 어그로 기록에서 가져오는 함수 */
+	double GetLatestDamageTimeFromCurrentTarget() const;
+
+	/* 근접 예약 보유 및 접근 가능 상태를 블랙보드에 기록하는 함수 */
+	void SetMeleeReservationBlackboard(
+		bool bHasReservation,
+		bool bCanApproach);
+
+protected:
+	/* 런타임 변수 */
+	
+	/* 현재 예약을 요청했거나 활성 예약을 보유한 타깃 */
+	TWeakObjectPtr<AActor> MeleeReservationTarget;
+
+	/* 근접 공격 예약 보유 상태를 저장하는 블랙보드 키 이름 */
+	FName HasMeleeAttackReservationKey = TEXT("bHasMeleeAttackReservation");
+
+	/* 현재 근접 타깃에게 접근할 수 있는지를 저장하는 블랙보드 키 이름 */
+	FName CanApproachMeleeTargetKey = TEXT("bCanApproachMeleeTarget");
+
+#pragma endregion
 };

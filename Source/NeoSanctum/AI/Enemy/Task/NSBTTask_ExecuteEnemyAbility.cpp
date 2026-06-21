@@ -43,6 +43,15 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 		return EBTNodeResult::Failed;
 	}
 	
+	bUsesMeleeReservation = 
+		SelectedAttack->AttackType == ENSEnemyAttackType::MeleeSweep &&
+		AIController->CurrentTargetRequiresMeleeReservation();
+
+	if (bUsesMeleeReservation && !AIController->HasMeleeAttackReservation())
+	{
+		return EBTNodeResult::Failed;
+	}
+	
 	Enemy->SetCurrentAttackDefinition(*SelectedAttack);
 	
 	CachedOwnerComp = &OwnerComp;
@@ -57,10 +66,21 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
+		if (bUsesMeleeReservation)
+		{
+			AIController->ReleaseMeleeAttackReservation(true);
+			bUsesMeleeReservation = false;
+		}
+		
 		Enemy->ClearCurrentAttackDefinition();
 		ASC->OnAbilityEnded.RemoveAll(this);
 		CachedAttackAbilityClass = nullptr;
 		return EBTNodeResult::Failed;
+	}
+	
+	if (bUsesMeleeReservation)
+	{
+		AIController->NotifyMeleeReservationAttackStarted();
 	}
 	
 	AIController->RecordAttackUsed(*SelectedAttack);
@@ -72,6 +92,51 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	
 	// 애니메이션이 끝날 때까지 대기
 	return EBTNodeResult::InProgress;
+}
+
+EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+	ANSEnemyAIController* Controller = Cast<ANSEnemyAIController>(OwnerComp.GetAIOwner());
+
+	APawn* EnemyPawn = Controller ? Controller->GetPawn() : nullptr;
+
+	UAbilitySystemComponent* ASC = EnemyPawn
+			? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EnemyPawn)
+			: nullptr;
+
+	if (ASC)
+	{
+		ASC->OnAbilityEnded.RemoveAll(this);
+
+		if (CachedAttackAbilityClass)
+		{
+			if (const FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromClass(CachedAttackAbilityClass))
+			{
+				ASC->CancelAbilityHandle(Spec->Handle);
+			}
+		}
+	}
+
+	if (ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(EnemyPawn))
+	{
+		Enemy->ClearCurrentAttackDefinition();
+	}
+
+	if (Controller && bUsesMeleeReservation)
+	{
+		Controller->ReleaseMeleeAttackReservation(true);
+	}
+
+	if (UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent())
+	{
+		Blackboard->SetValueAsBool(TEXT("bIsAttacking"), false);
+	}
+
+	bUsesMeleeReservation = false;
+	CachedAttackAbilityClass = nullptr;
+	CachedOwnerComp = nullptr;
+
+	return EBTNodeResult::Aborted;
 }
 
 void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData)
@@ -104,6 +169,12 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 			{
 				ASC->OnAbilityEnded.RemoveAll(this);
 			}
+		}
+		
+		if (bUsesMeleeReservation)
+		{
+			AIController->ReleaseMeleeAttackReservation(true);
+			bUsesMeleeReservation = false;
 		}
 	}
 	
