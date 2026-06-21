@@ -17,6 +17,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
+#include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
@@ -62,6 +63,10 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
+	
+	MeleeAttackReservationComponent = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
+		TEXT("MeleeAttackReservationComponent"));
+	MeleeAttackReservationComponent->SetMaxConcurrentAttackers(3);
 	
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
