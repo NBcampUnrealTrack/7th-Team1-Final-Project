@@ -86,7 +86,7 @@ ENSMeleeReservationRequestResult UNSMeleeAttackReservationComponent::RequestRese
 
 bool UNSMeleeAttackReservationComponent::HasReservation(ANSEnemyCharacterBase* Enemy)
 {
-	if (!GetWorld())
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld() || !IsEnemyValid(Enemy))
 	{
 		return false;
 	}
@@ -104,7 +104,7 @@ bool UNSMeleeAttackReservationComponent::HasReservation(ANSEnemyCharacterBase* E
 
 void UNSMeleeAttackReservationComponent::MarkAttackStarted(ANSEnemyCharacterBase* Enemy)
 {
-	if (!GetWorld())
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !GetWorld() || !IsEnemyValid(Enemy))
 	{
 		return;
 	}
@@ -129,7 +129,7 @@ void UNSMeleeAttackReservationComponent::ReleaseReservation(
 	ANSEnemyCharacterBase* Enemy,
 	bool bStartReacquireCooldown)
 {
-	if (!Enemy || !GetWorld())
+	if (!GetOwner() || !GetOwner()->HasAuthority() || !Enemy || !GetWorld())
 	{
 		return;
 	}
