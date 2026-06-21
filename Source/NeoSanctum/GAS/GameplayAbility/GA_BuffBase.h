@@ -118,12 +118,6 @@ protected:
 		bool bWasCancelled
 	) override;
 
-	virtual void ApplyCooldown(
-		const FGameplayAbilitySpecHandle Handle,
-		const FGameplayAbilityActorInfo* ActorInfo,
-		const FGameplayAbilityActivationInfo ActivationInfo
-	) const override;
-
 protected:
 	// 버프 대상 적용
 	void ApplyBuffToTargets(const TArray<AActor*>& Targets, float Duration);
@@ -148,8 +142,6 @@ protected:
 
 	// 버프 지속시간 조회
 	bool TryGetBuffDuration(float& OutDuration) const;
-	// 버프 쿨다운 조회
-	bool TryGetBuffCooldown(float& OutCooldown) const;
 
 protected:
 	// 버프 대상 수집
@@ -166,8 +158,6 @@ protected:
 	// 대상이 ASC를 보유하고 있는지 여부 확인 : ASC가 없는 대상이라면 어차피 버프를 받는 것 자체가 불가능함
 	bool HasTargetAbilitySystem(const AActor* TargetActor) const;
 	
-	// CombatStat 조회 기준 Ability 태그 결정
-	bool TryGetCombatStatAbilityTag(FGameplayTag& OutAbilityTag) const;
 	// Radius 수집 범위 조회
 	bool TryGetBuffRadius(float& OutRadius) const;
 
@@ -196,21 +186,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|SetByCaller")
 	TArray<FNSSetByCallerFromCombatStat> SetByCallerMappings;
 
-	// CombatStat 조회에 사용할 Ability 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|SetByCaller")
-	FGameplayTag CombatStatAbilityTag;
-	
 	// 버프 지속시간을 조회할 CombatStat 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Duration")
 	FGameplayTag DurationStatTag;
-
-	// 버프 쿨다운을 조회할 CombatStat 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cooldown")
-	FGameplayTag CooldownStatTag;
-
-	// Cooldown GE에 전달할 SetByCaller 태그
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cooldown")
-	FGameplayTag CooldownSetByCallerTag;
 
 	// Radius 수집 범위를 조회할 CombatStat 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target",
