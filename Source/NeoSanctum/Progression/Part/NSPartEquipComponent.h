@@ -41,19 +41,17 @@ public:
 	const FNSPartData* GetEquippedPart(ENSPartSlot Slot) const;
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestEquip(FNSPartData NewPart);
+	void Server_RequestEquip(FNSPartData NewPart);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestReroll(ENSPartSlot Slot);
+	void Server_RequestReroll(ENSPartSlot Slot);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRequestUpgradeRarity(ENSPartSlot Slot);
+	void Server_RequestUpgradeRarity(ENSPartSlot Slot);
 
-	// ===== 테스트용 임시 코드 — 상호작용 시스템 연동 후 삭제 =====
-	// 클라이언트 픽업 테스트용. 실제 픽업은 상호작용 시스템이 서버에서 TryPickup 직접 호출 예정
-	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Part|Debug")
-	void ServerRequestPickup(ANSDroppedPart* TargetPart);
-	// ===== 테스트용 임시 코드 끝 =====
+	// 클라 → 서버 줍기 요청 (상호작용 OnInteract에서 호출, 서버 TryPickup 경유)
+	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Part")
+	void Server_RequestPickup(ANSDroppedPart* TargetPart);
 
 public:
 	FNSOnPartChanged OnPartChanged;
