@@ -54,6 +54,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerTraceStartTolerance = 300.0f;
 	
+	// 클라이언트 Trace 방향과 서버 조준 방향의 최대 허용 각도
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation",
+		meta = (ClampMin = "0.0", ClampMax = "45.0"))
+	float ServerAimDirectionToleranceDegrees = 15.0f;
+	
 	// 클라 Hit 위치와 서버 재 Trace Hit 위치가 너무 다르면 거부
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerHitLocationTolerance = 200.0f;
@@ -122,6 +127,13 @@ private:
 		FVector& OutTraceEnd,
 		bool& bOutHit) const;
 	
+	bool TryBuildServerAimTrace(
+		FHitResult& OutHitResult,
+		FVector& OutTraceStart,
+		FVector& OutTraceEnd,
+		bool& bOutHit
+	) const;
+	
 	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	bool TryGetAttackOriginTransform(FTransform& OutTransform) const;
 	
@@ -132,8 +144,10 @@ private:
 	) const;
 	bool IsTargetDataTraceValid(
 		const FHitResult& ClientHitResult,
-		FHitResult& OutServerHitResult,
-		bool& bOutServerAimHit
+		const FHitResult& ServerHitResult,
+		const FVector& ServerTraceStart,
+		const FVector& ServerTraceEnd,
+		bool bServerAimHit
 	) const;
 	
 	// AI 청각 감지용 소음 발생

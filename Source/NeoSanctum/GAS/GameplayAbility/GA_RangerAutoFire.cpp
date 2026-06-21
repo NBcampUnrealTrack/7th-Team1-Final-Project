@@ -408,33 +408,49 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 	}
 
 	FHitResult ServerHitResult;
+	FVector ServerTraceStart;
+	FVector ServerTraceEnd;
 	bool bServerAimHit = false;
 	
-	if (!IsTargetDataTraceValid(*ClientHitResult, ServerHitResult, bServerAimHit))
+	if (!TryBuildServerAimTrace(
+		ServerHitResult,
+		ServerTraceStart,
+		ServerTraceEnd,
+		bServerAimHit))
 	{
 		return;
 	}
 	
-	const FVector AimPoint = bServerAimHit 
-		? FVector(ServerHitResult.ImpactPoint) 
-		: FVector(ClientHitResult->TraceEnd);
+	if (!IsTargetDataTraceValid(
+		*ClientHitResult,
+		ServerHitResult,
+		ServerTraceStart,
+		ServerTraceEnd,
+		bServerAimHit))
+	{
+		return;
+	}
 	
-	const AActor* AimTraceActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
+	const FVector AimPoint = bServerAimHit ? FVector(ServerHitResult.ImpactPoint) : ServerTraceEnd;
+	const AActor* AimTargetActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
 	
 	FHitResult MuzzleObstructionHitResult;
-	
-	if (IsMuzzleObstructed(AimPoint, AimTraceActor, MuzzleObstructionHitResult))
+
+	if (IsMuzzleObstructed(
+		AimPoint,
+		AimTargetActor,
+		MuzzleObstructionHitResult))
 	{
 		ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
-	
+
 	if (!bServerAimHit)
 	{
 		return;
 	}
-	
+
 	ApplyDamageToActor(ServerHitResult.GetActor());
 	ExecuteImpactCue(ServerHitResult);
 }
@@ -731,6 +747,53 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 	return true;
 }
 
+bool UGA_RangerAutoFire::TryBuildServerAimTrace(
+	FHitResult& OutHitResult,
+	FVector& OutTraceStart,
+	FVector& OutTraceEnd,
+	bool& bOutHit) const
+{
+	bOutHit = false;
+	
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	UWorld* World = GetWorld();
+	
+	if (!IsValid(AvatarActor) || !IsValid(Pawn) || !World || !AvatarActor->HasAuthority())
+	{
+		return false;
+	}
+	
+	if (!TryGetAimTraceStartLocation(OutTraceStart))
+	{
+		return false;
+	}
+	
+	const FVector ServerAimDirection = Pawn->GetBaseAimRotation().Vector().GetSafeNormal();
+	
+	if (ServerAimDirection.IsNearlyZero())
+	{
+		return false;
+	}
+	
+	OutTraceEnd = OutTraceStart + ServerAimDirection * TraceRange;
+	
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(RangerAutoFireServerAimTrace), false);
+	
+	QueryParams.AddIgnoredActor(AvatarActor);
+	
+	bOutHit = World->LineTraceSingleByChannel(
+		OutHitResult,
+		OutTraceStart,
+		OutTraceEnd,
+		TraceChannel,
+		QueryParams
+	);
+	
+	return true;
+}
+
 bool UGA_RangerAutoFire::TryGetAimTraceStartLocation(FVector& OutLocation) const
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -814,7 +877,7 @@ void UGA_RangerAutoFire::ExecutePredictedImpactCue(const FGameplayAbilityTargetD
 		return;
 	}
 	
-	const FVector Aimpoint = LocalHitResult->bBlockingHit
+	const FVector AimPoint = LocalHitResult->bBlockingHit
 		? FVector(LocalHitResult->ImpactPoint)
 		: FVector(LocalHitResult->TraceEnd);
 	
@@ -823,7 +886,7 @@ void UGA_RangerAutoFire::ExecutePredictedImpactCue(const FGameplayAbilityTargetD
 	FHitResult MuzzleObstructionHitResult;
 	
 	// 총구가 막힌 상황이면 조준 대상이 아니라 실제로 막힌 지점에 ImpactCue 표시
-	if (IsMuzzleObstructed(Aimpoint, AimTargetActor, MuzzleObstructionHitResult))
+	if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 	{
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
@@ -916,72 +979,84 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 
 bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	const FHitResult& ClientHitResult,
-	FHitResult& OutServerHitResult,
-	bool& bOutServerAimHit) const
+	const FHitResult& ServerHitResult,
+	const FVector& ServerTraceStart,
+	const FVector& ServerTraceEnd,
+	bool bServerAimHit) const
 {
-	bOutServerAimHit = false;
+	const FVector ClientTraceStart = ClientHitResult.TraceStart;
+	const FVector ClientTraceEnd = ClientHitResult.TraceEnd;
 	
-	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	UWorld* World = GetWorld();
-	
-	if (!AvatarActor || !World || !AvatarActor->HasAuthority())
-	{
-		return false;
-	}
-	
-	const FVector TraceStart = ClientHitResult.TraceStart;
-	const FVector TraceEnd = ClientHitResult.TraceEnd;
-	
-	if (TraceStart.Equals(TraceEnd))
+	if (ClientTraceStart.Equals(ClientTraceEnd))
 	{
 		return false;
 	}
 	
 	const float MaxTraceDistance = TraceRange + ServerHitLocationTolerance;
-	if (FVector::DistSquared(TraceStart, TraceEnd) > FMath::Square(MaxTraceDistance))
+	
+	if (FVector::DistSquared(ClientTraceStart, ClientTraceEnd) > FMath::Square(MaxTraceDistance))
 	{
 		return false;
 	}
 	
-	FVector ServerAimTraceStartLocation;
-	
-	if (!TryGetAimTraceStartLocation(ServerAimTraceStartLocation))
+	if (FVector::DistSquared(ServerTraceStart, ClientTraceStart) > FMath::Square(ServerTraceStartTolerance))
 	{
 		return false;
 	}
 	
-	if (FVector::DistSquared(ServerAimTraceStartLocation, TraceStart) > FMath::Square(ServerTraceStartTolerance))
+	const FVector ClientTraceDirection = (ClientTraceEnd - ClientTraceStart).GetSafeNormal();
+	
+	const FVector ServerTraceDirection = (ServerTraceEnd - ServerTraceStart).GetSafeNormal();
+	
+	if (ClientTraceDirection.IsNearlyZero() || ServerTraceDirection.IsNearlyZero())
 	{
 		return false;
 	}
 	
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(AvatarActor);
+	const float ClampedToleranceDegrees = 
+		FMath::Clamp(ServerAimDirectionToleranceDegrees, 0.0f, 45.0f);
 	
-	bOutServerAimHit = World->LineTraceSingleByChannel(
-		OutServerHitResult,
-		TraceStart,
-		TraceEnd,
-		TraceChannel,
-		QueryParams
-	);
+	const float MinAcceptedAimDot = FMath::Cos(FMath::DegreesToRadians(ClampedToleranceDegrees));
+	const float AimDirectionDot = FVector::DotProduct(ClientTraceDirection, ServerTraceDirection);
+	
+	if (AimDirectionDot < MinAcceptedAimDot)
+	{
+		if (bDrawDebugHitscan)
+		{
+			NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+				"서버 조준 방향 검증 실패. 입력Dot={AimDot}, 최소Dot={MinDot}, 허용각도={ToleranceDegrees}",
+				("AimDot", AimDirectionDot),
+				("MinDot", MinAcceptedAimDot),
+				("ToleranceDegrees", ClampedToleranceDegrees)
+			);
+		}
+		
+		return false;
+	}
 	
 	if (!ClientHitResult.bBlockingHit)
 	{
 		return true;
 	}
 	
-	if (!bOutServerAimHit || !OutServerHitResult.bBlockingHit)
+	if (!bServerAimHit || !ServerHitResult.bBlockingHit)
 	{
 		return false;
 	}
 	
-	if (OutServerHitResult.GetActor() != ClientHitResult.GetActor())
+	if (!IsValid(ClientHitResult.GetActor()))
 	{
 		return false;
 	}
 	
-	if (FVector::DistSquared(OutServerHitResult.ImpactPoint, ClientHitResult.ImpactPoint)
+	if (ServerHitResult.GetActor() != ClientHitResult.GetActor())
+	{
+		return false;
+	}
+	
+	if (FVector::DistSquared(
+		ServerHitResult.ImpactPoint,
+		ClientHitResult.ImpactPoint)
 		> FMath::Square(ServerHitLocationTolerance))
 	{
 		return false;
