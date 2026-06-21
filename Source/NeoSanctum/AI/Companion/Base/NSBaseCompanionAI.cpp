@@ -6,9 +6,12 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
+#include "IMediaControls.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
@@ -67,12 +70,10 @@ void ANSBaseCompanionAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	
 	if (!HasAuthority() || !IsValid(NewController)) return;
 	
 	ANSDroneAIController* DroneAIController = Cast<ANSDroneAIController>(NewController);
 	if (!IsValid(DroneAIController)) return;
-	
 	CachedAIController = DroneAIController;
 	
 	GetWorldTimerManager().SetTimer(
@@ -82,10 +83,11 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 		0.25f,
 		true);
 	
+	if (!CurrentDefinition) return;
 	
 	InitAbilityActorInfo();
-	InitializeDefaultStats();
-	GiveDefaultAbilities();
+	ApplyDroneDefinition(CurrentDefinition);
+	
 }
 
 void ANSBaseCompanionAI::BeginPlay()
@@ -153,13 +155,18 @@ void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
 	OwnerPlayer = Actor;
 }
 
+void ANSBaseCompanionAI::SetPendingDefinition(const UNSCompanionDefinition* InDefinition)
+{
+	if (!InDefinition) return;
+	
+	CurrentDefinition = InDefinition;
+}
+
 void ANSBaseCompanionAI::InitAbilityActorInfo()
 {
 	checkf(AbilitySystemComponent, TEXT("Can't Found ASC %s"), *GetName());
 	
-	
 	AbilitySystemComponent->InitAbilityActorInfo(this,this);
-	
 }
 
 void ANSBaseCompanionAI::InitializeDefaultStats()
@@ -182,7 +189,6 @@ void ANSBaseCompanionAI::InitializeDefaultStats()
 	{
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
-
 }
 
 void ANSBaseCompanionAI::GiveDefaultAbilities()
@@ -208,10 +214,14 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 	bDefaultAbilitiesGranted = true;
 }
 
-void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinition)
+void ANSBaseCompanionAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition)
 {
 	if (!HasAuthority() || !NewDefinition) return;
-	if (CurrentDefinition == NewDefinition) return;
+	
+	//@민재 TODO : 예외처리 생각하기
+	/*if (CurrentDefinition == NewDefinition) return;
+	UE_LOG(LogTemp, Warning, TEXT("CurrentDefinition == NewDefinition"));*/
+	
 	if (!IsValid(NewDefinition->AbilitySet)) return;
 	
 	CurrentAbilityHandles.TakeFromAbilitySystem(AbilitySystemComponent);
@@ -223,7 +233,7 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(UNSCompanionDefinition* NewDefinit
 	
 	FGameplayEffectSpecHandle SpecHandle =
 		AbilitySystemComponent->MakeOutgoingSpec(
-		NewDefinition->DefaultStatsEffect,
+		NewDefinition->TypeStatsEffect,
 		1.f,
 		ContextHandle
 		);
