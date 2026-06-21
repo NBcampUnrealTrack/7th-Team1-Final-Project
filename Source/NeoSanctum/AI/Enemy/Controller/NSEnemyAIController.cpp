@@ -42,6 +42,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	if (CurrentTime >= NextTargetEvaluationTime)
 	{
 		UpdateTargetSelection();
+		UpdateMeleeReservationState();
 
 		NextTargetEvaluationTime = CurrentTime + TargetEvaluationInterval;
 	}
