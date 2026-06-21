@@ -85,6 +85,28 @@ bool UNSMeleeAttackReservationComponent::HasReservation(ANSEnemyCharacterBase* E
 		});
 }
 
+void UNSMeleeAttackReservationComponent::MarkAttackStarted(ANSEnemyCharacterBase* Enemy)
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+
+	FActiveReservation* Reservation = ActiveReservations.FindByPredicate(
+		[Enemy](const FActiveReservation& ActiveReservation)
+		{
+			return ActiveReservation.Enemy == Enemy;
+		});
+
+	if (!Reservation)
+	{
+		return;
+	}
+
+	Reservation->Phase = ENSMeleeReservationPhase::Attacking;
+
+	Reservation->ExpirationTime = GetWorld()->GetTimeSeconds() + AttackReservationSafetyTimeout;
+}
 void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTime)
 {
 	ActiveReservations.RemoveAll(
