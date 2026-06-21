@@ -270,7 +270,7 @@ private:
 	/* 예약 중인 타깃에 대한 활성 예약 또는 대기 요청을 취소하고 상태를 초기화하는 함수 */
 	void CancelMeleeReservationRequest(bool bStartReacquireCooldown);
 
-	/* 이 몬스터가 근접 공격 예약 시스템을 사용해야 하는 공격 구성을 가졌는지 확인하는 함수 */
+	/* 근접 몬스터 판정 함수 */
 	bool UsesMeleeAttackReservation() const;
 
 	/* 현재 타깃으로부터 마지막으로 피해를 받은 시간을 어그로 기록에서 가져오는 함수 */

@@ -944,3 +944,25 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
 	}
 }
+
+bool ANSEnemyAIController::UsesMeleeAttackReservation() const
+{
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	const UNSEnemyData* EnemyData = Enemy ? Enemy->GetEnemyData() : nullptr;
+
+	if (!EnemyData)
+	{
+		return false;
+	}
+
+	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	{
+		if (Attack.AttackType == ENSEnemyAttackType::MeleeSweep)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
