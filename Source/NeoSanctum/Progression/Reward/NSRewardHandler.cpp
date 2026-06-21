@@ -3,6 +3,8 @@
 
 #include "NSRewardHandler.h"
 
+#include "CollisionQueryParams.h"
+#include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
@@ -347,7 +349,7 @@ FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 	}
 	else
 	{
-		// 지면을 찾지 못한 후본느 원점에 떨어뜨려 월드 밖 드랍을 방지
+		// 후보 위치에서 유효한 지면을 찾지 못하면 기존 드랍 위치로 fallback
 		LaunchData.TargetLocation = Origin;
 	}
 	
