@@ -95,18 +95,6 @@ void ANSPlayerCharacterBase::BeginPlay()
 		// 관전자에게 보낼 카메라 정보의 타겟이 되는 카메라 설정
 		SpectatorViewComp->SetSourceCamera(CameraComp);
 	}
-	
-	if (HasAuthority())
-	{
-		ANSBaseCompanionAI* DroneAI = 
-			GetWorld()->SpawnActor<ANSBaseCompanionAI>(DroneAIClass, GetActorTransform());
-	
-		if (ANSDroneAIController* DC = Cast<ANSDroneAIController>(DroneAI->GetController()))
-		{
-			DC->SetOwnerPlayer(this);
-			DroneAI->SetOwnerPlayer(this);// this = 드론을 소유한 플레이어 Pawn
-		}
-	}
 }
 
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -134,6 +122,9 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		// 저장된 장착 파츠 적용
 		ApplyEquippedPart();
 	}
+	
+	// Companion 초기화 및 스폰 시도
+	TryInitializeCompanion();
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -376,6 +367,79 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 
 	SetActorRotation(NewRotation);
 }
+
+#pragma region CompanionSpawn
+
+void ANSPlayerCharacterBase::TryInitializeCompanion()
+{
+	if (CompanionAI.IsValid() || !HasAuthority()) return;
+	
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS) return;
+	
+	UNSCompanionDefinition* CompanionDefinition = PS->GetCurrentCompanionDefinition();
+	if (!CompanionDefinition)
+	{
+		return;
+	}
+	
+	SpawnCompanion(CompanionDefinition);
+	
+}
+
+void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Definition)
+{
+	// 조건 체크
+	if(!GetWorld() || !DroneAIClass || !Definition) return;
+	
+	// 캐릭터부터 스폰 거리 유지
+	const FVector LocalOffset(-100.f, -100.f, 0.f);
+	const FVector SpawnLocation = GetActorTransform().TransformPosition(LocalOffset); 
+	FTransform SpawnTransform(GetActorRotation(), SpawnLocation);
+	
+	// SpawnActorDeferred 
+	ANSBaseCompanionAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSBaseCompanionAI>(
+		DroneAIClass,
+		SpawnTransform,
+		this,
+		this,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+		);
+	
+	if (!SpawnedCompanionAI) return;
+	
+	// 드론 스폰 성공했다면 잠시 틈만들어서 초기화
+	SpawnedCompanionAI->SetOwnerPlayer(this);
+	SpawnedCompanionAI->SetPendingDefinition(Definition);
+	
+	// 최종스폰
+	SpawnedCompanionAI->FinishSpawning(SpawnTransform);
+	
+	// WeakPtr 갱신
+	CompanionAI = SpawnedCompanionAI;
+}
+
+void ANSPlayerCharacterBase::HandleCompanionDataReady()
+{
+	if (!HasAuthority()) return;
+	
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS) return;
+	
+	UNSCompanionDefinition* CurrentDefinition = PS->GetCurrentCompanionDefinition();
+	if (!CurrentDefinition) return;
+	
+	if (CompanionAI.IsValid())
+	{
+		CompanionAI->ApplyDroneDefinition(CurrentDefinition);
+	}
+	else
+	{
+		TryInitializeCompanion();
+	}
+}
+
+#pragma endregion
 
 void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InCharacterData)
 {
