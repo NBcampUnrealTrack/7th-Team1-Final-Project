@@ -42,8 +42,14 @@ void UNSCurrencyDropSubsystem::UnregisterProxy(ANSCurrencyReplicationProxy* Prox
 }
 
 
-int32 UNSCurrencyDropSubsystem::RegisterDrop(FGameplayTag CurrencyType, ENSCurrencyGrade Grade, int64 Amount,
-	const FVector& Location, float Duration)
+int32 UNSCurrencyDropSubsystem::RegisterDrop(
+	FGameplayTag CurrencyType,
+	ENSCurrencyGrade Grade,
+	int64 Amount,
+	const FVector& Location,
+	float Duration,
+	const FNSDropLaunchData& LaunchData
+	)
 {
 	if (!HasServerAuthority() || Amount <= 0 || Duration <= 0.f)
 	{
@@ -58,6 +64,7 @@ int32 UNSCurrencyDropSubsystem::RegisterDrop(FGameplayTag CurrencyType, ENSCurre
 	Entry.Grade = Grade;
 	Entry.Amount = Amount;
 	Entry.Location = Location;
+	Entry.LaunchData = LaunchData;
 	Entry.ExpireTime = Now + Duration;
 	
 	const int32 DropId = AllocateDropId();
@@ -94,6 +101,16 @@ bool UNSCurrencyDropSubsystem::TryCollect(int32 DropId, ANSPlayerState* Collecto
 	{
 		ActiveDrops.Remove(DropId);
 		return false;
+	}
+	
+	if (Entry->LaunchData.IsValid())
+	{
+		const float LaunchEndTime = Entry->LaunchData.StartServerTime + Entry->LaunchData.FlightDuration;
+		
+		if (Now < LaunchEndTime)
+		{
+			return false;
+		}
 	}
 	
 	if (Entry->CollectedPlayer.Contains(Collector))
@@ -190,6 +207,7 @@ FNSCurrencySpawnEvent UNSCurrencyDropSubsystem::MakeSpawnEvent(int32 DropId, con
 	Event.Grade = Entry.Grade;
 	Event.Amount = Entry.Amount;
 	Event.Location = Entry.Location;
+	Event.LaunchData = Entry.LaunchData;
 	Event.Duration = FMath::Max(0.f, Entry.ExpireTime - NowSeconds);
 	return Event;
 }

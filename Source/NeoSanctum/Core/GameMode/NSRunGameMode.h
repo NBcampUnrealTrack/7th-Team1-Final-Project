@@ -3,10 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NSRunGameMode.generated.h"
 
+class ANSDroppedPart;
 enum class ENSRunChoice : uint8;
 class UNSStageManager;
 class UNSMonsterPoolManager;
@@ -132,6 +134,10 @@ private:
 	// 런 종료시 재화쪽 저장 및 클리어
 	void CommitAndClearAllWallets(float Multiplier);
 	
+	// 몬스터 사망시 보상 처리
+	void HandleEnemyReward(ACharacter* DeadEnemy);
+	bool TryGetRewardTriggerTagFromEnemy(const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;
 
@@ -140,4 +146,15 @@ private:
 	
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
+	
+	// 몬스터 보상 처리 관련 변수
+	UPROPERTY(EditDefaultsOnly, Category = "NS|Reward")
+	TSubclassOf<ANSDroppedPart> RewardDroppedPartClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "NS|Reward", meta = (ClampMin = "0.0"))
+	float RewardCurrencyDropDuration = 15.0f;
+	
+	// 보상 드랍 판정이 매번 같은 결과로 고정되지 않도록 GameMode에서 유지하는 서버 전용 랜덤 스트림
+	UPROPERTY(Transient)
+	FRandomStream RewardRandomStream;
 };

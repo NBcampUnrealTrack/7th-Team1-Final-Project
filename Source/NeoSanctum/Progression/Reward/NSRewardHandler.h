@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NeoSanctum/Data/Reward/NSRewardTypes.h"
 #include "UObject/Object.h"
 #include "NSRewardHandler.generated.h"
@@ -48,6 +49,18 @@ private:
 		float CurrencyDropDuration
 	);
 	
+	static FNSDropLaunchData MakeDropLaunchData(
+		UWorld* World,
+		const FVector& Origin,
+		FRandomStream& RandomStream
+	);
+	
+	static bool TryFindDropGroundLocation(
+		UWorld* World,
+		const FVector& CandidateTargetLocation,
+		FVector& OutGroundLocation
+	);
+	
 	static void HandleAugmentRewardEntry(
 		UWorld* World,
 		const FNSRewardEntry& RewardEntry,
@@ -57,7 +70,7 @@ private:
 	static void HandleCurrencyDropResult(
 		UWorld* World,
 		const FNSRewardDropResult& DropResult,
-		const FVector& DropLocation,
+		const FNSDropLaunchData& LaunchData,
 		float CurrencyDropDuration
 	);
 	

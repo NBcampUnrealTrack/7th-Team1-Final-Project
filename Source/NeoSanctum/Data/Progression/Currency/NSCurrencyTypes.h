@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSCurrencyTypes.generated.h"
 
 class ANSPlayerState;
@@ -40,6 +41,10 @@ struct FNSCurrencyDropEntry
 	// 드랍 위치 (오버랩 거리 검증용)
 	UPROPERTY()
 	FVector Location = FVector::ZeroVector;
+	
+	// 재화 픽업 비주얼의 포물선 발사 정보
+	UPROPERTY()
+	FNSDropLaunchData LaunchData;
 	
 	// 만료 시간
 	UPROPERTY()
@@ -78,6 +83,10 @@ struct FNSCurrencySpawnEvent
 	// 드랍 위치, FVector_NetQuantize10 : 전송용 벡터 압축
 	UPROPERTY()
 	FVector_NetQuantize10 Location = FVector::ZeroVector;
+	
+	// 클라이언트에서 동일한 포물선 궤적을 재생하기 위한 서버 결정 발사 정보
+	UPROPERTY()
+	FNSDropLaunchData LaunchData;
 
 	// 만료까지 남은 시간
 	UPROPERTY()

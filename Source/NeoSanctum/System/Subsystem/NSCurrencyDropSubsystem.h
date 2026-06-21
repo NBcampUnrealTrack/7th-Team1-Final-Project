@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSCurrencyDropSubsystem.generated.h"
 
 class ANSCurrencyReplicationProxy;
@@ -24,8 +25,14 @@ public:
 	void UnregisterProxy(ANSCurrencyReplicationProxy* Proxy);
 	
 	// 드랍 등록 -> DropId 발급 후 전 플레이어에 스폰 이벤트 전송
-	int32 RegisterDrop(FGameplayTag CurrencyType, ENSCurrencyGrade Grade, int64 Amount, 
-		const FVector& Location, float Duration);
+	int32 RegisterDrop(
+		FGameplayTag CurrencyType,
+		ENSCurrencyGrade Grade, 
+		int64 Amount, 
+		const FVector& Location,
+		float Duration,
+		const FNSDropLaunchData& LaunchData = FNSDropLaunchData()
+	);
 	
 	// 픽업 시도
 	bool TryCollect(int32 DropId, ANSPlayerState* Collector);

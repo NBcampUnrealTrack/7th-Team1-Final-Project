@@ -3,6 +3,9 @@
 
 #include "NSRewardHandler.h"
 
+#include "CollisionQueryParams.h"
+#include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
@@ -218,10 +221,17 @@ void UNSRewardHandler::HandleDropResults(
 	{
 		if (DropResult.RewardTypeTag == NSGameplayTags::Reward_Type_Currency)
 		{
+			// 서버가 발사 정보를 한 번 결정해 모든 클라이언트가 같은 재화 궤적을 재생
+			const FNSDropLaunchData LaunchData = MakeDropLaunchData(
+				World,
+				DropLocation,
+				RandomStream
+			);
+			
 			HandleCurrencyDropResult(
 				World,
 				DropResult,
-				DropLocation,
+				LaunchData,
 				CurrencyDropDuration
 			);
 			continue;
@@ -252,10 +262,110 @@ void UNSRewardHandler::HandleDropResults(
 	}
 }
 
+bool UNSRewardHandler::TryFindDropGroundLocation(
+	UWorld* World,
+	const FVector& CandidateTargetLocation,
+	FVector& OutGroundLocation)
+{
+	if (!World)
+	{
+		return false;
+	}
+
+	constexpr float GroundTraceStartOffset = 300.0f;
+	constexpr float GroundTraceDepth = 1000.0f;
+	constexpr float MinGroundNormalZ = 0.7f;
+
+	const FVector TraceStart = CandidateTargetLocation
+		+ FVector::UpVector * GroundTraceStartOffset;
+
+	const FVector TraceEnd = CandidateTargetLocation
+		- FVector::UpVector * GroundTraceDepth;
+
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(RewardDropGroundTrace),
+		false
+	);
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+	FHitResult GroundHit;
+
+	const bool bFoundGround = World->LineTraceSingleByObjectType(
+		GroundHit,
+		TraceStart,
+		TraceEnd,
+		ObjectQueryParams,
+		QueryParams
+	);
+
+	if (!bFoundGround || GroundHit.ImpactNormal.Z < MinGroundNormalZ)
+	{
+		return false;
+	}
+
+	OutGroundLocation = GroundHit.ImpactPoint;
+	return true;
+}
+
+FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
+	const FVector& Origin,
+	FRandomStream& RandomStream)
+{
+	FNSDropLaunchData LaunchData;
+	
+	if (!World)
+	{
+		return LaunchData;
+	}
+	
+	constexpr float StartHeightOffset = 30.0f;
+	constexpr float MinLaunchDistance = 140.0f;
+	constexpr float MaxLaunchDistance = 220.0f;
+	constexpr float ArcHeight = 140.0f;
+	constexpr float MinFlightDuration = 0.35f;
+	constexpr float MaxFlightDuration = 0.45f;
+	
+	const float LaunchAngle = RandomStream.FRandRange(0.0f, UE_TWO_PI);
+	const float LaunchDistance = RandomStream.FRandRange(MinLaunchDistance, MaxLaunchDistance);
+	
+	const FVector HorizontalOffset(
+		FMath::Cos(LaunchAngle) * LaunchDistance,
+		FMath::Sin(LaunchAngle) * LaunchDistance,
+		0.0f
+	);
+	
+	const FVector CandidateTargetLocation = Origin + HorizontalOffset;
+	
+	LaunchData.StartLocation = Origin + FVector(0.0f, 0.0f, StartHeightOffset);
+	
+	FVector GroundTargetLocation;
+	
+	if (TryFindDropGroundLocation(World, CandidateTargetLocation, GroundTargetLocation))
+	{
+		LaunchData.TargetLocation = GroundTargetLocation;
+	}
+	else
+	{
+		// 후보 위치에서 유효한 지면을 찾지 못하면 기존 드랍 위치로 fallback
+		LaunchData.TargetLocation = Origin;
+	}
+	
+	const AGameStateBase* GameState = World->GetGameState();
+	
+	LaunchData.StartServerTime = GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
+	LaunchData.FlightDuration = RandomStream.FRandRange(MinFlightDuration, MaxFlightDuration);
+	LaunchData.ArcHeight = ArcHeight;
+	
+	return LaunchData;
+}
+
 void UNSRewardHandler::HandleCurrencyDropResult(
 	UWorld* World,
 	const FNSRewardDropResult& DropResult,
-	const FVector& DropLocation,
+	const FNSDropLaunchData& LaunchData,
 	float CurrencyDropDuration)
 {
 	if (!World)
@@ -298,8 +408,9 @@ void UNSRewardHandler::HandleCurrencyDropResult(
 		DropResult.CurrencyTag,
 		ENSCurrencyGrade::None,
 		static_cast<int64>(DropResult.Quantity),
-		DropLocation,
-		CurrencyDropDuration
+		LaunchData.TargetLocation,
+		CurrencyDropDuration,
+		LaunchData
 	);
 	
 	if (DropId == INDEX_NONE)
@@ -361,11 +472,14 @@ void UNSRewardHandler::HandlePartDropResult(
 			continue;
 		}
 		
+		// 동일한 보상 결과에서 생성되는 파츠가 겹치지 않도록 개별 발사 정보를 발생
+		const FNSDropLaunchData LaunchData = MakeDropLaunchData(World, DropLocation, RandomStream);
+		
 		ANSDroppedPart* DroppedPart = ANSDroppedPart::SpawnInWorld(
 			World,
 			DroppedPartClass,
 			PartData,
-			DropLocation
+			LaunchData
 		);
 		
 		if (!DroppedPart)
