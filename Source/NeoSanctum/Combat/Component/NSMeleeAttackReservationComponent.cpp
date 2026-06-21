@@ -12,6 +12,24 @@ UNSMeleeAttackReservationComponent::UNSMeleeAttackReservationComponent()
 }
 
 
+bool UNSMeleeAttackReservationComponent::HasReservation(ANSEnemyCharacterBase* Enemy)
+{
+	if (!GetWorld())
+	{
+		return false;
+	}
+
+	const double CurrentTime = GetWorld()->GetTimeSeconds();
+
+	CleanupInvalidEntries(CurrentTime);
+
+	return ActiveReservations.ContainsByPredicate(
+		[Enemy](const FActiveReservation& Reservation)
+		{
+			return Reservation.Enemy == Enemy;
+		});
+}
+
 void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTime)
 {
 	ActiveReservations.RemoveAll(
