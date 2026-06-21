@@ -107,6 +107,39 @@ void UNSMeleeAttackReservationComponent::MarkAttackStarted(ANSEnemyCharacterBase
 
 	Reservation->ExpirationTime = GetWorld()->GetTimeSeconds() + AttackReservationSafetyTimeout;
 }
+
+void UNSMeleeAttackReservationComponent::ReleaseReservation(
+	ANSEnemyCharacterBase* Enemy,
+	bool bStartReacquireCooldown)
+{
+	if (!Enemy || !GetWorld())
+	{
+		return;
+	}
+
+	const int32 RemovedActiveCount = ActiveReservations.RemoveAll(
+		[Enemy](const FActiveReservation& Reservation)
+		{
+			return Reservation.Enemy == Enemy;
+		});
+
+	QueuedRequests.RemoveAll(
+		[Enemy](const FQueuedRequest& Request)
+		{
+			return Request.Enemy == Enemy;
+		});
+
+	if (bStartReacquireCooldown && RemovedActiveCount > 0)
+	{
+		const float MinCooldown = FMath::Min(ReacquireCooldownMin, ReacquireCooldownMax);
+		const float MaxCooldown = FMath::Max(ReacquireCooldownMin, ReacquireCooldownMax);
+
+		ReacquireBlockedUntil.FindOrAdd(Enemy) = GetWorld()->GetTimeSeconds() +
+			FMath::FRandRange(MinCooldown, MaxCooldown);
+	}
+
+	PromoteQueuedRequests(GetWorld()->GetTimeSeconds());
+}
 void UNSMeleeAttackReservationComponent::CleanupInvalidEntries(double CurrentTime)
 {
 	ActiveReservations.RemoveAll(
