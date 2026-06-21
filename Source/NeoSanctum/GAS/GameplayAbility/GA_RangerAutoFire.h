@@ -126,6 +126,7 @@ private:
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 	
 	void ExecuteMuzzleFireCue();
+	void ExecuteBulletTrailCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	void ExecuteImpactCue(const FHitResult& HitResult);
 	void ExecutePredictedImpactCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
