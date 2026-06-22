@@ -21,14 +21,14 @@ public:
 	
 	// 업그레이드
 	UFUNCTION(Server, Reliable)
-	void ServerTryUpgrade(FGameplayTag NodeTag);
+	void Server_TryUpgrade(FGameplayTag NodeTag);
 	
 	// 해금 판정 게이팅
 	UFUNCTION(BlueprintPure)
 	bool CanSelect(FGameplayTag CompanionTag) const;
 	
 	UFUNCTION(Server, Reliable)
-	void ServerTrySelect(FGameplayTag CompanionTag);
+	void Server_TrySelect(FGameplayTag CompanionTag);
 	
 	void SetOwnedCompanion(ANSBaseCompanionAI* Owner);
 	

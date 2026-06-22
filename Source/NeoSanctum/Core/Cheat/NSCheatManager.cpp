@@ -2,8 +2,10 @@
 
 #include "NSCheatManager.h"
 
+#include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -82,6 +84,64 @@ void UNSCheatManager::Debug_RewardBoss()
 void UNSCheatManager::Debug_RewardLevelUp()
 {
 	HandleRewardTriggerCheat(NSGameplayTags::Reward_Trigger_LevelUp);
+}
+
+void UNSCheatManager::Debug_CompanionUpgrade(FString InTag)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+	
+	if (InTag.IsEmpty()) return;
+	
+	FGameplayTag CompanionTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
+	if (!CompanionTag.IsValid()) return;
+	
+	if (OwningPC->HasAuthority())
+	{
+		ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
+		if (!PS) return;
+
+		UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
+		if (!Comp) return;
+
+		Comp->Server_TryUpgrade(CompanionTag);
+	}
+	else
+	{
+		OwningPC->Server_CompanionCheatUpgrade(CompanionTag);
+	}
+}
+
+void UNSCheatManager::Debug_CompanionSelect(FString InTag)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+	
+	if (InTag.IsEmpty()) return;
+	
+	FGameplayTag CompanionTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
+	if (!CompanionTag.IsValid()) return;
+	
+	if (OwningPC->HasAuthority())
+	{
+		ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
+		if (!PS) return;
+
+		UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
+		if (!Comp) return;
+
+		Comp->Server_TrySelect(CompanionTag);
+	}
+	else
+	{
+		OwningPC->Server_CompanionCheatSelect(CompanionTag);
+	}
 }
 
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)

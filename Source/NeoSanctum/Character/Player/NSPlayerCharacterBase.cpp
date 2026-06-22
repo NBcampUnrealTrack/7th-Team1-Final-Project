@@ -14,6 +14,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
@@ -405,7 +406,6 @@ void ANSPlayerCharacterBase::TryInitializeCompanion()
 	}
 	
 	SpawnCompanion(CompanionDefinition);
-	
 }
 
 void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Definition)
@@ -438,6 +438,11 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	
 	// WeakPtr 갱신
 	CompanionAI = SpawnedCompanionAI;
+	
+	// Component 내부 소유 드론 지정
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS) return;
+	PS->GetCompanionProgressionComponent()->SetOwnedCompanion(CompanionAI.Get());
 }
 
 void ANSPlayerCharacterBase::HandleCompanionDataReady()

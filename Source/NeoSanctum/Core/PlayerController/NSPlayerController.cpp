@@ -32,6 +32,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "Engine/AssetManager.h"
+#include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/Cheat/NSCheatManager.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
@@ -1653,3 +1654,33 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
 	}
 }
+
+#pragma region CompanionCheat
+
+void ANSPlayerController::Server_CompanionCheatUpgrade_Implementation(FGameplayTag CompanionTag)
+{
+	if (!CompanionTag.IsValid()) return;
+		
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS) return;
+	
+	UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
+	if (!Comp) return;
+	
+	Comp->Server_TryUpgrade(CompanionTag);
+}
+
+void ANSPlayerController::Server_CompanionCheatSelect_Implementation(FGameplayTag CompanionTag)
+{
+	if (!CompanionTag.IsValid()) return;
+		
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS) return;
+	
+	UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
+	if (!Comp) return;
+	
+	Comp->Server_TrySelect(CompanionTag);
+}
+
+#pragma endregion CompanionCheat

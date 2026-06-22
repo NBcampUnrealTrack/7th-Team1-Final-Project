@@ -80,6 +80,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
 	UNSCompanionDefinition* GetCurrentCompanionDefinition() const;
 	
+	UFUNCTION()
+	UNSCompanionProgressionComponent* GetCompanionProgressionComponent() const {return CompanionProgressionComponent;}
+	
 public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
