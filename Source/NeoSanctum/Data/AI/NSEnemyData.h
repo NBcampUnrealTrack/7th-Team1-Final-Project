@@ -62,7 +62,7 @@ struct FNSMonsterAttributeRow : public FTableRowBase
 
 	// 유효한 피격 한 번에 증가하는 게이지 수치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-	float HitGaugeGainPerHit = 25.0f;
+	float HitGaugeGainPerHit = 15.0f;
 };
 
 USTRUCT(BlueprintType)
