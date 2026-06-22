@@ -15,6 +15,11 @@ bool UNSGameplayCueNotify_DamageFlash::OnExecute_Implementation(AActor* MyTarget
 
 	if (UNSDamageFlashComponent* Flash = MyTarget->FindComponentByClass<UNSDamageFlashComponent>())
 	{
+		if (Flash->TryPlayMaterialFlash())
+		{
+			return true;
+		}
+		
 		Flash->PlayFlash();
 	}
 	
