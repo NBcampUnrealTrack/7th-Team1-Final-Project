@@ -40,7 +40,7 @@ void UNSInteractionComponent::BeginPlay()
 	DetectionSphere->SetSphereRadius(DetectionRadius);
 	PromptWidgetComponent->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 
-	// 이미 possess된 상태(스탠드얼론/리슨 호스트)면 여기서 활성화, 아니면 무시됨
+	// 이미 possess된 상태면 여기서 활성화, 아니면 무시됨
 	EnableLocalInteraction();
 }
 
@@ -214,7 +214,7 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 		return;
 	}
 	
-	// 대상이 지정한 프롬프트 앵커 위치에 그대로 배치 (에디터에서 WYSIWYG로 조정)
+	// 대상이 지정한 프롬프트 앵커 위치에 그대로 배치 (에디터에서 조정)
 	const FVector TargetLocation = INSInteractable::Execute_GetPromptWorldLocation(Target);
 	PromptWidgetComponent->SetWorldLocation(TargetLocation);
 	
@@ -222,6 +222,9 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 	if (Widget)
 	{
 		Widget->SetPromptText(InteractionKeyText, INSInteractable::Execute_GetPromptText(Target));
+		Widget->SetPromptIcon(INSInteractable::Execute_GetPromptIcon(Target));
+		Widget->SetPartName(INSInteractable::Execute_GetPromptText(Target));
+		Widget->SetRarityStyle(INSInteractable::Execute_GetPromptRarityIndex(Target));
 	}
 	PromptWidgetComponent->SetVisibility(true);
 }
