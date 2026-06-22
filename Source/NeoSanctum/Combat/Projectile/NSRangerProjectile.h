@@ -29,7 +29,8 @@ public:
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
 		float InSplashDamage,
-		float InExplosionRadius
+		float InExplosionRadius,
+		float InExplosionNoiseLoudness
 	);
 	
 	void LaunchProjectile(const FVector& LaunchDirection);
@@ -86,6 +87,8 @@ private:
 	
 	void ExecuteImpactCue(const FHitResult& HitResult);
 	
+	void ReportExplosionNoise(const FVector& ExplosionLocation) const;
+	
 	void ApplySplashDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const;
 	
 private:
@@ -97,4 +100,6 @@ private:
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
 	
 	float SplashDamage = 0.0f;
+	
+	float ExplosionNoiseLoudness = 0.0f;
 };

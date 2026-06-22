@@ -53,12 +53,14 @@ void ANSRangerProjectile::InitializeProjectile(
 	UAbilitySystemComponent* InSourceASC,
 	TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
 	float InSplashDamage,
-	float InExplosionRadius)
+	float InExplosionRadius,
+	float InExplosionNoiseLoudness)
 {
 	SourceASC = InSourceASC;
 	SplashDamageEffectClass = InSplashDamageEffectClass;
 	SplashDamage = FMath::Max(InSplashDamage, 0.0f);
 	ExplosionRadius = FMath::Max(InExplosionRadius, 0.0f);
+	ExplosionNoiseLoudness = FMath::Max(InExplosionNoiseLoudness, 0.0f);
 	
 	NS_ACTOR_LOG(this, LogNSGAS, Log,
 		"Projectile 초기화 완료. Damage={Damage}, Radius={Radius}",
@@ -321,6 +323,8 @@ void ANSRangerProjectile::OnProjectileHit(
 			ExplosionLocation + FVector(HitResult.ImpactNormal) * SplashOcclusionTraceStartOffset;
 	}
 	
+	ReportExplosionNoise(ExplosionLocation);
+	
 	TArray<AActor*> SplashTargetActors;
 	FindSplashTargetActors(ExplosionLocation, SplashTargetActors);
 	
@@ -338,6 +342,23 @@ void ANSRangerProjectile::OnProjectileHit(
 	ApplySplashDamage(ExplosionLocation, SplashTargetActors);
 	
 	Destroy();
+}
+
+void ANSRangerProjectile::ReportExplosionNoise(const FVector& ExplosionLocation) const
+{
+	APawn* NoiseInstigator = GetInstigator();
+	
+	if (!HasAuthority() || !IsValid(NoiseInstigator) || ExplosionNoiseLoudness <= 0.0f)
+	{
+		return;
+	}
+	
+	// 폭발 위치에서 소리를 내되, AI가 인지하는 공격 주체는 발사 플레이어로 유지.
+	NoiseInstigator->MakeNoise(
+		ExplosionNoiseLoudness,
+		NoiseInstigator,
+		ExplosionLocation
+	);
 }
 
 void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
