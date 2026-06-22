@@ -214,6 +214,11 @@ public:
 	
 	void ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel);
 	
+	void ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition);
+	
+	UFUNCTION()
+	void OnRep_CurrentDefinition();
+	
 protected:
 	// @민재 : 스폰엑터 디퍼드에서 PS로부터 정보를 전달 받으면 될것같음
 	// 현재 드론이 보유중인 어빌리티 정보
@@ -221,7 +226,7 @@ protected:
 	FNSCompanionAbilitySet_GrantedHandles CurrentAbilityHandles;
 	
 	// 현재 드론의 타입 정보
-	UPROPERTY(Transient) 
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentDefinition)
 	TObjectPtr<const UNSCompanionDefinition> CurrentDefinition;
 	
 	// 단계별 업그레이드가 저장되어있는 MAP
