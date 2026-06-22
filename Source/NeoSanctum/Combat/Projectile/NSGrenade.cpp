@@ -129,6 +129,8 @@ void ANSGrenade::ExplodeAt(
 	bExploded = true;
 	GetWorldTimerManager().ClearTimer(FuseTimerHandle);
 
+	ReportExplosionNoise(ExplosionLocation);
+	
 	// 데미지 적용 여부와 무관하게 폭발 시각/청각 연출부터 먼저 실행
 	ExecuteExplosionCue(ExplosionLocation, ExplosionNormal);
 
@@ -146,6 +148,33 @@ void ANSGrenade::ExplodeAt(
 	ApplyExplosionDamage(ExplosionLocation, TargetActors);
 
 	Destroy();
+}
+
+void ANSGrenade::ReportExplosionNoise(const FVector& ExplosionLocation) const
+{
+	APawn* NoiseInstigator = GetOwningPawn();
+	
+	if (!HasAuthority() || !IsValid(NoiseInstigator))
+	{
+		return;
+	}
+	
+	float ExplosionNoiseLoudness = 0.0f;
+	
+	if (!TryGetRuntimeStatMagnitude(
+		NSGameplayTags::CombatStat_NoiseExplosionLoudness, ExplosionNoiseLoudness))
+	{
+		return;
+	}
+	
+	ExplosionNoiseLoudness = FMath::Max(ExplosionNoiseLoudness, 0.0f);
+	
+	if (ExplosionNoiseLoudness <= 0.0f)
+	{
+		return;
+	}
+	
+	NoiseInstigator->MakeNoise(ExplosionNoiseLoudness, NoiseInstigator,	ExplosionLocation);
 }
 
 void ANSGrenade::ExecuteExplosionCue(const FVector& ExplosionLocation, const FVector& ExplosionNormal)
