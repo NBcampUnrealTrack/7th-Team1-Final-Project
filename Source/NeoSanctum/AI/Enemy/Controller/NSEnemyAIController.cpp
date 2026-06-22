@@ -1290,7 +1290,7 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 		if (UNSMeleeAttackReservationComponent* Component =
 			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
 		{
-			// TODO: 공격이 피격 경직으로 중단되면 예약을 반환하지 않고 접근 상태로 되돌리기
+			Component->MarkAttackInterrupted(Enemy);
 		}
 	}
 
