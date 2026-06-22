@@ -12,7 +12,8 @@
 class UCommonTextBlock;
 class UImage;
 class UMaterialInstanceDynamic;
-class UAbilitySystemComponent;
+class UNSAbilitySystemComponent;
+struct FSkillCooldownUIData;
 struct FNSSkillCooldownMessage;
 struct FNSSkillUIData;
 
@@ -27,71 +28,92 @@ class NEOSANCTUM_API UNSSkillSlotWidget : public UCommonUserWidget
 public:
 	//쿨타임 UI표시 시작
 	void StartCooldown(float NewCooldownDuration);
+
 	//쿨타임 UI 초기화
 	void ResetCooldown();
+
+	//스킬 식별 태그
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FGameplayTag BoundSkillTag;
+
+	//ASC 쿨다운 데이터 조회에 사용할 스킬 슬롯 태그
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
+	FGameplayTag SkillSlotTag;
+
 	//슬롯에 적용할 UI데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category =  "Skill")
 	FDataTableRowHandle SkillUIDataRow;
-	//슬롯이 반응할 쿨타임 태그
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
-	FGameplayTagQuery CooldownTagQuery;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
-	bool bShowChargeText = false;
+	
+public:
+	//캐릭터 변경 시 슬롯에 표시할 스킬 정보를 갱신
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow);
+	
 private:
-	//GMS 쿨타임 시작 수신
+	//GMS 쿨타임 변경 수신
 	void HandleCooldownMessage(
 		FGameplayTag Channel,
 		const FNSSkillCooldownMessage& Message);
+
 	//DataTable Row에서 아이콘과 SkillTag를 적용
 	void ApplySkillUIData();
 	
-	//스킬 아이콘
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> SkillIcon;
-	//원형 쿨타임
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UImage> CooldownOverlay;
-	//남은 쿨타임 텍스트
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonTextBlock> CooldownText;
-	//충전형 스킬의 남은 횟수 표시
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> ChargeText;
-	//쿨타임과 머테리얼 연결
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;//(MID : MaterialInstanceDynamic)
-	//위젯 제거시 GMS리스너 해제
-	FGameplayMessageListenerHandle CooldownListenerHandle;
 	//소유 플레이어의 ASC를 캐싱
 	void CacheOwnerASC();
 
-	//ASC에 적용된 쿨타임 GE를 조회해 UI를 갱신
-	void UpdateCooldownFromASC();
-
-	//조회한 남은 시간화면에 반영
+	//남은 시간과 전체 시간을 화면에 반영
 	void UpdateCooldownDisplay(float NewRemainingCooldown, float NewCooldownDuration);
 	
-	//조회한 남은 충전횟수 화면에 반영
+	//현재 충전 수와 최대 충전 수를 화면에 반영
 	void UpdateChargeDisplay(int32 CurrentCharge, int32 MaxCharge);
 	
-	//ASC의 AttributeSet에서 대쉬 충전수를 읽어온다
-	void UpdateDashChargeFromASC();
+	//ASC에서 스킬 쿨다운 UI 데이터를 조회
+	void UpdateSkillCooldownFromASC();
+
+	//조회한 스킬 쿨다운 데이터를 화면에 반영
+	void ApplySkillCooldownUIData(const FSkillCooldownUIData& CooldownData);
 	
+private:
+	//스킬 아이콘
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> SkillIcon;
+
+	//원형 쿨타임
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> CooldownOverlay;
+
+	//남은 쿨타임 텍스트
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonTextBlock> CooldownText;
+
+	//충전형 스킬의 남은 횟수 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> ChargeText;
+
+	//쿨타임과 머테리얼 연결
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;
+
+	//위젯 제거시 GMS리스너 해제
+	FGameplayMessageListenerHandle CooldownListenerHandle;
+
 	//PlayerState에서 가져온 ASC캐시
 	UPROPERTY(Transient)
-	TObjectPtr<UAbilitySystemComponent> CachedASC;
+	TObjectPtr<UNSAbilitySystemComponent> CachedASC;
 	
 	//전체 쿨타임
 	float CooldownDuration = 0.0f;
+
 	//남은 쿨타임
 	float RemainingCooldown = 0.0f;
 	
-	protected:
+	//쿨타임 중일 때만 ASC 쿨타임 상태를 Tick에서 조회
+	bool bCooldownTickActive = false;
+	
+protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 	virtual void NativeTick(
-			const FGeometry& InGeometry,
-			float InDeltaTime) override;
+		const FGeometry& InGeometry,
+		float InDeltaTime) override;
 };
