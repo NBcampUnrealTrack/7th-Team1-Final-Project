@@ -9,6 +9,9 @@
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 #include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
+#include "NeoSanctum/UI/HUD/NSSkillSlotWidget.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+
 
 void UNSHUDWidget::UpdateHealthAndShield(
 	float CurrentHealth,
@@ -239,3 +242,37 @@ void UNSHUDWidget::ShowOutRunGoods()
 		OutRunGoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 }
+
+void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
+{
+	if (!CharacterSkillUISetTable)
+	{
+		return;
+	}
+	//CharacterTag와 같은 RowName을 찾아 캐릭터별 스킬 슬롯 구성을 가져온다
+	const FNSCharacterSkillUISet* SkillUISet =
+		CharacterSkillUISetTable->FindRow<FNSCharacterSkillUISet>(
+			CharacterId,
+			TEXT("ApplyCharacterSkillUISet"));
+
+	if (!SkillUISet)
+	{
+		return;
+	}
+	//각 슬롯의 SkillSlotTag는 유지하고 표시할 SkillUIDataRow만 캐릭터별로 교체한다
+	if (SkillSlot1Widget)
+	{
+		SkillSlot1Widget->SetSkillUIData(SkillUISet->Skill1UIDataRow);
+	}
+
+	if (SkillSlot2Widget)
+	{
+		SkillSlot2Widget->SetSkillUIData(SkillUISet->Skill2UIDataRow);
+	}
+
+	if (SkillSlot3Widget)
+	{
+		SkillSlot3Widget->SetSkillUIData(SkillUISet->Skill3UIDataRow);
+	}
+}
+

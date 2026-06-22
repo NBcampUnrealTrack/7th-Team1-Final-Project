@@ -339,6 +339,11 @@ void ANSPlayerController::HideCharacterSelectWidget()
 
 void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData)
 {
+	if (!ConfirmedCharacterData)
+	{
+		return;
+	}
+	
 	CommitCharacterSelection(ConfirmedCharacterData);
 	// 확인 버튼 클릭 후에도 UI화면이 남아있어야 한다면 밑의 함수 제거
 	HideCharacterSelectWidget(); 
@@ -635,6 +640,41 @@ void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
 	DataSubsystem->ApplyCachedProgressTo(
 		NSPlayerState->GetProgressComponent());
 }
+
+void ANSPlayerController::UpdateSkillUIFromCurrentCharacter()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	UNSCharacterData* CurrentCharacterData =
+		NSPlayerState->GetCurrentCharacterData();
+	if (!CurrentCharacterData)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr;
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	UIManager->ApplyCharacterSkillUISet(
+		CurrentCharacterData->CharacterTag.GetTagName());
+}
+
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -734,6 +774,7 @@ void ANSPlayerController::BeginPlay()
 	BindRunEndPhase();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
+	//UpdateSkillUIFromCurrentCharacter();
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -831,6 +872,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UpdateHUDHealthAndShield();
 		UpdateHUDAmmo();
 		BindCurrencyToHUD();
+		//UpdateSkillUIFromCurrentCharacter();
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
@@ -1463,6 +1505,17 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 	{
 		PlayerCharacter->ChangeCharacterData(SelectedCharacterData);
 	}
+	
+	// 캐릭터 변경에 맞춰 스킬 슬롯 UI 갱신
+	if (UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr)
+	{
+
+		UIManager->ApplyCharacterSkillUISet(
+			SelectedCharacterData->CharacterTag.GetTagName());
+	}
 
 	const FName SelectedKey = SelectedCharacterData->GetPrimaryAssetId().PrimaryAssetName;
 
@@ -1522,7 +1575,7 @@ void ANSPlayerController::RestoreLastSelectedCharacter()
 	{
 		return;
 	}
-
+	
 	// 동일 커밋 경로 재사용
 	CommitCharacterSelection(RestoredData);
 }

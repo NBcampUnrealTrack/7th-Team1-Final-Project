@@ -49,6 +49,16 @@ void UNSUIManagerSubsystem::UpdateRunResultSkillGoods(int32 NewAmount)
 	RunResultSkillGoods = FMath::Max(NewAmount, 0);
 }
 
+void UNSUIManagerSubsystem::ApplyCharacterSkillUISet(FName CharacterId)
+{
+	if (!IsValid(HUDWidget))
+	{
+		return;
+	}
+	//캐릭터 변경 요청을 HUD로 전달해 스킬 슬롯 UI를 갱신한다
+	HUDWidget->ApplyCharacterSkillUISet(CharacterId);
+}
+
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()
 {
 	static ConstructorHelpers::FObjectFinder<UDataTable>

@@ -6,10 +6,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
-#include "AbilitySystemComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
-#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 
 void UNSSkillSlotWidget::StartCooldown(float NewCooldownDuration)
 {
@@ -69,35 +69,32 @@ void UNSSkillSlotWidget::ResetCooldown()
 	}
 }
 
+void UNSSkillSlotWidget::SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow)
+{
+	//캐릭터 변경 시 DT_SkillUI의 다른 Row로 교체해 아이콘과 스킬 태그를 갱신한다.
+	SkillUIDataRow = NewSkillUIDataRow;
+
+	ApplySkillUIData();
+
+	//캐릭터 변경 직후 이전 스킬의 쿨타임 표시가 남지 않도록 초기화
+	CooldownDuration = 0.0f;
+	RemainingCooldown = 0.0f;
+	bCooldownTickActive = false;
+	
+	ResetCooldown();
+	UpdateChargeDisplay(0, 0);
+}
+
 void UNSSkillSlotWidget::HandleCooldownMessage(
 	FGameplayTag Channel, 
 	const FNSSkillCooldownMessage& Message)
 {
-	//메시지에 담긴 스킬 태그와 쿨타임을 하나의 컨테이너로 모아 슬롯 태그 쿼리와 비교
-	FGameplayTagContainer MessageTags;
-
-	if (Message.SkillTag.IsValid())
-	{
-		MessageTags.AddTag(Message.SkillTag);
-	}
-
-	if (Message.CooldownTag.IsValid())
-	{
-		MessageTags.AddTag(Message.CooldownTag);
-	}
-	
-	//이 슬롯이 반응해야하는 태그가 아니면 다른 스킬의 쿨타임 메시지이므로 무시
-	if (!CooldownTagQuery.IsEmpty() && !CooldownTagQuery.Matches(MessageTags))
+	if (Message.SkillSlotTag.IsValid() && Message.SkillSlotTag != SkillSlotTag)
 	{
 		return;
 	}
-	
-	//충전형 스킬은 메시지에 포함된 충전수를 갱신
-	UpdateChargeDisplay(
-		Message.CurrentCharge,
-		Message.MaxCharge);
-	// ameplay 쪽에서 전달한 실제 쿨타임 시간으로 UI 카운트다운을 시작한다.
-	StartCooldown(Message.CooldownDuration);
+
+	ApplySkillCooldownUIData(Message.CooldownData);
 }
 
 void UNSSkillSlotWidget::ApplySkillUIData()
@@ -105,20 +102,34 @@ void UNSSkillSlotWidget::ApplySkillUIData()
 	const FNSSkillUIData* SkillUIData =
 		SkillUIDataRow.GetRow<FNSSkillUIData>(
 			TEXT("ApplySkillUIData"));
+
 	if (!SkillUIData)
 	{
 		return;
 	}
+
 	BoundSkillTag = SkillUIData->SkillTag;
-	if (SkillIcon)
+	
+
+	if (!SkillIcon)
 	{
-		UTexture2D* LoadedIcon =
-			SkillUIData->SkillIcon.LoadSynchronous();
-		if (LoadedIcon)
-		{
-			SkillIcon->SetBrushFromTexture(LoadedIcon);	
-		}
+		return;
 	}
+
+	if (SkillUIData->SkillIcon.IsNull())
+	{
+		return;
+	}
+
+	UTexture2D* LoadedSkillIcon = SkillUIData->SkillIcon.LoadSynchronous();
+	if (!LoadedSkillIcon)
+	{
+		return;
+	}
+
+	SkillIcon->SetBrushFromTexture(LoadedSkillIcon, true);
+	SkillIcon->InvalidateLayoutAndVolatility();
+	
 }
 
 void UNSSkillSlotWidget::CacheOwnerASC()
@@ -134,54 +145,8 @@ void UNSSkillSlotWidget::CacheOwnerASC()
 	{
 		return;
 	}
-	//매 프레임 PlayerState를 다시 찾지 않도록 ASC를 캐싱
-	CachedASC = NSPlayerState->GetAbilitySystemComponent();
-}
-
-void UNSSkillSlotWidget::UpdateCooldownFromASC()
-{
-	//위젯 생성 시점에 playerState가 아직 준비가 필요할때만 캐싱
-	if (!IsValid(CachedASC))
-	{
-		CacheOwnerASC();
-	}
-	//ASC가 없거나 쿨타임 태그 조건이 없으면 쿨타임을 표시하지않음
-	if (!IsValid(CachedASC) || CooldownTagQuery.IsEmpty())
-	{
-		ResetCooldown();
-		return;
-	}
-	
-	//슬롯에 설정된 태그 쿼리와 일치하는 Active GameplayEffect를 쿨타임으로 조회
-	FGameplayEffectQuery CooldownQuery;
-	CooldownQuery.OwningTagQuery = CooldownTagQuery;
-
-	const TArray<TPair<float, float>> CooldownTimes =
-		CachedASC->GetActiveEffectsTimeRemainingAndDuration(CooldownQuery);
-	//일치하는 쿨타임 GE가 없으면 쿨타임 UI를 숨김
-	if (CooldownTimes.IsEmpty())
-	{
-		ResetCooldown();
-		return;
-	}
-
-	float BestRemainingTime = 0.0f;
-	float BestDuration = 0.0f;
-
-	//가장 오래 남은 값을 대표로 사용
-	for (const TPair<float, float>& CooldownTime : CooldownTimes)
-	{
-		const float RemainingTime = CooldownTime.Key;
-		const float Duration = CooldownTime.Value;
-
-		if (RemainingTime > BestRemainingTime)
-		{
-			BestRemainingTime = RemainingTime;
-			BestDuration = Duration;
-		}
-	}
-
-	UpdateCooldownDisplay(BestRemainingTime, BestDuration);
+	CachedASC = Cast<UNSAbilitySystemComponent>(
+		NSPlayerState->GetAbilitySystemComponent());
 }
 
 void UNSSkillSlotWidget::UpdateCooldownDisplay(float NewRemainingCooldown, float NewCooldownDuration)
@@ -221,7 +186,7 @@ void UNSSkillSlotWidget::UpdateCooldownDisplay(float NewRemainingCooldown, float
 	}
 }
 
-	void UNSSkillSlotWidget::UpdateChargeDisplay(int32 CurrentCharge, int32 MaxCharge)
+void UNSSkillSlotWidget::UpdateChargeDisplay(int32 CurrentCharge, int32 MaxCharge)
 {
 	if (!ChargeText)
 	{
@@ -243,56 +208,69 @@ void UNSSkillSlotWidget::UpdateCooldownDisplay(float NewRemainingCooldown, float
 	ChargeText->SetVisibility(ESlateVisibility::Visible);
 }
 
-void UNSSkillSlotWidget::UpdateDashChargeFromASC()
+void UNSSkillSlotWidget::UpdateSkillCooldownFromASC()
 {
-	if (!ChargeText)
-	{
-		return;
-	}
-
-	//대쉬 횟수는 ASC의 PlayerAttributeSet에 있으므로 ASC가 없으면 다시 캐싱
 	if (!IsValid(CachedASC))
 	{
 		CacheOwnerASC();
 	}
 
-	if (!IsValid(CachedASC))
+	if (!IsValid(CachedASC) || !SkillSlotTag.IsValid())
 	{
-		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
-		return;
-	}
-	//대쉬는 별도 쿨타임 GE가 아니라 DashCount Attribute로 사용 가능 횟수를 관리
-	const UNSPlayerAttributeSet* PlayerAttributeSet =
-		CachedASC->GetSet<UNSPlayerAttributeSet>();
-
-	if (!PlayerAttributeSet)
-	{
-		ChargeText->SetVisibility(ESlateVisibility::Collapsed);
+		ResetCooldown();
+		UpdateChargeDisplay(0, 0);
 		return;
 	}
 
-	const int32 CurrentCharge =
-		FMath::Max<int32>(FMath::FloorToInt(PlayerAttributeSet->GetDashCount()), 0);
+	FSkillCooldownUIData CooldownData;
+	if (!CachedASC->GetSkillCooldownUIData(SkillSlotTag, CooldownData))
+	{
+		ResetCooldown();
+		UpdateChargeDisplay(0, 0);
+		return;
+	}
 
-	ChargeText->SetText(FText::AsNumber(CurrentCharge));
-	ChargeText->SetVisibility(ESlateVisibility::Visible);
+	ApplySkillCooldownUIData(CooldownData);
 }
+
+void UNSSkillSlotWidget::ApplySkillCooldownUIData(
+	const FSkillCooldownUIData& CooldownData)
+{
+	//ASC가 계산한 현재 충전 수를 UI에 반영한다.
+	UpdateChargeDisplay(
+		CooldownData.CurrentCount,
+		CooldownData.MaxCount);
+
+	if (!CooldownData.bIsRecharging)
+	{
+		ResetCooldown();
+		//재충전 중이 아니면 Tick에서 ASC 쿨타임 상태를 조회하지 않는다.
+		bCooldownTickActive = false;
+		return;
+	}
+	//재충전 중일 때만 남은 시간과 전체 시간을 화면에 반영한다.
+	UpdateCooldownDisplay(
+		CooldownData.RemainingTime,
+		CooldownData.TotalTime);
+	//GMS로 쿨타임 시작을 받은 뒤에는 Tick에서 ASC의 최신 남은 시간을 다시 조회한다.
+	bCooldownTickActive = true;
+}
+
 void UNSSkillSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
 	ApplySkillUIData();
 	CacheOwnerASC();
-	ResetCooldown();
-	UpdateChargeDisplay(0, 0);
-	
-	// WBP의 CooldownOverlay Brush에 적용된 머티리얼을 동적 인스턴스로 가져온다
+
 	if (CooldownOverlay)
 	{
 		CooldownMID = CooldownOverlay->GetDynamicMaterial();
 	}
+
 	ResetCooldown();
-	// GMS 채널을 구독하여 스킬 쿨타임 시작 메시지를 받는다
+	UpdateChargeDisplay(0, 0);
+
 	UGameplayMessageSubsystem& MessageSubsystem =
 		UGameplayMessageSubsystem::Get(this);
 	
@@ -316,16 +294,11 @@ void UNSSkillSlotWidget::NativeTick(
 	float InDeltaTime)
 {
 	Super::NativeTick(InGeometry, InDeltaTime);
-	
-	UpdateCooldownFromASC();
-	
-	if (bShowChargeText)
-	{
-		UpdateDashChargeFromASC();
-	}
-	else
-	{
-		UpdateChargeDisplay(0, 0);
-	}
 
+	if (!bCooldownTickActive)
+	{
+		return;
+	}
+	
+	UpdateSkillCooldownFromASC();
 }
