@@ -16,6 +16,8 @@ UNSInteractionComponent::UNSInteractionComponent()
 	DetectionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphere"));
 	DetectionSphere->SetSphereRadius(DetectionRadius);
 	DetectionSphere->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+	// 로컬 컨트롤 폰에서만 EnableLocalInteraction에서 켠다
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	PromptWidgetComponent = CreateDefaultSubobject<UWidgetComponent>(TEXT("PromptWidgetComponent"));
 	PromptWidgetComponent->SetWidgetSpace(EWidgetSpace::Screen);
@@ -36,14 +38,32 @@ void UNSInteractionComponent::BeginPlay()
 	DetectionSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 	DetectionSphere->SetSphereRadius(DetectionRadius);
 	PromptWidgetComponent->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
-	
+
+	// 이미 possess된 상태(스탠드얼론/리슨 호스트)면 여기서 활성화, 아니면 무시됨
+	EnableLocalInteraction();
+}
+
+void UNSInteractionComponent::EnableLocalInteraction()
+{
+	if (bLocalInteractionEnabled)
+	{
+		return;
+	}
+	if (!IsOwnerLocallyControlled())
+	{
+		return;
+	}
+
+	bLocalInteractionEnabled = true;
+
 	if (PromptWidgetClass)
 	{
 		PromptWidgetComponent->SetWidgetClass(PromptWidgetClass);
 	}
-	
+
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &UNSInteractionComponent::OnSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &UNSInteractionComponent::OnSphereEndOverlap);
+	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 }
 
 void UNSInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -188,4 +208,14 @@ APlayerController* UNSInteractionComponent::GetOwnerController() const
 		return nullptr;
 	}
 	return Cast<APlayerController>(OwnerPawn->GetController());
+}
+
+bool UNSInteractionComponent::IsOwnerLocallyControlled() const
+{
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (!OwnerPawn)
+	{
+		return false;
+	}
+	return OwnerPawn->IsLocallyControlled();
 }

@@ -23,7 +23,11 @@ public:
 	
 	// PlayerController의 Interact 입력에서 호출
 	void TryInteract();
-	
+
+	// 로컬 컨트롤 폰에서만 감지 활성화. 비로컬/중복 호출은 무시되므로
+	// BeginPlay/PossessedBy/OnRep_Controller 어디서 호출해도 안전.
+	void EnableLocalInteraction();
+
 protected:
 	UFUNCTION()
 	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
@@ -39,7 +43,8 @@ protected:
 	void HidePrompt();
 	
 	APlayerController* GetOwnerController() const;
-	
+	bool IsOwnerLocallyControlled() const;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Interaction")
 	TObjectPtr<USphereComponent> DetectionSphere;
@@ -62,4 +67,7 @@ private:
 	
 	UPROPERTY()
 	TWeakObjectPtr<AActor> ActiveTarget;
+
+	// 중복 셋업 방지
+	bool bLocalInteractionEnabled = false;
 };

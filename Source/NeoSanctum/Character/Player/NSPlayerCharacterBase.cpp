@@ -117,8 +117,13 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 {
 	Super::PossessedBy(EventController);
-	
+
 	InitializeAbilitySystem();
+
+	if (InteractionComp)
+	{
+		InteractionComp->EnableLocalInteraction();
+	}
 	
 	if (HasAuthority())
 	{
@@ -136,9 +141,19 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 void ANSPlayerCharacterBase::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	
+
 	InitializeAbilitySystem();
 	BindPartVisual();
+}
+
+void ANSPlayerCharacterBase::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	if (InteractionComp)
+	{
+		InteractionComp->EnableLocalInteraction();
+	}
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
