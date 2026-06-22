@@ -108,6 +108,7 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		ResetHitGauge();
 		SetRetreating(false);
 		ClearCurrentAttackDefinition();
 		ClearCombatAimTarget();
@@ -440,7 +441,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 
 	bIsInPool = true;
 	SetRetreating(false);
-	
+	ResetHitGauge();
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 
