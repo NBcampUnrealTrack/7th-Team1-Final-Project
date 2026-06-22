@@ -275,6 +275,7 @@ bool UNSRewardHandler::TryFindDropGroundLocation(
 	constexpr float GroundTraceStartOffset = 300.0f;
 	constexpr float GroundTraceDepth = 1000.0f;
 	constexpr float MinGroundNormalZ = 0.7f;
+	constexpr float LandingProbeRadius = 45.0f;
 
 	const FVector TraceStart = CandidateTargetLocation
 		+ FVector::UpVector * GroundTraceStartOffset;
@@ -292,11 +293,13 @@ bool UNSRewardHandler::TryFindDropGroundLocation(
 
 	FHitResult GroundHit;
 
-	const bool bFoundGround = World->LineTraceSingleByObjectType(
+	const bool bFoundGround = World->SweepSingleByObjectType(
 		GroundHit,
 		TraceStart,
 		TraceEnd,
+		FQuat::Identity,
 		ObjectQueryParams,
+		FCollisionShape::MakeSphere(LandingProbeRadius),
 		QueryParams
 	);
 
@@ -305,7 +308,7 @@ bool UNSRewardHandler::TryFindDropGroundLocation(
 		return false;
 	}
 
-	OutGroundLocation = GroundHit.ImpactPoint;
+	OutGroundLocation = GroundHit.Location;
 	return true;
 }
 
