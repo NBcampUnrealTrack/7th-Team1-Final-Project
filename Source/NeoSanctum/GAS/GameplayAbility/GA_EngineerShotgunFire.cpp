@@ -625,7 +625,20 @@ void UGA_EngineerShotgunFire::OnShotgunTargetDataReady(
 		return;
 	}
 
-	ReportWeaponNoise(AvatarActor);
+	FTransform AttackOriginTransform;
+	FVector NoiseLocation = AvatarActor->GetActorLocation();
+	
+	if (TryGetAttackOriginTransform(AttackOriginTransform))
+	{
+		NoiseLocation = AttackOriginTransform.GetLocation();
+	}
+	
+	TryReportAbilityNoise(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		NSGameplayTags::CombatStat_NoiseFireLoudness,
+		NoiseLocation
+	);
+	
 	ProcessTargetDataForDamage(TargetDataHandle);
 }
 
@@ -1095,14 +1108,6 @@ bool UGA_EngineerShotgunFire::IsTargetDataTraceValid(
 	}
 
 	return true;
-}
-
-void UGA_EngineerShotgunFire::ReportWeaponNoise(const AActor* InAvatarActor)
-{
-	if (APawn* NoiseInstigator = Cast<APawn>(const_cast<AActor*>(InAvatarActor)))
-	{
-		NoiseInstigator->MakeNoise(1.0f, NoiseInstigator, InAvatarActor->GetActorLocation());
-	}
 }
 
 void UGA_EngineerShotgunFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle)
