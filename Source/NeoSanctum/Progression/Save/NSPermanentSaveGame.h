@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "GameplayTagContainer.h"
 #include "NSPermanentSaveGame.generated.h"
 
 // 캐릭터의 영구 저장 데이터
@@ -26,6 +27,22 @@ struct FNSCharacterSaveData
 	// 캐릭터별 스킬 (스킬종류, 레벨)
 	UPROPERTY(SaveGame, BlueprintReadOnly)
 	TMap<FName,int32> CharacterSkillLevels;
+};
+
+USTRUCT(BlueprintType)
+struct FNSCompanionSaveData
+{
+	GENERATED_BODY()
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	FGameplayTag SelectedCompanionTag;
+	
+	// 노드태그 → 레벨
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	TMap<FGameplayTag, int32> NodeLevels;
+	
+	// 드론태그 → 누적
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	TMap<FGameplayTag, int32> UpgradeCounts;
 };
 
 UCLASS()
@@ -53,6 +70,9 @@ public:
 	// 소유 파츠 인벤토리 (계정 공유, 키 = 정의+등급)
 	UPROPERTY(SaveGame)
 	TArray<FNSPartSaveData> OwnedParts;
+	// 펫 관련 데이터
+	UPROPERTY(SaveGame)
+	FNSCompanionSaveData Companion;
 	
 	// 직업 단위
 	// Key : 캐릭터 FName, Value : 세이브 데이터
