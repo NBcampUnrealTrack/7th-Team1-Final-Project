@@ -11,6 +11,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class UNSCompanionDefinition;
 class ANSBaseCompanionAI;
 class ANSWeaponBase;
 class UNSCharacterData;
@@ -199,4 +200,19 @@ private:
 	// 사망 상태에 따라 연출을 실행할 때 클라이언트에 복제하는 시점을 조정하기 위한 bool 변수
 	UPROPERTY(ReplicatedUsing = OnRep_DeathPresentationStarted)
 	bool bDeathPresentationStarted = false;
+	
+	// @민재
+protected:
+	void TryInitializeCompanion();
+	
+	void SpawnCompanion(const UNSCompanionDefinition* Definition);
+	
+	void HandleCompanionDataReady();
+	
+protected:
+	UPROPERTY(Transient)
+	TWeakObjectPtr<ANSBaseCompanionAI> CompanionAI;
+	
+	bool bBoundToCompanionDataReady = false;
+	
 };
