@@ -170,13 +170,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TObjectPtr<UDataTable> AttributeInitData;
 
-	// 스폰 시 GE
+	// 기본 GE
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayEffect>> StartupEffects;
+	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 
 	// 기본 GA
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+
 	
 	// 몬스터가 사용할 수 있는 공격 목록
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")

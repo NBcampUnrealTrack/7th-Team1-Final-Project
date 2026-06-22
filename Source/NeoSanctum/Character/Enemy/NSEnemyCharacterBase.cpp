@@ -231,7 +231,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
 		if (HasAuthority())
 		{
-			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->StartupEffects)
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->DefaultEffects)
 			{
 				if (EffectClass)
 				{
@@ -275,7 +275,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
 			};
 
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->DefaultAbilities)
 			{
 				GiveAbilityOnce(AbilityClass);
 			}
