@@ -5,7 +5,9 @@
 
 #include "GameplayAbility/GA_SkillBase.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
+#include "GameFramework/Pawn.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -492,12 +494,20 @@ void UNSAbilitySystemComponent::BroadcastSkillCooldownUIData(const FGameplayTag&
 	FNSSkillCooldownMessage Message;
 	Message.SkillSlotTag = SkillSlotTag;
 	Message.CooldownData = CooldownData;
+	APawn* AvatarPawn = Cast<APawn>(GetAvatarActor());
+	if (!AvatarPawn)
+	{
+		return;
+	}
 
-	UGameplayMessageSubsystem& MessageSubsystem = UGameplayMessageSubsystem::Get(this);
-	MessageSubsystem.BroadcastMessage(
-		NSGameplayTags::Message_UI_SkillCooldown_Changed,
-		Message
-	);
+	ANSPlayerController* PlayerController =
+		Cast<ANSPlayerController>(AvatarPawn->GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	PlayerController->Client_NotifySkillCooldownChanged(Message);
 }
 
 void UNSAbilitySystemComponent::AddSkillCountForSlot(const FGameplayTag& SkillSlotTag, float Amount)

@@ -86,7 +86,7 @@ void UNSSkillSlotWidget::SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow)
 }
 
 void UNSSkillSlotWidget::HandleCooldownMessage(
-	FGameplayTag Channel, 
+	FGameplayTag Channel,
 	const FNSSkillCooldownMessage& Message)
 {
 	if (Message.SkillSlotTag.IsValid() && Message.SkillSlotTag != SkillSlotTag)
@@ -299,6 +299,18 @@ void UNSSkillSlotWidget::NativeTick(
 	{
 		return;
 	}
-	
-	UpdateSkillCooldownFromASC();
+
+	RemainingCooldown = FMath::Max(
+		RemainingCooldown - InDeltaTime,
+		0.0f);
+
+	UpdateCooldownDisplay(
+		RemainingCooldown,
+		CooldownDuration);
+
+	if (RemainingCooldown <= 0.0f)
+	{
+		ResetCooldown();
+		bCooldownTickActive = false;
+	}
 }

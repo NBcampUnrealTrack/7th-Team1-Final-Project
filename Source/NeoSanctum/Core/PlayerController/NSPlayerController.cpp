@@ -12,6 +12,8 @@
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
+#include "GameFramework/GameplayMessageSubsystem.h"
+#include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -26,6 +28,7 @@
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "InputCoreTypes.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
@@ -1624,6 +1627,14 @@ void ANSPlayerController::EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPar
 	Prog->SetEquippedPart(CharacterId, Definition, Rarity);   
 	// 서버 업로드
 	UploadLocalProgress(CharacterId);       
+}
+
+void ANSPlayerController::Client_NotifySkillCooldownChanged_Implementation(
+	const FNSSkillCooldownMessage& Message)
+{
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_SkillCooldown_Changed,
+		Message);
 }
 
 void ANSPlayerController::Debug_EnqueueAugmentOffer()

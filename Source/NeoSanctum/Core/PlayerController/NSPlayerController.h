@@ -18,6 +18,7 @@ class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
 class ANSRunGameState;
 class UNSCurrencyComponent;
+struct FNSSkillCooldownMessage;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerController : public APlayerController
@@ -106,6 +107,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	void EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	
+	UFUNCTION(Client, Reliable)
+	void Client_NotifySkillCooldownChanged(
+		const FNSSkillCooldownMessage& Message);
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
