@@ -7,6 +7,7 @@
 #include "Engine/StaticMesh.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/Pawn.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyVisualData.h"
 
@@ -22,7 +23,7 @@ ANSLocalCurrencyPickup::ANSLocalCurrencyPickup()
 	CollisionSphere->InitSphereRadius(CollisionRadius);
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
-	CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	CollisionSphere->SetCollisionResponseToChannel(NSCollisionChannels::Player, ECR_Overlap);
 
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(CollisionSphere);
