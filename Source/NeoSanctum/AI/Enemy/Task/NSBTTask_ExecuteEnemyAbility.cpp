@@ -59,10 +59,6 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	
 	ASC->OnAbilityEnded.AddUObject(this, &UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
 
-	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 선택된 공격: %s / GA: %s"),
-		*SelectedAttack->AttackId.ToString(),
-		*AttackAbilityClass->GetName());
-
 	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
