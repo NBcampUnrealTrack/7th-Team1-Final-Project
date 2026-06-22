@@ -72,6 +72,15 @@ void UNSPlayerProgressComponent::BuildPayload(FNSProgressPayload& OutPayload) co
 	OutPayload.JobCurrency = JobCurrency;
 	OutPayload.EquippedPart = EquippedPart;
 	ConvertMapToArray(CharacterSkillLevels, OutPayload.CharacterSkillLevels);
+	OutPayload.SelectedCompanionTag = SelectedCompanionTag;
+	OutPayload.CompanionNodeLevels.Reset();
+	for (const TPair<FGameplayTag, int32>& NodeLevelPair : CompanionNodeLevels)
+	{
+		FNSCompanionNodeLevel NodeLevelEntry;
+		NodeLevelEntry.Tag   = NodeLevelPair.Key;
+		NodeLevelEntry.Level = NodeLevelPair.Value;
+		OutPayload.CompanionNodeLevels.Add(NodeLevelEntry);
+	}
 }
 
 void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
@@ -85,4 +94,10 @@ void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
 	JobCurrency = Payload.JobCurrency;
 	EquippedPart = Payload.EquippedPart;
 	ConvertArrayToMap(Payload.CharacterSkillLevels, CharacterSkillLevels);
+	SelectedCompanionTag = Payload.SelectedCompanionTag;
+	CompanionNodeLevels.Reset();
+	for (const FNSCompanionNodeLevel& NodeLevelEntry : Payload.CompanionNodeLevels)
+	{
+		CompanionNodeLevels.Add(NodeLevelEntry.Tag, NodeLevelEntry.Level);
+	}
 }
