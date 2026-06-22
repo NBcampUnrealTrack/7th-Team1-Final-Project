@@ -294,4 +294,23 @@ protected:
 	FName CanApproachMeleeTargetKey = TEXT("bCanApproachMeleeTarget");
 
 #pragma endregion
+#pragma region 근접 EQS
+
+private:
+	// EnemyData의 EQS Query를 Blackboard에 등록하고 런타임 상태를 초기화하는 함수
+	void InitializeMeleeEQSBlackboard(const UNSEnemyData* EnemyData);
+
+	// 현재 타깃이 변경됐을 때 이전 결과를 제거하고 재탐색을 요청하는 함수
+	void ResetMeleeEQSForCurrentTarget();
+
+	// EnemyData의 근접 EQS Query를 저장하는 Blackboard 키 이름
+	FName MeleeEQSQueryKey = TEXT("MeleeEQSQuery");
+
+	// EQS가 선택한 접근 위치를 저장하는 Blackboard 키 이름
+	FName MeleeApproachLocationKey = TEXT("MeleeApproachLocation");
+
+	// 근접 EQS를 다시 실행해야 하는지 저장하는 Blackboard 키 이름
+	FName MeleeEQSNeedsRefreshKey = TEXT("bMeleeEQSNeedsRefresh");
+
+#pragma endregion
 };

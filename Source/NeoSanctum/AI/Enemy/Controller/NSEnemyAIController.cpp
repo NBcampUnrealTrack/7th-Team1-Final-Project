@@ -7,6 +7,7 @@
 #include "AttributeSet.h"
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "EnvironmentQuery/EnvQuery.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -166,13 +167,17 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
 		CachedBBComp = GetBlackboardComponent();
+
 		ResetTargetingState();
+		InitializeMeleeEQSBlackboard(EnemyData);
 	}
 }
 
 void ANSEnemyAIController::OnUnPossess()
 {
 	ResetTargetingState();
+	InitializeMeleeEQSBlackboard(nullptr);
+	
 	CachedBBComp = nullptr;
 	
 	Super::OnUnPossess();
@@ -882,6 +887,7 @@ void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
 	bAttackStartedOnCurrentTarget = false;
 
 	UpdateCurrentTargetBlackboard();
+	ResetMeleeEQSForCurrentTarget();
 }
 
 void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
@@ -897,6 +903,8 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 
 	CurrentCombatTarget.Reset();
 	bAttackStartedOnCurrentTarget = false;
+	
+	ResetMeleeEQSForCurrentTarget();
 
 	if (CachedBBComp)
 	{
@@ -915,6 +923,8 @@ void ANSEnemyAIController::ResetTargetingState()
 	ThreatRecords.Reset();
 	ReacquireBlockedUntil.Reset();
 	CurrentCombatTarget.Reset();
+	
+	ResetMeleeEQSForCurrentTarget();
 
 	CurrentTargetSelectedTime = 0.0;
 	LastTargetSwitchTime = 0.0;
@@ -1065,6 +1075,8 @@ void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
 void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCooldown)
 {
 	CancelMeleeReservationRequest(bStartReacquireCooldown);
+	
+	ResetMeleeEQSForCurrentTarget();
 }
 
 void ANSEnemyAIController::UpdateMeleeReservationState()
@@ -1174,4 +1186,44 @@ void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, b
 
 	CachedBBComp->SetValueAsBool(HasMeleeAttackReservationKey, bHasReservation);
 	CachedBBComp->SetValueAsBool(CanApproachMeleeTargetKey, bCanApproach);
+}
+
+void ANSEnemyAIController::InitializeMeleeEQSBlackboard(const UNSEnemyData* EnemyData)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->ClearValue(MeleeApproachLocationKey);
+
+	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, false);
+
+	if (EnemyData && EnemyData->EQSQuery)
+	{
+		CachedBBComp->SetValueAsObject(MeleeEQSQueryKey, EnemyData->EQSQuery);
+	}
+	else
+	{
+		CachedBBComp->ClearValue(MeleeEQSQueryKey);
+	}
+}
+
+void ANSEnemyAIController::ResetMeleeEQSForCurrentTarget()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->ClearValue(MeleeApproachLocationKey);
+
+	UObject* QueryTemplate = CachedBBComp->GetValueAsObject(MeleeEQSQueryKey);
+
+	const bool bCanRunMeleeEQS =
+		CurrentCombatTarget.IsValid() &&
+		UsesMeleeAttackReservation() &&
+		IsValid(QueryTemplate);
+
+	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, bCanRunMeleeEQS);
 }

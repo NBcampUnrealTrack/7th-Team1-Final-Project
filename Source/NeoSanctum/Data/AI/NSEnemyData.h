@@ -182,6 +182,10 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	TObjectPtr<UEnvQuery> EQSQuery;
+	
+	// OtherEnemies Context에 포함할 같은 타깃 추적 몬스터의 최대 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Config|Melee EQS", meta = (ClampMin = "0.0"))
+	float MeleeEQSNeighborRadius = 1000.0f;
 
 	// 보스 페이즈
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseSystem")
