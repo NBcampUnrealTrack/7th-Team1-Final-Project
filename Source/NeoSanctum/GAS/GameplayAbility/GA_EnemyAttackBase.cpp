@@ -20,7 +20,13 @@ UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 
 	bServerRespectsRemoteAbilityCancellation = false;
 	bRetriggerInstancedAbility = false;
+	
+	FGameplayTagContainer AssetTags = GetAssetTags();
+	AssetTags.AddTag(NSGameplayTags::Ability_Enemy_Attack);
+	SetAssetTags(AssetTags);
 
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Enemy_HitReacting);
+	
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
