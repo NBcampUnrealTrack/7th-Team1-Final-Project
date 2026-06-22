@@ -289,7 +289,6 @@ bool UNSRewardHandler::TryFindDropGroundLocation(
 
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
 
 	FHitResult GroundHit;
 
@@ -344,6 +343,10 @@ FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 	FVector GroundTargetLocation;
 	
 	if (TryFindDropGroundLocation(World, CandidateTargetLocation, GroundTargetLocation))
+	{
+		LaunchData.TargetLocation = GroundTargetLocation;
+	}
+	else if (TryFindDropGroundLocation(World, Origin, GroundTargetLocation))
 	{
 		LaunchData.TargetLocation = GroundTargetLocation;
 	}
