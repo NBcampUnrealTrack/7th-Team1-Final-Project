@@ -6,8 +6,6 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
-#include "IMediaControls.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
@@ -15,6 +13,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
+#include "Net/UnrealNetwork.h"
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
 {
@@ -65,6 +64,8 @@ void ANSBaseCompanionAI::Tick(float DeltaSeconds)
 void ANSBaseCompanionAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(ANSBaseCompanionAI, CurrentDefinition);
 }
 
 void ANSBaseCompanionAI::PossessedBy(AController* NewController)
@@ -243,28 +244,7 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewD
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 	
-	if (NewDefinition->CompanionMesh.Get() != nullptr)
-	{
-		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
-	}
-	else
-	{
-		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->CompanionMesh;
-		
-		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
-		StreamableManager.RequestAsyncLoad(
-			MeshToLoad.ToSoftObjectPath(),
-			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad, NewDefinition]()
-			{
-				if (NewDefinition != CurrentDefinition) return;
-				
-				if (USkeletalMesh* Loaded = MeshToLoad.Get())
-				{
-					SkeletalMeshComponent->SetSkeletalMesh(Loaded);
-				}
-			})
-		);
-	}
+	ApplyCompanionVisual(NewDefinition);
 	
 	CurrentDefinition = NewDefinition;
 }
@@ -322,6 +302,39 @@ void ANSBaseCompanionAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 		
 		break;
 	}
+}
+
+void ANSBaseCompanionAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition)
+{
+	if (!NewDefinition) return;
+	
+	if (NewDefinition->CompanionMesh.Get() != nullptr)
+	{
+		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
+	}
+	else
+	{
+		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->CompanionMesh;
+		
+		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+		StreamableManager.RequestAsyncLoad(
+			MeshToLoad.ToSoftObjectPath(),
+			FStreamableDelegate::CreateWeakLambda(this, [this, MeshToLoad, NewDefinition]()
+			{
+				if (NewDefinition != CurrentDefinition) return;
+				
+				if (USkeletalMesh* Loaded = MeshToLoad.Get())
+				{
+					SkeletalMeshComponent->SetSkeletalMesh(Loaded);
+				}
+			})
+		);
+	}
+}
+
+void ANSBaseCompanionAI::OnRep_CurrentDefinition()
+{
+	ApplyCompanionVisual(CurrentDefinition);
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)

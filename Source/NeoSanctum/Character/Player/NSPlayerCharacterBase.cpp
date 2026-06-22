@@ -28,6 +28,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
@@ -443,6 +444,7 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
 	if (!PS) return;
 	PS->GetCompanionProgressionComponent()->SetOwnedCompanion(CompanionAI.Get());
+	PS->GetCompanionProgressionComponent()->Server_TrySelect(Definition->CompanionTag);
 }
 
 void ANSPlayerCharacterBase::HandleCompanionDataReady()
