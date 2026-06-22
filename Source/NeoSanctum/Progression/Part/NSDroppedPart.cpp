@@ -12,6 +12,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
 
 ANSDroppedPart::ANSDroppedPart()
 {
@@ -81,7 +82,28 @@ bool ANSDroppedPart::OnInteract_Implementation(APlayerController* Interactor)
 
 FText ANSDroppedPart::GetPromptText_Implementation() const
 {
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, StoredInstance);
+	if (IsValid(Def))
+	{
+		return Def->PartName;
+	}
+	// Definition 미로드 시 기존 문구로 폴백
 	return PromptText;
+}
+
+TSoftObjectPtr<UTexture2D> ANSDroppedPart::GetPromptIcon_Implementation() const
+{
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, StoredInstance);
+	if (IsValid(Def))
+	{
+		return Def->Icon;
+	}
+	return nullptr;
+}
+
+int32 ANSDroppedPart::GetPromptRarityIndex_Implementation() const
+{
+	return static_cast<int32>(StoredInstance.CurrentRarity);
 }
 
 FVector ANSDroppedPart::GetPromptWorldLocation_Implementation() const

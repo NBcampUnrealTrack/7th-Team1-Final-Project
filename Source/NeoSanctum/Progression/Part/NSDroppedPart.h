@@ -102,6 +102,8 @@ public:
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
 	virtual FText GetPromptText_Implementation() const override;
+	virtual TSoftObjectPtr<UTexture2D> GetPromptIcon_Implementation() const override;
+	virtual int32 GetPromptRarityIndex_Implementation() const override;
 	virtual FVector GetPromptWorldLocation_Implementation() const override;
 protected:
 	// 상호작용 감지용 콜리전
