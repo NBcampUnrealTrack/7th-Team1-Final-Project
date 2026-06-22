@@ -8,6 +8,7 @@ namespace NSGameplayTags
 {
 	// Enemy State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_Combat);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_HitReacting);
 
 	// Enemy Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_BasicMelee);
@@ -15,6 +16,10 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TripleMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_StrongMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_RangerAttack);
+	
+	// Enemy Action - Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_Attack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_HitReaction);
 
 	// Enemy Event
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Enemy_Hit);

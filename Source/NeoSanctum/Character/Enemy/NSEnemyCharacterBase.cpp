@@ -15,6 +15,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -33,6 +34,9 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	Movement->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
@@ -59,8 +63,12 @@ void ANSEnemyCharacterBase::BeginPlay()
 	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
 	{
-		DissolveComponent->OnDissolveComplete.BindUObject(
-			this, &ANSEnemyCharacterBase::OnDissolveFinished);
+		DissolveComponent->OnDissolveComplete.BindUObject(this, &ANSEnemyCharacterBase::OnDissolveFinished);
+	}
+
+	if (HasAuthority())
+	{
+		OnHitGaugeThresholdReached.AddUObject(this, &ThisClass::HandleHitGaugeThresholdReached);
 	}
 }
 
@@ -74,6 +82,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsHitReacting);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -105,6 +114,8 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		FinishHitReaction();
+		ResetHitGauge();
 		SetRetreating(false);
 		ClearCurrentAttackDefinition();
 		ClearCombatAimTarget();
@@ -210,6 +221,10 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			AttributeSet->SetHealth(StatRow->MaxHealth);
 			AttributeSet->SetDefense(StatRow->Defense);
 			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+
+			AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
+			AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
+			AttributeSet->ResetHitGauge();
 		}
 	}
 	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
@@ -220,7 +235,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
 		if (HasAuthority())
 		{
-			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->StartupEffects)
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->DefaultEffects)
 			{
 				if (EffectClass)
 				{
@@ -264,10 +279,12 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
 			};
 
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->StartupAbilities)
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->DefaultAbilities)
 			{
 				GiveAbilityOnce(AbilityClass);
 			}
+			
+			GiveAbilityOnce(EnemyData->HitReactionAbilityClass);
 			
 			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 			{
@@ -396,6 +413,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 
 	bIsInPool = false;
 	bIsDead = false;
+	bIsHitReacting = false;
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 	
@@ -433,7 +451,8 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 
 	bIsInPool = true;
 	SetRetreating(false);
-	
+	FinishHitReaction();
+	ResetHitGauge();
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 
@@ -548,4 +567,93 @@ void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
 	}
 
 	bIsRetreating = bInRetreating;
+}
+
+float ANSEnemyCharacterBase::GetHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetHitGauge() : 0.0f;
+}
+
+float ANSEnemyCharacterBase::GetMaxHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetMaxHitGauge() : 0.0f;
+}
+
+void ANSEnemyCharacterBase::ResetHitGauge()
+{
+	if (!HasAuthority() || !AttributeSet)
+	{
+		return;
+	}
+
+	AttributeSet->ResetHitGauge();
+}
+
+void ANSEnemyCharacterBase::NotifyHitGaugeThresholdReached()
+{
+	if (!HasAuthority() || bIsDead || bIsInPool)
+	{
+		return;
+	}
+
+	OnHitGaugeThresholdReached.Broadcast();
+}
+
+void ANSEnemyCharacterBase::FinishHitReaction()
+{
+	if (!HasAuthority() || !bIsHitReacting)
+	{
+		return;
+	}
+
+	SetHitReactionState(false);
+}
+
+void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
+{
+	if (!HasAuthority() ||
+		bIsDead ||
+		bIsInPool ||
+		bIsHitReacting ||
+		!ASC ||
+		!EnemyData ||
+		!EnemyData->HitReactionAbilityClass)
+	{
+		return;
+	}
+
+	// 공격 GA 취소보다 먼저 상태를 설정해야 BT Task가 예약을 반환하지 않음
+	SetHitReactionState(true);
+
+	const bool bActivated = ASC->TryActivateAbilityByClass(EnemyData->HitReactionAbilityClass);
+
+	if (!bActivated)
+	{
+		FinishHitReaction();
+	}
+}
+
+void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
+{
+	if (!HasAuthority() || bIsHitReacting == bNewHitReacting)
+	{
+		return;
+	}
+
+	bIsHitReacting = bNewHitReacting;
+	ANSEnemyAIController* EnemyController = Cast<ANSEnemyAIController>(GetController());
+
+	if (!EnemyController)
+	{
+		return;
+	}
+
+	if (bIsHitReacting)
+	{
+		EnemyController->HandleHitReactionStarted();
+	}
+	else
+	{
+		EnemyController->HandleHitReactionFinished();
+	}
 }

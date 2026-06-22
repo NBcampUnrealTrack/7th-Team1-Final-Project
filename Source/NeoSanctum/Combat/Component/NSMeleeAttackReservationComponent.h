@@ -146,4 +146,8 @@ private:
 
 	/* 몬스터별로 예약을 다시 획득할 수 있는 월드 시간을 저장하는 맵 */
 	TMap<TWeakObjectPtr<ANSEnemyCharacterBase>, double> ReacquireBlockedUntil;
+	
+public:
+	// 공격이 피격 경직으로 중단되면 예약을 반환하지 않고 접근 상태로 되돌리는 함수
+	void MarkAttackInterrupted(ANSEnemyCharacterBase* Enemy);
 };

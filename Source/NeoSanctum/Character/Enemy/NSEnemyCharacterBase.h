@@ -148,4 +148,49 @@ public:
 protected:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Movement")
 	bool bIsRetreating = false;
+
+#pragma region 피격 관리
+
+public:
+	// 피격 게이지가 최대치에 도달했음을 전달하는 델리게이트
+	DECLARE_MULTICAST_DELEGATE(FOnHitGaugeThresholdReached);
+
+	// 피격 게이지가 최대치에 도달했을 때 서버에서 발생하는 이벤트
+	FOnHitGaugeThresholdReached OnHitGaugeThresholdReached;
+
+	// 현재 피격 게이지를 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Combat|Hit Gauge")
+	float GetHitGauge() const;
+
+	// 최대 피격 게이지를 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Combat|Hit Gauge")
+	float GetMaxHitGauge() const;
+
+	// 피격 게이지를 0으로 초기화하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Combat|Hit Gauge")
+	void ResetHitGauge();
+
+	// AttributeSet이 게이지 최대치 도달을 캐릭터에 알려줄 때 사용하는 함수
+	void NotifyHitGaugeThresholdReached();
+
+	// 현재 몬스터가 피격 경직 행동을 수행 중인지 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Combat|Hit Reaction")
+	bool IsHitReacting() const { return bIsHitReacting; }
+
+	// 피격 경직 Ability 종료 후 이동과 Behavior Tree 행동을 복구하는 함수
+	void FinishHitReaction();
+
+protected:
+	// 현재 피격 경직 여부를 서버에서 관리하고 클라이언트에 복제
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Hit Reaction")
+	bool bIsHitReacting = false;
+
+private:
+	// 피격 게이지 임계 이벤트를 받아 경직 Ability 실행을 시도하는 함수
+	void HandleHitGaugeThresholdReached();
+
+	// 경직 상태를 변경하고 AI Controller에 시작 또는 종료를 알리는 함수
+	void SetHitReactionState(bool bNewHitReacting);
+
+#pragma endregion
 };

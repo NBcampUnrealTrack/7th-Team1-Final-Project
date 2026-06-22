@@ -307,3 +307,29 @@ void UNSMeleeAttackReservationComponent::StartReacquireCooldown(ANSEnemyCharacte
 	double& BlockedUntil = ReacquireBlockedUntil.FindOrAdd(Enemy);
 	BlockedUntil = FMath::Max(BlockedUntil, NewBlockedUntil);
 }
+
+void UNSMeleeAttackReservationComponent::MarkAttackInterrupted(ANSEnemyCharacterBase* Enemy)
+{
+	if (!GetOwner() ||
+		!GetOwner()->HasAuthority() ||
+		!GetWorld() ||
+		!IsEnemyValid(Enemy))
+	{
+		return;
+	}
+
+	FActiveReservation* Reservation = ActiveReservations.FindByPredicate(
+		[Enemy](const FActiveReservation& ActiveReservation)
+		{
+			return ActiveReservation.Enemy == Enemy;
+		});
+
+	if (!Reservation)
+	{
+		return;
+	}
+
+	Reservation->Phase = ENSMeleeReservationPhase::Approaching;
+
+	Reservation->ExpirationTime = GetWorld()->GetTimeSeconds() + ApproachReservationDuration;
+}

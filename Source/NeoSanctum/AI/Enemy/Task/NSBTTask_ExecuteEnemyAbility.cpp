@@ -59,10 +59,6 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	
 	ASC->OnAbilityEnded.AddUObject(this, &UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
 
-	UE_LOG(LogTemp, Log, TEXT("[AI Attack] 선택된 공격: %s / GA: %s"),
-		*SelectedAttack->AttackId.ToString(),
-		*AttackAbilityClass->GetName());
-
 	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
@@ -121,8 +117,10 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeCompon
 	{
 		Enemy->ClearCurrentAttackDefinition();
 	}
+	
+	const bool bPreserveMeleeReservation = ShouldPreserveMeleeReservation(Controller);
 
-	if (Controller && bUsesMeleeReservation)
+	if (Controller && bUsesMeleeReservation && !bPreserveMeleeReservation)
 	{
 		Controller->ReleaseMeleeAttackReservation(true);
 	}
@@ -170,16 +168,31 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 				ASC->OnAbilityEnded.RemoveAll(this);
 			}
 		}
-		
-		if (bUsesMeleeReservation)
+
+		const bool bPreserveMeleeReservation = ShouldPreserveMeleeReservation(AIController);
+
+		if (bUsesMeleeReservation && !bPreserveMeleeReservation)
 		{
 			AIController->ReleaseMeleeAttackReservation(true);
-			bUsesMeleeReservation = false;
 		}
+
+		bUsesMeleeReservation = false;
 	}
 	
 	CachedAttackAbilityClass = nullptr;
 
 	// 애니메이션 종료
 	FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
+}
+
+bool UNSBTTask_ExecuteEnemyAbility::ShouldPreserveMeleeReservation(const ANSEnemyAIController* AIController) const
+{
+	if (!bUsesMeleeReservation || !AIController)
+	{
+		return false;
+	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIController->GetPawn());
+
+	return Enemy && Enemy->IsHitReacting() && AIController->HasMeleeAttackReservation();
 }

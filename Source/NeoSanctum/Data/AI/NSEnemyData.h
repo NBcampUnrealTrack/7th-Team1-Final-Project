@@ -55,6 +55,14 @@ struct FNSMonsterAttributeRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float BaseDamage = 50.0f;
+	
+	// 피격 경직 이벤트가 발생하는 게이지 최대치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1.0"))
+	float MaxHitGauge = 100.0f;
+
+	// 유효한 피격 한 번에 증가하는 게이지 수치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float HitGaugeGainPerHit = 15.0f;
 };
 
 USTRUCT(BlueprintType)
@@ -162,13 +170,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TObjectPtr<UDataTable> AttributeInitData;
 
-	// 스폰 시 GE
+	// 기본 GE
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayEffect>> StartupEffects;
+	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
 
 	// 기본 GA
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+
+	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
 	
 	// 몬스터가 사용할 수 있는 공격 목록
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
