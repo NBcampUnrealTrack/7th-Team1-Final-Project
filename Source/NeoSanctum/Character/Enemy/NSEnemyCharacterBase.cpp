@@ -15,6 +15,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -77,6 +78,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsHitReacting);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -108,6 +110,7 @@ void ANSEnemyCharacterBase::Die()
 	if (HasAuthority())
 	{
 		bIsDead = true;
+		FinishHitReaction();
 		ResetHitGauge();
 		SetRetreating(false);
 		ClearCurrentAttackDefinition();
@@ -404,6 +407,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 
 	bIsInPool = false;
 	bIsDead = false;
+	bIsHitReacting = false;
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
 	
@@ -441,6 +445,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 
 	bIsInPool = true;
 	SetRetreating(false);
+	FinishHitReaction();
 	ResetHitGauge();
 	ClearCurrentAttackDefinition();
 	ClearCombatAimTarget();
@@ -586,4 +591,43 @@ void ANSEnemyCharacterBase::NotifyHitGaugeThresholdReached()
 	}
 
 	OnHitGaugeThresholdReached.Broadcast();
+}
+
+void ANSEnemyCharacterBase::FinishHitReaction()
+{
+	if (!HasAuthority() || !bIsHitReacting)
+	{
+		return;
+	}
+
+	SetHitReactionState(false);
+}
+
+void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
+{
+}
+
+void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
+{
+	if (!HasAuthority() || bIsHitReacting == bNewHitReacting)
+	{
+		return;
+	}
+
+	bIsHitReacting = bNewHitReacting;
+	ANSEnemyAIController* EnemyController = Cast<ANSEnemyAIController>(GetController());
+
+	if (!EnemyController)
+	{
+		return;
+	}
+
+	if (bIsHitReacting)
+	{
+		// TODO: 피격 경직이 시작되면 이동과 공격을 중단하고 근접 예약 유지
+	}
+	else
+	{
+		// TODO: 피격 경직이 끝나면 Blackboard와 근접 예약 상태를 갱신
+	}
 }
