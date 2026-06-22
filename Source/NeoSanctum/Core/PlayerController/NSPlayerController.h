@@ -213,6 +213,8 @@ private:
 	UPROPERTY()
 	bool bCharacterSelectOpen = false;
 	
+	//캐릭터 데이터로 스킬 슬롯 UI 갱신
+	void UpdateSkillUIFromCurrentCharacter();
 private:
 	// 기본적인 Gameplay 상태일 때의 Input Mode 태그 목록
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
