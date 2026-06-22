@@ -17,6 +17,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -38,6 +39,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
+
+	GetCapsuleComponent()->SetCollisionProfileName(NSCollisionProfiles::PlayerCharacter);
 	
 	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_RangerProjectileShot.generated.h"
 
 class UAbilityTask_PlayMontageAndWait;
@@ -57,7 +58,7 @@ protected:
 	float TraceRange = 10000.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;

@@ -4,10 +4,13 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "AttributeSet.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
@@ -37,7 +40,7 @@ ANSTurret::ANSTurret()
 	HitCollisionComponent = CreateDefaultSubobject<UCapsuleComponent>(TEXT("HitCollisionComponent"));
 	SetRootComponent(HitCollisionComponent);
 	HitCollisionComponent->InitCapsuleSize(50.0f, 100.0f);
-	HitCollisionComponent->SetCollisionProfileName(TEXT("Pawn"));
+	HitCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::PlayerTurret);
 
 	SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
 	SceneRoot->SetupAttachment(HitCollisionComponent);
@@ -61,6 +64,10 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionSphereComponent"));
 	DetectionSphereComponent->SetupAttachment(SceneRoot);
 	DetectionSphereComponent->InitSphereRadius(0.0f);
+	DetectionSphereComponent->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	DetectionSphereComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DetectionSphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::Enemy, ECR_Overlap);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
@@ -232,6 +239,55 @@ bool ANSTurret::IsValidTargetActor(const AActor* TargetActor) const
 	return true;
 }
 
+bool ANSTurret::CanDamageHitActor(const AActor* HitActor) const
+{
+	if (!IsValid(HitActor) || HitActor == this)
+	{
+		return false;
+	}
+
+	// Player 팀 대상은 사격 피해에서 제외
+	const IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(HitActor);
+	if (TargetTeam &&
+		TargetTeam->GetGenericTeamId() == FGenericTeamId(static_cast<uint8>(ETeamId::Player)))
+	{
+		return false;
+	}
+
+	const IAbilitySystemInterface* AbilitySystemInterface = Cast<IAbilitySystemInterface>(HitActor);
+	const UAbilitySystemComponent* TargetASC =
+		AbilitySystemInterface ? AbilitySystemInterface->GetAbilitySystemComponent() : nullptr;
+
+	if (!TargetASC || TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
+	{
+		return false;
+	}
+
+	// Health Attribute를 가진 생존 대상만 피해 허용
+	for (const UAttributeSet* SpawnedAttributeSet : TargetASC->GetSpawnedAttributes())
+	{
+		if (!SpawnedAttributeSet)
+		{
+			continue;
+		}
+
+		FProperty* HealthProperty = SpawnedAttributeSet->GetClass()->FindPropertyByName(TEXT("Health"));
+		if (!HealthProperty)
+		{
+			continue;
+		}
+
+		const FGameplayAttribute HealthAttribute(HealthProperty);
+		if (TargetASC->HasAttributeSetForAttribute(HealthAttribute) &&
+			TargetASC->GetNumericAttribute(HealthAttribute) > 0.0f)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void ANSTurret::InitializeAbilityActorInfo()
 {
 	if (!ASC || bAbilityActorInfoInitialized)
@@ -349,15 +405,15 @@ bool ANSTurret::CanSeeTarget(const AActor* TargetActor) const
 	}
 
 	FHitResult HitResult;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
 		TraceStart,
 		TraceEnd,
-		ECC_Visibility,
+		NSCollisionChannels::CombatSight,
 		QueryParams
 	);
 
-	return bHit && HitResult.GetActor() == TargetActor;
+	return !bHit || HitResult.GetActor() == TargetActor;
 }
 
 void ANSTurret::InitializeTargets()
@@ -590,29 +646,18 @@ void ANSTurret::FireHitscan()
 	}
 
 	FHitResult HitResult;
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
 		HitResult,
 		TraceStart,
 		TraceEnd,
-		ECC_Visibility,
+		NSCollisionChannels::WeaponTrace,
 		QueryParams
 	);
 	
 	// 히트된 대상에 GE Damage 적용
-	if (bHit && IsValidTargetActor(HitResult.GetActor()))
+	if (bHit && CanDamageHitActor(HitResult.GetActor()))
 	{
 		AActor* TargetActor = HitResult.GetActor();
-
-		IGenericTeamAgentInterface* AttackerTeam = Cast<IGenericTeamAgentInterface>(OwningPawn);
-		IGenericTeamAgentInterface* TargetTeam = Cast<IGenericTeamAgentInterface>(TargetActor);
-
-		if (AttackerTeam && TargetTeam)
-		{
-			if (AttackerTeam->GetGenericTeamId() == TargetTeam->GetGenericTeamId())
-			{
-				return;
-			}
-		}
 
 		if (IAbilitySystemInterface* TargetInterface = Cast<IAbilitySystemInterface>(TargetActor))
 		{

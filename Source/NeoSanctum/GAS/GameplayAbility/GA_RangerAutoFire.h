@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_RangerAutoFire.generated.h"
 
 class UAnimMontage;
@@ -77,7 +78,7 @@ protected:
 	
 	// 조준 Trace와 총구 막힘 Trace에 공통으로 사용할 Collision 채널
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bDrawDebugHitscan = false;

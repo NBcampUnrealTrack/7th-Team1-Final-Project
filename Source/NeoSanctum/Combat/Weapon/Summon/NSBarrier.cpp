@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NiagaraComponent.h"
@@ -26,7 +27,7 @@ ANSBarrier::ANSBarrier()
 	SetRootComponent(BarrierCollisionComponent);
 	CurrentRadius = DefaultRadius;
 	BarrierCollisionComponent->InitSphereRadius(DefaultRadius);
-	BarrierCollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BarrierCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::PlayerBarrier);
 	BarrierCollisionComponent->SetGenerateOverlapEvents(false);
 
 	BarrierNiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BarrierNiagaraComponent"));

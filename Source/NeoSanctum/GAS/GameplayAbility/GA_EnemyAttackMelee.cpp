@@ -3,6 +3,7 @@
 
 #include "GA_EnemyAttackMelee.h"
 
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -92,7 +93,7 @@ void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 		Start,
 		End,
 		FQuat::Identity,
-		ECC_Pawn,
+		NSCollisionChannels::WeaponTrace,
 		FCollisionShape::MakeSphere(AttackTraceRadius),
 		QueryParams);
 

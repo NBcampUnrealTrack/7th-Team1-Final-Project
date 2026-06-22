@@ -6,6 +6,7 @@
 #include "GameplayEffectExtension.h"
 #include "GameFramework/GameStateBase.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/GAS/AttributeSet/NSDestructibleAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -22,7 +23,7 @@ ANSDestructibleObjectBase::ANSDestructibleObjectBase()
 
 	StaticMeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticMesh"));
 	StaticMeshComp->SetupAttachment(Root);
-	StaticMeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	StaticMeshComp->SetCollisionProfileName(NSCollisionProfiles::DestructibleObject);
 
 	GeometryCollectionComp = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("GeometryCollection"));
 	GeometryCollectionComp->SetupAttachment(Root);

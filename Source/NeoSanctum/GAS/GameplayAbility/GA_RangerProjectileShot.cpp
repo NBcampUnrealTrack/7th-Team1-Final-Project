@@ -339,7 +339,7 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 		QueryParams.AddIgnoredActor(CurrentWeapon);
 	}
 
-	const bool bHit = World->LineTraceSingleByChannel(
+	bool bHit = World->LineTraceSingleByChannel(
 		OutHitResult,
 		TraceStart,
 		TraceEnd,

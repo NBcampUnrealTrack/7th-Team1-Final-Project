@@ -9,6 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
@@ -187,7 +188,6 @@ void ANSGrenade::FindExplosionTargetActors(
 
 	TArray<FOverlapResult> OverlapResults;
 
-	// 폭발은 Pawn만 후보로 수집하고, 구조물 차폐는 별도 LineTrace에서 처리
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(GrenadeExplosion), false, this);
 	if (GetOwningPawn())
 	{
@@ -196,6 +196,10 @@ void ANSGrenade::FindExplosionTargetActors(
 
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Player);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::DestructibleObject);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::PlayerConstruct);
 
 	const bool bHasOverlap = GetWorld()->OverlapMultiByObjectType(
 		OverlapResults,
@@ -273,10 +277,6 @@ bool ANSGrenade::IsExplosionTargetOccluded(const FVector& TraceStart, const AAct
 		return false;
 	}
 
-	FCollisionObjectQueryParams ObjectQueryParams;
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-
-	// 폭발과 대상 사이의 WorldStatic만 차폐물로 취급
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(GrenadeExplosionOcclusion), false);
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredActor(TargetActor);
@@ -288,11 +288,11 @@ bool ANSGrenade::IsExplosionTargetOccluded(const FVector& TraceStart, const AAct
 
 	FHitResult OcclusionHit;
 	const FVector TraceEnd = TargetActor->GetActorLocation();
-	const bool bBlocked = World->LineTraceSingleByObjectType(
+	bool bBlocked = World->LineTraceSingleByChannel(
 		OcclusionHit,
 		TraceStart,
 		TraceEnd,
-		ObjectQueryParams,
+		NSCollisionChannels::ExplosionTrace,
 		QueryParams
 	);
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_EngineerShotgunFire.generated.h"
 
 class UAnimMontage;
@@ -194,7 +195,7 @@ protected:
 	float MuzzleObstructionBackTraceDistance = 100.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Engineer|Shotgun")
-	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Visibility;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bDrawDebugHitscan = false;
