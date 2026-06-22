@@ -46,7 +46,8 @@ void UNSMonsterAttributeSet::AccumulateHitGauge(ANSEnemyCharacterBase* EnemyChar
 	if (!EnemyCharacter ||
 		!EnemyCharacter->HasAuthority() ||
 		EnemyCharacter->IsDead() ||
-		EnemyCharacter->IsInPool())
+		EnemyCharacter->IsInPool() ||
+		EnemyCharacter->IsHitReacting())
 	{
 		return;
 	}
