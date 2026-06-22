@@ -11,6 +11,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
@@ -264,34 +265,7 @@ bool ANSTurret::CanDamageHitActor(const AActor* HitActor) const
 	const UAbilitySystemComponent* TargetASC =
 		AbilitySystemInterface ? AbilitySystemInterface->GetAbilitySystemComponent() : nullptr;
 
-	if (!TargetASC || TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
-	{
-		return false;
-	}
-
-	// Health Attribute를 가진 생존 대상만 피해 허용
-	for (const UAttributeSet* SpawnedAttributeSet : TargetASC->GetSpawnedAttributes())
-	{
-		if (!SpawnedAttributeSet)
-		{
-			continue;
-		}
-
-		FProperty* HealthProperty = SpawnedAttributeSet->GetClass()->FindPropertyByName(TEXT("Health"));
-		if (!HealthProperty)
-		{
-			continue;
-		}
-
-		const FGameplayAttribute HealthAttribute(HealthProperty);
-		if (TargetASC->HasAttributeSetForAttribute(HealthAttribute) &&
-			TargetASC->GetNumericAttribute(HealthAttribute) > 0.0f)
-		{
-			return true;
-		}
-	}
-
-	return false;
+	return NSDamageRules::CanApplyDamage(this, HitActor);
 }
 
 void ANSTurret::InitializeAbilityActorInfo()
