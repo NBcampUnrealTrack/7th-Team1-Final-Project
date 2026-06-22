@@ -327,4 +327,22 @@ private:
 	FName IsHitReactingKey = TEXT("bIsHitReacting");
 
 #pragma endregion
+#pragma region 추적 방향
+
+	// 추적·공격·후퇴 상태에 따라 이동 방향 회전과 타깃 방향 회전을 전환되는 함수
+	void UpdateFacingMode(
+		ANSEnemyCharacterBase* Enemy, 
+		AActor* TargetActor);
+
+	// 현재 거리가 몬스터 공격 중 하나의 사용 가능 거리 안에 있는지 확인하는 함수
+	bool IsWithinPotentialAttackRange(
+		const ANSEnemyCharacterBase* Enemy, 
+		const AActor* TargetActor) const;
+
+	// 이동 방향 회전 또는 타깃 방향 회전 설정을 CharacterMovement에 적용하는 함수
+	void ApplyFacingMode(
+		ANSEnemyCharacterBase* Enemy, 
+		AActor* TargetActor, 
+		bool bFaceTarget);
+#pragma endregion
 };

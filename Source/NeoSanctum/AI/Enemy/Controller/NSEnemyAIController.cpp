@@ -8,6 +8,7 @@
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "EnvironmentQuery/EnvQuery.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -68,21 +69,18 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 	if (IsValidLivingTarget(TargetActor))
 	{
-		SetFocus(TargetActor, EAIFocusPriority::Gameplay);
-
 		if (Enemy)
 		{
-			Enemy->UpdateCombatAimTarget(TargetActor);
 			UpdateRetreatState(Enemy, TargetActor);
+			UpdateFacingMode(Enemy, TargetActor);
 		}
 	}
 	else
 	{
-		ClearFocus(EAIFocusPriority::Gameplay);
+		ApplyFacingMode(Enemy, nullptr, false);
 
 		if (Enemy)
 		{
-			Enemy->ClearCombatAimTarget();
 			Enemy->SetRetreating(false);
 		}
 		
@@ -1281,8 +1279,14 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 	StopMovement();
 	ClearFocus(EAIFocusPriority::Gameplay);
 
-	Enemy->SetRetreating(false);
 	Enemy->ClearCombatAimTarget();
+	Enemy->SetRetreating(false);
+	
+	if (UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement())
+	{
+		Movement->bOrientRotationToMovement = true;
+		Movement->bUseControllerDesiredRotation = false;
+	}
 
 	// 근접 예약은 반환하지 않고 공격 중에서 접근 중 상태로 되돌림
 	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
@@ -1312,4 +1316,97 @@ void ANSEnemyAIController::HandleHitReactionFinished()
 	}
 
 	UpdateMeleeReservationState();
+}
+
+void ANSEnemyAIController::UpdateFacingMode(
+	ANSEnemyCharacterBase* Enemy,
+	AActor* TargetActor)
+{
+	if (!Enemy || !IsValidLivingTarget(TargetActor))
+	{
+		ApplyFacingMode(Enemy, nullptr, false);
+		return;
+	}
+
+	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+	const bool bShouldRetreat = CachedBBComp && CachedBBComp->GetValueAsBool(ShouldRetreatKey);
+	const bool bPreparingAttack = IsWithinPotentialAttackRange(Enemy, TargetActor);
+	const bool bFaceTarget = bIsAttacking || bShouldRetreat || bPreparingAttack;
+
+	ApplyFacingMode(Enemy, TargetActor, bFaceTarget);
+}
+
+bool ANSEnemyAIController::IsWithinPotentialAttackRange(
+	const ANSEnemyCharacterBase* Enemy,
+	const AActor* TargetActor) const
+{
+	if (!Enemy || !IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+
+	if (!EnemyData)
+	{
+		return false;
+	}
+
+	const float Distance = FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
+
+	// 엄폐물 등으로 공격 경로가 막혔는지 확인
+	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
+
+	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	{
+		// 거리, 시야, 공격 쿨다운을 기존 공격 판정 함수에서 함께 검사
+		if (CanUseAttackDefinition(
+			Attack,
+			TargetActor,
+			Distance,
+			bHasLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void ANSEnemyAIController::ApplyFacingMode(
+	ANSEnemyCharacterBase* Enemy,
+	AActor* TargetActor,
+	bool bFaceTarget)
+{
+	if (!Enemy)
+	{
+		return;
+	}
+
+	UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
+
+	if (!Movement)
+	{
+		return;
+	}
+
+	if (bFaceTarget && IsValid(TargetActor))
+	{
+		// 공격 준비·공격·후퇴 중에는 타깃을 바라봄
+		Movement->bOrientRotationToMovement = false;
+		Movement->bUseControllerDesiredRotation = true;
+
+		SetFocus(TargetActor, EAIFocusPriority::Gameplay);
+
+		Enemy->UpdateCombatAimTarget(TargetActor);
+	}
+	else
+	{
+		// 추적 중에는 이동 방향을 바라봄
+		Movement->bOrientRotationToMovement = true;
+		Movement->bUseControllerDesiredRotation = false;
+
+		ClearFocus(EAIFocusPriority::Gameplay);
+		Enemy->ClearCombatAimTarget();
+	}
 }
