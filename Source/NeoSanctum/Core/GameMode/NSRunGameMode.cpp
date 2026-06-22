@@ -559,66 +559,41 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
-	AActor* FirstFoundStart = nullptr;
-	
+	// 플레이어의 고정 슬롯 인덱스 결정(PlayerArray 내 위치)
+	int32 SlotIndex = 0;
+	if (GameState && Player && Player->PlayerState)
+	{
+		const int32 FoundIndex = 
+			GameState->PlayerArray.IndexOfByKey(Player->PlayerState);
+		SlotIndex = (FoundIndex != INDEX_NONE) ? FoundIndex : 0;
+	}
+
+	const FName DesiredTag =
+		*FString::Printf(TEXT("PlayerSpawn%d"), SlotIndex);
+
+	APlayerStart* FallbackStart = nullptr;
 	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
 	{
-		APlayerStart* PlayerStart = *It;
-		if (PlayerStart && PlayerStart->PlayerStartTag == FName("PlayerSpawn"))
+		APlayerStart* CandidateStart = *It;
+		if (!CandidateStart)
 		{
-			// 자리가 전부 찼을 때를 대비해서 첫번째 위치 저장
-			if (!FirstFoundStart)
-			{
-				FirstFoundStart = PlayerStart;
-			}
-
-			// 발견한 자리에 캐릭터있는지 체크용
-			FVector SpawnLocation = PlayerStart->GetActorLocation();
-			FQuat SpawnRotation = PlayerStart->GetActorQuat();
-			FCollisionShape CharacterCapsule = FCollisionShape::MakeCapsule(34.0f, 88.0f);
-			
-			TArray<FOverlapResult> Overlaps;
-			FCollisionQueryParams QueryParams;
-			
-			bool bIsOverlapPlayer = false;
-			
-			if (GetWorld()->OverlapMultiByChannel(
-				Overlaps,
-				SpawnLocation,
-				SpawnRotation,
-				ECC_Pawn,
-				CharacterCapsule,
-				QueryParams))
-			{
-				for (const FOverlapResult& Overlap : Overlaps)
-				{
-					AActor* OverlappedActor = Overlap.GetActor();
-					
-					if (OverlappedActor && OverlappedActor->IsA(APawn::StaticClass()))
-					{
-						bIsOverlapPlayer = true;
-						break;
-					}
-				}
-			}
-			
-			if (!bIsOverlapPlayer)
-			{
-				UE_LOG(LogTemp, Log, TEXT("GameMode: 비어있는 스폰 발견: %s"), *PlayerStart->GetName());
-				return PlayerStart;
-			}
+			continue;
+		}
+		
+		// 최후 폴백
+		if (!FallbackStart)
+		{
+			FallbackStart = CandidateStart;
+		}    
+		
+		// 내 슬롯 자리
+		if (CandidateStart->PlayerStartTag == DesiredTag)
+		{
+			return CandidateStart;                                  
 		}
 	}
-
-	// 자리가 없으면 첫번째 PlayerStart 위치로 강제 소환
-	if (FirstFoundStart)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("GameMode: 자리 X 강제 스폰"));
-		return FirstFoundStart;
-	}
-
-	// 태그 있는 PlayerStart 없으면 기본 스폰 위치로 스폰
-	return Super::FindPlayerStart_Implementation(Player, IncomingName);
+	
+	return FallbackStart ? FallbackStart : Super::FindPlayerStart_Implementation(Player, IncomingName);
 }
 
 void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerController)
