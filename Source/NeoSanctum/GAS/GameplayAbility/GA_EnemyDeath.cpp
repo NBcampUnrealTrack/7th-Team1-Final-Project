@@ -23,6 +23,12 @@ UGA_EnemyDeath::UGA_EnemyDeath()
 	SetAssetTags(AssetTags);
 
 	CancelAbilitiesWithTag.AddTag(NSGameplayTags::State_Enemy_Combat);
+	CancelAbilitiesWithTag.AddTag(NSGameplayTags::Ability_Enemy_Attack);
+	CancelAbilitiesWithTag.AddTag(NSGameplayTags::Ability_Enemy_HitReaction);
+
 	BlockAbilitiesWithTag.AddTag(NSGameplayTags::State_Enemy_Combat);
+	BlockAbilitiesWithTag.AddTag(NSGameplayTags::Ability_Enemy_Attack);
+	BlockAbilitiesWithTag.AddTag(NSGameplayTags::Ability_Enemy_HitReaction);
+
 	ActivationOwnedTags.AddTag(NSGameplayTags::State_Dead);
 }
