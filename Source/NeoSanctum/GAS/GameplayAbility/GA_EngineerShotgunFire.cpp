@@ -605,6 +605,7 @@ void UGA_EngineerShotgunFire::OnShotgunTargetDataReady(
 	if (bShouldExecuteCue)
 	{
 		ExecuteMuzzleFireCue();
+		ExecuteBulletTrailCue(TargetDataHandle);
 	}
 
 	if (ShouldPlayLocalFeedback() && bDrawDebugHitscan)
@@ -778,6 +779,69 @@ void UGA_EngineerShotgunFire::ExecuteMuzzleFireCue()
 	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
 
 	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_ShotgunFire_MuzzleFire, CueParameters);
+}
+
+void UGA_EngineerShotgunFire::ExecuteBulletTrailCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	
+	if (!ASC || !AvatarActor || TargetDataHandle.Num() <= 0)
+	{
+		return;
+	}
+	
+	FTransform MuzzleTransform;
+	
+	if (!TryGetAttackOriginTransform(MuzzleTransform))
+	{
+		MuzzleTransform = FTransform(
+			AvatarActor->GetActorRotation(),
+			AvatarActor->GetActorLocation() + AvatarActor->GetActorForwardVector() * 100.0f
+		);
+	}
+	
+	// 시작점은 Muzzle 소켓
+	const FVector TrailStart = MuzzleTransform.GetLocation();
+	
+	// 타겟 데이터 안에 샷건 발사 시 만들어진 펠릿별 히트Result가 있기 때문에 이를 순회함
+	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
+		
+		if (!TargetData)
+		{
+			continue;
+		}
+		
+		const FHitResult* HitResult = TargetData->GetHitResult();
+		
+		if (!HitResult)
+		{
+			continue;
+		}
+		
+		// 끝점은 히트된 경우 ImpactPoint까지, 히트되지 않고 허공에서 끝나는 경우 TraceEnd까지
+		const FVector TrailEnd = HitResult->bBlockingHit
+			? FVector(HitResult->ImpactPoint)
+			: FVector(HitResult->TraceEnd);
+		const FVector TrailDirection = (TrailEnd - TrailStart).GetSafeNormal();
+		const float TrailDistance = FVector::Dist(TrailStart, TrailEnd);
+		
+		if (TrailDirection.IsNearlyZero() || TrailDistance <= KINDA_SMALL_NUMBER)
+		{
+			continue;
+		}
+		
+		FGameplayCueParameters CueParameters;
+		CueParameters.Instigator = AvatarActor;
+		CueParameters.EffectCauser = AvatarActor;
+		CueParameters.Location = TrailStart;
+		CueParameters.Normal = TrailDirection;
+		CueParameters.RawMagnitude = TrailDistance;
+		
+		ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_ShotgunFire_BulletTrail, CueParameters);
+	}
 }
 
 void UGA_EngineerShotgunFire::ExecuteImpactCue(const FHitResult& HitResult)

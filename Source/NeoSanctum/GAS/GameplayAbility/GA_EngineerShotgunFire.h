@@ -116,6 +116,9 @@ private:
 	// 총구 발사 GameplayCue를 실행
 	void ExecuteMuzzleFireCue();
 
+	// 펠릿별 BulletTrail GameplayCue를 실행
+	void ExecuteBulletTrailCue(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+
 	// Impact GameplayCue를 실행
 	void ExecuteImpactCue(const FHitResult& HitResult);
 
