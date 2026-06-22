@@ -29,8 +29,8 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	GetCapsuleComponent()->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
 
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
-	Movement->bOrientRotationToMovement = false;
-	Movement->bUseControllerDesiredRotation = true;
+	Movement->bOrientRotationToMovement = true;
+	Movement->bUseControllerDesiredRotation = false;
 	Movement->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
