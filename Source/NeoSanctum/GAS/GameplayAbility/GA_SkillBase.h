@@ -29,6 +29,8 @@ public:
 	
 	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
 	
+	bool ShouldRequestReloadOnEmptyAmmo() const { return bRequestReloadOnEmptyAmmo; }
+	
 	virtual bool CheckCost(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,

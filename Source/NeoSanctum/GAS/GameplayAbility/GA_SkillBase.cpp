@@ -162,35 +162,6 @@ bool UGA_SkillBase::TryReportAbilityNoise(
 	return true;
 }
 
-bool UGA_SkillBase::TryRequestReloadOnEmptyAmmo() const
-{
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	
-	if (!ASC || !IsValid(AvatarActor))
-	{
-		return false;
-	}
-	
-	const float CurrentAmmo = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetAmmoAttribute());
-	const float MaxAmmo = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxAmmoAttribute());
-	
-	if (CurrentAmmo > 0.0f || MaxAmmo <= 0.0f)
-	{
-		return false;
-	}
-	
-	FGameplayEventData ReloadEventData;
-	ReloadEventData.EventTag = NSGameplayTags::Event_Common_RequestReload;
-	ReloadEventData.Instigator = AvatarActor;
-	ReloadEventData.Target = AvatarActor;
-	
-	// 같은 ASC에서 GamepalyEvent를 처리해 Reload Ability Trigger를 활성화.
-	ASC->HandleGameplayEvent(ReloadEventData.EventTag, &ReloadEventData);
-	
-	return true;
-}
-
 float UGA_SkillBase::GetCooldownStatOrDefault() const
 {
 	if (!SkillAbilityTag.IsValid())

@@ -54,12 +54,6 @@ void UGA_RangerAutoFire::ActivateAbility(
 		return;
 	}
 	
-	if (TryRequestReloadOnEmptyAmmo())
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
-	
 	float FinalFireInterval = 0.0f;
 	
 	if (!TryGetFinalFireInterval(FinalFireInterval))

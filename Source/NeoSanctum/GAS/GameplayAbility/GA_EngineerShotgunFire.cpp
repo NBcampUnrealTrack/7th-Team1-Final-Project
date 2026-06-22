@@ -50,12 +50,6 @@ void UGA_EngineerShotgunFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
-	if (TryRequestReloadOnEmptyAmmo())
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-		return;
-	}
 	
 	float FinalFireInterval = 0.0f;
 

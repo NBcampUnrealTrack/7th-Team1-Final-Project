@@ -47,7 +47,7 @@ void UNSAbilitySystemComponent::HandleAbilityFailed(
 	ReloadEventData.Instigator = AvatarPawn;
 	ReloadEventData.Target = AvatarPawn;
 	
-	const int32 ActivateAbilityCount = HandleGameplayEvent(ReloadEventData.EventTag, &ReloadEventData);
+	const int32 ActivatedAbilityCount = HandleGameplayEvent(ReloadEventData.EventTag, &ReloadEventData);
 	
 	NS_ACTOR_LOG(AvatarPawn, LogNSGAS, Log,
 		"빈 탄창 재장전 이벤트 전달. 활성화수={ActivatedAbilityCount}",

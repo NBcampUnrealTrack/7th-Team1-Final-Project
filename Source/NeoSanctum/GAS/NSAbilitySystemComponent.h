@@ -8,6 +8,7 @@
 #include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NSAbilitySystemComponent.generated.h"
 
+class UGameplayAbility;
 class UGameplayEffect;
 struct FGameplayEffectRemovalInfo;
 
