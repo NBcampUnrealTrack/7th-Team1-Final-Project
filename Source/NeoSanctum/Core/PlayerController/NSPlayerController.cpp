@@ -1365,6 +1365,12 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	{
 		PlayerCharacter->ApplyEquippedPart();
 	}
+	
+	const FGameplayTag SelectedTag = ProgressComponent->GetSelectedCompanion();
+	if (SelectedTag.IsValid())
+	{
+		OwningPlayerState->SetCurrentCompanionDefinitionTag(SelectedTag);
+	}
 }
 
 void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPayload& Payload)
@@ -1460,6 +1466,15 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 		NodeLevel.NodeId = PetPair.Key;
 		NodeLevel.Level = PetPair.Value;
 		Payload.PetUpgradeLevels.Add(NodeLevel);
+	}
+	
+	Payload.SelectedCompanionTag = PermanentSave->Companion.SelectedCompanionTag;
+	for (const TPair<FGameplayTag, int32>& NodeLevelPair : PermanentSave->Companion.NodeLevels)
+	{
+		FNSCompanionNodeLevel NodeLevelEntry;
+		NodeLevelEntry.Tag   = NodeLevelPair.Key;
+		NodeLevelEntry.Level = NodeLevelPair.Value;
+		Payload.CompanionNodeLevels.Add(NodeLevelEntry);
 	}
 
 	// 활성 캐릭터 슬롯
