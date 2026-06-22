@@ -13,23 +13,44 @@
 #include "RoomLevel.h"
 #include "Room.h"
 #include "Components/SphereComponent.h"
+#include "DrawDebugHelpers.h"
 
 
 ANSSpawner::ANSSpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	
+
+	// 런타임에도 존재하는 실제 루트 (Standalone에서 트랜스폼 보존)
+	USceneComponent* SceneRoot = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+	SetRootComponent(SceneRoot);
+
 	SpawnRadiusVisualizer = CreateDefaultSubobject<USphereComponent>(TEXT("SpawnRadiusVisualizer"));
-	// 루트 컴포넌트로 사용
-	SetRootComponent(SpawnRadiusVisualizer);              
+	// 루트 밑에 부착
+	SpawnRadiusVisualizer->SetupAttachment(SceneRoot);
 	SpawnRadiusVisualizer->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SpawnRadiusVisualizer->SetCollisionProfileName(TEXT("NoCollision"));
-	// 쿠킹시 제외
-	SpawnRadiusVisualizer->bIsEditorOnly = true; 
+	// 쿠킹/런타임 제외
+	SpawnRadiusVisualizer->bIsEditorOnly = true;
 	// PIE,게임에서 숨김
-	SpawnRadiusVisualizer->SetHiddenInGame(true); 
+	SpawnRadiusVisualizer->SetHiddenInGame(true);
 	SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
-	SpawnRadiusVisualizer->SetVisibility(bShowSpawnRadius);
+	// editor-only + hidden-in-game이라 레벨 편집 뷰포트에서만 표시됨
+	SpawnRadiusVisualizer->SetVisibility(true);
+	// 에디터 와이어프레임 색도 디버그 스피어 색과 맞춤
+	SpawnRadiusVisualizer->ShapeColor = DebugSphereColor;
+}
+
+void ANSSpawner::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// 에디터에서 SpawnRadius / DebugSphereColor 변경 시 시각화에 반영
+	if (SpawnRadiusVisualizer)
+	{
+		SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
+		SpawnRadiusVisualizer->ShapeColor = DebugSphereColor;
+		SpawnRadiusVisualizer->MarkRenderStateDirty();
+	}
 }
 
 URoom* ANSSpawner::GetOwningRoom()
@@ -248,15 +269,19 @@ void ANSSpawner::ExecuteFinalSpawn()
 	UE_LOG(LogTemp, Log, TEXT("스폰 요청 수량: %d"), FinalSpawnQuantity);
 }
 
-void ANSSpawner::OnConstruction(const FTransform& Transform)
+void ANSSpawner::BeginPlay()
 {
-	Super::OnConstruction(Transform);
+	Super::BeginPlay();
 	
-	if (SpawnRadiusVisualizer)
+#if ENABLE_DRAW_DEBUG
+	if (bShowRuntimeSpawnRadius)
 	{
-		SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
-		SpawnRadiusVisualizer->SetVisibility(bShowSpawnRadius);
+		// 스포너는 고정이므로 BeginPlay에서 persistent 1회만 그리면 충분(틱 비용 0)
+		DrawDebugSphere(GetWorld(), GetActorLocation(), SpawnRadius,
+			24, DebugSphereColor, /*bPersistent*/ true, -1.f, 0, 2.f);
 	}
+#endif
+
 }
 
 FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const
