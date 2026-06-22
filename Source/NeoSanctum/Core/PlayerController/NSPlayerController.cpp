@@ -268,13 +268,6 @@ void ANSPlayerController::UpdateHUDHealthAndShield()
 	{
 		return;
 	}
-	// 현재 Attribute 값을 로그로 확인
-	UE_LOG(LogTemp, Warning, TEXT("HP: %.0f / %.0f, Shield: %.0f / %.0f"),
-		PlayerAttributeSet->GetHealth(),
-		PlayerAttributeSet->GetMaxHealth(),
-		PlayerAttributeSet->GetShield(),
-		PlayerAttributeSet->GetMaxShield()
-	);
 
 	// 현재 Attribute 값을 HUD에 한번 직접 반영
 	UIManager->UpdateHealthAndShield(
