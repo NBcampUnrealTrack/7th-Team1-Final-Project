@@ -313,4 +313,18 @@ private:
 	FName MeleeEQSNeedsRefreshKey = TEXT("bMeleeEQSNeedsRefresh");
 
 #pragma endregion
+#pragma region 피격 경직
+
+public:
+	// 피격 경직이 시작되면 이동과 공격을 중단하고 근접 예약을 유지하는 함수
+	void HandleHitReactionStarted();
+
+	// 피격 경직이 끝나면 Blackboard와 근접 예약 상태를 갱신하는 함수
+	void HandleHitReactionFinished();
+
+private:
+	// 피격 경직 여부를 저장하는 Blackboard 키 이름
+	FName IsHitReactingKey = TEXT("bIsHitReacting");
+
+#pragma endregion
 };

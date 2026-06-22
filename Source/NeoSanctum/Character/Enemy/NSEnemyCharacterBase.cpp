@@ -624,10 +624,10 @@ void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
 
 	if (bIsHitReacting)
 	{
-		// TODO: 피격 경직이 시작되면 이동과 공격을 중단하고 근접 예약 유지
+		EnemyController->HandleHitReactionStarted();
 	}
 	else
 	{
-		// TODO: 피격 경직이 끝나면 Blackboard와 근접 예약 상태를 갱신
+		EnemyController->HandleHitReactionFinished();
 	}
 }

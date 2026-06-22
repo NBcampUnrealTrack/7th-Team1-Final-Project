@@ -37,6 +37,22 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	{
 		return;
 	}
+
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (Enemy && Enemy->IsHitReacting())
+	{
+		StopMovement();
+
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+			CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+		}
+
+		return;
+	}
 	
 	const double CurrentTime = World->GetTimeSeconds();
 
@@ -49,7 +65,6 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	}
 
 	AActor* TargetActor = GetCurrentTargetActor();
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
 	if (IsValidLivingTarget(TargetActor))
 	{
@@ -105,6 +120,18 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 
 bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 {
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (Enemy && Enemy->IsHitReacting())
+	{
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		}
+
+		return false;
+	}
+	
 	const FNSEnemyAttackDefinition* UsableAttack = FindAttackDefinitionByDistance(false);
 
 	if (CachedBBComp)
@@ -135,6 +162,18 @@ void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& Atta
 
 const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
 {
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (Enemy && Enemy->IsHitReacting())
+	{
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		}
+
+		return nullptr;
+	}
+	
 	const FNSEnemyAttackDefinition* SelectedAttack = FindAttackDefinitionByDistance(true);
 
 	if (CachedBBComp)
@@ -167,6 +206,8 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
 		CachedBBComp = GetBlackboardComponent();
+		
+		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
 
 		ResetTargetingState();
 		InitializeMeleeEQSBlackboard(EnemyData);
@@ -1226,4 +1267,49 @@ void ANSEnemyAIController::ResetMeleeEQSForCurrentTarget()
 		IsValid(QueryTemplate);
 
 	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, bCanRunMeleeEQS);
+}
+
+void ANSEnemyAIController::HandleHitReactionStarted()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+
+	if (!Enemy)
+	{
+		return;
+	}
+
+	StopMovement();
+	ClearFocus(EAIFocusPriority::Gameplay);
+
+	Enemy->SetRetreating(false);
+	Enemy->ClearCombatAimTarget();
+
+	// 근접 예약은 반환하지 않고 공격 중에서 접근 중 상태로 되돌림
+	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	{
+		if (UNSMeleeAttackReservationComponent* Component =
+			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+		{
+			// TODO: 공격이 피격 경직으로 중단되면 예약을 반환하지 않고 접근 상태로 되돌리기
+		}
+	}
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(IsHitReactingKey, true);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+	}
+}
+
+void ANSEnemyAIController::HandleHitReactionFinished()
+{
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	}
+
+	UpdateMeleeReservationState();
 }
