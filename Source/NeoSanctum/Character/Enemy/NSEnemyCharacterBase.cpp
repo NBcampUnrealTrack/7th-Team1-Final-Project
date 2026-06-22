@@ -63,8 +63,12 @@ void ANSEnemyCharacterBase::BeginPlay()
 	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
 	{
-		DissolveComponent->OnDissolveComplete.BindUObject(
-			this, &ANSEnemyCharacterBase::OnDissolveFinished);
+		DissolveComponent->OnDissolveComplete.BindUObject(this, &ANSEnemyCharacterBase::OnDissolveFinished);
+	}
+
+	if (HasAuthority())
+	{
+		OnHitGaugeThresholdReached.AddUObject(this, &ThisClass::HandleHitGaugeThresholdReached);
 	}
 }
 
@@ -607,6 +611,26 @@ void ANSEnemyCharacterBase::FinishHitReaction()
 
 void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
 {
+	if (!HasAuthority() ||
+		bIsDead ||
+		bIsInPool ||
+		bIsHitReacting ||
+		!ASC ||
+		!EnemyData ||
+		!EnemyData->HitReactionAbilityClass)
+	{
+		return;
+	}
+
+	// 공격 GA 취소보다 먼저 상태를 설정해야 BT Task가 예약을 반환하지 않음
+	SetHitReactionState(true);
+
+	const bool bActivated = ASC->TryActivateAbilityByClass(EnemyData->HitReactionAbilityClass);
+
+	if (!bActivated)
+	{
+		FinishHitReaction();
+	}
 }
 
 void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
