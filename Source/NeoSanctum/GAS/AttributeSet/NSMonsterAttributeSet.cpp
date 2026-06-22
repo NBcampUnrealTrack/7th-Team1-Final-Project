@@ -43,6 +43,34 @@ void UNSMonsterAttributeSet::ResetHitGauge()
 
 void UNSMonsterAttributeSet::AccumulateHitGauge(ANSEnemyCharacterBase* EnemyCharacter)
 {
+	if (!EnemyCharacter ||
+		!EnemyCharacter->HasAuthority() ||
+		EnemyCharacter->IsDead() ||
+		EnemyCharacter->IsInPool())
+	{
+		return;
+	}
+
+	const float GaugeGain = FMath::Max(GetHitGaugeGainPerHit(), 0.0f);
+
+	if (GaugeGain <= 0.0f)
+	{
+		return;
+	}
+
+	const float GaugeMaximum = FMath::Max(GetMaxHitGauge(), 1.0f);
+	const float NewGauge = FMath::Clamp(GetHitGauge() + GaugeGain, 0.0f, GaugeMaximum);
+
+	SetHitGauge(NewGauge);
+
+	if (NewGauge >= GaugeMaximum)
+	{
+		// 경직 처리가 현재 최대 게이지를 확인할 수 있도록 이벤트를 먼저 발생
+		EnemyCharacter->NotifyHitGaugeThresholdReached();
+
+		// 요구사항에 따라 임계 이벤트 발생 후 게이지를 0으로 초기화
+		ResetHitGauge();
+	}
 }
 
 void UNSMonsterAttributeSet::OnRep_HitGauge(const FGameplayAttributeData& OldHitGauge)
@@ -60,49 +88,101 @@ void UNSMonsterAttributeSet::OnRep_HitGaugeGainPerHit(const FGameplayAttributeDa
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSMonsterAttributeSet, HitGaugeGainPerHit, OldHitGaugeGainPerHit);
 }
 
+void UNSMonsterAttributeSet::ReportDamageSenseEvent(const FGameplayEffectModCallbackData& Data) const
+{
+	const float RawDamage = GetDamage();
+
+	AActor* DamagedActor = Data.Target.GetAvatarActor();
+	AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+
+	if (RawDamage <= 0.0f ||
+		!DamagedActor ||
+		!InstigatorActor)
+	{
+		return;
+	}
+
+	AActor* PerceivedActor = ResolvePerceivedInstigator(InstigatorActor);
+
+	if (!PerceivedActor || !DamagedActor->GetWorld())
+	{
+		return;
+	}
+
+	UAISense_Damage::ReportDamageEvent(
+		DamagedActor->GetWorld(),
+		DamagedActor,
+		PerceivedActor,
+		RawDamage,
+		PerceivedActor->GetActorLocation(),
+		DamagedActor->GetActorLocation());
+}
+
+void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(ANSEnemyCharacterBase* EnemyCharacter, float PreviousHealth)
+{
+	if (!EnemyCharacter)
+	{
+		return;
+	}
+
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+
+	// 완전히 방어된 공격이나 사망타는 피격 게이지에 포함하지 않음
+	if (AppliedHealthDamage <= 0.0f || GetHealth() <= 0.0f)
+	{
+		return;
+	}
+
+	AccumulateHitGauge(EnemyCharacter);
+}
+
+void UNSMonsterAttributeSet::HandleDeathAfterEffect(ANSEnemyCharacterBase* EnemyCharacter) const
+{
+	if (!EnemyCharacter || GetHealth() > 0.0f)
+	{
+		return;
+	}
+
+	EnemyCharacter->Die();
+}
+
+AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorActor) const
+{
+	if (!InstigatorActor)
+	{
+		return nullptr;
+	}
+
+	if (ANSBaseCompanionAI* AttackingDrone = Cast<ANSBaseCompanionAI>(InstigatorActor))
+	{
+		if (AActor* OwnerPlayer = AttackingDrone->GetOwnerPlayer())
+		{
+			return OwnerPlayer;
+		}
+	}
+
+	return InstigatorActor;
+}
+
 void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
-	// 부모 AttributeSet에 의해 데미지 처리되기 전에 어그로 감지
-	if (Data.EvaluatedData.Attribute == GetDamageAttribute())
+	const bool bIsDamageExecution = Data.EvaluatedData.Attribute == GetDamageAttribute();
+	const float PreviousHealth = GetHealth();
+	ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor());
+
+	// 부모 AttributeSet이 Damage Attribute를 소비하기 전에 처리
+	if (bIsDamageExecution)
 	{
-		float RawDamage = GetDamage();
-		AActor* DamagedActor = Data.Target.GetAvatarActor();
-		AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
-
-		if (RawDamage > 0.0f && DamagedActor && InstigatorActor)
-		{
-			AActor* PerceivedActor = InstigatorActor;
-
-			if (ANSBaseCompanionAI* AttackingDrone = Cast<ANSBaseCompanionAI>(InstigatorActor))
-			{
-				if (AActor* OwnerPlayer = AttackingDrone->GetOwnerPlayer())
-				{
-					PerceivedActor = OwnerPlayer;
-				}
-			}
-
-			if (PerceivedActor)
-			{
-				UAISense_Damage::ReportDamageEvent(
-					DamagedActor->GetWorld(),
-					DamagedActor,
-					PerceivedActor,
-					RawDamage,
-					PerceivedActor->GetActorLocation(),
-					DamagedActor->GetActorLocation()
-				);
-			}
-		}
+		ReportDamageSenseEvent(Data);
 	}
 
+	// Defense 적용, Damage 초기화, 실제 Health 차감을 처리
 	Super::PostGameplayEffectExecute(Data);
-
-	// 사망 시 처리
-	if (GetHealth() <= 0.0f)
+	
+	if (bIsDamageExecution)
 	{
-		if (ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor()))
-		{
-			EnemyCharacter->Die();
-		}
+		HandleHitGaugeAfterDamage(EnemyCharacter, PreviousHealth);
 	}
+
+	HandleDeathAfterEffect(EnemyCharacter);
 }

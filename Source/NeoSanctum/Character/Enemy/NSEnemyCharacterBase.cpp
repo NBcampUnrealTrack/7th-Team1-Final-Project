@@ -556,3 +556,33 @@ void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
 
 	bIsRetreating = bInRetreating;
 }
+
+float ANSEnemyCharacterBase::GetHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetHitGauge() : 0.0f;
+}
+
+float ANSEnemyCharacterBase::GetMaxHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetMaxHitGauge() : 0.0f;
+}
+
+void ANSEnemyCharacterBase::ResetHitGauge()
+{
+	if (!HasAuthority() || !AttributeSet)
+	{
+		return;
+	}
+
+	AttributeSet->ResetHitGauge();
+}
+
+void ANSEnemyCharacterBase::NotifyHitGaugeThresholdReached()
+{
+	if (!HasAuthority() || bIsDead || bIsInPool)
+	{
+		return;
+	}
+
+	OnHitGaugeThresholdReached.Broadcast();
+}

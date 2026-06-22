@@ -61,4 +61,19 @@ private:
 	// 복제된 피격당 증가량을 GAS Attribute 시스템에 반영하는 콜백 함수
 	UFUNCTION()
 	void OnRep_HitGaugeGainPerHit(const FGameplayAttributeData& OldHitGaugeGainPerHit);
+	
+private:
+	/* PostGameplayEffectExecute 내부 로직 분리 */
+	
+	// Damage Attribute가 소비되기 전에 AI Damage Sense 이벤트를 보고하는 함수
+	void ReportDamageSenseEvent(const FGameplayEffectModCallbackData& Data) const;
+
+	// 실제 체력 감소량을 확인하고 생존한 몬스터의 피격 게이지를 누적하는 함수
+	void HandleHitGaugeAfterDamage(ANSEnemyCharacterBase* EnemyCharacter, float PreviousHealth);
+
+	// GameplayEffect 처리 후 체력이 0 이하인 몬스터를 사망시키는 함수
+	void HandleDeathAfterEffect(ANSEnemyCharacterBase* EnemyCharacter) const;
+
+	// 드론 공격자를 실제 어그로 대상인 소유 플레이어로 변환하는 함수
+	AActor* ResolvePerceivedInstigator(AActor* InstigatorActor) const;
 };
