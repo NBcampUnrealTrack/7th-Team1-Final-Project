@@ -55,6 +55,7 @@ private:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void OnConstruction(const FTransform& Transform) override;
 	// 스폰 범위용
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	float SpawnRadius = 200.0f;

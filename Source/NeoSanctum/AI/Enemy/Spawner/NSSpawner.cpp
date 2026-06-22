@@ -40,6 +40,19 @@ ANSSpawner::ANSSpawner()
 	SpawnRadiusVisualizer->ShapeColor = DebugSphereColor;
 }
 
+void ANSSpawner::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// 에디터에서 SpawnRadius / DebugSphereColor 변경 시 시각화에 반영
+	if (SpawnRadiusVisualizer)
+	{
+		SpawnRadiusVisualizer->SetSphereRadius(SpawnRadius);
+		SpawnRadiusVisualizer->ShapeColor = DebugSphereColor;
+		SpawnRadiusVisualizer->MarkRenderStateDirty();
+	}
+}
+
 URoom* ANSSpawner::GetOwningRoom()
 {
 	if (CachedRoom) 
