@@ -24,9 +24,17 @@ public:
 	// PlayerController의 Interact 입력에서 호출
 	void TryInteract();
 
-	// 로컬 컨트롤 폰에서만 감지 활성화. 비로컬/중복 호출은 무시되므로
-	// BeginPlay/PossessedBy/OnRep_Controller 어디서 호출해도 안전.
+	// 로컬 컨트롤 폰에서만 감지 활성화. 비로컬/중복 호출은 무시되도록
 	void EnableLocalInteraction();
+
+protected:
+	// 서버에서 CanInteract 재검증 후 Client_OnInteractApproved 호출
+	UFUNCTION(Server, Reliable)
+	void Server_RequestInteract(AActor* Target);
+
+	// 서버 승인 후 클라이언트에서 UI 오픈
+	UFUNCTION(Client, Reliable)
+	void Client_OnInteractApproved(AActor* Target);
 
 protected:
 	UFUNCTION()

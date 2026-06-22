@@ -10,6 +10,7 @@
 UNSInteractionComponent::UNSInteractionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	SetIsReplicatedByDefault(true);
 	// 오버랩 됐을때만 틱이 돌게
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 	
@@ -131,7 +132,41 @@ void UNSInteractionComponent::TryInteract()
 	{
 		return;
 	}
+	// 클라 사전 검사, 실제 검증은 서버에서 재수행
 	if (!INSInteractable::Execute_CanInteract(Target, PC))
+	{
+		return;
+	}
+	Server_RequestInteract(Target);
+}
+
+void UNSInteractionComponent::Server_RequestInteract_Implementation(AActor* Target)
+{
+	if (!Target || !Target->Implements<UNSInteractable>())
+	{
+		return;
+	}
+	APlayerController* PC = GetOwnerController();
+	if (!PC)
+	{
+		return;
+	}
+	// 서버 권위 검증
+	if (!INSInteractable::Execute_CanInteract(Target, PC))
+	{
+		return;
+	}
+	Client_OnInteractApproved(Target);
+}
+
+void UNSInteractionComponent::Client_OnInteractApproved_Implementation(AActor* Target)
+{
+	if (!Target || !Target->Implements<UNSInteractable>())
+	{
+		return;
+	}
+	APlayerController* PC = GetOwnerController();
+	if (!PC)
 	{
 		return;
 	}
