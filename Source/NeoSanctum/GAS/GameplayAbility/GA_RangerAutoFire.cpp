@@ -26,6 +26,7 @@ UGA_RangerAutoFire::UGA_RangerAutoFire()
 	// 내부 반복 타이머가 아니라 Ability 활성화 주기로 연사를 구성.
 	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Reloading);
+	bRequestReloadOnEmptyAmmo = true;
 }
 
 void UGA_RangerAutoFire::ActivateAbility(

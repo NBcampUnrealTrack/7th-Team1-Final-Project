@@ -6,11 +6,54 @@
 #include "GameplayAbility/GA_SkillBase.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Slot.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Stats/NSCombatStatComponent.h"
+
+void UNSAbilitySystemComponent::BeginPlay()
+{
+	Super::BeginPlay();
+	
+	AbilityFailedCallbacks.AddUObject(this, &ThisClass::HandleAbilityFailed);
+}
+
+void UNSAbilitySystemComponent::HandleAbilityFailed(
+	const UGameplayAbility* FailedAbility, const FGameplayTagContainer& FailureTags)
+{
+	const UGA_SkillBase* SkillAbility = Cast<UGA_SkillBase>(FailedAbility);
+	
+	if (!SkillAbility 
+		|| !SkillAbility->ShouldRequestReloadOnEmptyAmmo()
+		|| !FailureTags.HasTagExact(NSGameplayTags::Ability_ActivateFail_OutOfAmmo)
+		|| HasMatchingGameplayTag(NSGameplayTags::State_Reloading))
+	{
+		return;
+	}
+	
+	APawn* AvatarPawn = Cast<APawn>(GetAvatarActor());
+	
+	if (!IsValid(AvatarPawn) || !AvatarPawn->IsLocallyControlled())
+	{
+		return;
+	}
+	
+	FGameplayEventData ReloadEventData;
+	ReloadEventData.EventTag = NSGameplayTags::Event_Common_RequestReload;
+	ReloadEventData.Instigator = AvatarPawn;
+	ReloadEventData.Target = AvatarPawn;
+	
+	const int32 ActivateAbilityCount = HandleGameplayEvent(ReloadEventData.EventTag, &ReloadEventData);
+	
+	NS_ACTOR_LOG(AvatarPawn, LogNSGAS, Log,
+		"빈 탄창 재장전 이벤트 전달. 활성화수={ActivatedAbilityCount}",
+		("ActivatedAbilityCount", ActivatedAbilityCount)
+	);
+}
 
 void UNSAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag& InputTag)
 {

@@ -25,6 +25,7 @@ UGA_EngineerShotgunFire::UGA_EngineerShotgunFire()
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Deactivate_HandIK);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Reloading);
 	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
+	bRequestReloadOnEmptyAmmo = true;
 }
 
 void UGA_EngineerShotgunFire::ActivateAbility(

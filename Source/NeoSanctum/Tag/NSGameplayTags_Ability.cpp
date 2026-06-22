@@ -27,4 +27,7 @@ namespace NSGameplayTags
 	
 	// Common Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Common_RequestReload, "Event.Common.RequestReload");
+	
+	// Common Ability Activate Fail Tags
+	UE_DEFINE_GAMEPLAY_TAG(Ability_ActivateFail_OutOfAmmo, "Ability.ActivateFail.OutOfAmmo");
 }
