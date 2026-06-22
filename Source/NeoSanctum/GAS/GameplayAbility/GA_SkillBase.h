@@ -74,6 +74,8 @@ protected:
 		const FVector& NoiseLocation
 	) const;
 	
+	bool TryRequestReloadOnEmptyAmmo() const;
+	
 	// 스킬 데이터의 쿨다운 태그에 따른 Value 찾아오기 : FinalAbilityStat 기준으로 적용
    	float GetCooldownStatOrDefault() const;
 	

@@ -14,6 +14,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_RangerAutoFire::UGA_RangerAutoFire()
 {
@@ -24,6 +25,7 @@ UGA_RangerAutoFire::UGA_RangerAutoFire()
 	// 입력을 유지하면 Ability가 한 발 단위로 다시 활성화.
 	// 내부 반복 타이머가 아니라 Ability 활성화 주기로 연사를 구성.
 	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Reloading);
 }
 
 void UGA_RangerAutoFire::ActivateAbility(
@@ -48,6 +50,12 @@ void UGA_RangerAutoFire::ActivateAbility(
 	if (!ASC)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	if (TryRequestReloadOnEmptyAmmo())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 		return;
 	}
 	

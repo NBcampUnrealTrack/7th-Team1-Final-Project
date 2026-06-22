@@ -26,4 +26,7 @@ namespace NSGameplayTags
 	// Engineer Ability Event Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Engineer_AttachTurretSpawner);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Engineer_ThrowTurretSpawner);
+	
+	// Common Ability Event Tags
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Common_RequestReload);
 }
