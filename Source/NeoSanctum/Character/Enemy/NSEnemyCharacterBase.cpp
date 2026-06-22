@@ -33,6 +33,9 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	Movement->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 
 	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
@@ -210,6 +213,10 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			AttributeSet->SetHealth(StatRow->MaxHealth);
 			AttributeSet->SetDefense(StatRow->Defense);
 			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+
+			AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
+			AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
+			AttributeSet->ResetHitGauge();
 		}
 	}
 	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
