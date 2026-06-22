@@ -178,6 +178,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
 
+	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
 	
 	// 몬스터가 사용할 수 있는 공격 목록
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")

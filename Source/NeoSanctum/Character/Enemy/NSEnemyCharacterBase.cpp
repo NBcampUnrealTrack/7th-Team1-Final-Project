@@ -280,6 +280,8 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 				GiveAbilityOnce(AbilityClass);
 			}
 			
+			GiveAbilityOnce(EnemyData->HitReactionAbilityClass);
+			
 			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 			{
 				GiveAbilityOnce(AttackDefinition.AbilityClass);
