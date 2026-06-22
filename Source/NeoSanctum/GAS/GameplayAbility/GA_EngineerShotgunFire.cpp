@@ -23,7 +23,9 @@ UGA_EngineerShotgunFire::UGA_EngineerShotgunFire()
 	SetAssetTags(AssetTags);
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Deactivate_HandIK);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Reloading);
 	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
+	bRequestReloadOnEmptyAmmo = true;
 }
 
 void UGA_EngineerShotgunFire::ActivateAbility(
@@ -48,7 +50,7 @@ void UGA_EngineerShotgunFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
+	
 	float FinalFireInterval = 0.0f;
 
 	if (!TryGetFinalFireInterval(FinalFireInterval))

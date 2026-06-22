@@ -28,6 +28,14 @@ public:
 	UGA_SkillBase();
 	
 	ENSAbilityActivationPolicy GetActivationPolicy() const { return ActivationPolicy; }
+	
+	bool ShouldRequestReloadOnEmptyAmmo() const { return bRequestReloadOnEmptyAmmo; }
+	
+	virtual bool CheckCost(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		FGameplayTagContainer* OptionalRelevantTags = nullptr
+	) const override;
 
 	// Cost/Cooldown Commit 성공 시점에 스킬 충전 회복을 시작하도록 함
 	virtual bool CommitAbility(
@@ -105,4 +113,7 @@ protected:
 	// Default Cooldown Fallback : CombatStat.Cooldown 태그로 Value를 매핑해뒀다면 적용되지 않음.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Skill")
 	float DefaultCooldown = 5.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Reload")
+	bool bRequestReloadOnEmptyAmmo = false;
 };

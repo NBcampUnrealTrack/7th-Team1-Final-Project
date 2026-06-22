@@ -5,8 +5,9 @@
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
-#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -17,6 +18,44 @@ UGA_SkillBase::UGA_SkillBase()
 	ReplicationPolicy = EGameplayAbilityReplicationPolicy::ReplicateNo;
 	
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
+}
+
+bool UGA_SkillBase::CheckCost(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	FGameplayTagContainer* OptionalRelevantTags) const
+{
+	const bool bHasCost = Super::CheckCost(Handle, ActorInfo, OptionalRelevantTags);
+	
+	if (bHasCost || !bRequestReloadOnEmptyAmmo)
+	{
+		return bHasCost;
+	}
+	
+	if (!ActorInfo || !ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		return false;
+	}
+	
+	const UNSPlayerAttributeSet* AttributeSet =
+		ActorInfo->AbilitySystemComponent->GetSet<UNSPlayerAttributeSet>();
+	
+	if (!AttributeSet)
+	{
+		return false;
+	}
+	
+	if (AttributeSet->GetAmmo() > 0.0f || AttributeSet->GetMaxAmmo() <= 0.0)
+	{
+		return false;
+	}
+	
+	if (OptionalRelevantTags)
+	{
+		OptionalRelevantTags->AddTag(NSGameplayTags::Ability_ActivateFail_OutOfAmmo);
+	}
+	
+	return false;
 }
 
 bool UGA_SkillBase::CommitAbility(

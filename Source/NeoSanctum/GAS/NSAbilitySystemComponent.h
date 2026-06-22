@@ -8,6 +8,7 @@
 #include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NSAbilitySystemComponent.generated.h"
 
+class UGameplayAbility;
 class UGameplayEffect;
 struct FGameplayEffectRemovalInfo;
 
@@ -66,7 +67,12 @@ public:
 	// CombatStatComponent의 TemporaryModifier 제거
 	void RemoveTemporaryCombatStatModifier(FGuid Handle) const;
 	
+protected:
+	virtual void BeginPlay() override;
+	
 private:
+	void HandleAbilityFailed(const UGameplayAbility* FailedAbility, const FGameplayTagContainer& FailureTags);
+	
 	// 해당 슬롯의 스킬이 이미 재충전 중인지 판단
 	bool IsSkillRechargeActive(const FGameplayTag& SkillSlotTag) const;
 	// 해당 슬롯의 스킬이 이미 MaxCount인지 판단
