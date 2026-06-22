@@ -6,6 +6,7 @@
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
 
@@ -165,6 +166,33 @@ AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorAct
 	return InstigatorActor;
 }
 
+void UNSMonsterAttributeSet::ExecuteDamageFlashCueAfterDamage(
+	const FGameplayEffectModCallbackData& Data,
+	float PreviousHealth) const
+{
+	ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor());
+
+	if (!EnemyCharacter ||
+		!EnemyCharacter->HasAuthority() ||
+		EnemyCharacter->IsInPool())
+	{
+		return;
+	}
+
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.RawMagnitude = AppliedHealthDamage;
+	CueParameters.EffectContext = Data.EffectSpec.GetContext();
+
+	Data.Target.ExecuteGameplayCue(NSGameplayTags::GameplayCue_Damage_Flash, CueParameters);
+}
+
 void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
 	const bool bIsDamageExecution = Data.EvaluatedData.Attribute == GetDamageAttribute();
@@ -182,6 +210,7 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 	
 	if (bIsDamageExecution)
 	{
+		ExecuteDamageFlashCueAfterDamage(Data, PreviousHealth);
 		HandleHitGaugeAfterDamage(EnemyCharacter, PreviousHealth);
 	}
 
