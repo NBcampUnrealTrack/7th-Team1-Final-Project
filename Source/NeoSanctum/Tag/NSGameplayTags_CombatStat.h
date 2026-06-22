@@ -26,6 +26,8 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DetectionRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_NoiseFireLoudness);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_NoiseExplosionLoudness);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Accuracy);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSpawnableAngle);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Radius);

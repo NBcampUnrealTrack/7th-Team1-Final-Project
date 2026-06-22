@@ -91,6 +91,38 @@ float UGA_SkillBase::GetBaseAbilityStatOrDefault(
 	return Value;
 }
 
+bool UGA_SkillBase::TryReportAbilityNoise(
+	const FGameplayTag& AbilityTag,
+	const FGameplayTag& LoudnessStatTag,
+	const FVector& NoiseLocation) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	APawn* NoiseInstigator = Cast<APawn>(AvatarActor);
+	
+	if (!IsValid(NoiseInstigator) || !NoiseInstigator->HasAuthority())
+	{
+		return false;
+	}
+	
+	float Loudness = 0.0f;
+	
+	if (!TryGetFinalAbilityStat(AbilityTag, LoudnessStatTag, Loudness))
+	{
+		return false;
+	}
+	
+	Loudness = FMath::Max(Loudness, 0.0f);
+	
+	if (Loudness <= 0.0f)
+	{
+		return false;
+	}
+	
+	NoiseInstigator->MakeNoise(Loudness, NoiseInstigator, NoiseLocation);
+	
+	return true;
+}
+
 float UGA_SkillBase::GetCooldownStatOrDefault() const
 {
 	if (!SkillAbilityTag.IsValid())

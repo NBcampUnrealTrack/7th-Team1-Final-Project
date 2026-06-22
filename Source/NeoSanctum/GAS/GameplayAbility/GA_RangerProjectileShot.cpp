@@ -458,15 +458,29 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 			DefaultExplosionRadius
 		);
 		
+		const float ExplosionNoiseLoudness = GetFinalAbilityStatOrDefault(
+			SkillAbilityTag,
+			NSGameplayTags::CombatStat_NoiseExplosionLoudness,
+			0.0f
+		);
+		
 		Projectile->InitializeProjectile(
 			ASC,
 			SplashDamageEffectClass,
 			SplashDamage,
-			ExplosionRadius
+			ExplosionRadius,
+			ExplosionNoiseLoudness
 		);
 	}
 
 	Projectile->LaunchProjectile(LaunchDirection);
+	
+	TryReportAbilityNoise(
+		SkillAbilityTag,
+		NSGameplayTags::CombatStat_NoiseFireLoudness,
+		MuzzleLocation
+	);
+	
 	return true;
 }
 

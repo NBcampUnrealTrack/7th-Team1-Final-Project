@@ -21,6 +21,12 @@
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Net/UnrealNetwork.h"
+#include "Perception/AISense_Hearing.h"
+
+namespace
+{
+	const FName TurretFireNoiseTag(TEXT("TurretFire"));
+}
 
 ANSTurret::ANSTurret()
 {
@@ -628,6 +634,9 @@ void ANSTurret::FireHitscan()
 
 	const FTransform MuzzleTransform = GetMuzzleTransform();
 	const FVector TraceStart = MuzzleTransform.GetLocation();
+	
+	ReportFireNoise(TraceStart);
+	
 	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
 	
 	const float AttackRange = AttributeSet->GetAttackRange();
@@ -706,6 +715,38 @@ void ANSTurret::FireHitscan()
 		1.0f
 	);
 #endif
+}
+
+void ANSTurret::ReportFireNoise(const FVector& NoiseLocation)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	float Loudness = 0.0f;
+	
+	if (!TryGetRuntimeStatMagnitude(NSGameplayTags::CombatStat_NoiseFireLoudness, Loudness))
+	{
+		return;
+	}
+	
+	Loudness = FMath::Max(Loudness, 0.0f);
+	
+	if (Loudness <= 0.0f)
+	{
+		return;
+	}
+	
+	// AI가 인식하는 소음 주체를 설치 플레이어가 아닌 터렛으로 유지.
+	UAISense_Hearing::ReportNoiseEvent(
+		this,
+		NoiseLocation,
+		Loudness,
+		this,
+		0.0f,
+		TurretFireNoiseTag
+	);
 }
 
 FTransform ANSTurret::GetMuzzleTransform() const

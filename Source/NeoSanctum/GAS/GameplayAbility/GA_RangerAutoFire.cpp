@@ -399,8 +399,20 @@ void UGA_RangerAutoFire::OnRangerTargetDataReady(const FGameplayAbilityTargetDat
 		return;
 	}
 	
+	FTransform AttackOriginTransform;
+	FVector NoiseLocation = AvatarActor->GetActorLocation();
+	
+	if (TryGetAttackOriginTransform(AttackOriginTransform))
+	{
+		NoiseLocation = AttackOriginTransform.GetLocation();
+	}
+	
 	// 실제 소음은 서버에서만 처리
-	ReportWeaponNoise(AvatarActor);
+	TryReportAbilityNoise(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_NoiseFireLoudness,
+		NoiseLocation
+	);
 	
 	// 실제 데미지는 서버에서만 처리
 	ProcessTargetDataForDamage(TargetDataHandle);
@@ -1159,14 +1171,6 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	}
 	
 	return true;
-}
-
-void UGA_RangerAutoFire::ReportWeaponNoise(const AActor* InAvatarActor)
-{
-	if (APawn* NoiseInstigator = Cast<APawn>(const_cast<AActor*>(InAvatarActor)))
-    {
-        NoiseInstigator->MakeNoise(1.0f, NoiseInstigator, InAvatarActor->GetActorLocation());
-    }
 }
 
 void UGA_RangerAutoFire::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle)

@@ -175,9 +175,6 @@ private:
 		bool bServerAimHit
 	) const;
 	
-	// AI 청각 감지용 소음 발생
-	void ReportWeaponNoise(const AActor* InAvatarActor);
-	
 	// 데미지 감지 가해자 지정
 	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
 	

@@ -110,6 +110,7 @@ private:
 	void TryFire();
 	bool CanFireToCurrentTarget() const;
 	void FireHitscan();
+	void ReportFireNoise(const FVector& NoiseLocation);
 	FTransform GetMuzzleTransform() const;
 	
 private:

@@ -37,6 +37,8 @@ private:
 	// 폭발 사운드/VFX를 GameplayCue로 실행
 	void ExecuteExplosionCue(const FVector& ExplosionLocation, const FVector& ExplosionNormal);
 
+	void ReportExplosionNoise(const FVector& ExplosionLocation) const;
+	
 	// 폭발 반경 안의 Pawn 후보를 중복 없이 수집
 	void FindExplosionTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
 

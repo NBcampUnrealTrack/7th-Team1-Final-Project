@@ -67,6 +67,13 @@ protected:
 		float DefaultValue
 	) const;
 	
+	// AbilityTag에 연결된 소음 CombatStat을 조회해 서버에서 Avatar Pawn 기준 AI 청각 이벤트를 발생시킴.
+	bool TryReportAbilityNoise(
+		const FGameplayTag& AbilityTag,
+		const FGameplayTag& LoudnessStatTag,
+		const FVector& NoiseLocation
+	) const;
+	
 	// 스킬 데이터의 쿨다운 태그에 따른 Value 찾아오기 : FinalAbilityStat 기준으로 적용
    	float GetCooldownStatOrDefault() const;
 	
