@@ -136,6 +136,9 @@ public:
 	//런 결과창에 표시할 스킬재화 획득량 갱신
 	void UpdateRunResultSkillGoods(int32 NewAmount);
 	
+	//캐릭터별 스킬 슬롯 UI 적용
+	void ApplyCharacterSkillUISet(FName CharacterId);
+	
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관

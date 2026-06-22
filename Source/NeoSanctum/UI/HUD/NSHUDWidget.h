@@ -13,6 +13,8 @@ class UNSAugmentationWidget;
 class UNSPartPanelWidget;
 class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
+class UNSSkillSlotWidget;
+class UDataTable;
 
 
 /**
@@ -89,6 +91,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowOutRunGoods();
 	
+	//캐릭터별 스킬 UI 세트 적용
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ApplyCharacterSkillUISet(FName CharacterId);
+	
+	//캐릭터별 스킬 UI 세트 테이블
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Skill")
+	TObjectPtr<UDataTable> CharacterSkillUISetTable;
+	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
@@ -114,6 +124,15 @@ private:
 	//탄약 HUD 위젯
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSAmmoWidget> AmmoWidget;
+	//1번 스킬 슬롯
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSSkillSlotWidget> SkillSlot1Widget;
+	//2번 스킬 슬롯
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSSkillSlotWidget> SkillSlot2Widget;
+	//3번 스킬 슬롯
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSSkillSlotWidget> SkillSlot3Widget;
 	
 protected:
 	virtual void NativeConstruct() override;
