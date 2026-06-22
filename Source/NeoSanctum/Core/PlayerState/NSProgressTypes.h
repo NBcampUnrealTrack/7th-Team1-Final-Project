@@ -26,6 +26,15 @@ struct FNSPartSaveData
 	float Value = 0.f; 
 };
 
+USTRUCT() struct FNSCompanionNodeLevel
+{ GENERATED_BODY()
+	
+	UPROPERTY()
+	FGameplayTag Tag;
+	UPROPERTY()
+	int32 Level = 0;
+};
+
 // TMap을 RPC로 보내지 못하기 때문에 배열로 변환용
 USTRUCT()
 struct FNSNodeLevel
@@ -59,4 +68,8 @@ struct FNSProgressPayload
 	FNSPartSaveData EquippedPart;
 	UPROPERTY()
 	TArray<FNSNodeLevel> CharacterSkillLevels;
+	UPROPERTY() 
+	FGameplayTag SelectedCompanionTag;
+	UPROPERTY()
+	TArray<FNSCompanionNodeLevel> CompanionNodeLevels;
 };
