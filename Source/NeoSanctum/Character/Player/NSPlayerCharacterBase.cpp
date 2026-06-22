@@ -18,6 +18,7 @@
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
@@ -71,6 +72,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 		TEXT("MeleeAttackReservationComp"));
 	MeleeAttackReservationComp->SetMaxConcurrentAttackers(3);
 	
+	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
+
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
@@ -114,8 +117,13 @@ void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerIn
 void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 {
 	Super::PossessedBy(EventController);
-	
+
 	InitializeAbilitySystem();
+
+	if (InteractionComp)
+	{
+		InteractionComp->EnableLocalInteraction();
+	}
 	
 	if (HasAuthority())
 	{
@@ -133,9 +141,19 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 void ANSPlayerCharacterBase::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
-	
+
 	InitializeAbilitySystem();
 	BindPartVisual();
+}
+
+void ANSPlayerCharacterBase::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	if (InteractionComp)
+	{
+		InteractionComp->EnableLocalInteraction();
+	}
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

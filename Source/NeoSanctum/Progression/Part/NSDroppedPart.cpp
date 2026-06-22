@@ -7,6 +7,8 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/SphereComponent.h"
+#include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
@@ -26,6 +28,69 @@ ANSDroppedPart::ANSDroppedPart()
 	MeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(SceneRoot);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	
+	DetectionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionCollision"));
+	DetectionCollision->SetupAttachment(SceneRoot);
+	DetectionCollision->SetSphereRadius(InteractRadius);
+	DetectionCollision->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+	PromptAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("PromptAnchor"));
+	PromptAnchor->SetupAttachment(SceneRoot);
+	PromptAnchor->SetRelativeLocation(FVector(0.f, 0.f, 50.f));
+}
+
+void ANSDroppedPart::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// 에디터에서 InteractRadius를 바꾸면 스피어 반경도 즉시 반영
+	if (DetectionCollision)
+	{
+		DetectionCollision->SetSphereRadius(InteractRadius);
+	}
+}
+
+bool ANSDroppedPart::CanInteract_Implementation(APlayerController* Interactor) const
+{
+	return StoredInstance.IsValid();
+}
+
+bool ANSDroppedPart::OnInteract_Implementation(APlayerController* Interactor)
+{
+	if (!Interactor)
+	{
+		return false;
+	}
+
+	APlayerState* PS = Interactor->PlayerState;
+	if (!PS)
+	{
+		return false;
+	}
+
+	UNSPartEquipComponent* EquipComp = PS->FindComponentByClass<UNSPartEquipComponent>();
+	if (!EquipComp)
+	{
+		return false;
+	}
+
+	// 클라에서 실행되므로 Server RPC 경유 —> 실제 줍기는 서버 TryPickup
+	EquipComp->Server_RequestPickup(this);
+	return true;
+}
+
+FText ANSDroppedPart::GetPromptText_Implementation() const
+{
+	return PromptText;
+}
+
+FVector ANSDroppedPart::GetPromptWorldLocation_Implementation() const
+{
+	if (PromptAnchor)
+	{
+		return PromptAnchor->GetComponentLocation();
+	}
+	return GetActorLocation();
 }
 
 void ANSDroppedPart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -212,6 +277,22 @@ void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
 	{
 		return;
 	}
+	// 서버 재검증(변조 방어) —> 플레이어가 실제로 감지 스피어에 겹쳐 있는지 확인
+	if (!DetectionCollision || !DetectionCollision->IsOverlappingActor(InstigatorPawn))
+	{
+		return;
+	}
+	
+	APlayerController* PC = Cast<APlayerController>(InstigatorPawn->GetController());
+	if (!PC)
+	{
+		return;
+	}
+	if (!INSInteractable::Execute_CanInteract(this, PC))
+	{
+		return;
+	}
+	
 	ANSPlayerState* PS = InstigatorPawn->GetPlayerState<ANSPlayerState>();
 	if (!PS)
 	{
@@ -263,7 +344,7 @@ void ANSDroppedPart::SetupVisual()
 			FStreamableDelegate::CreateUObject(this, &ANSDroppedPart::SetupVisual));
 		return;
 	}
-	
+
 	USkeletalMesh* Mesh = Def->PartMesh.Get();
 	if (!Mesh)
 	{
@@ -283,4 +364,16 @@ void ANSDroppedPart::SetupVisual()
 	const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
 	const float BottomOffsetZ = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
 	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -BottomOffsetZ));
+	
+	// 위치 보정
+	const FVector MeshCenter(MeshBounds.Origin.X, MeshBounds.Origin.Y, MeshBounds.BoxExtent.Z);
+	if (DetectionCollision)
+	{
+		DetectionCollision->SetRelativeLocation(MeshCenter);
+	}
+	if (PromptAnchor)
+	{
+		PromptAnchor->SetRelativeLocation(MeshCenter + FVector(0.f, 0.f, MeshBounds.BoxExtent.Z + 30.f));
+	}
 }
+

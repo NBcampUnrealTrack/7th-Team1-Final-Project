@@ -9,10 +9,6 @@
 
 class UTextBlock;
 
-/**
- * 
- */
-
 UCLASS()
 class NEOSANCTUM_API UNSInteractionPromptWidget : public UCommonUserWidget
 {

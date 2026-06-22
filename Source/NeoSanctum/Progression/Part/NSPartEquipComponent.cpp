@@ -332,6 +332,12 @@ void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
 		}
 	}
 	
+	if (Paths.Num() == 0)
+	{
+		OnAbilitiesLoaded(Slot);
+		return;
+	}
+	
 	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 		Paths, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnAbilitiesLoaded,
 			Slot));
@@ -490,26 +496,23 @@ void UNSPartEquipComponent::OnRep_EquippedParts()
 // Server RPC
 // ================================================================
 
-void UNSPartEquipComponent::ServerRequestEquip_Implementation(FNSPartData NewPart)
+void UNSPartEquipComponent::Server_RequestEquip_Implementation(FNSPartData NewPart)
 {
 	EquipPart(NewPart);
 }
 
-void UNSPartEquipComponent::ServerRequestReroll_Implementation(ENSPartSlot Slot)
+void UNSPartEquipComponent::Server_RequestReroll_Implementation(ENSPartSlot Slot)
 {
 	RerollStat(Slot);
 }
 
-void UNSPartEquipComponent::ServerRequestUpgradeRarity_Implementation(ENSPartSlot Slot)
+void UNSPartEquipComponent::Server_RequestUpgradeRarity_Implementation(ENSPartSlot Slot)
 {
 	UpgradeRarity(Slot);
 }
 
-// ===== 테스트용 임시 코드 — 상호작용 시스템 연동 후 삭제 =====
-void UNSPartEquipComponent::ServerRequestPickup_Implementation(ANSDroppedPart* TargetPart)
+void UNSPartEquipComponent::Server_RequestPickup_Implementation(ANSDroppedPart* TargetPart)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[PartTest] ServerRequestPickup 서버 도착: Target=%s"), *GetNameSafe(TargetPart));
-
 	if (!TargetPart)
 	{
 		return;
@@ -519,10 +522,8 @@ void UNSPartEquipComponent::ServerRequestPickup_Implementation(ANSDroppedPart* T
 	APawn* Pawn = PS ? PS->GetPawn() : nullptr;
 	if (!Pawn)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PartTest] ServerRequestPickup 실패: PS=%s Pawn 없음"), *GetNameSafe(GetOwner()));
 		return;
 	}
 
 	TargetPart->TryPickup(Pawn);
 }
-// ===== 테스트용 임시 코드 끝 =====
