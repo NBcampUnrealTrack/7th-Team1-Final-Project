@@ -36,7 +36,5 @@ void UNSCompanionAbilitySet::GiveToAbilitySystem(
 		{
 			OutGranted->AddAbilitySpecHandle(Handle);
 		}
-		
 	}
-	
 }

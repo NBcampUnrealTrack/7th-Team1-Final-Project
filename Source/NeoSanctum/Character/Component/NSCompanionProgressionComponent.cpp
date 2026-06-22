@@ -8,7 +8,7 @@
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 
-	void UNSCompanionProgressionComponent::ServerTryUpgrade_Implementation(FGameplayTag NodeTag)
+	void UNSCompanionProgressionComponent::Server_TryUpgrade_Implementation(FGameplayTag NodeTag)
 {
 	if (!OwnedCompanion || !Catalog || !SelectedCompanionTag.IsValid()) return;
 	
@@ -76,7 +76,7 @@ void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseCompanionAI* Own
 	OwnedCompanion = Owner;
 }
 
-void UNSCompanionProgressionComponent::ServerTrySelect_Implementation(FGameplayTag CompanionTag)
+void UNSCompanionProgressionComponent::Server_TrySelect_Implementation(FGameplayTag CompanionTag)
 {
 	// 해금 검사
 	if (!CanSelect(CompanionTag))
