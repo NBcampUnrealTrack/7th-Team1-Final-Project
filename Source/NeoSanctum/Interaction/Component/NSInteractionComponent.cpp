@@ -221,7 +221,7 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 	UNSInteractionPromptWidget* Widget = Cast<UNSInteractionPromptWidget>(PromptWidgetComponent->GetUserWidgetObject());
 	if (Widget)
 	{
-		Widget->SetPromptText(InteractionKeyText, INSInteractable::Execute_GetPromptText(Target));
+		Widget->SetPromptText(InteractionKeyText, FText::FromString(TEXT("상호작용")));
 		Widget->SetPromptIcon(INSInteractable::Execute_GetPromptIcon(Target));
 		Widget->SetPartName(INSInteractable::Execute_GetPromptText(Target));
 		Widget->SetRarityStyle(INSInteractable::Execute_GetPromptRarityIndex(Target));
