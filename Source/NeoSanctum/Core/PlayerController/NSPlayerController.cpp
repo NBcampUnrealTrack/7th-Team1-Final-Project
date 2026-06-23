@@ -1365,6 +1365,26 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	{
 		PlayerCharacter->ApplyEquippedPart();
 	}
+	
+	// 컴패니언: 선택 태그 런타임 동기화
+	const FGameplayTag SelectedCompanionTag = ProgressComponent->GetSelectedCompanion();
+	if (SelectedCompanionTag.IsValid())
+	{
+		OwningPlayerState->SetCurrentCompanionDefinitionTag(SelectedCompanionTag);
+	}
+
+	// 컴패니언: 살아있는 드론에 정의+노드 즉시 반영 (허브 라이브 변경/업그레이드)
+	if (UNSCompanionProgressionComponent* CompanionProg = OwningPlayerState->GetCompanionProgressionComponent())
+	{
+		UNSCompanionDefinition* SelectedDefinition = OwningPlayerState->GetCurrentCompanionDefinition();
+		CompanionProg->ApplySelectedAndNodes(SelectedDefinition, ProgressComponent->GetCompanionNodeLevels());
+	}
+	
+	const FGameplayTag SelectedTag = ProgressComponent->GetSelectedCompanion();
+	if (SelectedTag.IsValid())
+	{
+		OwningPlayerState->SetCurrentCompanionDefinitionTag(SelectedTag);
+	}
 }
 
 void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPayload& Payload)
@@ -1460,6 +1480,15 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 		NodeLevel.NodeId = PetPair.Key;
 		NodeLevel.Level = PetPair.Value;
 		Payload.PetUpgradeLevels.Add(NodeLevel);
+	}
+	
+	Payload.SelectedCompanionTag = PermanentSave->Companion.SelectedCompanionTag;
+	for (const TPair<FGameplayTag, int32>& NodeLevelPair : PermanentSave->Companion.NodeLevels)
+	{
+		FNSCompanionNodeLevel NodeLevelEntry;
+		NodeLevelEntry.Tag   = NodeLevelPair.Key;
+		NodeLevelEntry.Level = NodeLevelPair.Value;
+		Payload.CompanionNodeLevels.Add(NodeLevelEntry);
 	}
 
 	// 활성 캐릭터 슬롯
@@ -1661,30 +1690,63 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 
 #pragma region CompanionCheat
 
-void ANSPlayerController::Server_CompanionCheatUpgrade_Implementation(FGameplayTag CompanionTag)
+void ANSPlayerController::CompanionCheatUpgrade(FGameplayTag NodeTag)
 {
-	if (!CompanionTag.IsValid()) return;
-		
-	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
-	if (!PS) return;
+	// 로컬 파사드 경로
+	if (!IsLocalController() || !NodeTag.IsValid())
+	{
+		return;
+	}   
 	
-	UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
-	if (!Comp) return;
-	
-	Comp->Server_TryUpgrade(CompanionTag);
+	UNSProgressionSubsystem* Prog = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!Prog)
+	{
+		return;
+	}
+
+	const FGameplayTag SelectedCompanionTag = Prog->GetSelectedCompanion();
+	// 치트: Max/Cost 게이트 통과용 임의값. NodeTag와 CompanionTag(=선택드론)는 분리해 전달
+	Prog->UpgradeCompanionNode(SelectedCompanionTag, NodeTag, /*MaxLevel*/9999, /*Cost*/0);
+	UploadLocalProgress(GetActiveCharacterIdForUpload());  
 }
 
-void ANSPlayerController::Server_CompanionCheatSelect_Implementation(FGameplayTag CompanionTag)
+void ANSPlayerController::CompanionCheatSelect(FGameplayTag CompanionTag)
 {
-	if (!CompanionTag.IsValid()) return;
-		
-	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
-	if (!PS) return;
+	if (!IsLocalController() || !CompanionTag.IsValid())
+	{
+		return;
+	}
 	
-	UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
-	if (!Comp) return;
+	UNSProgressionSubsystem* Prog = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!Prog)
+	{
+		return;
+	}
+
+	// 치트: 해금 게이트 무시 위해 RequiredTag 무효 + Count 0
+	Prog->SelectCompanion(CompanionTag, FGameplayTag(), 0);
+	UploadLocalProgress(GetActiveCharacterIdForUpload());
+}
+
+FName ANSPlayerController::GetActiveCharacterIdForUpload() const
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (!GameInstance)
+	{
+		return NAME_None;
+	}
 	
-	Comp->Server_TrySelect(CompanionTag);
+	UNSSaveGameSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
+	if (!SaveSubsystem)
+	{
+		return NAME_None;
+	}
+	
+	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
+	
+	return PermanentSave ? PermanentSave->LastSelectedCharacterId : NAME_None;
 }
 
 #pragma endregion CompanionCheat

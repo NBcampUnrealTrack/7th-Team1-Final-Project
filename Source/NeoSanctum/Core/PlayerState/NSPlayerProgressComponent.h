@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "GameplayTagContainer.h"
 #include "NSPlayerProgressComponent.generated.h"
 
 
@@ -33,6 +34,8 @@ public:
 	const TMap<FName,int32>& GetCommonSkillLevels() const { return CommonSkillLevels; }
 	const TMap<FName,int32>& GetCharacterSkillLevels() const { return CharacterSkillLevels; }
 	const TMap<FName,int32>& GetPetUpgradeLevels() const { return PetUpgradeLevels; }
+	FGameplayTag GetSelectedCompanion() const { return SelectedCompanionTag; }
+	const TMap<FGameplayTag,int32>& GetCompanionNodeLevels() const { return CompanionNodeLevels; }
 	
 
 	UFUNCTION(BlueprintCallable)
@@ -44,12 +47,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddJobCurrency(int64 Amount);
 
+
 private:
 	// 계정 단위
 	int64 CommonCurrency = 0;
 	TSet<FName> UnlockedNPCIds;
 	TMap<FName,int32> CommonSkillLevels;
 	TMap<FName,int32> PetUpgradeLevels;
+	FGameplayTag SelectedCompanionTag;
+	TMap<FGameplayTag,int32> CompanionNodeLevels;
 	
 	// 직업(캐릭터) 단위
 	FName ActiveCharacterId;

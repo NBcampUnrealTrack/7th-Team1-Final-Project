@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h" 
 #include "NSProgressTypes.generated.h"
 
@@ -24,6 +25,15 @@ struct FNSPartSaveData
 	// 구매 시 1회 롤 → 고정 저장
 	UPROPERTY(SaveGame, BlueprintReadOnly)
 	float Value = 0.f; 
+};
+
+USTRUCT() struct FNSCompanionNodeLevel
+{ GENERATED_BODY()
+	
+	UPROPERTY()
+	FGameplayTag Tag;
+	UPROPERTY()
+	int32 Level = 0;
 };
 
 // TMap을 RPC로 보내지 못하기 때문에 배열로 변환용
@@ -59,4 +69,8 @@ struct FNSProgressPayload
 	FNSPartSaveData EquippedPart;
 	UPROPERTY()
 	TArray<FNSNodeLevel> CharacterSkillLevels;
+	UPROPERTY() 
+	FGameplayTag SelectedCompanionTag;
+	UPROPERTY()
+	TArray<FNSCompanionNodeLevel> CompanionNodeLevels;
 };

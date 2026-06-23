@@ -36,6 +36,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	void SetEquippedPart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	
+	UFUNCTION(BlueprintCallable, Category="Progression|Companion")
+	bool UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, int32 MaxLevel, int64 Cost);
+	
+	UFUNCTION(BlueprintCallable, Category="Progression|Companion")
+	bool SelectCompanion(FGameplayTag CompanionTag, FGameplayTag RequiredCompanionTag, int32 RequiredCount);
+	
+	UFUNCTION(BlueprintPure, Category="Progression|Companion")
+	bool CanSelectCompanion(FGameplayTag RequiredCompanionTag, int32 RequiredCount) const;
+	
 	// ---------- 조회 (UI 표시용) ----------
 	
 	UFUNCTION(BlueprintPure, Category = "Progression|Query")
@@ -56,6 +65,12 @@ public:
 	// 장착 파츠가 없으면 NAME_None 반환
 	UFUNCTION(BlueprintPure, Category = "Progression|Part")
 	FNSPartSaveData GetEquippedPart(FName CharacterId) const;
+	
+	UFUNCTION(BlueprintPure, Category="Progression|Companion")
+	FGameplayTag GetSelectedCompanion() const;
+	
+	UFUNCTION(BlueprintPure, Category="Progression|Companion")
+	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
 	
 	// 구매: 미소유면 값 1회 롤해 인벤토리에 추가
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")

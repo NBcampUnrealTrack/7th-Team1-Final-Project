@@ -149,6 +149,20 @@ FNSPartSaveData UNSProgressionSubsystem::GetEquippedPart(FName CharacterId) cons
 	return Owned ? *Owned : FNSPartSaveData();
 }
 
+FGameplayTag UNSProgressionSubsystem::GetSelectedCompanion() const
+{
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	
+	return Save ? Save->Companion.SelectedCompanionTag : FGameplayTag();
+}
+
+int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag NodeTag) const
+{
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	
+	return Save ? Save->Companion.NodeLevels.FindRef(NodeTag) : 0;
+}
+
 bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
@@ -198,6 +212,65 @@ void UNSProgressionSubsystem::SetEquippedPart(FName CharacterId, TSoftObjectPtr<
 	Slot.EquippedPartDefinition = Definition;
 	Slot.EquippedPartRarity = Rarity;
 	SaveNow();
+}
+
+bool UNSProgressionSubsystem::UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, int32 MaxLevel, int64 Cost)
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || !NodeTag.IsValid() || Cost < 0)
+	{
+		return false;
+	}
+	
+	// UI가 넘긴 Max로 게이트
+	const int32 NewLevel = Save->Companion.NodeLevels.FindRef(NodeTag) + 1;
+	if (NewLevel > MaxLevel)
+	{
+		return false;
+	}   
+	
+	// 공통재화
+	if (Save->CommonCurrency < Cost)
+	{
+		return false;
+	}   
+
+	Save->CommonCurrency -= Cost;
+	Save->Companion.NodeLevels.Add(NodeTag, NewLevel);
+	Save->Companion.UpgradeCounts.FindOrAdd(CompanionTag)++;
+	SaveNow();
+	
+	return true;
+}
+
+bool UNSProgressionSubsystem::SelectCompanion(
+	FGameplayTag CompanionTag,
+	FGameplayTag RequiredCompanionTag, 
+	int32 RequiredCount)
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || !CompanionTag.IsValid() || !CanSelectCompanion(RequiredCompanionTag, RequiredCount))
+	{
+		return false;
+	}
+	
+	Save->Companion.SelectedCompanionTag = CompanionTag;
+	SaveNow();
+	
+	return true;
+}
+
+bool UNSProgressionSubsystem::CanSelectCompanion(FGameplayTag RequiredCompanionTag, int32 RequiredCount) const
+{
+	// 전제 없음 = 항상 가능
+	if (!RequiredCompanionTag.IsValid())
+	{
+		return true;
+	} 
+	
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	
+	return Save && Save->Companion.UpgradeCounts.FindRef(RequiredCompanionTag) >= RequiredCount;
 }
 
 bool UNSProgressionSubsystem::IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const

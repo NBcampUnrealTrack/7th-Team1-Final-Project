@@ -444,7 +444,11 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
 	if (!PS) return;
 	PS->GetCompanionProgressionComponent()->SetOwnedCompanion(CompanionAI.Get());
-	PS->GetCompanionProgressionComponent()->Server_TrySelect(Definition->CompanionTag);
+	
+	if (UNSPlayerProgressComponent* Progress = PS->GetProgressComponent())
+	{
+		PS->GetCompanionProgressionComponent()->ApplyNodeLevels(Progress->GetCompanionNodeLevels());
+	}
 }
 
 void ANSPlayerCharacterBase::HandleCompanionDataReady()
