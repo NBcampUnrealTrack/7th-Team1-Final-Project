@@ -89,6 +89,12 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SkillGoodsText;
 	
+	//어떤 플레이어가 어디를 투표했는지 보여주는 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> NextVotersText;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> HubVotersText;
+	
 	UFUNCTION()
 	void HandleNextStageClicked();
 
@@ -111,5 +117,14 @@ private:
 	
 	void UpdatePhaseTimerText();
 	
+	void RefreshVoteVoters();
+	
+	UFUNCTION()
+	void RefreshVoteInfo();
+	void BindRunEndVoteChanged();
+	void UnbindRunEndVoteChanged();
+	
 	bool bVoteSubmitted = false;
+	
+	bool bLastRunCleared = false;
 };

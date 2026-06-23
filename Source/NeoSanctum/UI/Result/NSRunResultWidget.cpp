@@ -8,6 +8,8 @@
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
+#include "GameFramework/GameStateBase.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 
 void UNSRunResultWidget::SetRunResult(
 bool bCleared,
@@ -17,6 +19,8 @@ int32 SkillGoods,
 float RunTimeSeconds,
 int32 KillCount)
 {
+	bLastRunCleared = bCleared;
+	
 	if (ResultTitleText)
 	{
 		ResultTitleText->SetText(
@@ -74,6 +78,20 @@ int32 KillCount)
 				? ESlateVisibility::Visible
 				: ESlateVisibility::Collapsed);
 	}
+	
+	if (NextVotersText)
+	{
+		NextVotersText->SetVisibility(
+			bCleared
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+	
+	if (HubVotersText)
+	{
+		HubVotersText->SetVisibility(ESlateVisibility::Visible);
+	}
+	
 	if (!bCleared)
 	{
 		SetSelectedChoice(ENSRunChoice::ReturnToHub);
@@ -185,6 +203,9 @@ void UNSRunResultWidget::NativeConstruct()
 			this,
 			&UNSRunResultWidget::HandleConfirmClicked);
 	}
+	
+	BindRunEndVoteChanged();
+	RefreshVoteInfo();
 }
 
 void UNSRunResultWidget::NativeDestruct()
@@ -203,6 +224,8 @@ void UNSRunResultWidget::NativeDestruct()
 	{
 		ConfirmButton->OnClicked().RemoveAll(this);
 	}
+	
+	UnbindRunEndVoteChanged();
 	
 	Super::NativeDestruct();
 }
@@ -259,6 +282,7 @@ void UNSRunResultWidget::UpdatePhaseTimerText()
 		return;
 	}
 
+	
 	const float RemainingTime = RunGameState->GetPhaseTimeRemaining();
 	const int32 DisplaySeconds = FMath::CeilToInt(RemainingTime);
 
@@ -267,4 +291,122 @@ void UNSRunResultWidget::UpdatePhaseTimerText()
 		FText::AsNumber(DisplaySeconds)));
 
 	TimerText->SetVisibility(ESlateVisibility::Visible);
+}
+
+void UNSRunResultWidget::RefreshVoteVoters()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	AGameStateBase* GameState = World->GetGameState();
+	if (!GameState)
+	{
+		return;
+	}
+	
+	FString NextVoters = TEXT("Next Stage\n");
+	FString HubVoters = TEXT("Hub\n");
+	
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		const ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		if (!NSPlayerState || !NSPlayerState->bVoteConfirmed)
+		{
+			continue;
+		}
+		
+		const FString PlayerName = NSPlayerState->GetPlayerName();
+		
+		if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
+		{
+			NextVoters += FString::Printf(TEXT("%s\n"), *PlayerName);
+		}
+		else if (NSPlayerState->RunChoice == ENSRunChoice::ReturnToHub)
+		{
+			HubVoters += FString::Printf(TEXT("%s\n"), *PlayerName);
+		}
+	}
+	
+	if (NextVotersText)
+	{
+		NextVotersText->SetText(FText::FromString(NextVoters));
+		NextVotersText->SetVisibility(
+			bLastRunCleared
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+	
+	if (HubVotersText)
+	{
+		HubVotersText->SetText(FText::FromString(HubVoters));
+		HubVotersText->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSRunResultWidget::RefreshVoteInfo()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState =
+		World->GetGameState<ANSRunGameState>();
+	
+	if (!RunGameState)
+	{
+		return;
+	}
+	
+	SetVoteResult(RunGameState->NextVotes, RunGameState->HubVotes);
+	RefreshVoteVoters();
+}
+
+void UNSRunResultWidget::BindRunEndVoteChanged()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState = 
+		World->GetGameState<ANSRunGameState>();
+	
+	if (!RunGameState)
+	{
+		return;
+	}
+	
+	RunGameState->OnRunEndVoteChanged.RemoveDynamic(
+		this,
+		&UNSRunResultWidget::RefreshVoteInfo);
+	
+	RunGameState->OnRunEndVoteChanged.AddDynamic(
+		this,
+		&UNSRunResultWidget::RefreshVoteInfo);
+}
+
+void UNSRunResultWidget::UnbindRunEndVoteChanged()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState =
+		World->GetGameState<ANSRunGameState>();
+	if (!RunGameState)
+	{
+		return;
+	}
+	
+	RunGameState->OnRunEndVoteChanged.RemoveDynamic(
+		this,
+		&UNSRunResultWidget::RefreshVoteInfo);
 }
