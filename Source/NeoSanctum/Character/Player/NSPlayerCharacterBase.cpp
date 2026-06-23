@@ -25,6 +25,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
@@ -134,6 +135,14 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		ApplyCurrentCharacterData();
 		// 저장된 장착 파츠 적용
 		ApplyEquippedPart();
+		// Seamless Travel로 새 ASC가 생성되었으므로 보유 증강을 재적용
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSAugmentInventoryComponent* AugmentInventory = PS->GetAugmentInventory())
+			{
+				AugmentInventory->ReapplyAll();
+			}
+		}
 	}
 	
 	// Companion 초기화 및 스폰 시도
