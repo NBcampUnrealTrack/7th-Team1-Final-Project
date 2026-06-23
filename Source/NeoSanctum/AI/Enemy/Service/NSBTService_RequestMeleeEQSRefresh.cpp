@@ -1,10 +1,9 @@
-﻿// Copyright 2026 One Team. All rights reserved.
-
-
-#include "NSBTService_RequestMeleeEQSRefresh.h"
+﻿#include "NSBTService_RequestMeleeEQSRefresh.h"
 
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BlackboardData.h"
 
 UNSBTService_RequestMeleeEQSRefresh::UNSBTService_RequestMeleeEQSRefresh()
 {
@@ -19,16 +18,16 @@ UNSBTService_RequestMeleeEQSRefresh::UNSBTService_RequestMeleeEQSRefresh()
 
 	TargetActorKey.AddObjectFilter(
 		this,
-		GET_MEMBER_NAME_CHECKED(
-			UNSBTService_RequestMeleeEQSRefresh,
-			TargetActorKey),
+		GET_MEMBER_NAME_CHECKED(UNSBTService_RequestMeleeEQSRefresh, TargetActorKey),
 		AActor::StaticClass());
 
 	NeedsRefreshKey.AddBoolFilter(
 		this,
-		GET_MEMBER_NAME_CHECKED(
-			UNSBTService_RequestMeleeEQSRefresh,
-			NeedsRefreshKey));
+		GET_MEMBER_NAME_CHECKED(UNSBTService_RequestMeleeEQSRefresh, NeedsRefreshKey));
+
+	HasLineOfSightKey.AddBoolFilter(
+		this,
+		GET_MEMBER_NAME_CHECKED(UNSBTService_RequestMeleeEQSRefresh, HasLineOfSightKey));
 }
 
 void UNSBTService_RequestMeleeEQSRefresh::InitializeFromAsset(UBehaviorTree& Asset)
@@ -39,6 +38,7 @@ void UNSBTService_RequestMeleeEQSRefresh::InitializeFromAsset(UBehaviorTree& Ass
 	{
 		TargetActorKey.ResolveSelectedKey(*BlackboardAsset);
 		NeedsRefreshKey.ResolveSelectedKey(*BlackboardAsset);
+		HasLineOfSightKey.ResolveSelectedKey(*BlackboardAsset);
 	}
 }
 
@@ -48,10 +48,9 @@ void UNSBTService_RequestMeleeEQSRefresh::OnBecomeRelevant(
 {
 	Super::OnBecomeRelevant(OwnerComp, NodeMemory);
 
-	QueryReferenceTargetLocation = FVector::ZeroVector;
-
-	QueryReferenceTime = 0.0;
-	bHasQueryReference = false;
+	bTrackingLostSight = false;
+	LostSightStartTime = 0.0;
+	LastSearchRequestTime = -1000.0;
 }
 
 void UNSBTService_RequestMeleeEQSRefresh::TickNode(
@@ -73,50 +72,83 @@ void UNSBTService_RequestMeleeEQSRefresh::TickNode(
 		return;
 	}
 
-	AActor* TargetActor = Cast<AActor>(Blackboard->GetValueAsObject(TargetActorKey.SelectedKeyName));
+	AActor* TargetActor =
+		Cast<AActor>(Blackboard->GetValueAsObject(TargetActorKey.SelectedKeyName));
 
 	if (!IsValid(TargetActor))
 	{
 		Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, false);
 
-		bHasQueryReference = false;
+		bTrackingLostSight = false;
+		LostSightStartTime = 0.0;
 		return;
 	}
 
-	const bool bNeedsRefresh = Blackboard->GetValueAsBool(NeedsRefreshKey.SelectedKeyName);
+	APawn* Pawn = AIController->GetPawn();
 
-	if (bNeedsRefresh)
+	if (!Pawn)
 	{
-		bHasQueryReference = false;
+		Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, false);
+
+		bTrackingLostSight = false;
+		LostSightStartTime = 0.0;
 		return;
 	}
 
 	const double CurrentTime = World->GetTimeSeconds();
 
-	if (!bHasQueryReference)
-	{
-		QueryReferenceTargetLocation = TargetActor->GetActorLocation();
+	const bool bPerceptionHasLineOfSight = Blackboard->GetValueAsBool(HasLineOfSightKey.SelectedKeyName);
+	const bool bControllerHasLineOfSight = AIController->LineOfSightTo(TargetActor);
+	const bool bHasLineOfSight = bPerceptionHasLineOfSight || bControllerHasLineOfSight;
 
-		QueryReferenceTime = CurrentTime;
-		bHasQueryReference = true;
-		return;
-	}
-
-	if (CurrentTime - QueryReferenceTime < MinimumRequeryInterval)
-	{
-		return;
-	}
-
-	const float DistanceSquared = FVector::DistSquared2D(
-		QueryReferenceTargetLocation,
+	const float DistanceToTarget2D = FVector::Dist2D(
+		Pawn->GetActorLocation(),
 		TargetActor->GetActorLocation());
 
-	if (DistanceSquared < FMath::Square(TargetRequeryDistance))
+	const bool bTargetIsCloseEnough = DistanceToTarget2D <= DirectChaseDistance;
+
+	// 타깃이 보이거나 충분히 가까우면 EQS 정찰을 하지 않고 직접 추적
+	if (bHasLineOfSight || bTargetIsCloseEnough)
+	{
+		Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, false);
+
+		bTrackingLostSight = false;
+		LostSightStartTime = 0.0;
+		return;
+	}
+
+	// 타깃이 보이지 않고, 직접 추적 거리 밖에 있는 상태
+	if (!bTrackingLostSight)
+	{
+		bTrackingLostSight = true;
+		LostSightStartTime = CurrentTime;
+
+		Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, false);
+		return;
+	}
+
+	const double LostSightElapsedTime = CurrentTime - LostSightStartTime;
+
+	// 시야를 잃은 지 3초가 지나기 전까지는 EQS 정찰로 넘기지 않음
+	if (LostSightElapsedTime < LostSightSearchDelay)
+	{
+		Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, false);
+		return;
+	}
+
+	const bool bAlreadyNeedsRefresh = Blackboard->GetValueAsBool(NeedsRefreshKey.SelectedKeyName);
+
+	if (bAlreadyNeedsRefresh)
+	{
+		return;
+	}
+
+	// 정찰 요청이 너무 자주 반복되지 않도록 간격을 둠
+	if (CurrentTime - LastSearchRequestTime < SearchRequestInterval)
 	{
 		return;
 	}
 
 	Blackboard->SetValueAsBool(NeedsRefreshKey.SelectedKeyName, true);
-
-	bHasQueryReference = false;
+	LastSearchRequestTime = CurrentTime;
 }
