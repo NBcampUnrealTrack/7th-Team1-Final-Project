@@ -92,6 +92,11 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 			NewCurrency->CopyRunStateFrom(CurrencyComponent);
 		}
 
+		if (UNSPartEquipComponent* NewPart = NewPlayerState->GetPartEquipComponent())
+		{
+			NewPart->CopyRunStateFrom(PartEquipComponent);
+		}
+
 		if (UNSAugmentInventoryComponent* NewAugment = NewPlayerState->GetAugmentInventory())
 		{
 			NewAugment->CopyRunStateFrom(AugmentInventory);

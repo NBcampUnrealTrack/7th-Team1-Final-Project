@@ -37,6 +37,13 @@ public:
 	void EquipPart(const FNSPartData& NewPart, TOptional<FVector> DropLocationOverride = TOptional<FVector>());
 	void ClearAll();
 
+	// Seamless Travel: 이전 PlayerState의 런타임 파츠 데이터 이관 (핸들 제외)
+	void CopyRunStateFrom(const UNSPartEquipComponent* Source);
+	// 새 ASC 기준으로 보유 파츠 GE/GA 재적용
+	void ReapplyAll();
+	// 이관된 런타임 파츠 유무 확인 (있으면 ApplyEquippedPart 대신 ReapplyAll)
+	bool HasAnyEquipped() const { return EquippedParts.Num() > 0; }
+
 	bool HasEquippedPart(ENSPartSlot Slot) const;
 	const FNSPartData* GetEquippedPart(ENSPartSlot Slot) const;
 
