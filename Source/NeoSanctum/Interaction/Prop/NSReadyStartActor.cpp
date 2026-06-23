@@ -1,6 +1,6 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NSReadyStartNPC.h"
+#include "NSReadyStartActor.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -8,7 +8,7 @@
 #include "NeoSanctum/UI/Interaction/NSReadyStartWidget.h"
 #include "Blueprint/UserWidget.h"
 
-ANSReadyStartNPC::ANSReadyStartNPC()
+ANSReadyStartActor::ANSReadyStartActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
@@ -27,7 +27,7 @@ ANSReadyStartNPC::ANSReadyStartNPC()
 	PromptAnchor->SetRelativeLocation(FVector(0.0f, 0.0f, 120.0f));
 }
 
-void ANSReadyStartNPC::OnConstruction(const FTransform& Transform)
+void ANSReadyStartActor::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
@@ -38,12 +38,12 @@ void ANSReadyStartNPC::OnConstruction(const FTransform& Transform)
 	}
 }
 
-bool ANSReadyStartNPC::CanInteract_Implementation(APlayerController* Interactor) const
+bool ANSReadyStartActor::CanInteract_Implementation(APlayerController* Interactor) const
 {
 	return IsValid(Interactor) && ReadyStartWidgetClass;
 }
 
-bool ANSReadyStartNPC::OnInteract_Implementation(APlayerController* Interactor)
+bool ANSReadyStartActor::OnInteract_Implementation(APlayerController* Interactor)
 {
 	if (!IsValid(Interactor) || !ReadyStartWidgetClass)
 	{
@@ -87,12 +87,12 @@ bool ANSReadyStartNPC::OnInteract_Implementation(APlayerController* Interactor)
 	return true;
 }
 
-FText ANSReadyStartNPC::GetPromptText_Implementation() const
+FText ANSReadyStartActor::GetPromptText_Implementation() const
 {
 	return PromptText;
 }
 
-FVector ANSReadyStartNPC::GetPromptWorldLocation_Implementation() const
+FVector ANSReadyStartActor::GetPromptWorldLocation_Implementation() const
 {
 	if (PromptAnchor)
 	{
@@ -101,7 +101,7 @@ FVector ANSReadyStartNPC::GetPromptWorldLocation_Implementation() const
 
 	return GetActorLocation();
 }
-void ANSReadyStartNPC::CloseOpenedWidget(APlayerController* Interactor)
+void ANSReadyStartActor::CloseOpenedWidget(APlayerController* Interactor)
 {
 	if (!Interactor)
 	{

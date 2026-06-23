@@ -66,8 +66,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	FText InteractionKeyText = FText::FromString(TEXT("F"));
 
-	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
-	TSubclassOf<UNSInteractionPromptWidget> PromptWidgetClass;
+	// 기본 심플 프롬프트 위젯
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Prompt")
+	TSubclassOf<UNSInteractionPromptWidget> DefaultPromptWidgetClass;
+
+	// 파츠 전용 프롬프트 위젯 —> 아이콘/이름 표시
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Prompt")
+	TSubclassOf<UNSInteractionPromptWidget> PartPromptWidgetClass;
+
+private:
+	// 현재 WidgetComponent에 세팅된 클래스 캐싱
+	TSubclassOf<UNSInteractionPromptWidget> ActivePromptWidgetClass;
 	
 private:
 	UPROPERTY()

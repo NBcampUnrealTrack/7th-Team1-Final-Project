@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
-#include "NSReadyStartNPC.generated.h"
+#include "NSReadyStartActor.generated.h"
 
 class USphereComponent;
 class UStaticMeshComponent;
@@ -16,12 +16,12 @@ class UNSReadyStartWidget;
 * 모든 플레이어가 Ready 상태라면 인런 시작을 요청하는 액터
 */
 UCLASS()
-class NEOSANCTUM_API ANSReadyStartNPC : public AActor, public INSInteractable
+class NEOSANCTUM_API ANSReadyStartActor : public AActor, public INSInteractable
 {
 	GENERATED_BODY()
 	
 public:	
-	ANSReadyStartNPC();
+	ANSReadyStartActor();
 	
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
