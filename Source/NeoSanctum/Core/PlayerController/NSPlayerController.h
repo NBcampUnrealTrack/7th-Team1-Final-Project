@@ -98,6 +98,9 @@ public:
 	void SaveProgressToOwningClient();
 	
 	void CommitCharacterSelection(UNSCharacterData* SelectedCharacterData);
+	//캐릭터 선택 위젯 표시
+	UFUNCTION(BlueprintCallable,Category="UI")
+	void ShowCharacterSelectWidget();
 
 	// 거점 입장시 가장 최근 캐릭터 데이터 읽어오는 용도
 	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
@@ -110,6 +113,7 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifySkillCooldownChanged(
 		const FNSSkillCooldownMessage& Message);
+
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
@@ -156,9 +160,6 @@ private:
 	//HUD Attribute Delegate 중복 바인딩 방지
 	bool bHUDAttributeBound = false;
 	
-	//캐릭터 선택 위젯 표시
-	UFUNCTION(BlueprintCallable,Category="UI")
-	void ShowCharacterSelectWidget();
 	// 캐릭터 선택 위젯 닫기
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void HideCharacterSelectWidget();
