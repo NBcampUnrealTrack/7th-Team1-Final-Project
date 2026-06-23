@@ -23,11 +23,19 @@ void UNSStageManager::HandleEnemyKilled()
 {
 	RemainingEnemyCount = FMath::Max(0, RemainingEnemyCount - 1);
 	UE_LOG(LogTemp, Log, TEXT("남은 적: %d"), RemainingEnemyCount);
-
-	if (RemainingEnemyCount <= 0)
+	
+	// [임시] 누적 처치 수로 클리어 판정 (보스 구현 후 아래 원래 로직으로 복귀)
+	++CurrentKillCount;
+	UE_LOG(LogTemp, Log, TEXT("처치 수: %d / %d"), CurrentKillCount, KillsToClear);
+	if (CurrentKillCount >= KillsToClear)
 	{
 		CheckStageClearCondition();
 	}
+
+	//if (RemainingEnemyCount <= 0)
+	//{
+	//	CheckStageClearCondition();
+	//}
 }
 
 void UNSStageManager::CheckStageClearCondition()

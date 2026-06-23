@@ -73,8 +73,9 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	{
 		return;
 	}
-
+	
 	// 맵 생성 중 적 카운팅 잘못되었을수도 있어서 검증용 추가 로직
+	/*
 	int32 ActualAliveEnemies = 0;
 	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
 	{
@@ -94,6 +95,26 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 		}
 		UE_LOG(LogTemp, Warning, TEXT("적 카운팅 불일치 현재 남은 적: %d"), ActualAliveEnemies);
 		return;
+	}
+	*/
+	
+	// [임시] 클리어 시 남은 적을 풀로 반환 (보스 구현 후 정리)
+	if (NSMonsterPoolManager)
+	{
+		TArray<ANSEnemyCharacterBase*> AliveEnemies;
+		for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
+		{
+			ANSEnemyCharacterBase* Enemy = *It;
+			if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
+			{
+				AliveEnemies.Add(Enemy);
+			}
+		}
+		for (ANSEnemyCharacterBase* Enemy : AliveEnemies)
+		{
+			NSMonsterPoolManager->ReturnMonsterToPool(Enemy);
+		}
+		UE_LOG(LogTemp, Log, TEXT("[StageClear] 남은 적 %d마리 풀로 반환"), AliveEnemies.Num());
 	}
 	
 	// 스테이지 클리어 영구재화(공용/직업)를 각 플레이어 버킷에 적립

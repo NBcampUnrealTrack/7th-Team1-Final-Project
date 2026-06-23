@@ -32,4 +32,8 @@ private:
 	// 스테이지 남은 적 카운팅용
 	int32 RemainingEnemyCount = 0;
 	
+	// [임시] 테스트용 누적 처치 수 클리어 (보스 구현 후 제거)
+    int32 KillsToClear = 40;
+    int32 CurrentKillCount = 0;
+	
 };
