@@ -5,6 +5,7 @@
 
 #include "CommonButtonBase.h"
 #include "Components/WidgetSwitcher.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "SoundSetting/SoundSettingWidget.h"
 
 void UNSOptionWidget::NativeConstruct()
@@ -19,6 +20,11 @@ void UNSOptionWidget::NativeConstruct()
 	{
 		GraphicCategoryButton->OnClicked().AddUObject(this, &UNSOptionWidget::OnClickedGraphicCategoryButton);
 	}
+	if (CloseButton) 
+	{
+		CloseButton->OnClicked().AddUObject(this, &UNSOptionWidget::OnClickedCloseButton);
+	}
+	
 }
 
 void UNSOptionWidget::OnClickedSoundCategoryButton()
@@ -39,4 +45,15 @@ void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
 	}
 
 	OptionSwitcher->SetActiveWidget(OptionWidget);
+}
+
+void UNSOptionWidget::OnClickedCloseButton()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UNSUIManagerSubsystem* UIManager = GameInstance
+		? GameInstance->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
+	if (UIManager)
+	{
+		UIManager->CloseOptionPanel(); 
+	}
 }
