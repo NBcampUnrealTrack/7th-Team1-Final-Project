@@ -249,7 +249,7 @@ void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 	{
 		return;
 	}
-	//CharacterTag와 같은 RowName을 찾아 캐릭터별 스킬 슬롯 구성을 가져온다
+	
 	const FNSCharacterSkillUISet* SkillUISet =
 		CharacterSkillUISetTable->FindRow<FNSCharacterSkillUISet>(
 			CharacterId,
@@ -259,20 +259,23 @@ void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 	{
 		return;
 	}
-	//각 슬롯의 SkillSlotTag는 유지하고 표시할 SkillUIDataRow만 캐릭터별로 교체한다
+	
 	if (SkillSlot1Widget)
 	{
 		SkillSlot1Widget->SetSkillUIData(SkillUISet->Skill1UIDataRow);
+		SkillSlot1Widget->SetInputDisplayData(SkillUISet->Skill1InputDisplay);
 	}
 
 	if (SkillSlot2Widget)
 	{
 		SkillSlot2Widget->SetSkillUIData(SkillUISet->Skill2UIDataRow);
+		SkillSlot2Widget->SetInputDisplayData(SkillUISet->Skill2InputDisplay);
 	}
 
 	if (SkillSlot3Widget)
 	{
 		SkillSlot3Widget->SetSkillUIData(SkillUISet->Skill3UIDataRow);
+		SkillSlot3Widget->SetInputDisplayData(SkillUISet->Skill3InputDisplay);
 	}
 }
 
