@@ -6,6 +6,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "NeoSanctum/Type/NSSkillCooldownTypes.h"
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
@@ -66,6 +67,88 @@ void UNSSkillSlotWidget::ResetCooldown()
 	if (CooldownText)
 	{
 		CooldownText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSSkillSlotWidget::SetInputKeyText(const FText& NewInputText)
+{
+	if (InputKeyText)
+	{
+		InputKeyText->SetText(NewInputText);
+		InputKeyText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	
+	if (InputKeyIcon)
+	{
+		InputKeyIcon->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSSkillSlotWidget::SetInputKeyIcon(UTexture2D* NewInputIcon)
+{
+	if (InputKeyIcon && NewInputIcon)
+	{
+		InputKeyIcon->SetBrushFromTexture(NewInputIcon);
+		InputKeyIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	if (InputKeyText)
+	{
+		InputKeyText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSSkillSlotWidget::SetInputDisplayData(const FNSInputDisplayData& NewInputDisplayData)
+{	
+	if (!NewInputDisplayData.bShowInputDisplay)
+	{
+		if (InputKeyText)
+		{
+			InputKeyText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		if (InputKeyIcon)
+		{
+			InputKeyIcon->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		return;
+	}
+
+	if (NewInputDisplayData.bUseInputIcon)
+	{
+		if (InputKeyText)
+		{
+			InputKeyText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		if (!InputKeyIcon)
+		{
+			return;
+		}
+
+		UTexture2D* LoadedIcon =
+			NewInputDisplayData.InputIcon.LoadSynchronous();
+
+		if (!LoadedIcon)
+		{
+			InputKeyIcon->SetVisibility(ESlateVisibility::Collapsed);
+			return;
+		}
+
+		InputKeyIcon->SetBrushFromTexture(LoadedIcon);
+		InputKeyIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		return;
+	}
+
+	if (InputKeyIcon)
+	{
+		InputKeyIcon->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (InputKeyText)
+	{
+		InputKeyText->SetText(NewInputDisplayData.InputText);
+		InputKeyText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 }
 
@@ -256,12 +339,31 @@ void UNSSkillSlotWidget::ApplySkillCooldownUIData(
 	bCooldownTickActive = true;
 }
 
+void UNSSkillSlotWidget::ApplyInputDisplayVisibility()
+{
+	if (bShowInputDisplay)
+	{
+		return;
+	}
+
+	if (InputKeyText)
+	{
+		InputKeyText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (InputKeyIcon)
+	{
+		InputKeyIcon->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void UNSSkillSlotWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
 	ApplySkillUIData();
 	CacheOwnerASC();
+	ApplyInputDisplayVisibility();
 
 	if (CooldownOverlay)
 	{
