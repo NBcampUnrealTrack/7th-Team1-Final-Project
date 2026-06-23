@@ -104,3 +104,24 @@ void UNSReadyStartWidget::CloseWidget()
 
 	RemoveFromParent();
 }
+
+void UNSReadyStartWidget::RefreshReadyButtonText()
+{
+		if (!ReadyButtonText)
+		{
+			return;
+		}
+
+		ReadyButtonText->SetText(
+			bLocalReadySelected
+				? NSLOCTEXT("ReadyStartWidget", "CancelReady", "취소")
+				: NSLOCTEXT("ReadyStartWidget", "Ready", "준비"));
+}
+
+void UNSReadyStartWidget::InitializeButtonText()
+{
+	if (StartButtonText)
+	{
+		StartButtonText->SetText(
+			NSLOCTEXT("ReadyStartWidget", "Start", "시작"));
+	}
