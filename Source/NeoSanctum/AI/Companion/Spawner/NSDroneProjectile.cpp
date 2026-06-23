@@ -9,6 +9,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "DrawDebugHelpers.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 
 
 ANSDroneProjectile::ANSDroneProjectile()
@@ -92,6 +93,8 @@ void ANSDroneProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 	
 	UAbilitySystemComponent* EnemyASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
 	if (!EnemyASC) return;
+
+	if (!NSDamageRules::CanApplyDamage(GetInstigator(), OtherActor)) return;
 	
 	if (DamageSpecHandle.IsValid())
 	{
