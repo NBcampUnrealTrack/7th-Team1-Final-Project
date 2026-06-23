@@ -503,12 +503,7 @@ void UNSUIManagerSubsystem::OpenPauseMenu(APlayerController* OwningPlayer)
 
 	PauseMenuWidget->SetVisibility(ESlateVisibility::Visible);
 	bPauseMenuOpen = true;
-
-	// 인풋모드 UIOnly
-	FInputModeUIOnly InputMode;
-	InputMode.SetWidgetToFocus(PauseMenuWidget->TakeWidget());
-	OwningPlayer->SetInputMode(InputMode);
-	OwningPlayer->bShowMouseCursor = true;
+	PauseMenuWidget->SetFocus();
 }
 
 void UNSUIManagerSubsystem::ClosePauseMenu()
