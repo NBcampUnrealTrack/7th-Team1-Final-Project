@@ -10,6 +10,7 @@
 
 class ANSBaseCompanionAI;
 class UNSCompanionCatalog;
+class UNSCompanionDefinition;
 
 UCLASS(ClassGroup=(NEOSANCTUM), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSCompanionProgressionComponent : public UActorComponent
@@ -19,28 +20,16 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TObjectPtr<UNSCompanionCatalog> Catalog;
 	
-	// 업그레이드
-	UFUNCTION(Server, Reliable)
-	void Server_TryUpgrade(FGameplayTag NodeTag);
-	
-	// 해금 판정 게이팅
-	UFUNCTION(BlueprintPure)
-	bool CanSelect(FGameplayTag CompanionTag) const;
-	
-	UFUNCTION(Server, Reliable)
-	void Server_TrySelect(FGameplayTag CompanionTag);
-	
 	void SetOwnedCompanion(ANSBaseCompanionAI* Owner);
+	
+	// (이용호 추가) 허브 드론 즉시 변환용
+	void ApplySelectedAndNodes(
+		UNSCompanionDefinition* SelectedDefinition,
+		const TMap<FGameplayTag, int32>& NodeLevels);
+	// 노드 레벨 적용
+	void ApplyNodeLevels(const TMap<FGameplayTag, int32>& NodeLevels);
 	
 protected:
 	UPROPERTY()
 	TObjectPtr<ANSBaseCompanionAI> OwnedCompanion;
-	
-	// 세이브 데이터를 위한 진행상태 데이터
-	UPROPERTY()
-	FGameplayTag SelectedCompanionTag; // 선택중인 대상
-	UPROPERTY()
-	TMap<FGameplayTag, int32> NodeLevels; // 노드별 레벨
-	UPROPERTY()
-	TMap<FGameplayTag, int32> CompanionUpgradeCounts; // 누적 업그레이드
 };
