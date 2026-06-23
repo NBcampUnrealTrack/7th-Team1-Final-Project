@@ -11,6 +11,7 @@ class ANSPlayerState;
 class UNSProjectileManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndPhaseChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndVoteChanged);
 
 /**
  *
@@ -73,6 +74,11 @@ public:
 	
 	// 호스트 UI 연동용 헬퍼 함수
 	void SetRunEndPhase(ENSRunEndPhase NewPhase);
+	
+	UPROPERTY(BlueprintAssignable, Category = "RunEnd")
+	FNSOnRunEndVoteChanged OnRunEndVoteChanged;
+	
+	void NotifyRunVoteChanged();
 	
 private:
 	// 런 전체에서 서버 투사체를 관리하는 Component

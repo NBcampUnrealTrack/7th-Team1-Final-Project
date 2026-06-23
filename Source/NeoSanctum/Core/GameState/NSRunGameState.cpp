@@ -43,6 +43,7 @@ void ANSRunGameState::GetAlivePlayerStates(TArray<ANSPlayerState*>& AlivePlayerS
 void ANSRunGameState::OnRep_RunEndVotes()
 {
 	OnRunEndPhaseChanged.Broadcast();
+	NotifyRunVoteChanged();
 }
 
 void ANSRunGameState::OnRep_PhaseEndServerTime()
@@ -70,4 +71,9 @@ void ANSRunGameState::SetRunEndPhase(ENSRunEndPhase NewPhase)
 	{
 		OnRep_RunEndPhase();
 	}
+}
+
+void ANSRunGameState::NotifyRunVoteChanged()
+{
+	OnRunEndVoteChanged.Broadcast();
 }

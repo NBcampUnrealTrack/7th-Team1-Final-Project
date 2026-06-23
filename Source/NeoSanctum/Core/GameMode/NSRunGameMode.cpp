@@ -605,12 +605,7 @@ void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerCon
 
 	ANSPlayerState* NSPlayerState =
 		PlayerController->GetPlayerState<ANSPlayerState>();
-	if (!NSPlayerState)
-	{
-		return;
-	}
-
-	if (!NSPlayerState->bVoteConfirmed)
+	if (!NSPlayerState || !NSPlayerState->bVoteConfirmed)
 	{
 		return;
 	}
@@ -623,7 +618,6 @@ void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerCon
 
 	NSPlayerState->bVoteConfirmed = false;
 
-	//취소 시 현재 집계값에서 해당 플레이어의 표를 제거한다.
 	if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
 	{
 		RunGameState->NextVotes = FMath::Max(RunGameState->NextVotes - 1, 0);
@@ -632,6 +626,9 @@ void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerCon
 	{
 		RunGameState->HubVotes = FMath::Max(RunGameState->HubVotes - 1, 0);
 	}
+
+	RunGameState->NotifyRunVoteChanged();
+	RunGameState->ForceNetUpdate();
 
 	GetWorldTimerManager().ClearTimer(PhaseTimerHandle);
 
@@ -642,8 +639,7 @@ void ANSRunGameMode::CancelRunChoice_Implementation(APlayerController* PlayerCon
 
 	RunGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
 	RunGameState->ForceNetUpdate();
-	RunGameState->OnRep_RunEndVotes();
-	
+
 	GetWorldTimerManager().SetTimer(
 		PhaseTimerHandle,
 		this,
@@ -683,6 +679,10 @@ void ANSRunGameMode::OpenRunEndVote(bool bHubOnly)
 	NSGameState->PhaseEndServerTime =
 		NSGameState->GetServerWorldTimeSeconds() + VoteDuration;
 	NSGameState->OnRep_PhaseEndServerTime();
+	NSGameState->NextVotes = 0;
+	NSGameState->HubVotes = 0;
+	NSGameState->NotifyRunVoteChanged();
+
 	NSGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
 	NSGameState->ForceNetUpdate();
 	
@@ -736,6 +736,7 @@ void ANSRunGameMode::ResolveVote()
 
 	NSGameState->NextVotes = Next;
 	NSGameState->HubVotes = Hub;
+	NSGameState->NotifyRunVoteChanged();
 	NSGameState->WinningChoice = bGoNext
 		? ENSRunChoice::NextStage
 		: ENSRunChoice::ReturnToHub;
@@ -820,12 +821,34 @@ void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, EN
 	{
 		return;
 	}
-	
-	if (ANSPlayerState* NSPlayerState = Voter->GetPlayerState<ANSPlayerState>())
+
+	ANSPlayerState* NSPlayerState = Voter->GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState || NSPlayerState->bVoteConfirmed)
 	{
-		NSPlayerState->RunChoice = Choice;
-		NSPlayerState->bVoteConfirmed = true;
+		return;
 	}
+
+	ANSRunGameState* RunGameState = GetGameState<ANSRunGameState>();
+	if (!RunGameState)
+	{
+		return;
+	}
+
+	NSPlayerState->RunChoice = Choice;
+	NSPlayerState->bVoteConfirmed = true;
+
+	if (Choice == ENSRunChoice::NextStage)
+	{
+		RunGameState->NextVotes++;
+	}
+	else
+	{
+		RunGameState->HubVotes++;
+	}
+
+	RunGameState->NotifyRunVoteChanged();
+	RunGameState->ForceNetUpdate();
+
 	// 전원 확인 시 ResolveVote
 	HandlePlayerConfirmed();
 }

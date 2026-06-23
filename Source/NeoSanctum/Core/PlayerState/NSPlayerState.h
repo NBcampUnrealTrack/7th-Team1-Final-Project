@@ -85,11 +85,11 @@ public:
 	
 public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
-	ENSRunChoice RunChoice = ENSRunChoice::ReturnToHub; 
+	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
+	ENSRunChoice RunChoice = ENSRunChoice::ReturnToHub;
 	// 투표 후 확인 버튼을 눌렀는지 확인용
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
-	bool bVoteConfirmed = false; 
+	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
+	bool bVoteConfirmed = false;
 
 protected:
 	virtual void BeginPlay() override;
@@ -153,4 +153,9 @@ private:
 	void OnRep_bIsReady();
 
 	void NotifyReadyStateChanged() const;
+	
+	UFUNCTION()
+	void OnRep_RunEndVoteState();
+
+	void NotifyRunEndVoteChanged() const;
 };
