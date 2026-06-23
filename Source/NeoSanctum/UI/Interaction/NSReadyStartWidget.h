@@ -51,6 +51,8 @@ private:
 	
 	void InitializeButtonText();
 	
+	UFUNCTION()
+	void RefreshReadyStatusText();
 	// 버튼 텍스트는 로컬 입력 즉시 반응해야 하므로,
 	// 서버 복제 전에도 현재 플레이어의 예상 Ready 상태를 들고 있다.
 	bool bLocalReadySelected = false;

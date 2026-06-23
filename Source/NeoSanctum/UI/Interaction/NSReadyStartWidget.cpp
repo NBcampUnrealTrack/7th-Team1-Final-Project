@@ -54,6 +54,7 @@ void UNSReadyStartWidget::NativeDestruct()
 
 	Super::NativeDestruct();
 }
+
 void UNSReadyStartWidget::HandleReadyClicked()
 {
 	ANSPlayerController* NSPlayerController =
@@ -73,6 +74,7 @@ void UNSReadyStartWidget::HandleReadyClicked()
 	RefreshReadyButtonText();
 	RefreshReadyStatusText();
 }
+
 void UNSReadyStartWidget::HandleStartClicked()
 {
 	ANSPlayerController* NSPlayerController =
@@ -125,3 +127,81 @@ void UNSReadyStartWidget::InitializeButtonText()
 		StartButtonText->SetText(
 			NSLOCTEXT("ReadyStartWidget", "Start", "시작"));
 	}
+}
+
+void UNSReadyStartWidget::RefreshReadyStatusText()
+{
+	if (!ReadyStatusText)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	AGameStateBase* GameState = World->GetGameState();
+	if (!GameState)
+	{
+		return;
+	}
+
+	FString StatusString;
+
+	for (APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		const ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		if (!NSPlayerState)
+		{
+			continue;
+		}
+
+		const bool bIsLocalPlayer =
+			GetOwningPlayer() &&
+			NSPlayerState == GetOwningPlayer()->PlayerState;
+
+		const bool bIsReady =
+			bIsLocalPlayer
+				? bLocalReadySelected
+				: NSPlayerState->IsReady();
+
+		FString CharacterText = TEXT("Unknown");
+
+		if (const UNSCharacterData* CharacterData = NSPlayerState->GetCurrentCharacterData())
+		{
+			if (CharacterData->CharacterTag.IsValid())
+			{
+				CharacterText = CharacterData->CharacterTag.GetTagName().ToString();
+
+				FString LeftString;
+				FString RightString;
+
+				if (CharacterText.Split(
+					TEXT("."),
+					&LeftString,
+					&RightString,
+					ESearchCase::IgnoreCase,
+					ESearchDir::FromEnd))
+				{
+					CharacterText = RightString;
+				}
+			}
+		}
+
+		const FString PlayerName = NSPlayerState->GetPlayerName();
+		const FString ReadyText =
+			bIsReady
+				? TEXT("Ready")
+				: TEXT("Waiting");
+
+		StatusString += FString::Printf(
+			TEXT("%s : %s\n%s\n\n"),
+			*PlayerName,
+			*ReadyText,
+			*CharacterText);
+	}
+
+	ReadyStatusText->SetText(FText::FromString(StatusString));
+}
