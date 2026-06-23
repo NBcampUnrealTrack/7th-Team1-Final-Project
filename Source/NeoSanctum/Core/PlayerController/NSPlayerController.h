@@ -264,15 +264,14 @@ protected:
 
 	// O키(디버그 용) : 테스트용 증강 적재
 	void Debug_EnqueueAugmentOffer();
-	
+
 #pragma region Companion Cheat
 	
 public:
-	UFUNCTION(Server, Reliable)
-	void Server_CompanionCheatUpgrade(FGameplayTag CompanionTag);
+	void CompanionCheatUpgrade(FGameplayTag CompanionTag);
 	
-	UFUNCTION(Server, Reliable)
-	void Server_CompanionCheatSelect(FGameplayTag CompanionTag);
+	void CompanionCheatSelect(FGameplayTag CompanionTag);
 	
+	FName GetActiveCharacterIdForUpload() const;
 #pragma endregion Companion Cheat
 };
