@@ -89,59 +89,37 @@ void UNSCheatManager::Debug_RewardLevelUp()
 void UNSCheatManager::Debug_CompanionUpgrade(FString InTag)
 {
 	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
-	if (!OwningPC)
+	if (!OwningPC || InTag.IsEmpty())
 	{
 		return;
 	}
-	
-	if (InTag.IsEmpty()) return;
-	
-	FGameplayTag CompanionTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
-	if (!CompanionTag.IsValid()) return;
-	
-	if (OwningPC->HasAuthority())
-	{
-		ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
-		if (!PS) return;
 
-		UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
-		if (!Comp) return;
-
-		Comp->Server_TryUpgrade(CompanionTag);
-	}
-	else
+	// InTag = 노드 태그
+	const FGameplayTag NodeTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
+	if (!NodeTag.IsValid())
 	{
-		OwningPC->Server_CompanionCheatUpgrade(CompanionTag);
+		return;
 	}
+
+	OwningPC->CompanionCheatUpgrade(NodeTag);
 }
 
 void UNSCheatManager::Debug_CompanionSelect(FString InTag)
 {
 	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
-	if (!OwningPC)
+	if (!OwningPC || InTag.IsEmpty())
 	{
 		return;
 	}
-	
-	if (InTag.IsEmpty()) return;
-	
-	FGameplayTag CompanionTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
-	if (!CompanionTag.IsValid()) return;
-	
-	if (OwningPC->HasAuthority())
-	{
-		ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
-		if (!PS) return;
 
-		UNSCompanionProgressionComponent* Comp = PS->GetCompanionProgressionComponent();
-		if (!Comp) return;
-
-		Comp->Server_TrySelect(CompanionTag);
-	}
-	else
+	// InTag = 드론(컴패니언) 태그
+	const FGameplayTag CompanionTag = FGameplayTag::RequestGameplayTag(FName(*InTag), false);
+	if (!CompanionTag.IsValid())
 	{
-		OwningPC->Server_CompanionCheatSelect(CompanionTag);
+		return;
 	}
+
+	OwningPC->CompanionCheatSelect(CompanionTag);
 }
 
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
