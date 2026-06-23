@@ -764,9 +764,14 @@ void ANSPlayerController::BeginPlay()
 			// 로딩창은 타이틀로 넘어갈때는 띄우지 않음
 			UIManager->HideTravelLoadingScreen();
 			
+			UIManager->ClearTitle();
 			UIManager->CreateTitle(this);
 			UIManager->ShowTitle();
 			UIManager->HideHUD();
+			
+			FInputModeUIOnly InputModeData;          
+			SetInputMode(InputModeData);            
+			bShowMouseCursor = true; 
 			return;
 		}
 		// 현재 레벨이 아웃게임(거점)일 때
