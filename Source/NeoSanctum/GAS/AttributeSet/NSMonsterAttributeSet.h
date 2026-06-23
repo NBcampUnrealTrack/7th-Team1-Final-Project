@@ -76,4 +76,10 @@ private:
 
 	// 드론 공격자를 실제 어그로 대상인 소유 플레이어로 변환하는 함수
 	AActor* ResolvePerceivedInstigator(AActor* InstigatorActor) const;
+	
+private:
+	// 실제 체력 피해가 발생했을 때 몬스터 전용 피격 플래시 Cue를 실행하는 함수
+	void ExecuteDamageFlashCueAfterDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const;
 };

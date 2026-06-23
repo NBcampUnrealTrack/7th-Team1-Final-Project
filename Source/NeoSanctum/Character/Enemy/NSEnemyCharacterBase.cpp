@@ -19,6 +19,7 @@
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
@@ -41,6 +42,8 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -194,6 +197,7 @@ void ANSEnemyCharacterBase::ApplyVisualData()
 	if (EnemyData->SkeletalMesh)
 	{
 		GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+		InitializeRuntimeMaterials();
 	}
 
 	if (EnemyData->AnimClass)
@@ -492,6 +496,11 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	{
 		WeaponComponent->UnEquipWeapon();
 	}
+	
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->CancelFlash();
+	}
 
 	// 물리적 중지
 	SetActorHiddenInGame(true);
@@ -655,5 +664,66 @@ void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
 	else
 	{
 		EnemyController->HandleHitReactionFinished();
+	}
+}
+
+void ANSEnemyCharacterBase::InitializeRuntimeMaterials()
+{
+	USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (!MeshComponent || !EnemyData)
+	{
+		return;
+	}
+
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->ClearMaterialFlashTargets();
+	}
+
+	RuntimeVisualMaterials.Reset();
+
+	TArray<UMaterialInstanceDynamic*> FlashTargets;
+
+	for (const FNSEnemyMaterialDefinition& Definition : EnemyData->MaterialDefinitions)
+	{
+		const int32 MaterialIndex = MeshComponent->GetMaterialIndex(Definition.MaterialSlotName);
+
+		if (MaterialIndex == INDEX_NONE)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Enemy material slot not found: %s"),
+			       *Definition.MaterialSlotName.ToString());
+
+			continue;
+		}
+
+		UMaterialInterface* InitialMaterial = Definition.InitialMaterial
+			                                      ? Definition.InitialMaterial.Get()
+			                                      : MeshComponent->GetMaterial(MaterialIndex);
+
+		if (!InitialMaterial)
+		{
+			continue;
+		}
+
+		MeshComponent->SetMaterial(MaterialIndex, InitialMaterial);
+
+		UMaterialInstanceDynamic* MID =
+			MeshComponent->CreateDynamicMaterialInstance(MaterialIndex, InitialMaterial);
+
+		if (!MID)
+		{
+			continue;
+		}
+
+		MID->SetVectorParameterValue(TEXT("MonsterTint"), Definition.MonsterTint);
+		MID->SetScalarParameterValue(TEXT("HitFlashAmount"), 0.0f);
+
+		RuntimeVisualMaterials.Add(MID);
+		FlashTargets.Add(MID);
+	}
+
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->SetMaterialFlashTargets(FlashTargets);
 	}
 }

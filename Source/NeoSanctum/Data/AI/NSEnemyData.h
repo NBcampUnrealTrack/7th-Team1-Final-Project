@@ -16,6 +16,7 @@ class UGameplayAbility;
 class UBehaviorTree;
 class UStateTree;
 class UEnvQuery;
+class UMaterialInterface;
 
 UENUM(BlueprintType)
 enum class ENSEnemyMovementType : uint8
@@ -125,6 +126,24 @@ struct FNSEnemyAttackDefinition
 	int32 Priority = 0;
 };
 
+USTRUCT(BlueprintType)
+struct FNSEnemyMaterialDefinition
+{
+	GENERATED_BODY()
+
+	// 런타임 머티리얼을 적용할 스켈레탈 메시의 머티리얼 슬롯 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FName MaterialSlotName = NAME_None;
+
+	// 해당 슬롯에 MID를 만들기 전에 적용할 초기 머티리얼
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UMaterialInterface> InitialMaterial;
+
+	// 해당 몬스터 종류의 기본 외형 색상
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FLinearColor MonsterTint = FLinearColor::White;
+};
+
 /**
  * Enemy 초기화 시 필요한 PrimaryDataAsset 입니다.
  */
@@ -161,6 +180,10 @@ public:
 	// 몬스터 크기 배율
 	UPROPERTY(EditDefaultsOnly, Category = "Visual")
 	FVector DrawScale = FVector(1.0f, 1.0f, 1.0f);
+	
+	// 몬스터의 슬롯별 초기 머티리얼과 기본 외형 색상 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TArray<FNSEnemyMaterialDefinition> MaterialDefinitions;
 
 	// 무기
 	UPROPERTY(EditDefaultsOnly, Category = "Equipment")

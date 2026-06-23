@@ -64,6 +64,8 @@ void UNSDamageFlashComponent::PlayFlash()
 
 void UNSDamageFlashComponent::CancelFlash()
 {
+	CancelMaterialFlash();
+	
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(FlashTimerHandle);
@@ -175,4 +177,158 @@ FLinearColor UNSDamageFlashComponent::ResolveFlashColor() const
 	if (Ratio >= HighHealthThreshold) return FLinearColor::White; 
 	if (Ratio >= LowHealthThreshold)  return FLinearColor(1.0f, 1.0f, 0.0f, 1.0f);
 	return FLinearColor(1.0f, 0.0f, 0.0f, 1.0f);
+}
+
+void UNSDamageFlashComponent::SetMaterialFlashTargets(const TArray<UMaterialInstanceDynamic*>& InTargetMaterials)
+{
+	CancelMaterialFlash();
+	MaterialFlashMIDs.Reset();
+
+	for (UMaterialInstanceDynamic* MID : InTargetMaterials)
+	{
+		if (!IsValid(MID))
+		{
+			continue;
+		}
+
+		MaterialFlashMIDs.AddUnique(MID);
+
+		MID->SetVectorParameterValue(MaterialFlashColorParameterName, MaterialFlashColor);
+		MID->SetScalarParameterValue(MaterialFlashAmountParameterName, 0.0f);
+	}
+}
+
+void UNSDamageFlashComponent::ClearMaterialFlashTargets()
+{
+	CancelMaterialFlash();
+	MaterialFlashMIDs.Reset();
+}
+
+bool UNSDamageFlashComponent::TryPlayMaterialFlash(float Strength)
+{
+	UWorld* World = GetWorld();
+	if (!World || MaterialFlashDuration <= 0.0f)
+	{
+		return false;
+	}
+
+	for (int32 Index = MaterialFlashMIDs.Num() - 1; Index >= 0; --Index)
+	{
+		if (!IsValid(MaterialFlashMIDs[Index]))
+		{
+			MaterialFlashMIDs.RemoveAtSwap(Index);
+		}
+	}
+
+	if (MaterialFlashMIDs.Num() == 0)
+	{
+		return false;
+	}
+
+	ApplyMaterialFlashColor(ResolveMaterialFlashColor());
+
+	ActiveMaterialFlashStrength = FMath::Clamp(Strength, 0.0f, 1.0f);
+	MaterialFlashStartTime = World->GetTimeSeconds();
+
+	const float InitialAmount =
+		MaterialFlashPeakAmount *
+		ActiveMaterialFlashStrength *
+		EvaluateMaterialFlashCurve(0.0f);
+
+	ApplyMaterialFlashAmount(InitialAmount);
+
+	World->GetTimerManager().SetTimer(
+		MaterialFlashTimerHandle,
+		this,
+		&ThisClass::UpdateMaterialFlash,
+		0.016f,
+		true);
+
+	return true;
+}
+
+void UNSDamageFlashComponent::CancelMaterialFlash()
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(MaterialFlashTimerHandle);
+	}
+
+	ApplyMaterialFlashAmount(0.0f);
+}
+
+void UNSDamageFlashComponent::UpdateMaterialFlash()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const float ElapsedTime = World->GetTimeSeconds() - MaterialFlashStartTime;
+	const float NormalizedTime = FMath::Clamp(ElapsedTime / MaterialFlashDuration, 0.0f, 1.0f);
+
+	const float CurrentAmount =
+		MaterialFlashPeakAmount *
+		ActiveMaterialFlashStrength *
+		EvaluateMaterialFlashCurve(NormalizedTime);
+
+	ApplyMaterialFlashAmount(CurrentAmount);
+
+	if (NormalizedTime >= 1.0f)
+	{
+		World->GetTimerManager().ClearTimer(MaterialFlashTimerHandle);
+
+		ApplyMaterialFlashAmount(0.0f);
+	}
+}
+
+void UNSDamageFlashComponent::ApplyMaterialFlashAmount(float Amount)
+{
+	for (UMaterialInstanceDynamic* MID : MaterialFlashMIDs)
+	{
+		if (IsValid(MID))
+		{
+			MID->SetScalarParameterValue(MaterialFlashAmountParameterName, FMath::Max(Amount, 0.0f));
+		}
+	}
+}
+
+float UNSDamageFlashComponent::EvaluateMaterialFlashCurve(
+	float NormalizedTime) const
+{
+	const float ClampedTime = FMath::Clamp(NormalizedTime, 0.0f, 1.0f);
+
+	if (MaterialFlashCurve)
+	{
+		return FMath::Clamp(MaterialFlashCurve->GetFloatValue(ClampedTime), 0.0f, 1.0f);
+	}
+
+	return FMath::Square(1.0f - ClampedTime);
+}
+
+FLinearColor UNSDamageFlashComponent::ResolveMaterialFlashColor() const
+{
+	if (bUseHealthBasedMaterialFlashColor)
+	{
+		return ResolveFlashColor();
+	}
+
+	return MaterialFlashColor;
+}
+
+void UNSDamageFlashComponent::ApplyMaterialFlashColor(const FLinearColor& InFlashColor)
+{
+	for (int32 Index = MaterialFlashMIDs.Num() - 1; Index >= 0; --Index)
+    {
+        UMaterialInstanceDynamic* MID = MaterialFlashMIDs[Index].Get();
+
+        if (!IsValid(MID))
+        {
+            MaterialFlashMIDs.RemoveAtSwap(Index);
+            continue;
+        }
+
+        MID->SetVectorParameterValue(MaterialFlashColorParameterName, InFlashColor);
+    }
 }

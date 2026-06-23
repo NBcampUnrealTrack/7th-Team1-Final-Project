@@ -16,6 +16,8 @@ class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
 class ANSEnemyWeaponBase;
+class UMaterialInstanceDynamic;
+class UNSDamageFlashComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface,
@@ -192,5 +194,20 @@ private:
 	// 경직 상태를 변경하고 AI Controller에 시작 또는 종료를 알리는 함수
 	void SetHitReactionState(bool bNewHitReacting);
 
+#pragma endregion
+	
+#pragma region MID 적용
+
+protected:
+	// 몬스터의 외형 MID 또는 기존 Overlay에 피격 효과를 적용하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
+	
+	// 현재 몬스터 외형에 적용된 런타임 MID 배열
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> RuntimeVisualMaterials;
+
+	// EnemyData를 바탕으로 외형 MID를 생성하고 피격 컴포넌트에 등록하는 함수
+	void InitializeRuntimeMaterials();
 #pragma endregion
 };
