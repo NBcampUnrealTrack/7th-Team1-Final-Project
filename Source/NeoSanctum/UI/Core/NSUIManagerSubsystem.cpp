@@ -452,6 +452,55 @@ void UNSUIManagerSubsystem::ClearRunEnd()
 	}
 }
 
+void UNSUIManagerSubsystem::CreateLoadingScreen(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer)
+	{
+		return;
+	}
+	
+	if (LoadingScreenWidget && !LoadingScreenWidget->IsInViewport())
+	{
+		LoadingScreenWidget = nullptr;
+	}
+	
+	if (LoadingScreenWidget)
+	{
+		return;
+	}
+	
+	TSubclassOf<UUserWidget> WidgetClassToUse = 
+		GetWidgetClassFromTable(TEXT("LoadingScreen"));
+	
+	if (!WidgetClassToUse)
+	{
+		return;
+	}
+	
+	LoadingScreenWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->AddToViewport(1000);
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSUIManagerSubsystem::ShowLoadingScreen()
+{
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSUIManagerSubsystem::HideLoadingScreen()
+{
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
 void UNSUIManagerSubsystem::OpenPartPanel()
 {
 	if (!IsValid(HUDWidget))

@@ -73,6 +73,11 @@ public:
 	void HideRunEnd();
 	void ClearRunEnd();
 	
+	//(정주현 추가) Loading 위젯 전용
+	void CreateLoadingScreen(APlayerController* OwningPlayer);
+	void ShowLoadingScreen();
+	void HideLoadingScreen();
+	
 	//파츠 패널 열기
 	void OpenPartPanel();
 	//파츠 패널 닫기
@@ -153,6 +158,9 @@ private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
 	
+	UPROPERTY()
+	TObjectPtr<UUserWidget> LoadingScreenWidget;
+	
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
@@ -194,6 +202,5 @@ protected:
 	TSubclassOf<UUserWidget> TitleWidgetClass;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> RunEndWidgetClass;
-	
+	TSubclassOf<UUserWidget> RunEndWidgetClass;	
 }; 
