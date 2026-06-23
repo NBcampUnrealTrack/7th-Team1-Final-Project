@@ -124,7 +124,7 @@ const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 	}
 	
 	const int32 RollValue = RandomStream.RandRange(1, TotalWeight);
-	float AccumulatedWeight = 0.0f;
+	int32 AccumulatedWeight = 0;
 	
 	for (const FNSRewardDropRow* Row : Rows)
 	{
