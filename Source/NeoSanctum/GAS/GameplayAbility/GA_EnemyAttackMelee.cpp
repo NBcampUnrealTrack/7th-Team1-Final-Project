@@ -93,7 +93,7 @@ void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 		Start,
 		End,
 		FQuat::Identity,
-		NSCollisionChannels::WeaponTrace,
+		NSCollisionChannels::EnemyWeaponTrace,
 		FCollisionShape::MakeSphere(AttackTraceRadius),
 		QueryParams);
 
