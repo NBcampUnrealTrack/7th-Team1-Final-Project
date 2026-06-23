@@ -286,4 +286,10 @@ public:
 	
 	FName GetActiveCharacterIdForUpload() const;
 #pragma endregion Companion Cheat
+	
+	// 일시정지 메뉴 토글
+	void TogglePauseMenu();
+	// PauseMenu 사용 용도 → 세션 정리 후 타이틀
+	void RequestLeaveToMainMenu();
+	void RestoreGameplayInputMode();
 };

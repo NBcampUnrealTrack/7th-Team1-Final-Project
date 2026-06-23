@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "CommonUserWidget.h"
 #include "NSOptionWidget.generated.h"
 
 class USoundSettingWidget;
@@ -15,7 +15,7 @@ class UWidgetSwitcher;
  * WidgetSwitcher를 활용해서 특정 위젯만 활성화하게함
  */
 UCLASS()
-class NEOSANCTUM_API UNSOptionWidget : public UUserWidget
+class NEOSANCTUM_API UNSOptionWidget : public UCommonUserWidget
 {
 	GENERATED_BODY()
 	
@@ -47,6 +47,10 @@ private:
 	
 	// TODO : 앞으로 다양한 Option Button들이 생기면 여기에 추가
 	
+	// (이용호 추가) 옵션창 닫는 버튼
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonButtonBase> CloseButton;
+	
 private:
 	// 사용하는 사운드 세팅 위젯
 	UPROPERTY(meta = (BindWidget))
@@ -57,4 +61,8 @@ private:
 	TObjectPtr<UWidget> GraphicSettingWidget;
 	
 	// TODO : 앞으로 Graphic, Game 등 다양한 세팅 위젯들이 추가될 때 이 곳에 추가
+	
+	// 옵션 창 종료
+	UFUNCTION()
+	void OnClickedCloseButton();
 };

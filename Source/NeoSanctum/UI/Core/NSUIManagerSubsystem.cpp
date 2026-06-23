@@ -265,6 +265,15 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 		MaxShield);
 }
 
+void UNSUIManagerSubsystem::ClearTitle()
+{
+	if (TitleWidget)
+	{
+		TitleWidget->RemoveFromParent();
+		TitleWidget = nullptr;
+	}
+}
+
 void UNSUIManagerSubsystem::ClearHUD()
 {
 	if (HUDWidget)
@@ -462,6 +471,122 @@ void UNSUIManagerSubsystem::ClearRunEnd()
 		RunEndWidget->RemoveFromParent();
 		RunEndWidget = nullptr;
 	}
+}
+
+void UNSUIManagerSubsystem::OpenPauseMenu(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer || bPauseMenuOpen) return;
+
+	if (!PauseMenuWidget)
+	{
+		TSubclassOf<UUserWidget> WidgetClassToUse = GetWidgetClassFromTable(TEXT("PauseMenu"));
+		if (!WidgetClassToUse)
+		{
+			WidgetClassToUse = PauseMenuWidgetClass;
+		}
+		
+		if (!WidgetClassToUse)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[PauseMenu] 위젯 클래스를 찾지 못했습니다."));
+			return;
+		}
+		
+		PauseMenuWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
+		if (!PauseMenuWidget)
+		{
+			return;
+		}
+		
+		// HUD 위에 오도록 ZOrder 높게
+		PauseMenuWidget->AddToViewport(10); 
+	}
+
+	PauseMenuWidget->SetVisibility(ESlateVisibility::Visible);
+	bPauseMenuOpen = true;
+	PauseMenuWidget->SetFocus();
+}
+
+void UNSUIManagerSubsystem::ClosePauseMenu()
+{
+	if (!bPauseMenuOpen)
+	{
+		return;
+	}
+	
+	bPauseMenuOpen = false;
+	
+	if (PauseMenuWidget)
+	{
+		PauseMenuWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSUIManagerSubsystem::ClearPauseMenu()
+{
+	if (PauseMenuWidget)
+	{
+		PauseMenuWidget->RemoveFromParent();
+		PauseMenuWidget = nullptr;
+	}
+	
+	bPauseMenuOpen = false;
+}
+
+void UNSUIManagerSubsystem::OpenOptionPanel(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer || bOptionPanelOpen)
+	{
+		return;
+	}
+	
+	if (!OptionWidget)
+	{
+		TSubclassOf<UUserWidget> WidgetClassToUse = GetWidgetClassFromTable(TEXT("Option"));
+		if (!WidgetClassToUse)
+		{
+			WidgetClassToUse = OptionWidgetClass;
+		}
+		
+		if (!WidgetClassToUse)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[Option] 위젯 클래스 없음")); return;
+		}
+		
+		OptionWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
+		if (!OptionWidget)
+		{
+			return;
+		}
+		// PauseMenu보다 높게 나와야함
+		OptionWidget->AddToViewport(20); 
+	}
+	
+	OptionWidget->SetVisibility(ESlateVisibility::Visible);
+	bOptionPanelOpen = true;
+}
+
+void UNSUIManagerSubsystem::CloseOptionPanel()
+{
+	if (!bOptionPanelOpen)
+	{
+		return;
+	}
+	
+	bOptionPanelOpen = false;
+	if (OptionWidget)
+	{
+		OptionWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSUIManagerSubsystem::ClearOptionPanel()
+{
+	if (OptionWidget)
+	{
+		OptionWidget->RemoveFromParent(); OptionWidget = nullptr;
+	}
+	
+	bOptionPanelOpen = false;
 }
 
 void UNSUIManagerSubsystem::CreateLoadingScreen(APlayerController* OwningPlayer)
