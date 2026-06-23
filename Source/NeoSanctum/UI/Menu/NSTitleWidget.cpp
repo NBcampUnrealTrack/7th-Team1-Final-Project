@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 void UNSTitleWidget::OnClickedHostButton()
 {
@@ -44,6 +45,14 @@ void UNSTitleWidget::OnClickedOptionButton()
 	//TODO(영웅): 옵션 UI 연결
 	
 	UE_LOG(LogTemp, Warning, TEXT("옵션 버튼 클릭"));
+	
+	UGameInstance* GameInstance = GetGameInstance();
+	UNSUIManagerSubsystem* UIManager = GameInstance
+		? GameInstance->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
+	if (UIManager)
+	{
+		UIManager->OpenOptionPanel(GetOwningPlayer());
+	}
 }
 
 void UNSTitleWidget::OnClickedQuitButton()
