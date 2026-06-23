@@ -96,6 +96,45 @@ void UNSPartEquipComponent::ClearAll()
 	EquippedParts.Empty();
 }
 
+void UNSPartEquipComponent::CopyRunStateFrom(const UNSPartEquipComponent* Source)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	if (!Source)
+	{
+		return;
+	}
+
+	// 데이터만 이관, 핸들은 이전 ASC 기준이라 무효이므로 복사하지 않음 (ReapplyAll에서 새로 발급)
+	EquippedParts = Source->EquippedParts;
+}
+
+void UNSPartEquipComponent::ReapplyAll()
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+
+	// 이전 ASC 기준 핸들 폐기 후 슬롯별 GE/GA 재발급
+	ActiveGEHandles.Empty();
+	GrantedAbilityHandlesBySlot.Empty();
+
+	for (const FNSPartData& Part : EquippedParts)
+	{
+		ApplyPartEffect(Part.Slot);
+		GrantAbilities(Part.Slot);
+	}
+}
+
 bool UNSPartEquipComponent::HasEquippedPart(ENSPartSlot Slot) const
 {
 	return FindPart(Slot) != nullptr;

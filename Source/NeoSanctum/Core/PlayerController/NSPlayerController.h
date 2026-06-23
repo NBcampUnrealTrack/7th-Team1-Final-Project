@@ -60,6 +60,10 @@ public:
 	// 클라이언트에 인런 데이터 로드 지시
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyRunStarted();
+
+	// 클라이언트에 인런 데이터 언로드 및 아웃런 데이터 재로드 지시
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyReturnToHub();
 	
 	// 투표 확정 입력용
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")

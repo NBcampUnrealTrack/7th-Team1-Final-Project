@@ -89,8 +89,8 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UN
 		Inst.EffectHandle.Invalidate();
 	}
 	
-	// 아직 데이터 서브시스템을 연결하지 않아서 LoadSynchronous로 로드 보장 -> 추후에 .Get()으로 변경예정
-	UClass* GEClass = Def->StackEffectClass.LoadSynchronous();
+	// InRunData 번들로 미리 로드되어 DataSubsystem 캐시에 상주하므로 동기 로드 없이 .Get()으로 조회
+	UClass* GEClass = Def->StackEffectClass.Get();
 	if (!GEClass)
 	{
 		return;
@@ -115,8 +115,8 @@ void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst
 		return;
 	}
 	
-	// 아직 데이터 서브시스템을 연결하지 않아서 LoadSynchronous로 로드 보장 -> 추후에 .Get()으로 변경예정
-	UClass* GAClass = Def->GrantedAbilityClass.LoadSynchronous();
+	// InRunData 번들로 미리 로드되어 DataSubsystem 캐시에 상주하므로 동기 로드 없이 .Get()으로 조회
+	UClass* GAClass = Def->GrantedAbilityClass.Get();
 	if (!GAClass)
 	{
 		return;
@@ -146,6 +146,68 @@ void UNSAugmentInventoryComponent::ClearAll()
 		}
 	}
 	Owned.Reset();
+	OnInventoryChanged.Broadcast();
+}
+
+void UNSAugmentInventoryComponent::CopyRunStateFrom(const UNSAugmentInventoryComponent* Source)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	if (!Source)
+	{
+		return;
+	}
+
+	// 데이터만 이관, 핸들은 이전 ASC 기준이라 무효이므로 복사하지 않음 (ReapplyAll에서 새로 발급)
+	Owned.Reset();
+	for (const FNSAugmentInstance& SourceInst : Source->Owned)
+	{
+		FNSAugmentInstance NewInstance;
+		NewInstance.DefId = SourceInst.DefId;
+		NewInstance.Rarity = SourceInst.Rarity;
+		NewInstance.Stacks = SourceInst.Stacks;
+		NewInstance.bCountsAsLegendarySlot = SourceInst.bCountsAsLegendarySlot;
+		Owned.Add(NewInstance);
+	}
+}
+
+void UNSAugmentInventoryComponent::ReapplyAll()
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+
+	for (FNSAugmentInstance& Inst : Owned)
+	{
+		UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+		if (!Def)
+		{
+			continue;
+		}
+
+		// 새 ASC 기준 핸들로 갱신, 누적 Stacks는 SetByCaller로 한 번에 적용
+		Inst.EffectHandle.Invalidate();
+		Inst.AbilityHandle = FGameplayAbilitySpecHandle();
+		ApplyStackEffect(Inst, Def, ASC);
+		GrantMechanicAbility(Inst, Def, ASC);
+	}
+
 	OnInventoryChanged.Broadcast();
 }
 
