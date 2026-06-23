@@ -577,10 +577,10 @@ bool ANSTurret::CanFireToCurrentTarget() const
 		return false;
 	}
 
-	const FTransform MuzzleTransform = GetMuzzleTransform();
-	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
-	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
-	const FVector ToTarget = TargetActor->GetActorLocation() - MuzzleLocation;
+	const FTransform TraceTransform = GetTraceSocketTransform();
+	const FVector TraceLocation = TraceTransform.GetLocation();
+	const FVector TraceForward = TraceTransform.GetRotation().GetForwardVector();
+	const FVector ToTarget = TargetActor->GetActorLocation() - TraceLocation;
 
 	if (ToTarget.IsNearlyZero() || ToTarget.SizeSquared() > FMath::Square(AttackRange))
 	{
@@ -592,7 +592,7 @@ bool ANSTurret::CanFireToCurrentTarget() const
 		return false;
 	}
 
-	const float AimDot = FVector::DotProduct(MuzzleForward, ToTarget.GetSafeNormal());
+	const float AimDot = FVector::DotProduct(TraceForward, ToTarget.GetSafeNormal());
 	const float AimAngle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(AimDot, -1.0f, 1.0f)));
 	
 	// 일정 각도 이내에 적이 있는 경우 발사 가능
@@ -606,18 +606,18 @@ void ANSTurret::FireHitscan()
 		return;
 	}
 
-	const FTransform MuzzleTransform = GetMuzzleTransform();
-	const FVector TraceStart = MuzzleTransform.GetLocation();
+	const FTransform TraceTransform = GetTraceSocketTransform();
+	const FVector TraceStart = TraceTransform.GetLocation();
 	
 	ReportFireNoise(TraceStart);
 	
-	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
+	const FVector TraceForward = TraceTransform.GetRotation().GetForwardVector();
 	
 	const float AttackRange = AttributeSet->GetAttackRange();
 	const float Accuracy = FMath::Clamp(AttributeSet->GetAccuracy(), 0.0f, 1.0f);
 	const float SpreadAngle = FMath::Lerp(MaxSpreadAngle, 0.0f, Accuracy);
 	
-	const FVector ShotDirection = FMath::VRandCone(MuzzleForward, FMath::DegreesToRadians(SpreadAngle));
+	const FVector ShotDirection = FMath::VRandCone(TraceForward, FMath::DegreesToRadians(SpreadAngle));
 	const FVector TraceEnd = TraceStart + ShotDirection * AttackRange;
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(TurretFireHitscan), false, this);
@@ -664,15 +664,32 @@ void ANSTurret::FireHitscan()
 		}
 	}
 	
+	const FTransform MuzzleTransform = GetMuzzleTransform();
+	
 	// Gameplay Cue 재생
-	FGameplayCueParameters CueParameters;
-	CueParameters.Instigator = this;
-	CueParameters.EffectCauser = this;
-	CueParameters.Location = MuzzleTransform.GetLocation();
-	CueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
-
-	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_AutoFire_MuzzleFire, CueParameters);
-
+	FGameplayCueParameters MuzzleFireCueParameters;
+	MuzzleFireCueParameters.Instigator = this;
+	MuzzleFireCueParameters.EffectCauser = this;
+	MuzzleFireCueParameters.Location = MuzzleTransform.GetLocation();
+	MuzzleFireCueParameters.Normal = MuzzleTransform.GetRotation().GetForwardVector();
+	
+	FGameplayCueParameters BulletTrailCueParameters;
+	BulletTrailCueParameters.Instigator = this;
+	BulletTrailCueParameters.EffectCauser = this;
+	BulletTrailCueParameters.Location = MuzzleTransform.GetLocation();;
+	BulletTrailCueParameters.Normal = (TraceEnd - TraceStart).GetSafeNormal();
+	BulletTrailCueParameters.RawMagnitude = AttackRange;
+	
+	FGameplayCueParameters ImpactCueParameters;
+	ImpactCueParameters.Instigator = this;
+	ImpactCueParameters.EffectCauser = this;
+	ImpactCueParameters.Location = HitResult.ImpactPoint;
+	ImpactCueParameters.Normal = HitResult.ImpactNormal;
+	
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_SpawnTurret_MuzzleFire, MuzzleFireCueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_SpawnTurret_BulletTrail, BulletTrailCueParameters);
+	ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_SpawnTurret_Impact, ImpactCueParameters);
+	
 	// 임시 디버그 라인 처리. 쉬핑할 때는 제거.
 #if !UE_BUILD_SHIPPING
 	
@@ -728,6 +745,16 @@ FTransform ANSTurret::GetMuzzleTransform() const
 	if (HeadMeshComponent && HeadMeshComponent->DoesSocketExist(MuzzleSocketName))
 	{
 		return HeadMeshComponent->GetSocketTransform(MuzzleSocketName);
+	}
+
+	return HeadMeshComponent ? HeadMeshComponent->GetComponentTransform() : GetActorTransform();
+}
+
+FTransform ANSTurret::GetTraceSocketTransform() const
+{
+	if (HeadMeshComponent && HeadMeshComponent->DoesSocketExist(TraceSocketName))
+	{
+		return HeadMeshComponent->GetSocketTransform(TraceSocketName);
 	}
 
 	return HeadMeshComponent ? HeadMeshComponent->GetComponentTransform() : GetActorTransform();
