@@ -790,7 +790,7 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -839,7 +839,7 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 	
@@ -1070,7 +1070,7 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 		OutObstructionHitResult,
 		ObstructionTraceStart,
 		AimPoint,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 	

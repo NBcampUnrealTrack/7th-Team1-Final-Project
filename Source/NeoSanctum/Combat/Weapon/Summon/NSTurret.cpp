@@ -633,7 +633,7 @@ void ANSTurret::FireHitscan()
 		HitResult,
 		TraceStart,
 		TraceEnd,
-		NSCollisionChannels::WeaponTrace,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 	

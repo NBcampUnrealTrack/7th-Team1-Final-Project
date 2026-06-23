@@ -509,7 +509,7 @@ bool UGA_EngineerShotgunFire::TryBuildPelletTrace(
 		OutHitResult,
 		TraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -978,7 +978,7 @@ bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
 		OutObstructionHitResult,
 		ObstructionTraceStart,
 		AimPoint,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -1048,7 +1048,7 @@ bool UGA_EngineerShotgunFire::TryBuildServerPelletTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 

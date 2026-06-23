@@ -78,7 +78,7 @@ protected:
 	
 	// 조준 Trace와 총구 막힘 Trace에 공통으로 사용할 Collision 채널
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::PlayerWeaponTrace;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bDrawDebugHitscan = false;
