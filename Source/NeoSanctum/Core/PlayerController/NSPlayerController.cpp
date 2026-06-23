@@ -974,13 +974,16 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UpdateHUDHealthAndShield();
 		UpdateHUDAmmo();
 		BindCurrencyToHUD();
-		//UpdateSkillUIFromCurrentCharacter();
+		UpdateSkillUIFromCurrentCharacter();
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDAmmo);
+		GetWorldTimerManager().SetTimerForNextTick(
+	this,
+	&ANSPlayerController::UpdateSkillUIFromCurrentCharacter);
 	}
 	if (MapName.Contains(TEXT("HideOut")))
 	{
