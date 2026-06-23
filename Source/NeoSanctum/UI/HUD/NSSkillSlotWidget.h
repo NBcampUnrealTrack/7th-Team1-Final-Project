@@ -9,10 +9,13 @@
 #include "Engine/DataTable.h"
 #include "NSSkillSlotWidget.generated.h"
 
+struct FNSInputDisplayData;
 class UCommonTextBlock;
 class UImage;
 class UMaterialInstanceDynamic;
 class UNSAbilitySystemComponent;
+class UTexture2D;
+class UNSInputDisplayData;
 struct FSkillCooldownUIData;
 struct FNSSkillCooldownMessage;
 struct FNSSkillUIData;
@@ -44,10 +47,23 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category =  "Skill")
 	FDataTableRowHandle SkillUIDataRow;
 	
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SetInputKeyText(const FText& NewInputText);
+	
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SetInputKeyIcon(UTexture2D* NewInputIcon);
+	
+	//스킬 슬롯 입력 표시 갱신
+	UFUNCTION(BlueprintCallable, Category = "Skill")
+	void SetInputDisplayData(const FNSInputDisplayData& NewInputDisplayData);
+	
 public:
 	//캐릭터 변경 시 슬롯에 표시할 스킬 정보를 갱신
 	UFUNCTION(BlueprintCallable, Category = "Skill")
 	void SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow);
+	//이 슬롯에서 입력키 표시를 사용할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	bool bShowInputDisplay = true;
 	
 private:
 	//GMS 쿨타임 변경 수신
@@ -73,6 +89,9 @@ private:
 	//조회한 스킬 쿨다운 데이터를 화면에 반영
 	void ApplySkillCooldownUIData(const FSkillCooldownUIData& CooldownData);
 	
+	//슬롯 설정에 따라 입력 표시를 숨긴다
+	void ApplyInputDisplayVisibility();
+	
 private:
 	//스킬 아이콘
 	UPROPERTY(meta = (BindWidget))
@@ -93,6 +112,14 @@ private:
 	//쿨타임과 머테리얼 연결
 	UPROPERTY(Transient)
 	TObjectPtr<UMaterialInstanceDynamic> CooldownMID;
+	
+	//입력키 텍스트 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> InputKeyText;
+
+	//입력키 아이콘 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> InputKeyIcon;
 
 	//위젯 제거시 GMS리스너 해제
 	FGameplayMessageListenerHandle CooldownListenerHandle;
@@ -109,6 +136,7 @@ private:
 	
 	//쿨타임 중일 때만 ASC 쿨타임 상태를 Tick에서 조회
 	bool bCooldownTickActive = false;
+
 	
 protected:
 	virtual void NativeConstruct() override;
