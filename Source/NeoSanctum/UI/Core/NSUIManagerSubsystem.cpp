@@ -6,9 +6,21 @@
 #include "NeoSanctum/UI/HUD/NSHUDWidget.h"
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
+
+UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
+{
+	UGameInstance* GameInstance = UGameplayStatics::GetGameInstance(WorldContext);
+	if (!GameInstance)
+	{
+		return nullptr;
+	}
+
+	return GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+}
 
 float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
 {
@@ -450,6 +462,79 @@ void UNSUIManagerSubsystem::ClearRunEnd()
 		RunEndWidget->RemoveFromParent();
 		RunEndWidget = nullptr;
 	}
+}
+
+void UNSUIManagerSubsystem::CreateLoadingScreen(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer)
+	{
+		return;
+	}
+	
+	if (LoadingScreenWidget && !LoadingScreenWidget->IsInViewport())
+	{
+		LoadingScreenWidget = nullptr;
+	}
+	
+	if (LoadingScreenWidget)
+	{
+		return;
+	}
+	
+	TSubclassOf<UUserWidget> WidgetClassToUse = 
+		GetWidgetClassFromTable(TEXT("LoadingScreen"));
+	
+	if (!WidgetClassToUse)
+	{
+		return;
+	}
+	
+	LoadingScreenWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->AddToViewport(1000);
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSUIManagerSubsystem::ShowLoadingScreen()
+{
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void UNSUIManagerSubsystem::HideLoadingScreen()
+{
+	if (LoadingScreenWidget)
+	{
+		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer)
+{
+	bTravelLoadingScreenActive = true;
+	CreateLoadingScreen(OwningPlayer);
+	ShowLoadingScreen();
+}
+
+void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* OwningPlayer)
+{
+	if (!bTravelLoadingScreenActive)
+	{
+		return;
+	}
+
+	CreateLoadingScreen(OwningPlayer);
+	ShowLoadingScreen();
+}
+
+void UNSUIManagerSubsystem::HideTravelLoadingScreen()
+{
+	bTravelLoadingScreenActive = false;
+	HideLoadingScreen();
 }
 
 void UNSUIManagerSubsystem::OpenPartPanel()

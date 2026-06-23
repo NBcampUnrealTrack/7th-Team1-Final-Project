@@ -173,6 +173,14 @@ private:
 	//런 종료 페이즈가 바뀌었을때 결과창 표시 상태 갱신
 	UFUNCTION()
 	void HandleRunEndPhaseChanged();
+
+	// Travel 호출 직전에 UIManager 로딩창을 띄움
+	void ShowTravelLoadingScreen();
+	// Seamless Travel/ClientRestart 이후 위젯이 사라진 경우에 다시 복원
+	void RestoreTravelLoadingScreenIfRequested();
+	// 현재는 Spectator 단계에서는 유지, 실제 플레이어 캐릭터를 조작할 수 있게 된 뒤에 로딩창을 닫음
+	// 추후에는 추가로 데이터가 다 로딩된 시점에 닫도록 해야하지 않을까 생각함
+	void HideTravelLoadingScreenIfPlayable(APawn* NewPawn);
 	
 	//현재 바인딩한 RunGameState를 캐싱
 	UPROPERTY()
@@ -260,6 +268,9 @@ private:
 protected:
 	virtual void BeginPlay() override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
+	
+	// 클라이언트가 다른 맵/서버로 이동하기 직전에 호출되는 함수로, Loading창을 띄우는 시점을 관리하기 위해 가져왔음
+	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
 	
 	virtual void SetupInputComponent() override;
 

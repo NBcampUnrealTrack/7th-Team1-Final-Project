@@ -4,6 +4,7 @@
 #include "NSGameFlowSubsystem.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/World/NSLevelCatalog.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 
 
@@ -40,6 +41,17 @@ bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Lev
 	}
 	
 	// 클라는 자동으로 따라옴
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (APlayerController* LocalPlayerController = GameInstance->GetFirstLocalPlayerController())
+			{
+				UIManager->ShowTravelLoadingScreen(LocalPlayerController);
+			}
+		}
+	}
+
 	return World->ServerTravel(URL);
 }
 

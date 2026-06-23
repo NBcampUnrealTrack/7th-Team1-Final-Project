@@ -22,6 +22,8 @@ class NEOSANCTUM_API UNSUIManagerSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
+	static UNSUIManagerSubsystem* Get(const UObject* WorldContext);
+
 	//HUD 위젯 생성
 	void CreateHUD(APlayerController* OwningPlayer);
 	//HUD 화면 표시
@@ -72,6 +74,15 @@ public:
 	void ShowRunEnd();
 	void HideRunEnd();
 	void ClearRunEnd();
+	
+	//(정주현 추가) Loading 위젯 전용
+	void CreateLoadingScreen(APlayerController* OwningPlayer);
+	void ShowLoadingScreen();
+	void HideLoadingScreen();
+	void ShowTravelLoadingScreen(APlayerController* OwningPlayer);
+	void RestoreTravelLoadingScreen(APlayerController* OwningPlayer);
+	void HideTravelLoadingScreen();
+	bool IsTravelLoadingScreenActive() const { return bTravelLoadingScreenActive; }
 	
 	//파츠 패널 열기
 	void OpenPartPanel();
@@ -153,6 +164,12 @@ private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
 	
+	UPROPERTY()
+	TObjectPtr<UUserWidget> LoadingScreenWidget;
+	
+	// 로딩스크린을 계속 Active할 것인가에 대한 판단을 위한 bool 변수
+	bool bTravelLoadingScreenActive = false;
+	
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
@@ -194,6 +211,5 @@ protected:
 	TSubclassOf<UUserWidget> TitleWidgetClass;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> RunEndWidgetClass;
-	
+	TSubclassOf<UUserWidget> RunEndWidgetClass;	
 }; 
