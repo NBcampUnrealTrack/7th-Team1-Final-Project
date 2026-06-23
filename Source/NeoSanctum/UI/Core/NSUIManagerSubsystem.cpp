@@ -6,9 +6,21 @@
 #include "NeoSanctum/UI/HUD/NSHUDWidget.h"
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
+#include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
+
+UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
+{
+	UGameInstance* GameInstance = UGameplayStatics::GetGameInstance(WorldContext);
+	if (!GameInstance)
+	{
+		return nullptr;
+	}
+
+	return GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+}
 
 float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
 {
@@ -499,6 +511,30 @@ void UNSUIManagerSubsystem::HideLoadingScreen()
 	{
 		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
+}
+
+void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer)
+{
+	bTravelLoadingScreenActive = true;
+	CreateLoadingScreen(OwningPlayer);
+	ShowLoadingScreen();
+}
+
+void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* OwningPlayer)
+{
+	if (!bTravelLoadingScreenActive)
+	{
+		return;
+	}
+
+	CreateLoadingScreen(OwningPlayer);
+	ShowLoadingScreen();
+}
+
+void UNSUIManagerSubsystem::HideTravelLoadingScreen()
+{
+	bTravelLoadingScreenActive = false;
+	HideLoadingScreen();
 }
 
 void UNSUIManagerSubsystem::OpenPartPanel()
