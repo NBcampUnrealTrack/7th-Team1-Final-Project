@@ -1321,6 +1321,8 @@ void ANSPlayerController::SetupInputComponent()
 	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
 	// 디버그: k키로 런 클리어 화면 확인, TODO: 테스트 종료 후 제거
 	InputComponent->BindKey(EKeys::K, IE_Pressed, this, &ANSPlayerController::Debug_ForceRunClear);
+	// esc키로 퍼즈메뉴 띄우기
+	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ANSPlayerController::TogglePauseMenu);
 }
 
 void ANSPlayerController::ToggleAugmentationPanel()
@@ -1826,6 +1828,14 @@ void ANSPlayerController::TogglePauseMenu()
 		return;
 	}
 	
+	if (UWorld* World = GetWorld())
+	{
+		if (World->GetName().Contains(TEXT("Title")))
+		{
+			return;
+		}
+	}
+	
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
 	if (!UIManager)
@@ -1833,14 +1843,46 @@ void ANSPlayerController::TogglePauseMenu()
 		return;
 	}
 
+	if (UIManager->IsOptionPanelOpen())
+	{
+		UIManager->CloseOptionPanel();
+		
+		return;
+	}
+	
+	// 폰 인풋바인더 캐싱 (열기/닫기 공통)
+	UNSInputBinderComponent* InputBinder = nullptr;
+	if (ANSPlayerCharacterBase* Char = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		InputBinder = Char->GetInputBinderComponent();
+	}
+
 	if (UIManager->IsPauseMenuOpen())
 	{
+		// 닫기: 게임플레이 매핑 복원
 		UIManager->ClosePauseMenu();
-		RestoreGameplayInputMode();
+		if (InputBinder)
+		{
+			FGameplayTagContainer GameplayAndUI;
+			GameplayAndUI.AddTag(NSGameplayTags::InputMode_Gameplay);
+			GameplayAndUI.AddTag(NSGameplayTags::InputMode_UI);
+			InputBinder->SetActiveInputModeTags(GameplayAndUI);
+		}
+		SetInputMode(FInputModeGameOnly());
+		bShowMouseCursor = false;
 	}
 	else
 	{
+		// 열기: 게임플레이 매핑 제거, UI
 		UIManager->OpenPauseMenu(this);
+		if (InputBinder)
+		{
+			FGameplayTagContainer UIOnly;
+			UIOnly.AddTag(NSGameplayTags::InputMode_UI);
+			InputBinder->SetActiveInputModeTags(UIOnly);
+		}
+		SetInputMode(FInputModeUIOnly());
+		bShowMouseCursor = true;
 	}
 }
 
