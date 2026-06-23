@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h" 
 #include "NSProgressTypes.generated.h"
 
