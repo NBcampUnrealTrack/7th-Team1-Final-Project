@@ -106,6 +106,10 @@ protected:
 	// MID의 피격 강도 파라미터에 적용할 최대값
 	UPROPERTY(EditDefaultsOnly, Category = "Flash|Material", meta = (ClampMin = "0.0"))
 	float MaterialFlashPeakAmount = 1.0f;
+	
+	// 머티리얼 피격 플래시 색상을 기존 체력 기반 색상 규칙으로 계산할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Flash")
+	bool bUseHealthBasedMaterialFlashColor = true;
 
 private:
 	// 타이머 주기마다 MID 피격 강도를 갱신하는 함수
@@ -116,6 +120,12 @@ private:
 
 	// 정규화된 시간에 대응하는 MID 피격 감쇠값을 반환하는 함수
 	float EvaluateMaterialFlashCurve(float NormalizedTime) const;
+	
+	// 머티리얼 피격 플래시에 적용할 최종 색상을 반환하는 함수
+	FLinearColor ResolveMaterialFlashColor() const;
+
+	// 등록된 머티리얼 MID들에 피격 플래시 색상을 적용하는 함수
+	void ApplyMaterialFlashColor(const FLinearColor& InFlashColor);
 
 	// 피격 파라미터를 직접 변경할 실제 외형 MID 배열
 	UPROPERTY(Transient)

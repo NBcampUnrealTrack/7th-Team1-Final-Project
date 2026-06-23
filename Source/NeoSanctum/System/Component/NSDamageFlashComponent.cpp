@@ -212,27 +212,22 @@ bool UNSDamageFlashComponent::TryPlayMaterialFlash(float Strength)
 		return false;
 	}
 
-	bool bHasValidMaterial = false;
-
-	for (UMaterialInstanceDynamic* MID : MaterialFlashMIDs)
+	for (int32 Index = MaterialFlashMIDs.Num() - 1; Index >= 0; --Index)
 	{
-		if (!IsValid(MID))
+		if (!IsValid(MaterialFlashMIDs[Index]))
 		{
-			continue;
+			MaterialFlashMIDs.RemoveAtSwap(Index);
 		}
-
-		MID->SetVectorParameterValue(MaterialFlashColorParameterName, MaterialFlashColor);
-
-		bHasValidMaterial = true;
 	}
 
-	if (!bHasValidMaterial)
+	if (MaterialFlashMIDs.Num() == 0)
 	{
 		return false;
 	}
 
-	ActiveMaterialFlashStrength = FMath::Clamp(Strength, 0.0f, 1.0f);
+	ApplyMaterialFlashColor(ResolveMaterialFlashColor());
 
+	ActiveMaterialFlashStrength = FMath::Clamp(Strength, 0.0f, 1.0f);
 	MaterialFlashStartTime = World->GetTimeSeconds();
 
 	const float InitialAmount =
@@ -310,4 +305,30 @@ float UNSDamageFlashComponent::EvaluateMaterialFlashCurve(
 	}
 
 	return FMath::Square(1.0f - ClampedTime);
+}
+
+FLinearColor UNSDamageFlashComponent::ResolveMaterialFlashColor() const
+{
+	if (bUseHealthBasedMaterialFlashColor)
+	{
+		return ResolveFlashColor();
+	}
+
+	return MaterialFlashColor;
+}
+
+void UNSDamageFlashComponent::ApplyMaterialFlashColor(const FLinearColor& InFlashColor)
+{
+	for (int32 Index = MaterialFlashMIDs.Num() - 1; Index >= 0; --Index)
+    {
+        UMaterialInstanceDynamic* MID = MaterialFlashMIDs[Index].Get();
+
+        if (!IsValid(MID))
+        {
+            MaterialFlashMIDs.RemoveAtSwap(Index);
+            continue;
+        }
+
+        MID->SetVectorParameterValue(MaterialFlashColorParameterName, InFlashColor);
+    }
 }
