@@ -16,10 +16,9 @@
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
-
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
-
 #include "NeoSanctum/Core/GameState/NSOutGameState.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -266,4 +265,28 @@ void ANSPlayerState::NotifyReadyStateChanged() const
 	}
 
 	OutGameState->NotifyReadyStateChanged();
+}
+
+void ANSPlayerState::OnRep_RunEndVoteState()
+{
+	NotifyRunEndVoteChanged();
+}
+
+void ANSPlayerState::NotifyRunEndVoteChanged() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState =
+		World->GetGameState<ANSRunGameState>();
+	
+	if (!RunGameState)
+	{
+		return;
+	}
+	
+	RunGameState->NotifyRunVoteChanged();
 }
