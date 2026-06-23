@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h" 
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/World/NSLevelCatalog.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 
 void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -141,6 +142,11 @@ void UNSSessionSubsystem::JoinSessionByAddress(const FString& Address)
 		TEXT("ClientTravel 호출: %s"),
 		*TrimmedAddress);
 
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->ShowTravelLoadingScreen(PlayerController);
+	}
+
 	PlayerController->ClientTravel(
 		TrimmedAddress,
 		ETravelType::TRAVEL_Absolute);
@@ -209,6 +215,17 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 		bSwitchingToHost = false;
 		OnCreateSessionComplete.Broadcast(false);
 		return;
+	}
+
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		if (UGameInstance* GameInstance = GetGameInstance())
+		{
+			if (APlayerController* LocalPlayerController = GameInstance->GetFirstLocalPlayerController())
+			{
+				UIManager->ShowTravelLoadingScreen(LocalPlayerController);
+			}
+		}
 	}
 
 	const bool bTravelStarted = World->ServerTravel(HubPackage + TEXT("?listen"));
