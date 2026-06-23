@@ -1,3 +1,29 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#include "NSReadyStartWidget.h"
+#include "CommonButtonBase.h"
+#include "GameFramework/PlayerController.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "CommonTextBlock.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Core/GameState/NSOutGameState.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
+
+void UNSReadyStartWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	
+	ANSPlayerController* NSPlayerController =
+	Cast<ANSPlayerController>(GetOwningPlayer());
+
+	const ANSPlayerState* PlayerState =
+		NSPlayerController
+			? NSPlayerController->GetPlayerState<ANSPlayerState>()
+			: nullptr;
+
+	bLocalReadySelected = PlayerState && PlayerState->IsReady();
 
 	if (ReadyButton)
 	{
@@ -33,6 +59,13 @@
 		CloseButton->OnClicked().AddUObject(
 			this,
 			&UNSReadyStartWidget::HandleCloseClicked);
+	}
+	InitializeButtonText();
+	RefreshReadyButtonText();
+	BindReadyStateChanged();
+	RefreshReadyStatusText();
+}
+
 void UNSReadyStartWidget::NativeDestruct()
 {
 	UnbindReadyStateChanged();
@@ -204,4 +237,51 @@ void UNSReadyStartWidget::RefreshReadyStatusText()
 	}
 
 	ReadyStatusText->SetText(FText::FromString(StatusString));
+}
+
+void UNSReadyStartWidget::BindReadyStateChanged()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	ANSOutGameState* OutGameState =
+		World->GetGameState<ANSOutGameState>();
+
+	if (!OutGameState)
+	{
+		return;
+	}
+
+	// 중복 바인딩을 방지한 뒤 Ready 상태 변경 알림을 구독한다.
+	OutGameState->OnReadyStateChanged.RemoveDynamic(
+		this,
+		&UNSReadyStartWidget::RefreshReadyStatusText);
+
+	OutGameState->OnReadyStateChanged.AddDynamic(
+		this,
+		&UNSReadyStartWidget::RefreshReadyStatusText);
+}
+
+void UNSReadyStartWidget::UnbindReadyStateChanged()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	ANSOutGameState* OutGameState =
+		World->GetGameState<ANSOutGameState>();
+
+	if (!OutGameState)
+	{
+		return;
+	}
+
+	OutGameState->OnReadyStateChanged.RemoveDynamic(
+		this,
+		&UNSReadyStartWidget::RefreshReadyStatusText);
 }

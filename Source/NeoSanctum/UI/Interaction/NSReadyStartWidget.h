@@ -36,6 +36,7 @@ private:
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> ReadyStatusText;
+
 	UFUNCTION()
 	void HandleReadyClicked();
 
@@ -53,6 +54,11 @@ private:
 	
 	UFUNCTION()
 	void RefreshReadyStatusText();
+	// Ready 상태가 변경될 때마다 GameState 델리게이트에 반응해 목록을 갱신한다.
+	// Tick/Timer 없이 상태 변경 시점에만 UI를 업데이트하기 위한 바인딩이다.
+	void BindReadyStateChanged();
+	void UnbindReadyStateChanged();
+	
 	// 버튼 텍스트는 로컬 입력 즉시 반응해야 하므로,
 	// 서버 복제 전에도 현재 플레이어의 예상 Ready 상태를 들고 있다.
 	bool bLocalReadySelected = false;
