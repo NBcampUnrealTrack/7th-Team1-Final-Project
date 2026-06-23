@@ -1072,6 +1072,14 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 
 }
 
+void ANSPlayerController::Client_NotifyReturnToHub_Implementation()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->ReturnToOutGame();
+	}
+}
+
 void ANSPlayerController::ExitSpectatorAndRespawn()
 {
 	ClearDeathSpectatorModeTimer();

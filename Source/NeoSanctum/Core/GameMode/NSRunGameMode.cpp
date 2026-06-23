@@ -288,6 +288,21 @@ void ANSRunGameMode::RequestReturnToHub_Implementation()
 		return;
 	}
 
+	// 서버 인런 데이터 언로드 및 아웃런 데이터 재로드
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->ReturnToOutGame();
+	}
+
+	// 각 클라이언트에 인런 데이터 언로드 지시
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
+		{
+			PC->Client_NotifyReturnToHub();
+		}
+	}
+
 	if (UNSGameFlowSubsystem* NSGameFlow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
 	{
 		NSGameFlow->ReturnToHub();
