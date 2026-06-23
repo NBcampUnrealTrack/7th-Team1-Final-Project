@@ -10,6 +10,7 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
@@ -391,6 +392,11 @@ void ANSGrenade::ApplyExplosionDamage(
 			UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 
 		if (!TargetASC)
+		{
+			continue;
+		}
+
+		if (!NSDamageRules::CanApplyDamage(GetOwningPawn(), TargetActor))
 		{
 			continue;
 		}

@@ -6,7 +6,9 @@
 #include "GameFramework/Pawn.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBaseCompanionAI.generated.h"
 
 class UNSCompanionDefinition;
@@ -18,7 +20,9 @@ class UFloatingPawnMovement;
 class ANSDroneAIController;
 
 UCLASS()
-class NEOSANCTUM_API ANSBaseCompanionAI : public APawn, public IAbilitySystemInterface
+class NEOSANCTUM_API ANSBaseCompanionAI : public APawn,
+                                           public IAbilitySystemInterface,
+                                           public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -26,6 +30,10 @@ public:
 	ANSBaseCompanionAI();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual FGenericTeamId GetGenericTeamId() const override
+	{
+		return FGenericTeamId(static_cast<uint8>(ETeamId::Player));
+	}
 	
 	USkeletalMeshComponent* GetSkeletalMeshComponent() const {return SkeletalMeshComponent;}
 	

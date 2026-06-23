@@ -343,7 +343,7 @@ bool UGA_RangerProjectileShot::TryBuildProjectileAimTrace(FHitResult& OutHitResu
 		OutHitResult,
 		TraceStart,
 		TraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 

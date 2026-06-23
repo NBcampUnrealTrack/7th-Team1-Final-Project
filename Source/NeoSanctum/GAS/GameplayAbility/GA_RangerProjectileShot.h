@@ -58,7 +58,7 @@ protected:
 	float TraceRange = 10000.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile")
-	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::PlayerWeaponTrace;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Ranger|Projectile|Damage")
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;

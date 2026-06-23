@@ -10,6 +10,7 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -423,6 +424,17 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 	);
 	
 	int32 AppliedCount = 0;
+	AActor* SourceActor = SourceASC ? SourceASC->GetAvatarActor() : nullptr;
+
+	if (!IsValid(SourceActor))
+	{
+		SourceActor = GetInstigator();
+	}
+
+	if (!IsValid(SourceActor))
+	{
+		SourceActor = GetOwner();
+	}
 	
 	for (AActor* TargetActor : TargetActors)
 	{
@@ -438,6 +450,11 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 		{
 			NS_ACTOR_LOG(TargetActor, LogNSGAS, Warning, "스플래시 대상에게 ASC가 없어 데미지를 적용안함");
 
+			continue;
+		}
+
+		if (!NSDamageRules::CanApplyDamage(SourceActor, TargetActor))
+		{
 			continue;
 		}
 		

@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -507,6 +508,11 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	{
 		return;
 	}
+
+	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
+	{
+		return;
+	}
 	
 	float FinalDamage = 0.0f;
 	
@@ -784,7 +790,7 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -833,7 +839,7 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 	
@@ -1064,7 +1070,7 @@ bool UGA_RangerAutoFire::IsMuzzleObstructed(
 		OutObstructionHitResult,
 		ObstructionTraceStart,
 		AimPoint,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 	

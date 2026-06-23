@@ -195,7 +195,7 @@ protected:
 	float MuzzleObstructionBackTraceDistance = 100.0f;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Engineer|Shotgun")
-	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::WeaponTrace;
+	TEnumAsByte<ECollisionChannel> TraceChannel = NSCollisionChannels::PlayerWeaponTrace;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bDrawDebugHitscan = false;

@@ -8,6 +8,7 @@
 #include "DrawDebugHelpers.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -508,7 +509,7 @@ bool UGA_EngineerShotgunFire::TryBuildPelletTrace(
 		OutHitResult,
 		TraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -729,6 +730,11 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 
 	if (!SourceASC || !TargetASC)
+	{
+		return;
+	}
+
+	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
 	{
 		return;
 	}
@@ -972,7 +978,7 @@ bool UGA_EngineerShotgunFire::IsMuzzleObstructed(
 		OutObstructionHitResult,
 		ObstructionTraceStart,
 		AimPoint,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 
@@ -1042,7 +1048,7 @@ bool UGA_EngineerShotgunFire::TryBuildServerPelletTrace(
 		OutHitResult,
 		OutTraceStart,
 		OutTraceEnd,
-		TraceChannel,
+		NSCollisionChannels::PlayerWeaponTrace,
 		QueryParams
 	);
 

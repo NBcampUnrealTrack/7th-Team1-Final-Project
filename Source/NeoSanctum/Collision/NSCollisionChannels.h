@@ -18,7 +18,8 @@ namespace NSCollisionChannels
 	constexpr ECollisionChannel PlayerConstruct = ECC_GameTraceChannel5;
 
 	constexpr ECollisionChannel CombatSight = ECC_GameTraceChannel6;
-	constexpr ECollisionChannel WeaponTrace = ECC_GameTraceChannel7;
+	constexpr ECollisionChannel EnemyWeaponTrace = ECC_GameTraceChannel7;
 	constexpr ECollisionChannel ProjectileTrace = ECC_GameTraceChannel8;
 	constexpr ECollisionChannel ExplosionTrace = ECC_GameTraceChannel9;
+	constexpr ECollisionChannel PlayerWeaponTrace = ECC_GameTraceChannel10;
 }
