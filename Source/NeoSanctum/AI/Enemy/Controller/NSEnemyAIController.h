@@ -156,6 +156,9 @@ private:
 
 	// 현재 타깃, 마지막 위치, 시야 여부를 Blackboard에 반영하는 함수
 	void UpdateCurrentTargetBlackboard();
+	
+	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
+	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;
 
 protected:
 	/* 설정 변수 */

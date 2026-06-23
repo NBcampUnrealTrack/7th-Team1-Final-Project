@@ -616,23 +616,30 @@ void ANSEnemyAIController::UpdateTargetSelection()
 		CurrentTarget = nullptr;
 	}
 
-	// 공격 애니메이션 도중에는 유효한 타깃을 변경하지 않음
+	const bool bCanMaintainCoverAttackTarget = CurrentTarget && CanMaintainCoverAttackTarget(CurrentTarget);
+
+	if (CurrentTarget && bCanMaintainCoverAttackTarget)
+	{
+		LastCombatProgressTime = CurrentTime;
+	}
+
 	if (CurrentTarget && bIsAttacking)
 	{
 		UpdateCurrentTargetBlackboard();
 		return;
 	}
 
-	// 공격 없이 추적만 10초 이상 지속 시 현재 타깃에서 제거
 	if (CurrentTarget &&
+		!bCanMaintainCoverAttackTarget &&
 		CurrentTime - LastCombatProgressTime >= MaxPursuitWithoutAttackDuration)
 	{
 		ClearCurrentCombatTarget(true);
 		CurrentTarget = nullptr;
 	}
 
-	// 시야 기억, 피해 기록, 청각 기록이 모두 만료되면 현재 타깃에서 제거
-	if (CurrentTarget && !ThreatRecords.Contains(CurrentTarget))
+	if (CurrentTarget &&
+		!bCanMaintainCoverAttackTarget &&
+		!ThreatRecords.Contains(CurrentTarget))
 	{
 		ClearCurrentCombatTarget(false);
 		CurrentTarget = nullptr;
@@ -732,6 +739,12 @@ void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
 
 		if (!IsThreatRecordRelevant(Record, CurrentTime))
 		{
+			if (TargetActor == CurrentCombatTarget.Get() && CanMaintainCoverAttackTarget(TargetActor))
+			{
+				Record.LastKnownLocation = TargetActor->GetActorLocation();
+				continue;
+			}
+
 			It.RemoveCurrent();
 		}
 	}
@@ -1025,12 +1038,76 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 	{
 		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
 	}
+	else
+	{
+		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, TargetActor->GetActorLocation());
+	}
 
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
 	SetAttackActorBlackboard(AttackActor);
 	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
+}
+
+bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
+{
+	if (!bAttackDestructibleCover || !IsValidLivingTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (!Enemy)
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	if (!EnemyData)
+	{
+		return false;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
+
+	if (bHasDirectLineOfSight ||
+		!IsValidLivingTarget(AttackActor) ||
+		AttackActor == TargetActor ||
+		!AttackActor->IsA<ANSDestructibleObjectBase>())
+	{
+		return false;
+	}
+
+	const float Distance = FVector::Dist(
+		Enemy->GetActorLocation(),
+		TargetActor->GetActorLocation());
+
+	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	{
+		if (!AttackDefinition.AbilityClass)
+		{
+			continue;
+		}
+
+		if (Distance < AttackDefinition.Condition.MinRange ||
+			Distance > AttackDefinition.Condition.MaxRange)
+		{
+			continue;
+		}
+
+		if (CanUseDestructibleCoverAttack(
+			AttackDefinition,
+			TargetActor,
+			AttackActor,
+			bHasDirectLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 bool ANSEnemyAIController::RequestMeleeAttackReservation()
