@@ -1465,6 +1465,16 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 
 void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPayload& Payload)
 {
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->SetCachedProgressPayload(Payload);
+
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			DataSubsystem->ApplyCachedProgressTo(PS->GetProgressComponent());
+		}
+	}
+	
 	UGameInstance* GameInstance = GetGameInstance();
 	if (!GameInstance)
 	{
@@ -1516,6 +1526,13 @@ void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPa
 
 	// CachedData를 그대로 넘기므로 머지 분기 없이 그대로 저장됨
 	SaveSubsystem->SavePermanent(PermanentSave, FNSSaveComplete());
+	
+	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr)
+	{
+		UIManager->RefreshOutRunGoods();
+	}
 }
 
 void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
