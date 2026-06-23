@@ -10,8 +10,11 @@
 #include "EnvironmentQuery/EnvQuery.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
+#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Damage.h"
@@ -310,18 +313,21 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
 		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
 	if (!Enemy)
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
 	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
 	if (!EnemyData)
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
@@ -334,12 +340,13 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	const bool bFacingTarget = FacingDot >= RequiredDot;
 	if (!bFacingTarget)
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	// 몬스터와 플레이어 간의 실시간 직선 거리 계산
 	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
 	TArray<const FNSEnemyAttackDefinition*> Candidates;
@@ -347,15 +354,14 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 
 	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 	{
-		// 개별 공격 조건 검사
-		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, Distance, bHasLineOfSight))
+		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, AttackActor, Distance, bHasDirectLineOfSight))
 		{
 			continue;
 		}
 
-		// 사용 가능한 공격 후보 추가
 		if (!bSelectWeightedAttack)
 		{
+			SetAttackActorBlackboard(AttackActor);
 			return &AttackDefinition;
 		}
 
@@ -373,10 +379,12 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 
 	if (Candidates.IsEmpty())
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	// 가장 높은 가중치의 공격 선택
+	const FNSEnemyAttackDefinition* SelectedAttack = nullptr;
+
 	float TotalWeight = 0.0f;
 	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
 	{
@@ -385,35 +393,44 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 
 	if (TotalWeight <= 0.0f)
 	{
-		return Candidates[0];
+		SelectedAttack = Candidates[0];
 	}
-
-	float Pick = FMath::FRandRange(0.0f, TotalWeight);
-
-	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
+	else
 	{
-		Pick -= FMath::Max(Candidate->Weight, 0.0f);
+		float Pick = FMath::FRandRange(0.0f, TotalWeight);
 
-		if (Pick <= 0.0f)
+		for (const FNSEnemyAttackDefinition* Candidate : Candidates)
 		{
-			return Candidate;
+			Pick -= FMath::Max(Candidate->Weight, 0.0f);
+
+			if (Pick <= 0.0f)
+			{
+				SelectedAttack = Candidate;
+				break;
+			}
+		}
+
+		if (!SelectedAttack)
+		{
+			SelectedAttack = Candidates.Last();
 		}
 	}
 
-	return Candidates.Last();
+	SetAttackActorBlackboard(AttackActor);
+	return SelectedAttack;
 }
 
 bool ANSEnemyAIController::CanUseAttackDefinition(
 	const FNSEnemyAttackDefinition& AttackDefinition,
 	const AActor* TargetActor,
+	const AActor* AttackActor,
 	float Distance,
-	bool bHasLineOfSight) const
+	bool bHasDirectLineOfSight) const
 {
-	if (!TargetActor)
+	if (!IsValidLivingTarget(TargetActor) || !IsValid(AttackActor))
 	{
 		return false;
 	}
-	
 	if (!AttackDefinition.AbilityClass)
 	{
 		return false;
@@ -425,11 +442,12 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 		return false;
 	}
 
-	if (AttackDefinition.Condition.bRequireLineOfSight && !bHasLineOfSight)
+	if (AttackDefinition.Condition.bRequireLineOfSight &&
+		!bHasDirectLineOfSight &&
+		!CanUseDestructibleCoverAttack(AttackDefinition, TargetActor, AttackActor, bHasDirectLineOfSight))
 	{
 		return false;
 	}
-	
 	if (AttackDefinition.Cooldown > 0.0f)
 	{
 		if (AttackDefinition.AttackId.IsNone())
@@ -948,6 +966,7 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	if (CachedBBComp)
 	{
 		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(AttackActorKey);
 		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
 
 		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
@@ -975,6 +994,7 @@ void ANSEnemyAIController::ResetTargetingState()
 	if (CachedBBComp)
 	{
 		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(AttackActorKey);
 		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
 
 		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
@@ -993,6 +1013,9 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 	if (!IsValidLivingTarget(TargetActor))
 	{
 		CachedBBComp->ClearValue(TargetActorKey);
+		CachedBBComp->ClearValue(AttackActorKey);
+		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
 		return;
 	}
 
@@ -1001,8 +1024,13 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 	if (const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor))
 	{
 		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, Record->bCurrentlyVisible);
 	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
+
+	SetAttackActorBlackboard(AttackActor);
+	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
 }
 
 bool ANSEnemyAIController::RequestMeleeAttackReservation()
@@ -1338,9 +1366,9 @@ void ANSEnemyAIController::UpdateFacingMode(
 
 bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 	const ANSEnemyCharacterBase* Enemy,
-	const AActor* TargetActor) const
+	AActor* TargetActor) const
 {
-	if (!Enemy || !IsValid(TargetActor))
+	if (!Enemy || !IsValidLivingTarget(TargetActor))
 	{
 		return false;
 	}
@@ -1352,19 +1380,19 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 		return false;
 	}
 
-	const float Distance = FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	// 엄폐물 등으로 공격 경로가 막혔는지 확인
-	const bool bHasLineOfSight = LineOfSightTo(TargetActor);
+	const float Distance = FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
 
 	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
 	{
-		// 거리, 시야, 공격 쿨다운을 기존 공격 판정 함수에서 함께 검사
 		if (CanUseAttackDefinition(
 			Attack,
 			TargetActor,
+			AttackActor,
 			Distance,
-			bHasLineOfSight))
+			bHasDirectLineOfSight))
 		{
 			return true;
 		}
@@ -1392,21 +1420,149 @@ void ANSEnemyAIController::ApplyFacingMode(
 
 	if (bFaceTarget && IsValid(TargetActor))
 	{
-		// 공격 준비·공격·후퇴 중에는 타깃을 바라봄
+		AActor* AimActor = GetCurrentAttackActor();
+		if (!IsValid(AimActor))
+		{
+			AimActor = TargetActor;
+		}
+
 		Movement->bOrientRotationToMovement = false;
 		Movement->bUseControllerDesiredRotation = true;
 
-		SetFocus(TargetActor, EAIFocusPriority::Gameplay);
+		SetFocus(AimActor, EAIFocusPriority::Gameplay);
 
-		Enemy->UpdateCombatAimTarget(TargetActor);
+		Enemy->UpdateCombatAimTarget(AimActor);
 	}
 	else
 	{
-		// 추적 중에는 이동 방향을 바라봄
 		Movement->bOrientRotationToMovement = true;
 		Movement->bUseControllerDesiredRotation = false;
 
 		ClearFocus(EAIFocusPriority::Gameplay);
 		Enemy->ClearCombatAimTarget();
 	}
+}
+
+AActor* ANSEnemyAIController::GetCurrentAttackActor() const
+{
+	return CachedBBComp ? Cast<AActor>(CachedBBComp->GetValueAsObject(AttackActorKey)) : nullptr;
+}
+
+void ANSEnemyAIController::SetAttackActorBlackboard(AActor* AttackActor)
+{
+	if (!CachedBBComp) return;
+
+	if (IsValid(AttackActor))
+	{
+		CachedBBComp->SetValueAsObject(AttackActorKey, AttackActor);
+	}
+	else
+	{
+		CachedBBComp->ClearValue(AttackActorKey);
+	}
+}
+
+FVector ANSEnemyAIController::GetAttackAimLocation(const AActor* Actor) const
+{
+	if (!IsValid(Actor)) return FVector::ZeroVector;
+
+	FVector Origin = Actor->GetActorLocation();
+	FVector Extent = FVector::ZeroVector;
+
+	if (const UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Actor->GetRootComponent()))
+	{
+		Origin = Primitive->Bounds.Origin;
+		Extent = Primitive->Bounds.BoxExtent;
+	}
+
+	return Origin + FVector::UpVector * (Extent.Z * CoverAttackAimZOffsetRatio);
+}
+
+FVector ANSEnemyAIController::GetCoverAttackTraceStart() const
+{
+	const APawn* AIPawn = GetPawn();
+	if (!AIPawn) return FVector::ZeroVector;
+
+	if (const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn))
+	{
+		if (const ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon())
+		{
+			FTransform MuzzleTransform;
+			if (Weapon->TryGetMuzzleTransform(MuzzleTransform))
+			{
+				return MuzzleTransform.GetLocation();
+			}
+		}
+	}
+
+	return AIPawn->GetPawnViewLocation();
+}
+
+AActor* ANSEnemyAIController::ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const
+{
+	bOutHasDirectLineOfSight = false;
+
+	if (!IsValidLivingTarget(TargetActor) || !GetWorld())
+	{
+		return nullptr;
+	}
+
+	const APawn* AIPawn = GetPawn();
+	if (!AIPawn)
+	{
+		return nullptr;
+	}
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyCoverAttackTrace), false, AIPawn);
+	QueryParams.AddIgnoredActor(AIPawn);
+
+	const bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		GetCoverAttackTraceStart(),
+		GetAttackAimLocation(TargetActor),
+		NSCollisionChannels::CombatSight,
+		QueryParams);
+
+	if (!bHit || HitResult.GetActor() == TargetActor)
+	{
+		bOutHasDirectLineOfSight = true;
+		return const_cast<AActor*>(TargetActor);
+	}
+
+	if (!bAttackDestructibleCover)
+	{
+		return nullptr;
+	}
+
+	AActor* HitActor = HitResult.GetActor();
+	if (IsValid(HitActor) && HitActor->IsA<ANSDestructibleObjectBase>())
+	{
+		return HitActor;
+	}
+
+	return nullptr;
+}
+
+bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
+	const FNSEnemyAttackDefinition& AttackDefinition,
+	const AActor* TargetActor,
+	const AActor* AttackActor,
+	bool bHasDirectLineOfSight) const
+{
+	if (bHasDirectLineOfSight ||
+		!IsValidLivingTarget(TargetActor) ||
+		!IsValidLivingTarget(AttackActor) ||
+		AttackActor == TargetActor)
+	{
+		return false;
+	}
+
+	if (!AttackActor->IsA<ANSDestructibleObjectBase>())
+	{
+		return false;
+	}
+
+	return AttackDefinition.AttackType == ENSEnemyAttackType::Projectile ||
+		AttackDefinition.AttackType == ENSEnemyAttackType::Hitscan;
 }
