@@ -239,7 +239,7 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 
 		if (Cast<ANSDroppedPart>(Target))
 		{
-			Widget->SetPromptText(InteractionKeyText, FText::FromString(TEXT("줍기")));
+			Widget->SetPromptText(InteractionKeyText, FText::FromString(TEXT("교체")));
 			Widget->SetPartName(PromptText);
 		}
 		else
