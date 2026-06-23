@@ -6,6 +6,7 @@
 #include "NeoSanctum/UI/Interaction/NSInteractionPromptWidget.h"
 #include "Components/WidgetComponent.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
+#include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -57,9 +58,10 @@ void UNSInteractionComponent::EnableLocalInteraction()
 
 	bLocalInteractionEnabled = true;
 
-	if (PromptWidgetClass)
+	if (DefaultPromptWidgetClass)
 	{
-		PromptWidgetComponent->SetWidgetClass(PromptWidgetClass);
+		PromptWidgetComponent->SetWidgetClass(DefaultPromptWidgetClass);
+		ActivePromptWidgetClass = DefaultPromptWidgetClass;
 	}
 
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &UNSInteractionComponent::OnSphereBeginOverlap);
@@ -213,17 +215,40 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 	{
 		return;
 	}
-	
+
+	// 타겟 타입에 따라 위젯 클래스 결정 (타겟 전환 시에만 교체)
+	TSubclassOf<UNSInteractionPromptWidget> DesiredClass = DefaultPromptWidgetClass;
+	if (Cast<ANSDroppedPart>(Target))
+	{
+		DesiredClass = PartPromptWidgetClass;
+	}
+	if (DesiredClass != ActivePromptWidgetClass)
+	{
+		PromptWidgetComponent->SetWidgetClass(DesiredClass);
+		ActivePromptWidgetClass = DesiredClass;
+	}
+
 	// 대상이 지정한 프롬프트 앵커 위치에 그대로 배치 (에디터에서 조정)
 	const FVector TargetLocation = INSInteractable::Execute_GetPromptWorldLocation(Target);
 	PromptWidgetComponent->SetWorldLocation(TargetLocation);
-	
+
 	UNSInteractionPromptWidget* Widget = Cast<UNSInteractionPromptWidget>(PromptWidgetComponent->GetUserWidgetObject());
 	if (Widget)
 	{
-		Widget->SetPromptText(InteractionKeyText, FText::FromString(TEXT("상호작용")));
+		const FText PromptText = INSInteractable::Execute_GetPromptText(Target);
+
+		if (Cast<ANSDroppedPart>(Target))
+		{
+			Widget->SetPromptText(InteractionKeyText, FText::FromString(TEXT("줍기")));
+			Widget->SetPartName(PromptText);
+		}
+		else
+		{
+			Widget->SetPromptText(InteractionKeyText, PromptText);
+			Widget->SetPartName(FText::GetEmpty());
+		}
+
 		Widget->SetPromptIcon(INSInteractable::Execute_GetPromptIcon(Target));
-		Widget->SetPartName(INSInteractable::Execute_GetPromptText(Target));
 		Widget->SetRarityStyle(INSInteractable::Execute_GetPromptRarityIndex(Target));
 	}
 	PromptWidgetComponent->SetVisibility(true);
