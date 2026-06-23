@@ -61,12 +61,19 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 	}
 
 	ANSEnemyAIController* AIController = Cast<ANSEnemyAIController>(Enemy->GetController());
-	AActor* TargetActor = AIController ? AIController->GetCurrentTargetActor() : nullptr;
 
-	if (!IsValid(TargetActor))
+	AActor* AttackActor = AIController ? AIController->GetCurrentAttackActor() : nullptr;
+	if (!IsValid(AttackActor))
+	{
+		AttackActor = AIController ? AIController->GetCurrentTargetActor() : nullptr;
+	}
+
+	if (!IsValid(AttackActor))
 	{
 		return;
 	}
+
+	Enemy->UpdateCombatAimTarget(AttackActor);
 
 	ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon();
 
@@ -87,35 +94,17 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 	}
 
 	const FVector StartLocation = MuzzleTransform.GetLocation();
-	const FVector Direction = MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
-	
-	/* // 디버그
-	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
-	
-	const FVector DesiredDirection =
-	(Enemy->GetCombatAimTargetLocation() - StartLocation).GetSafeNormal();
+	const FVector AimLocation = Enemy->HasCombatAimTarget()
+		? Enemy->GetCombatAimTargetLocation()
+		: AttackActor->GetActorLocation();
 
-	DrawDebugLine(
-		GetWorld(),
-		StartLocation,
-		StartLocation + MuzzleForward * 1000.0f,
-		FColor::Red,
-		false,
-		1.0f,
-		0,
-		3.0f);
+	FVector Direction = (AimLocation - StartLocation).GetSafeNormal();
 
-	DrawDebugLine(
-		GetWorld(),
-		StartLocation,
-		StartLocation + DesiredDirection * 1000.0f,
-		FColor::Green,
-		false,
-		1.0f,
-		0,
-		3.0f);
-	*/
-	
+	if (Direction.IsNearlyZero())
+	{
+		Direction = MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+	}
+
 	if (Direction.IsNearlyZero())
 	{
 		return;

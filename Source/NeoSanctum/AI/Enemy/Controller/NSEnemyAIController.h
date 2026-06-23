@@ -80,12 +80,6 @@ private:
 	
 	const FNSEnemyAttackDefinition* FindAttackDefinitionByDistance(bool bSelectWeightedAttack);
 
-	bool CanUseAttackDefinition(
-		const FNSEnemyAttackDefinition& AttackDefinition,
-		const AActor* TargetActor,
-		float Distance,
-		bool bHasLineOfSight) const;
-
 protected:
 	/* 시야/청각 설정 컴포넌트 */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI")
@@ -162,6 +156,9 @@ private:
 
 	// 현재 타깃, 마지막 위치, 시야 여부를 Blackboard에 반영하는 함수
 	void UpdateCurrentTargetBlackboard();
+	
+	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
+	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;
 
 protected:
 	/* 설정 변수 */
@@ -337,12 +334,59 @@ private:
 	// 현재 거리가 몬스터 공격 중 하나의 사용 가능 거리 안에 있는지 확인하는 함수
 	bool IsWithinPotentialAttackRange(
 		const ANSEnemyCharacterBase* Enemy, 
-		const AActor* TargetActor) const;
+		AActor* TargetActor) const;
 
 	// 이동 방향 회전 또는 타깃 방향 회전 설정을 CharacterMovement에 적용하는 함수
 	void ApplyFacingMode(
 		ANSEnemyCharacterBase* Enemy, 
 		AActor* TargetActor, 
 		bool bFaceTarget);
+#pragma endregion
+#pragma region 타깃 트레이스
+
+public:
+	// Blackboard에 저장된 현재 발사 대상(플레이어 또는 엄폐물)을 반환하는 함수
+	AActor* GetCurrentAttackActor() const;
+
+private:
+	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
+	bool CanUseAttackDefinition(
+		const FNSEnemyAttackDefinition& AttackDefinition,
+		const AActor* TargetActor,
+		const AActor* AttackActor,
+		float Distance,
+		bool bHasDirectLineOfSight) const;
+
+	// 플레이어까지 Trace해서 실제로 쏠 Actor를 계산하는 함수
+	AActor* ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const;
+
+	// 파괴 가능 엄폐물을 원거리 공격 대상으로 사용할 수 있는지 확인하는 함수
+	bool CanUseDestructibleCoverAttack(
+		const FNSEnemyAttackDefinition& AttackDefinition,
+		const AActor* TargetActor,
+		const AActor* AttackActor,
+		bool bHasDirectLineOfSight) const;
+
+	// Actor Bounds 기준 조준 위치를 계산하는 함수
+	FVector GetAttackAimLocation(const AActor* Actor) const;
+
+	// 엄폐물 판정 Trace 시작 위치를 계산하는 함수
+	FVector GetCoverAttackTraceStart() const;
+
+	// Blackboard의 AttackActor 키를 갱신하는 함수
+	void SetAttackActorBlackboard(AActor* AttackActor);
+
+	// 실제 발사 대상을 저장할 Blackboard 키 이름
+	FName AttackActorKey = TEXT("AttackActor");
+
+protected:
+	// 파괴 가능 엄폐물이 시야를 막으면 그 엄폐물을 원거리 공격 대상으로 삼을지 여부
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack")
+	bool bAttackDestructibleCover = true;
+
+	// 엄폐물 Trace/조준 위치를 Bounds 중심에서 위로 보정하는 비율
+	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack", meta = (ClampMin = "0.0"))
+	float CoverAttackAimZOffsetRatio = 0.15f;
+
 #pragma endregion
 };
