@@ -6,7 +6,6 @@
 #include "GameFramework/Actor.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
-#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
 #include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSDroppedPart.generated.h"
@@ -68,18 +67,6 @@ protected:
 	void FinishDropLaunch();
 
 protected:
-	// ===== 테스트용 임시 코드 — 몬스터 드랍 연동 후 삭제 =====
-	// 레벨 배치 액터의 디테일 패널에서 지정 시 BeginPlay에서 자동 Initialize
-	UPROPERTY(EditAnywhere, Category = "Part|Debug")
-	TSoftObjectPtr<UNSPartDefinition> DebugDefinition;
-
-	UPROPERTY(EditAnywhere, Category = "Part|Debug")
-	ENSPartRarity DebugRarity = ENSPartRarity::Common;
-
-	UPROPERTY(EditAnywhere, Category = "Part|Debug")
-	float DebugValue = 15.f;
-	// ===== 테스트용 임시 코드 끝 =====
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
 	TObjectPtr<USkeletalMeshComponent> MeshComp;
 
@@ -102,6 +89,8 @@ public:
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
 	virtual FText GetPromptText_Implementation() const override;
+	virtual TSoftObjectPtr<UTexture2D> GetPromptIcon_Implementation() const override;
+	virtual int32 GetPromptRarityIndex_Implementation() const override;
 	virtual FVector GetPromptWorldLocation_Implementation() const override;
 protected:
 	// 상호작용 감지용 콜리전
