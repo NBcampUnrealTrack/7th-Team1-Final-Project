@@ -761,9 +761,13 @@ void ANSPlayerController::BeginPlay()
 		// 현재 레벨이 타이틀일 때
 		if (MapName.Contains(TEXT("Title")))
 		{
+			// 로딩창은 타이틀로 넘어갈때는 띄우지 않음
+			UIManager->HideTravelLoadingScreen();
+			
 			UIManager->CreateTitle(this);
 			UIManager->ShowTitle();
 			UIManager->HideHUD();
+			return;
 		}
 		// 현재 레벨이 아웃게임(거점)일 때
 		else if (MapName.Contains(TEXT("HideOut")))
@@ -799,6 +803,9 @@ void ANSPlayerController::BeginPlay()
 			bShowMouseCursor = false;
 		}
 	
+	// 맵 진입 직후 기존 Travel 로딩 상태가 남아 있으면 새 PlayerController 기준으로 위젯을 복구
+	RestoreTravelLoadingScreenIfRequested();
+	
 	//HUD 생성 이후 Attribute 값 연결
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
@@ -808,11 +815,61 @@ void ANSPlayerController::BeginPlay()
 	//UpdateSkillUIFromCurrentCharacter();
 }
 
+void ANSPlayerController::ShowTravelLoadingScreen()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->ShowTravelLoadingScreen(this);
+	}
+}
+
+void ANSPlayerController::RestoreTravelLoadingScreenIfRequested()
+{
+	// Seamless Travel에서는 PlayerController는 유지되지만, UMG 위젯은 viewport에서 빠지기 때문에 복원해야함
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->RestoreTravelLoadingScreen(this);
+	}
+}
+
+void ANSPlayerController::HideTravelLoadingScreenIfPlayable(APawn* NewPawn)
+{
+	// Travel 직후 던전제너레이터 플러그인으로 인해 Spectator Pawn을 반드시 거치게 되므로
+	// 실제 플레이어 캐릭터가 붙기 전에는 로딩창을 유지하는 것이 필요했음
+	if (!IsLocalController() || !Cast<ANSPlayerCharacterBase>(NewPawn))
+	{
+		return;
+	}
+	
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->HideTravelLoadingScreen();
+	}
+}
+
+void ANSPlayerController::PreClientTravel(
+	const FString& PendingURL,
+	ETravelType TravelType,
+	bool bIsSeamlessTravel)
+{
+	// Travel 직전에 로컬 화면에 로딩창을 띄움
+	ShowTravelLoadingScreen();
+	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
+}
+
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	Super::ClientRestart_Implementation(NewPawn);
 
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
 	if (!IsLocalController()) return;
+
+	// ClientRestart는 Seamless Travel 이후 다시 호출될 수 있으므로, 로딩창이 유지 중이면 먼저 복구한다.
+	RestoreTravelLoadingScreenIfRequested();
 
 	ClearDeathSpectatorModeTimer();
 	SpectatingPlayerState = nullptr;
@@ -853,6 +910,9 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
 		
+
+	// Spectator가 아니라 실제 플레이어 캐릭터에 붙은 순간부터 플레이 가능 상태로 보고 로딩창을 닫는다.
+	HideTravelLoadingScreenIfPlayable(NewPawn);
 
 	if (MapName.Contains(TEXT("HideOut")))
 	{
