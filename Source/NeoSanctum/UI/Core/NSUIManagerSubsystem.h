@@ -76,6 +76,18 @@ public:
 	void HideRunEnd();
 	void ClearRunEnd();
 	
+	//(이용호 추가) PauseMenu 위젯 전용
+	void OpenPauseMenu(APlayerController* OwningPlayer);
+	void ClosePauseMenu();
+	bool IsPauseMenuOpen() const { return bPauseMenuOpen; }
+	void ClearPauseMenu();
+	
+	//(이용호 추가) OptionPanel 위젯 전용
+	void OpenOptionPanel(APlayerController* OwningPlayer);
+	void CloseOptionPanel();
+	bool IsOptionPanelOpen() const { return bOptionPanelOpen; }
+	void ClearOptionPanel();
+	
 	//(정주현 추가) Loading 위젯 전용
 	void CreateLoadingScreen(APlayerController* OwningPlayer);
 	void ShowLoadingScreen();
@@ -165,6 +177,15 @@ private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
 	
+	// (이용호 추가) PauseMenu 위젯 전용
+	UPROPERTY()
+	TObjectPtr<UUserWidget> PauseMenuWidget;
+	bool bPauseMenuOpen = false;
+	
+	// (이용호 추가) OptionWidget 위젯 전용
+	UPROPERTY() TObjectPtr<UUserWidget> OptionWidget;
+	bool bOptionPanelOpen = false;
+	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> LoadingScreenWidget;
 	
@@ -212,5 +233,12 @@ protected:
 	TSubclassOf<UUserWidget> TitleWidgetClass;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> RunEndWidgetClass;	
+	TSubclassOf<UUserWidget> RunEndWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> PauseMenuWidgetClass;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UUserWidget> OptionWidgetClass;
+	
 }; 
