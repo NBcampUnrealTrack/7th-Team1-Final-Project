@@ -2,9 +2,12 @@
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 
+#include "Net/UnrealNetwork.h"
+
 UNSPlayerProgressComponent::UNSPlayerProgressComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
 }
 
 void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
@@ -22,6 +25,9 @@ void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
 	
 	// 음수 잔액 방지
 	CommonCurrency = FMath::Max<int64>(0, CommonCurrency + Amount);
+	
+	SyncReplicatedPayloadFromCurrentState();
+	BroadcastProgressChanged();
 }
 
 void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
@@ -33,6 +39,38 @@ void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
 	
 	// 음수 잔액 방지
 	JobCurrency = FMath::Max<int64>(0, JobCurrency + Amount);
+	
+	SyncReplicatedPayloadFromCurrentState();
+	BroadcastProgressChanged();
+}
+
+void UNSPlayerProgressComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(UNSPlayerProgressComponent, ReplicatedProgressPayload, COND_OwnerOnly);
+}
+
+void UNSPlayerProgressComponent::OnRep_ReplicatedProgressPayload()
+{
+	ApplyPayload(ReplicatedProgressPayload);
+	BroadcastProgressChanged();
+}
+
+void UNSPlayerProgressComponent::SyncReplicatedPayloadFromCurrentState()
+{
+	BuildPayload(ReplicatedProgressPayload);
+
+	if (AActor* Owner = GetOwner())
+	{
+		Owner->ForceNetUpdate();
+	}
+}
+
+void UNSPlayerProgressComponent::BroadcastProgressChanged()
+{
+	OnProgressChanged.Broadcast();
+	OnCurrencyChanged.Broadcast(CommonCurrency, JobCurrency);
 }
 
 namespace
@@ -100,4 +138,11 @@ void UNSPlayerProgressComponent::ApplyPayload(const FNSProgressPayload& Payload)
 	{
 		CompanionNodeLevels.Add(NodeLevelEntry.Tag, NodeLevelEntry.Level);
 	}
+	
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		SyncReplicatedPayloadFromCurrentState();
+	}
+
+	BroadcastProgressChanged();
 }

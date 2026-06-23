@@ -234,6 +234,16 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 		GiveCharacterDataAbilities();
 		SpawnDefaultWeapon();
 		
+		if (NSAbilitySystemComponent)
+		{
+			NSAbilitySystemComponent->ForceReplication();
+		}
+
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			PS->ForceNetUpdate();
+		}
+		
 		// 다음 NetUpdateFrequency까지 기다리지말고 바로 업데이트 하기 위한 함수
 		ForceNetUpdate();
 	}
