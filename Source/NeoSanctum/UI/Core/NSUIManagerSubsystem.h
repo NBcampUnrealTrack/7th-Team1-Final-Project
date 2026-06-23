@@ -55,6 +55,7 @@ public:
 	//증강 패널 열림 여부 (InputBinder 게이팅용)
 	bool IsAugmentationPanelOpen() const { return bAugmentationPanelOpen; }
 
+	void ClearTitle();
 	void ClearHUD();
 	
 	void SelectAugmentCardByIndex(int32 CardIndex);

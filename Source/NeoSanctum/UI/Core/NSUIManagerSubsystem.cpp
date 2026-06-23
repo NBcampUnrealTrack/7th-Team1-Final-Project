@@ -265,6 +265,15 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 		MaxShield);
 }
 
+void UNSUIManagerSubsystem::ClearTitle()
+{
+	if (TitleWidget)
+	{
+		TitleWidget->RemoveFromParent();
+		TitleWidget = nullptr;
+	}
+}
+
 void UNSUIManagerSubsystem::ClearHUD()
 {
 	if (HUDWidget)
