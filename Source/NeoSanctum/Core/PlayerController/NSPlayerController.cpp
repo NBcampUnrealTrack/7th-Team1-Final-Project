@@ -37,6 +37,7 @@
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/Cheat/NSCheatManager.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
@@ -765,6 +766,8 @@ void ANSPlayerController::BeginPlay()
 			UIManager->HideTravelLoadingScreen();
 			
 			UIManager->ClearTitle();
+			UIManager->ClearPauseMenu();
+			UIManager->ClearOptionPanel();
 			UIManager->CreateTitle(this);
 			UIManager->ShowTitle();
 			UIManager->HideHUD();
@@ -1815,3 +1818,56 @@ FName ANSPlayerController::GetActiveCharacterIdForUpload() const
 }
 
 #pragma endregion CompanionCheat
+
+void ANSPlayerController::TogglePauseMenu()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UNSUIManagerSubsystem* UIManager = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (UIManager->IsPauseMenuOpen())
+	{
+		UIManager->ClosePauseMenu();
+		RestoreGameplayInputMode();
+	}
+	else
+	{
+		UIManager->OpenPauseMenu(this);
+	}
+}
+
+void ANSPlayerController::RequestLeaveToMainMenu()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
+	{
+		UIManager->ClosePauseMenu();
+		UIManager->CloseOptionPanel();
+	}
+	// 세션 정리 + 타이틀
+	if (UNSSessionSubsystem* Session = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr)
+	{
+		Session->LeaveSessionToTitle();
+	}
+}
+
+void ANSPlayerController::RestoreGameplayInputMode()
+{
+	FInputModeGameOnly InputMode;
+	SetInputMode(InputMode);
+	bShowMouseCursor = false;
+}
