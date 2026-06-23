@@ -12,6 +12,10 @@ namespace NSGameplayTags
 	
 	// Drop Groups
 	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Currency, "Reward.DropGroup.Currency");
+	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Currency_Temp, "Reward.DropGroup.Currency.Temp");
+	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Currency_Common, "Reward.DropGroup.Currency.Common");
+	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Currency_Skill, "Reward.DropGroup.Currency.Skill");
+	
 	UE_DEFINE_GAMEPLAY_TAG(Reward_DropGroup_Part, "Reward.DropGroup.Part");
 	
 	// Rewards

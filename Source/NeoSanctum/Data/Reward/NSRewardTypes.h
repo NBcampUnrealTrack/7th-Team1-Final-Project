@@ -43,7 +43,7 @@ struct FNSRewardDropRow : public FTableRowBase
 	FGameplayTag RewardTypeTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward", meta = (ClampMin = "0.0"))
-	float Weight = 1.0f;
+	int32 Weight = 1.0f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward", meta = (ClampMin = "0"))
 	int32 MinQuantity = 1;

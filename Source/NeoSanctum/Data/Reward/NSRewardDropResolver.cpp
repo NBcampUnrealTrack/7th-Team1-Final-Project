@@ -106,7 +106,7 @@ bool UNSRewardDropResolver::IsValidDropRow(const FNSRewardDropRow& Row)
 const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 	const TArray<const FNSRewardDropRow*>& Rows, FRandomStream& RandomStream)
 {
-	float TotalWeight = 0.0f;
+	int32 TotalWeight = 0.0f;
 	
 	for (const FNSRewardDropRow* Row : Rows)
 	{
@@ -123,8 +123,8 @@ const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 		return nullptr;
 	}
 	
-	const float RollValue = RandomStream.FRand() * TotalWeight;
-	float AccumulatedWeight = 0.0f;
+	const int32 RollValue = RandomStream.RandRange(1, TotalWeight);
+	int32 AccumulatedWeight = 0;
 	
 	for (const FNSRewardDropRow* Row : Rows)
 	{
@@ -135,7 +135,7 @@ const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 		
 		AccumulatedWeight += Row->Weight;
 		
-		if (RollValue < AccumulatedWeight)
+		if (RollValue <= AccumulatedWeight)
 		{
 			return Row;
 		}
