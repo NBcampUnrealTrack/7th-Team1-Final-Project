@@ -95,7 +95,7 @@ bool UNSRewardDropResolver::IsValidDropRow(const FNSRewardDropRow& Row)
 		return false;
 	}
 	
-	if (Row.Weight <= 0.0f)
+	if (Row.Weight <= 0)
 	{
 		return false;
 	}
@@ -106,7 +106,7 @@ bool UNSRewardDropResolver::IsValidDropRow(const FNSRewardDropRow& Row)
 const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 	const TArray<const FNSRewardDropRow*>& Rows, FRandomStream& RandomStream)
 {
-	int32 TotalWeight = 0.0f;
+	int32 TotalWeight = 0;
 	
 	for (const FNSRewardDropRow* Row : Rows)
 	{
@@ -118,7 +118,7 @@ const FNSRewardDropRow* UNSRewardDropResolver::SelectDropRow(
 		TotalWeight += Row->Weight;
 	}
 	
-	if (TotalWeight <= 0.0f)
+	if (TotalWeight <= 0)
 	{
 		return nullptr;
 	}
