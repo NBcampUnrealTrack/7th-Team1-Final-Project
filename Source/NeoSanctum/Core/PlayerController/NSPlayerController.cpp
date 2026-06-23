@@ -757,59 +757,62 @@ void ANSPlayerController::BeginPlay()
 	{
 		return;
 	}
-		FString MapName = GetWorld()->GetName();
+	
+	FString MapName = GetWorld()->GetName();
+	
+	// 레벨 상관없이 항상 비워야함
+	UIManager->ClearPauseMenu();
+	UIManager->ClearOptionPanel();
 
-		// 현재 레벨이 타이틀일 때
-		if (MapName.Contains(TEXT("Title")))
+	// 현재 레벨이 타이틀일 때
+	if (MapName.Contains(TEXT("Title")))
+	{
+		// 로딩창은 타이틀로 넘어갈때는 띄우지 않음
+		UIManager->HideTravelLoadingScreen();
+		
+		UIManager->ClearTitle();
+		UIManager->CreateTitle(this);
+		UIManager->ShowTitle();
+		UIManager->HideHUD();
+		
+		FInputModeUIOnly InputModeData;          
+		SetInputMode(InputModeData);            
+		bShowMouseCursor = true; 
+		return;
+	}
+	// 현재 레벨이 아웃게임(거점)일 때
+	else if (MapName.Contains(TEXT("HideOut")))
+	{
+		UIManager->HideTitle();
+		UIManager->CreateHUD(this);
+		UIManager->ShowHUD();
+		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
-			// 로딩창은 타이틀로 넘어갈때는 띄우지 않음
-			UIManager->HideTravelLoadingScreen();
-			
-			UIManager->ClearTitle();
-			UIManager->ClearPauseMenu();
-			UIManager->ClearOptionPanel();
-			UIManager->CreateTitle(this);
-			UIManager->ShowTitle();
-			UIManager->HideHUD();
-			
-			FInputModeUIOnly InputModeData;          
-			SetInputMode(InputModeData);            
-			bShowMouseCursor = true; 
-			return;
-		}
-		// 현재 레벨이 아웃게임(거점)일 때
-		else if (MapName.Contains(TEXT("HideOut")))
-		{
-			UIManager->HideTitle();
-			UIManager->CreateHUD(this);
-			UIManager->ShowHUD();
-			if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+			if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
 			{
-				if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
-				{
-					DataSubsystem->ApplyCachedProgressTo(
-						NSPlayerState->GetProgressComponent());
-				}
+				DataSubsystem->ApplyCachedProgressTo(
+				NSPlayerState->GetProgressComponent());
 			}
-			UIManager->ShowOutRunGoods();
-			
-			FInputModeGameOnly InputModeData;
-			SetInputMode(InputModeData);
-			bShowMouseCursor = false;
 		}
-		// 현재 레벨이 인 런일 때
-		else
-		{
-			UIManager->HideTitle();
-			UIManager->CreateHUD(this);
-			UIManager->ShowHUD();
-			UIManager->ResetRunResultStats();
-			UIManager->ShowInRunGoods();
+		UIManager->ShowOutRunGoods();
 			
-			FInputModeGameOnly InputModeData;
-			SetInputMode(InputModeData);
-			bShowMouseCursor = false;
-		}
+		FInputModeGameOnly InputModeData;
+		SetInputMode(InputModeData);
+		bShowMouseCursor = false;
+	}
+	// 현재 레벨이 인 런일 때
+	else
+	{
+		UIManager->HideTitle();
+		UIManager->CreateHUD(this);
+		UIManager->ShowHUD();
+		UIManager->ResetRunResultStats();
+		UIManager->ShowInRunGoods();
+			
+		FInputModeGameOnly InputModeData;
+		SetInputMode(InputModeData);
+		bShowMouseCursor = false;
+	}
 	
 	// 맵 진입 직후 기존 Travel 로딩 상태가 남아 있으면 새 PlayerController 기준으로 위젯을 복구
 	RestoreTravelLoadingScreenIfRequested();
@@ -1881,7 +1884,9 @@ void ANSPlayerController::TogglePauseMenu()
 			UIOnly.AddTag(NSGameplayTags::InputMode_UI);
 			InputBinder->SetActiveInputModeTags(UIOnly);
 		}
-		SetInputMode(FInputModeUIOnly());
+		FInputModeGameAndUI InputMode;                 
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}
 }
