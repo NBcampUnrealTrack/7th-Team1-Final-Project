@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "CommonUserWidget.h"
 #include "NSOptionWidget.generated.h"
 
 class USoundSettingWidget;
@@ -15,7 +15,7 @@ class UWidgetSwitcher;
  * WidgetSwitcher를 활용해서 특정 위젯만 활성화하게함
  */
 UCLASS()
-class NEOSANCTUM_API UNSOptionWidget : public UUserWidget
+class NEOSANCTUM_API UNSOptionWidget : public UCommonUserWidget
 {
 	GENERATED_BODY()
 	

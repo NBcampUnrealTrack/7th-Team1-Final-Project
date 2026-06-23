@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
+#include "CommonUserWidget.h"
 #include "NSPauseMenuWidget.generated.h"
 
 class UCommonButtonBase;
 
 
 UCLASS()
-class NEOSANCTUM_API UNSPauseMenuWidget : public UUserWidget
+class NEOSANCTUM_API UNSPauseMenuWidget : public UCommonUserWidget
 {
 	GENERATED_BODY()
 	

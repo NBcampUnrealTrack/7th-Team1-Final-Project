@@ -11,6 +11,9 @@ void UNSPauseMenuWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
+	UE_LOG(LogTemp, Warning, TEXT("[Pause] Option=%d Main=%d Quit=%d"),
+	OptionButton != nullptr, MainMenuButton != nullptr, QuitButton != nullptr);
+	
 	if (OptionButton)
 	{
 		OptionButton->OnClicked().AddUObject(this, &UNSPauseMenuWidget::OnOptionClicked);
@@ -29,6 +32,8 @@ void UNSPauseMenuWidget::NativeConstruct()
 
 void UNSPauseMenuWidget::OnOptionClicked()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[Pause] Option clicked"));
+	
 	UGameInstance* GameInstance = GetGameInstance();
 	UNSUIManagerSubsystem* UIManager = GameInstance
 		? GameInstance->GetSubsystem<UNSUIManagerSubsystem>() : nullptr;
