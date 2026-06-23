@@ -6,6 +6,8 @@
 #include "GameFramework/GameStateBase.h"
 #include "NSOutGameState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnReadyStateChanged);
+
 UCLASS()
 class NEOSANCTUM_API ANSOutGameState : public AGameStateBase
 {
@@ -13,4 +15,9 @@ class NEOSANCTUM_API ANSOutGameState : public AGameStateBase
 
 public:
 	bool IsAllPlayersReady() const;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Ready")
+	FNSOnReadyStateChanged OnReadyStateChanged;
+
+	void NotifyReadyStateChanged();
 };

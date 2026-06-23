@@ -30,3 +30,8 @@ bool ANSOutGameState::IsAllPlayersReady() const
 
 	return true;
 }
+
+void ANSOutGameState::NotifyReadyStateChanged()
+{
+	OnReadyStateChanged.Broadcast();
+}

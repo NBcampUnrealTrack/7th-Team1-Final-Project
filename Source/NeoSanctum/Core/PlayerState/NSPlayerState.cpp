@@ -19,6 +19,8 @@
 
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
+#include "NeoSanctum/Core/GameState/NSOutGameState.h"
+
 ANSPlayerState::ANSPlayerState()
 {
 	// PlayerState의 기본 Frequency는 1Hz(매우 낮음)
@@ -114,7 +116,18 @@ void ANSPlayerState::SetReady(bool bNewReady)
 	{
 		return;
 	}
+
+	if (bIsReady == bNewReady)
+	{
+		return;
+	}
+
 	bIsReady = bNewReady;
+
+	// 서버/호스트는 OnRep가 호출되지 않으므로 직접 알림
+	NotifyReadyStateChanged();
+
+	ForceNetUpdate();
 }
 
 void ANSPlayerState::Server_CollectCurrency_Implementation(int32 DropId)
@@ -230,3 +243,27 @@ UNSCompanionDefinition* ANSPlayerState::LoadCompanionDefinition(FGameplayTag Com
 }
 
 #pragma endregion
+
+void ANSPlayerState::OnRep_bIsReady()
+{
+	NotifyReadyStateChanged();
+}
+
+void ANSPlayerState::NotifyReadyStateChanged() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	ANSOutGameState* OutGameState =
+		World->GetGameState<ANSOutGameState>();
+
+	if (!OutGameState)
+	{
+		return;
+	}
+
+	OutGameState->NotifyReadyStateChanged();
+}
