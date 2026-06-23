@@ -9,6 +9,9 @@
 #include "NSPlayerProgressComponent.generated.h"
 
 
+DECLARE_MULTICAST_DELEGATE(FNSOnProgressChanged);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnProgressCurrencyChanged, int64, int64);
+
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSPlayerProgressComponent : public UActorComponent
 {
@@ -62,4 +65,20 @@ private:
 	int64 JobCurrency = 0;
 	FNSPartSaveData EquippedPart;
 	TMap<FName,int32> CharacterSkillLevels;
+	
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	FNSOnProgressChanged OnProgressChanged;
+	FNSOnProgressCurrencyChanged OnCurrencyChanged;
+
+private:
+	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedProgressPayload)
+	FNSProgressPayload ReplicatedProgressPayload;
+
+	UFUNCTION()
+	void OnRep_ReplicatedProgressPayload();
+	
+	void SyncReplicatedPayloadFromCurrentState();
+	void BroadcastProgressChanged();
 };
