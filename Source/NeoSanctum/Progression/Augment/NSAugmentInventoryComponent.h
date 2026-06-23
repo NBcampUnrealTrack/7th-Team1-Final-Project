@@ -28,6 +28,12 @@ public:
 	
 	// 서버 권한, 인런 종료시 모든 GE/GA 제거
 	void ClearAll();
+
+	// 서버 권한, Seamless Travel 시 이전 PlayerState의 보유 증강 데이터를 이관 (핸들은 제외)
+	void CopyRunStateFrom(const UNSAugmentInventoryComponent* Source);
+
+	// 서버 권한, 새 ASC에 보유 증강의 GE/GA를 재적용하고 핸들을 갱신
+	void ReapplyAll();
 	
 public:
 	UFUNCTION(BlueprintPure, Category="NS|Augment")

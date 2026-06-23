@@ -44,13 +44,13 @@ public:
 	 * Common / Rare / Epic / Legendary (수치 강화) 같은 스택형 GE저장
 	 * SetByCaller로 현재 스택 카운터 전달
 	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect", meta = (AssetBundles = "InRunData"))
 	TSoftClassPtr<UGameplayEffect> StackEffectClass;
 	
 	/**
 	 * 기믹 변경 GA저장 -> Legendary
 	 * 가질수 있는 최대개수제한이 있음 
 	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect", meta = (AssetBundles = "InRunData"))
 	TSoftClassPtr<UGameplayAbility> GrantedAbilityClass;
 };
