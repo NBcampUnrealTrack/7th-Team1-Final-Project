@@ -112,6 +112,7 @@ private:
 	void FireHitscan();
 	void ReportFireNoise(const FVector& NoiseLocation);
 	FTransform GetMuzzleTransform() const;
+	FTransform GetTraceSocketTransform() const;
 	
 private:
 	// Health Attribute가 0이 되는 순간 실행
@@ -172,6 +173,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Aim")
 	float PitchTurnSpeed = 360.0f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
+	FName TraceSocketName = TEXT("Trace");
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Weapon")
 	FName MuzzleSocketName = TEXT("Muzzle");
