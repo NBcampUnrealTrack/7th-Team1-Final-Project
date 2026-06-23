@@ -134,7 +134,7 @@ private:
 	// @민재 : AssetManager 방식 동일
 	UNSCompanionDefinition* LoadCompanionDefinition(FGameplayTag CompanionTag) const;
 	
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_bIsReady)
 	bool bIsReady;
 
 	// 사망 상태 변수
@@ -148,4 +148,9 @@ private:
 	// @민재 : companion 데이터 ID
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CurrentCompanionDefinitionTag;
+	
+	UFUNCTION()
+	void OnRep_bIsReady();
+
+	void NotifyReadyStateChanged() const;
 };
