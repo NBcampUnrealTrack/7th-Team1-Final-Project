@@ -193,15 +193,16 @@ void ANSPlayerController::Debug_UnlockAllNPCs()
 
 void ANSPlayerController::BindAttributeToHUD()
 {
-	if (!IsLocalController() || bHUDAttributeBound)
+	if (!IsLocalController())
 	{
 		return;
 	}
-	ANSPlayerState*NSPlayerState = GetPlayerState<ANSPlayerState>();
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
 	if (!NSPlayerState)
 	{
 		return;
 	}
+	
 	UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent();
 	if (!ASC)
 	{
@@ -238,6 +239,9 @@ void ANSPlayerController::BindAttributeToHUD()
 ).AddUObject(this, &ANSPlayerController::OnReloadingTagChanged);
 	
 	bHUDAttributeBound = true;
+	
+	UpdateHUDHealthAndShield();
+	UpdateHUDAmmo();
 }
 
 void ANSPlayerController::UpdateHUDHealthAndShield()
@@ -921,6 +925,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
 		
+		RebindHUDRuntimeState();
 
 	// Spectator가 아니라 실제 플레이어 캐릭터에 붙은 순간부터 플레이 가능 상태로 보고 로딩창을 닫는다.
 	HideTravelLoadingScreenIfPlayable(NewPawn);
@@ -1779,6 +1784,68 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 	{
 		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
 	}
+}
+
+void ANSPlayerController::UnbindAttributeFromHUD()
+{
+	if (UAbilitySystemComponent* ASC = CachedHUDASC.Get())
+	{
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSBaseAttributeSet::GetHealthAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSBaseAttributeSet::GetMaxHealthAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSPlayerAttributeSet::GetShieldAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSPlayerAttributeSet::GetMaxShieldAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSPlayerAttributeSet::GetAmmoAttribute()).RemoveAll(this);
+		ASC->GetGameplayAttributeValueChangeDelegate(
+			UNSPlayerAttributeSet::GetMaxAmmoAttribute()).RemoveAll(this);
+
+		ASC->RegisterGameplayTagEvent(
+			NSGameplayTags::State_Reloading,
+			EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
+	}
+
+	CachedHUDASC.Reset();
+	bHUDAttributeBound = false;
+}
+
+void ANSPlayerController::RebindHUDRuntimeState()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	ApplyCachedProgressToLocalPlayerState();
+
+	BindAttributeToHUD();
+	BindCurrencyToHUD();
+
+	UpdateHUDHealthAndShield();
+	UpdateHUDAmmo();
+	UpdateHUDCurrency();
+
+	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+		: nullptr)
+	{
+		UIManager->RefreshOutRunGoods();
+	}
+}
+
+void ANSPlayerController::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	RebindHUDRuntimeState();
+}
+
+void ANSPlayerController::BeginPlayingState()
+{
+	Super::BeginPlayingState();
+	RebindHUDRuntimeState();
 }
 
 #pragma region CompanionCheat

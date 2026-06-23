@@ -277,6 +277,16 @@ protected:
 	// O키(디버그 용) : 테스트용 증강 적재
 	void Debug_EnqueueAugmentOffer();
 
+private:
+	void UnbindAttributeFromHUD();
+	void RebindHUDRuntimeState();
+
+	TWeakObjectPtr<UAbilitySystemComponent> CachedHUDASC;
+
+protected:
+	virtual void OnRep_PlayerState() override;
+	virtual void BeginPlayingState() override;
+	
 #pragma region Companion Cheat
 	
 public:
