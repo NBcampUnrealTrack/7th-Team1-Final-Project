@@ -48,6 +48,7 @@ void UNSSessionSubsystem::Deinitialize()
 	bHostStartQueued = false;
 	bSwitchingToHost = false;
 	bCreateSessionAfterDestroy = false;
+	bReturnToTitleAfterDestroy = false;
 
 	Super::Deinitialize();
 }
@@ -172,6 +173,33 @@ void UNSSessionSubsystem::DestroySession()
 	StartDestroySession();
 }
 
+void UNSSessionSubsystem::LeaveSessionToTitle()
+{
+	// 진행 중 플래그 리셋 (다른 세션 작업 상태 정리)
+	bIsJoining = false;
+	bHostStartQueued = false;
+	bSwitchingToHost = false;
+	bCreateSessionAfterDestroy = false;
+
+	// 펜딩 조인이 남아 있으면 취소
+	if (HasPendingNetGame())
+	{
+		CancelPendingJoinForHost();
+	}
+
+	// 내가 GameSession을 들고 있으면 Destroy 완료 후 타이틀로
+	if (SessionInterface.IsValid() && SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		bReturnToTitleAfterDestroy = true;
+		StartDestroySession();
+		
+		return;
+	}
+
+	// 보유 세션 없으면 즉시 타이틀로 이동
+	ReturnToTitle();
+}
+
 void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful)
 {
 	ClearCreateSessionDelegate();
@@ -237,6 +265,18 @@ void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWas
 {
 	ClearDestroySessionDelegate();
 	bIsDestroyingSession = false;
+	
+	// Destroy 끝났으면 타이틀 화면으로
+	if (bReturnToTitleAfterDestroy)
+	{
+		bReturnToTitleAfterDestroy = false;
+		// 이탈 우선
+		bCreateSessionAfterDestroy = false; 
+		OnDestroySessionComplete.Broadcast(bWasSuccessful);
+		ReturnToTitle();
+		
+		return;
+	}
 
 	const bool bShouldCreateAfterDestroy =
 		bCreateSessionAfterDestroy;
@@ -555,6 +595,14 @@ void UNSSessionSubsystem::StartDestroySession()
 		bSwitchingToHost = false;
 
 		OnDestroySessionComplete.Broadcast(false);
+		
+		if (bReturnToTitleAfterDestroy)
+		{
+			bReturnToTitleAfterDestroy = false;
+			ReturnToTitle();
+			
+			return;
+		}
 
 		if (bWasRecreatingHost)
 		{
@@ -570,6 +618,14 @@ void UNSSessionSubsystem::StartDestroySession()
 		bCreateSessionAfterDestroy = false;
 
 		OnDestroySessionComplete.Broadcast(true);
+		
+		if (bReturnToTitleAfterDestroy) 
+		{
+			bReturnToTitleAfterDestroy = false;
+			ReturnToTitle();
+			
+			return;
+		}
 
 		if (bShouldCreateAfterDestroy)
 		{

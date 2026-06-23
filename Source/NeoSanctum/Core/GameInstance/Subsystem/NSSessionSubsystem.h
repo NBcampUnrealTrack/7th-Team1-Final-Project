@@ -33,6 +33,10 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void DestroySession();
+	
+	// 능동적 세션 정리 함수 (일시정지 메뉴 "메인메뉴" 버튼)
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void LeaveSessionToTitle();
 
 	UPROPERTY(BlueprintAssignable, Category = "Session")
 	FNSOnCreateSessionComplete OnCreateSessionComplete;
@@ -85,6 +89,9 @@ private:
 
 	// 기존 세션 제거 완료 후 Host 세션을 다시 생성할지 여부
 	bool bCreateSessionAfterDestroy = false;
+	
+	// Destroy 완료 후 타이틀로 복귀할지 여부
+	bool bReturnToTitleAfterDestroy = false;
 	
 	class UNSLevelCatalog* GetLevelCatalog() const;
 	void ReturnToTitle();
