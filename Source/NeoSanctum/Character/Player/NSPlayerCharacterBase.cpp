@@ -72,7 +72,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	
 	MeleeAttackReservationComp = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
 		TEXT("MeleeAttackReservationComp"));
-	MeleeAttackReservationComp->SetMaxConcurrentAttackers(3);
+	MeleeAttackReservationComp->SetMaxConcurrentAttackers(5);
 	
 	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
 

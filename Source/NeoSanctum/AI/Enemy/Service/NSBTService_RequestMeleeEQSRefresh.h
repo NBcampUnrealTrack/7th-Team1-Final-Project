@@ -42,11 +42,11 @@ protected:
 
 	// 이 거리 이상 타깃이 이동하면 기존 EQS 위치를 오래된 것으로 판단
 	UPROPERTY(EditAnywhere, Category = "AI|Melee EQS", meta = (ClampMin = "1.0"))
-	float TargetRequeryDistance = 200.0f;
+	float TargetRequeryDistance = 500.0f;
 
 	// 타깃 이동으로 EQS를 다시 요청할 수 있는 최소 간격
 	UPROPERTY(EditAnywhere, Category = "AI|Melee EQS", meta = (ClampMin = "0.1"))
-	float MinimumRequeryInterval = 0.75f;
+	float MinimumRequeryInterval = 2.0f;
 
 private:
 	// 마지막 EQS 결과가 결정됐을 때의 타깃 위치

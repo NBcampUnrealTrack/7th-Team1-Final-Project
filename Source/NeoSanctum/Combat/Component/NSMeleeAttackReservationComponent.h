@@ -126,17 +126,17 @@ private:
 	/* 해당 타깃에게 최근 피격당한 몬스터로 인정하는 시간 범위 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Melee Reservation",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float RecentDamagePriorityDuration = 2.0f;
+	float RecentDamagePriorityDuration = 5.0f;
 
 	/* 공격 종료 후 동일 몬스터가 슬롯을 다시 요청할 수 없는 최소 시간 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Melee Reservation",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float ReacquireCooldownMin = 1.0f;
+	float ReacquireCooldownMin = 0.1f;
 
 	/* 공격 종료 후 동일 몬스터가 슬롯을 다시 요청할 수 없는 최대 시간 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Melee Reservation",
 		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float ReacquireCooldownMax = 2.0f;
+	float ReacquireCooldownMax = 0.5f;
 
 	/* 현재 접근 또는 공격 권한을 보유한 몬스터들의 활성 예약 목록 */
 	TArray<FActiveReservation> ActiveReservations;
