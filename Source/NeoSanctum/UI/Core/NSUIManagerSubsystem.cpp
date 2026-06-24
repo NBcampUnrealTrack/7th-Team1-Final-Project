@@ -286,15 +286,14 @@ void UNSUIManagerSubsystem::ClearHUD()
 
 void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[증강] UIManager SelectAugmentCardByIndex 호출됨: %d"), CardIndex);
-
 	if (!HUDWidget)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[증강] 실패: HUDWidget이 nullptr 입니다"));
 		return;
 	}
 
 	HUDWidget->SelectAugmentCardByIndex(CardIndex);
+	//증강을 선택할시 패널이 자동으로 닫힘
+	CloseAugmentationPanel();
 }
 
 void UNSUIManagerSubsystem::RequestRerollAugment()
