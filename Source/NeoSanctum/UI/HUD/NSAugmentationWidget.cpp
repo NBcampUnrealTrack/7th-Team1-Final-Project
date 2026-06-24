@@ -21,6 +21,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 
+
 void UNSAugmentationWidget::OpenPanel()
 {
 	// 순수 UI 표시만 담당 (보유 아이콘 갱신)
@@ -100,6 +101,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 		}
 		AugmentCardWidgets.Add(NewCard);
 		
+			NewCard->SetShortcutNumber(Index + 1);
 			NewCard->SetAugmentName(TEXT(""));
     		NewCard->SetAugmentDescription(TEXT(""));
     		NewCard->SetAugmentIcon(nullptr);
