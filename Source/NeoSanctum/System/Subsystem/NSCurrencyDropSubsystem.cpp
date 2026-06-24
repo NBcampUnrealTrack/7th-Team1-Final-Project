@@ -2,6 +2,8 @@
 
 
 #include "NSCurrencyDropSubsystem.h"
+
+#include "ToolMenusEditor.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -9,6 +11,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
+#include "Splines/SplineMath.h"
+#include "Tests/ToolMenusTestUtilities.h"
 
 // 프록시 등록 함수
 void UNSCurrencyDropSubsystem::RegisterProxy(ANSCurrencyReplicationProxy* Proxy)
@@ -222,4 +226,108 @@ float UNSCurrencyDropSubsystem::GetWorldSeconds() const
 {
 	const UWorld* World = GetWorld();
 	return World ? World->GetTimeSeconds() : 0.f;
+}
+
+bool UNSCurrencyDropSubsystem::FindNearestTrackableDrop(const ANSPlayerState* CompanionOwnerPS, const FVector& FromLocation,
+	float MaxRadius, int32& OutDropId, FVector& OutLocation)
+{
+	// 서버 판정 및 오너 유효
+	if (!HasServerAuthority() || !CompanionOwnerPS) return false;
+	
+	// 드랍 시간 확보
+	const float Now = GetWorldSeconds();
+	
+	// 제곱 거리 캐싱
+	float BestDistSq = MaxRadius * MaxRadius;
+	int32 BestDropId = INDEX_NONE;
+	FVector BestLocation = FVector::ZeroVector;
+	
+	// 드롭물 순회
+	for (const TPair<int32, FNSCurrencyDropEntry>& Pair : ActiveDrops)
+	{
+		if (!IsDropTrackableFor(Pair.Value, CompanionOwnerPS, Now)) continue;
+		
+		// 드롭물과의 거리 계산
+		const float DistSq = FVector::DistSquared(FromLocation, Pair.Value.Location);
+		if (DistSq <= BestDistSq)
+		{
+			// 반경 안이라면 갱신
+			BestDistSq = DistSq;
+			BestDropId = Pair.Key;
+			BestLocation = Pair.Value.Location;
+		}
+	}
+	
+	if (BestDropId == INDEX_NONE) return false;
+	
+	OutDropId = BestDropId;
+	OutLocation = BestLocation;
+	return true;
+}
+
+bool UNSCurrencyDropSubsystem::TryCollectByCompanion(int32 DropId, ANSPlayerState* CompanionOwnerPS,
+	const FVector& CompanionLocation)
+{
+	// 권한 체크
+	if (!HasServerAuthority() || !CompanionOwnerPS) return false;
+	
+	// 드랍 재화 정보 만들기
+	FNSCurrencyDropEntry* Entry = ActiveDrops.Find(DropId);
+	if (!Entry) return false;
+	
+	// 현재 시간 받아와서 만료 시간과 비교
+	const float Now = GetWorldSeconds();
+	if (Now >= Entry->ExpireTime)
+	{
+		ActiveDrops.Remove(DropId);
+		return false;
+	}
+	
+	if (!IsDropTrackableFor(*Entry, CompanionOwnerPS, Now)) return false;
+	
+	const FVector Delta = CompanionLocation - Entry->Location;
+	if(FVector(Delta.X,Delta.Y,0.f).SizeSquared() > CompanionCollectDistanceSq) return false;
+	
+	UNSCurrencyComponent* CurrencyComp = CompanionOwnerPS->GetCurrencyComponent();
+	if (!CurrencyComp) return false;
+	
+	if (Entry->CurrencyType == NSGameplayTags::Currency_Temp)
+	{
+		CurrencyComp->AddTemp(static_cast<int32>(Entry->Grade), Entry->Amount);
+	}
+	else
+	{
+		CurrencyComp->AddRunPermanent(Entry->CurrencyType, Entry->Amount);
+	}
+	
+	Entry->CollectedPlayer.Add(CompanionOwnerPS);
+	
+	if (ANSCurrencyReplicationProxy* Proxy = FindProxy(CompanionOwnerPS))
+	{
+		Proxy->SendRemoveEvent(DropId);
+	}
+	
+	return true;
+}
+
+bool UNSCurrencyDropSubsystem::IsDropTrackableFor(const FNSCurrencyDropEntry& Entry, const ANSPlayerState* PlayerState,
+	float Now) const
+{
+	// 만료 시간 이후면 추적 대상 아님
+	if (Now >= Entry.ExpireTime) return false;
+	// 포물선 정보가 있을 경우에 비행 종료 여부 검사
+	if (Entry.LaunchData.IsValid())
+	{
+		// 아직 공중에 떠 있는지 확인
+		float FinishedFlyingTime = Entry.LaunchData.StartServerTime + Entry.LaunchData.FlightDuration;
+		if (Now < FinishedFlyingTime) return false;
+	}
+	
+	// 조건 4. 이미 수집을 한 Player인지 판단
+	for (const TWeakObjectPtr<ANSPlayerState>& EntryPS : Entry.CollectedPlayer)
+	{
+		if (PlayerState == EntryPS) return false;
+	}
+	
+	return true;
 }

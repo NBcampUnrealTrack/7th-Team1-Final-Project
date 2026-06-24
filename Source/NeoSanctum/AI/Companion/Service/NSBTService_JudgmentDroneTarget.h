@@ -30,18 +30,21 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector MoveTargetKey;
 	
+	/*UPROPERTY(EditAnywhere, Category="Blackboard")
+	FBlackboardKeySelector CurrencyActorKey;*/
+	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
-	FBlackboardKeySelector CurrencyActorKey;
+	FBlackboardKeySelector TargetDropIdKey;
 	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector EnemyActorKey;
 	
 	// @민재 : 재화 관련 변수
-	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
+	/*UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
 	TSubclassOf<AActor> CurrencyClass;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
-	TArray<TEnumAsByte<EObjectTypeQuery>> CurrencyObjectTypes;
+	TArray<TEnumAsByte<EObjectTypeQuery>> CurrencyObjectTypes;*/
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
 	float CurrencyDetectionRadius = 1500.f;

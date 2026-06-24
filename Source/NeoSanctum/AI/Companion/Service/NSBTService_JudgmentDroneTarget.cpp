@@ -9,7 +9,9 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 
 UNSBTService_JudgmentDroneTarget::UNSBTService_JudgmentDroneTarget()
 {
@@ -22,10 +24,12 @@ UNSBTService_JudgmentDroneTarget::UNSBTService_JudgmentDroneTarget()
 	MoveTargetKey.AddVectorFilter(
 		this, 
 		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget,MoveTargetKey));
-	CurrencyActorKey.AddObjectFilter(
+	/*CurrencyActorKey.AddObjectFilter(
 		this, 
 		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, CurrencyActorKey),
-		AActor::StaticClass());
+		AActor::StaticClass());*/
+	TargetDropIdKey.AddIntFilter(this,
+		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget,TargetDropIdKey));
 	EnemyActorKey.AddObjectFilter(
 		this,
 		GET_MEMBER_NAME_CHECKED(UNSBTService_JudgmentDroneTarget, EnemyActorKey),
@@ -43,7 +47,8 @@ void UNSBTService_JudgmentDroneTarget::InitializeFromAsset(UBehaviorTree& Asset)
 	if (UBlackboardData* BBAsset = GetBlackboardAsset())
 	{
 		MoveTargetKey.ResolveSelectedKey(*BBAsset);
-		CurrencyActorKey.ResolveSelectedKey(*BBAsset);
+		/*CurrencyActorKey.ResolveSelectedKey(*BBAsset);*/
+		TargetDropIdKey.ResolveSelectedKey(*BBAsset);
 		EnemyActorKey.ResolveSelectedKey(*BBAsset);
 		StateKey.ResolveSelectedKey(*BBAsset);
 	}
@@ -62,9 +67,10 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	ANSDroneAIController* DroneController = Cast<ANSDroneAIController>(AIController);
 	if (!DroneController || !CompanionPawn) return;
 	
-	BB->SetValueAsEnum(StateKey.SelectedKeyName, static_cast<uint8>(EvaluateState(CompanionPawn, BB)));
+	const ECompanionState NewState = EvaluateState(CompanionPawn, BB);
+	BB->SetValueAsEnum(StateKey.SelectedKeyName, static_cast<uint8>(NewState));
+	CompanionPawn->SetCurrentState(NewState);
 }
-
 
 ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanionAI* CompanionPawn,
 	UBlackboardComponent* BB) const
@@ -76,25 +82,40 @@ ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanion
 		CompanionOwner->GetActorLocation() + CompanionOwner->GetActorRotation().RotateVector(FollowOffset);
 	BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, FollowPos);
 	
+	bool bHasDrop = false;
+	FVector DropLocation = FVector::ZeroVector;
+	
+	APawn* OwnerPawn = Cast<APawn>(CompanionOwner);
+	if (OwnerPawn)
+	{
+		ANSPlayerState* OwnerPS = OwnerPawn->GetPlayerState<ANSPlayerState>();
+		UNSCurrencyDropSubsystem* DropSubsystem = CompanionPawn->GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>();
+		if (OwnerPS && DropSubsystem)
+		{
+			int32 OutDropId = INDEX_NONE;
+			FVector OutLocation = FVector::ZeroVector;
+			if (DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionPawn->GetActorLocation(), CurrencyDetectionRadius, OutDropId,OutLocation))
+			{
+				bHasDrop = true;
+				DropLocation = OutLocation;
+			}
+		}
+	}
+	
 	if (AActor* Enemy = FindNearestActor(CompanionPawn, EnemyClass, CombatDetectionRadius, EnemyObjectTypes, true))
 	{
 		BB->SetValueAsObject(EnemyActorKey.SelectedKeyName, Enemy);
 		CompanionPawn->SetCurrentEnemy(Enemy);
+		
+		if (bHasDrop) BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, DropLocation);
+		
 		return ECompanionState::Combat;
 	}
 	
 	BB->ClearValue(EnemyActorKey.SelectedKeyName);
 	CompanionPawn->SetCurrentEnemy(nullptr);
 	
-	if (AActor* Currency = FindNearestActor(CompanionPawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
-	{
-		BB->SetValueAsObject(CurrencyActorKey.SelectedKeyName, Currency);
-		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, Currency->GetActorLocation());
-		return ECompanionState::Collect;
-	}
-	
-	BB->ClearValue(CurrencyActorKey.SelectedKeyName);
-	
+	if (bHasDrop) BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, DropLocation);
 	return ECompanionState::Follow;
 }
 

@@ -57,4 +57,30 @@ private:
 	
 	// 임시 오버랩 위치 검증용
 	static constexpr float CollectDistanceSq = 300.f * 300.f;
+	
+	// Companion
+	static constexpr float CompanionCollectDistanceSq = 200.f * 200.f;
+	
+#pragma region CompanionDropSystem
+	
+public:
+	bool FindNearestTrackableDrop(
+		const ANSPlayerState* CompanionOwnerPS,
+		const FVector& FromLocation,
+		float MaxRadius,
+		int32& OutDropId,
+		FVector& OutLocation);
+	
+	bool TryCollectByCompanion(
+		int32 DropId,
+		ANSPlayerState* CompanionOwnerPS,
+		const FVector& CompanionLocation);	
+	
+private:
+	bool IsDropTrackableFor(
+		const FNSCurrencyDropEntry& Entry,
+		const ANSPlayerState* PlayerState,
+		float Now) const;
+	
+#pragma endregion 
 };
