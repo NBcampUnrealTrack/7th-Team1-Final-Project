@@ -72,7 +72,6 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	CompanionPawn->SetCurrentState(NewState);
 }
 
-
 ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanionAI* CompanionPawn,
 	UBlackboardComponent* BB) const
 {
@@ -83,50 +82,40 @@ ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanion
 		CompanionOwner->GetActorLocation() + CompanionOwner->GetActorRotation().RotateVector(FollowOffset);
 	BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, FollowPos);
 	
+	bool bHasDrop = false;
+	FVector DropLocation = FVector::ZeroVector;
+	
+	APawn* OwnerPawn = Cast<APawn>(CompanionOwner);
+	if (OwnerPawn)
+	{
+		ANSPlayerState* OwnerPS = OwnerPawn->GetPlayerState<ANSPlayerState>();
+		UNSCurrencyDropSubsystem* DropSubsystem = CompanionPawn->GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>();
+		if (OwnerPS && DropSubsystem)
+		{
+			int32 OutDropId = INDEX_NONE;
+			FVector OutLocation = FVector::ZeroVector;
+			if (DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionPawn->GetActorLocation(), CurrencyDetectionRadius, OutDropId,OutLocation))
+			{
+				bHasDrop = true;
+				DropLocation = OutLocation;
+			}
+		}
+	}
+	
 	if (AActor* Enemy = FindNearestActor(CompanionPawn, EnemyClass, CombatDetectionRadius, EnemyObjectTypes, true))
 	{
 		BB->SetValueAsObject(EnemyActorKey.SelectedKeyName, Enemy);
 		CompanionPawn->SetCurrentEnemy(Enemy);
+		
+		if (bHasDrop) BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, DropLocation);
+		
 		return ECompanionState::Combat;
 	}
 	
 	BB->ClearValue(EnemyActorKey.SelectedKeyName);
 	CompanionPawn->SetCurrentEnemy(nullptr);
 	
-	// OwnerPawn 가져오기
-	APawn* OwnerPawn = Cast<APawn>(CompanionOwner);
-	if (!OwnerPawn) return ECompanionState::Follow;
-	
-	// OwnerPlayerState 가져오기
-	ANSPlayerState* OwnerPS = OwnerPawn->GetPlayerState<ANSPlayerState>();
-	if (!OwnerPS) return ECompanionState::Follow;
-	
-	// 재화쪽 SubSystem 가져오기
-	if (UNSCurrencyDropSubsystem* DropSubsystem = CompanionPawn->GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Getdropsubsystem"));
-		const FVector FromLocation = CompanionPawn->GetActorLocation();
-		int32 OutDropId = INDEX_NONE;
-		FVector OutLocation = FVector::ZeroVector;
-	
-		if (DropSubsystem->FindNearestTrackableDrop(OwnerPS, FromLocation, CurrencyDetectionRadius, OutDropId,OutLocation))
-		{
-			BB->SetValueAsInt(TargetDropIdKey.SelectedKeyName, OutDropId);
-			BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, OutLocation);
-			return ECompanionState::Collect;
-		}
-	}
-	
-	/*if (AActor* Currency = FindNearestActor(CompanionPawn, CurrencyClass, CurrencyDetectionRadius, CurrencyObjectTypes))
-	{
-		BB->SetValueAsObject(CurrencyActorKey.SelectedKeyName, Currency);
-		BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, Currency->GetActorLocation());
-		return ECompanionState::Collect;
-	}*/
-	
-	/*BB->ClearValue(CurrencyActorKey.SelectedKeyName);*/
-	
-	BB->SetValueAsInt(TargetDropIdKey.SelectedKeyName, INDEX_NONE);
+	if (bHasDrop) BB->SetValueAsVector(MoveTargetKey.SelectedKeyName, DropLocation);
 	return ECompanionState::Follow;
 }
 
