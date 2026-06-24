@@ -13,6 +13,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 ANSBaseCompanionAI::ANSBaseCompanionAI()
@@ -83,6 +84,12 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 		&ANSBaseCompanionAI::CheckDistanceToOwner,
 		0.25f,
 		true);
+	
+	GetWorldTimerManager().SetTimer(
+		CurrencyVacuumTimer, 
+		this,
+		&ANSBaseCompanionAI::VacuumNearbyCurrency,
+		0.1f, true);
 	
 	if (!CurrentDefinition) return;
 	
@@ -376,6 +383,29 @@ void ANSBaseCompanionAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewD
 void ANSBaseCompanionAI::OnRep_CurrentDefinition()
 {
 	ApplyCompanionVisual(CurrentDefinition);
+}
+
+void ANSBaseCompanionAI::VacuumNearbyCurrency()
+{
+	if (!HasAuthority() || !OwnerPlayer) return;
+	
+	APawn* OwnerPawn = Cast<APawn>(OwnerPlayer);
+	if (!OwnerPawn) return;
+	
+	ANSPlayerState* OwnerPS = Cast<ANSPlayerState>(OwnerPawn->GetPlayerState());
+	if (!OwnerPS) return;
+	
+	UNSCurrencyDropSubsystem* DropSubsystem = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>();
+	if (!DropSubsystem) return;
+	
+	const FVector CompanionLocation = GetActorLocation();
+	int32 OutDropId = INDEX_NONE;
+	FVector OutLocation = FVector::ZeroVector;
+	
+	if(DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionLocation, CurrencyVaccumRadius,OutDropId,OutLocation))
+	{
+		DropSubsystem->TryCollectByCompanion(OutDropId, OwnerPS, CompanionLocation);
+	}
 }
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)

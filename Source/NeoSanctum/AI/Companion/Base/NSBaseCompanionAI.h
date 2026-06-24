@@ -259,7 +259,7 @@ protected:
 	
 #pragma endregion
 	
-#pragma region CompanionState
+#pragma region CompanionCurrency
 	
 private:
 	ECompanionState CurrentState = ECompanionState::Follow;
@@ -274,6 +274,13 @@ private:
 	float PrevDistSqToOwner = -1.f;
 	
 	static constexpr float CheckInterval = 0.25f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
+	float CurrencyVaccumRadius = 250.f;
+	
+	FTimerHandle CurrencyVacuumTimer;
+private:
+	void VacuumNearbyCurrency();
 	
 #pragma endregion
 	
