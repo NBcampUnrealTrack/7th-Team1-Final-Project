@@ -3,7 +3,6 @@
 
 #include "NSCurrencyDropSubsystem.h"
 
-#include "ToolMenusEditor.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -11,8 +10,6 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/World.h"
-#include "Splines/SplineMath.h"
-#include "Tests/ToolMenusTestUtilities.h"
 
 // 프록시 등록 함수
 void UNSCurrencyDropSubsystem::RegisterProxy(ANSCurrencyReplicationProxy* Proxy)
