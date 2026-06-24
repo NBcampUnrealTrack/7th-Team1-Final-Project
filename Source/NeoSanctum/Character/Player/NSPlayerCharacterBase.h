@@ -28,6 +28,7 @@ class UNSSpectatorViewComponent;
 class UNSPartVisualComponent;
 class UNSInteractionComponent;
 class UNSMeleeAttackReservationComponent;
+class UNSGateAccessComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -139,6 +140,10 @@ protected:
 	// 상호작용 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	TObjectPtr<UNSInteractionComponent> InteractionComp;
+
+	// 거점 입장 게이트 접근(폰별 통과 + 로컬 외형) 처리 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<UNSGateAccessComponent> GateAccessComp;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
