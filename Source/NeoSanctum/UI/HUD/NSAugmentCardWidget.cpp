@@ -6,6 +6,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "Engine/Texture2D.h"
+#include "CommonTextBlock.h"
 
 void UNSAugmentCardWidget::SetAugmentName(const FString& NewName)
 {
@@ -60,6 +61,22 @@ void UNSAugmentCardWidget::SetAugmentIcon(UTexture2D* NewIcon)
 	}
 	AugmentIcon->SetBrushFromTexture(NewIcon);
 	AugmentIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UNSAugmentCardWidget::SetShortcutNumber(int32 NewShortcutNumber)
+{
+	if (!ShortcutNumberText)
+	{
+		return;
+	}
+	
+	if (NewShortcutNumber <= 0)
+	{
+		ShortcutNumberText->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	ShortcutNumberText->SetText(FText::AsNumber(NewShortcutNumber));
+	ShortcutNumberText->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UNSAugmentCardWidget::NativeConstruct()
