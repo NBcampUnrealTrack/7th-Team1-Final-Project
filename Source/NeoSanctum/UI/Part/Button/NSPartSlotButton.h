@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonButtonBase.h"
+#include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NSPartSlotButton.generated.h"
 
@@ -58,4 +59,5 @@ private:
 	FText GetRarityText(ENSPartRarity Rarity) const;
 
 	bool bHasPart;
+	TSharedPtr<FStreamableHandle> IconLoadHandle;
 };

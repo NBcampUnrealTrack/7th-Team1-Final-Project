@@ -5,6 +5,7 @@
 #include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
+#include "Engine/AssetManager.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 
 UNSPartSlotButton::UNSPartSlotButton()
@@ -31,8 +32,31 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 
 	if (IsValid(PartIconImage))
 	{
-		PartIconImage->SetBrushFromSoftTexture(InPartDefinition->Icon);
-		PartIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		if (UTexture2D* LoadedIcon = InPartDefinition->Icon.Get())
+		{
+			PartIconImage->SetBrushFromTexture(LoadedIcon);
+			PartIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else if (!InPartDefinition->Icon.IsNull())
+		{
+			TWeakObjectPtr<UNSPartSlotButton> WeakThis(this);
+			TSoftObjectPtr<UTexture2D> SoftIcon = InPartDefinition->Icon;
+			IconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+				SoftIcon.ToSoftObjectPath(),
+				[WeakThis, SoftIcon]()
+				{
+					if (!WeakThis.IsValid())
+					{
+						return;
+					}
+					if (UTexture2D* Tex = SoftIcon.Get())
+					{
+						WeakThis->PartIconImage->SetBrushFromTexture(Tex);
+						WeakThis->PartIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+					}
+					WeakThis->IconLoadHandle.Reset();
+				});
+		}
 	}
 
 	if (IsValid(PartNameText))
@@ -59,6 +83,12 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 
 void UNSPartSlotButton::ClearPart()
 {
+	if (IconLoadHandle.IsValid())
+	{
+		IconLoadHandle->CancelHandle();
+		IconLoadHandle.Reset();
+	}
+
 	bHasPart = false;
 
 	if (IsValid(PartIconImage))
