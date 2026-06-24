@@ -13,6 +13,21 @@ class UNSAugmentPoolDefinition;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 
+/**
+ * 증강 카드 후보 하나의 런타임 선택 정보.
+ * 
+ * 같은 AugmentTag를 가진 여러 증강 효과 행은 하나의 후보로 그룹핑.
+ */
+struct FNSAugmentCandidate
+{
+	FPrimaryAssetId DefId;
+	FGameplayTag AugmentTag;
+	FGameplayTag OwnerCharacterTag;
+	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+	int32 SelectionWeight = 1;
+	int32 MaxStacks = 1;
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
@@ -104,6 +119,20 @@ private:
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,
 		const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const;
+	
+	bool TryGetOwnerCharacterTag(FGameplayTag& OutCharacterTag) const;
+	
+	bool TryCreateCandidate(
+		UNSDataSubsystem* Data,
+		const FNSAugmentDefinitionRow& Row,
+		FNSAugmentCandidate& OutCandidate
+	) const;
+	
+	bool TryFindCandidateByDefinitionId(
+		UNSDataSubsystem* Data,
+		const FPrimaryAssetId& DefId,
+		FNSAugmentCandidate& OutCandidate
+	) const;
 
 	void CollectInventoryFilter(
 		bool& bOutLegendaryFull,
@@ -118,12 +147,12 @@ private:
 		const TSet<FPrimaryAssetId>& OwnedMechanicIds,
 		const TSet<FPrimaryAssetId>& StackFullIds,
 		const TSet<FPrimaryAssetId>& ExcludedIds,
-		TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& OutByRarity) const;
+		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity) const;
 
 	// 가중치 룰렛으로 Rarity 1회 결정 → 해당 버킷에서 N장 균등 추첨 -> OutRarity에 결정된 Rarity 반환
 	TArray<FPrimaryAssetId> DrawCards(
 		const UNSAugmentPoolDefinition* Pool,
-		const TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& ByRarity,
+		const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
 		int32 N,
 		ENSAugmentRarity& OutRarity) const;
 

@@ -8,8 +8,13 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Player.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 UNSAugmentSelectionComponent::UNSAugmentSelectionComponent()
@@ -268,7 +273,8 @@ UNSAugmentPoolDefinition* UNSAugmentSelectionComponent::FindPool(const FGameplay
 	return nullptr;
 }
 
-TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(UNSAugmentPoolDefinition* Pool, int32 N, ENSAugmentRarity& OutRarity) const
+TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
+	UNSAugmentPoolDefinition* Pool, int32 N, ENSAugmentRarity& OutRarity) const
 {
 	OutRarity = ENSAugmentRarity::Common;
 	if (!Pool)
@@ -289,7 +295,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(UNSAugmentPoolDe
 	// 새 오퍼는 제외 셋 없음
 	const TSet<FPrimaryAssetId> EmptyExcluded;
 
-	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>> ByRarity;
+	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
 	BuildRarityBuckets(Data, Pool, bLegendaryFull, OwnedMechanicLegendaryIds, StackFullIds, EmptyExcluded, ByRarity);
 
 	return DrawCards(Pool, ByRarity, N, OutRarity);
@@ -306,6 +312,110 @@ UNSAugmentDefinition* UNSAugmentSelectionComponent::ResolveDefinition(
 	}
 	const FPrimaryAssetId Id(UNSDataSubsystem::AugmentAssetType, FName(*SoftDef.GetAssetName()));
 	return Data->GetData<UNSAugmentDefinition>(Id);
+}
+
+bool UNSAugmentSelectionComponent::TryGetOwnerCharacterTag(FGameplayTag& OutCharacterTag) const
+{
+	OutCharacterTag = FGameplayTag();
+	
+	const APlayerController* PlayerController = Cast<APlayerController>(GetOwner());
+	if (!IsValid(PlayerController))
+	{
+		return false;
+	}
+	
+	const ANSPlayerState* PlayerState = Cast<ANSPlayerState>(PlayerController->PlayerState); 
+	if (!IsValid(PlayerState))
+	{
+		return false;
+	}
+	
+	const UNSCharacterData* CharacterData = PlayerState->GetCurrentCharacterData();
+	if (!IsValid(CharacterData) || !CharacterData->CharacterTag.IsValid())
+	{
+		return false;
+	}
+	
+	OutCharacterTag = CharacterData->CharacterTag;
+	return true;
+}
+
+bool UNSAugmentSelectionComponent::TryCreateCandidate(
+	UNSDataSubsystem* Data, 
+	const FNSAugmentDefinitionRow& Row,
+	FNSAugmentCandidate& OutCandidate) const
+{
+	OutCandidate = FNSAugmentCandidate();
+	
+	if (!Row.AugmentTag.IsValid()
+		|| !Row.OwnerCharacterTag.IsValid()
+		|| Row.Definition.IsNull()
+		|| Row.SelectionWeight <= 0
+		|| Row.MaxStack <= 0)
+	{
+		return false;
+	}
+	
+	UNSAugmentDefinition* Definition = ResolveDefinition(Data, Row.Definition);
+	if (!IsValid(Definition))
+	{
+		return false;
+	}
+	
+	const FPrimaryAssetId DefId = Definition->GetPrimaryAssetId();
+	if (!DefId.IsValid())
+	{
+		return false;
+	}
+	
+	OutCandidate.DefId = DefId;
+	OutCandidate.AugmentTag = Row.AugmentTag;
+	OutCandidate.OwnerCharacterTag = Row.OwnerCharacterTag;
+	OutCandidate.Rarity = Row.Rarity;
+	OutCandidate.SelectionWeight = Row.SelectionWeight;
+	OutCandidate.MaxStacks = Row.MaxStack;
+	
+	return true;
+}
+
+bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
+	UNSDataSubsystem* Data, 
+	const FPrimaryAssetId& DefId,
+	FNSAugmentCandidate& OutCandidate) const
+{
+	OutCandidate = FNSAugmentCandidate();
+	
+	if (!IsValid(AugmentDefinitionTable) || !DefId.IsValid())
+	{
+		return false;
+	}
+	
+	const FString ContextString = TEXT("AugmentDefinitionLookup");
+	
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
+	{
+		const FNSAugmentDefinitionRow* Row = 
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
+		
+		if (!Row || !Row->bEnabled)
+		{
+			continue;
+		}
+		
+		FNSAugmentCandidate Candidate;
+		if (!TryCreateCandidate(Data, *Row, Candidate))
+		{
+			continue;
+		}
+		
+		if (Candidate.DefId == DefId)
+		{
+			OutCandidate = Candidate;
+			return true;
+		}
+	}
+	
+	return false;
 }
 
 // 레전더리 슬롯이 꽉찼는지, 기믹 변경 레전더리 Id 목록, MaxStack 도달한 Id 목록 저장
@@ -370,86 +480,136 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	const TSet<FPrimaryAssetId>& OwnedMechanicIds,
 	const TSet<FPrimaryAssetId>& StackFullIds,
 	const TSet<FPrimaryAssetId>& ExcludedIds,
-	TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& OutByRarity) const
+	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity) const
 {
 	OutByRarity.Reset();
-	if (!Data || !Pool)
+	
+	if (!Data || !Pool || !IsValid(AugmentDefinitionTable))
+	{
+		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
+		return;
+	}
+	
+	FGameplayTag OwnerCharacterTag;
+	if (!TryGetOwnerCharacterTag(OwnerCharacterTag))
+	{
+		NS_OBJ_LOG(LogNS, Warning, "현재 캐릭터 태그를 찾지 못했습니다.");
+		return;
+	}
+	
+	const FGameplayTag CommonCharacterTag = NSGameplayTags::Character_Common;
+	const FString ContextString = TEXT("AugmentDefinitionCandidates");
+	
+	TMap<FGameplayTag, FNSAugmentCandidate> CandidatesByTags;
+	
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
+	{
+		const FNSAugmentDefinitionRow* Row = 
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
+		
+		if (!Row || !Row->bEnabled)
+		{
+			continue;
+		}
+		
+		if (Row->OwnerCharacterTag != OwnerCharacterTag && Row->OwnerCharacterTag != CommonCharacterTag)
+		{
+			continue;
+		}
+		
+		FNSAugmentCandidate Candidate;
+		if (!TryCreateCandidate(Data, *Row, Candidate))
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"유효하지 않은 증강 효과 정의 Row를 제외합니다. RowName={RowName}",
+				("RowName", RowName.ToString())
+			);
+			continue;
+		}
+		
+		if (ExcludedIds.Contains(Candidate.DefId) || StackFullIds.Contains(Candidate.DefId))
+		{
+			continue;
+		}
+		
+		if (Candidate.Rarity == ENSAugmentRarity::Legendary)
+		{
+			if (bLegendaryFull || OwnedMechanicIds.Contains(Candidate.DefId))
+			{
+				continue;
+			}
+		}
+		
+		// 같은 AugmentTag의 여러 효과 행은 카드 후보 하나로 취급.
+		CandidatesByTags.FindOrAdd(Candidate.AugmentTag, Candidate);
+	}
+	
+	TSet<FGameplayTag> AddedAugmentTags;
+	
+	for (const TPair<FGameplayTag, FNSAugmentCandidate>& Pair : CandidatesByTags)
+	{
+		OutByRarity.FindOrAdd(Pair.Value.Rarity).Add(Pair.Value);
+		AddedAugmentTags.Add(Pair.Key);
+	}
+	
+	// Legendary 슬롯이 가득 찬 경우에는 Pool에 지정한 수치형 Legendary만 추가.
+	if (!bLegendaryFull)
 	{
 		return;
 	}
-
-	TSet<FPrimaryAssetId> SeenIds;
-
-	for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef : Pool->Entries)
+	
+	for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDefinition : Pool->LegendaryStatEntries)
 	{
-		UNSAugmentDefinition* Def = ResolveDefinition(Data, SoftDef);
-		if (!Def)
+		UNSAugmentDefinition* Definition = ResolveDefinition(Data, SoftDefinition);
+		if (!IsValid(Definition))
 		{
 			continue;
 		}
-
-		const FPrimaryAssetId DefId = Def->GetPrimaryAssetId();
-		if (SeenIds.Contains(DefId))
+		
+		const FPrimaryAssetId DefId = Definition->GetPrimaryAssetId();
+		if (ExcludedIds.Contains(DefId) || StackFullIds.Contains(DefId))
 		{
 			continue;
 		}
-		if (ExcludedIds.Contains(DefId))
+		
+		FNSAugmentCandidate Candidate;
+		if (!TryFindCandidateByDefinitionId(Data, DefId, Candidate))
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"LegendaryStatEntries에 등록된 증강의 효과 정의 Row를 찾지 못했습니다. DefId{DefId}",
+				("DefId", DefId.ToString())
+			);
+			continue;
+		}
+		
+		if (Candidate.Rarity != ENSAugmentRarity::Legendary)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"LegendaryStatEntries의 증강 희귀도가 Legendary가 아닙니다. DefId={DefId}",
+				("DefId", DefId.ToString())
+			);
+			continue;
+		}
+		
+		if (Candidate.OwnerCharacterTag != OwnerCharacterTag && Candidate.OwnerCharacterTag != CommonCharacterTag)
 		{
 			continue;
 		}
-		if (StackFullIds.Contains(DefId))
+		
+		if (AddedAugmentTags.Contains(Candidate.AugmentTag))
 		{
 			continue;
 		}
-
-		if (Def->Rarity == ENSAugmentRarity::Legendary)
-		{
-			if (bLegendaryFull)
-			{
-				continue;
-			}
-			if (OwnedMechanicIds.Contains(DefId))
-			{
-				continue;
-			}
-		}
-
-		OutByRarity.FindOrAdd(Def->Rarity).Add(Def);
-		SeenIds.Add(DefId);
-	}
-
-	if (bLegendaryFull)
-	{
-		for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef : Pool->LegendaryStatEntries)
-		{
-			UNSAugmentDefinition* Def = ResolveDefinition(Data, SoftDef);
-			if (!Def)
-			{
-				continue;
-			}
-			const FPrimaryAssetId DefId = Def->GetPrimaryAssetId();
-			if (SeenIds.Contains(DefId))
-			{
-				continue;
-			}
-			if (ExcludedIds.Contains(DefId))
-			{
-				continue;
-			}
-			if (StackFullIds.Contains(DefId))
-			{
-				continue;
-			}
-			OutByRarity.FindOrAdd(ENSAugmentRarity::Legendary).Add(Def);
-			SeenIds.Add(DefId);
-		}
+		
+		OutByRarity.FindOrAdd(ENSAugmentRarity::Legendary).Add(Candidate);
+		AddedAugmentTags.Add(Candidate.AugmentTag);
 	}
 }
 
 // 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 균등 추첨
 TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	const UNSAugmentPoolDefinition* Pool,
-	const TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& ByRarity,
+	const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
 	int32 N,
 	ENSAugmentRarity& OutRarity) const
 {
@@ -464,7 +624,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	float TotalWeight = 0.f;
 	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
 	{
-		const TArray<UNSAugmentDefinition*>* Bucket = ByRarity.Find(RarityWeight.Key);
+		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
 		if (Bucket && Bucket->Num() > 0)
 		{
 			TotalWeight += FMath::Max(0.f, RarityWeight.Value);
@@ -481,7 +641,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
 	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
 	{
-		const TArray<UNSAugmentDefinition*>* Bucket = ByRarity.Find(RarityWeight.Key);
+		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
 		if (!Bucket || Bucket->Num() == 0)
 		{
 			continue;
@@ -496,18 +656,21 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	OutRarity = ChosenRarity;
 
 	// 선택된 Rarity 버킷만 복사해서 중복 없이 N장 추첨 (RemoveAtSwap = O(1))
-	TArray<UNSAugmentDefinition*> Bucket = ByRarity.FindChecked(ChosenRarity);
+	TArray<FNSAugmentCandidate> Bucket = ByRarity.FindChecked(ChosenRarity);
 	const int32 DrawCount = FMath::Min(N, Bucket.Num());
 	Result.Reserve(DrawCount);
 	for (int32 i = 0; i < DrawCount; ++i)
 	{
-		const int32 PickIdx = FMath::RandRange(0, Bucket.Num() - 1);
-		UNSAugmentDefinition* Picked = Bucket[PickIdx];
-		Bucket.RemoveAtSwap(PickIdx);
-
-		UE_LOG(LogTemp, Warning, TEXT("[DrawCards] Rarity=%d → %s (%s)"),
-			(int32)ChosenRarity, *Picked->GetName(), *Picked->DisplayName.ToString());
-		Result.Add(Picked->GetPrimaryAssetId());
+		const int32 PickIndex = FMath::RandRange(0, Bucket.Num() - 1);
+		const FNSAugmentCandidate Picked = Bucket[PickIndex];
+		Bucket.RemoveAtSwap(PickIndex);
+		
+		NS_OBJ_LOG(LogNS, Log,
+			"증강 카드 후보를 선택했습니다. Rarity={Rarity}, DefId={DefId}",
+			("Rarity", static_cast<int32>(ChosenRarity)),
+			("DefId", Picked.DefId.ToString())
+		);
+		Result.Add(Picked.DefId);
 	}
 
 	return Result;
