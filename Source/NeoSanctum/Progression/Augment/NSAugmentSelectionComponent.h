@@ -15,8 +15,9 @@ class UNSDataSubsystem;
 
 /**
  * 증강 카드 후보 하나의 런타임 선택 정보.
- * 
- * 같은 AugmentTag를 가진 여러 증강 효과 행은 하나의 후보로 그룹핑.
+ *
+ * 같은 AugmentTag를 가진 여러 증강 효과 행은 하나의 후보로 그룹핑합니다.
+ * DefId는 카드 UI 전달과 Inventory 보유 데이터 식별에 유지합니다.
  */
 struct FNSAugmentCandidate
 {
@@ -120,14 +121,21 @@ private:
 		UNSDataSubsystem* Data,
 		const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const;
 	
+	// Pawn 대신 PlayerState의 CharacterData를 기준으로 현재 런에서 선택한 캐릭터 태그를 가져옴.
 	bool TryGetOwnerCharacterTag(FGameplayTag& OutCharacterTag) const;
 	
+	/**
+ 	 * DT Row를 카드 후보 생성과 보유 증강 판정에 사용할 런타임 후보 데이터로 변환.
+ 	 *
+ 	 * AugmentTag는 같은 증강의 효과 행을 그룹핑하고, DefId는 Definition DA 조회와 보유 증강 식별에 사용.
+ 	 */
 	bool TryCreateCandidate(
 		UNSDataSubsystem* Data,
 		const FNSAugmentDefinitionRow& Row,
 		FNSAugmentCandidate& OutCandidate
 	) const;
 	
+ 	// 기존 DefId 기반 보유 데이터와 LegendaryStatEntries를 DT의 후보 메타 정보에 연결.
 	bool TryFindCandidateByDefinitionId(
 		UNSDataSubsystem* Data,
 		const FPrimaryAssetId& DefId,
@@ -139,7 +147,12 @@ private:
 		TSet<FPrimaryAssetId>& OutOwnedMechanicIds,
 		TSet<FPrimaryAssetId>& OutStackFullIds) const;
 
-	// Pool->Entries로부터 Rarity별 후보 버킷(나올 수 있는 후보 목록) 생성, ExcludedIds/StackFullIds에 있는 Def는 제외, 중복 등록 방지
+	/**
+	 * DT_AugmentDefinition에서 현재 캐릭터가 선택할 수 있는 증강 후보를 희귀도별로 구성.
+	 *
+	 * 같은 AugmentTag를 가진 여러 Modifier Row는 하나의 카드 후보로 통합.
+	 * DefId는 기존 Offer RPC와 Inventory 저장 구조를 유지하기 위해 사용.
+	 */
 	void BuildRarityBuckets(
 		UNSDataSubsystem* Data,
 		const UNSAugmentPoolDefinition* Pool,

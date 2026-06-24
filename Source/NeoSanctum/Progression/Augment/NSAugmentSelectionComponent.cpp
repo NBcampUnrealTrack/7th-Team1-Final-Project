@@ -356,6 +356,8 @@ bool UNSAugmentSelectionComponent::TryCreateCandidate(
 		return false;
 	}
 	
+	// 선택 규칙은 DT Row를 기준으로 사용하고,
+	// Definition DA는 기존 DefId 기반 카드 제시와 Inventory 보유 흐름을 유지하기 위해 해석.
 	UNSAugmentDefinition* Definition = ResolveDefinition(Data, Row.Definition);
 	if (!IsValid(Definition))
 	{
@@ -392,6 +394,8 @@ bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
 	
 	const FString ContextString = TEXT("AugmentDefinitionLookup");
 	
+	// 기존 Inventory와 LegendaryStatEntries는 DefId를 기준으로 보유하므로,
+	// 현재는 대응하는 DT 후보 메타를 찾기 위해 Row를 순회.
 	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
 	{
 		const FNSAugmentDefinitionRow* Row = 
@@ -418,7 +422,7 @@ bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
 	return false;
 }
 
-// 레전더리 슬롯이 꽉찼는지, 기믹 변경 레전더리 Id 목록, MaxStack 도달한 Id 목록 저장
+// 보유 인벤토리에서 레전더리 상태와 DT 기준 MaxStack에 도달한 DefId를 수집.
 void UNSAugmentSelectionComponent::CollectInventoryFilter(
 	bool& bOutLegendaryFull,
 	TSet<FPrimaryAssetId>& OutOwnedMechanicIds,
@@ -458,7 +462,10 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 		if (Data)
 		{
 			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
-			if (Def && Inst.Stacks >= Def->MaxStack)
+			
+			// Inventory는 DefId만 보유하므로 DT 후보 정보를 다시 찾아 현재 MaxStack 기준으로 후보 제외 여부를 판정.
+			FNSAugmentCandidate Candidate;
+			if (Def && TryFindCandidateByDefinitionId(Data, Inst.DefId, Candidate) && Inst.Stacks >= Def->MaxStack)
 			{
 				OutStackFullIds.Add(Inst.DefId);
 			}
@@ -467,11 +474,10 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 }
 
 /**
- * 풀에있는 증강후보를 희귀도 기준으로 분류
- * ExcludedIds에 있는 Def는 스킵 (오퍼 내 중복 방지 / 카드별 리롤시 기존 카드 제외)
- * StackFullIds에 있는 Def는 스킵 (MaxStack 도달 → 더 이상 등장 안 함)
- * 같은 Def가 Entries에 여러 번 들어가도 한 번만 등록 (TSet으로 dedupe)
- * Legendary 슬롯 풀이면 기믹 Legendary 제외, LegendaryStatEntries로 대체 투입
+ * DT_AugmentDefinition에서 현재 캐릭터가 선택할 수 있는 증강 후보를 희귀도별로 구성.
+ *
+ * 같은 AugmentTag를 가진 여러 Modifier Row는 하나의 카드 후보로 통합.
+ * DefId는 카드 후보 전송과 보유 증강 식별을 위해 유지.
  */
 void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	UNSDataSubsystem* Data,
@@ -512,6 +518,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 			continue;
 		}
 		
+		// 현재 선택 캐릭터 전용 증강과 Character.Common 증강만 후보로 허용.
 		if (Row->OwnerCharacterTag != OwnerCharacterTag && Row->OwnerCharacterTag != CommonCharacterTag)
 		{
 			continue;
@@ -540,7 +547,8 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 			}
 		}
 		
-		// 같은 AugmentTag의 여러 효과 행은 카드 후보 하나로 취급.
+		// 같은 증강의 다중 Modifier Row는 카드 한 장으로 묶음.
+		// 그룹 내 메타 정보 일관성은 데이터 검증 단계에서 보장.
 		CandidatesByTags.FindOrAdd(Candidate.AugmentTag, Candidate);
 	}
 	
@@ -552,7 +560,8 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 		AddedAugmentTags.Add(Pair.Key);
 	}
 	
-	// Legendary 슬롯이 가득 찬 경우에는 Pool에 지정한 수치형 Legendary만 추가.
+	// 기존 LegendaryStatEntries 구조를 유지하기 위한 호환 경로.
+	// 등록된 Definition은 DT에도 대응 Row가 있어야 캐릭터 범위와 스택 제한을 동일하게 적용.
 	if (!bLegendaryFull)
 	{
 		return;
@@ -641,6 +650,8 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
 	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
 	{
+		// 현재는 선택된 희귀도 버킷에서 중복 없이 균등 추첨.
+		// TODO: Candidate.SelectionWeight 기반 추첨은 다음 단계에서 이 구간에 적용.
 		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
 		if (!Bucket || Bucket->Num() == 0)
 		{
