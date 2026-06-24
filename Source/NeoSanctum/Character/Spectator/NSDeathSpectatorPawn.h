@@ -9,6 +9,7 @@
 class UCameraComponent;
 class UNSInputBinderComponent;
 class UNSSpectatorViewComponent;
+class USphereComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSDeathSpectatorPawn : public APawn
@@ -35,6 +36,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNSInputBinderComponent> InputBinderComp;
+	
+	// 던전 룸 가시성 계산용 바운드
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spectator", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USphereComponent> RoomBoundsComp;
 
 	// 타겟의 SpectatorViewComponent 캐시
 	UPROPERTY(Transient)

@@ -2,10 +2,12 @@
 
 #include "NSDeathSpectatorPawn.h"
 
+#include "ProceduralDungeonSettings.h"
 #include "Camera/CameraComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "Components/SphereComponent.h"
 
 ANSDeathSpectatorPawn::ANSDeathSpectatorPawn()
 {
@@ -19,6 +21,20 @@ ANSDeathSpectatorPawn::ANSDeathSpectatorPawn()
 	CameraComp->SetupAttachment(SceneRootComp);
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
+	
+	RoomBoundsComp = CreateDefaultSubobject<USphereComponent>(TEXT("RoomBoundsComp"));
+	RoomBoundsComp->SetupAttachment(SceneRootComp);
+	RoomBoundsComp->InitSphereRadius(34.0f);
+	// 물리 콜리전은 필요없으므로 Query로 킴
+	RoomBoundsComp->SetCollisionEnabled(ECollisionEnabled::QueryOnly);  
+	// 기본값은 전부 무시
+	RoomBoundsComp->SetCollisionResponseToAllChannels(ECR_Ignore);     
+	// 룸 채널만 Overlap
+	if (const UProceduralDungeonSettings* Settings = GetDefault<UProceduralDungeonSettings>())
+	{
+		RoomBoundsComp->SetCollisionResponseToChannel(Settings->RoomObjectType, ECR_Overlap);
+	}
+	RoomBoundsComp->SetGenerateOverlapEvents(false);  
 	
 	FGameplayTagContainer SpectatorInputModeTags;
 	SpectatorInputModeTags.AddTag(NSGameplayTags::InputMode_DeathSpectator);
