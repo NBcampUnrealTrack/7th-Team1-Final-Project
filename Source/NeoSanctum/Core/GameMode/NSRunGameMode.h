@@ -133,6 +133,9 @@ private:
 	void DestroyCurrencyProxy(APlayerController* PlayerController);
 	// 런 종료시 재화쪽 저장 및 클리어
 	void CommitAndClearAllWallets(float Multiplier);
+
+	// 거점 귀환 시 모든 플레이어의 인런 증강 Clear
+	void ClearAllAugments();
 	
 	// 몬스터 사망시 보상 처리
 	void HandleEnemyReward(ACharacter* DeadEnemy);
