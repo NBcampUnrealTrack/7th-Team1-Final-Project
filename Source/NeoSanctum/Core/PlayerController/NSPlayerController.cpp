@@ -677,6 +677,85 @@ void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
 		NSPlayerState->GetProgressComponent());
 }
 
+void ANSPlayerController::StartSkillUIApplyRetry()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	SkillUIApplyRetryCount = 0;
+	
+	GetWorldTimerManager().ClearTimer(SkillUIApplyRetryTimerHandle);
+	GetWorldTimerManager().SetTimer(
+		SkillUIApplyRetryTimerHandle,
+		this,
+		&ANSPlayerController::RetryApplySkillUIFromCurrentCharacter,
+		0.1f,
+		true);
+}
+
+void ANSPlayerController::RetryApplySkillUIFromCurrentCharacter()
+{
+	const bool bApplied = TryApplySkillUIFromCurrentCharacter();
+	
+	SkillUIApplyRetryCount++;
+	
+	if (bApplied || SkillUIApplyRetryCount >= 10)
+	{
+		GetWorldTimerManager().ClearTimer(SkillUIApplyRetryTimerHandle);
+	}
+}
+
+bool ANSPlayerController::TryApplySkillUIFromCurrentCharacter()
+{
+	if (!IsLocalController())
+	{
+		return false;
+	}
+	
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (!NSPlayerState)
+	{
+		return false;
+	}
+	
+	UNSCharacterData* CurrentCharacterData =
+		NSPlayerState->GetCurrentCharacterData();
+	if (!CurrentCharacterData)
+	{
+		return false;
+	}
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+	: nullptr;
+	
+	if (!UIManager || !UIManager->GetHUDWidget())
+	{
+		return false;
+	}
+	
+	const FString CharacterTagString =
+		CurrentCharacterData->CharacterTag.GetTagName().ToString();
+	
+	FString Left;
+	FString CharacterRowNameString;
+	
+	if (!CharacterTagString.Split(
+		TEXT("."),
+		&Left,
+		&CharacterRowNameString,
+		ESearchCase::IgnoreCase,
+		ESearchDir::FromEnd))
+	{
+		CharacterRowNameString = CharacterTagString;
+	}
+
+	UIManager->ApplyCharacterSkillUISet(FName(*CharacterRowNameString));
+	return true;
+}
+
 void ANSPlayerController::UpdateSkillUIFromCurrentCharacter()
 {
 	if (!IsLocalController())
