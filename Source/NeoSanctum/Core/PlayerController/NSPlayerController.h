@@ -224,6 +224,13 @@ private:
 	//클라이언트 캐시에 저장된 진행 데이터를 현재 PlayerState에 적용
 	void ApplyCachedProgressToLocalPlayerState();
 	
+	FTimerHandle SkillUIApplyRetryTimerHandle;
+	int32 SkillUIApplyRetryCount = 0;
+	
+	void StartSkillUIApplyRetry();
+	void RetryApplySkillUIFromCurrentCharacter();
+	bool TryApplySkillUIFromCurrentCharacter();
+	
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
 private:
 	//캐릭터 선택 위젯 클래스
