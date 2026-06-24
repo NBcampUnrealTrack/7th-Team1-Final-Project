@@ -8,6 +8,7 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NSAugmentSelectionComponent.generated.h"
 
+class UDataTable;
 class UNSAugmentPoolDefinition;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
@@ -67,6 +68,11 @@ public:
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+	// 증강 효과 행 기반 DataTable.
+	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment|Data",
+		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAugmentDefinitionRow"))
+	TObjectPtr<UDataTable> AugmentDefinitionTable;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment", meta = (ClampMin = "1"))
 	int32 CardsCount = 3;
 
