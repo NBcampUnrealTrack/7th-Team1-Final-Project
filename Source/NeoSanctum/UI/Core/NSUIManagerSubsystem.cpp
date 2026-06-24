@@ -445,7 +445,8 @@ void UNSUIManagerSubsystem::CreateRunEnd(APlayerController* OwningPlayer)
 
 void UNSUIManagerSubsystem::ShowRunEnd()
 {
-
+	//런 결과창이 표시될때 기존 인게임 HUD가 겹처보이지 않게한다
+	HideHUD();
 	if (!RunEndWidget)
 	{
 		return;
