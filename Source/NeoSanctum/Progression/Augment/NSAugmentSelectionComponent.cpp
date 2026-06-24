@@ -462,13 +462,9 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 		// 보유 스택이 증강 효과 정의 DT의 MaxStack에 도달하면 후보에서 제외합니다.
 		if (Data)
 		{
-			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
-			
 			// Inventory는 DefId만 보유하므로 DT 후보 정보를 다시 찾아 현재 MaxStack 기준으로 후보 제외 여부를 판정.
 			FNSAugmentCandidate Candidate;
-			if (Def
-				&& TryFindCandidateByDefinitionId(Data, Inst.DefId, Candidate) 
-				&& Inst.Stacks >= Candidate.MaxStacks)
+			if (TryFindCandidateByDefinitionId(Data, Inst.DefId, Candidate) && Inst.Stacks >= Candidate.MaxStacks)
 			{
 				OutStackFullIds.Add(Inst.DefId);
 			}
@@ -618,7 +614,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	}
 }
 
-// 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 균등 추첨
+// 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 가중치 추첨
 TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	const UNSAugmentPoolDefinition* Pool,
 	const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
@@ -667,24 +663,58 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	}
 	OutRarity = ChosenRarity;
 
-	// 현재는 선택된 희귀도 버킷에서 중복 없이 균등 추첨.
-	// TODO: Candidate.SelectionWeight 기반 추첨은 다음 단계에서 이 구간에 적용.
+	// 선택된 희귀도 버킷에서 남은 후보의 SelectionWeight를 기준으로 중복 없이 가중치 추첨.
 	TArray<FNSAugmentCandidate> Bucket = ByRarity.FindChecked(ChosenRarity);
 	const int32 DrawCount = FMath::Min(N, Bucket.Num());
+	
 	Result.Reserve(DrawCount);
-	for (int32 i = 0; i < DrawCount; ++i)
+	
+	for (int32 CardIndex = 0; CardIndex < DrawCount; ++CardIndex)
 	{
-		const int32 PickIndex = FMath::RandRange(0, Bucket.Num() - 1);
+		int32 TotalSelectionWeight = 0;
+		
+		for (const FNSAugmentCandidate& Candidate : Bucket)
+		{
+			TotalSelectionWeight += Candidate.SelectionWeight;
+		}
+		
+		if (TotalSelectionWeight <= 0)
+		{
+			break;
+		}
+		
+		const int32 RollValue = FMath::RandRange(1, TotalSelectionWeight);
+		int32 AccumulateWeight = 0;
+		int32 PickIndex = INDEX_NONE;
+		
+		for (int32 CandidateIndex = 0; CandidateIndex < Bucket.Num(); ++CandidateIndex)
+		{
+			AccumulateWeight += Bucket[CandidateIndex].SelectionWeight;
+			
+			if (RollValue <= AccumulateWeight)
+			{
+				PickIndex = CandidateIndex;
+				break;
+			}
+		}
+		
+		if (PickIndex == INDEX_NONE)
+		{
+			break;
+		}
+		
 		const FNSAugmentCandidate Picked = Bucket[PickIndex];
 		Bucket.RemoveAtSwap(PickIndex);
 		
 		NS_OBJ_LOG(LogNS, Log,
-			"증강 카드 후보를 선택했습니다. Rarity={Rarity}, DefId={DefId}",
+			"증강 카드 후보를 가중치로 선택했습니다. Rarity={Rarity}, DefId={DefId}, Weight={Weight}",
 			("Rarity", static_cast<int32>(ChosenRarity)),
-			("DefId", Picked.DefId.ToString())
+			("DefId", Picked.DefId.ToString()),
+			("Weight", Picked.SelectionWeight)
 		);
+		
 		Result.Add(Picked.DefId);
 	}
-
+	
 	return Result;
 }
