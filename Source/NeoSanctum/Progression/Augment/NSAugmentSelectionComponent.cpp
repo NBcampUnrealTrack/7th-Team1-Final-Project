@@ -454,7 +454,7 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 			OutOwnedMechanicIds.Add(Inst.DefId);
 		}
 
-		// 보유 스택이 Definition의 MaxStack에 도달하면 더 이상 후보로 뽑히지 않도록 제외 대상에 추가
+		// 보유 스택이 증강 효과 정의 DT의 MaxStack에 도달하면 후보에서 제외합니다.
 		if (Data)
 		{
 			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
