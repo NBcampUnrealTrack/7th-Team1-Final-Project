@@ -35,14 +35,19 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 		meta = (Categories = "Augment.Definition"))
 	FGameplayTag AugmentTag;
 	
-	// 증강이 속한 캐릭터 범위. Character.Ranger 또는 Character.Common 등을 사용
+	// 증강이 속한 캐릭터 범위. Character.Player.Ranger 또는 Character.Common 등을 사용
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Identity",
 		meta = (Categories = "Character"))
 	FGameplayTag OwnerCharacterTag;
 	
-	// 같은 AugmentTag Row들은 동일한 희귀도를 가져야 함
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
-	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+	// Add 또는 Multiply 연산 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier")
+	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
+	
+	// Multiply는 1.0이 기준. 1.2는 20% 증가, 0.8은 20% 감소.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier",
+		meta = (ToolTip = "Multiply는 0보다 커야 합니다."))
+	float ValuePerStack = 0.0f;
 	
 	// 같은 등급 후보군 안에서의 증강 선택 가중치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta",
@@ -54,13 +59,9 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 		meta = (ClampMin = "1"))
 	int32 MaxStack = 5;
 	
-	// false면 후보와 Modifier 캐시에서 제외
+	// 같은 AugmentTag Row들은 동일한 희귀도를 가져야 함
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
-	bool bEnabled = true;
-	
-	// 카드 UI와 특수 GA / GE 설정을 제공하는 증강 Definition
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Definition")
-	TSoftObjectPtr<UNSAugmentDefinition> Definition;
+	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
 	
 	// Modifier가 적용될 대상 Ability 태그
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier",
@@ -71,16 +72,17 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier",
 		meta = (Categories = "CombatStat"))
 	FGameplayTag StatTag;
+
+	/**
+	 * 카드 UI와 특수 GA / GE 설정을 제공하는 증강 Definition.
+	 * 같은 AugmentTag를 가진 Row는 같은 Definition을 사용해야 합니다.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Definition")
+	TSoftObjectPtr<UNSAugmentDefinition> Definition;
 	
-	// Add 또는 Multiply 연산 방식
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier")
-	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
-	
-	// Multiply는 1.0이 기준. 1.2는 20% 증가, 0.8은 20% 감소.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier",
-		meta = (ToolTip = "Multiply는 0보다 커야 합니다."))
-	float ValuePerStack = 0.0f;
-	
+	// false면 후보와 Modifier 캐시에서 제외
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
+	bool bEnabled = true;
 };
 
 // 인런 한정 보유 인스턴스, 핸들은 서버에서만 유효
