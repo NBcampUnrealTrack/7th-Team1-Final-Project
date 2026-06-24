@@ -14,11 +14,14 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_SetByCaller_Stack);
 	
 	// 증강 카드와 증강 효과 정의 Row를 식별하는 태그
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_SplashRadius);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_Damage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_AutoFire_Damage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_AutoFire_FireRate);
-
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_SplashRadius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_Cooldown);
+	
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_Damage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_PelletCount);
