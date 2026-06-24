@@ -525,6 +525,7 @@ UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 
 void UNSPartEquipComponent::OnRep_EquippedParts()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[EquipComp] OnRep_EquippedParts: 배열 크기=%d"), EquippedParts.Num());
 	for (const FNSPartData& Part : EquippedParts)
 	{
 		OnPartChanged.Broadcast(Part.Slot, Part);

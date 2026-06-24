@@ -82,6 +82,7 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	UNSPartEquipComponent* PartEquipComponent = GetPartEquipComponent();
 	if (!IsValid(PartEquipComponent))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: PartEquipComponent 없음 (Slot=%d)"), (int32)PartSlot);
 		SlotButton->ClearPart();
 		return;
 	}
@@ -89,7 +90,6 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	const FNSPartData* PartData = PartEquipComponent->GetEquippedPart(PartSlot);
 	if (PartData == nullptr || !PartData->IsValid())
 	{
-		SlotButton->ClearPart();
 		return;
 	}
 
@@ -97,6 +97,8 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	UNSPartDefinition* PartDefinition = NSPartUtils::ResolvePartDefinition(this, *PartData);
 	if (!IsValid(PartDefinition))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: Definition null → ClearPart (Slot=%d, Def=%s)"),
+			(int32)PartSlot, *PartData->DefinitionPtr.ToString());
 		SlotButton->ClearPart();
 		return;
 	}

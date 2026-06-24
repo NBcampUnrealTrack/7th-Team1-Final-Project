@@ -17,11 +17,21 @@ UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContex
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
 	if (!DataSS)
 	{
-		return Part.DefinitionPtr.Get();
+		UNSPartDefinition* Fallback = Part.DefinitionPtr.Get();
+		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataSS 없음. SoftPtr.Get()=%s"), Fallback ? TEXT("유효") : TEXT("NULL"));
+		return Fallback;
 	}
 
 	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(Part.DefinitionPtr.ToSoftObjectPath());
 	UNSPartDefinition* Cached = DataSS->GetData<UNSPartDefinition>(Id);
 
-	return Cached ? Cached : Part.DefinitionPtr.Get();
+	if (!Cached)
+	{
+		UNSPartDefinition* Fallback = Part.DefinitionPtr.Get();
+		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataCache 미스 (Id=%s). SoftPtr.Get()=%s"),
+			*Id.ToString(), Fallback ? TEXT("유효") : TEXT("NULL"));
+		return Fallback;
+	}
+
+	return Cached;
 }
