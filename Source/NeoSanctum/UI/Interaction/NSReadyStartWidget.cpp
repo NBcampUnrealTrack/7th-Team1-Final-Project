@@ -50,7 +50,10 @@ void UNSReadyStartWidget::NativeConstruct()
 
 		if (StartButtonText)
 		{
-			StartButtonText->SetVisibility(StartVisibility);
+			StartButtonText->SetVisibility(
+				bIsHost
+					? ESlateVisibility::SelfHitTestInvisible
+					: ESlateVisibility::Collapsed);
 		}
 	}
 	
@@ -62,6 +65,15 @@ void UNSReadyStartWidget::NativeConstruct()
 	}
 	InitializeButtonText();
 	RefreshReadyButtonText();
+	if (ReadyButtonText)
+	{
+		ReadyButtonText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+
+	if (ReadyStatusText)
+	{
+		ReadyStatusText->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
 	BindReadyStateChanged();
 	RefreshReadyStatusText();
 }
