@@ -31,6 +31,16 @@ public:
 	// 펫 업그레이드
 	UFUNCTION(BlueprintCallable, Category = "Progression|Upgrade")
 	bool UpgradePet(FName PetNodeId, int32 NewLevel, int64 Cost);
+
+	// 치트 확인용 임시 함수
+	// 특정 NPC 해금 (로컬 CachedData에 추가 후 즉시 저장).
+	UFUNCTION(BlueprintCallable, Category = "Progression|Unlock")
+	void UnlockNPC(FName NPCId);
+
+	// 치트 확인용 임시 함수
+	// 특정 NPC 잠금 해제 취소 (로컬 CachedData에서 제거 후 즉시 저장).
+	UFUNCTION(BlueprintCallable, Category = "Progression|Unlock")
+	void LockNPC(FName NPCId);
 	
 	// 장착: 소유 검증 후 캐릭터 장착 참조 설정
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
