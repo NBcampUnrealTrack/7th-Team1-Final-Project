@@ -301,7 +301,8 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
 	return DrawCards(Pool, ByRarity, N, OutRarity);
 }
 
-// 소프트 포인터의 이름으로 FPrimaryAssetId 만들어서 데이터 서브시스템에서 캐시 가져오기
+// Definition SoftPtr를 직접 로드하지 않고 DataSubsystem 캐시에서 해석.
+// 런타임 후보는 기존 카드 후보 전송과 보유 증강 흐름에 사용할 DefId를 여기서 얻음.
 UNSAugmentDefinition* UNSAugmentSelectionComponent::ResolveDefinition(
 	UNSDataSubsystem* Data,
 	const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const
@@ -465,7 +466,9 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 			
 			// Inventory는 DefId만 보유하므로 DT 후보 정보를 다시 찾아 현재 MaxStack 기준으로 후보 제외 여부를 판정.
 			FNSAugmentCandidate Candidate;
-			if (Def && TryFindCandidateByDefinitionId(Data, Inst.DefId, Candidate) && Inst.Stacks >= Def->MaxStack)
+			if (Def
+				&& TryFindCandidateByDefinitionId(Data, Inst.DefId, Candidate) 
+				&& Inst.Stacks >= Candidate.MaxStacks)
 			{
 				OutStackFullIds.Add(Inst.DefId);
 			}
@@ -650,8 +653,6 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
 	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
 	{
-		// 현재는 선택된 희귀도 버킷에서 중복 없이 균등 추첨.
-		// TODO: Candidate.SelectionWeight 기반 추첨은 다음 단계에서 이 구간에 적용.
 		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
 		if (!Bucket || Bucket->Num() == 0)
 		{
@@ -666,7 +667,8 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 	}
 	OutRarity = ChosenRarity;
 
-	// 선택된 Rarity 버킷만 복사해서 중복 없이 N장 추첨 (RemoveAtSwap = O(1))
+	// 현재는 선택된 희귀도 버킷에서 중복 없이 균등 추첨.
+	// TODO: Candidate.SelectionWeight 기반 추첨은 다음 단계에서 이 구간에 적용.
 	TArray<FNSAugmentCandidate> Bucket = ByRarity.FindChecked(ChosenRarity);
 	const int32 DrawCount = FMath::Min(N, Bucket.Num());
 	Result.Reserve(DrawCount);

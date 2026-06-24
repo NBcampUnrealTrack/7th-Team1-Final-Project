@@ -148,11 +148,11 @@ private:
 		TSet<FPrimaryAssetId>& OutStackFullIds) const;
 
 	/**
-	 * DT_AugmentDefinition에서 현재 캐릭터가 선택할 수 있는 증강 후보를 희귀도별로 구성.
-	 *
-	 * 같은 AugmentTag를 가진 여러 Modifier Row는 하나의 카드 후보로 통합.
-	 * DefId는 기존 Offer RPC와 Inventory 저장 구조를 유지하기 위해 사용.
-	 */
+ 	 * DT_AugmentDefinition에서 현재 캐릭터가 선택할 수 있는 증강 후보를 희귀도별로 구성.
+ 	 *
+ 	 * 같은 AugmentTag를 가진 여러 Modifier Row는 하나의 카드 후보로 통합.
+ 	 * DefId는 카드 후보 전송과 보유 증강 식별을 위해 유지.
+ 	 */
 	void BuildRarityBuckets(
 		UNSDataSubsystem* Data,
 		const UNSAugmentPoolDefinition* Pool,
