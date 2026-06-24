@@ -61,6 +61,10 @@ protected:
 	// 터렛 비활성화(사망) 연출을 클라이언트에서 한 번 복제해야함.
 	UFUNCTION()
 	void OnRep_DeathPresentationStarted();
+
+	// 서버가 계산한 조준 회전값을 클라이언트 시각에 반영
+	UFUNCTION()
+	void OnRep_AimReplicationState();
 	
 private:
 	UFUNCTION()
@@ -105,6 +109,8 @@ private:
 private:
 	void RotateJointToTarget(float DeltaSeconds);
 	void RotateHeadToTarget(float DeltaSeconds);
+	// 클라이언트에서 복제된 조준 회전값으로 보간
+	void ApplyReplicatedAimRotation(float DeltaSeconds);
 
 private:
 	void TryFire();
@@ -233,4 +239,20 @@ private:
 private:
 	UPROPERTY(ReplicatedUsing = OnRep_DeathPresentationStarted)
 	bool bDeathPresentationStarted = false;
+
+	// 클라이언트 조준 보간 Tick 활성화 여부
+	UPROPERTY(ReplicatedUsing = OnRep_AimReplicationState)
+	bool bReplicatedAimActive = false;
+
+	// 서버 기준 Joint 회전값
+	UPROPERTY(ReplicatedUsing = OnRep_AimReplicationState)
+	FRotator ReplicatedJointRelativeRotation = FRotator::ZeroRotator;
+
+	// 서버 기준 Head 회전값
+	UPROPERTY(ReplicatedUsing = OnRep_AimReplicationState)
+	FRotator ReplicatedHeadRelativeRotation = FRotator::ZeroRotator;
+
+	// 클라이언트 보간 목표 회전값
+	FRotator TargetJointRelativeRotation = FRotator::ZeroRotator;
+	FRotator TargetHeadRelativeRotation = FRotator::ZeroRotator;
 };

@@ -94,6 +94,9 @@ void ANSTurret::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(ANSTurret, bDeathPresentationStarted);
+	DOREPLIFETIME(ANSTurret, bReplicatedAimActive);
+	DOREPLIFETIME(ANSTurret, ReplicatedJointRelativeRotation);
+	DOREPLIFETIME(ANSTurret, ReplicatedHeadRelativeRotation);
 }
 
 float ANSTurret::GetSpawnSurfaceOffset() const
@@ -137,9 +140,13 @@ void ANSTurret::InitializeTurret(
 	if (HasActorBegunPlay())
 	{
 		RefreshDetectionRange();
-		InitializeTargets();
-		RestartTargetRefreshTimer();
-		UpdateAutoTarget();
+		if (HasAuthority())
+		{
+			// 타겟 탐색은 서버에서만 수행하도록 옮기고, 클라이언트에 복제
+			InitializeTargets();
+			RestartTargetRefreshTimer();
+			UpdateAutoTarget();
+		}
 	}
 }
 
@@ -147,9 +154,18 @@ void ANSTurret::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	RotateJointToTarget(DeltaSeconds);
-	RotateHeadToTarget(DeltaSeconds);
-	TryFire();
+	if (HasAuthority())
+	{
+		// 서버는 조준과 사격을 판정하고 회전값을 복제
+		RotateJointToTarget(DeltaSeconds);
+		RotateHeadToTarget(DeltaSeconds);
+		TryFire();
+	}
+	else
+	{
+		// 클라이언트는 복제된 회전값으로 시각만 갱신
+		ApplyReplicatedAimRotation(DeltaSeconds);
+	}
 }
 
 void ANSTurret::BeginPlay()
@@ -172,11 +188,19 @@ void ANSTurret::BeginPlay()
 			&ThisClass::OnDetectionSphereEndOverlap
 		);
 
-		InitializeTargets();
+		if (HasAuthority())
+		{
+			// 타겟 목록은 서버 권한으로만 관리
+			InitializeTargets();
+		}
 	}
 
-	RestartTargetRefreshTimer();
-	UpdateAutoTarget();
+	if (HasAuthority())
+	{
+		// 타겟 갱신 타이머도 서버에서만
+		RestartTargetRefreshTimer();
+		UpdateAutoTarget();
+	}
 }
 
 void ANSTurret::OnRep_DeathPresentationStarted()
@@ -190,6 +214,18 @@ void ANSTurret::OnRep_DeathPresentationStarted()
 	StartDeathPresentation();
 }
 
+void ANSTurret::OnRep_AimReplicationState()
+{
+	// 복제된 회전값을 클라이언트 보간 목표로 저장
+	TargetJointRelativeRotation = ReplicatedJointRelativeRotation;
+	TargetHeadRelativeRotation = ReplicatedHeadRelativeRotation;
+
+	if (!HasAuthority())
+	{
+		SetActorTickEnabled(bReplicatedAimActive && !bDeathPresentationStarted);
+	}
+}
+
 void ANSTurret::OnDetectionSphereBeginOverlap(
 	UPrimitiveComponent* OverlappedComponent,
 	AActor* OtherActor,
@@ -198,6 +234,11 @@ void ANSTurret::OnDetectionSphereBeginOverlap(
 	bool bFromSweep,
 	const FHitResult& SweepResult)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	if (IsValidTargetActor(OtherActor))
 	{
 		TargetSet.Add(OtherActor);
@@ -210,6 +251,11 @@ void ANSTurret::OnDetectionSphereEndOverlap(
 	UPrimitiveComponent* OtherComp,
 	int32 OtherBodyIndex)
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	if (OtherActor)
 	{
 		TargetSet.Remove(OtherActor);
@@ -417,6 +463,11 @@ void ANSTurret::InitializeTargets()
 
 void ANSTurret::UpdateAutoTarget()
 {
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	AActor* ClosestTarget = nullptr;
 	float ClosestDistanceSquared = TNumericLimits<float>::Max();
 
@@ -443,9 +494,11 @@ void ANSTurret::UpdateAutoTarget()
 	}
 
 	AutoTarget = ClosestTarget;
+	// 서버 타겟 유무를 클라이언트 조준 Tick 상태로 복제
+	bReplicatedAimActive = AutoTarget.IsValid();
 	// 타겟이 있다면 Tick을 활성화해서 RotateHeadToTarget 로직이 돌아갈 수 있도록 함 
 	// 타겟이 없으면 Tick을 비활성화.
-	SetActorTickEnabled(AutoTarget.IsValid());
+	SetActorTickEnabled(bReplicatedAimActive);
 }
 
 void ANSTurret::RestartTargetRefreshTimer()
@@ -492,6 +545,8 @@ void ANSTurret::RotateJointToTarget(float DeltaSeconds)
 	);
 
 	JointPivotComponent->SetRelativeRotation(NewRelativeRotation);
+	// 서버에서 계산한 Joint 회전값 복제
+	ReplicatedJointRelativeRotation = NewRelativeRotation;
 }
 
 void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
@@ -523,6 +578,40 @@ void ANSTurret::RotateHeadToTarget(float DeltaSeconds)
 	);
 
 	HeadPivotComponent->SetRelativeRotation(NewRelativeRotation);
+	// 서버에서 계산한 Head 회전값 복제
+	ReplicatedHeadRelativeRotation = NewRelativeRotation;
+}
+
+void ANSTurret::ApplyReplicatedAimRotation(float DeltaSeconds)
+{
+	if (!bReplicatedAimActive)
+	{
+		// 타겟이 없으면 클라이언트 시각 Tick 중지
+		SetActorTickEnabled(false);
+		return;
+	}
+
+	if (JointPivotComponent)
+	{
+		const FRotator NewJointRotation = FMath::RInterpConstantTo(
+			JointPivotComponent->GetRelativeRotation(),
+			TargetJointRelativeRotation,
+			DeltaSeconds,
+			YawTurnSpeed
+		);
+		JointPivotComponent->SetRelativeRotation(NewJointRotation);
+	}
+
+	if (HeadPivotComponent)
+	{
+		const FRotator NewHeadRotation = FMath::RInterpConstantTo(
+			HeadPivotComponent->GetRelativeRotation(),
+			TargetHeadRelativeRotation,
+			DeltaSeconds,
+			PitchTurnSpeed
+		);
+		HeadPivotComponent->SetRelativeRotation(NewHeadRotation);
+	}
 }
 
 void ANSTurret::TryFire()
@@ -778,6 +867,7 @@ void ANSTurret::DeactivateTurret()
 
 void ANSTurret::ApplyDeathState()
 {
+	bReplicatedAimActive = false;
 	SetActorTickEnabled(false);
 	GetWorldTimerManager().ClearTimer(TargetRefreshTimerHandle);
 	GetWorldTimerManager().ClearTimer(LifetimeTimerHandle);
