@@ -117,15 +117,51 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 
 void ANSBaseCompanionAI::CheckDistanceToOwner()
 {
-	if (!OwnerPlayer) return;
+	if (!OwnerPlayer || !HasAuthority()) return;
+	
+	float DistSq = FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation());
 	
 	// 오너와 거리 계산
-	if (FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation()) > FMath::Square(MaxDistance))
+	if (DistSq > FMath::Square(HardLeashDistance))
 	{
 		// 오너 쪽 순간이동
 		// @TODO 민재 : 재화 탐색으로 인한 거리 멀어질시 텔포x
 		TeleportToOwner();
+		TimeBeyondLeash = 0.f;
+		PrevDistSqToOwner = 0.f;
+		return;
 	}
+	
+	if (CurrentState != ECompanionState::Follow)
+	{
+		TimeBeyondLeash = 0.f;
+		PrevDistSqToOwner = -1.f;
+		return;
+	}
+	
+	if (DistSq <= FMath::Square(MaxDistance))
+	{
+		TimeBeyondLeash = 0.f;
+		PrevDistSqToOwner = 0.f;
+		return;
+	}
+	
+	if (PrevDistSqToOwner >= 0.f && DistSq < PrevDistSqToOwner)
+	{
+		TimeBeyondLeash = 0.f;
+	}
+	else
+	{
+		TimeBeyondLeash += CheckInterval;
+	}
+	
+	if (TimeBeyondLeash >= StuckRecoverTime)
+	{
+		TeleportToOwner();
+		TimeBeyondLeash = 0.f;
+	}
+	
+	PrevDistSqToOwner = DistSq;
 }
 
 void ANSBaseCompanionAI::TeleportToOwner()
@@ -147,6 +183,11 @@ void ANSBaseCompanionAI::TeleportToOwner()
 	
 	bHasValidGround = false;
 	
+}
+
+void ANSBaseCompanionAI::SetCurrentState(ECompanionState NewState)
+{
+	CurrentState = NewState;
 }
 
 void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
@@ -339,11 +380,14 @@ void ANSBaseCompanionAI::OnRep_CurrentDefinition()
 
 void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 {
+	// 고도 가장 높은 값
 	float OutZ;
 	
+	// 지형 추종 샘플을 순회하며 가장 높은 지형 위치를 반환
 	if(SampleHighestGround(OutZ))
 	{
 		float RawTarget = OutZ + Altitude;
+		// 이미 유효한 지형 정보를 가지고 있는지 확인 첫감지
 		if (!bHasValidGround)
 		{
 			SmoothedTargetHeight = RawTarget;
@@ -351,13 +395,16 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 		}
 		else
 		{
+			// Clamp를 통해 변화량 제한 급격한 이동 방지
 			float DesiredPoint = RawTarget - SmoothedTargetHeight;
 			SmoothedTargetHeight += FMath::Clamp(DesiredPoint, -MaxDescendSpeed * DeltaSeconds, MaxClimbSpeed * DeltaSeconds);
 		}
 		
+		// 떨림 방지 데드존 적은값 이동을 위해 드론이 흔들리는것을 방지
 		const float DesiredMoveDis = SmoothedTargetHeight - GetActorLocation().Z;
 		if (FMath::Abs(DesiredMoveDis) > AltitudeDeadZone)
 		{
+			// Clamp를 통해 입력강도 값 -1~1 사이 값으로 변환 후 적용
 			const float InputZ = FMath::Clamp(DesiredMoveDis / AltitudeCorrectionRange, -1.f, 1.f);
 			AddMovementInput(FVector::UpVector, InputZ);
 		}
@@ -386,9 +433,11 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 
 bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
 {
+	// 시작위치 종료위치 설정
 	const FVector StartWorldLocation = WorldXY;
 	const FVector EndWorldLocation = WorldXY - FVector(0.f, 0.f, GroundTraceDistance);
 	
+	// 트레이스 정보 입력
 	FHitResult Hit;
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
@@ -406,12 +455,15 @@ bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 {
 	if (!FloatingPawnMovementComponent) return false;
 	
+	// 샘플 포인트 여러개 벡터로 배열
 	TArray<FVector> SamplePoints;
+	// 지형 정보를 받아올 멤버변수 지형 샘플 갯수 + 드론현재위치 1 + 이동 방향 예측위치 1 만큼 공간확보
 	SamplePoints.Reset(GroundSampleCount + 2);
         
 	const FVector DroneLocation = GetActorLocation();
 	SamplePoints.Add(DroneLocation);
 	
+	// 드론의 이동 방향 예측
 	FVector ForwardXY = FloatingPawnMovementComponent->Velocity.GetSafeNormal2D();
 	
 	if (ForwardXY.IsNearlyZero())
@@ -422,8 +474,10 @@ bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 	const FVector LookAheadPoint = DroneLocation + ForwardXY * GroundLookAheadDistance;
 	SamplePoints.Add(LookAheadPoint);
 	
+	// 360도 원 기준으로 지형 샘플 만큼 나누기
 	const float AngleStep = 360.f / GroundSampleCount;
 	
+	// 나온 각 각도에 지형 샘플 포인트 배치
 	for (int32 i = 0; i < GroundSampleCount; ++i)
 	{
 		const float Angle = i * AngleStep;
@@ -432,9 +486,11 @@ bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 		SamplePoints.Add(SamplePoint);
 	}
 	
+	// 처음 들어오는 값을 무조건 갱신하기위해 가장 낮은 값 대입
 	float HighestZ = TNumericLimits<float>::Lowest();
 	bool bFound = false;
 	
+	// 존재하는 지형 샘플 마다 순회하며 아래쪽으로 트레이스 발사 최대 값 갱신
 	for (const FVector& Point : SamplePoints)
 	{
 		float HitZ;
@@ -445,6 +501,7 @@ bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 		}
 	}
 	
+	// 순회 후 가장 높은 지형을 반환 및 bool 값 반환
 	OutGroundZ = HighestZ;
 	return bFound;
 }

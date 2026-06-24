@@ -7,6 +7,7 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
+#include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
 #include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBaseCompanionAI.generated.h"
@@ -55,6 +56,8 @@ public:
 	
 	UFUNCTION()
 	void TeleportToOwner();
+	
+	void SetCurrentState(ECompanionState NewState);
 	
 protected:
 	FTimerHandle CheckDistanceToOwnerTimer;
@@ -121,6 +124,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
 	
+#pragma region FollowGround
+	
 	// @민재 : 지형추적 기능
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float GroundSampleRadius = 150.f;
@@ -140,7 +145,9 @@ protected:
 	float SmoothedTargetHeight = 0.f;
 	bool bHasValidGround = false;
 	
+#pragma endregion 
 	
+#pragma region CustomAvoid
 	// @민재 : 커스텀 회피 기능 관련
 	UPROPERTY(EditAnywhere, Category="DroneAI|Avoidance")
 	float AvoidanceTraceDistance = 400.f;
@@ -163,10 +170,13 @@ protected:
 	
 	TArray<float> DangerMap;
 	
+#pragma endregion 
+	
 	// @민재 : 도착거리 판정
-	UPROPERTY(EditAnywhere, Category = "DroneAI|Avoidance")
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Movement")
 	float ArrivalRadius = 60.f;
 	
+#pragma region CachedData
 	// @민재 : 캐싱 데이터
 public:
 	void SetOwnerPlayer(AActor* Actor);
@@ -181,6 +191,16 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="OwnerPlayer")
 	TObjectPtr<AActor> OwnerPlayer;
 	
+public:
+	void SetCurrentEnemy(AActor* InEnemy) {CurrentEnemy = InEnemy;}
+	AActor* GetCurrentEnemy() const {return CurrentEnemy.Get();}
+protected:
+	UPROPERTY(VisibleAnywhere, Category="GAS|WeakPtr")
+	TWeakObjectPtr<AActor> CurrentEnemy;
+	
+#pragma endregion
+	
+#pragma region CompanionGAS
 	// @민재 : GAS관련
 public:
 	FORCEINLINE UAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return AbilitySystemComponent;}
@@ -208,13 +228,9 @@ protected:
 	bool bDefaultAbilitiesGranted = false;
 	
 	// @ 민재 : 어빌리티에서 Pawn이 지정하고있는 Enemy접근
-public:
-	void SetCurrentEnemy(AActor* InEnemy) {CurrentEnemy = InEnemy;}
-	AActor* GetCurrentEnemy() const {return CurrentEnemy.Get();}
-protected:
-	UPROPERTY(VisibleAnywhere, Category="GAS|WeakPtr")
-	TWeakObjectPtr<AActor> CurrentEnemy;
 	
+#pragma endregion
+
 #pragma region DataDriven
 	
 public:
@@ -242,4 +258,23 @@ protected:
 	TMap<FGameplayTag, FActiveGameplayEffectHandle> StatUpgradeHandles;
 	
 #pragma endregion
+	
+#pragma region CompanionState
+	
+private:
+	ECompanionState CurrentState = ECompanionState::Follow;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
+	float HardLeashDistance = 4000.f;
+	
+	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
+	float StuckRecoverTime = 2.0f;
+	
+	float TimeBeyondLeash = 0.f;
+	float PrevDistSqToOwner = -1.f;
+	
+	static constexpr float CheckInterval = 0.25f;
+	
+#pragma endregion
+	
 };
