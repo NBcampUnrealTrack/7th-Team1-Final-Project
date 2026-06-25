@@ -527,6 +527,7 @@ void UNSAugmentationWidget::HandleOfferClosed()
 		UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->CloseAugmentationPanel();
+		UIManager->ClosePartPanel();
 	}
 }
 
