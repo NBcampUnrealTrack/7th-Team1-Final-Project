@@ -141,6 +141,25 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 	}
 }
 
+void UNSAugmentSelectionComponent::CopyRunStateFrom(const UNSAugmentSelectionComponent* Source)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	if (!Source)
+	{
+		return;
+	}
+
+	PoolQueue = Source->PoolQueue;
+	bFrontRolled = Source->bFrontRolled;
+	PendingOffer = Source->PendingOffer;
+	CurrentRerollCost = Source->CurrentRerollCost;
+	CurrentPool = Source->CurrentPool;
+	SetPendingCount(PoolQueue.Num());
+}
+
 void UNSAugmentSelectionComponent::Reset()
 {
 	if (bFrontRolled)

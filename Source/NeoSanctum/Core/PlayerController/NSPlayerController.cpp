@@ -946,6 +946,19 @@ void ANSPlayerController::HideTravelLoadingScreenIfPlayable(APawn* NewPawn)
 	}
 }
 
+void ANSPlayerController::SeamlessTravelTo(APlayerController* NewPC)
+{
+	Super::SeamlessTravelTo(NewPC);
+
+	ANSPlayerController* NSNewPC = Cast<ANSPlayerController>(NewPC);
+	if (!NSNewPC || !AugmentSelectionComponent || !NSNewPC->AugmentSelectionComponent)
+	{
+		return;
+	}
+
+	NSNewPC->AugmentSelectionComponent->CopyRunStateFrom(AugmentSelectionComponent);
+}
+
 void ANSPlayerController::PreClientTravel(
 	const FString& PendingURL,
 	ETravelType TravelType,

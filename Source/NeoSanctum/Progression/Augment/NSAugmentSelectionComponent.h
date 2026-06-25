@@ -61,6 +61,9 @@ public:
 	// 선택 상태 초기화 (인런 종료 등)
 	void Reset();
 
+	// 서버 권한, Seamless Travel 시 이전 PC의 추첨 대기열·카운트를 이관
+	void CopyRunStateFrom(const UNSAugmentSelectionComponent* Source);
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
