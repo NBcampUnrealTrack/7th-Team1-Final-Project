@@ -282,6 +282,7 @@ protected:
 	
 	// 클라이언트가 다른 맵/서버로 이동하기 직전에 호출되는 함수로, Loading창을 띄우는 시점을 관리하기 위해 가져왔음
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	virtual void SeamlessTravelTo(APlayerController* NewPC) override;
 	
 	virtual void SetupInputComponent() override;
 
