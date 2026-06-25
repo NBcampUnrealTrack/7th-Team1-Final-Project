@@ -12,6 +12,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 
+
 void UNSSkillSlotWidget::StartCooldown(float NewCooldownDuration)
 {
 	//음수 시간 방지용 코드
@@ -152,14 +153,17 @@ void UNSSkillSlotWidget::SetInputDisplayData(const FNSInputDisplayData& NewInput
 	}
 }
 
-void UNSSkillSlotWidget::SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow)
+void UNSSkillSlotWidget::SetSkillUIData(
+	FDataTableRowHandle NewSkillUIDataRow,
+	const FNSInputDisplayData& NewInputDisplayData)
 {
 	//캐릭터 변경 시 DT_SkillUI의 다른 Row로 교체해 아이콘과 스킬 태그를 갱신한다.
 	SkillUIDataRow = NewSkillUIDataRow;
 
 	ApplySkillUIData();
+	SetInputDisplayData(NewInputDisplayData);
 
-	//캐릭터 변경 직후 이전 스킬의 쿨타임 표시가 남지 않도록 초기화
+	//캐릭터 변경 직후 이전 스킬의 쿨타임 표시가 남지 않도록 초기화한다.
 	CooldownDuration = 0.0f;
 	RemainingCooldown = 0.0f;
 	bCooldownTickActive = false;
