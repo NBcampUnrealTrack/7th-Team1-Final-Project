@@ -1,0 +1,729 @@
+﻿// Copyright 2026 One Team. All rights reserved.
+
+
+#include "NSEnemyCharacterBase.h"
+
+#include "AbilitySystemComponent.h"
+#include "AIController.h"
+#include "NavigationSystem.h"
+#include "Animation/AnimInstance.h"
+#include "Components/CapsuleComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "Net/UnrealNetwork.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+
+ANSEnemyCharacterBase::ANSEnemyCharacterBase()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	bUseControllerRotationYaw = false;
+	GetCapsuleComponent()->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	Movement->bOrientRotationToMovement = true;
+	Movement->bUseControllerDesiredRotation = false;
+	Movement->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
+
+	ASC = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	ASC->SetIsReplicated(true);
+	ASC->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+
+	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
+
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	
+
+	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	
+	GetCharacterMovement()->bUseRVOAvoidance = true;
+	GetCharacterMovement()->AvoidanceConsiderationRadius = 200.0f;
+	GetCharacterMovement()->AvoidanceWeight = 0.5f;
+}
+
+void ANSEnemyCharacterBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (!ASC) return;
+
+	ASC->InitAbilityActorInfo(this, this);
+	
+	InitializeFromData(true);
+	
+	// 디졸브 완료 콜백 바인딩
+	if (DissolveComponent && HasAuthority())
+	{
+		DissolveComponent->OnDissolveComplete.BindUObject(this, &ANSEnemyCharacterBase::OnDissolveFinished);
+	}
+
+	if (HasAuthority())
+	{
+		OnHitGaugeThresholdReached.AddUObject(this, &ThisClass::HandleHitGaugeThresholdReached);
+	}
+}
+
+void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsDead);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
+	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
+	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsHitReacting);
+}
+
+ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
+{
+	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
+}
+
+void ANSEnemyCharacterBase::SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition)
+{
+	CurrentAttackDefinition = InAttackDefinition;
+	bHasCurrentAttackDefinition = true;
+}
+
+const FNSEnemyAttackDefinition* ANSEnemyCharacterBase::GetCurrentAttackDefinition() const
+{
+	return bHasCurrentAttackDefinition ? &CurrentAttackDefinition : nullptr;
+}
+
+void ANSEnemyCharacterBase::ClearCurrentAttackDefinition()
+{
+	CurrentAttackDefinition = FNSEnemyAttackDefinition();
+	bHasCurrentAttackDefinition = false;
+}
+
+void ANSEnemyCharacterBase::Die()
+{
+	if (bIsDead) return;
+
+	if (HasAuthority())
+	{
+		bIsDead = true;
+		FinishHitReaction();
+		ResetHitGauge();
+		SetRetreating(false);
+		ClearCurrentAttackDefinition();
+		ClearCombatAimTarget();
+		ApplyDeadVisual();
+		// (이용호 추가) 죽을 때 게임모드에 알림
+		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+		{
+			INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+		}
+
+		if (AAIController* AIController = Cast<AAIController>(GetController()))
+		{
+			AIController->UnPossess();
+			AIController->Destroy();
+		}
+
+		if (ASC && DeathAbilityClass)
+		{
+			ASC->TryActivateAbilityByClass(DeathAbilityClass);
+		}
+	}
+}
+
+void ANSEnemyCharacterBase::OnRep_bIsDead()
+{
+	if (bIsDead)
+	{
+		ApplyDeadVisual();
+	}
+	else
+	{
+		ApplyAliveVisual();
+	}
+}
+
+void ANSEnemyCharacterBase::OnRep_EnemyData()
+{
+	ApplyVisualData();
+}
+
+void ANSEnemyCharacterBase::ApplyDeadVisual()
+{
+	// 물리 캡슐 콜리전 비활성화
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	if (GetMesh())
+	{
+		// 애니메이션 인스턴스 중단
+		GetMesh()->bPauseAnims = true;
+
+		// 콜리전 프로필을 Ragdoll로 변경
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+
+		// 스켈레탈 메시의 물리 시뮬레이션을 활성화
+		GetMesh()->SetSimulatePhysics(true);
+
+		// 디졸브 효과 적용
+		if (DissolveComponent)
+		{
+			DissolveComponent->StartDissolve();
+		}
+	}
+
+	OnEnemyDead.Broadcast();
+}
+
+void ANSEnemyCharacterBase::ApplyVisualData()
+{
+	if (!EnemyData || !GetMesh())
+	{
+		return;
+	}
+
+	if (EnemyData->SkeletalMesh)
+	{
+		GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
+		InitializeRuntimeMaterials();
+	}
+
+	if (EnemyData->AnimClass)
+	{
+		GetMesh()->SetAnimInstanceClass(EnemyData->AnimClass);
+	}
+
+	SetActorScale3D(EnemyData->DrawScale);
+}
+
+void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
+{
+	if (!EnemyData) return;
+	// 스탯은 최초, 재사용할 때 항상 초기화
+	// GAS 데이터 테이블 기반 스탯 초기화
+	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
+	{
+		FName RowName = EnemyData->EnemyId.GetTagName();
+		FNSMonsterAttributeRow* StatRow =
+			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
+
+		if (StatRow)
+		{
+			AttributeSet->SetMaxHealth(StatRow->MaxHealth);
+			AttributeSet->SetHealth(StatRow->MaxHealth);
+			AttributeSet->SetDefense(StatRow->Defense);
+			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+
+			AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
+			AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
+			AttributeSet->ResetHitGauge();
+		}
+	}
+	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
+	if (bFullInit)
+	{
+		ApplyVisualData();
+
+		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
+		if (HasAuthority())
+		{
+			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->DefaultEffects)
+			{
+				if (EffectClass)
+				{
+					FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+					Context.AddSourceObject(this);
+
+					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
+					if (SpecHandle.IsValid())
+					{
+						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+					}
+				}
+			}
+			
+			TSet<TObjectPtr<UClass>> GrantedAbilityClasses;
+			
+			auto GiveAbilityOnce = [this, &GrantedAbilityClasses](TSubclassOf<UGameplayAbility> AbilityClass)
+			{
+				if (!ASC || !AbilityClass)
+				{
+					return;
+				}
+
+				UClass* AbilityRawClass = AbilityClass.Get();
+				if (!AbilityRawClass || GrantedAbilityClasses.Contains(AbilityRawClass))
+				{
+					return;
+				}
+
+				GrantedAbilityClasses.Add(AbilityRawClass);
+
+				const UGameplayAbility* AbilityCDO = AbilityClass.GetDefaultObject();
+				if (!AbilityCDO)
+				{
+					return;
+				}
+
+				ASC->GiveAbility(FGameplayAbilitySpec(
+					AbilityClass,
+					1,
+					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
+			};
+
+			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->DefaultAbilities)
+			{
+				GiveAbilityOnce(AbilityClass);
+			}
+			
+			GiveAbilityOnce(EnemyData->HitReactionAbilityClass);
+			
+			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+			{
+				GiveAbilityOnce(AttackDefinition.AbilityClass);
+			}
+		}
+
+		// 서버에서만 사망 능력 부여
+		if (HasAuthority())
+		{
+			if (DeathAbilityClass)
+			{
+				ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
+			}
+		}
+
+		// 무기 장착
+		if (WeaponComponent)
+		{
+			WeaponComponent->EquipWeapon();
+		}
+	}
+}
+
+void ANSEnemyCharacterBase::ApplyAliveVisual()
+{
+	SetActorHiddenInGame(false);
+
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		CapsuleComp->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
+	}
+
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		MeshComp->SetSimulatePhysics(false);
+		MeshComp->AttachToComponent(
+			GetCapsuleComponent(),
+			FAttachmentTransformRules::SnapToTargetIncludingScale);
+		MeshComp->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
+		MeshComp->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		MeshComp->SetCollisionProfileName(TEXT("CharacterMesh"));
+		MeshComp->bPauseAnims = false;
+	}
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->ResetDissolve();
+	}
+}
+
+void ANSEnemyCharacterBase::OnDissolveFinished()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_ReturnMonsterToPool(GameMode, this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("풀 매니저 없음, 풀 반환 실패"));
+	}
+}
+
+void ANSEnemyCharacterBase::OnRep_bIsInPool()
+{
+	// 클라이언트에 남아있는 콜리전 정리
+	SetActorHiddenInGame(bIsInPool);
+	SetActorEnableCollision(!bIsInPool);
+}
+
+void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
+{
+	if (!HasAuthority() || !IsValid(TargetActor))
+	{
+		ClearCombatAimTarget();
+		return;
+	}
+
+	FVector AimBoundsOrigin = TargetActor->GetActorLocation();
+	FVector AimBoundsExtent = FVector::ZeroVector;
+	
+	if (const UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(TargetActor->GetRootComponent()))
+	{
+		AimBoundsOrigin = RootPrimitive->Bounds.Origin;
+		AimBoundsExtent = RootPrimitive->Bounds.BoxExtent;
+	}
+
+	CombatAimTargetLocation = AimBoundsOrigin + FVector::UpVector * (AimBoundsExtent.Z * AimTargetZOffsetRatio);
+
+	bHasCombatAimTarget = true;
+}
+
+void ANSEnemyCharacterBase::ClearCombatAimTarget()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bHasCombatAimTarget = false;
+	CombatAimTargetLocation = FVector::ZeroVector;
+}
+
+void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
+{
+	if (!HasAuthority() || !InEnemyData)
+	{
+		return;
+	}
+
+	EnemyData = InEnemyData;
+}
+
+void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsInPool = false;
+	bIsDead = false;
+	bIsHitReacting = false;
+	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
+	
+	SetRetreating(false);
+	SetActorLocationAndRotation(
+		SpawnLocation,
+		SpawnRotation,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
+	SetActorTickEnabled(true);
+	SetActorEnableCollision(true);
+	
+	// 이동을 멈췄으므로 재가동
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->SetMovementMode(MOVE_Walking);
+	}
+	
+	ApplyAliveVisual();
+
+	// 종료할 때 전부 없앴으므로 전부 재주입
+	InitializeFromData(true);
+
+	// BT 정상 작동을 위해 AIControllerClass로 재빙의
+	SpawnDefaultController();
+}
+
+void ANSEnemyCharacterBase::DeactivateForPool()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsInPool = true;
+	SetRetreating(false);
+	FinishHitReaction();
+	ResetHitGauge();
+	ClearCurrentAttackDefinition();
+	ClearCombatAimTarget();
+
+	// 이동 즉시 정지 및 비활성화
+	if (UCharacterMovementComponent* Move = GetCharacterMovement())
+	{
+		Move->StopMovementImmediately();
+		Move->DisableMovement();
+	}
+
+	// 진행 중인 몽타주 정지
+	if (USkeletalMeshComponent* MeshComp = GetMesh())
+	{
+		if (UAnimInstance* Anim = MeshComp->GetAnimInstance())
+		{
+			Anim->StopAllMontages(0.0f);
+		}
+	}
+
+	// 살아있는 채로 반환된 경우 AI, 컨트롤러 정리
+	if (AAIController* AICon = Cast<AAIController>(GetController()))
+	{
+		AICon->StopMovement();
+		AICon->UnPossess();
+		AICon->Destroy();
+	}
+
+	// GAS 정리(실행 중 어빌리티 취소,활성 이펙트 전부 제거,그랜트 해제)
+	if (ASC)
+	{
+		ASC->CancelAllAbilities();
+		ASC->RemoveActiveEffects(FGameplayEffectQuery());
+		ASC->ClearAllAbilities();
+	}
+	
+	if (WeaponComponent)
+	{
+		WeaponComponent->UnEquipWeapon();
+	}
+	
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->CancelFlash();
+	}
+
+	// 물리적 중지
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+}
+
+void ANSEnemyCharacterBase::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+	
+	if (!bNavLinkJumping)
+	{
+		return;
+	}
+	bNavLinkJumping = false;
+
+	// NavMesh 밖 착지 복구: 가까운 NavMesh 지점으로 스냅
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		const FVector Here = GetActorLocation();
+		FNavLocation NavLoc;
+		if (NavSys->ProjectPointToNavigation(Here, NavLoc, FVector(100.0f, 100.0f, 200.0f)))
+		{
+			const UCapsuleComponent* Capsule = GetCapsuleComponent();
+			const float Radius = Capsule ? Capsule->GetScaledCapsuleRadius() : 50.0f;
+			const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+			// 캡슐 반경 이상 벗어났을 때만 보정 (정상 착지는 그대로 둠)
+			if (FVector::DistSquared2D(Here, NavLoc.Location) > FMath::Square(Radius))
+			{
+				// 투영점은 바닥 높이, 캡슐 절반 높이만큼 올려 박힘 방지
+				SetActorLocation(NavLoc.Location + FVector(0.0f, 0.0f, HalfHeight), false);
+			}
+		}
+	}
+}
+
+void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
+{
+	bNavLinkJumping = true;
+	UCharacterMovementComponent* Move = GetCharacterMovement();
+	if (!Move)
+	{
+		return;
+	}
+
+	// 점프가 순간의 실효 중력으로 계산
+	FVector LaunchVelocity = FVector::ZeroVector;
+	const bool bFoundVelocity =
+		UGameplayStatics::SuggestProjectileVelocity_CustomArc(
+			this,
+			LaunchVelocity,
+			GetActorLocation(),
+			DestPoint,
+			Move->GetGravityZ(), // 실효 중력
+			0.5f);
+
+	if (!bFoundVelocity)
+	{
+		return;
+	}
+
+	bNavLinkJumping = true;
+	LaunchCharacter(LaunchVelocity, true, true); // XY/Z Override
+}
+
+void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
+{
+		if (!HasAuthority())
+	{
+		return;
+	}
+
+	bIsRetreating = bInRetreating;
+}
+
+float ANSEnemyCharacterBase::GetHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetHitGauge() : 0.0f;
+}
+
+float ANSEnemyCharacterBase::GetMaxHitGauge() const
+{
+	return AttributeSet ? AttributeSet->GetMaxHitGauge() : 0.0f;
+}
+
+void ANSEnemyCharacterBase::ResetHitGauge()
+{
+	if (!HasAuthority() || !AttributeSet)
+	{
+		return;
+	}
+
+	AttributeSet->ResetHitGauge();
+}
+
+void ANSEnemyCharacterBase::NotifyHitGaugeThresholdReached()
+{
+	if (!HasAuthority() || bIsDead || bIsInPool)
+	{
+		return;
+	}
+
+	OnHitGaugeThresholdReached.Broadcast();
+}
+
+void ANSEnemyCharacterBase::FinishHitReaction()
+{
+	if (!HasAuthority() || !bIsHitReacting)
+	{
+		return;
+	}
+
+	SetHitReactionState(false);
+}
+
+void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
+{
+	if (!HasAuthority() ||
+		bIsDead ||
+		bIsInPool ||
+		bIsHitReacting ||
+		!ASC ||
+		!EnemyData ||
+		!EnemyData->HitReactionAbilityClass)
+	{
+		return;
+	}
+
+	// 공격 GA 취소보다 먼저 상태를 설정해야 BT Task가 예약을 반환하지 않음
+	SetHitReactionState(true);
+
+	const bool bActivated = ASC->TryActivateAbilityByClass(EnemyData->HitReactionAbilityClass);
+
+	if (!bActivated)
+	{
+		FinishHitReaction();
+	}
+}
+
+void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
+{
+	if (!HasAuthority() || bIsHitReacting == bNewHitReacting)
+	{
+		return;
+	}
+
+	bIsHitReacting = bNewHitReacting;
+	ANSEnemyAIController* EnemyController = Cast<ANSEnemyAIController>(GetController());
+
+	if (!EnemyController)
+	{
+		return;
+	}
+
+	if (bIsHitReacting)
+	{
+		EnemyController->HandleHitReactionStarted();
+	}
+	else
+	{
+		EnemyController->HandleHitReactionFinished();
+	}
+}
+
+void ANSEnemyCharacterBase::InitializeRuntimeMaterials()
+{
+	USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (!MeshComponent || !EnemyData)
+	{
+		return;
+	}
+
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->ClearMaterialFlashTargets();
+	}
+
+	RuntimeVisualMaterials.Reset();
+
+	TArray<UMaterialInstanceDynamic*> FlashTargets;
+
+	for (const FNSEnemyMaterialDefinition& Definition : EnemyData->MaterialDefinitions)
+	{
+		const int32 MaterialIndex = MeshComponent->GetMaterialIndex(Definition.MaterialSlotName);
+
+		if (MaterialIndex == INDEX_NONE)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Enemy material slot not found: %s"),
+			       *Definition.MaterialSlotName.ToString());
+
+			continue;
+		}
+
+		UMaterialInterface* InitialMaterial = Definition.InitialMaterial
+			                                      ? Definition.InitialMaterial.Get()
+			                                      : MeshComponent->GetMaterial(MaterialIndex);
+
+		if (!InitialMaterial)
+		{
+			continue;
+		}
+
+		MeshComponent->SetMaterial(MaterialIndex, InitialMaterial);
+
+		UMaterialInstanceDynamic* MID =
+			MeshComponent->CreateDynamicMaterialInstance(MaterialIndex, InitialMaterial);
+
+		if (!MID)
+		{
+			continue;
+		}
+
+		MID->SetVectorParameterValue(TEXT("MonsterTint"), Definition.MonsterTint);
+		MID->SetScalarParameterValue(TEXT("HitFlashAmount"), 0.0f);
+
+		RuntimeVisualMaterials.Add(MID);
+		FlashTargets.Add(MID);
+	}
+
+	if (DamageFlashComponent)
+	{
+		DamageFlashComponent->SetMaterialFlashTargets(FlashTargets);
+	}
+}

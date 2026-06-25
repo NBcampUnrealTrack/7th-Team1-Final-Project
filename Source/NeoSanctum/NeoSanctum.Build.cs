@@ -6,12 +6,13 @@ public class NeoSanctum : ModuleRules
 {
 	public NeoSanctum(ReadOnlyTargetRules Target) : base(Target)
 	{
+		PrivateDependencyModuleNames.AddRange(new string[] { "ProceduralDungeon" });
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			// Core
-			"Core", "CoreUObject", "Engine", 
+			"Core", "CoreUObject", "Engine", "OnlineSubsystem", "OnlineSubsystemUtils", "NetCore",
 			
 			// Input
 			"InputCore", "EnhancedInput",
@@ -22,6 +23,7 @@ public class NeoSanctum : ModuleRules
 			"SlateCore", 
 			"CommonUI", 
 			"CommonInput",
+			"GameplayMessageRuntime",
 			
 			// GAS
 			"GameplayAbilities", 
@@ -32,9 +34,13 @@ public class NeoSanctum : ModuleRules
 			"AIModule", 
 			"GameplayStateTreeModule", 
 			"NavigationSystem",
+			"StateTreeModule",
 			
 			// Animation
 			"AnimGraphRuntime", 
+			"MotionTrajectory",
+			"PoseSearch",
+			"Chooser",
 			"MotionWarping",
 			
 			// FX
@@ -44,7 +50,11 @@ public class NeoSanctum : ModuleRules
 			"PCG",
 			
 			// Physics / Trace
-			"PhysicsCore"
+			"PhysicsCore",
+			
+			// Chaos Destruction
+			"GeometryCollectionEngine",
+			"Chaos",
 		});
 
 		// Uncomment if you are using Slate UI

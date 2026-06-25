@@ -1,0 +1,22 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Part Icon Tool",
+	"Description": "파츠 Definition의 스켈레탈 메시 썸네일을 캡처해 아이콘 텍스처로 저장하고 Icon 필드에 지정하는 에디터 전용 유틸리티입니다.",
+	"Category": "Editor",
+	"CreatedBy": "One Team",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.7.0",
+	"CanContainContent": false,
+	"Modules": [
+		{
+			"Name": "PartIconTool",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit"
+		}
+	]
+}

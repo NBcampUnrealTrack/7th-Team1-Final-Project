@@ -7,7 +7,13 @@
 		{
 			"Name": "NeoSanctum",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"CommonUI",
+				"Engine",
+				"GameplayAbilities",
+				"AIModule"
+			]
 		},
 		{
 			"Name": "GitStatusBranch",
@@ -65,6 +71,10 @@
 		},
 		{
 			"Name": "ModelViewViewModel",
+			"Enabled": true
+		},
+		{
+			"Name": "PCG",
 			"Enabled": true
 		}
 	]

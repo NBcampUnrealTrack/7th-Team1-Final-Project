@@ -1,0 +1,228 @@
+﻿// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Engine/DataAsset.h"
+#include "NSEnemyData.generated.h"
+
+class ANSEnemyWeaponBase;
+class USkeletalMesh;
+class UAnimInstance;
+class UDataTable;
+class UGameplayEffect;
+class UGameplayAbility;
+class UBehaviorTree;
+class UStateTree;
+class UEnvQuery;
+class UMaterialInterface;
+
+UENUM(BlueprintType)
+enum class ENSEnemyMovementType : uint8
+{
+	Ground UMETA(DisplayName = "Ground"),
+	Flying UMETA(DisplayName = "Flying"),
+	Stationary UMETA(DisplayName = "Stationary")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyAttackType : uint8
+{
+	MeleeSweep UMETA(DisplayName = "Melee Sweep"),
+	Projectile UMETA(DisplayName = "Projectile"),
+	Hitscan UMETA(DisplayName = "Hitscan"),
+	Area UMETA(DisplayName = "Area")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyRank : uint8
+{
+	Normal UMETA(DisplayName = "Normal"),
+	Elite UMETA(DisplayName = "Elite"),
+	Boss UMETA(DisplayName = "Boss")
+};
+
+USTRUCT(BlueprintType)
+struct FNSMonsterAttributeRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float MaxHealth = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float Defense = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	float BaseDamage = 50.0f;
+	
+	// 피격 경직 이벤트가 발생하는 게이지 최대치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1.0"))
+	float MaxHitGauge = 100.0f;
+
+	// 유효한 피격 한 번에 증가하는 게이지 수치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float HitGaugeGainPerHit = 15.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FNSPhaseDefinition
+{
+	GENERATED_BODY()
+
+	// 페이즈 전환 체력
+	UPROPERTY(EditDefaultsOnly, Category = "Phase")
+	float HPThresholdPercentage = 0.7f;
+
+	// 페이즈 전환 시 실행한 무적/광폭화 GA
+	UPROPERTY(EditDefaultsOnly, Category = "Phase")
+	TSubclassOf<UGameplayAbility> PhaseTransitionAbility;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackCondition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MinRange = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float MaxRange = 300.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	bool bRequireLineOfSight = true;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyAttackDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FName AttackId;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	TSubclassOf<UGameplayAbility> AbilityClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", 
+		meta = (ClampMin = "0.0", EditCondition = "AttackType == ENSEnemyAttackType::MeleeSweep", EditConditionHides))
+	float MeleeTraceRadius = 8.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	FNSEnemyAttackCondition Condition;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Cooldown = 0.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
+	float Weight = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	int32 Priority = 0;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyMaterialDefinition
+{
+	GENERATED_BODY()
+
+	// 런타임 머티리얼을 적용할 스켈레탈 메시의 머티리얼 슬롯 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FName MaterialSlotName = NAME_None;
+
+	// 해당 슬롯에 MID를 만들기 전에 적용할 초기 머티리얼
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TObjectPtr<UMaterialInterface> InitialMaterial;
+
+	// 해당 몬스터 종류의 기본 외형 색상
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	FLinearColor MonsterTint = FLinearColor::White;
+};
+
+/**
+ * Enemy 초기화 시 필요한 PrimaryDataAsset 입니다.
+ */
+UCLASS(BlueprintType)
+class NEOSANCTUM_API UNSEnemyData : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	// 몬스터 고유 식별자
+	UPROPERTY(EditDefaultsOnly, Category = "Identity")
+	FGameplayTag EnemyId;
+
+	// 몬스터 설명
+	UPROPERTY(EditDefaultsOnly, Category = "Identity", meta = (MultiLine = true))
+	FString Description;
+	
+	// 이동 분류
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyMovementType MovementType = ENSEnemyMovementType::Ground;
+
+	// 몬스터 등급
+	UPROPERTY(EditDefaultsOnly, Category = "Classification")
+	ENSEnemyRank EnemyRank = ENSEnemyRank::Normal;
+
+	// 스켈레탈 메시
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TObjectPtr<USkeletalMesh> SkeletalMesh;
+
+	// 캐릭터 애니메이션 블루프린트 클래스
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	TSubclassOf<UAnimInstance> AnimClass;
+
+	// 몬스터 크기 배율
+	UPROPERTY(EditDefaultsOnly, Category = "Visual")
+	FVector DrawScale = FVector(1.0f, 1.0f, 1.0f);
+	
+	// 몬스터의 슬롯별 초기 머티리얼과 기본 외형 색상 설정
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
+	TArray<FNSEnemyMaterialDefinition> MaterialDefinitions;
+
+	// 무기
+	UPROPERTY(EditDefaultsOnly, Category = "Equipment")
+	TSubclassOf<ANSEnemyWeaponBase> DefaultWeaponClass;
+
+	// 초기 스탯
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TObjectPtr<UDataTable> AttributeInitData;
+
+	// 기본 GE
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayEffect>> DefaultEffects;
+
+	// 기본 GA
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TArray<TSubclassOf<UGameplayAbility>> DefaultAbilities;
+
+	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
+	
+	// 몬스터가 사용할 수 있는 공격 목록
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TArray<FNSEnemyAttackDefinition> AttackList;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
+	TObjectPtr<UBehaviorTree> BehaviorTree;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
+	TObjectPtr<UStateTree> StateTree;
+
+	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
+	TObjectPtr<UEnvQuery> EQSQuery;
+	
+	// OtherEnemies Context에 포함할 같은 타깃 추적 몬스터의 최대 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Config|Melee EQS", meta = (ClampMin = "0.0"))
+	float MeleeEQSNeighborRadius = 1000.0f;
+
+	// 보스 페이즈
+	UPROPERTY(EditDefaultsOnly, Category = "PhaseSystem")
+	TArray<FNSPhaseDefinition> PhaseDefinitions;
+};

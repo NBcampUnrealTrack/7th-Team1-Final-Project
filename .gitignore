@@ -90,12 +90,19 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 
-#Content Paid
-Content/Assets/Paid/*
+#Content Asset
+Content/Assets/*
+Content/SubstrateMaterials/*
+
+#Tool
+Tool/*
 
 #Content TestSpace
 Content/TestSpace/*
 !Content/TestSpace/.gitkeep
+
+#Source Test
+Source/NeoSanctum/Test
 
 #Plugins
 Plugins/*/Binaries/
