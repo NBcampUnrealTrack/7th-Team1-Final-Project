@@ -18,6 +18,8 @@ class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
 class ANSRunGameState;
 class UNSCurrencyComponent;
+class ANSInteractableNPCBase;
+class UNSNPCInteractionWidgetBase;
 struct FNSSkillCooldownMessage;
 
 UCLASS()
@@ -89,6 +91,10 @@ public:
 
 	//상호작용 시도(키 입력시 호출)
 	void TryInteract();
+
+	// NPC 상호작용 위젯 열기/닫기 (InteractionComponent가 호출)
+	void OpenInteractionWidget(ANSInteractableNPCBase* NPC);
+	void CloseInteractionWidget();
 	
 	// 세이브 데이터 업로드/ 저장용 RPC 함수
 	UFUNCTION(Server, Reliable)
@@ -273,7 +279,11 @@ private:
 	// 증강 추첨/선택 로직을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "NS|Augment")
 	TObjectPtr<UNSAugmentSelectionComponent> AugmentSelectionComponent;
-	
+
+	// 현재 열린 NPC 상호작용 위젯
+	UPROPERTY()
+	TObjectPtr<UNSNPCInteractionWidgetBase> ActiveInteractionWidget;
+
 	// 로드 완료 후 데이터 복원되도록 할 용도
 	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);
 	FDelegateHandle PermanentDataLoadedHandle;

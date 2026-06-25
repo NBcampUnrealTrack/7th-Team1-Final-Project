@@ -19,6 +19,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "EngineUtils.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
@@ -1506,6 +1507,40 @@ void ANSPlayerController::ExitRunEndInputMode()
 	}
 	SetInputMode(FInputModeGameOnly());
 	bShowMouseCursor = false;
+}
+
+void ANSPlayerController::OpenInteractionWidget(ANSInteractableNPCBase* NPC)
+{
+	CloseInteractionWidget();
+
+	if (!NPC)
+	{
+		return;
+	}
+
+	TSubclassOf<UNSNPCInteractionWidgetBase> WidgetClass = NPC->GetInteractionWidgetClass();
+	if (!WidgetClass)
+	{
+		return;
+	}
+
+	UNSNPCInteractionWidgetBase* Widget = CreateWidget<UNSNPCInteractionWidgetBase>(this, WidgetClass);
+	if (!Widget)
+	{
+		return;
+	}
+
+	ActiveInteractionWidget = Widget;
+	Widget->OpenForInteractor(this);
+}
+
+void ANSPlayerController::CloseInteractionWidget()
+{
+	if (ActiveInteractionWidget)
+	{
+		ActiveInteractionWidget->CloseWidget();
+		ActiveInteractionWidget = nullptr;
+	}
 }
 
 void ANSPlayerController::TryInteract()
