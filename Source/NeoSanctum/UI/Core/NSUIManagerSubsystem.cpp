@@ -10,6 +10,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
+#include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
 
 UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 {
@@ -69,6 +70,79 @@ void UNSUIManagerSubsystem::ApplyCharacterSkillUISet(FName CharacterId)
 	}
 	//캐릭터 변경 요청을 HUD로 전달해 스킬 슬롯 UI를 갱신한다
 	HUDWidget->ApplyCharacterSkillUISet(CharacterId);
+}
+
+void UNSUIManagerSubsystem::CreateSpectator(APlayerController* OwningPlayer)
+{
+	if (!OwningPlayer)
+	{
+		return;
+	}
+	
+	if (SpectatorWidget)
+	{
+		return;
+	}
+	
+	TSubclassOf<UUserWidget> WidgetClassToUse =
+		GetWidgetClassFromTable(TEXT("Spectator"));
+	
+	if (!WidgetClassToUse)
+	{
+		WidgetClassToUse = SpectatorWidgetClass;
+	}
+	
+	if (!WidgetClassToUse)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[Spectator UI] Spectator 위젯 클래스를 찾을 수 없습니다."));
+		return;
+	}
+	
+	SpectatorWidget = CreateWidget<UNSSpectatorWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
+	
+	if (!SpectatorWidget)
+	{
+		return;
+	}
+	
+	SpectatorWidget->AddToViewport(20);
+	SpectatorWidget->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UNSUIManagerSubsystem::ShowSpectator(const FString& SpectatingPlayerName)
+{
+	HideHUD();
+	
+	if (!SpectatorWidget)
+	{
+		return;
+	}
+	
+	SpectatorWidget->SetSpectatingPlayerName(SpectatingPlayerName);
+	SpectatorWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UNSUIManagerSubsystem::HideSpectator()
+{
+	if (!SpectatorWidget)
+	{
+		return;
+	}
+	
+	SpectatorWidget->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UNSUIManagerSubsystem::ClearSpectator()
+{
+	if (!SpectatorWidget)
+	{
+		return;
+	}
+	
+	SpectatorWidget->RemoveFromParent();
+	SpectatorWidget = nullptr;
 }
 
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()
