@@ -109,7 +109,7 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 		return;
 	}
 
-	const FPrimaryAssetId Chosen = PendingOffer[Index];
+	const FNSAugmentSelectionCard& ChosenCard = PendingOffer[Index];
 
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
 	if (!PC)
@@ -128,7 +128,7 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 	{
 		return;
 	}
-	NSInvComp->ApplyAugment(Chosen);
+	NSInvComp->ApplyAugment(ChosenCard.DefId);
 
 	// front 오퍼 소비
 	if (RewardTriggerQueue.Num() > 0)
@@ -161,13 +161,13 @@ void UNSAugmentSelectionComponent::CopyRunStateFrom(const UNSAugmentSelectionCom
 	{
 		return;
 	}
-
-	PoolQueue = Source->PoolQueue;
+	
+	RewardTriggerQueue = Source->RewardTriggerQueue;
 	bFrontRolled = Source->bFrontRolled;
 	PendingOffer = Source->PendingOffer;
 	CurrentRerollCost = Source->CurrentRerollCost;
-	CurrentPool = Source->CurrentPool;
-	SetPendingCount(PoolQueue.Num());
+	
+	SetPendingCount(RewardTriggerQueue.Num());
 }
 
 void UNSAugmentSelectionComponent::Reset()
@@ -210,9 +210,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 			CurrentRerollCost = 0;
 		}
 		
-		// RollCards는 결정된 Rarity를 OutRarity로 돌려주지만 현재 사용처 없음 (로컬로만 받음)
-		ENSAugmentRarity RolledRarity = ENSAugmentRarity::Common;
-		PendingOffer = RollCards(RarityRule, CardsCount, RolledRarity);
+		PendingOffer = RollCards(RarityRule, CardsCount);
 		bFrontRolled = true;
 	}
 
@@ -231,9 +229,10 @@ void UNSAugmentSelectionComponent::OnRep_PendingCount()
 	OnPendingCountChanged.Broadcast(PendingCount);
 }
 
-void UNSAugmentSelectionComponent::Client_PresentOffer_Implementation(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost)
+void UNSAugmentSelectionComponent::Client_PresentOffer_Implementation(
+	const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
 {
-	OnOfferPresented.Broadcast(OfferIds, RerollCost);
+	OnOfferPresented.Broadcast(Cards, RerollCost);
 }
 
 void UNSAugmentSelectionComponent::Client_CloseOffer_Implementation()
@@ -289,11 +288,9 @@ bool UNSAugmentSelectionComponent::TryFindRarityRule(
 	return false;
 }
 
-TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
-	const FNSAugmentRarityRule& RarityRule, int32 N, ENSAugmentRarity& OutRarity) const
+TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(
+	const FNSAugmentRarityRule& RarityRule, int32 N) const
 {
-	OutRarity = ENSAugmentRarity::Common;
-	
 	if (N <= 0)
 	{
 		return {};
@@ -315,7 +312,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
 	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
 	BuildRarityBuckets(Data, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
 
-	return DrawCards(RarityRule, ByRarity, N, OutRarity);
+	return DrawCards(RarityRule, ByRarity, N);
 }
 
 // Definition SoftPtr를 직접 로드하지 않고 DataSubsystem 캐시에서 해석.
@@ -573,92 +570,103 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 }
 
 // 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 가중치 추첨
-TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
+TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 	const FNSAugmentRarityRule& RarityRule,
 	const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
-	int32 N,
-	ENSAugmentRarity& OutRarity) const
+	int32 N) const
 {
-	OutRarity = ENSAugmentRarity::Common;
-	TArray<FPrimaryAssetId> Result;
+	TArray<FNSAugmentSelectionCard> Result;
+	
 	if (N <= 0)
 	{
 		return Result;
 	}
 
-	// 후보가 있는 Rarity들의 가중치만 합산 (빈 버킷에 헛돌지 않음)
-	int32 TotalRarityWeight = 0;
+	// 카드 선택 후 같은 후보가 다시 나오지 않도록 희귀도별 남은 후보를 별도로 관리.
+	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> RemainingByRarity = ByRarity;
 	
-	for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
+	Result.Reserve(N);
+	
+	for (int32 CardIndex = 0; CardIndex < N; ++CardIndex)
 	{
-		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
+		// 현재 후보가 남아 있는 희귀도만으로 가중치를 다시 계산.
+		int32 TotalRarityWeight = 0;
 		
-		if (!Bucket || Bucket->Num() == 0)
+		for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
 		{
-			continue;
+			const TArray<FNSAugmentCandidate>* Bucket = RemainingByRarity.Find(RarityWeight.Key);
+			
+			if (!Bucket || Bucket->IsEmpty())
+			{
+				continue;
+			}
+			
+			TotalRarityWeight += FMath::Max(0, RarityWeight.Value);
 		}
 		
-		TotalRarityWeight += FMath::Max(0, RarityWeight.Value);
-	}
-	if (TotalRarityWeight <= 0)
-	{
-		return Result;
-	}
-
-	// 가중치 룰렛으로 이번 오퍼의 Rarity 1번만 결정
-	const int32 RollValue = FMath::RandRange(1, TotalRarityWeight);
-	int32 AccumulatedRarityWeight = 0;
-	
-	ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
-	
-	for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
-	{
-		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
-		if (!Bucket || Bucket->Num() == 0)
+		if (TotalRarityWeight <= 0)
 		{
-			continue;
-		}
-		
-		AccumulatedRarityWeight += FMath::Max(0, RarityWeight.Value);
-		
-		if (RollValue <= AccumulatedRarityWeight)
-		{
-			ChosenRarity = RarityWeight.Key;
 			break;
 		}
-	}
-	
-	OutRarity = ChosenRarity;
-
-	// 선택된 희귀도 버킷에서 남은 후보의 SelectionWeight를 기준으로 중복 없이 가중치 추첨.
-	TArray<FNSAugmentCandidate> Bucket = ByRarity.FindChecked(ChosenRarity);
-	const int32 DrawCount = FMath::Min(N, Bucket.Num());
-	
-	Result.Reserve(DrawCount);
-	
-	for (int32 CardIndex = 0; CardIndex < DrawCount; ++CardIndex)
-	{
+		
+		const int32 RarityRollValue = FMath::RandRange(1, TotalRarityWeight);
+		int32 AccumulatedRarityWeight = 0;
+		ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
+		bool bFoundRarity = false;
+		
+		for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
+		{
+			const TArray<FNSAugmentCandidate>* Bucket = RemainingByRarity.Find(RarityWeight.Key);
+			
+			if (!Bucket || Bucket->IsEmpty())
+			{
+				continue;
+			}
+			
+			AccumulatedRarityWeight += FMath::Max(0, RarityWeight.Value);
+			
+			if (RarityRollValue <= AccumulatedRarityWeight)
+			{
+				ChosenRarity = RarityWeight.Key;
+				bFoundRarity = true;
+				break;
+			}
+		}
+		
+		if (!bFoundRarity)
+		{
+			break;
+		}
+		
+		TArray<FNSAugmentCandidate>* SelectedBucket = RemainingByRarity.Find(ChosenRarity);
+		
+		if (!SelectedBucket || SelectedBucket->IsEmpty())
+		{
+			break;
+		}
+		
 		int32 TotalSelectionWeight = 0;
 		
-		for (const FNSAugmentCandidate& Candidate : Bucket)
+		for (const FNSAugmentCandidate& Candidate : *SelectedBucket)
 		{
 			TotalSelectionWeight += Candidate.SelectionWeight;
 		}
 		
-		if (TotalSelectionWeight <= 0)
+		if (TotalRarityWeight <= 0)
 		{
 			break;
 		}
 		
 		const int32 SelectionRollValue = FMath::RandRange(1, TotalSelectionWeight);
-		int32 AccumulateWeight = 0;
+		
+		int32 AccumulatedSelectionWeight = 0;
 		int32 PickIndex = INDEX_NONE;
 		
-		for (int32 CandidateIndex = 0; CandidateIndex < Bucket.Num(); ++CandidateIndex)
+		for (int32 CandidateIndex = 0; CandidateIndex < SelectedBucket->Num(); ++CandidateIndex)
 		{
-			AccumulateWeight += Bucket[CandidateIndex].SelectionWeight;
+			AccumulatedRarityWeight += (*SelectedBucket)[CandidateIndex].SelectionWeight;
 			
-			if (SelectionRollValue <= AccumulateWeight)
+			if (SelectionRollValue <= AccumulatedSelectionWeight)
 			{
 				PickIndex = CandidateIndex;
 				break;
@@ -670,17 +678,22 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 			break;
 		}
 		
-		const FNSAugmentCandidate Picked = Bucket[PickIndex];
-		Bucket.RemoveAtSwap(PickIndex);
+		const FNSAugmentCandidate Picked = (*SelectedBucket)[PickIndex];
+		
+		SelectedBucket->RemoveAtSwap(PickIndex);
 		
 		NS_OBJ_LOG(LogNS, Log,
 			"증강 카드 후보를 가중치로 선택했습니다. Rarity={Rarity}, DefId={DefId}, Weight={Weight}",
-			("Rarity", static_cast<int32>(ChosenRarity)),
+			("Rarity", static_cast<int32>(Picked.Rarity)),
 			("DefId", Picked.DefId.ToString()),
 			("Weight", Picked.SelectionWeight)
 		);
 		
-		Result.Add(Picked.DefId);
+		FNSAugmentSelectionCard Card;
+		Card.DefId = Picked.DefId;
+		Card.Rarity = Picked.Rarity;
+		
+		Result.Add(Card);
 	}
 	
 	return Result;

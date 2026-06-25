@@ -31,7 +31,19 @@ struct FNSAugmentCandidate
 	bool bCountsAsLegendarySlot = false;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
+USTRUCT(BlueprintType)
+struct FNSAugmentSelectionCard
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
+	FPrimaryAssetId DefId;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
+	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FNSAugmentSelectionCard>&, Cards, int32, RerollCost);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
 
@@ -99,7 +111,7 @@ protected:
 
 private:
 	UFUNCTION(Client, Reliable)
-	void Client_PresentOffer(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost);
+	void Client_PresentOffer(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost);
 
 	UFUNCTION(Client, Reliable)
 	void Client_CloseOffer();
@@ -120,7 +132,7 @@ private:
 	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;
 
 	// 증강 Rarity 추첨 -> 해당 Rarity내 나올 수 있는 증강 추첨 (오퍼)
-	TArray<FPrimaryAssetId> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N, ENSAugmentRarity& OutRarity) const;
+	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,
@@ -167,12 +179,12 @@ private:
 		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity
 	) const;
 
-	// 오퍼 단위로 희귀도를 1회 결정한 뒤, 해당 희귀도 후보에서 SelectionWeight를 기준으로 N장을 중복 없이 선택.
-	TArray<FPrimaryAssetId> DrawCards(
+	// 카드 슬롯마다 희귀도를 독립적으로 결정한 뒤, 해당 희귀도 후보에서 SelectionWeight를 기준으로 카드를 선택.
+	TArray<FNSAugmentSelectionCard> DrawCards(
 		const FNSAugmentRarityRule& RarityRule,
 		const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
-		int32 N,
-		ENSAugmentRarity& OutRarity) const;
+		int32 N
+	) const;
 	
 	// 서버 전용: 보상 트리거 FIFO 큐, front가 현재 표시 대상이며, 선택 완료 시 제거된다.
 	TArray<FGameplayTag> RewardTriggerQueue;
@@ -180,7 +192,7 @@ private:
 	// front 오퍼가 이미 추첨되어 캐싱됐는지 (패널 재오픈 시 재추첨 방지, 리롤로만 재추첨)
 	bool bFrontRolled = false;
 
-	TArray<FPrimaryAssetId> PendingOffer;
+	TArray<FNSAugmentSelectionCard> PendingOffer;
 
 	int32 CurrentRerollCost = 0;
 

@@ -18,7 +18,7 @@ struct FNSAugmentRarityRule
 		meta = (Categories = "Reward.Trigger"))
 	FGameplayTag RewardTriggerTag;
 	
-	// 현재 오퍼 1회에 사용할 희귀도 추첨 가중치
+	// 카드 한 장당 희귀도 추첨 가중치
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Rarity")
 	TMap<ENSAugmentRarity, int32> RarityWeights;
 };
