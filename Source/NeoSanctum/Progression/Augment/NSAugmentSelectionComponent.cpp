@@ -688,9 +688,15 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 		// 같은 후보가 이번 오퍼 안에서 중복 선택되지 않도록 제거.
 		SelectedBucket->RemoveAtSwap(PickIndex);
 		
+		const UEnum* RarityEnum = StaticEnum<ENSAugmentRarity>();
+		
+		const FString RarityName = RarityEnum
+			? RarityEnum->GetNameStringByValue(static_cast<int64>(Picked.Rarity))
+			: TEXT("InValid");
+		
 		NS_OBJ_LOG(LogNS, Log,
 			"증강 카드 후보를 가중치로 선택했습니다. Rarity={Rarity}, DefId={DefId}, Weight={Weight}",
-			("Rarity", static_cast<int32>(Picked.Rarity)),
+			("Rarity", RarityName),
 			("DefId", Picked.DefId.ToString()),
 			("Weight", Picked.SelectionWeight)
 		);
