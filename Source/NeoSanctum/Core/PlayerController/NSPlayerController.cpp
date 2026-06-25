@@ -679,18 +679,18 @@ void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
 
 void ANSPlayerController::StartSkillUIApplyRetry()
 {
-	if (!IsLocalController())
-	{
-		return;
-	}
-	
 	SkillUIApplyRetryCount = 0;
 	
+	if (TryApplySkillUIFromCurrentCharacter())
+	{
+		GetWorldTimerManager().ClearTimer(SkillUIApplyRetryTimerHandle);
+		return;
+	}
 	GetWorldTimerManager().ClearTimer(SkillUIApplyRetryTimerHandle);
 	GetWorldTimerManager().SetTimer(
 		SkillUIApplyRetryTimerHandle,
 		this,
-		&ANSPlayerController::RetryApplySkillUIFromCurrentCharacter,
+		&ANSPlayerController::HandleSkillUIApplyRetry,
 		0.1f,
 		true);
 }
@@ -722,38 +722,32 @@ bool ANSPlayerController::TryApplySkillUIFromCurrentCharacter()
 	
 	UNSCharacterData* CurrentCharacterData =
 		NSPlayerState->GetCurrentCharacterData();
-	if (!CurrentCharacterData)
-	{
-		return false;
-	}
-	UNSUIManagerSubsystem* UIManager =
-		GetGameInstance()
-	? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
-	: nullptr;
-	
-	if (!UIManager || !UIManager->GetHUDWidget())
+	if (!CurrentCharacterData || !CurrentCharacterData->CharacterTag.IsValid())
 	{
 		return false;
 	}
 	
-	const FString CharacterTagString =
-		CurrentCharacterData->CharacterTag.GetTagName().ToString();
-	
-	FString Left;
-	FString CharacterRowNameString;
-	
-	if (!CharacterTagString.Split(
-		TEXT("."),
-		&Left,
-		&CharacterRowNameString,
-		ESearchCase::IgnoreCase,
-		ESearchDir::FromEnd))
+	UNSUIManagerSubsystem* UIManagerSubsystem =
+		UNSUIManagerSubsystem::Get(this);
+	if (!UIManagerSubsystem)
 	{
-		CharacterRowNameString = CharacterTagString;
+		return false;
 	}
+	
+	UIManagerSubsystem->ApplyCharacterSkillUISet(
+		CurrentCharacterData->CharacterTag.GetTagName());
 
-	UIManager->ApplyCharacterSkillUISet(FName(*CharacterRowNameString));
 	return true;
+}
+
+void ANSPlayerController::HandleSkillUIApplyRetry()
+{
+	constexpr int32 MaxRetryCount = 20;
+	++SkillUIApplyRetryCount;
+	if (TryApplySkillUIFromCurrentCharacter() || SkillUIApplyRetryCount >= MaxRetryCount)
+	{
+		GetWorldTimerManager().ClearTimer(SkillUIApplyRetryTimerHandle);
+	}
 }
 
 void ANSPlayerController::UpdateSkillUIFromCurrentCharacter()
@@ -771,25 +765,22 @@ void ANSPlayerController::UpdateSkillUIFromCurrentCharacter()
 
 	UNSCharacterData* CurrentCharacterData =
 		NSPlayerState->GetCurrentCharacterData();
-	if (!CurrentCharacterData)
+	if (!CurrentCharacterData || !CurrentCharacterData->CharacterTag.IsValid())
 	{
 		return;
 	}
 
-	UNSUIManagerSubsystem* UIManager =
-		GetGameInstance()
-		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
-		: nullptr;
-
+	UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this);
 	if (!UIManager)
 	{
 		return;
 	}
 
+	// DT_CharacterSkillUISet의 RowName이 Character.Player.Engineer 형태이므로
+	// 태그의 마지막 조각만 자르지 않고 전체 TagName을 사용한다.
 	UIManager->ApplyCharacterSkillUISet(
 		CurrentCharacterData->CharacterTag.GetTagName());
 }
-
 void ANSPlayerController::Server_CancelVote_Implementation()
 {
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
@@ -1077,16 +1068,19 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UpdateHUDHealthAndShield();
 		UpdateHUDAmmo();
 		BindCurrencyToHUD();
-		UpdateSkillUIFromCurrentCharacter();
+		
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDHealthAndShield);
 		GetWorldTimerManager().SetTimerForNextTick(
 	this,
 	&ANSPlayerController::UpdateHUDAmmo);
-		GetWorldTimerManager().SetTimerForNextTick(
-	this,
-	&ANSPlayerController::UpdateSkillUIFromCurrentCharacter);
+		if (!MapName.Contains(TEXT("HideOut")))
+		{
+			GetWorldTimerManager().SetTimerForNextTick(
+				this,
+				&ANSPlayerController::UpdateSkillUIFromCurrentCharacter);
+		}
 	}
 	if (MapName.Contains(TEXT("HideOut")))
 	{
@@ -1551,6 +1545,17 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	}
 
 	ProgressComponent->ApplyPayload(Payload);
+	
+	if (!Payload.ActiveCharacterId.IsNone())
+	{
+		const FPrimaryAssetType CharacterType =
+			OwningPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
+		const FPrimaryAssetId NewCharacterDataId(
+	CharacterType,
+	Payload.ActiveCharacterId);
+		OwningPlayerState->SetCurrentCharacterDataId(NewCharacterDataId);
+	}
+	
 	// 업로드로 서버 ProgressComponent가 갱신된 직후, 현재 폰이 있으면 즉시 적용
 	if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn()))
 	{
@@ -1701,6 +1706,8 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 
 	// 활성 캐릭터 슬롯
 	Payload.ActiveCharacterId = SelectedCharacterId;
+
+	
 	const FNSCharacterSaveData* CharacterSlot = PermanentSave->Characters.Find(SelectedCharacterId);
 	if (CharacterSlot)
 	{
@@ -1775,7 +1782,7 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 	}
 
 	const FName SelectedKey = SelectedCharacterData->GetPrimaryAssetId().PrimaryAssetName;
-
+	
 	// 최근 선택 캐릭터 로컬 저장
 	UGameInstance* GameInstance = GetGameInstance();
 	UNSSaveGameSubsystem* SaveSubsystem =
@@ -1809,7 +1816,7 @@ void ANSPlayerController::RestoreLastSelectedCharacter()
 	{
 		return;
 	}
-
+	
 	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
 	if (!OwningPlayerState)
 	{
@@ -1824,17 +1831,42 @@ void ANSPlayerController::RestoreLastSelectedCharacter()
 	const FSoftObjectPath DataPath = UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
 	if (!DataPath.IsValid())
 	{
+
 		return;
 	}
 
 	UNSCharacterData* RestoredData = Cast<UNSCharacterData>(DataPath.TryLoad());
 	if (!RestoredData)
 	{
+
 		return;
 	}
-	
+
 	// 동일 커밋 경로 재사용
 	CommitCharacterSelection(RestoredData);
+	
+	if (IsLocalController())
+	{
+		const FGameplayTag RestoredCharacterTag =
+			RestoredData->CharacterTag;
+
+		GetWorldTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(
+				this,
+				[this, RestoredCharacterTag]()
+				{
+					if (!RestoredCharacterTag.IsValid())
+					{
+						return;
+					}
+
+					if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+					{
+						UIManager->ApplyCharacterSkillUISet(
+							RestoredCharacterTag.GetTagName());
+					}
+				}));
+	}
 }
 
 void ANSPlayerController::EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
@@ -1937,6 +1969,7 @@ void ANSPlayerController::RebindHUDRuntimeState()
 	UpdateHUDHealthAndShield();
 	UpdateHUDAmmo();
 	UpdateHUDCurrency();
+	//UpdateSkillUIFromCurrentCharacter();
 
 	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()

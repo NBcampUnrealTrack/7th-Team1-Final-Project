@@ -230,6 +230,7 @@ private:
 	void StartSkillUIApplyRetry();
 	void RetryApplySkillUIFromCurrentCharacter();
 	bool TryApplySkillUIFromCurrentCharacter();
+	void HandleSkillUIApplyRetry();
 	
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
 private:
