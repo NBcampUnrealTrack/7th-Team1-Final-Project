@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonUserWidget.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NSPetUpgradeWidget.generated.h"
 
 /**
@@ -11,16 +11,15 @@
  * 펫 강화 백엔드 미구현 —> 현재는 오픈/클로즈 + 입력모드 전환만 담당
  */
 UCLASS()
-class NEOSANCTUM_API UNSPetUpgradeWidget : public UCommonUserWidget
+class NEOSANCTUM_API UNSPetUpgradeWidget : public UNSNPCInteractionWidgetBase
 {
 	GENERATED_BODY()
 
 public:
-	// 펫 NPC가 호출
-	void OpenForInteractor(APlayerController* Interactor);
+	virtual void OpenForInteractor(APlayerController* Interactor) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Pet")
-	void CloseWidget();
+	virtual void CloseWidget() override;
 
 private:
 	TWeakObjectPtr<APlayerController> OwningController;

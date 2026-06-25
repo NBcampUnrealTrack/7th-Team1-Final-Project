@@ -8,6 +8,7 @@
 #include "NSInteractableNPCBase.generated.h"
 
 class USphereComponent;
+class UNSNPCInteractionWidgetBase;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSInteractableNPCBase : public ACharacter, public INSInteractable
@@ -22,6 +23,8 @@ public:
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual FText GetPromptText_Implementation() const override;
 	virtual FVector GetPromptWorldLocation_Implementation() const override;
+
+	virtual TSubclassOf<UNSNPCInteractionWidgetBase> GetInteractionWidgetClass() const { return nullptr; }
 
 	FName GetNPCId() const { return NPCId; }
 protected:

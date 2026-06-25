@@ -14,7 +14,7 @@ class NEOSANCTUM_API ANSPetNPC : public ANSInteractableNPCBase
 	GENERATED_BODY()
 
 public:
-	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
+	virtual TSubclassOf<UNSNPCInteractionWidgetBase> GetInteractionWidgetClass() const override;
 
 protected:
 	// 펫 강화 UI 위젯 클래스

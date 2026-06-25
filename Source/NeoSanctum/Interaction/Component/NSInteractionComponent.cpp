@@ -6,7 +6,9 @@
 #include "NeoSanctum/UI/Interaction/NSInteractionPromptWidget.h"
 #include "Components/WidgetComponent.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
+#include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -172,6 +174,17 @@ void UNSInteractionComponent::Client_OnInteractApproved_Implementation(AActor* T
 	{
 		return;
 	}
+
+	// NPC 상호작용은 PC가 위젯 생성을 담당
+	ANSInteractableNPCBase* NPC = Cast<ANSInteractableNPCBase>(Target);
+	ANSPlayerController* NSPC = Cast<ANSPlayerController>(PC);
+	if (NPC && NSPC)
+	{
+		NSPC->OpenInteractionWidget(NPC);
+		return;
+	}
+
+	// 드롭 파츠 등 비-NPC 상호작용은 기존 흐름 유지
 	INSInteractable::Execute_OnInteract(Target, PC);
 }
 

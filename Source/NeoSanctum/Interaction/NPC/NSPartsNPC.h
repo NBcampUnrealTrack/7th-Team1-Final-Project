@@ -14,7 +14,8 @@ class NEOSANCTUM_API ANSPartsNPC : public ANSInteractableNPCBase
 	GENERATED_BODY()
 
 public:
-	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
+	virtual TSubclassOf<UNSNPCInteractionWidgetBase> GetInteractionWidgetClass() const override;
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="NPC|UI")
 	TSubclassOf<UNSPartEquipWidget> PartEquipWidgetClass;
