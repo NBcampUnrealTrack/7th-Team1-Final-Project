@@ -174,7 +174,7 @@ private:
 		int32 N,
 		ENSAugmentRarity& OutRarity) const;
 	
-	// 서버 전용: 추첨 대기 중인 풀 태그 FIFO 큐, front가 현재 표시 대상이며, 선택 완료 시 제거된다.
+	// 서버 전용: 보상 트리거 FIFO 큐, front가 현재 표시 대상이며, 선택 완료 시 제거된다.
 	TArray<FGameplayTag> RewardTriggerQueue;
 
 	// front 오퍼가 이미 추첨되어 캐싱됐는지 (패널 재오픈 시 재추첨 방지, 리롤로만 재추첨)

@@ -4,7 +4,6 @@
 
 #include "Engine/DataTable.h"
 #include "Misc/DataValidation.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 FPrimaryAssetId UNSRewardTriggerData::GetPrimaryAssetId() const
 {
@@ -46,14 +45,6 @@ EDataValidationResult UNSRewardTriggerData::IsDataValid(FDataValidationContext& 
 				FText::FromString(TEXT("RewardEntries[{0}]의 Weight는 0보다 커야 합니다.")),
 				FText::AsNumber(EntryIndex))
 			);
-			Result = EDataValidationResult::Invalid;
-		}
-		
-		if (Entry.RewardTypeTag == NSGameplayTags::Reward_Type_Augment)
-		{
-			Context.AddError(FText::Format(
-				FText::FromString(TEXT("RewardEntries[{0}]는 증강 보상 타입이지만 AugmentPool이 비어 있습니다.")),
-				FText::AsNumber(EntryIndex)));
 			Result = EDataValidationResult::Invalid;
 		}
 	}
