@@ -49,7 +49,7 @@ EDataValidationResult UNSRewardTriggerData::IsDataValid(FDataValidationContext& 
 			Result = EDataValidationResult::Invalid;
 		}
 		
-		if (Entry.RewardTypeTag == NSGameplayTags::Reward_Type_Augment && Entry.AugmentPool.IsNull())
+		if (Entry.RewardTypeTag == NSGameplayTags::Reward_Type_Augment)
 		{
 			Context.AddError(FText::Format(
 				FText::FromString(TEXT("RewardEntries[{0}]는 증강 보상 타입이지만 AugmentPool이 비어 있습니다.")),

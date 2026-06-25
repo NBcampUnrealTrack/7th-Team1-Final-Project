@@ -10,7 +10,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
-#include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
+#include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -30,19 +30,25 @@ void UNSAugmentSelectionComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 }
 
 // 서버 트리거(레벨업/엘리트처치/보스처치/보물상자) → 대기열 적재 후 패널 오픈
-void UNSAugmentSelectionComponent::EnqueueOffer(FGameplayTag PoolTag)
+void UNSAugmentSelectionComponent::EnqueueOffer(FGameplayTag RewardTriggerTag)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
-	if (!PoolTag.IsValid())
+	if (!RewardTriggerTag.IsValid())
+	{
+		return;
+	}
+	
+	FNSAugmentRarityRule RarityRule;
+	if (!TryFindRarityRule(RewardTriggerTag, RarityRule))
 	{
 		return;
 	}
 
-	PoolQueue.Add(PoolTag);
-	SetPendingCount(PoolQueue.Num());
+	RewardTriggerQueue.Add(RewardTriggerTag);
+	SetPendingCount(RewardTriggerQueue.Num());
 
 	// 클라이언트 패널 UI 열기
 	Client_AutoOpenPanel();
@@ -55,9 +61,9 @@ void UNSAugmentSelectionComponent::EnqueueOffer(FGameplayTag PoolTag)
 }
 
 // 클라이언트 트리거(보물상자 등)에서 서버로 적재 요청
-void UNSAugmentSelectionComponent::Server_EnqueueOffer_Implementation(FGameplayTag PoolTag)
+void UNSAugmentSelectionComponent::Server_EnqueueOffer_Implementation(FGameplayTag RewardTriggerTag)
 {
-	EnqueueOffer(PoolTag);
+	EnqueueOffer(RewardTriggerTag);
 }
 
 // Tab으로 패널을 열 때 → 대기열 front 표시
@@ -78,7 +84,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 		return;
 	}
 	// 표시 중인 오퍼가 없으면 리롤 불가
-	if (!bFrontRolled || !CurrentPool)
+	if (!bFrontRolled || RewardTriggerQueue.IsEmpty())
 	{
 		return;
 	}
@@ -125,18 +131,17 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 	NSInvComp->ApplyAugment(Chosen);
 
 	// front 오퍼 소비
-	if (PoolQueue.Num() > 0)
+	if (RewardTriggerQueue.Num() > 0)
 	{
-		PoolQueue.RemoveAt(0);
+		RewardTriggerQueue.RemoveAt(0);
 	}
 	bFrontRolled = false;
 	PendingOffer.Reset();
 	CurrentRerollCost = 0;
-	CurrentPool = nullptr;
-	SetPendingCount(PoolQueue.Num());
+	SetPendingCount(RewardTriggerQueue.Num());
 
 	// 남은 대기가 있으면 다음 카드 자동 표시, 없으면 카드 영역만 닫기 (패널은 유지)
-	if (PoolQueue.Num() > 0)
+	if (RewardTriggerQueue.Num() > 0)
 	{
 		PresentFront();
 	}
@@ -171,10 +176,9 @@ void UNSAugmentSelectionComponent::Reset()
 	{
 		Client_CloseOffer();
 	}
-	PoolQueue.Reset();
+	RewardTriggerQueue.Reset();
 	PendingOffer.Reset();
 	bFrontRolled = false;
-	CurrentPool = nullptr;
 	CurrentRerollCost = 0;
 	SetPendingCount(0);
 }
@@ -186,18 +190,17 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	{
 		return;
 	}
-	if (PoolQueue.Num() == 0)
+	if (RewardTriggerQueue.Num() == 0)
 	{
 		return;
 	}
 
-	UNSAugmentPoolDefinition* Pool = FindPool(PoolQueue[0]);
-	if (!Pool)
+	FNSAugmentRarityRule RarityRule;
+	if (!TryFindRarityRule(RewardTriggerQueue[0], RarityRule))
 	{
 		return;
 	}
-	CurrentPool = Pool;
-
+	
 	// 미추첨이면 첫 추첨, 리롤 요청이면 강제 재추첨. 둘 다 아니면 캐시 그대로 재전송(재오픈 시 동일 카드 유지)
 	if (!bFrontRolled || bReroll)
 	{
@@ -206,9 +209,10 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 		{
 			CurrentRerollCost = 0;
 		}
+		
 		// RollCards는 결정된 Rarity를 OutRarity로 돌려주지만 현재 사용처 없음 (로컬로만 받음)
 		ENSAugmentRarity RolledRarity = ENSAugmentRarity::Common;
-		PendingOffer = RollCards(CurrentPool, CardsCount, RolledRarity);
+		PendingOffer = RollCards(RarityRule, CardsCount, RolledRarity);
 		bFrontRolled = true;
 	}
 
@@ -252,32 +256,45 @@ void UNSAugmentSelectionComponent::Client_AutoOpenPanel_Implementation()
 	}
 }
 
-// PoolTag가 일치하는 PoolDefinition리턴
-UNSAugmentPoolDefinition* UNSAugmentSelectionComponent::FindPool(const FGameplayTag& PoolTag) const
+bool UNSAugmentSelectionComponent::TryFindRarityRule(
+	const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const
 {
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
-	if (!Data || !Data->IsRunReady())
+	OutRule = FNSAugmentRarityRule();
+	
+	if (!IsValid(AugmentRarityRuleSet))
 	{
-		return nullptr;
+		NS_OBJ_LOG(LogNS, Warning, "증강 희귀도 규칙 세트가 설정되지 않았습니다.");
+		return false;
 	}
-
-	TArray<UNSAugmentPoolDefinition*> Pools =
-		Data->GetAllDataOfType<UNSAugmentPoolDefinition>(UNSDataSubsystem::AugmentPoolAssetType);
-	for (UNSAugmentPoolDefinition* Pool : Pools)
+	
+	if (!RewardTriggerTag.IsValid())
 	{
-		if (Pool && Pool->PoolTag == PoolTag)
+		return false;
+	}
+	
+	for (const FNSAugmentRarityRule& Rule : AugmentRarityRuleSet->RarityRules)
+	{
+		if (Rule.RewardTriggerTag == RewardTriggerTag)
 		{
-			return Pool;
+			OutRule = Rule;
+			return true;
 		}
 	}
-	return nullptr;
+	
+	NS_OBJ_LOG(LogNS, Warning,
+		"증강 희귀도 규칙을 찾지 못했습니다. RewardTriggerTag={RewardTriggerTag}",
+		("RewardTriggerTag", RewardTriggerTag.ToString())
+	);
+	
+	return false;
 }
 
 TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
-	UNSAugmentPoolDefinition* Pool, int32 N, ENSAugmentRarity& OutRarity) const
+	const FNSAugmentRarityRule& RarityRule, int32 N, ENSAugmentRarity& OutRarity) const
 {
 	OutRarity = ENSAugmentRarity::Common;
-	if (!Pool)
+	
+	if (N <= 0)
 	{
 		return {};
 	}
@@ -296,9 +313,9 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
 	const TSet<FPrimaryAssetId> EmptyExcluded;
 
 	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
-	BuildRarityBuckets(Data, Pool, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
+	BuildRarityBuckets(Data, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
 
-	return DrawCards(Pool, ByRarity, N, OutRarity);
+	return DrawCards(RarityRule, ByRarity, N, OutRarity);
 }
 
 // Definition SoftPtr를 직접 로드하지 않고 DataSubsystem 캐시에서 해석.
@@ -480,7 +497,6 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
  */
 void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	UNSDataSubsystem* Data,
-	const UNSAugmentPoolDefinition* Pool,
 	bool bLegendaryFull,
 	const TSet<FPrimaryAssetId>& OwnedLegendarySlotIds,
 	const TSet<FPrimaryAssetId>& StackFullIds,
@@ -489,7 +505,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 {
 	OutByRarity.Reset();
 	
-	if (!Data || !Pool || !IsValid(AugmentDefinitionTable))
+	if (!Data || !IsValid(AugmentDefinitionTable))
 	{
 		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
@@ -558,51 +574,60 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 
 // 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 가중치 추첨
 TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
-	const UNSAugmentPoolDefinition* Pool,
+	const FNSAugmentRarityRule& RarityRule,
 	const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
 	int32 N,
 	ENSAugmentRarity& OutRarity) const
 {
 	OutRarity = ENSAugmentRarity::Common;
 	TArray<FPrimaryAssetId> Result;
-	if (!Pool || N <= 0)
+	if (N <= 0)
 	{
 		return Result;
 	}
 
 	// 후보가 있는 Rarity들의 가중치만 합산 (빈 버킷에 헛돌지 않음)
-	float TotalWeight = 0.f;
-	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
+	int32 TotalRarityWeight = 0;
+	
+	for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
 	{
 		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
-		if (Bucket && Bucket->Num() > 0)
+		
+		if (!Bucket || Bucket->Num() == 0)
 		{
-			TotalWeight += FMath::Max(0.f, RarityWeight.Value);
+			continue;
 		}
+		
+		TotalRarityWeight += FMath::Max(0, RarityWeight.Value);
 	}
-	if (TotalWeight <= 0.f)
+	if (TotalRarityWeight <= 0)
 	{
 		return Result;
 	}
 
 	// 가중치 룰렛으로 이번 오퍼의 Rarity 1번만 결정
-	const float Pick = FMath::FRandRange(0.f, TotalWeight);
-	float CumulativeSum = 0.f;
+	const int32 RollValue = FMath::RandRange(1, TotalRarityWeight);
+	int32 AccumulatedRarityWeight = 0;
+	
 	ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
-	for (const TPair<ENSAugmentRarity, float>& RarityWeight : Pool->RarityWeights)
+	
+	for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
 	{
 		const TArray<FNSAugmentCandidate>* Bucket = ByRarity.Find(RarityWeight.Key);
 		if (!Bucket || Bucket->Num() == 0)
 		{
 			continue;
 		}
-		CumulativeSum += FMath::Max(0.f, RarityWeight.Value);
-		if (Pick <= CumulativeSum)
+		
+		AccumulatedRarityWeight += FMath::Max(0, RarityWeight.Value);
+		
+		if (RollValue <= AccumulatedRarityWeight)
 		{
 			ChosenRarity = RarityWeight.Key;
 			break;
 		}
 	}
+	
 	OutRarity = ChosenRarity;
 
 	// 선택된 희귀도 버킷에서 남은 후보의 SelectionWeight를 기준으로 중복 없이 가중치 추첨.
@@ -625,7 +650,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 			break;
 		}
 		
-		const int32 RollValue = FMath::RandRange(1, TotalSelectionWeight);
+		const int32 SelectionRollValue = FMath::RandRange(1, TotalSelectionWeight);
 		int32 AccumulateWeight = 0;
 		int32 PickIndex = INDEX_NONE;
 		
@@ -633,7 +658,7 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::DrawCards(
 		{
 			AccumulateWeight += Bucket[CandidateIndex].SelectionWeight;
 			
-			if (RollValue <= AccumulateWeight)
+			if (SelectionRollValue <= AccumulateWeight)
 			{
 				PickIndex = CandidateIndex;
 				break;

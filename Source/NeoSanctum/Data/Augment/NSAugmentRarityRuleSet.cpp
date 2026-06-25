@@ -1,8 +1,8 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NSAugmentPoolDefinition.h"
+#include "NSAugmentRarityRuleSet.h"
 
-FPrimaryAssetId UNSAugmentPoolDefinition::GetPrimaryAssetId() const
+FPrimaryAssetId UNSAugmentRarityRuleSet::GetPrimaryAssetId() const
 {
 	return FPrimaryAssetId(TEXT("NSAugmentPool"), GetFName());
 }

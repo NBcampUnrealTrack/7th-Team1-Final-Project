@@ -8,7 +8,6 @@
 #include "NSRewardTypes.generated.h"
 
 class UNSPartDefinition;
-class UNSAugmentPoolDefinition;
 
 /**
  * 보상 트리거에서 사용할 보상 항목 데이터
@@ -23,9 +22,6 @@ struct FNSRewardEntry
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward", meta = (ClampMin = "0.0"))
 	float Weight = 1.0f;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
-	TSoftObjectPtr<UNSAugmentPoolDefinition> AugmentPool;
 };
 
 /**

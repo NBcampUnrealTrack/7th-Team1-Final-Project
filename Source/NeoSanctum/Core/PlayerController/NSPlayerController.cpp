@@ -43,6 +43,7 @@
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 
 ANSPlayerController::ANSPlayerController()
@@ -1922,11 +1923,11 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 	
 	if (HasAuthority())
 	{
-		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Reward_Trigger_EliteKill);
 	}
 	else
 	{
-		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Reward_Trigger_EliteKill);
 	}
 }
 
