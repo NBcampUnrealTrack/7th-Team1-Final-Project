@@ -31,18 +31,6 @@ struct FNSAugmentCandidate
 	bool bCountsAsLegendarySlot = false;
 };
 
-USTRUCT(BlueprintType)
-struct FNSAugmentSelectionCard
-{
-	GENERATED_BODY()
-	
-	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
-	FPrimaryAssetId DefId;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
-	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
-};
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FNSAugmentSelectionCard>&, Cards, int32, RerollCost);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
@@ -131,7 +119,7 @@ private:
 
 	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;
 
-	// 증강 Rarity 추첨 -> 해당 Rarity내 나올 수 있는 증강 추첨 (오퍼)
+	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
@@ -179,7 +167,12 @@ private:
 		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity
 	) const;
 
-	// 카드 슬롯마다 희귀도를 독립적으로 결정한 뒤, 해당 희귀도 후보에서 SelectionWeight를 기준으로 카드를 선택.
+	/**
+ 	 * 카드 슬롯마다 희귀도와 후보를 독립적으로 선택.
+ 	 *
+ 	 * 카드가 선택될 때마다 해당 후보는 RemainingByRarity에서 제거된다.
+ 	 * 이후 슬롯은 남은 후보가 있는 희귀도만 대상으로 확률을 다시 계산.
+ 	 */
 	TArray<FNSAugmentSelectionCard> DrawCards(
 		const FNSAugmentRarityRule& RarityRule,
 		const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,

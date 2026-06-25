@@ -116,3 +116,22 @@ struct FNSAugmentInstance
 	FActiveGameplayEffectHandle EffectHandle;
 	FGameplayAbilitySpecHandle  AbilityHandle;
 };
+
+/**
+ * 서버가 확정한 증강 선택 카드 스냅샷.
+ *
+ * DefId는 실제 증강 적용 대상을 식별하고, Rarity는 카드별 UI 표현을 위해 함께 전달한다.
+ *
+ * 클라이언트는 카드 Index만 서버에 요청하며, 서버는 PendingOffer[Index].DefId를 사용해 증강을 적용.
+ */
+USTRUCT(BlueprintType)
+struct FNSAugmentSelectionCard
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
+	FPrimaryAssetId DefId;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
+	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+};

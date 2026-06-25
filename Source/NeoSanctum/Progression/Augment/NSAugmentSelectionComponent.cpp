@@ -569,7 +569,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	}
 }
 
-// 가중치 룰렛으로 Rarity 1회 결정 → 해당 Rarity 버킷에서 N장 중복 없이 가중치 추첨
+// 카드 슬롯마다 희귀도를 독립적으로 결정한 뒤, 해당 희귀도 버킷에서 가중치 기반으로 후보를 하나 선택.
 TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 	const FNSAugmentRarityRule& RarityRule,
 	const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
@@ -587,11 +587,13 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 	
 	Result.Reserve(N);
 	
+	// 오퍼의 각 카드 슬롯마다 희귀도와 후보를 독립적으로 다시 추첨.
 	for (int32 CardIndex = 0; CardIndex < N; ++CardIndex)
 	{
 		// 현재 후보가 남아 있는 희귀도만으로 가중치를 다시 계산.
 		int32 TotalRarityWeight = 0;
 		
+		// 후보가 남은 희귀도만 합산해 이번 카드 슬롯의 희귀도 룰렛 범위를 구성.
 		for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
 		{
 			const TArray<FNSAugmentCandidate>* Bucket = RemainingByRarity.Find(RarityWeight.Key);
@@ -614,6 +616,7 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 		ENSAugmentRarity ChosenRarity = ENSAugmentRarity::Common;
 		bool bFoundRarity = false;
 		
+		// 희귀도 룰렛 값이 포함되는 누적 가중치 구간을 찾아 이번 카드의 희귀도 결정.
 		for (const TPair<ENSAugmentRarity, int32>& RarityWeight : RarityRule.RarityWeights)
 		{
 			const TArray<FNSAugmentCandidate>* Bucket = RemainingByRarity.Find(RarityWeight.Key);
@@ -647,12 +650,13 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 		
 		int32 TotalSelectionWeight = 0;
 		
+		// 선택된 희귀도 버킷 안에서 후보 선택 룰렛의 총 가중치를 계산.
 		for (const FNSAugmentCandidate& Candidate : *SelectedBucket)
 		{
 			TotalSelectionWeight += Candidate.SelectionWeight;
 		}
 		
-		if (TotalRarityWeight <= 0)
+		if (TotalSelectionWeight <= 0)
 		{
 			break;
 		}
@@ -662,9 +666,10 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 		int32 AccumulatedSelectionWeight = 0;
 		int32 PickIndex = INDEX_NONE;
 		
+		// 후보 룰렛 값이 포함되는 누적 SelectionWeight 구간을 찾아 카드 후보 하나 선택.
 		for (int32 CandidateIndex = 0; CandidateIndex < SelectedBucket->Num(); ++CandidateIndex)
 		{
-			AccumulatedRarityWeight += (*SelectedBucket)[CandidateIndex].SelectionWeight;
+			AccumulatedSelectionWeight += (*SelectedBucket)[CandidateIndex].SelectionWeight;
 			
 			if (SelectionRollValue <= AccumulatedSelectionWeight)
 			{
@@ -680,6 +685,7 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::DrawCards(
 		
 		const FNSAugmentCandidate Picked = (*SelectedBucket)[PickIndex];
 		
+		// 같은 후보가 이번 오퍼 안에서 중복 선택되지 않도록 제거.
 		SelectedBucket->RemoveAtSwap(PickIndex);
 		
 		NS_OBJ_LOG(LogNS, Log,
