@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonUserWidget.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NSPartEquipWidget.generated.h"
 
@@ -11,12 +11,11 @@ class UNSPartDefinition;
 class UNSPartEquipComponent;
 
 UCLASS()
-class NEOSANCTUM_API UNSPartEquipWidget : public UCommonUserWidget
+class NEOSANCTUM_API UNSPartEquipWidget : public UNSNPCInteractionWidgetBase
 {
 	GENERATED_BODY()
 public:
-	// 파츠 NPC가 호출 -> 뷰포트 추가 + 입력모드 전환
-	void OpenForInteractor(APlayerController* Interactor);
+	virtual void OpenForInteractor(APlayerController* Interactor) override;
 
 	// 목록에서 선택한 Common 파츠 장착
 	UFUNCTION(BlueprintCallable, Category = "Part")
@@ -28,7 +27,7 @@ public:
 
 	// 실제 닫기 + 입력모드 복구
 	UFUNCTION(BlueprintCallable, Category = "Part")
-	void CloseWidget();
+	virtual void CloseWidget() override;
 
 	// 현재 슬롯 장착 파츠 조회
 	UFUNCTION(BlueprintCallable, Category = "Part")
