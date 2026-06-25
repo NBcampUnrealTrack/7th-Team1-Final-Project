@@ -83,6 +83,13 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 	// false면 후보와 Modifier 캐시에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
 	bool bEnabled = true;
+	
+	/**
+	 * true면 이 증강을 처음 획들할 때 Legendary 슬롯 하나를 점유.
+	 * Rarity와 분리해 Legendary 수치 증강과 Legendary 기믹 증강을 구분.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
+	bool bCountAsLegendarySlot = false;
 };
 
 // 인런 한정 보유 인스턴스, 핸들은 서버에서만 유효

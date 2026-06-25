@@ -315,7 +315,7 @@ void UNSCombatStatComponent::RebuildAugmentSourceCache()
 		return;
 	}
 	
-	const FString ContextString = "AugmentModifierCache";
+	const FString ContextString = TEXT("AugmentModifierCache");
 	
 	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
 	{

@@ -7,6 +7,8 @@
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
+#include "NeoSanctum/Debug/Logging/NSLogCategories.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 
 UNSAugmentInventoryComponent::UNSAugmentInventoryComponent()
@@ -19,6 +21,54 @@ void UNSAugmentInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME_CONDITION(UNSAugmentInventoryComponent, Owned, COND_OwnerOnly);
+}
+
+bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
+	const FPrimaryAssetId& DefId, FNSAugmentDefinitionRow& OutRow) const
+{
+	OutRow = FNSAugmentDefinitionRow();
+	
+	if (!IsValid(AugmentDefinitionTable) || !DefId.IsValid())
+	{
+		return false;
+	}
+	
+	if (AugmentDefinitionTable->GetRowStruct() != FNSAugmentDefinitionRow::StaticStruct())
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 효과 정의 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
+			("Table", AugmentDefinitionTable->GetName())
+		);
+		return false;
+	}
+	
+	const FString ContextString = TEXT("AugmentInventoryDefinitionLookup");
+	
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
+	{
+		const FNSAugmentDefinitionRow* Row =
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
+		
+		if (!Row || !Row->bEnabled || Row->Definition.IsNull())
+		{
+			continue;
+		}
+		
+		const FPrimaryAssetId RowDefId(UNSDataSubsystem::AugmentAssetType, FName(*Row->Definition.GetAssetName()));
+		
+		if (RowDefId == DefId)
+		{
+			OutRow = *Row;
+			return true;
+		}
+	}
+	
+	NS_OBJ_LOG(LogNS, Warning,
+		"보유 증강에 대응하는 정의 Row를 찾지 못했습니다. DefId={DefId}",
+		("DefId", DefId.ToString())
+	);
+	
+	return false;
 }
 
 void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
@@ -41,6 +91,12 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		return;
 	}
 	
+	FNSAugmentDefinitionRow DefinitionRow;
+	if (!TryFindDefinitionRow(DefId, DefinitionRow))
+	{
+		return;
+	}
+	
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC)
 	{
@@ -59,13 +115,11 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		ApplyStackEffect(*Existing, Def, ASC);
 	} else
 	{
-		const bool bIsHaveLegendarySlot = Def->Rarity == ENSAugmentRarity::Legendary && !Def->GrantedAbilityClass.IsNull();
-		
 		FNSAugmentInstance NewInstance;
 		NewInstance.DefId = DefId;
 		NewInstance.Rarity = Def->Rarity;
 		NewInstance.Stacks = 1;
-		NewInstance.bCountsAsLegendarySlot = bIsHaveLegendarySlot;
+		NewInstance.bCountsAsLegendarySlot = DefinitionRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
 		ApplyStackEffect(NewInstance, Def, ASC);
 		// Legendary 기믹 GA
@@ -125,7 +179,7 @@ void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst
 	TSubclassOf<UGameplayAbility> AbilityClass = GAClass;
 	Inst.AbilityHandle = ASC->GiveAbility((FGameplayAbilitySpec(AbilityClass, 1,INDEX_NONE, this)));
 }
-	
+
 void UNSAugmentInventoryComponent::ClearAll()
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
