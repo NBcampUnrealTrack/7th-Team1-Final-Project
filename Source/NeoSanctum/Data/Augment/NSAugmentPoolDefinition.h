@@ -33,11 +33,4 @@ public:
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Entries")
 	TArray<TSoftObjectPtr<UNSAugmentDefinition>> Entries;
-	
-	/**
-	 * 지금이 고등급 풀이고 플레이어의 Legendary증강이 최대개수에 도달한경우 수치강화 Legendary증강이 들어감
-	 * 다른 Common/Rare/Epic처럼 StackEffectClass만 설정된 Legendary Definition을 등록 
-	 */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Entries")
-	TArray<TSoftObjectPtr<UNSAugmentDefinition>> LegendaryStatEntries;
 };

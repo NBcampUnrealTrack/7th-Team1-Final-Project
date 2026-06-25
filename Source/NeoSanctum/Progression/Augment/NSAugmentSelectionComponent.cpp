@@ -288,15 +288,15 @@ TArray<FPrimaryAssetId> UNSAugmentSelectionComponent::RollCards(
 	}
 
 	bool bLegendaryFull = false;
-	TSet<FPrimaryAssetId> OwnedMechanicLegendaryIds;
+	TSet<FPrimaryAssetId> OwnedLegendarySlotIds;
 	TSet<FPrimaryAssetId> StackFullIds;
-	CollectInventoryFilter(bLegendaryFull, OwnedMechanicLegendaryIds, StackFullIds);
+	CollectInventoryFilter(bLegendaryFull, OwnedLegendarySlotIds, StackFullIds);
 
 	// 새 오퍼는 제외 셋 없음
 	const TSet<FPrimaryAssetId> EmptyExcluded;
 
 	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
-	BuildRarityBuckets(Data, Pool, bLegendaryFull, OwnedMechanicLegendaryIds, StackFullIds, EmptyExcluded, ByRarity);
+	BuildRarityBuckets(Data, Pool, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
 
 	return DrawCards(Pool, ByRarity, N, OutRarity);
 }
@@ -377,6 +377,7 @@ bool UNSAugmentSelectionComponent::TryCreateCandidate(
 	OutCandidate.Rarity = Row.Rarity;
 	OutCandidate.SelectionWeight = Row.SelectionWeight;
 	OutCandidate.MaxStacks = Row.MaxStack;
+	OutCandidate.bCountsAsLegendarySlot = Row.bCountAsLegendarySlot;
 	
 	return true;
 }
@@ -395,8 +396,7 @@ bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
 	
 	const FString ContextString = TEXT("AugmentDefinitionLookup");
 	
-	// 기존 Inventory와 LegendaryStatEntries는 DefId를 기준으로 보유하므로,
-	// 현재는 대응하는 DT 후보 메타를 찾기 위해 Row를 순회.
+	// 기존 Inventory가 보유하는 DefId를 DT 후보 메타 정보에 연결하기 위해 Row를 순회.
 	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
 	{
 		const FNSAugmentDefinitionRow* Row = 
@@ -426,11 +426,11 @@ bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
 // 보유 인벤토리에서 레전더리 상태와 DT 기준 MaxStack에 도달한 DefId를 수집.
 void UNSAugmentSelectionComponent::CollectInventoryFilter(
 	bool& bOutLegendaryFull,
-	TSet<FPrimaryAssetId>& OutOwnedMechanicIds,
+	TSet<FPrimaryAssetId>& OutOwnedLegendarySlotIds,
 	TSet<FPrimaryAssetId>& OutStackFullIds) const
 {
 	bOutLegendaryFull = false;
-	OutOwnedMechanicIds.Reset();
+	OutOwnedLegendarySlotIds.Reset();
 	OutStackFullIds.Reset();
 
 	APlayerController* PC = Cast<APlayerController>(GetOwner());
@@ -456,7 +456,7 @@ void UNSAugmentSelectionComponent::CollectInventoryFilter(
 	{
 		if (Inst.bCountsAsLegendarySlot)
 		{
-			OutOwnedMechanicIds.Add(Inst.DefId);
+			OutOwnedLegendarySlotIds.Add(Inst.DefId);
 		}
 
 		// 보유 스택이 증강 효과 정의 DT의 MaxStack에 도달하면 후보에서 제외합니다.
@@ -482,7 +482,7 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 	UNSDataSubsystem* Data,
 	const UNSAugmentPoolDefinition* Pool,
 	bool bLegendaryFull,
-	const TSet<FPrimaryAssetId>& OwnedMechanicIds,
+	const TSet<FPrimaryAssetId>& OwnedLegendarySlotIds,
 	const TSet<FPrimaryAssetId>& StackFullIds,
 	const TSet<FPrimaryAssetId>& ExcludedIds,
 	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity) const
@@ -538,12 +538,11 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 			continue;
 		}
 		
-		if (Candidate.Rarity == ENSAugmentRarity::Legendary)
+		if (Candidate.Rarity == ENSAugmentRarity::Legendary
+			&& Candidate.bCountsAsLegendarySlot
+			&& (bLegendaryFull || OwnedLegendarySlotIds.Contains(Candidate.DefId)))
 		{
-			if (bLegendaryFull || OwnedMechanicIds.Contains(Candidate.DefId))
-			{
-				continue;
-			}
+			continue;
 		}
 		
 		// 같은 증강의 다중 Modifier Row는 카드 한 장으로 묶음.
@@ -551,66 +550,9 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 		CandidatesByTags.FindOrAdd(Candidate.AugmentTag, Candidate);
 	}
 	
-	TSet<FGameplayTag> AddedAugmentTags;
-	
 	for (const TPair<FGameplayTag, FNSAugmentCandidate>& Pair : CandidatesByTags)
 	{
 		OutByRarity.FindOrAdd(Pair.Value.Rarity).Add(Pair.Value);
-		AddedAugmentTags.Add(Pair.Key);
-	}
-	
-	// 기존 LegendaryStatEntries 구조를 유지하기 위한 호환 경로.
-	// 등록된 Definition은 DT에도 대응 Row가 있어야 캐릭터 범위와 스택 제한을 동일하게 적용.
-	if (!bLegendaryFull)
-	{
-		return;
-	}
-	
-	for (const TSoftObjectPtr<UNSAugmentDefinition>& SoftDefinition : Pool->LegendaryStatEntries)
-	{
-		UNSAugmentDefinition* Definition = ResolveDefinition(Data, SoftDefinition);
-		if (!IsValid(Definition))
-		{
-			continue;
-		}
-		
-		const FPrimaryAssetId DefId = Definition->GetPrimaryAssetId();
-		if (ExcludedIds.Contains(DefId) || StackFullIds.Contains(DefId))
-		{
-			continue;
-		}
-		
-		FNSAugmentCandidate Candidate;
-		if (!TryFindCandidateByDefinitionId(Data, DefId, Candidate))
-		{
-			NS_OBJ_LOG(LogNS, Warning,
-				"LegendaryStatEntries에 등록된 증강의 효과 정의 Row를 찾지 못했습니다. DefId{DefId}",
-				("DefId", DefId.ToString())
-			);
-			continue;
-		}
-		
-		if (Candidate.Rarity != ENSAugmentRarity::Legendary)
-		{
-			NS_OBJ_LOG(LogNS, Warning,
-				"LegendaryStatEntries의 증강 희귀도가 Legendary가 아닙니다. DefId={DefId}",
-				("DefId", DefId.ToString())
-			);
-			continue;
-		}
-		
-		if (Candidate.OwnerCharacterTag != OwnerCharacterTag && Candidate.OwnerCharacterTag != CommonCharacterTag)
-		{
-			continue;
-		}
-		
-		if (AddedAugmentTags.Contains(Candidate.AugmentTag))
-		{
-			continue;
-		}
-		
-		OutByRarity.FindOrAdd(ENSAugmentRarity::Legendary).Add(Candidate);
-		AddedAugmentTags.Add(Candidate.AugmentTag);
 	}
 }
 

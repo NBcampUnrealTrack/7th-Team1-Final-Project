@@ -27,6 +27,7 @@ struct FNSAugmentCandidate
 	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
 	int32 SelectionWeight = 1;
 	int32 MaxStacks = 1;
+	bool bCountsAsLegendarySlot = false;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
@@ -144,7 +145,7 @@ private:
 
 	void CollectInventoryFilter(
 		bool& bOutLegendaryFull,
-		TSet<FPrimaryAssetId>& OutOwnedMechanicIds,
+		TSet<FPrimaryAssetId>& OutOwnedLegendarySlotIds,
 		TSet<FPrimaryAssetId>& OutStackFullIds) const;
 
 	/**
@@ -157,7 +158,7 @@ private:
 		UNSDataSubsystem* Data,
 		const UNSAugmentPoolDefinition* Pool,
 		bool bLegendaryFull,
-		const TSet<FPrimaryAssetId>& OwnedMechanicIds,
+		const TSet<FPrimaryAssetId>& OwnedLegendarySlotIds,
 		const TSet<FPrimaryAssetId>& StackFullIds,
 		const TSet<FPrimaryAssetId>& ExcludedIds,
 		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity) const;
