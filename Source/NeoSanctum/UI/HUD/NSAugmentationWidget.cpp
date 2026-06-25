@@ -6,6 +6,7 @@
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "Engine/AssetManager.h"
 #include "Blueprint/WidgetTree.h"
@@ -522,6 +523,11 @@ void UNSAugmentationWidget::HandleOfferClosed()
 	}
 	//카드 영역만 닫음. 패널 전체(보유 아이콘)는 유지 → 대기 0개면 보유 목록만 표시됨
 	HideCardSection();
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->CloseAugmentationPanel();
+	}
 }
 
 void UNSAugmentationWidget::HandlePendingCountChanged(int32 NewCount)

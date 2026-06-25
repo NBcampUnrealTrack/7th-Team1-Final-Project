@@ -366,8 +366,7 @@ void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
 	}
 
 	HUDWidget->SelectAugmentCardByIndex(CardIndex);
-	//증강을 선택할시 패널이 자동으로 닫힘
-	CloseAugmentationPanel();
+
 }
 
 void UNSUIManagerSubsystem::RequestRerollAugment()
