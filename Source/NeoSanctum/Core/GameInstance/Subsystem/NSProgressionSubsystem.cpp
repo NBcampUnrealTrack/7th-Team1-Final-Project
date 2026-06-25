@@ -23,6 +23,40 @@ bool UNSProgressionSubsystem::UpgradeCommonSkill(FName NodeId, int32 NewLevel, i
 	return true;
 }
 
+void UNSProgressionSubsystem::UnlockNPC(FName NPCId)
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || NPCId.IsNone())
+	{
+		return;
+	}
+
+	bool bAlreadyUnlocked = false;
+	Save->UnlockedNPCIds.Add(NPCId, &bAlreadyUnlocked);
+	if (bAlreadyUnlocked)
+	{
+		return;
+	}
+
+	SaveNow();
+}
+
+void UNSProgressionSubsystem::LockNPC(FName NPCId)
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || NPCId.IsNone())
+	{
+		return;
+	}
+
+	if (Save->UnlockedNPCIds.Remove(NPCId) == 0)
+	{
+		return;
+	}
+
+	SaveNow();
+}
+
 bool UNSProgressionSubsystem::UpgradeCharacterSkill(FName CharacterId, FName NodeId, int32 NewLevel, int64 Cost)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();

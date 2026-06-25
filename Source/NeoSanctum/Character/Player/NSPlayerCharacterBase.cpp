@@ -18,6 +18,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
+#include "NeoSanctum/Character/Component/NSGateAccessComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
@@ -77,6 +78,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	
 	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
 
+	GateAccessComp = CreateDefaultSubobject<UNSGateAccessComponent>(TEXT("GateAccessComp"));
+
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 }
@@ -127,7 +130,13 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	{
 		InteractionComp->EnableLocalInteraction();
 	}
-	
+
+	// 서버: PlayerState/진행도 기준으로 게이트 통과 처리 초기화 (PlayerState 미준비 시 OnRep에서 재시도)
+	if (GateAccessComp)
+	{
+		GateAccessComp->InitializeGateAccess();
+	}
+
 	if (HasAuthority())
 	{
 		BindPartVisual();
@@ -166,6 +175,12 @@ void ANSPlayerCharacterBase::OnRep_PlayerState()
 
 	InitializeAbilitySystem();
 	BindPartVisual();
+
+	// 클라: PlayerState 수신 후 게이트 통과/외형 초기화
+	if (GateAccessComp)
+	{
+		GateAccessComp->InitializeGateAccess();
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_Controller()

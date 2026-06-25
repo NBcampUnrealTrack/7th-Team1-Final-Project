@@ -2,8 +2,10 @@
 
 #include "NSCheatManager.h"
 
+#include "Engine/GameInstance.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
@@ -120,6 +122,50 @@ void UNSCheatManager::Debug_CompanionSelect(FString InTag)
 	}
 
 	OwningPC->CompanionCheatSelect(CompanionTag);
+}
+
+// 테스트용 임시 코드 (인런 구출 NPC 구현 후 삭제)
+void UNSCheatManager::Debug_UnlockNPC(FString NpcId)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC || NpcId.IsEmpty())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSProgressionSubsystem* Progression =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!Progression)
+	{
+		return;
+	}
+
+	// 로컬 CachedData에 해금 기록 후, 기존 업로드 경로로 서버 동기화(+소유 클라 복제/브로드캐스트)
+	Progression->UnlockNPC(FName(*NpcId));
+	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
+}
+
+// 테스트용 임시 코드 (인런 구출 NPC 구현 후 삭제)
+void UNSCheatManager::Debug_LockNPC(FString NpcId)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC || NpcId.IsEmpty())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSProgressionSubsystem* Progression =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!Progression)
+	{
+		return;
+	}
+
+	// 로컬 CachedData에서 해금 제거 후, 기존 업로드 경로로 서버 동기화(+소유 클라 복제/브로드캐스트)
+	Progression->LockNPC(FName(*NpcId));
+	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
 }
 
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
