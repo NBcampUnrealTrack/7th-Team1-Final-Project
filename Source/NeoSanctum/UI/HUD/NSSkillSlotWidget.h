@@ -7,18 +7,18 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "GameplayTagContainer.h"
 #include "Engine/DataTable.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NSSkillSlotWidget.generated.h"
 
-struct FNSInputDisplayData;
 class UCommonTextBlock;
 class UImage;
 class UMaterialInstanceDynamic;
 class UNSAbilitySystemComponent;
 class UTexture2D;
-class UNSInputDisplayData;
 struct FSkillCooldownUIData;
 struct FNSSkillCooldownMessage;
 struct FNSSkillUIData;
+
 
 /**
  *  스킬의 쿨타임을 시각적으로 보여주는 위젯
@@ -60,7 +60,9 @@ public:
 public:
 	//캐릭터 변경 시 슬롯에 표시할 스킬 정보를 갱신
 	UFUNCTION(BlueprintCallable, Category = "Skill")
-	void SetSkillUIData(FDataTableRowHandle NewSkillUIDataRow);
+	void SetSkillUIData(
+	FDataTableRowHandle NewSkillUIDataRow,
+	const FNSInputDisplayData& NewInputDisplayData);
 	//이 슬롯에서 입력키 표시를 사용할지 여부
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	bool bShowInputDisplay = true;

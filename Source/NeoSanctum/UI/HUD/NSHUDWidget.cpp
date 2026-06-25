@@ -249,7 +249,7 @@ void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 	{
 		return;
 	}
-	
+
 	const FNSCharacterSkillUISet* SkillUISet =
 		CharacterSkillUISetTable->FindRow<FNSCharacterSkillUISet>(
 			CharacterId,
@@ -259,23 +259,25 @@ void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 	{
 		return;
 	}
-	
+
 	if (SkillSlot1Widget)
 	{
-		SkillSlot1Widget->SetSkillUIData(SkillUISet->Skill1UIDataRow);
-		SkillSlot1Widget->SetInputDisplayData(SkillUISet->Skill1InputDisplay);
+		SkillSlot1Widget->SetSkillUIData(
+			SkillUISet->Skill1UIDataRow,
+			SkillUISet->Skill1InputDisplay);
 	}
 
 	if (SkillSlot2Widget)
 	{
-		SkillSlot2Widget->SetSkillUIData(SkillUISet->Skill2UIDataRow);
-		SkillSlot2Widget->SetInputDisplayData(SkillUISet->Skill2InputDisplay);
+		SkillSlot2Widget->SetSkillUIData(
+			SkillUISet->Skill2UIDataRow,
+			SkillUISet->Skill2InputDisplay);
 	}
 
 	if (SkillSlot3Widget)
 	{
-		SkillSlot3Widget->SetSkillUIData(SkillUISet->Skill3UIDataRow);
-		SkillSlot3Widget->SetInputDisplayData(SkillUISet->Skill3InputDisplay);
+		SkillSlot3Widget->SetSkillUIData(
+			SkillUISet->Skill3UIDataRow,
+			SkillUISet->Skill3InputDisplay);
 	}
 }
-
