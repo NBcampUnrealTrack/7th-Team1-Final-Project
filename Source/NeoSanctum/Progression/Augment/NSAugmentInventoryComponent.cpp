@@ -117,7 +117,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		FNSAugmentInstance NewInstance;
 		NewInstance.DefId = DefId;
-		NewInstance.Rarity = Def->Rarity;
+		NewInstance.Rarity = DefinitionRow.Rarity;
 		NewInstance.Stacks = 1;
 		NewInstance.bCountsAsLegendarySlot = DefinitionRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)

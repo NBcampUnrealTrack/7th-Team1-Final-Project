@@ -85,7 +85,7 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 	bool bEnabled = true;
 	
 	/**
-	 * true면 이 증강을 처음 획들할 때 Legendary 슬롯 하나를 점유.
+	 * true면 이 증강을 처음 획득할 때 Legendary 슬롯 하나를 점유.
 	 * Rarity와 분리해 Legendary 수치 증강과 Legendary 기믹 증강을 구분.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Meta")
