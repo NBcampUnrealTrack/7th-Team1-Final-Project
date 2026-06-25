@@ -151,7 +151,7 @@ NeoSanctum은 세 가지 루프를 중심으로 설계되었습니다.
 - 기본 공격
 - 로켓
 - 수류탄
-- 공격속도 버프
+- 공격속도 및 재장전 속도 버프
 
 ---
 
@@ -164,7 +164,7 @@ NeoSanctum은 세 가지 루프를 중심으로 설계되었습니다.
 - 샷건
 - 터렛 소환
 - 방어막
-- 공격속도 버프
+- 터렛과 캐릭터의 공격속도 버프
 
 ---
 
@@ -214,7 +214,6 @@ Behavior Tree 기반의 적 AI를 구현했습니다.
 
 - 순찰 및 추적
 - 근접 / 원거리 AI
-- 엄폐 및 Peek & Shoot
 - Threat 기반 타깃 변경
 - 근접 공격 예약 시스템
 
@@ -283,6 +282,7 @@ Behavior Tree 기반의 적 AI를 구현했습니다.
 **사용 기술**
 
 - `Primary Data Asset`
+- `Data Table`
 - `Subsystem`
 - `Save Game`
 
@@ -333,13 +333,18 @@ Behavior Tree 기반의 적 AI를 구현했습니다.
 Source
 ├── AI
 ├── Character
+├── Collision
 ├── Combat
 ├── Core
 ├── Data
+├── Debug
 ├── GAS
 ├── Input
+├── Interaction
 ├── Progression
 ├── System
+├── Tag
+├── Type
 └── UI
 
 ```
