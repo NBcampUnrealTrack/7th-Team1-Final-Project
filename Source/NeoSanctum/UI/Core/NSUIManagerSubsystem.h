@@ -11,6 +11,7 @@ class UDataTable;
 class APlayerController;
 class UUserWidget;
 class UNSRunResultWidget;
+class UNSSpectatorWidget;
 
 
 /**
@@ -163,6 +164,18 @@ public:
 	//캐릭터별 스킬 슬롯 UI 적용
 	void ApplyCharacterSkillUISet(FName CharacterId);
 	
+	//관전자 위젯 생성
+	void CreateSpectator(APlayerController* OwningPlayer);
+	
+	//관전자 위젯 표시
+	void ShowSpectator(const FString& SpectatingPlayerName);
+	
+	//관전자 위젯 숨김
+	void HideSpectator();
+	
+	//관전자 위젯 제거
+	void ClearSpectator();
+	
 	UNSUIManagerSubsystem();
 private:
 	//생성된 HUD 보관
@@ -224,6 +237,9 @@ private:
 	//런 결과창에 표시할 스킬재화 획득량
 	int32 RunResultSkillGoods = 0;
 	
+	//관전자 상태 UI위젯
+	UPROPERTY()
+	TObjectPtr<UNSSpectatorWidget> SpectatorWidget;
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
@@ -241,4 +257,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> OptionWidgetClass;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	TSubclassOf<UNSSpectatorWidget> SpectatorWidgetClass;
 }; 

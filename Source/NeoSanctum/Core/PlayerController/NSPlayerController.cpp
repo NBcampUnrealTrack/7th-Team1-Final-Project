@@ -971,6 +971,11 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	// 사망 직후 첫 관전 대상을 결정하고 해당 화면 View를 볼 수 있게 수동으로 NextPlayer를 호출해줘야함
 	if (NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>())
 	{
+		if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+		{
+			UIManager->CreateSpectator(this);
+			UIManager->ShowSpectator(TEXT(""));
+		}
 		SetViewTarget(NewPawn);
 		SpectateNextPlayer();
 		return;
@@ -990,6 +995,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	}
 
 	//심리스 트레블 전 스테이지의 HUD 잔재를 안전하게 청소
+	UIManager->HideSpectator();
 	UIManager->ClearHUD();
 	UIManager->ClearRunEnd();
 
@@ -1346,6 +1352,10 @@ void ANSPlayerController::SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget)
 		DeathSpectatorPawn->SetSpectatorView(TargetSpectatorView);
 	}
 	UE_LOG(LogTemp, Log, TEXT("관전 대상 : %s"), *NewSpectatorTarget->GetPlayerName());
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->ShowSpectator(NewSpectatorTarget->GetPlayerName());
+	}
 }
 
 APawn* ANSPlayerController::GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const
