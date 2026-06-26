@@ -123,7 +123,7 @@ private:
 	 */
 	void ConsumeFrontOffer();
 	
-	// 같은 AugmentTag 그룹의 공통 메타데이터(가중치, 희귀도, 최대 스택) 무결성을 검사.
+	// 같은 AugmentTag 그룹의 공통 선택 메타데이터와 Definition 식별자 ↔ AugmentTag 연결 무결성을 검사.
 	void ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const;
 
 	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;

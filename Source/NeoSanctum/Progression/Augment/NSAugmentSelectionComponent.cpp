@@ -348,6 +348,31 @@ void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups(UNSDataSubsys
 			continue;
 		}
 		
+		const FNSDefinitionMeta* ExistingDefinition = DefinitionMeta.Find(DefId);
+		
+		if (!ExistingDefinition)
+		{
+			FNSDefinitionMeta NewDefinitionMeta;
+			NewDefinitionMeta.FirstRowName = RowName;
+			NewDefinitionMeta.AugmentTag = Row->AugmentTag;
+			
+			DefinitionMeta.Add(DefId, NewDefinitionMeta);
+		}
+		else if (ExistingDefinition->AugmentTag != Row->AugmentTag
+			&& !ReportedDefinitionConflicts.Contains(DefId))
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 Definition이 서로 다른 AugmentTag에 연결되어 있습니다. DefId={DefId}, 기준 Row={BaseRowName}, 기준 AugmentTag={BaseAugmentTag}, 불일치 Row={RowName}, 불일치 AugmentTag={AugmentTag}",
+				("DefId", DefId.ToString()),
+				("BaseRowName", ExistingDefinition->FirstRowName.ToString()),
+				("BaseAugmentTag", ExistingDefinition->AugmentTag.ToString()),
+				("RowName", RowName.ToString()),
+				("AugmentTag", Row->AugmentTag.ToString())
+			);
+
+			ReportedDefinitionConflicts.Add(DefId);
+		}
+		
 		const FNSAugmentGroupMeta* ExistingGroup = GroupMetas.Find(Row->AugmentTag);
 		if (!ExistingGroup)
 		{
