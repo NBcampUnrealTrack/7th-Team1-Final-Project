@@ -43,12 +43,6 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugCommitPermanent();
 
-	// ===== 테스트용 임시 코드 — 인런 구출 NPC(M3) 구현 후 삭제 =====
-	// 콘솔(`) 열고 DebugUnlockAllNPCs 입력 → 월드의 모든 거점 NPC를 로컬 진행도에 해금.
-	UFUNCTION(Exec)
-	void Debug_UnlockAllNPCs();
-	// ===== 테스트용 임시 코드 끝 =====
-
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
 	void RequestReady(); 
