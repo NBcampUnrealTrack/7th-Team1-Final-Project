@@ -7,13 +7,13 @@
 #include "GameFramework/PlayerState.h"
 #include "Net/UnrealNetwork.h"
 #include "Engine/GameInstance.h"
+#include "Engine/DataTable.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Player.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
@@ -173,6 +173,7 @@ void UNSAugmentSelectionComponent::Reset()
 	PendingOffer.Reset();
 	bFrontRolled = false;
 	CurrentRerollCost = 0;
+	bHasValidatedAugmentDefinitionGroups = false;
 	SetPendingCount(0);
 }
 
@@ -201,6 +202,12 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	{
 		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
+	}
+	
+	if (!bHasValidatedAugmentDefinitionGroups)
+	{
+		ValidateAugmentDefinitionGroups();
+		bHasValidatedAugmentDefinitionGroups = true;
 	}
 	
 	FGameplayTag OwnerCharacterTag;
@@ -247,6 +254,103 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	}
 	
 	Client_CloseOffer();
+}
+
+void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups() const
+{
+	if (!IsValid(AugmentDefinitionTable))
+	{
+		return;
+	}
+	
+	if (AugmentDefinitionTable->GetRowStruct() != FNSAugmentDefinitionRow::StaticStruct())
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 효과 정의 DataTable의 Row Struct가 올바르지 않아 그룹 검증을 건너뜁니다. Table={Table}",
+			("Table", AugmentDefinitionTable->GetName())
+		);
+		return;
+	}
+
+	struct FNSAugmentGroupMeta
+	{
+		FName FirstRowName;
+		ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+		int32 MaxStack = 1;
+		int32 SelectionWeight = 1;
+	};
+	
+	TMap<FGameplayTag, FNSAugmentGroupMeta> GroupMetas;
+	const FString ContextString = TEXT("AugmentDefinitionGroupValidation");
+	
+	// 비활성 Row도 이후 활성화 시 그룹 규칙을 깨뜨리지 않도록 함께 검사.
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
+	{
+		const FNSAugmentDefinitionRow* Row = 
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
+		
+		if (!Row)
+		{
+			continue;
+		}
+		
+		if (!Row->AugmentTag.IsValid())
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 정의 Row의 AugmentTag가 유효하지 않습니다. RowName={RowName}",
+				("RowName", RowName.ToString())
+			);
+			continue;
+		}
+		
+		const FNSAugmentGroupMeta* ExistingGroup = GroupMetas.Find(Row->AugmentTag);
+		
+		if (!ExistingGroup)
+		{
+			FNSAugmentGroupMeta NewGroup;
+			NewGroup.FirstRowName = RowName;
+			NewGroup.Rarity = Row->Rarity;
+			NewGroup.MaxStack = Row->MaxStack;
+			NewGroup.SelectionWeight = Row->SelectionWeight;
+			
+			GroupMetas.Add(Row->AugmentTag, NewGroup);
+			continue;
+		}
+		
+		if (ExistingGroup->Rarity != Row->Rarity)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 Rarity가 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 불일치 Row={RowName}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("RowName", RowName.ToString())
+			);
+		}
+		
+		if (ExistingGroup->MaxStack != Row->MaxStack)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 MaxStack이 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 기준 MaxStack={BaseMaxStack}, 불일치 Row={RowName}, 불일치 MaxStack={MaxStack}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("BaseMaxStack", ExistingGroup->MaxStack),
+				("RowName", RowName.ToString()),
+				("MaxStack", Row->MaxStack)
+			);
+		}
+		
+		if (ExistingGroup->SelectionWeight != Row->SelectionWeight)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 SelectionWeight가 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 기준 Weight={BaseWeight}, 불일치 Row={RowName}, 불일치 Weight={Weight}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("BaseWeight", ExistingGroup->SelectionWeight),
+				("RowName", RowName.ToString()),
+				("Weight", Row->SelectionWeight)
+			);
+		}
+	}
 }
 
 void UNSAugmentSelectionComponent::ConsumeFrontOffer()

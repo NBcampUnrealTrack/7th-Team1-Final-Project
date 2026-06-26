@@ -122,6 +122,9 @@ private:
 	 * 카드 선택 완료 또는 현재 트리거에서 후보를 만들 수 없을 때 호출.
 	 */
 	void ConsumeFrontOffer();
+	
+	// 같은 AugmentTag 그룹의 공통 메타데이터(가중치, 희귀도, 최대 스택) 무결성을 검사.
+	void ValidateAugmentDefinitionGroups() const;
 
 	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;
 
@@ -198,4 +201,7 @@ private:
 	// 대기 중인 증강 선택권 수 (오너에게만 레플리케이션, UI 뱃지용)
 	UPROPERTY(ReplicatedUsing = OnRep_PendingCount)
 	int32 PendingCount = 0;
+	
+	// 현재 런에서 증강 정의 그룹 무결성을 검사 했는지 여부.
+	bool bHasValidatedAugmentDefinitionGroups = false;
 };
