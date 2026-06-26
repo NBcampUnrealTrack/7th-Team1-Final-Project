@@ -440,8 +440,7 @@ void ANSPlayerController::HandleRunEndPhaseChanged()
 	case ENSRunEndPhase::Voting:
 	case ENSRunEndPhase::Result:
 		UIManager->CreateRunEnd(this);
-		UIManager->CacheRunResultTime();
-		UIManager->UpdateRunEndResult(CachedRunGameState->bIsClear);
+		UIManager->UpdateRunEndResultFromGameState(CachedRunGameState);
 		UIManager->UpdateRunEndVotes(
 			CachedRunGameState->NextVotes,
 			CachedRunGameState->HubVotes);

@@ -16,6 +16,7 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, WinningChoice);
 	DOREPLIFETIME(ANSRunGameState, NextVotes);
 	DOREPLIFETIME(ANSRunGameState, HubVotes);
+	DOREPLIFETIME(ANSRunGameState, RunResultData);
 }
 
 ANSRunGameState::ANSRunGameState()
@@ -76,4 +77,34 @@ void ANSRunGameState::SetRunEndPhase(ENSRunEndPhase NewPhase)
 void ANSRunGameState::NotifyRunVoteChanged()
 {
 	OnRunEndVoteChanged.Broadcast();
+}
+
+void ANSRunGameState::OnRep_RunResultData()
+{
+	OnRunEndPhaseChanged.Broadcast();
+}
+
+void ANSRunGameState::SetRunResultData(const FNSRunResultData& NewRunResultData)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	RunResultData = NewRunResultData;
+	
+	ForceNetUpdate();
+	OnRep_RunResultData();
+}
+
+void ANSRunGameState::AddRunResultKillCount(int32 Amount)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	RunResultData.KillCount += FMath::Max(Amount, 0);
+
+	ForceNetUpdate();
+	OnRep_RunResultData();
 }

@@ -7,6 +7,7 @@
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
@@ -143,6 +144,26 @@ void UNSUIManagerSubsystem::ClearSpectator()
 	
 	SpectatorWidget->RemoveFromParent();
 	SpectatorWidget = nullptr;
+}
+
+void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState)
+{
+	UNSRunResultWidget* RunResultWidget =
+		Cast<UNSRunResultWidget>(RunEndWidget);
+	if (!RunResultWidget || !RunGameState)
+	{
+		return;
+	}
+
+	const FNSRunResultData& ResultData = RunGameState->RunResultData;
+
+	RunResultWidget->SetRunResult(
+		RunGameState->bIsClear,
+		ResultData.EarnedGoods,
+		ResultData.CommonGoods,
+		ResultData.SkillGoods,
+		ResultData.RunTimeSeconds,
+		ResultData.KillCount);
 }
 
 UNSUIManagerSubsystem::UNSUIManagerSubsystem()

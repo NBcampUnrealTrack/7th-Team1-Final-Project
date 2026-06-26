@@ -2,6 +2,8 @@
 
 
 #include "NSRunGameMode.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -186,13 +188,9 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 		NSStageManager->HandleEnemyKilled();
 	}
 
-	if (UGameInstance* GameInstance = GetGameInstance())
+	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
 	{
-		if (UNSUIManagerSubsystem* UIManager =
-			GameInstance->GetSubsystem<UNSUIManagerSubsystem>())
-		{
-			UIManager->AddRunResultKillCount();
-		}
+		NSGameState->AddRunResultKillCount();
 	}
 	
 	HandleEnemyReward(DeadEnemy);
@@ -774,7 +772,44 @@ void ANSRunGameMode::OpenRunEndVote(bool bHubOnly)
 	NSGameState->NextVotes = 0;
 	NSGameState->HubVotes = 0;
 	NSGameState->NotifyRunVoteChanged();
+	
+	FNSRunResultData ResultData;
 
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		const ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
+		if (!NSPlayerState)
+		{
+			continue;
+		}
+
+		const UNSCurrencyComponent* Currency = NSPlayerState->GetCurrencyComponent();
+		if (!Currency)
+		{
+			continue;
+		}
+
+		ResultData.EarnedGoods += static_cast<int32>(Currency->GetTemp());
+		ResultData.CommonGoods += static_cast<int32>(
+			Currency->GetPermanent(NSGameplayTags::Currency_Common));
+		ResultData.SkillGoods += static_cast<int32>(
+			Currency->GetPermanent(NSGameplayTags::Currency_Skill));
+	}
+
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		if (UNSUIManagerSubsystem* UIManager =
+			GameInstance->GetSubsystem<UNSUIManagerSubsystem>())
+		{
+			UIManager->CacheRunResultTime();
+			ResultData.RunTimeSeconds = UIManager->GetRunResultTimeSeconds();
+		}
+	}
+
+	ResultData.KillCount = NSGameState->RunResultData.KillCount;
+
+	NSGameState->SetRunResultData(ResultData);
+	
 	NSGameState->SetRunEndPhase(ENSRunEndPhase::Voting);
 	NSGameState->ForceNetUpdate();
 	

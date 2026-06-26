@@ -12,6 +12,7 @@ class APlayerController;
 class UUserWidget;
 class UNSRunResultWidget;
 class UNSSpectatorWidget;
+class ANSRunGameState;
 
 
 /**
@@ -175,6 +176,8 @@ public:
 	
 	//관전자 위젯 제거
 	void ClearSpectator();
+	
+	void UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState);
 	
 	UNSUIManagerSubsystem();
 private:
