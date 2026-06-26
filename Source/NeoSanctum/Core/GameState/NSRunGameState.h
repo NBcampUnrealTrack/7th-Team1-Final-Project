@@ -16,6 +16,25 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndVoteChanged);
 /**
  *
  */
+
+//런결과창에 표시할 집계 데이터
+USTRUCT(BlueprintType)
+struct FNSRunResultData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
+	int32 EarnedGoods = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
+	int32 CommonGoods = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
+	int32 SkillGoods = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
+	float RunTimeSeconds =0.0f;
+	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
+	int32 KillCount = 0;
+};
+
 UCLASS()
 class NEOSANCTUM_API ANSRunGameState : public AGameStateBase
 {
@@ -79,6 +98,16 @@ public:
 	FNSOnRunEndVoteChanged OnRunEndVoteChanged;
 	
 	void NotifyRunVoteChanged();
+	
+	UPROPERTY(ReplicatedUsing = OnRep_RunResultData, BlueprintReadOnly, Category = "RunEnd|Result")
+	FNSRunResultData RunResultData;
+	
+	UFUNCTION()
+	void OnRep_RunResultData();
+
+	void SetRunResultData(const FNSRunResultData& NewRunResultData);
+
+	void AddRunResultKillCount(int32 Amount = 1);
 	
 private:
 	// 런 전체에서 서버 투사체를 관리하는 Component
