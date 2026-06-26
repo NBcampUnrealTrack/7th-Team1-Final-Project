@@ -4,15 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "GameplayTagContainer.h"
-#include "NSAugmentTypes.h"
 #include "NSAugmentDefinition.generated.h"
 
 class UTexture2D;
 class UGameplayEffect;
 class UGameplayAbility;
 
-// 증강 카드 한장의 내용 (이름, 아이콘, 어떤 효과인지)
+/**
+ * 증강 카드의 UI 정보와 실행 에셋을 제공하는 Primary Data Asset.
+ *
+ * 선택 규칙과 CombatStat Modifier 값은 DT_AugmentDefinition에서 관리.
+ */
 UCLASS(BlueprintType)
 class NEOSANCTUM_API UNSAugmentDefinition : public UPrimaryDataAsset
 {

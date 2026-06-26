@@ -131,14 +131,7 @@ void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
 	NSInvComp->ApplyAugment(ChosenCard.DefId);
 
 	// front 오퍼 소비
-	if (RewardTriggerQueue.Num() > 0)
-	{
-		RewardTriggerQueue.RemoveAt(0);
-	}
-	bFrontRolled = false;
-	PendingOffer.Reset();
-	CurrentRerollCost = 0;
-	SetPendingCount(RewardTriggerQueue.Num());
+	ConsumeFrontOffer();
 
 	// 남은 대기가 있으면 다음 카드 자동 표시, 없으면 카드 영역만 닫기 (패널은 유지)
 	if (RewardTriggerQueue.Num() > 0)
@@ -190,31 +183,84 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	{
 		return;
 	}
-	if (RewardTriggerQueue.Num() == 0)
+	if (RewardTriggerQueue.IsEmpty())
 	{
 		return;
 	}
 
-	FNSAugmentRarityRule RarityRule;
-	if (!TryFindRarityRule(RewardTriggerQueue[0], RarityRule))
+	// 런 데이터 또는 설정 오류는 후보 소진과 구분한다.
+	// 구성 문제로 증강 선택 기회가 자동 소비되지 않도록 사전에 중단한다.
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
 	{
+		NS_OBJ_LOG(LogNS, Warning, "증강 데이터가 준비되지 않아 오퍼를 생성할 수 없습니다.");
 		return;
 	}
 	
-	// 미추첨이면 첫 추첨, 리롤 요청이면 강제 재추첨. 둘 다 아니면 캐시 그대로 재전송(재오픈 시 동일 카드 유지)
-	if (!bFrontRolled || bReroll)
+	if (!IsValid(AugmentDefinitionTable))
 	{
-		// 첫 추첨일 때만 리롤 비용 초기화 (리롤은 호출부에서 비용을 올린 뒤 들어옴)
-		if (!bFrontRolled)
+		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
+		return;
+	}
+	
+	FGameplayTag OwnerCharacterTag;
+	if (!TryGetOwnerCharacterTag(OwnerCharacterTag))
+	{
+		NS_OBJ_LOG(LogNS, Warning, "현재 캐릭터 태그를 찾지 못해 증강 오퍼를 생성할 수 없습니다.");
+		return;
+	}
+	
+	while (!RewardTriggerQueue.IsEmpty())
+	{
+		FNSAugmentRarityRule RarityRule;
+		if (!TryFindRarityRule(RewardTriggerQueue[0], RarityRule))
 		{
-			CurrentRerollCost = 0;
+			return;
 		}
 		
-		PendingOffer = RollCards(RarityRule, CardsCount);
-		bFrontRolled = true;
-	}
+		if (!bFrontRolled || bReroll)
+		{
+			if (!bFrontRolled)
+			{
+				CurrentRerollCost = 0;
+			}
+			
+			PendingOffer = RollCards(RarityRule, CardsCount);
+			bFrontRolled = !PendingOffer.IsEmpty();
+		}
+		
+		// 현재 트리거가 허용하는 희귀도에서 후보를 만들 수 없으면
+		// 해당 선택 기회를 소비하고 다음 트리거를 확인.
+		if (PendingOffer.IsEmpty())
+		{
+			NS_OBJ_LOG(LogNS, Log,
+				"선택 가능한 증강 후보가 없어 현재 오퍼를 건너뜁니다. RewardTriggerTag={RewardTriggerTag}",
+				("RewardTriggerTag", RewardTriggerQueue[0].ToString())
+			);
 
-	Client_PresentOffer(PendingOffer, CurrentRerollCost);
+			ConsumeFrontOffer();
+			continue;
+		}
+		
+		Client_PresentOffer(PendingOffer, CurrentRerollCost);
+		return;
+	}
+	
+	Client_CloseOffer();
+}
+
+void UNSAugmentSelectionComponent::ConsumeFrontOffer()
+{
+	if (!RewardTriggerQueue.IsEmpty())
+	{
+		RewardTriggerQueue.RemoveAt(0);
+	}
+	
+	bFrontRolled = false;
+	PendingOffer.Reset();
+	CurrentRerollCost = 0;
+	
+	SetPendingCount(RewardTriggerQueue.Num());
 }
 
 void UNSAugmentSelectionComponent::SetPendingCount(int32 NewCount)

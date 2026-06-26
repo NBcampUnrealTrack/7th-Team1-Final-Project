@@ -113,9 +113,15 @@ private:
 
 	// 서버에서 대기 카운트 변경 + (호스트용) 즉시 브로드캐스트
 	void SetPendingCount(int32 NewCount);
-
-	// 대기열 front를 클라에 표시. bReroll=true면 강제 재추첨, 아니면 미추첨 시에만 추첨(캐시 유지)
+	
+	// Queue Front를 카드로 제시. 후보가 없으면 해당 트리거를 소비하고 다음 Front를 계속 확인.
 	void PresentFront(bool bReroll = false);
+	
+	/**
+	 * 현재 Front 오퍼를 소비하고 카드 추첨 상태를 초기화.
+	 * 카드 선택 완료 또는 현재 트리거에서 후보를 만들 수 없을 때 호출.
+	 */
+	void ConsumeFrontOffer();
 
 	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;
 
@@ -179,7 +185,7 @@ private:
 		int32 N
 	) const;
 	
-	// 서버 전용: 보상 트리거 FIFO 큐, front가 현재 표시 대상이며, 선택 완료 시 제거된다.
+	// 서버 전용: 보상 트리거 FIFO 큐, Front는 카드 선택 완료 또는 선택 가능한 후보가 없을 때 소비.
 	TArray<FGameplayTag> RewardTriggerQueue;
 
 	// front 오퍼가 이미 추첨되어 캐싱됐는지 (패널 재오픈 시 재추첨 방지, 리롤로만 재추첨)
