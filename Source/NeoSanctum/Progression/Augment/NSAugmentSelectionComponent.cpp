@@ -206,7 +206,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	
 	if (!bHasValidatedAugmentDefinitionGroups)
 	{
-		ValidateAugmentDefinitionGroups();
+		ValidateAugmentDefinitionGroups(Data);
 		bHasValidatedAugmentDefinitionGroups = true;
 	}
 	
@@ -256,7 +256,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	Client_CloseOffer();
 }
 
-void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups() const
+void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const
 {
 	if (!IsValid(AugmentDefinitionTable))
 	{
@@ -275,12 +275,24 @@ void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups() const
 	struct FNSAugmentGroupMeta
 	{
 		FName FirstRowName;
+		FPrimaryAssetId DefId;
+		FGameplayTag OwnerCharacterTag;
 		ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
 		int32 MaxStack = 1;
 		int32 SelectionWeight = 1;
+		bool bCountAsLegendarySlot = false;
+	};
+
+	struct FNSDefinitionMeta
+	{
+		FName FirstRowName;
+		FGameplayTag AugmentTag;
 	};
 	
 	TMap<FGameplayTag, FNSAugmentGroupMeta> GroupMetas;
+	TMap<FPrimaryAssetId, FNSDefinitionMeta> DefinitionMeta;
+	TSet<FPrimaryAssetId> ReportedDefinitionConflicts;
+	
 	const FString ContextString = TEXT("AugmentDefinitionGroupValidation");
 	
 	// 비활성 Row도 이후 활성화 시 그룹 규칙을 깨뜨리지 않도록 함께 검사.
@@ -303,18 +315,77 @@ void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups() const
 			continue;
 		}
 		
-		const FNSAugmentGroupMeta* ExistingGroup = GroupMetas.Find(Row->AugmentTag);
+		if (Row->Definition.IsNull())
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 정의 Row의 Definition이 설정되지 않았습니다. RowName={RowName}, AugmentTag={AugmentTag}",
+				("RowName", RowName.ToString()),
+				("AugmentTag", Row->AugmentTag.ToString())
+			);
+			continue;
+		}
 		
+		UNSAugmentDefinition* Definition = ResolveDefinition(Data, Row->Definition);
+		if (!IsValid(Definition))
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 정의 Row의 Definition을 해석하지 못했습니다. RowName={RowName}, AugmentTag={AugmentTag}, Definition={Definition}",
+				("RowName", RowName.ToString()),
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("Definition", Row->Definition.ToSoftObjectPath().ToString())
+			);
+			continue;
+		}
+		
+		const FPrimaryAssetId DefId = Definition->GetPrimaryAssetId();
+		if (!DefId.IsValid())
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 Definition에서 유효한 DefId를 만들지 못했습니다. RowName={RowName}, AugmentTag={AugmentTag}",
+				("RowName", RowName.ToString()),
+				("AugmentTag", Row->AugmentTag.ToString())
+			);
+			continue;
+		}
+		
+		const FNSAugmentGroupMeta* ExistingGroup = GroupMetas.Find(Row->AugmentTag);
 		if (!ExistingGroup)
 		{
 			FNSAugmentGroupMeta NewGroup;
 			NewGroup.FirstRowName = RowName;
+			NewGroup.DefId = DefId;
+			NewGroup.OwnerCharacterTag = Row->OwnerCharacterTag;
 			NewGroup.Rarity = Row->Rarity;
 			NewGroup.MaxStack = Row->MaxStack;
 			NewGroup.SelectionWeight = Row->SelectionWeight;
+			NewGroup.bCountAsLegendarySlot = Row->bCountAsLegendarySlot;
 			
 			GroupMetas.Add(Row->AugmentTag, NewGroup);
 			continue;
+		}
+		
+		if (ExistingGroup->DefId != DefId)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 Definition이 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 기준 DefId={BaseDefId}, 불일치 Row={RowName}, 불일치 DefId={DefId}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("BaseDefId", ExistingGroup->DefId.ToString()),
+				("RowName", RowName.ToString()),
+				("DefId", DefId.ToString())
+			);
+		}
+		
+		if (ExistingGroup->OwnerCharacterTag != Row->OwnerCharacterTag)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 OwnerCharacterTag가 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 기준 OwnerCharacterTag={BaseOwnerCharacterTag}, 불일치 Row={RowName}, 불일치 OwnerCharacterTag={OwnerCharacterTag}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("BaseOwnerCharacterTag", ExistingGroup->OwnerCharacterTag.ToString()),
+				("RowName", RowName.ToString()),
+				("OwnerCharacterTag", Row->OwnerCharacterTag.ToString())
+			);
 		}
 		
 		if (ExistingGroup->Rarity != Row->Rarity)
@@ -348,6 +419,18 @@ void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups() const
 				("BaseWeight", ExistingGroup->SelectionWeight),
 				("RowName", RowName.ToString()),
 				("Weight", Row->SelectionWeight)
+			);
+		}
+		
+		if (ExistingGroup->bCountAsLegendarySlot != Row->bCountAsLegendarySlot)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"같은 AugmentTag 그룹의 bCountAsLegendarySlot이 일치하지 않습니다. AugmentTag={AugmentTag}, 기준 Row={BaseRowName}, 기준 값={BaseValue}, 불일치 Row={RowName}, 불일치 값={Value}",
+				("AugmentTag", Row->AugmentTag.ToString()),
+				("BaseRowName", ExistingGroup->FirstRowName.ToString()),
+				("BaseValue", ExistingGroup->bCountAsLegendarySlot),
+				("RowName", RowName.ToString()),
+				("Value", Row->bCountAsLegendarySlot)
 			);
 		}
 	}
