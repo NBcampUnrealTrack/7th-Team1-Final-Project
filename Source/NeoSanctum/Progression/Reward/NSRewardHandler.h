@@ -63,7 +63,6 @@ private:
 	
 	static void HandleAugmentRewardEntry(
 		UWorld* World,
-		const FNSRewardEntry& RewardEntry,
 		const FGameplayTag& TriggerTag
 	);
 	

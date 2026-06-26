@@ -63,7 +63,7 @@ void UNSAugmentationWidget::HideCardSection()
 		ChoiceRootCanvas->ClearChildren();
 	}
 	AugmentCardWidgets.Empty();
-	CurrentOfferIds.Reset();
+	CurrentOfferCards.Reset();
 
 	if (CardSectionRoot)
 	{
@@ -154,7 +154,7 @@ void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 {
 	//현재 오퍼 범위 밖이면 무시
-	if (!CurrentOfferIds.IsValidIndex(CardIndex))
+	if (!CurrentOfferCards.IsValidIndex(CardIndex))
 	{
 		return;
 	}
@@ -427,19 +427,19 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 	return InventoryComponent.Get();
 }
 
-void UNSAugmentationWidget::HandleOfferPresented(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost)
+void UNSAugmentationWidget::HandleOfferPresented(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
 {
-	CurrentOfferIds = OfferIds;
-	CreateChoiceCard(OfferIds.Num());
+	CurrentOfferCards = Cards;
+	CreateChoiceCard(Cards.Num());
 
 	// 오퍼 3개의 아이콘 소프트포인터만 수집 (GE/GA는 서버 ApplyAugment에서 로드)
 	TArray<FSoftObjectPath> PathsToLoad;
 	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
 	if (Data && Data->IsRunReady())
 	{
-		for (const FPrimaryAssetId& Id : OfferIds)
+		for (const FNSAugmentSelectionCard& CardData : Cards)
 		{
-			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Id);
+			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CardData.DefId);
 			if (!Def)
 			{
 				continue;
@@ -495,12 +495,14 @@ void UNSAugmentationWidget::PopulateOfferCards()
 	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
 	{
 		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
-		if (!Card || !CurrentOfferIds.IsValidIndex(Index))
+		if (!Card || !CurrentOfferCards.IsValidIndex(Index))
 		{
 			continue;
 		}
 
-		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CurrentOfferIds[Index]);
+		const FNSAugmentSelectionCard& CardData = CurrentOfferCards[Index];
+		
+		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CardData.DefId);
 		if (!Def)
 		{
 			continue;

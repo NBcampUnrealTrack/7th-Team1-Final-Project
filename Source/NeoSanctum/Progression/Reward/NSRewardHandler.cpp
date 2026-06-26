@@ -6,7 +6,8 @@
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
-#include "NeoSanctum/Data/Augment/NSAugmentPoolDefinition.h"
+#include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
+#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
@@ -110,7 +111,6 @@ void UNSRewardHandler::HandleRewardEntries(
 		{
 			HandleAugmentRewardEntry(
 				World,
-				RewardEntry,
 				TriggerTag
 			);
 			continue;
@@ -127,7 +127,6 @@ void UNSRewardHandler::HandleRewardEntries(
 
 void UNSRewardHandler::HandleAugmentRewardEntry(
 	UWorld* World,
-	const FNSRewardEntry& RewardEntry,
 	const FGameplayTag& TriggerTag)
 {
 	if (!World)
@@ -135,40 +134,9 @@ void UNSRewardHandler::HandleAugmentRewardEntry(
 		return;
 	}
 	
-	if (RewardEntry.AugmentPool.IsNull())
+	if (!TriggerTag.IsValid())
 	{
-		NS_LOG(LogNS, Warning,
-			"Augment RewardEntry의 AugmentPool이 비어 있습니다. TriggerTag={TriggerTag}",
-			("TriggerTag", TriggerTag.ToString())
-		);
-		return;
-	}
-	
-	// Run 데이터 선로드가 보장되지 않는 테스트 상황에서도 PoolTag 확인을 위해 fallback으로 동기 로드
-	UNSAugmentPoolDefinition* AugmentPool = RewardEntry.AugmentPool.Get();
-	
-	if (!AugmentPool)
-	{
-		AugmentPool = RewardEntry.AugmentPool.LoadSynchronous();
-	}
-	
-	if (!AugmentPool)
-	{
-		NS_LOG(LogNS, Warning,
-			"AugmentPool을 로드할 수 없습니다. TriggerTag={TriggerTag}, AugmentPool={AugmentPool}",
-			("TriggerTag", TriggerTag.ToString()),
-			("AugmentPool", RewardEntry.AugmentPool.ToSoftObjectPath().ToString())
-		);
-		return;
-	}
-	
-	if (!AugmentPool->PoolTag.IsValid())
-	{
-		NS_LOG(LogNS, Warning,
-			"AugmentPool의 PoolTag가 유효하지 않습니다. TriggerTag={TriggerTag}, AugmentPool={AugmentPool}",
-			("TriggerTag", TriggerTag.ToString()),
-			("AugmentPool", GetNameSafe(AugmentPool))
-		);
+		NS_LOG(LogNS, Warning, "증강 보상 트리거 태그가 유효하지 않습니다.");
 		return;
 	}
 	
@@ -191,14 +159,13 @@ void UNSRewardHandler::HandleAugmentRewardEntry(
 			continue;
 		}
 		
-		AugmentSelectionComponent->EnqueueOffer(AugmentPool->PoolTag);
+		AugmentSelectionComponent->EnqueueOffer(TriggerTag);
 		++EnqueuedCount;
 	}
 	
 	NS_LOG(LogNS, Log,
-		"Augment 보상 선택권을 적재했습니다. TriggerTag={TriggerTag}, PoolTag={PoolTag}, PlayerCount={PlayerCount}",
+		"Augment 보상 선택권을 적재했습니다. TriggerTag={TriggerTag}, PlayerCount={PlayerCount}",
 		("TriggerTag", TriggerTag.ToString()),
-		("PoolTag", AugmentPool->PoolTag.ToString()),
 		("PlayerCount", EnqueuedCount)
 	);
 }

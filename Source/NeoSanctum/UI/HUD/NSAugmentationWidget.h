@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "UObject/PrimaryAssetId.h"
 #include "Engine/StreamableManager.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NSAugmentationWidget.generated.h"
 
 class UCanvasPanel;
@@ -16,7 +17,6 @@ class UWidget;
 class UWeapBox;
 class UNSAugmentCardWidget;
 class UNSAugmentInventoryComponent;
-class UNSAugmentSelectionComponent;
 
 /**
  *  인게임 중 증강 통합 패널 (보유 증강 아이콘 상시 + 대기 시 선택 카드)
@@ -79,7 +79,7 @@ private:
 	void HighLightCard(int32 CardIndex);
 
 	//현재 오퍼의 증강 ID 목록
-	TArray<FPrimaryAssetId> CurrentOfferIds;
+	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
 	//오퍼 카드 아이콘 비동기 로드 핸들 (리롤 시 이전 로드 취소용)
 	TSharedPtr<FStreamableHandle> IconLoadHandle;
 	//보유 아이콘 비동기 로드 핸들
@@ -100,7 +100,7 @@ private:
 	UNSAugmentInventoryComponent* GetInventoryComponent();
 	//오퍼 제시 수신 -> 카드 생성 및 표시
 	UFUNCTION()
-	void HandleOfferPresented(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost);
+	void HandleOfferPresented(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost);
 	//오퍼 종료 수신 -> 카드 영역 숨김 (패널은 유지)
 	UFUNCTION()
 	void HandleOfferClosed();

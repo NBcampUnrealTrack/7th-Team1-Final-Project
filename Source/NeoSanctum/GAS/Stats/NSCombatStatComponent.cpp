@@ -3,6 +3,7 @@
 
 #include "NSCombatStatComponent.h"
 
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -22,7 +23,7 @@ void UNSCombatStatComponent::BeginPlay()
 	RebuildBaseStatCache();
 	
 	// Modifier DataTable은 먼저 원본 기준으로 캐싱
-	RebuildModifierSourceCache();
+	RebuildAugmentSourceCache();
 	
 	// AugmentInventory 변경 이벤트를 받아 Active Modifier를 갱신
 	BindAugmentInventory();
@@ -295,76 +296,79 @@ void UNSCombatStatComponent::HandleAugmentInventoryChanged()
 	RebuildActiveModifierCache();
 }
 
-void UNSCombatStatComponent::RebuildModifierSourceCache()
+void UNSCombatStatComponent::RebuildAugmentSourceCache()
 {
-	CachedModifierRowsBySource.Reset();
+	CachedModifierRowsByDefId.Reset();
 	
-	if (!CombatStatModifierTable)
+	if (!AugmentDefinitionTable)
 	{
-		NS_OBJ_LOG(LogNSGAS, Warning, "CombatStat Modifier DataTable이 설정되지 않았습니다.");
-		
+		NS_OBJ_LOG(LogNSGAS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
 	}
 	
-	if (CombatStatModifierTable->GetRowStruct() != FNSCombatStatModifierRow::StaticStruct())
+	if (AugmentDefinitionTable->GetRowStruct() != FNSAugmentDefinitionRow::StaticStruct())
 	{
 		NS_OBJ_LOG(LogNSGAS, Warning,
-			"CombatStat Modifier DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
-			("Table", CombatStatModifierTable->GetName())
+			"증강 효과 정의 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
+			("Table", AugmentDefinitionTable->GetName())
 		);
-		
 		return;
 	}
 	
-	const FString ContextString = TEXT("CombatStatModifierCache");
+	const FString ContextString = TEXT("AugmentModifierCache");
 	
-	for (const FName& RowName : CombatStatModifierTable->GetRowNames())
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
 	{
-		const FNSCombatStatModifierRow* Row =
-			CombatStatModifierTable->FindRow<FNSCombatStatModifierRow>(RowName, ContextString, false);
+		const FNSAugmentDefinitionRow* Row =
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
 		
-		if (!Row)
+		if (!Row || !Row->bEnabled)
 		{
 			continue;
 		}
 		
-		if (!Row->bEnabled)
-		{
-			continue;
-		}
-		
-		if (!Row->SourceDefId.IsValid() || !Row->TargetAbilityTag.IsValid() || !Row->StatTag.IsValid())
-		{
-			NS_OBJ_LOG(LogNSGAS, Warning,
-				"유효하지 않은 CombatStat Modifier Row입니다. RowName={RowName}, SourceDefId={SourceDefId}, AbilityTag={AbilityTag}, StatTag={StatTag}",
-				("RowName", RowName.ToString()),
-				("SourceDefId", Row->SourceDefId.ToString()),
-				("AbilityTag", Row->TargetAbilityTag.ToString()),
-				("StatTag", Row->StatTag.ToString())
-			);
-			
-			continue;
-		}
-		
-		if (Row->Operation == ENSCombatStatModifierOperation::Multiply && Row->Value <= 0.0f)
+		if (!Row->AugmentTag.IsValid() 
+			|| !Row->OwnerCharacterTag.IsValid()
+			|| Row->Definition.IsNull()
+			|| !Row->TargetAbilityTag.IsValid() 
+			|| !Row->StatTag.IsValid())
 		{
 			NS_OBJ_LOG(LogNSGAS, Warning,
-				"유효하지 않은 CombatStat Multiply Modifier Row입니다. RowName={RowName}, SourceDefId={SourceDefId}, Value={Value}",
+				"유효하지 않은 증강 효과 정의 Row입니다. RowName={RowName}, AugmentTag={AugmentTag}",
 				("RowName", RowName.ToString()),
-				("SourceDefId", Row->SourceDefId.ToString()),
-				("Value", Row->Value)
+				("AugmentTag", Row->AugmentTag.ToString())
 			);
-
 			continue;
 		}
 		
-		// SourceDefId로 보유 증강과 빠르게 매칭하기 위한 원본 캐시
-		CachedModifierRowsBySource.FindOrAdd(Row->SourceDefId).Add(*Row);
+		if (Row->Operation == ENSCombatStatModifierOperation::Multiply && Row->ValuePerStack <= 0.0f)
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning,
+				"유효하지 않은 증강 Multiply Modifier Row입니다. RowName={RowName}, Value={Value}",
+				("RowName", RowName.ToString()),
+				("Value", Row->ValuePerStack)
+			);
+			continue;
+		}
+		
+		// Inventory는 DefId를 저장하므로 Definition SoftPtr의 에셋 이름을 같은 DefId로 변환.
+		const FPrimaryAssetId DefId(UNSDataSubsystem::AugmentAssetType, FName(*Row->Definition.GetAssetName()));
+		
+		if (!DefId.IsValid())
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning,
+				"증강 Definition에서 유효한 DefId를 만들지 못했습니다. RowName={RowName}",
+				("RowName", RowName.ToString())
+			);
+			continue;
+		}
+		
+		CachedModifierRowsByDefId.FindOrAdd(DefId).Add(*Row);
 	}
 	
 	NS_OBJ_LOG(LogNSGAS, Log,
-		"CombatStat Modifier 캐시 생성 완료. SourceCount={SourceCount}",
-		("SourceCount", CachedModifierRowsBySource.Num())
+		"증강 CombatStat Modifier 캐시 생성 완료. DefinitionCount={DefinitionCount}",
+		("DefinitionCount", CachedModifierRowsByDefId.Num())
 	);
 }
 
@@ -381,15 +385,15 @@ void UNSCombatStatComponent::RebuildActiveModifierCache()
 	
 	for (const FNSAugmentInstance& OwnedAugment : AugmentInventory->GetOwned())
 	{
-		const TArray<FNSCombatStatModifierRow>* ModifierRows =
-			CachedModifierRowsBySource.Find(OwnedAugment.DefId);
+		const TArray<FNSAugmentDefinitionRow>* ModifierRows =
+			CachedModifierRowsByDefId.Find(OwnedAugment.DefId);
 		
 		if (!ModifierRows)
 		{
 			continue;
 		}
 		
-		for (const FNSCombatStatModifierRow& ModifierRow : *ModifierRows)
+		for (const FNSAugmentDefinitionRow& ModifierRow : *ModifierRows)
 		{
 			// 보유 증강의 현재 스택 수를 반영해 활성 Modifier를 누적
 			ApplyModifierRow(ModifierRow, OwnedAugment.Stacks);
@@ -402,7 +406,7 @@ void UNSCombatStatComponent::RebuildActiveModifierCache()
 	);
 }
 
-void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& ModifierRow, int32 Stacks)
+void UNSCombatStatComponent::ApplyModifierRow(const FNSAugmentDefinitionRow& ModifierRow, int32 Stacks)
 {
 	if (Stacks <= 0)
 	{
@@ -423,12 +427,12 @@ void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& Mo
 	{
 	case ENSCombatStatModifierOperation::Add:
 		// Add는 스택 수만큼 단순 누적
-		ModifierSum.AddValue += ModifierRow.Value * static_cast<float>(Stacks);
+		ModifierSum.AddValue += ModifierRow.ValuePerStack * static_cast<float>(Stacks);
 		break;
 		
 	case ENSCombatStatModifierOperation::Multiply:
 		// Multiply는 스택마다 같은 배율을 반복 적용
-		ModifierSum.MultiplyValue *= FMath::Pow(ModifierRow.Value, static_cast<float>(Stacks));
+		ModifierSum.MultiplyValue *= FMath::Pow(ModifierRow.ValuePerStack, static_cast<float>(Stacks));
 		break;
 		
 	default:
