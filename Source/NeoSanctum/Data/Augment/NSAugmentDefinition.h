@@ -20,17 +20,7 @@ class NEOSANCTUM_API UNSAugmentDefinition : public UPrimaryDataAsset
 
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Meta")
-	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Meta")
-	FGameplayTag AugmentTag;
-
-	// 이 증강을 누적 선택 가능한 최대 스택 수 (도달 시 카드 후보에서 제외). 에디터에서 증강별 조정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Meta", meta = (ClampMin = "1"))
-	int32 MaxStack = 5;
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Display")
 	TSoftObjectPtr<UTexture2D> Icon;
 
