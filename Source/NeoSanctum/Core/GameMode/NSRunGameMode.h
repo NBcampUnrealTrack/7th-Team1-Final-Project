@@ -136,6 +136,9 @@ private:
 
 	// 거점 귀환 시 모든 플레이어의 인런 증강 Clear
 	void ClearAllAugments();
+
+	// 거점 귀환 시 모든 플레이어의 인런 파츠 Clear (세이브의 단일 파츠 A만 복원되도록)
+	void ClearAllParts();
 	
 	// 몬스터 사망시 보상 처리
 	void HandleEnemyReward(ACharacter* DeadEnemy);

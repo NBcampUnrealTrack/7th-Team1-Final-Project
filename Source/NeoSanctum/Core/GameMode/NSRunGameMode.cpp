@@ -24,6 +24,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
+#include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -579,6 +580,33 @@ void ANSRunGameMode::ClearAllAugments()
 	}
 }
 
+// 거점 귀환 시 인런 파츠 Clear
+void ANSRunGameMode::ClearAllParts()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState)
+	{
+		return;
+	}
+	for (APlayerState* PlayerState : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* PS = Cast<ANSPlayerState>(PlayerState);
+		if (!PS)
+		{
+			continue;
+		}
+		if (UNSPartEquipComponent* Part = PS->GetPartEquipComponent())
+		{
+			Part->ClearAll();
+		}
+	}
+}
+
 UNSProjectileManagerComponent* ANSRunGameMode::GetProjectileManager() const
 {
 	const ANSRunGameState* RunGameState =
@@ -843,6 +871,7 @@ void ANSRunGameMode::OnResultDisplayFinished()
 			const float Multiplier = (NSGameState && NSGameState->bIsClear) ? ClearMultiplier : FailMultiplier;
 			CommitAndClearAllWallets(Multiplier);
 			ClearAllAugments();
+			ClearAllParts();
 			SaveAllPlayersProgress();
 			NSGameFlow->ReturnToHub();
 		}
