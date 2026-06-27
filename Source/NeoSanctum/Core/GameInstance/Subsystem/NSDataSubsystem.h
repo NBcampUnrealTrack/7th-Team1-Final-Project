@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSDataSubsystem.generated.h"
 
+class UDataTable;
 class UNSRewardDataRegistry;
 class UNSRewardTriggerData;
 
@@ -169,6 +170,11 @@ private:
 
 	// AssetType 목록의 PrimaryAssetId를 수집
 	void GatherAssetIds(const TArray<FPrimaryAssetType>& Types, TArray<FPrimaryAssetId>& OutIds) const;
+	
+	// DT_AugmentDefinition이 참조하는 Definition DA를 NSAugmentData PrimaryAssetId로 수집
+	 void CollectAugmentDefinitionIdsFromTable(
+	 	const UDataTable* AugmentDefinitionTable, TArray<FPrimaryAssetId>& OutIds) const;
+	
 	// 로드된 PrimaryAsset들을 DataCache에 저장
 	void CacheLoaded(const TArray<FPrimaryAssetType>& Types);
 	// 해당 타입의 캐시 엔트리 제거 및 UnloadPrimaryAssets

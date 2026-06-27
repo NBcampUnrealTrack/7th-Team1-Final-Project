@@ -2,9 +2,11 @@
 
 
 #include "NSDataSubsystem.h"
+#include "Engine/DataTable.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 
@@ -322,6 +324,39 @@ void UNSDataSubsystem::GatherAssetIds(const TArray<FPrimaryAssetType>& Types, TA
 		AM.GetPrimaryAssetIdList(Type, Ids);
 		OutIds.Append(Ids);
 	}
+}
+
+void UNSDataSubsystem::CollectAugmentDefinitionIdsFromTable(
+	const UDataTable* AugmentDefinitionTable, TArray<FPrimaryAssetId>& OutIds) const
+{
+	if (!IsValid(AugmentDefinitionTable) || 
+		AugmentDefinitionTable->GetRowStruct() != FNSAugmentDefinitionRow::StaticStruct())
+	{
+		return;
+	}
+	
+	TSet<FPrimaryAssetId> UniqueIds;
+	const FString ContextString = TEXT("CollectAugmentDefinitionIdsFromTable");
+	
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
+	{
+		const FNSAugmentDefinitionRow* Row =
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
+		
+		if (!Row || Row->Definition.IsNull())
+		{
+			continue;
+		}
+		
+		// DT_AugmentDefinition이 이번 런의 증강 후보 원본이므로 Row의 Definition만 선로딩 대상으로 수집.
+		const FPrimaryAssetId DefId(AugmentAssetType, FName(*Row->Definition.GetAssetName()));
+		if (DefId.IsValid())
+		{
+			UniqueIds.Add(DefId);
+		}
+	}
+	
+	OutIds.Append(UniqueIds.Array());
 }
 
 void UNSDataSubsystem::CacheLoaded(const TArray<FPrimaryAssetType>& Types)
