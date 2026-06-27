@@ -5,8 +5,8 @@
 
 #include "Components/MeshComponent.h"
 #include "Components/SceneComponent.h"
-#include "NiagaraFunctionLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 
 bool UNSGameplayCueNotify_Instant::OnExecute_Implementation(
 	AActor* MyTarget,
@@ -16,7 +16,7 @@ bool UNSGameplayCueNotify_Instant::OnExecute_Implementation(
 	Super::OnExecute_Implementation(MyTarget, Parameters);
 	
 	PlaySound(MyTarget, Parameters, ExecuteSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
-	SpawnVFX(MyTarget, Parameters, ExecuteVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName);
+	SpawnVFX(MyTarget, Parameters, ExecuteVFXID, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName);
 	
 	return true;
 }
@@ -136,13 +136,19 @@ UAudioComponent* UNSGameplayCueNotify_Instant::PlaySound(
 void UNSGameplayCueNotify_Instant::SpawnVFX(
 	AActor* MyTarget,
 	const FGameplayCueParameters& Parameters,
-	UNiagaraSystem* NiagaraSystem,
+	FName VFXID,
 	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
 	FName SocketName
 ) const
 {
-	if (!NiagaraSystem)
+	if (VFXID.IsNone())
+	{
+		return;
+	}
+
+	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(MyTarget);
+	if (!VFXSubsystem)
 	{
 		return;
 	}
@@ -159,25 +165,22 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 		
 		if (AttachComponent)
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAttached(
-				NiagaraSystem,
+			VFXSubsystem->PlayVFXAttached(
+				VFXID,
 				AttachComponent,
 				ResolvedSocketName,
 				FVector::ZeroVector,
 				FRotator::ZeroRotator,
-				EAttachLocation::SnapToTarget,
-				true
-			);
+				VFXScaleMultiplier);
 			return;
 		}
 		
 		return;
 	}
 	
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-		MyTarget,
-		NiagaraSystem,
+	VFXSubsystem->PlayVFXAtLocation(
+		VFXID,
 		Parameters.Location,
-		Parameters.Normal.Rotation()
-	);
+		Parameters.Normal.Rotation(),
+		VFXScaleMultiplier);
 }

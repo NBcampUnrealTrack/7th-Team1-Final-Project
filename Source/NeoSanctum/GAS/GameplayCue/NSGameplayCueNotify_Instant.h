@@ -7,7 +7,6 @@
 #include "NeoSanctum/GAS/GameplayCue/NSGameplayCueTypes.h"
 #include "NSGameplayCueNotify_Instant.generated.h"
 
-class UNiagaraSystem;
 class UAudioComponent;
 class USceneComponent;
 
@@ -49,7 +48,7 @@ protected:
 	void SpawnVFX(
 		AActor* MyTarget,
 		const FGameplayCueParameters& Parameters,
-		UNiagaraSystem* NiagaraSystem,
+		FName VFXID,
 		ENSGameplayCueSpawnMode SpawnMode,
 		FName ComponentName,
 		FName SocketName
@@ -75,10 +74,13 @@ protected:
 
 	// VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
-	TObjectPtr<UNiagaraSystem> ExecuteVFX;
+	FName ExecuteVFXID = NAME_None;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	ENSGameplayCueSpawnMode VFXSpawnMode = ENSGameplayCueSpawnMode::Location;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX", meta = (ClampMin = "0.0"))
+	float VFXScaleMultiplier = 1.0f;
 
 	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
