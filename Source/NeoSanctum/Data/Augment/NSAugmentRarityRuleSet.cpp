@@ -4,5 +4,5 @@
 
 FPrimaryAssetId UNSAugmentRarityRuleSet::GetPrimaryAssetId() const
 {
-	return FPrimaryAssetId(TEXT("NSAugmentPool"), GetFName());
+	return FPrimaryAssetId(TEXT("NSAugmentRarityRuleSet"), GetFName());
 }

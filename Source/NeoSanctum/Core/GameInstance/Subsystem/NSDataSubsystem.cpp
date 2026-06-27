@@ -11,13 +11,13 @@
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
-const FPrimaryAssetType UNSDataSubsystem::PlayerAssetType			= FPrimaryAssetType(TEXT("NSPlayerData"));
-const FPrimaryAssetType UNSDataSubsystem::HubAssetType				= FPrimaryAssetType(TEXT("NSHubData"));
-const FPrimaryAssetType UNSDataSubsystem::PartAssetType				= FPrimaryAssetType(TEXT("NSPartData"));
-const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType			= FPrimaryAssetType(TEXT("NSMonsterData"));
-const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType			= FPrimaryAssetType(TEXT("NSAugmentData"));
-const FPrimaryAssetType UNSDataSubsystem::AugmentPoolAssetType		= FPrimaryAssetType(TEXT("NSAugmentPool"));
-const FPrimaryAssetType UNSDataSubsystem::RewardTriggerAssetType	= FPrimaryAssetType(TEXT("NSRewardTriggerData"));
+const FPrimaryAssetType UNSDataSubsystem::CharacterAssetType				= FPrimaryAssetType(TEXT("NSCharacterData"));
+const FPrimaryAssetType UNSDataSubsystem::HubAssetType						= FPrimaryAssetType(TEXT("NSHubData"));
+const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType(TEXT("NSPartData"));
+const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType					= FPrimaryAssetType(TEXT("NSMonsterData"));
+const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType					= FPrimaryAssetType(TEXT("NSAugmentData"));
+const FPrimaryAssetType UNSDataSubsystem::AugmentRarityRuleSetAssetType		= FPrimaryAssetType(TEXT("NSAugmentRarityRuleSet"));
+const FPrimaryAssetType UNSDataSubsystem::RewardTriggerAssetType			= FPrimaryAssetType(TEXT("NSRewardTriggerData"));
 // TODO: 레벨 전용 GA가 있다면 아웃런, 인런 구분해서 여기서 추가해서 사용하게끔
 
 // DataAsset의 meta=(AssetBundles="...") 와 반드시 일치
@@ -145,7 +145,7 @@ void UNSDataSubsystem::StartLoadCommon()
 {
 	SetPhase(ENSDataLoadPhase::LoadingCommon);
 
-	const TArray<FPrimaryAssetType> Types = { PlayerAssetType };
+	const TArray<FPrimaryAssetType> Types = { CharacterAssetType };
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -164,7 +164,7 @@ void UNSDataSubsystem::StartLoadCommon()
 
 void UNSDataSubsystem::OnCommonAssetsLoaded()
 {
-	CacheLoaded({ PlayerAssetType });
+	CacheLoaded({ CharacterAssetType });
 	SetPhase(ENSDataLoadPhase::CommonReady);
 	OnCommonDataReady.Broadcast();
 }
@@ -210,7 +210,7 @@ void UNSDataSubsystem::StartLoadRun()
 	SetPhase(ENSDataLoadPhase::LoadingRun);
 
 	const TArray<FPrimaryAssetType> Types =
-		{ MonsterAssetType, AugmentAssetType, AugmentPoolAssetType, PartAssetType, RewardTriggerAssetType };
+		{ MonsterAssetType, AugmentAssetType, AugmentRarityRuleSetAssetType, PartAssetType, RewardTriggerAssetType };
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -232,7 +232,7 @@ void UNSDataSubsystem::OnRunAssetsLoaded()
 	CacheLoaded({
 		MonsterAssetType,
 		AugmentAssetType,
-		AugmentPoolAssetType, 
+		AugmentRarityRuleSetAssetType, 
 		PartAssetType,
 		RewardTriggerAssetType}
 	);
@@ -266,7 +266,7 @@ void UNSDataSubsystem::UnloadCommon()
 		CommonHandle->ReleaseHandle();
 		CommonHandle.Reset();
 	}
-	UnloadByTypes({ PlayerAssetType });
+	UnloadByTypes({ CharacterAssetType });
 }
 
 void UNSDataSubsystem::UnloadOutGame()
@@ -296,7 +296,7 @@ void UNSDataSubsystem::UnloadRun()
 	UnloadByTypes({
 		MonsterAssetType, 
 		AugmentAssetType, 
-		AugmentPoolAssetType, 
+		AugmentRarityRuleSetAssetType, 
 		PartAssetType, 
 		RewardTriggerAssetType }
 	);
