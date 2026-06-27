@@ -653,6 +653,8 @@ void UNSDataSubsystem::OnOutGameReferenceAssetsLoaded()
 {
 	CacheCharacterSelectRows();
 
+	CacheLoaded({ HubAssetType, PartAssetType });
+	BuildPartRowCache();
 	SetPhase(ENSDataLoadPhase::OutGameReady);
 	NS_NET_LOG(this, LogNS, Warning, "OutGameData 로딩 완료");
 	OnOutGameDataReady.Broadcast();
@@ -1118,4 +1120,45 @@ void UNSDataSubsystem::SetPhase(ENSDataLoadPhase NewPhase)
 {
 	CurrentPhase = NewPhase;
 	OnPhaseChanged.Broadcast(NewPhase);
+}
+
+// ================================================================
+// 파츠 row 캐시
+// ================================================================
+
+void UNSDataSubsystem::BuildPartRowCache()
+{
+	CachedPartRowsByDefId.Empty();
+
+	if (!PartDefinitionTable)
+	{
+		return;
+	}
+
+	for (const FName& RowName : PartDefinitionTable->GetRowNames())
+	{
+		const FNSPartDefinitionRow* Row =
+			PartDefinitionTable->FindRow<FNSPartDefinitionRow>(RowName, TEXT("BuildPartRowCache"), false);
+		if (!Row || !Row->bEnabled || Row->Definition.IsNull())
+		{
+			continue;
+		}
+
+		const FPrimaryAssetId DefId =
+			UAssetManager::Get().GetPrimaryAssetIdForPath(Row->Definition.ToSoftObjectPath());
+		if (DefId.IsValid())
+		{
+			CachedPartRowsByDefId.Add(DefId, *Row);
+		}
+	}
+}
+
+const FNSPartDefinitionRow* UNSDataSubsystem::GetPartRow(const FPrimaryAssetId& DefId) const
+{
+	return CachedPartRowsByDefId.Find(DefId);
+}
+
+const TMap<FPrimaryAssetId, FNSPartDefinitionRow>& UNSDataSubsystem::GetAllPartRows() const
+{
+	return CachedPartRowsByDefId;
 }

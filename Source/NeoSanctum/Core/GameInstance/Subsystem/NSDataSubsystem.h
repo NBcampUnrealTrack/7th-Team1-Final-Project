@@ -7,6 +7,7 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
@@ -174,6 +175,12 @@ public:
 	UDataTable* GetCurrentRangeSpawnerTable() const { return CurrentRangeSpawnerTable.Get(); }
 	bool AreCurrentStageSpawnerTablesLoaded() const { return bStageSpawnerTablesLoaded; }
 
+	// DA PrimaryAssetId로 파츠 row 조회
+	const FNSPartDefinitionRow* GetPartRow(const FPrimaryAssetId& DefId) const;
+
+	// 필터 없이 전체 캐시 반환 (UI 목록 구성용)
+	const TMap<FPrimaryAssetId, FNSPartDefinitionRow>& GetAllPartRows() const;
+
 	//맵 이동 중 유지할 플레이어 진행 데이터 저장
 	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
 
@@ -324,6 +331,15 @@ private:
 	FNSProgressPayload CachedProgressPayload;
 
 	bool bHasCachedProgressPayload = false;
+
+	// DT_PartDefinition 에디터 참조
+	UPROPERTY(EditDefaultsOnly, Category = "NS|DataSubsystem|Part")
+	TObjectPtr<UDataTable> PartDefinitionTable;
+
+	// DefId → row 캐시 (OnOutGameAssetsLoaded 시 빌드)
+	TMap<FPrimaryAssetId, FNSPartDefinitionRow> CachedPartRowsByDefId;
+
+	void BuildPartRowCache();
 
 	// ================================================================
 	// 상태
