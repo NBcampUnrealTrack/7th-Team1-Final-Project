@@ -35,3 +35,23 @@ UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContex
 
 	return Cached;
 }
+
+const FNSPartDefinitionRow* NSPartUtils::ResolvePartRow(
+	const UObject* WorldContextObject,
+	const FPrimaryAssetId& DefId)
+{
+	if (!DefId.IsValid())
+	{
+		return nullptr;
+	}
+
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
+	if (!DataSS)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] ResolvePartRow: DataSubsystem 없음 (DefId=%s)"),
+			*DefId.ToString());
+		return nullptr;
+	}
+
+	return DataSS->GetPartRow(DefId);
+}
