@@ -18,6 +18,7 @@
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 
@@ -43,6 +44,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
 	
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
