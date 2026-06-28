@@ -2,9 +2,10 @@
 
 
 #include "NSGameFlowSubsystem.h"
+
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
-#include "NeoSanctum/Data/World/NSDifficultyConfig.h"
-#include "NeoSanctum/Data/World/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSDifficultyConfig.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 

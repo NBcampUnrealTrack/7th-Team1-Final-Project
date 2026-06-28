@@ -6,7 +6,7 @@
 #include "OnlineSessionSettings.h"
 #include "Kismet/GameplayStatics.h" 
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
-#include "NeoSanctum/Data/World/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 
