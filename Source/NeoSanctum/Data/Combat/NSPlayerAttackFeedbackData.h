@@ -26,5 +26,8 @@ struct NEOSANCTUM_API FNSPlayerAttackFeedbackData : public FTableRowBase
 	ENSCrosshairAttackFeedbackType CrosshairFeedbackType = ENSCrosshairAttackFeedbackType::None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AttackFeedback")
+	FName SoundID = NAME_None;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AttackFeedback")
 	int32 Priority = 0;
 };
