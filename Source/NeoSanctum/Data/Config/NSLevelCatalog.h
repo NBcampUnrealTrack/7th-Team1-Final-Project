@@ -6,8 +6,11 @@
 #include "Engine/DataAsset.h"
 #include "NSLevelCatalog.generated.h"
 
+class UNSLevelConfig;
+
 /**
- *  트래블에서 사용할 맵 리스트
+ * 인런 스테이지 목록의 단일 엔트리.
+ * LevelId는 식별용이고, LevelConfig는 해당 스테이지 진입에 필요한 맵/데이터 설정을 가리킴.
  */
 USTRUCT(BlueprintType)
 struct FNSInRunLevelEntry
@@ -17,8 +20,8 @@ struct FNSInRunLevelEntry
 	UPROPERTY(EditAnywhere)
 	FName LevelId;
 	
-	UPROPERTY(EditAnywhere, meta=(AllowedClasses="/Script/Engine.World"))
-	TSoftObjectPtr<UWorld> Level;
+	UPROPERTY(EditAnywhere)
+	TSoftObjectPtr<UNSLevelConfig> LevelConfig;
 	
 };
 
