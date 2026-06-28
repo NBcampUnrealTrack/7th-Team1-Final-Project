@@ -8,6 +8,9 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
 #include "NSHitReactionComponent.generated.h"
 
+class UDataTable;
+struct FNSHitReactionData;
+
 // Health Damage를 받은 액터의 월드 피격 리액션을 재생하는 컴포넌트
 UCLASS()
 class NEOSANCTUM_API UNSHitReactionComponent : public UActorComponent
@@ -17,15 +20,39 @@ class NEOSANCTUM_API UNSHitReactionComponent : public UActorComponent
 public:
 	UNSHitReactionComponent();
 
-	// Context를 기반으로 기본 GameplayCue를 실행
+	// Context를 기반으로 GameplayCue를 실행
 	UFUNCTION(BlueprintCallable, Category = "HitReaction")
 	void PlayHitReaction(const FNSHitReactionContext& Context) const;
 
-private:
-	// Owner의 ASC에서 GameplayCue를 실행
-	void ExecuteHitCue(const FNSHitReactionContext& Context) const;
+	// 액터가 어떤 피격 대상인지 코드 생성 시 지정
+	void SetTargetType(ENSHitFeedbackTargetType InTargetType) { TargetType = InTargetType; }
 
 private:
+	// 컴포넌트 설정값을 이용해 Context의 빈 분류 값을 보정
+	FNSHitReactionContext BuildResolvedContext(const FNSHitReactionContext& Context) const;
+
+	// 대상 사망/파괴 여부와 TargetType를 검사해서 히트 결과(Kill/Destroy) 결정
+	ENSHitFeedbackOutcome ResolveOutcome(const FNSHitReactionContext& Context) const;
+
+	// DataTable 매칭 결과를 우선 사용, 없으면 Default Cue Tag를 사용
+	FGameplayTag ResolveCueTag(const FNSHitReactionContext& Context) const;
+
+	// 임시 : GameInstance에 등록된 HitReaction DataTable을 가져옴
+	const UDataTable* GetHitReactionDataTable() const;
+
+	// Context와 매칭되는 HitReaction Row를 Priority 기준으로 검색함
+	const FNSHitReactionData* FindBestReactionData(const FNSHitReactionContext& Context) const;
+
+	// Row의 조건이 Context와 매칭되는지 확인
+	bool CheckReactionDataMatch(const FNSHitReactionData& Data, const FNSHitReactionContext& Context) const;
+
+	// Owner의 ASC에서 GameplayCue를 실행
+	void ExecuteHitCue(const FNSHitReactionContext& Context, FGameplayTag CueTag) const;
+
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitReaction", meta = (AllowPrivateAccess = "true"))
+	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitReaction", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag DefaultHitCueTag;
 };

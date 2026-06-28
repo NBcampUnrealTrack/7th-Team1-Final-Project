@@ -4,7 +4,9 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "GameplayCueManager.h"
+#include "Engine/DataTable.h"
+#include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 
 UNSHitReactionComponent::UNSHitReactionComponent()
 {
@@ -13,15 +15,137 @@ UNSHitReactionComponent::UNSHitReactionComponent()
 
 void UNSHitReactionComponent::PlayHitReaction(const FNSHitReactionContext& Context) const
 {
-	if (!DefaultHitCueTag.IsValid())
+	// 실제 재생 전에 TargetType, Outcome, CueTag를 순서대로 확정
+	const FNSHitReactionContext ResolvedContext = BuildResolvedContext(Context);
+	const FGameplayTag CueTag = ResolveCueTag(ResolvedContext);
+	if (!CueTag.IsValid())
 	{
 		return;
 	}
 
-	ExecuteHitCue(Context);
+	ExecuteHitCue(ResolvedContext, CueTag);
 }
 
-void UNSHitReactionComponent::ExecuteHitCue(const FNSHitReactionContext& Context) const
+FNSHitReactionContext UNSHitReactionComponent::BuildResolvedContext(
+	const FNSHitReactionContext& Context) const
+{
+	FNSHitReactionContext ResolvedContext = Context;
+
+	if (ResolvedContext.TargetType == ENSHitFeedbackTargetType::Any)
+	{
+		// AttributeSet에서 TargetType을 모르면 컴포넌트의 기본 분류를 사용
+		ResolvedContext.TargetType = TargetType;
+	}
+
+	ResolvedContext.Outcome = ResolveOutcome(ResolvedContext);
+	return ResolvedContext;
+}
+
+ENSHitFeedbackOutcome UNSHitReactionComponent::ResolveOutcome(
+	const FNSHitReactionContext& Context) const
+{
+	if (Context.Outcome != ENSHitFeedbackOutcome::None)
+	{
+		return Context.Outcome;
+	}
+
+	if (!Context.bTargetDead)
+	{
+		// 일반 피격은 결과 없음으로 유지
+		return ENSHitFeedbackOutcome::None;
+	}
+
+	if (Context.TargetType == ENSHitFeedbackTargetType::Enemy)
+	{
+		return ENSHitFeedbackOutcome::Kill;
+	}
+
+	if (Context.TargetType == ENSHitFeedbackTargetType::Barrier ||
+		Context.TargetType == ENSHitFeedbackTargetType::DestructibleObject ||
+		Context.TargetType == ENSHitFeedbackTargetType::Turret)
+	{
+		return ENSHitFeedbackOutcome::Destroy;
+	}
+
+	return ENSHitFeedbackOutcome::None;
+}
+
+FGameplayTag UNSHitReactionComponent::ResolveCueTag(const FNSHitReactionContext& Context) const
+{
+	if (const FNSHitReactionData* ReactionData = FindBestReactionData(Context))
+	{
+		if (ReactionData->GameplayCueTag.IsValid())
+		{
+			return ReactionData->GameplayCueTag;
+		}
+	}
+	
+	return DefaultHitCueTag;
+}
+
+const UDataTable* UNSHitReactionComponent::GetHitReactionDataTable() const
+{
+	// 임시 공통 보관소. 추후 비동기 로딩 DataSet 흐름으로 대체 예정
+	const UNSGameInstance* GameInstance = UNSGameInstance::Get(this);
+	return GameInstance ? GameInstance->HitReactionDataTable : nullptr;
+}
+
+const FNSHitReactionData* UNSHitReactionComponent::FindBestReactionData(
+	const FNSHitReactionContext& Context) const
+{
+	const UDataTable* HitReactionDataTable = GetHitReactionDataTable();
+	if (!HitReactionDataTable)
+	{
+		return nullptr;
+	}
+	
+	TArray<FNSHitReactionData*> Rows;
+	HitReactionDataTable->GetAllRows(TEXT("HitReaction"), Rows);
+	
+	const FNSHitReactionData* BestData = nullptr;
+	int32 BestPriority = TNumericLimits<int32>::Lowest();
+	
+	for (const FNSHitReactionData* Row : Rows)
+	{
+		// Any 조건을 포함해 현재 Context에 맞는 Row만 후보로 사용
+		if (!Row || !CheckReactionDataMatch(*Row, Context))
+		{
+			continue;
+		}
+		
+		// BestData를 갱신함. Priority가 높은 대상인 경우에도 교체됨
+		if (!BestData || Row->Priority > BestPriority)
+		{
+			BestData = Row;
+			BestPriority = Row->Priority;
+		}
+	}
+	
+	return BestData;
+}
+
+bool UNSHitReactionComponent::CheckReactionDataMatch(
+	const FNSHitReactionData& Data,
+	const FNSHitReactionContext& Context) const
+{
+	const bool bTargetMatched =
+		Data.TargetType == ENSHitFeedbackTargetType::Any ||
+		Data.TargetType == Context.TargetType;
+	
+	const bool bQualityMatched =
+		Data.HitQuality == ENSHitFeedbackQuality::Any ||
+		Data.HitQuality == Context.HitQuality;
+	
+	const bool bOutcomeMatched =
+		Data.Outcome == ENSHitFeedbackOutcome::Any ||
+		Data.Outcome == Context.Outcome;
+	
+	return bTargetMatched && bQualityMatched && bOutcomeMatched;
+}
+
+void UNSHitReactionComponent::ExecuteHitCue(
+	const FNSHitReactionContext& Context,
+	const FGameplayTag CueTag) const
 {
 	AActor* OwnerActor = GetOwner();
 	if (!OwnerActor)
@@ -36,11 +160,13 @@ void UNSHitReactionComponent::ExecuteHitCue(const FNSHitReactionContext& Context
 	}
 
 	FGameplayCueParameters CueParameters;
+	
+	// GameplayCue Notify에서 Location, Normal, Damage 값을 사용할 수 있도록 전달
 	CueParameters.Instigator = Context.InstigatorActor;
 	CueParameters.EffectCauser = Context.InstigatorActor;
 	CueParameters.Location = Context.HitLocation;
 	CueParameters.Normal = Context.HitNormal;
 	CueParameters.RawMagnitude = Context.DamageAmount;
 
-	ASC->ExecuteGameplayCue(DefaultHitCueTag, CueParameters);
+	ASC->ExecuteGameplayCue(CueTag, CueParameters);
 }
