@@ -10,6 +10,9 @@ namespace NSGameplayTags
 	// Damage
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Damage_Flash, "GameplayCue.Damage.Flash");
 	
+	// Hit Reaction
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Enemy_Reaction_NormalHit, "GameplayCue.Enemy.Reaction.NormalHit");
+	
 	// Ranger
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_AutoFire_MuzzleFire, "GameplayCue.Ranger.AutoFire.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_AutoFire_Impact, "GameplayCue.Ranger.AutoFire.Impact");
