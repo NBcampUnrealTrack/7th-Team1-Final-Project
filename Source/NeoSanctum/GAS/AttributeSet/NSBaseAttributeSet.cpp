@@ -179,7 +179,7 @@ void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
 	ReactionContext.DamageAmount = AppliedHealthDamage;
 	ReactionContext.HitQuality = ENSHitFeedbackQuality::Normal;
-	ReactionContext.bTargetDepleted = GetHealth() <= 0.0f;
+	ReactionContext.bTargetDead = GetHealth() <= 0.0f;
 	ReactionContext.HitLocation = TargetActor->GetActorLocation();
 	ReactionContext.HitNormal = FVector::UpVector;
 

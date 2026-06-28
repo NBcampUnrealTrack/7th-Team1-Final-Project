@@ -42,7 +42,7 @@ struct NEOSANCTUM_API FNSHitReactionContext
 
 	// 이 피격으로 대상의 Health가 0 이하가 되었는지
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
-	bool bTargetDepleted = false;
+	bool bTargetDead = false;
 
 	// 히트 결과
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
