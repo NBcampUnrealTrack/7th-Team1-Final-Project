@@ -13,7 +13,8 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Damage_Flash);
 	
 	// Hit Reaction
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Enemy_Reaction_NormalHit);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Basic);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Barrier);
 	
 	// Ranger
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_AutoFire_MuzzleFire);
