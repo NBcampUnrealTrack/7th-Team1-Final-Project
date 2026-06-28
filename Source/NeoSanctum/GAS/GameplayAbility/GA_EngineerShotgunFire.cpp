@@ -704,7 +704,7 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 
 		if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 		{
-			ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
+			ApplyDamageToActor(MuzzleObstructionHitResult);
 			ExecuteImpactCue(MuzzleObstructionHitResult);
 			continue;
 		}
@@ -714,13 +714,14 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 			continue;
 		}
 
-		ApplyDamageToActor(ServerHitResult.GetActor());
+		ApplyDamageToActor(ServerHitResult);
 		ExecuteImpactCue(ServerHitResult);
 	}
 }
 
-void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
+void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult)
 {
+	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
 	{
 		return;
@@ -755,6 +756,7 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
 	}
 
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
+	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	AssignDamageInstigator(DamageSpecHandle);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);

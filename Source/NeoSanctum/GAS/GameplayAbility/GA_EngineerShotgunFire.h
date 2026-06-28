@@ -108,7 +108,7 @@ private:
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
 	// 대상 Actor에게 GameplayEffect 대미지를 적용
-	void ApplyDamageToActor(AActor* TargetActor);
+	void ApplyDamageToActor(const FHitResult& HitResult);
 
 	// Damage GameplayEffect의 SetByCaller 값을 설정
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
