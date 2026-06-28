@@ -69,6 +69,11 @@ protected:
 	void NotifyAttackFeedbackAfterHealthDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
+
+	// 실제 Health 감소 후 대상 액터의 월드 피격 리액션을 요청
+	void NotifyHitReactionAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const;
 	
 private:
 	UFUNCTION()

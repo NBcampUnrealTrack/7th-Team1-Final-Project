@@ -7,6 +7,8 @@
 #include "GameFramework/Pawn.h"
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "Net/UnrealNetwork.h"
 
@@ -82,6 +84,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 
 		// 실제 Health 감소가 확정된 뒤 공격자 로컬 피드백을 요청
 		NotifyAttackFeedbackAfterHealthDamage(Data, PreviousHealth);
+		NotifyHitReactionAfterHealthDamage(Data, PreviousHealth);
 	}
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
@@ -146,6 +149,46 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 	}
 
 	PlayerController->Client_PlayAttackHitFeedback(FeedbackContext);
+}
+
+void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
+	const FGameplayEffectModCallbackData& Data,
+	const float PreviousHealth) const
+{
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	AActor* TargetActor = Data.Target.GetAvatarActor();
+	if (!TargetActor)
+	{
+		return;
+	}
+
+	UNSHitReactionComponent* HitReactionComponent =
+		TargetActor->FindComponentByClass<UNSHitReactionComponent>();
+	if (!HitReactionComponent)
+	{
+		return;
+	}
+
+	FNSHitReactionContext ReactionContext;
+	ReactionContext.TargetActor = TargetActor;
+	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+	ReactionContext.DamageAmount = AppliedHealthDamage;
+	ReactionContext.HitQuality = ENSHitFeedbackQuality::Normal;
+	ReactionContext.HitLocation = TargetActor->GetActorLocation();
+	ReactionContext.HitNormal = FVector::UpVector;
+
+	if (const FHitResult* HitResult = Data.EffectSpec.GetEffectContext().GetHitResult())
+	{
+		ReactionContext.HitLocation = HitResult->ImpactPoint;
+		ReactionContext.HitNormal = HitResult->ImpactNormal;
+	}
+
+	HitReactionComponent->PlayHitReaction(ReactionContext);
 }
 
 void UNSBaseAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
