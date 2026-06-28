@@ -1101,13 +1101,7 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 	{
 		INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
 	}
-
-	//서버 인런 데이터 로드
-	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
-	{
-		Data->EnterRun();
-	}
-
+	
 	//각 클라이언트에 인런 데이터 로드 지시
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
@@ -1120,10 +1114,6 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 
 void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 {
-	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
-	{
-		Data->EnterRun();
-	}
 	if (UNSUIManagerSubsystem* UIManager =
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
 	{
@@ -1131,7 +1121,6 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation()
 		UIManager->ShowHUD();
 		UIManager->ShowInRunGoods();
 	}
-
 }
 
 void ANSPlayerController::Client_NotifyReturnToHub_Implementation()

@@ -3,8 +3,10 @@
 
 #include "NSGameFlowSubsystem.h"
 
+#include "NSDataSubsystem.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSDifficultyConfig.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
@@ -70,7 +72,7 @@ void UNSGameFlowSubsystem::StartNewRun()
 	// 기획상 스테이지 게임 시작은 무조건 스테이지 1부터(후에 수정될수도 있음)
 	CurrentInRunIndex = 0; 
 	
-	ServerTravelToWorld(NSCatalog->InRunLevels[0].Level, FString());
+	RequestEnterRun(NSCatalog->InRunLevels[0].LevelConfig);
 }
 
 int32 UNSGameFlowSubsystem::PickNextInRunIndex() const
@@ -98,6 +100,45 @@ int32 UNSGameFlowSubsystem::PickNextInRunIndex() const
 	} 
 	
 	return Next;
+}
+
+bool UNSGameFlowSubsystem::RequestEnterRun(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
+{
+	if (LevelConfig.IsNull())
+	{
+		return false;
+	}
+	
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return false;
+	}
+	
+	DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
+	DataSubsystem->OnRunGameDataReady.AddDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
+	
+	DataSubsystem->EnterRun(LevelConfig);
+	return true;
+}
+
+void UNSGameFlowSubsystem::HandleRunGameDataReady()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+	
+	DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
+	
+	const UNSLevelConfig* LevelConfig = DataSubsystem->GetCurrentRunLevelConfig();
+	if (!IsValid(LevelConfig))
+	{
+		return;
+	}
+	
+	ServerTravelToWorld(LevelConfig->TravelMap, FString());
 }
 
 bool UNSGameFlowSubsystem::AdvanceToNextStage()
@@ -128,9 +169,7 @@ bool UNSGameFlowSubsystem::AdvanceToNextStage()
 	CurrentInRunIndex = NextIndex;
 	CurrentStageNumber++;
 	
-	return ServerTravelToWorld(
-		Catalog->InRunLevels[NextIndex].Level,
-		FString());
+	return RequestEnterRun(Catalog->InRunLevels[NextIndex].LevelConfig);
 }
 
 bool UNSGameFlowSubsystem::ReturnToHub()

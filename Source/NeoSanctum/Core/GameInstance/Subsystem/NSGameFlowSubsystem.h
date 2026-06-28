@@ -9,6 +9,7 @@
 #include "NSGameFlowSubsystem.generated.h"
 
 class UNSLevelCatalog;
+class UNSLevelConfig;
 
 /**
  * 아웃게임 <-> 인 런 간 트래블 로직 담당할 서브시스템
@@ -54,6 +55,11 @@ private:
 	int32 PickNextInRunIndex() const;
 	
 	bool ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options);
+	
+	bool RequestEnterRun(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
+	
+	UFUNCTION()
+	void HandleRunGameDataReady();
 	
 	int32 CurrentStageNumber = 0;
 	
