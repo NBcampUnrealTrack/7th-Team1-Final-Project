@@ -131,13 +131,14 @@ public:
 	// ================================================================
 
 	// Common (인런/아웃런 공통)
+	static const FPrimaryAssetType CommonDataConfigAssetType;
 	static const FPrimaryAssetType CharacterAssetType;
 
-	// OutGame
+	// OutRun
 	static const FPrimaryAssetType HubAssetType;
 	static const FPrimaryAssetType PartAssetType;
 
-	// Run
+	// InRun
 	static const FPrimaryAssetType MonsterAssetType;
 	static const FPrimaryAssetType AugmentAssetType;
 	static const FPrimaryAssetType AugmentRarityRuleSetAssetType;

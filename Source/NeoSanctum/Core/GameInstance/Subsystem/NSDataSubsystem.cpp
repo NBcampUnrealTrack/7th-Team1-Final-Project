@@ -11,9 +11,17 @@
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
+
+// Common (인런/아웃런 공통)
+const FPrimaryAssetType UNSDataSubsystem::CommonDataConfigAssetType			= FPrimaryAssetType(TEXT("NSCommonDataConfig"));
 const FPrimaryAssetType UNSDataSubsystem::CharacterAssetType				= FPrimaryAssetType(TEXT("NSCharacterData"));
 const FPrimaryAssetType UNSDataSubsystem::HubAssetType						= FPrimaryAssetType(TEXT("NSHubData"));
 const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType(TEXT("NSPartData"));
+
+// OutGame
+
+
+// InRun
 const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType					= FPrimaryAssetType(TEXT("NSMonsterData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType					= FPrimaryAssetType(TEXT("NSAugmentData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentRarityRuleSetAssetType		= FPrimaryAssetType(TEXT("NSAugmentRarityRuleSet"));
@@ -145,7 +153,11 @@ void UNSDataSubsystem::StartLoadCommon()
 {
 	SetPhase(ENSDataLoadPhase::LoadingCommon);
 
-	const TArray<FPrimaryAssetType> Types = { CharacterAssetType };
+	const TArray<FPrimaryAssetType> Types = 
+	{
+		CommonDataConfigAssetType,
+		CharacterAssetType
+	};
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -164,7 +176,12 @@ void UNSDataSubsystem::StartLoadCommon()
 
 void UNSDataSubsystem::OnCommonAssetsLoaded()
 {
-	CacheLoaded({ CharacterAssetType });
+	CacheLoaded(
+{ 
+			CommonDataConfigAssetType,
+			CharacterAssetType
+		}
+	);
 	SetPhase(ENSDataLoadPhase::CommonReady);
 	OnCommonDataReady.Broadcast();
 }
@@ -266,7 +283,12 @@ void UNSDataSubsystem::UnloadCommon()
 		CommonHandle->ReleaseHandle();
 		CommonHandle.Reset();
 	}
-	UnloadByTypes({ CharacterAssetType });
+	UnloadByTypes(
+	{ 
+			CommonDataConfigAssetType,
+			CharacterAssetType, 
+		}
+	);
 }
 
 void UNSDataSubsystem::UnloadOutGame()
