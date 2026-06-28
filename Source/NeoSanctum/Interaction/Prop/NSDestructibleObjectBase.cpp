@@ -7,6 +7,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSDestructibleAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -32,6 +33,8 @@ ANSDestructibleObjectBase::ANSDestructibleObjectBase()
 	GeometryCollectionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::DestructibleObject);
 
 	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystem"));
 	AbilitySystem->SetIsReplicated(true);

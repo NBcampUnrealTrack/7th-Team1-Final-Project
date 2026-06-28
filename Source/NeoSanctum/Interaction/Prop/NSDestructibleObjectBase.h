@@ -11,6 +11,7 @@
 class UAbilitySystemComponent;
 class UNSDestructibleAttributeSet;
 class UGeometryCollectionComponent;
+class UNSHitReactionComponent;
 
 /*
  * 파괴가능 오브젝트 베이스 클래스
@@ -43,6 +44,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<class UNSDamageFlashComponent> DamageFlashComponent;
+
+	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystem;

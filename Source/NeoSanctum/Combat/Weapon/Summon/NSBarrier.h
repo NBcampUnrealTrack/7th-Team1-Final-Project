@@ -16,6 +16,7 @@ class UNSAbilitySystemComponent;
 class UNSBaseAttributeSet;
 class USphereComponent;
 class UNiagaraComponent;
+class UNSHitReactionComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSBarrier : public AActor,
@@ -70,6 +71,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
 	TObjectPtr<UNiagaraComponent> BarrierNiagaraComponent;
+
+	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	float DefaultRadius = 150.0f;

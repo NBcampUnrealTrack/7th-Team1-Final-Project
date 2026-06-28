@@ -13,6 +13,7 @@
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -78,6 +79,8 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Turret);
 	
 	MeleeAttackReservationComponent = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
 			TEXT("MeleeAttackReservationComponent"));
