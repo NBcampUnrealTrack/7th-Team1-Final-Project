@@ -12,6 +12,10 @@ struct NEOSANCTUM_API FNSHitReactionContext
 {
 	GENERATED_BODY()
 
+	// 피격 대상 분류
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
+	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
+
 	// 피격 위치
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
 	FVector HitLocation = FVector::ZeroVector;
@@ -35,6 +39,10 @@ struct NEOSANCTUM_API FNSHitReactionContext
 	// 히트 판정 타입
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
 	ENSHitFeedbackQuality HitQuality = ENSHitFeedbackQuality::Normal;
+
+	// 이 피격으로 대상의 Health가 0 이하가 되었는지
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
+	bool bTargetDepleted = false;
 
 	// 히트 결과
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")

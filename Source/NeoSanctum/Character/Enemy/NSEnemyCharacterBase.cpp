@@ -45,6 +45,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
 	
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
