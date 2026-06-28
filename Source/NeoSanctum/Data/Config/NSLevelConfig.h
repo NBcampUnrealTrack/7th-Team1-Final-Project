@@ -28,9 +28,6 @@ public:
 		meta = (AssetBundles = "InRunData", AllowedClasses = "/Script/Engine.World"))
 	TSoftObjectPtr<UWorld> TravelMap;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Data", meta = (AssetBundles = "InRunData"))
-	TSoftObjectPtr<UDataTable> AbilityBaseStatTable;
-	
 	// 이번 레벨에서 사용할 증강 후보/Modifier 원본. Definition DA 목록은 이 DT에서 수집.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Data", meta = (AssetBundles = "InRunData"))
 	TSoftObjectPtr<UDataTable> AugmentDefinitionTable;
