@@ -41,6 +41,9 @@ private:
 	// GMS로 크로스헤어 피드백 메시지 전송
 	void PlayCrosshairFeedback(ENSCrosshairAttackFeedbackType FeedbackType, const FNSHitFeedbackContext& Context) const;
 
+	// 클라이언트 로컬에 AttackFeedback Sound를 재생
+	void PlaySoundFeedback(FName SoundID) const;
+
 private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HitFeedback", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UDataTable> AttackFeedbackDataTable;

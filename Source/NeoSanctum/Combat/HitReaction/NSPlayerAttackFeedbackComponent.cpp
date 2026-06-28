@@ -8,6 +8,7 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSBarrier.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
@@ -22,13 +23,19 @@ void UNSPlayerAttackFeedbackComponent::HandleAttackHitFeedback(const FNSHitFeedb
 	// 실제 히트 결과를 UI 피드백 규칙에 맞게 해석
 	const FNSHitFeedbackContext ResolvedContext = BuildResolvedContext(Context);
 	const FNSPlayerAttackFeedbackData* FeedbackData = FindBestFeedbackData(ResolvedContext);
-	if (!FeedbackData || FeedbackData->CrosshairFeedbackType == ENSCrosshairAttackFeedbackType::None)
+	if (!FeedbackData)
 	{
 		return;
 	}
 	
-	// 크로스헤어 피드백 재생
-	PlayCrosshairFeedback(FeedbackData->CrosshairFeedbackType, ResolvedContext);
+	if (FeedbackData->CrosshairFeedbackType != ENSCrosshairAttackFeedbackType::None)
+	{
+		// 크로스헤어 피드백 재생
+		PlayCrosshairFeedback(FeedbackData->CrosshairFeedbackType, ResolvedContext);
+	}
+	
+	// 공격자 로컬 히트 확인 사운드 재생
+	PlaySoundFeedback(FeedbackData->SoundID);
 }
 
 FNSHitFeedbackContext UNSPlayerAttackFeedbackComponent::BuildResolvedContext(
@@ -174,4 +181,26 @@ void UNSPlayerAttackFeedbackComponent::PlayCrosshairFeedback(
 	UGameplayMessageSubsystem::Get(OwnerActor).BroadcastMessage(
 		NSGameplayTags::Message_UI_Crosshair_AttackFeedback,
 		Message);
+}
+
+void UNSPlayerAttackFeedbackComponent::PlaySoundFeedback(const FName SoundID) const
+{
+	if (SoundID.IsNone())
+	{
+		return;
+	}
+	
+	const AActor* OwnerActor = GetOwner();
+	const APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+	
+	// 반드시 로컬에서만 재생되는 Feedback Sound임
+	if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
+	{
+		return;
+	}
+	
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(OwnerActor))
+	{
+		SoundSubsystem->PlaySound2D(SoundID);
+	}
 }
