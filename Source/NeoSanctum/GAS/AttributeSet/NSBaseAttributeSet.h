@@ -64,6 +64,11 @@ public:
 protected:
 	// Health 적용 전 대상별 방어 처리를 수행
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data);
+
+	// 실제 Health 감소 후 공격자 로컬 피드백을 요청
+	void NotifyAttackFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const;
 	
 private:
 	UFUNCTION()

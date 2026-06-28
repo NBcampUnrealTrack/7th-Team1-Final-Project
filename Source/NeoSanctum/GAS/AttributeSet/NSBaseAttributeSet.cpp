@@ -4,7 +4,10 @@
 #include "NSBaseAttributeSet.h"
 
 #include "AbilitySystemComponent.h"
+#include "GameFramework/Pawn.h"
 #include "GameplayEffectExtension.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "Net/UnrealNetwork.h"
 
 void UNSBaseAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -66,7 +69,8 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 			return;
 		}
 		
-		const float NewHealth = FMath::Clamp(GetHealth() - DamageAmount, 0.0f, GetMaxHealth());
+		const float PreviousHealth = GetHealth();
+		const float NewHealth = FMath::Clamp(PreviousHealth - DamageAmount, 0.0f, GetMaxHealth());
 		
 		SetHealth(NewHealth);
 		
@@ -75,6 +79,9 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 			bOutOfHealth = true;
 			OnOutOfHealth.Broadcast();
 		}
+
+		// 실제 Health 감소가 확정된 뒤 공격자 로컬 피드백을 요청
+		NotifyAttackFeedbackAfterHealthDamage(Data, PreviousHealth);
 	}
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
@@ -100,6 +107,45 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 float UNSBaseAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
 {
 	return DamageAmount;
+}
+
+void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
+	const FGameplayEffectModCallbackData& Data,
+	const float PreviousHealth) const
+{
+	// Health 감소량이 있을 때만 피드백 Context를 생성
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	AActor* TargetActor = Data.Target.GetAvatarActor();
+	AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+	APawn* InstigatorPawn = Cast<APawn>(InstigatorActor);
+	if (!TargetActor || !InstigatorPawn)
+	{
+		return;
+	}
+
+	ANSPlayerController* PlayerController = Cast<ANSPlayerController>(InstigatorPawn->GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	FNSHitFeedbackContext FeedbackContext;
+	FeedbackContext.HitQuality = ENSHitFeedbackQuality::Normal;
+	FeedbackContext.TargetActor = TargetActor;
+	FeedbackContext.HitLocation = TargetActor->GetActorLocation();
+	FeedbackContext.bTargetDead = GetHealth() <= 0.0f;
+
+	if (const FHitResult* HitResult = Data.EffectSpec.GetEffectContext().GetHitResult())
+	{
+		FeedbackContext.HitLocation = HitResult->ImpactPoint;
+	}
+
+	PlayerController->Client_PlayAttackHitFeedback(FeedbackContext);
 }
 
 void UNSBaseAttributeSet::OnRep_Health(const FGameplayAttributeData& OldHealth)
