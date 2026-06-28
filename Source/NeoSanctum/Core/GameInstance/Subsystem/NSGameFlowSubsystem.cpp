@@ -5,6 +5,7 @@
 
 #include "NSDataSubsystem.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSDifficultyConfig.h"
@@ -136,6 +137,22 @@ void UNSGameFlowSubsystem::HandleRunGameDataReady()
 	if (!IsValid(LevelConfig))
 	{
 		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	// 서버 Run 데이터가 준비된 뒤 각 클라이언특 같은 LevelConfig로 로컬 Run 데이터를 로드하도록 알림.
+	const TSoftObjectPtr<UNSLevelConfig> RunLevelConfig(LevelConfig);
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ANSPlayerController* PlayerController = Cast<ANSPlayerController>(It->Get()))
+		{
+			PlayerController->Client_NotifyRunStarted(RunLevelConfig);
+		}
 	}
 	
 	ServerTravelToWorld(LevelConfig->TravelMap, FString());

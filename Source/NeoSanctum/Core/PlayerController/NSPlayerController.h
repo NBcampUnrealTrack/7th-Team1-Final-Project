@@ -12,6 +12,7 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSPlayerController.generated.h"
 
+class UNSLevelConfig;
 class ANSDeathSpectatorPawn;
 class ANSPlayerState;
 class UNSAugmentSelectionComponent;
@@ -53,14 +54,14 @@ public:
 	void Server_RequestStartRun();
 	
 	void ExitSpectatorAndRespawn();
-
-	// 클라이언트에 인런 데이터 로드 지시
-	UFUNCTION(Client, Reliable)
-	void Client_NotifyRunStarted();
-
+	
 	// 클라이언트에 인런 데이터 언로드 및 아웃런 데이터 재로드 지시
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyReturnToHub();
+	
+	// 클라이언트에 인런 데이터 로드 지시
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyRunStarted(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
 	
 	// 투표 확정 입력용
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")
@@ -143,6 +144,11 @@ private:
 private:
 	const FGameplayTagContainer& GetGameplayInputModeTags() const { return GameplayInputModeTags; }
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
+	
+private:
+	// 클라이언트 인런 데이터 로드가 끝난 뒤 HUD와 인런 UI를 표시.
+	UFUNCTION()
+	void HandleClientRunDataReady();
 
 private:
 	UFUNCTION(NetMulticast, Reliable)
