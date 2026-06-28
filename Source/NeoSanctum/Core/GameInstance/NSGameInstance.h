@@ -9,6 +9,7 @@
 
 class UNSSoundData;
 class UNSLevelCatalog;
+class UDataTable;
 
 UCLASS()
 class NEOSANCTUM_API UNSGameInstance :
@@ -25,9 +26,15 @@ public:
 	
 	virtual void HideLoadingScreen_Implementation() override;
 	
-	// SoundData 캐싱
+	// SoundDataTable 
+	// TODO : 추후에 비동기로딩 흐름으로 옮기면 리팩토링 필요함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
 	TObjectPtr<UNSSoundData> SoundData;
+
+	// VFXDataTable 
+	// TODO : 추후에 비동기로딩 흐름으로 옮기면 리팩토링 필요함
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
+	TObjectPtr<UDataTable> VFXDataTable;
 	
 	virtual UNSLevelCatalog* GetLevelCatalog() const override { return LevelCatalog; }
 

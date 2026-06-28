@@ -6,7 +6,6 @@
 #include "GameplayCueNotify_Static.h"
 #include "NSGameplayCueNotify_BulletTrail.generated.h"
 
-class UNiagaraSystem;
 
 /**
  * BulletTrail GameplayCue.
@@ -26,7 +25,10 @@ public:
 protected:
 	// BulletTrail 나이아가라 시스템
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|BulletTrail")
-	TObjectPtr<UNiagaraSystem> BulletTrailVFX;
+	FName BulletTrailVFXID = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|BulletTrail", meta = (ClampMin = "0.0"))
+	float VFXScaleMultiplier = 1.0f;
 	
 	// Trail의 시작지점 User Parameter
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|BulletTrail")
