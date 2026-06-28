@@ -75,6 +75,9 @@ public:
 	// 장착 파츠가 없으면 NAME_None 반환
 	UFUNCTION(BlueprintPure, Category = "Progression|Part")
 	FNSPartSaveData GetEquippedPart(FName CharacterId) const;
+
+	UFUNCTION(BlueprintPure, Category = "Progression|Query")
+	FName GetLastSelectedCharacterId() const;
 	
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	FGameplayTag GetSelectedCompanion() const;
@@ -82,9 +85,8 @@ public:
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
 	
-	// 구매: 미소유면 값 1회 롤해 인벤토리에 추가
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
-	bool PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost);
+	bool PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	UFUNCTION(BlueprintPure, Category = "Progression|Part")
 	bool IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const;
 	const TArray<FNSPartSaveData>& GetOwnedParts() const;

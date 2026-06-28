@@ -2,9 +2,12 @@
 
 
 #include "NSProgressionSubsystem.h"
+#include "Engine/AssetManager.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
 
 
 
@@ -183,6 +186,12 @@ FNSPartSaveData UNSProgressionSubsystem::GetEquippedPart(FName CharacterId) cons
 	return Owned ? *Owned : FNSPartSaveData();
 }
 
+FName UNSProgressionSubsystem::GetLastSelectedCharacterId() const
+{
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	return Save ? Save->LastSelectedCharacterId : NAME_None;
+}
+
 FGameplayTag UNSProgressionSubsystem::GetSelectedCompanion() const
 {
 	const UNSPermanentSaveGame* Save = GetSaveData();
@@ -197,10 +206,10 @@ int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag NodeTag) const
 	return Save ? Save->Companion.NodeLevels.FindRef(NodeTag) : 0;
 }
 
-bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost)
+bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
-	if (!Save || Definition.IsNull() || Cost < 0 || Save->CommonCurrency < Cost)
+	if (!Save || Definition.IsNull())
 	{
 		return false;
 	}
@@ -208,13 +217,26 @@ bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Def
 	{
 		return false;
 	}
-
-	UNSPartDefinition* Def = Definition.LoadSynchronous();
-	if (!Def)
+	
+	const FPrimaryAssetId DefId =
+		UAssetManager::Get().GetPrimaryAssetIdForPath(Definition.ToSoftObjectPath());
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetGameInstance());
+	if (!DataSS)
 	{
 		return false;
 	}
-	const FNSPartValueRange* Range = Def->ValueRange.Find(Rarity);
+	const FNSPartDefinitionRow* Row = DataSS->GetPartRow(DefId);
+	if (!Row)
+	{
+		return false;
+	}
+
+	if (Save->CommonCurrency < Row->UnlockCost)
+	{
+		return false;
+	}
+
+	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
 
 	FNSPartSaveData New;
 	New.Definition = Definition;
@@ -223,10 +245,10 @@ bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Def
 	// 값 1회 롤 후 고정
 	New.Value = Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
 
-	Save->CommonCurrency -= Cost;
+	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
 	SaveNow();
-	
+
 	return true;
 }
 
