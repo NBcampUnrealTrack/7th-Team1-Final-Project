@@ -7,6 +7,7 @@
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 
@@ -22,6 +23,7 @@ const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType
 
 
 // InRun
+const FPrimaryAssetType UNSDataSubsystem::LevelConfigAssetType				= FPrimaryAssetType(TEXT("NSLevelConfig"));
 const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType					= FPrimaryAssetType(TEXT("NSMonsterData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType					= FPrimaryAssetType(TEXT("NSAugmentData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentRarityRuleSetAssetType		= FPrimaryAssetType(TEXT("NSAugmentRarityRuleSet"));
@@ -98,14 +100,28 @@ void UNSDataSubsystem::LoadOutGameData()
 	StartLoadOutGame();
 }
 
-void UNSDataSubsystem::EnterRun()
+void UNSDataSubsystem::EnterRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig)
 {
-	if (CurrentPhase == ENSDataLoadPhase::LoadingRun || CurrentPhase == ENSDataLoadPhase::RunReady)
+	if (LevelConfig.IsNull())
 	{
 		return;
 	}
-	UnloadOutGame();
-	StartLoadRun();
+
+	if (CurrentPhase == ENSDataLoadPhase::LoadingRun)
+	{
+		return;
+	}
+
+	if (CurrentPhase == ENSDataLoadPhase::OutGameReady)
+	{
+		UnloadOutGame();
+	}
+	else if (CurrentPhase == ENSDataLoadPhase::RunReady)
+	{
+		UnloadRun();
+	}
+
+	StartLoadRun(LevelConfig);
 }
 
 void UNSDataSubsystem::ReturnToOutGame()
@@ -222,15 +238,47 @@ void UNSDataSubsystem::OnOutGameAssetsLoaded()
 // Run 로드
 // ================================================================
 
-void UNSDataSubsystem::StartLoadRun()
+void UNSDataSubsystem::StartLoadRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig)
 {
 	SetPhase(ENSDataLoadPhase::LoadingRun);
 
-	const TArray<FPrimaryAssetType> Types =
-		{ MonsterAssetType, AugmentAssetType, AugmentRarityRuleSetAssetType, PartAssetType, RewardTriggerAssetType };
+	PendingRunLevelConfig = LevelConfig;
+	CurrentRunLevelConfig = nullptr;
+	PendingRunAssetIds.Reset();
+
+	// LevelConfig의 InRunData 번들을 먼저 로드한 뒤, 그 안의 DT에서 실제 런 에셋 목록을 수집.
+	const FPrimaryAssetId LevelConfigId(
+		LevelConfigAssetType, FName(*PendingRunLevelConfig.GetAssetName()));
+
+	RunLevelConfigHandle = UAssetManager::Get().LoadPrimaryAsset(
+		LevelConfigId,
+		RunBundles,
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunLevelConfigLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnRunLevelConfigLoaded()
+{
+	CurrentRunLevelConfig = PendingRunLevelConfig.Get();
+	if (!IsValid(CurrentRunLevelConfig))
+	{
+		SetPhase(ENSDataLoadPhase::NotStarted);
+		return;
+	}
 
 	TArray<FPrimaryAssetId> Ids;
-	GatherAssetIds(Types, Ids);
+	GatherAssetIds({ PartAssetType, RewardTriggerAssetType }, Ids);
+
+	if (!CurrentRunLevelConfig->AugmentRarityRuleSet.IsNull())
+	{
+		Ids.AddUnique(FPrimaryAssetId(
+			AugmentRarityRuleSetAssetType,
+			FName(*CurrentRunLevelConfig->AugmentRarityRuleSet.GetAssetName()))
+		);
+	}
+
+	CollectAugmentDefinitionIdsFromTable(CurrentRunLevelConfig->AugmentDefinitionTable.Get(), Ids);
+	PendingRunAssetIds = Ids;
 
 	if (Ids.IsEmpty())
 	{
@@ -239,20 +287,16 @@ void UNSDataSubsystem::StartLoadRun()
 	}
 
 	RunHandle = UAssetManager::Get().LoadPrimaryAssets(
-		Ids,
+		PendingRunAssetIds,
 		RunBundles,
-		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunAssetsLoaded));
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunAssetsLoaded)
+	);
 }
 
 void UNSDataSubsystem::OnRunAssetsLoaded()
 {
-	CacheLoaded({
-		MonsterAssetType,
-		AugmentAssetType,
-		AugmentRarityRuleSetAssetType, 
-		PartAssetType,
-		RewardTriggerAssetType}
-	);
+	// 이번 LevelConfig에서 수집한 에셋만 캐싱해 다음 스테이지 전환 시 정확히 언로드.
+	CacheLoadedByIds(PendingRunAssetIds);
 	BuildRewardDataRegistry();
 	
 	SetPhase(ENSDataLoadPhase::RunReady);
@@ -303,6 +347,12 @@ void UNSDataSubsystem::UnloadOutGame()
 
 void UNSDataSubsystem::UnloadRun()
 {
+	if (RunLevelConfigHandle.IsValid())
+	{
+		RunLevelConfigHandle->ReleaseHandle();
+		RunLevelConfigHandle.Reset();
+	}
+
 	if (RunHandle.IsValid())
 	{
 		RunHandle->ReleaseHandle();
@@ -314,14 +364,12 @@ void UNSDataSubsystem::UnloadRun()
 		RewardDataRegistry->Reset();
 		RewardDataRegistry = nullptr;
 	}
-	
-	UnloadByTypes({
-		MonsterAssetType, 
-		AugmentAssetType, 
-		AugmentRarityRuleSetAssetType, 
-		PartAssetType, 
-		RewardTriggerAssetType }
-	);
+
+	UnloadByIds(PendingRunAssetIds);
+
+	PendingRunAssetIds.Reset();
+	PendingRunLevelConfig.Reset();
+	CurrentRunLevelConfig = nullptr;
 }
 
 void UNSDataSubsystem::UnloadAll()
@@ -379,6 +427,34 @@ void UNSDataSubsystem::CollectAugmentDefinitionIdsFromTable(
 	}
 	
 	OutIds.Append(UniqueIds.Array());
+}
+
+void UNSDataSubsystem::CacheLoadedByIds(const TArray<FPrimaryAssetId>& Ids)
+{
+	UAssetManager& AM = UAssetManager::Get();
+
+	for (const FPrimaryAssetId& Id : Ids)
+	{
+		if (UObject* Obj = AM.GetPrimaryAssetObject(Id))
+		{
+			DataCache.Add(Id, Obj);
+		}
+	}
+}
+
+void UNSDataSubsystem::UnloadByIds(const TArray<FPrimaryAssetId>& Ids)
+{
+	UAssetManager& AM = UAssetManager::Get();
+
+	for (const FPrimaryAssetId& Id : Ids)
+	{
+		DataCache.Remove(Id);
+	}
+
+	if (!Ids.IsEmpty())
+	{
+		AM.UnloadPrimaryAssets(Ids);
+	}
 }
 
 void UNSDataSubsystem::CacheLoaded(const TArray<FPrimaryAssetType>& Types)

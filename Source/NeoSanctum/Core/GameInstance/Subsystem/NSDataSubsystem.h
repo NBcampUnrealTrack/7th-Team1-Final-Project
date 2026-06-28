@@ -10,6 +10,7 @@
 #include "NSDataSubsystem.generated.h"
 
 class UDataTable;
+class UNSLevelConfig;
 class UNSRewardDataRegistry;
 class UNSRewardTriggerData;
 
@@ -77,9 +78,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
 	void LoadOutGameData();
 
-	// 거점지역 -> 인런 진입 시 호출 (OutGame 언로드 -> Run 로드)
+	/**
+	 * 선택된 LevelConfig 기준으로 인런 데이터를 준비.
+	 *
+	 * 거점 -> 인런 첫 진입에서는 OutGame 데이터를 언로드.
+	 * 인런 -> 다음 스테이지 전환에서는 기존 Run 데이터를 언로드한 뒤 새 Run 데이터를 로드.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
-	void EnterRun();
+	void EnterRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig);
 	
 	// 인런 -> 거점지역 복귀 시 호출 (Run 언로드 -> OutGame 재로드)
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
@@ -96,10 +102,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "NS|DataSubsystem")
 	bool IsRunReady() const { return CurrentPhase == ENSDataLoadPhase::RunReady; }
-	
+
 	const UNSRewardTriggerData* FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const;
-	
+
 	const UNSRewardDataRegistry* GetRewardDataRegistry() const;
+
+	const UNSLevelConfig* GetCurrentRunLevelConfig() const { return CurrentRunLevelConfig.Get(); }
 
 	//맵 이동 중 유지할 플레이어 진행 데이터 저장
 	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
@@ -139,6 +147,7 @@ public:
 	static const FPrimaryAssetType PartAssetType;
 
 	// InRun
+	static const FPrimaryAssetType LevelConfigAssetType;
 	static const FPrimaryAssetType MonsterAssetType;
 	static const FPrimaryAssetType AugmentAssetType;
 	static const FPrimaryAssetType AugmentRarityRuleSetAssetType;
@@ -160,7 +169,10 @@ private:
 	void StartLoadOutGame();
 	void OnOutGameAssetsLoaded();
 
-	void StartLoadRun();
+	// LevelConfig를 먼저 로드해 이번 런에서 필요한 DT/RuleSet/TravelMap을 확인.
+	void StartLoadRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig);
+	// 로드된 LevelConfig에서 실제 인런 PrimaryAssetId 목록을 수집하고 2차 로드를 시작.
+	void OnRunLevelConfigLoaded();
 	void OnRunAssetsLoaded();
 	void BuildRewardDataRegistry();
 	
@@ -177,6 +189,8 @@ private:
 	 	const UDataTable* AugmentDefinitionTable, TArray<FPrimaryAssetId>& OutIds) const;
 	
 	// 로드된 PrimaryAsset들을 DataCache에 저장
+	void CacheLoadedByIds(const TArray<FPrimaryAssetId>& Ids);
+	void UnloadByIds(const TArray<FPrimaryAssetId>& Ids);
 	void CacheLoaded(const TArray<FPrimaryAssetType>& Types);
 	// 해당 타입의 캐시 엔트리 제거 및 UnloadPrimaryAssets
 	void UnloadByTypes(const TArray<FPrimaryAssetType>& Types);
@@ -194,13 +208,26 @@ private:
 
 	UPROPERTY()
 	TMap<FPrimaryAssetId, TObjectPtr<UObject>> DataCache;
-	
+
 	UPROPERTY(Transient)
 	TObjectPtr<UNSRewardDataRegistry> RewardDataRegistry;
+
+	// LevelConfig에서 수집한 이번 런 전용 PrimaryAssetId 목록.
+	// 타입 전체 로딩이 아니라, 현재 런에서 필요한 에셋만 캐싱/언로드하기 위해 보관.
+	TArray<FPrimaryAssetId> PendingRunAssetIds;
+
+	// 이번에 로드하려는 LevelConfig의 Soft Reference.
+	// 비동기 로드 완료 전까지 대상 에셋 경로를 보관.
+	TSoftObjectPtr<UNSLevelConfig> PendingRunLevelConfig;
+
+	// 로드 완료 후 실제 런 진행과 ServerTravel에 사용하는 LevelConfig.
+	UPROPERTY(Transient)
+	TObjectPtr<UNSLevelConfig> CurrentRunLevelConfig;
 
 	// 비동기 로드 핸들 관리
 	TSharedPtr<FStreamableHandle> CommonHandle;
 	TSharedPtr<FStreamableHandle> OutGameHandle;
+	TSharedPtr<FStreamableHandle> RunLevelConfigHandle;
 	TSharedPtr<FStreamableHandle> RunHandle;
 
 	// 로드 페이즈 ENUM
