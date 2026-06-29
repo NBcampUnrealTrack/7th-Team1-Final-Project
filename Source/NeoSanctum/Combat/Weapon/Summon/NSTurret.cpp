@@ -743,6 +743,7 @@ void ANSTurret::FireHitscan()
 			{
 				// GE 발생 정보 생성
 				FGameplayEffectContextHandle EffectContext = TurretASC->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
 				EffectContext.AddHitResult(HitResult);
 
 				FGameplayEffectSpecHandle NewSpecHandle = TurretASC->MakeOutgoingSpec(

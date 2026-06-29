@@ -7,6 +7,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSTurret.generated.h"
@@ -28,7 +29,8 @@ class UNSHitReactionComponent;
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor,
                                  public IAbilitySystemInterface,
-                                 public IGenericTeamAgentInterface
+                                 public IGenericTeamAgentInterface,
+                                 public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
@@ -37,6 +39,7 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return false; }
 
 	// Turret 설정과 초기화 payload 전달
 	void InitializeTurret(

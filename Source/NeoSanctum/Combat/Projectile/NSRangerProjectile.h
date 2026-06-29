@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NSRangerProjectile.generated.h"
 
 
@@ -18,13 +19,16 @@ class UStaticMeshComponent;
  * 이동과 충돌은 Projectile이 담당하고, GA는 스폰까지만 담당
  */
 UCLASS()
-class NEOSANCTUM_API ANSRangerProjectile : public AActor
+class NEOSANCTUM_API ANSRangerProjectile : public AActor,
+                                           public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	ANSRangerProjectile();
-	
+
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return bGrantPlayerAttackFeedback; }
+
 	void InitializeProjectile(
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
@@ -32,50 +36,53 @@ public:
 		float InExplosionRadius,
 		float InExplosionNoiseLoudness
 	);
-	
+
 	void LaunchProjectile(const FVector& LaunchDirection);
 
 protected:
 	virtual void BeginPlay() override;
-	
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TObjectPtr<USphereComponent> CollisionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
-	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;			
-	
+	TObjectPtr<UStaticMeshComponent> VisualMeshComponent;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile")
 	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile")
 	float LifeSeconds = 5.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
 	float ExplosionRadius = 300.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
 	bool bExcludeOccludedSplashTargets = true;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Splash")
 	float SplashOcclusionTraceStartOffset = 5.0f;
-	
+
 protected:
 	// Debug
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
 	bool bDrawDebugExplosion = false;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Debug")
 	bool bDrawDebugSplashOcclusion = false;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Feedback")
+	bool bGrantPlayerAttackFeedback = true;
+
 private:
 	void IgnoreSourceActorCollision();
-	
+
 	void FindSplashTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
-	
+
 	void FilterOccludedSplashTargets(const FVector& TraceStart, TArray<AActor*>& TargetActors) const;
 	bool IsSplashTargetOccluded(const FVector& TraceStart, const AActor* TargetActor) const;
-	
+
 	UFUNCTION()
 	void OnProjectileHit(
 		UPrimitiveComponent* HitComponent,
@@ -84,22 +91,21 @@ private:
 		FVector NormalImpulse,
 		const FHitResult& HitResult
 	);
-	
+
 	void ExecuteImpactCue(const FHitResult& HitResult);
-	
+
 	void ReportExplosionNoise(const FVector& ExplosionLocation) const;
-	
+
 	void ApplySplashDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const;
-	
+
 private:
-	
 	UPROPERTY()
 	TObjectPtr<UAbilitySystemComponent> SourceASC;
-	
+
 	UPROPERTY()
 	TSubclassOf<UGameplayEffect> SplashDamageEffectClass;
-	
+
 	float SplashDamage = 0.0f;
-	
+
 	float ExplosionNoiseLoudness = 0.0f;
 };
