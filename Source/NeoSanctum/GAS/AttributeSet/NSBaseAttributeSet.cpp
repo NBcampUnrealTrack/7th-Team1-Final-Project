@@ -9,6 +9,7 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "Net/UnrealNetwork.h"
 
@@ -123,6 +124,11 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 		return;
 	}
 
+	if (!ShouldTriggerPlayerAttackFeedback(Data))
+	{
+		return;
+	}
+
 	AActor* TargetActor = Data.Target.GetAvatarActor();
 	AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
 	APawn* InstigatorPawn = Cast<APawn>(InstigatorActor);
@@ -149,6 +155,33 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 	}
 
 	PlayerController->Client_PlayAttackHitFeedback(FeedbackContext);
+}
+
+bool UNSBaseAttributeSet::ShouldTriggerPlayerAttackFeedback(
+	const FGameplayEffectModCallbackData& Data) const
+{
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+
+	const UObject* SourceCandidates[] =
+	{
+		EffectContext.GetEffectCauser(),
+		EffectContext.GetSourceObject(),
+		EffectContext.GetInstigator()
+	};
+
+	for (const UObject* SourceCandidate : SourceCandidates)
+	{
+		const INSPlayerAttackFeedbackSourceInterface* FeedbackSource =
+			Cast<INSPlayerAttackFeedbackSourceInterface>(SourceCandidate);
+		if (!FeedbackSource)
+		{
+			continue;
+		}
+		
+		return FeedbackSource->ShouldTriggerPlayerAttackFeedback();
+	}
+	
+	return true;
 }
 
 void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
