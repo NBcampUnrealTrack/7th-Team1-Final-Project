@@ -10,7 +10,7 @@
 #include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
 #include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
-#include "NSBaseCompanionAI.generated.h"
+#include "NSBaseDroneAI.generated.h"
 
 class UNSCompanionDefinition;
 class UGameplayEffect;
@@ -21,14 +21,14 @@ class UFloatingPawnMovement;
 class ANSDroneAIController;
 
 UCLASS()
-class NEOSANCTUM_API ANSBaseCompanionAI : public APawn,
+class NEOSANCTUM_API ANSBaseDroneAI : public APawn,
                                            public IAbilitySystemInterface,
                                            public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
 public:
-	ANSBaseCompanionAI();
+	ANSBaseDroneAI();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual FGenericTeamId GetGenericTeamId() const override

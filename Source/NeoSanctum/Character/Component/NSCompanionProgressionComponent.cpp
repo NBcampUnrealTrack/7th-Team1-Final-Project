@@ -10,7 +10,7 @@
 
 	
 
-void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseCompanionAI* Owner)
+void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseDroneAI* Owner)
 {
 	if (!Owner) return;
 		

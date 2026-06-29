@@ -8,7 +8,7 @@
 #include "NSBTService_JudgmentDroneTarget.generated.h"
 
 
-class ANSBaseCompanionAI;
+class ANSBaseDroneAI;
 
 UCLASS()
 class NEOSANCTUM_API UNSBTService_JudgmentDroneTarget : public UBTService
@@ -70,7 +70,7 @@ protected:
 	FVector FollowOffset = FVector(-100.f, 0.f, 100.f);
 
 private:
-	ECompanionState EvaluateState(ANSBaseCompanionAI* CompanionPawn, UBlackboardComponent* BB) const;
+	ECompanionState EvaluateState(ANSBaseDroneAI* CompanionPawn, UBlackboardComponent* BB) const;
 	
 	// @민재 : 감지범위구체
 	AActor* FindNearestActor(
@@ -84,6 +84,6 @@ private:
 	FVector ComputeStandoffPosition(const AActor* Drone, const AActor* Enemy) const;
 	
 	// @민재 : 발사 어빌리티 활성화 시도
-	void TryActivateFire(const ANSBaseCompanionAI* Drone) const;
+	void TryActivateFire(const ANSBaseDroneAI* Drone) const;
 	
 };

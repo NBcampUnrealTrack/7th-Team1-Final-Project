@@ -12,7 +12,7 @@
 #include "NSPlayerCharacterBase.generated.h"
 
 class UNSCompanionDefinition;
-class ANSBaseCompanionAI;
+class ANSBaseDroneAI;
 class ANSWeaponBase;
 class UNSCharacterData;
 struct FOnAttributeChangeData;
@@ -232,7 +232,7 @@ protected:
 	//드론 스폰관련 Test
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Companion|AI")
-	TSubclassOf<ANSBaseCompanionAI> DroneAIClass;
+	TSubclassOf<ANSBaseDroneAI> DroneAIClass;
 	
 private:
 	// 사망 상태에 따라 연출을 실행할 때 클라이언트에 복제하는 시점을 조정하기 위한 bool 변수
@@ -249,7 +249,7 @@ protected:
 	
 protected:
 	UPROPERTY(Transient)
-	TWeakObjectPtr<ANSBaseCompanionAI> CompanionAI;
+	TWeakObjectPtr<ANSBaseDroneAI> CompanionAI;
 	
 	bool bBoundToCompanionDataReady = false;
 	

@@ -1,6 +1,6 @@
 ﻿// Copyright 2026 One Team. All rights reserved.
 
-#include "NSBaseCompanionAI.h"
+#include "NSBaseDroneAI.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -16,7 +16,7 @@
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
-ANSBaseCompanionAI::ANSBaseCompanionAI()
+ANSBaseDroneAI::ANSBaseDroneAI()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	
@@ -47,12 +47,12 @@ ANSBaseCompanionAI::ANSBaseCompanionAI()
 	SetReplicateMovement(true);
 }
 
-UAbilitySystemComponent* ANSBaseCompanionAI::GetAbilitySystemComponent() const
+UAbilitySystemComponent* ANSBaseDroneAI::GetAbilitySystemComponent() const
 {
 	return AbilitySystemComponent;
 }
 
-void ANSBaseCompanionAI::Tick(float DeltaSeconds)
+void ANSBaseDroneAI::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	if (HasAuthority())
@@ -62,14 +62,14 @@ void ANSBaseCompanionAI::Tick(float DeltaSeconds)
 	}
 }
 
-void ANSBaseCompanionAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+void ANSBaseDroneAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME(ANSBaseCompanionAI, CurrentDefinition);
+	DOREPLIFETIME(ANSBaseDroneAI, CurrentDefinition);
 }
 
-void ANSBaseCompanionAI::PossessedBy(AController* NewController)
+void ANSBaseDroneAI::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	if (!HasAuthority() || !IsValid(NewController)) return;
@@ -81,14 +81,14 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	GetWorldTimerManager().SetTimer(
 		CheckDistanceToOwnerTimer,
 		this,
-		&ANSBaseCompanionAI::CheckDistanceToOwner,
+		&ANSBaseDroneAI::CheckDistanceToOwner,
 		0.25f,
 		true);
 	
 	GetWorldTimerManager().SetTimer(
 		CurrencyVacuumTimer, 
 		this,
-		&ANSBaseCompanionAI::VacuumNearbyCurrency,
+		&ANSBaseDroneAI::VacuumNearbyCurrency,
 		0.1f, true);
 	
 	if (!CurrentDefinition) return;
@@ -98,7 +98,7 @@ void ANSBaseCompanionAI::PossessedBy(AController* NewController)
 	
 }
 
-void ANSBaseCompanionAI::BeginPlay()
+void ANSBaseDroneAI::BeginPlay()
 {
 	Super::BeginPlay();
 	
@@ -107,7 +107,7 @@ void ANSBaseCompanionAI::BeginPlay()
 	InitAbilityActorInfo();
 }
 
-void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
+void ANSBaseDroneAI::MoveTowards(const FVector& TargetLocation)
 {
 	FVector TargetPosition = TargetLocation - GetActorLocation();
 	TargetPosition.Z = 0.f;
@@ -122,7 +122,7 @@ void ANSBaseCompanionAI::MoveTowards(const FVector& TargetLocation)
 	AddMovementInput(SteeringDirection, 1.0f);
 }
 
-void ANSBaseCompanionAI::CheckDistanceToOwner()
+void ANSBaseDroneAI::CheckDistanceToOwner()
 {
 	if (!OwnerPlayer || !HasAuthority()) return;
 	
@@ -171,7 +171,7 @@ void ANSBaseCompanionAI::CheckDistanceToOwner()
 	PrevDistSqToOwner = DistSq;
 }
 
-void ANSBaseCompanionAI::TeleportToOwner()
+void ANSBaseDroneAI::TeleportToOwner()
 {
 	// 서버 및 오너 존재 체크
 	if (!HasAuthority() || !OwnerPlayer) return;
@@ -192,33 +192,33 @@ void ANSBaseCompanionAI::TeleportToOwner()
 	
 }
 
-void ANSBaseCompanionAI::SetCurrentState(ECompanionState NewState)
+void ANSBaseDroneAI::SetCurrentState(ECompanionState NewState)
 {
 	CurrentState = NewState;
 }
 
-void ANSBaseCompanionAI::SetOwnerPlayer(AActor* Actor)
+void ANSBaseDroneAI::SetOwnerPlayer(AActor* Actor)
 {
 	if (!IsValid(Actor)) return;
 	
 	OwnerPlayer = Actor;
 }
 
-void ANSBaseCompanionAI::SetPendingDefinition(const UNSCompanionDefinition* InDefinition)
+void ANSBaseDroneAI::SetPendingDefinition(const UNSCompanionDefinition* InDefinition)
 {
 	if (!InDefinition) return;
 	
 	CurrentDefinition = InDefinition;
 }
 
-void ANSBaseCompanionAI::InitAbilityActorInfo()
+void ANSBaseDroneAI::InitAbilityActorInfo()
 {
 	checkf(AbilitySystemComponent, TEXT("Can't Found ASC %s"), *GetName());
 	
 	AbilitySystemComponent->InitAbilityActorInfo(this,this);
 }
 
-void ANSBaseCompanionAI::InitializeDefaultStats()
+void ANSBaseDroneAI::InitializeDefaultStats()
 {
 	if (!HasAuthority()) return;
 	
@@ -240,7 +240,7 @@ void ANSBaseCompanionAI::InitializeDefaultStats()
 	}
 }
 
-void ANSBaseCompanionAI::GiveDefaultAbilities()
+void ANSBaseDroneAI::GiveDefaultAbilities()
 {
 	if (!HasAuthority() || bDefaultAbilitiesGranted) return;
 	
@@ -263,7 +263,7 @@ void ANSBaseCompanionAI::GiveDefaultAbilities()
 	bDefaultAbilitiesGranted = true;
 }
 
-void ANSBaseCompanionAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition)
 {
 	if (!HasAuthority() || !NewDefinition) return;
 	
@@ -297,7 +297,7 @@ void ANSBaseCompanionAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewD
 	CurrentDefinition = NewDefinition;
 }
 
-void ANSBaseCompanionAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
+void ANSBaseDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 {
 	// 서버 체크
 	if (!HasAuthority() || !CurrentDefinition) return;
@@ -352,7 +352,7 @@ void ANSBaseCompanionAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 	}
 }
 
-void ANSBaseCompanionAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition)
 {
 	if (!NewDefinition) return;
 	
@@ -380,12 +380,12 @@ void ANSBaseCompanionAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewD
 	}
 }
 
-void ANSBaseCompanionAI::OnRep_CurrentDefinition()
+void ANSBaseDroneAI::OnRep_CurrentDefinition()
 {
 	ApplyCompanionVisual(CurrentDefinition);
 }
 
-void ANSBaseCompanionAI::VacuumNearbyCurrency()
+void ANSBaseDroneAI::VacuumNearbyCurrency()
 {
 	if (!HasAuthority() || !OwnerPlayer) return;
 	
@@ -408,7 +408,7 @@ void ANSBaseCompanionAI::VacuumNearbyCurrency()
 	}
 }
 
-void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
+void ANSBaseDroneAI::MaintainAltitude(float DeltaSeconds)
 {
 	// 고도 가장 높은 값
 	float OutZ;
@@ -461,7 +461,7 @@ void ANSBaseCompanionAI::MaintainAltitude(float DeltaSeconds)
 	*/
 }
 
-bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
+bool ANSBaseDroneAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
 {
 	// 시작위치 종료위치 설정
 	const FVector StartWorldLocation = WorldXY;
@@ -481,7 +481,7 @@ bool ANSBaseCompanionAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) cons
 	return false;
 }
 
-bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
+bool ANSBaseDroneAI::SampleHighestGround(float& OutGroundZ) const
 {
 	if (!FloatingPawnMovementComponent) return false;
 	
@@ -536,7 +536,7 @@ bool ANSBaseCompanionAI::SampleHighestGround(float& OutGroundZ) const
 	return bFound;
 }
 
-void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
+void ANSBaseDroneAI::DroneAIRotate(float DeltaSeconds)
 {
 	if (!FloatingPawnMovementComponent) return;
 	
@@ -568,7 +568,7 @@ void ANSBaseCompanionAI::DroneAIRotate(float DeltaSeconds)
 
 #pragma region 회피기능
 
-void ANSBaseCompanionAI::InitSteeringDirections()
+void ANSBaseDroneAI::InitSteeringDirections()
 {
 	float AngleStep = 360.0f / NumSteeringDirections;
 	
@@ -583,7 +583,7 @@ void ANSBaseCompanionAI::InitSteeringDirections()
 	}
 }
 
-void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
+void ANSBaseDroneAI::BuildInterestMap(const FVector& DesiredDirection)
 {
 	InterestMap.Reset(SteeringDirections.Num());
 	
@@ -595,7 +595,7 @@ void ANSBaseCompanionAI::BuildInterestMap(const FVector& DesiredDirection)
 	
 }
 
-void ANSBaseCompanionAI::BuildDangerMap()
+void ANSBaseDroneAI::BuildDangerMap()
 {
 	DangerMap.Reset(SteeringDirections.Num());
 	
@@ -634,7 +634,7 @@ void ANSBaseCompanionAI::BuildDangerMap()
 	}
 }
 
-bool ANSBaseCompanionAI::IsWalkableSurface(const FVector& SurfaceNormal) const
+bool ANSBaseDroneAI::IsWalkableSurface(const FVector& SurfaceNormal) const
 {
 	float SurfaceAndUpVectorDot = FVector::DotProduct(SurfaceNormal,FVector::UpVector);
 	float MaxSlopeRadians = FMath::DegreesToRadians(MaxWalkableSlopeAngle);
@@ -648,7 +648,7 @@ bool ANSBaseCompanionAI::IsWalkableSurface(const FVector& SurfaceNormal) const
 	return false;
 }
 
-FVector ANSBaseCompanionAI::ChooseSteeringDirection() const
+FVector ANSBaseDroneAI::ChooseSteeringDirection() const
 {
 	float BestInterest = TNumericLimits<float>::Lowest();
 	int32 BestIndex = INDEX_NONE;

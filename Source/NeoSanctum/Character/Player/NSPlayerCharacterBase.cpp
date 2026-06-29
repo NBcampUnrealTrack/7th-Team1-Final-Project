@@ -483,7 +483,7 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	FTransform SpawnTransform(GetActorRotation(), SpawnLocation);
 	
 	// SpawnActorDeferred 
-	ANSBaseCompanionAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSBaseCompanionAI>(
+	ANSBaseDroneAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSBaseDroneAI>(
 		DroneAIClass,
 		SpawnTransform,
 		this,

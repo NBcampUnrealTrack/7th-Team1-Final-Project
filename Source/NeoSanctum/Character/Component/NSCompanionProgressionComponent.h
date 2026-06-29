@@ -8,7 +8,7 @@
 #include "NSCompanionProgressionComponent.generated.h"
 
 
-class ANSBaseCompanionAI;
+class ANSBaseDroneAI;
 class UNSCompanionCatalog;
 class UNSCompanionDefinition;
 
@@ -20,7 +20,7 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TObjectPtr<UNSCompanionCatalog> Catalog;
 	
-	void SetOwnedCompanion(ANSBaseCompanionAI* Owner);
+	void SetOwnedCompanion(ANSBaseDroneAI* Owner);
 	
 	// (이용호 추가) 허브 드론 즉시 변환용
 	void ApplySelectedAndNodes(
@@ -31,5 +31,5 @@ public:
 	
 protected:
 	UPROPERTY()
-	TObjectPtr<ANSBaseCompanionAI> OwnedCompanion;
+	TObjectPtr<ANSBaseDroneAI> OwnedCompanion;
 };

@@ -63,7 +63,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
 	if (!AIController || !BB) return;
 	
-	ANSBaseCompanionAI* CompanionPawn = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
+	ANSBaseDroneAI* CompanionPawn = Cast<ANSBaseDroneAI>(AIController->GetPawn());
 	ANSDroneAIController* DroneController = Cast<ANSDroneAIController>(AIController);
 	if (!DroneController || !CompanionPawn) return;
 	
@@ -72,7 +72,7 @@ void UNSBTService_JudgmentDroneTarget::TickNode(UBehaviorTreeComponent& OwnerCom
 	CompanionPawn->SetCurrentState(NewState);
 }
 
-ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseCompanionAI* CompanionPawn,
+ECompanionState UNSBTService_JudgmentDroneTarget::EvaluateState(ANSBaseDroneAI* CompanionPawn,
 	UBlackboardComponent* BB) const
 {
 	AActor* CompanionOwner = CompanionPawn->GetOwnerPlayer();
@@ -179,7 +179,7 @@ FVector UNSBTService_JudgmentDroneTarget::ComputeStandoffPosition(const AActor* 
 	return Enemy->GetActorLocation() + (Dir * EnemyDistance);
 }
 
-void UNSBTService_JudgmentDroneTarget::TryActivateFire(const ANSBaseCompanionAI* Drone) const
+void UNSBTService_JudgmentDroneTarget::TryActivateFire(const ANSBaseDroneAI* Drone) const
 {
 	if (!Drone) return;
 	
