@@ -3,9 +3,11 @@
 
 #include "NSPlayerAttributeSet.h"
 
+#include "AbilitySystemComponent.h"
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
 void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -102,11 +104,31 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	if (Data.EvaluatedData.Attribute == GetShieldAttribute())
 	{
 		SetShield(FMath::Clamp(GetShield(), 0.0f, GetMaxShield()));
+
+		if (GetShield() >= GetMaxShield())
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				FGameplayTagContainer RechargingTags;
+				RechargingTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargingTags);
+			}
+		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetMaxShieldAttribute())
 	{
 		SetMaxShield(FMath::Max(GetMaxShield(), 0.0f));
 		SetShield(FMath::Clamp(GetShield(), 0.0f, GetMaxShield()));
+
+		if (GetShield() >= GetMaxShield())
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				FGameplayTagContainer RechargingTags;
+				RechargingTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargingTags);
+			}
+		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetShieldRechargeRateAttribute())
 	{
@@ -171,6 +193,13 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 	float DamageAmount,
 	const FGameplayEffectModCallbackData& Data)
 {
+	// 데미지를 받은 시점에 데미지를 받았다는 트리거를 이벤트 태그로 발송
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor());
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+	}
+
 	const float CurrentShield = GetShield();
 	
 	if (CurrentShield <= 0.0f)
@@ -184,7 +213,7 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 
 	if (NewShield <= 0.0f)
 	{
-		if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor()))
+		if (PlayerCharacter)
 		{
 			PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_Shield_Broken);
 		}
