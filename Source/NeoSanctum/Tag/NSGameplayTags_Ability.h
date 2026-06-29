@@ -29,6 +29,7 @@ namespace NSGameplayTags
 	
 	// Common Ability Event Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Common_RequestReload);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Common_Shield_Broken);
 	
 	// Common Ability Activate Fail Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_ActivateFail_OutOfAmmo);

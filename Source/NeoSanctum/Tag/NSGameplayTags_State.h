@@ -15,7 +15,7 @@ namespace NSGameplayTags
 	
 	// Shield Regen
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Broken);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Regenerating);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Recharging);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Damage_RecentlyTaken);
 	
 	// Barrier
