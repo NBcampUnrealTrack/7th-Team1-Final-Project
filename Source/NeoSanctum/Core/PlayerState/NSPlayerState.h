@@ -70,7 +70,7 @@ public:
 	FPrimaryAssetId GetCurrentCharacterDataId() const { return CurrentCharacterDataId; }
 	
 	// 기존 캐릭터 id 받아오는 용
-	FPrimaryAssetId GetDefaultCharacterDataId() const { return DefaultCharacterDataId; }
+	FPrimaryAssetId GetDefaultCharacterDataId() const;
 
 	// 캐릭터 데이터 Getter
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
@@ -119,9 +119,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSCompanionProgressionComponent> CompanionProgressionComponent;
 	
-	// 기본 캐릭터 데이터 ID : 기본적으로 Ranger Data를 쓰고 있음
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
-	FPrimaryAssetId DefaultCharacterDataId;
+	// // 기본 캐릭터 데이터. 에디터에서는 실제 UNSCharacterData 에셋을 직접 지정하고 런타임에서는 PrimaryAssetId로 변환.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data", meta = (AllowedTypes = "NSCharacterData"))
+	TSoftObjectPtr<UNSCharacterData> DefaultCharacterData;
 	
 	// @민재 기본 Companion 데이터 ID : 기본 스캔 드론
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
