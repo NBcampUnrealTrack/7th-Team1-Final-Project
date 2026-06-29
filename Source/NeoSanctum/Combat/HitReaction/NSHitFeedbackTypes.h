@@ -49,6 +49,16 @@ enum class ENSCrosshairAttackFeedbackType : uint8
 	Destroy
 };
 
+// 플레이어가 피해를 받았을 때의 로컬 피드백 종류
+UENUM(BlueprintType)
+enum class ENSHitTakenFeedbackType : uint8
+{
+	None,
+	ShieldHit,
+	ShieldBroken,
+	HealthHit
+};
+
 // 히트 피드백 판정에 필요한 공통 Context
 USTRUCT(BlueprintType)
 struct NEOSANCTUM_API FNSHitFeedbackContext
@@ -93,4 +103,35 @@ struct NEOSANCTUM_API FNSCrosshairAttackFeedbackMessage
 	// HitFeedback 관련 정보 구조체
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	FNSHitFeedbackContext Context;
+};
+
+// 플레이어 피격 피드백에 필요한 Context
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSHitTakenFeedbackContext
+{
+	GENERATED_BODY()
+	
+	// 플레이어가 피해를 받았을 때의 로컬 피드백 종류
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	ENSHitTakenFeedbackType FeedbackType = ENSHitTakenFeedbackType::None;
+	
+	// 얼마나 데미지를 받았는지 (나중에 로그나 UI 표시용)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	float DamageAmount = 0.0f;
+	
+	// 히트 지점 (파티클 표시용)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	FVector HitLocation = FVector::ZeroVector;
+	
+	// 공격자 위치 (UI 상의 방향 표시용)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	FVector InstigatorLocation = FVector::ZeroVector;
+	
+	// 현재 쉴드 비율
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	float ShieldRatio = 0.0f;
+	
+	// 현재 체력 비율
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	float HealthRatio = 0.0f;
 };
