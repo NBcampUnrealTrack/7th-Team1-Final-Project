@@ -9,6 +9,7 @@
 
 class UNSSoundData;
 class UNSLevelCatalog;
+class UNSDifficultyConfig;
 class UDataTable;
 
 UCLASS()
@@ -37,13 +38,19 @@ public:
 	TObjectPtr<UDataTable> VFXDataTable;
 	
 	virtual UNSLevelCatalog* GetLevelCatalog() const override { return LevelCatalog; }
+	virtual UNSDifficultyConfig* GetDifficultyConfig() const override { return DifficultyConfig; }
 
 private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> LoadingWidget;
 	
+	// 트래블할 레벨 저장용
 	UPROPERTY(EditDefaultsOnly, Category="GameFlow")
 	TObjectPtr<UNSLevelCatalog> LevelCatalog;
+	
+	// 레벨 스케일링용
+	UPROPERTY(EditDefaultsOnly, Category="GameFlow") 
+	TObjectPtr<UNSDifficultyConfig> DifficultyConfig; 
 
 	// 로딩 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
