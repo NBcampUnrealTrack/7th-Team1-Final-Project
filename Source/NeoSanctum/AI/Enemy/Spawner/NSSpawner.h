@@ -56,6 +56,11 @@ private:
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
+	
+	// 이 스포너가 활성화되는 최소 접속 인원 (1=항상 켜짐, 2=2인 이상부터, 3=3인부터, 4=4인부터)
+	UPROPERTY(EditAnywhere, Category = "SpawnerSet", meta = (ClampMin = "1"))
+	int32 RequiredPlayerCount = 1;
+	
 	// 스폰 범위용
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	float SpawnRadius = 200.0f;

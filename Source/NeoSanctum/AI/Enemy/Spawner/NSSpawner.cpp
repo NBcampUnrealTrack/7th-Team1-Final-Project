@@ -14,6 +14,7 @@
 #include "Room.h"
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
+#include "GameFramework/GameStateBase.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -100,6 +101,14 @@ void ANSSpawner::ActivateSpawner()
 	
 	// 이미 스폰된 룸이면 무시
 	if (bHasSpawned) 
+	{
+		return;
+	}
+	
+	// 인원수 게이트 — 접속 인원이 임계값 미만이면 이 스포너는 켜지 않음
+	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	const int32 PlayerCount = GameState ? GameState->PlayerArray.Num() : 1;
+	if (PlayerCount < RequiredPlayerCount)
 	{
 		return;
 	}
