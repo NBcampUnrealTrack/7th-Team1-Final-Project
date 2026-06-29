@@ -62,6 +62,13 @@ void ANSRunGameMode::BeginPlay()
 		
 		// 서버 보상 Roll이 매 실행마다 같은 순서로 고정되지 않도록 초기 시드 결정
 		RewardRandomStream.Initialize(FMath::Rand());
+		
+		// 스테이지 타이머 시작(재개)
+		if (UNSGameFlowSubsystem* Flow = 
+			GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+		{
+			Flow->ResumeDifficultyTimer();
+		}
 	}
 
 	for (TActorIterator<APlayerController> It(GetWorld()); It; ++It)
@@ -103,6 +110,12 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	*/
 	
 	// [임시] 클리어 시 남은 적을 풀로 반환 (보스 구현 후 정리)
+	// 보스룸 진입 시 타이머 정지 (보스 구현되면 보스룸 Enter로 이전)
+	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		Flow->PauseDifficultyTimer(); 
+	}
+	
 	if (NSMonsterPoolManager)
 	{
 		TArray<ANSEnemyCharacterBase*> AliveEnemies;
@@ -349,12 +362,20 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	{
 		return nullptr;
 	}
+	
+	int32 PlayerCount = GameState ? GameState->PlayerArray.Num() : 1; 
+	FNSDifficultyScale Scale;
+	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		Scale = Flow->GetCurrentMonsterScale(PlayerCount);
+	}
 
 	ACharacter* Spawned = NSMonsterPoolManager->GetPooledMonster(
 		CharacterClass,
 		EnemyData,
 		Location,
-		Rotation);
+		Rotation,
+		Scale);
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(Spawned);
 
