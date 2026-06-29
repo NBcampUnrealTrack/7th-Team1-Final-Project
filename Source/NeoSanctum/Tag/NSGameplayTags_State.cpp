@@ -13,8 +13,8 @@ namespace NSGameplayTags
 	
 	// Shield Regen
 	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Broken, "State.Shield.Broken");
+	UE_DEFINE_GAMEPLAY_TAG(State_Shield_RechargeCooldown, "State.Shield.RechargeCooldown");
 	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Recharging, "State.Shield.Recharging");
-	UE_DEFINE_GAMEPLAY_TAG(State_Damage_RecentlyTaken, "State.Damage.RecentlyTaken");
 	
 	// Barrier
 	UE_DEFINE_GAMEPLAY_TAG(State_Barrier_Activated, "State.Barrier.Activated");
