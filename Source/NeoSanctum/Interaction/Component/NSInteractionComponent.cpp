@@ -160,6 +160,15 @@ void UNSInteractionComponent::Server_RequestInteract_Implementation(AActor* Targ
 	{
 		return;
 	}
+	
+	// 대상의 ShouldHandleOnServer 반환값에 따라 서버에서 즉시 실행
+	if (INSInteractable::Execute_ShouldHandleOnServer(Target))
+	{
+		INSInteractable::Execute_OnInteract(Target, PC);
+		return;
+	}
+    
+	// 그 외(거점 NPC 위젯, 드롭 파츠)는 기존 클라 승인 흐름
 	Client_OnInteractApproved(Target);
 }
 
