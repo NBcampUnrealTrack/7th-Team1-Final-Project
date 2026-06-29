@@ -38,8 +38,9 @@ const TArray<FName> UNSDataSubsystem::RunBundles     = { FName("InRunUI"),   FNa
 void UNSDataSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	// 타이틀에서는 데이터 로드를 시작하지 않음.
-	// 외부에서 LoadOutGameData/EnterRun/ReturnToOutGame 으로 명시적으로 진입.
+	
+	// 캐릭터 기본 데이터처럼 전 구간에서 쓰는 데이터는 게임 종료 전까지 유지.
+	LoadCommonData();
 }
 
 void UNSDataSubsystem::Deinitialize()
