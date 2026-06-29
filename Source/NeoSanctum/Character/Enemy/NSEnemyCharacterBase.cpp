@@ -221,10 +221,18 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 
 		if (StatRow)
 		{
-			AttributeSet->SetMaxHealth(StatRow->MaxHealth);
-			AttributeSet->SetHealth(StatRow->MaxHealth);
-			AttributeSet->SetDefense(StatRow->Defense);
-			AttributeSet->SetBaseDamage(StatRow->BaseDamage);
+			const FNSDifficultyScale& S = CurrentDifficultyScale;
+			const float ScaledMaxHealth  =
+				(StatRow->MaxHealth  * (1.0f + S.HealthAddRatio)) * S.Multiply;
+			const float ScaledBaseDamage = 
+				(StatRow->BaseDamage * (1.0f + S.DamageAddRatio)) * S.Multiply;
+			const float ScaledDefense = 
+				(StatRow->Defense * (1.0f + S.DefenseAddRatio)) * S.Multiply;
+
+			AttributeSet->SetMaxHealth (ScaledMaxHealth);
+			AttributeSet->SetHealth    (ScaledMaxHealth);
+			AttributeSet->SetBaseDamage(ScaledBaseDamage);
+			AttributeSet->SetDefense   (ScaledDefense);
 
 			AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
 			AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
