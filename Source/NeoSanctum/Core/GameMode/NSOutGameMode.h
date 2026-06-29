@@ -19,6 +19,8 @@ public:
 	
 	// 런 레벨 이동용 함수
 	virtual void RequestStartRun_Implementation() override;
+	
+	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 
 protected:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
