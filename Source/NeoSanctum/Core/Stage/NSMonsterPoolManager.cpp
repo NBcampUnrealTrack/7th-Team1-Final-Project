@@ -10,7 +10,8 @@ ACharacter* UNSMonsterPoolManager::GetPooledMonster(
 	UClass* CharacterClass,
 	UNSEnemyData* EnemyData,
 	const FVector& Location,
-	const FRotator& Rotation)
+	const FRotator& Rotation,
+	const FNSDifficultyScale& Scale)
 {
 	if (!GetWorld() || !CharacterClass || !EnemyData)
 	{
@@ -27,6 +28,7 @@ ACharacter* UNSMonsterPoolManager::GetPooledMonster(
 		if (Enemy && Enemy->IsInPool())
 		{
 			Enemy->SetNetDormancy(DORM_Awake);
+			Enemy->SetDifficultyScale(Scale); 
 			Enemy->PrepareForReuse(Location, Rotation);
 			Enemy->FlushNetDormancy();
 			return Enemy;
@@ -44,6 +46,7 @@ ACharacter* UNSMonsterPoolManager::GetPooledMonster(
 	if (NewEnemy)
 	{
 		NewEnemy->SetEnemyData(EnemyData);
+		NewEnemy->SetDifficultyScale(Scale); 
 		NewEnemy->FinishSpawning(SpawnTransform);
 		Pool.Monsters.Add(NewEnemy);
 	}

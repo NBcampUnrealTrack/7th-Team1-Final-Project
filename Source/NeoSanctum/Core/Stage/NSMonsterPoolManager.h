@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NSMonsterPoolManager.generated.h"
 
 class UNSEnemyData;
@@ -27,7 +28,8 @@ public:
 		UClass* CharacterClass,
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
-		const FRotator& Rotation);
+		const FRotator& Rotation,
+		const FNSDifficultyScale& Scale);
 
 	void ReturnMonsterToPool(ACharacter* Monster);
 

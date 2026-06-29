@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSEnemyCharacterBase.generated.h"
@@ -63,6 +64,8 @@ public:
 	
 	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 	void DeactivateForPool();
+	
+	void SetDifficultyScale(const FNSDifficultyScale& InScale) { CurrentDifficultyScale = InScale; }
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -104,6 +107,8 @@ private:
 	void OnDissolveFinished();
 	UPROPERTY(ReplicatedUsing = OnRep_bIsInPool)
 	bool bIsInPool = false;
+	// 기본값 = {1,1,1} (따로 값 호출안되면 기본 배율인 1배 적용)
+	FNSDifficultyScale CurrentDifficultyScale;
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
