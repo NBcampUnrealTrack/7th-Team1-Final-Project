@@ -4,6 +4,8 @@
 #include "NSPlayerAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "Net/UnrealNetwork.h"
 
 void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -147,7 +149,9 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	}
 }
 
-float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
+float UNSPlayerAttributeSet::HandlePreHealthDamage(
+	float DamageAmount,
+	const FGameplayEffectModCallbackData& Data)
 {
 	const float CurrentShield = GetShield();
 	
@@ -157,7 +161,16 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGa
 	}
 	
 	const float AbsorbedDamage = FMath::Min(CurrentShield, DamageAmount);
-	SetShield(CurrentShield - AbsorbedDamage);
+	const float NewShield = CurrentShield - AbsorbedDamage;
+	SetShield(NewShield);
+
+	if (NewShield <= 0.0f)
+	{
+		if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor()))
+		{
+			PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_Shield_Broken);
+		}
+	}
 	
 	return DamageAmount - AbsorbedDamage;
 }
