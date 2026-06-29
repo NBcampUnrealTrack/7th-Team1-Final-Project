@@ -11,6 +11,14 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Reloading, "State.Reloading");
 	UE_DEFINE_GAMEPLAY_TAG(State_Deactivate_HandIK, "State.Deactivate.HandIK");
 	
+	// Shield Regen
+	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Broken, "State.Shield.Broken");
+	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Regenerating, "State.Shield.Regenerating");
+	UE_DEFINE_GAMEPLAY_TAG(State_Damage_RecentlyTaken, "State.Damage.RecentlyTaken");
+	
+	// Barrier
+	UE_DEFINE_GAMEPLAY_TAG(State_Barrier_Activated, "State.Barrier.Activated");
+	
 	// Buff State
 	UE_DEFINE_GAMEPLAY_TAG(State_Buff_RangerSpeedBuff, "State.Buff.RangerSpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(State_Buff_EngineerSpeedBuff, "State.Buff.EngineerSpeedBuff");
