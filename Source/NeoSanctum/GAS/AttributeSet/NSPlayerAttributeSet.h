@@ -28,6 +28,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxShield, Category = "GAS|Attribute")
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxShield);
+
+	// Shield 초당 회복량
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ShieldRechargeRate, Category = "GAS|Attribute")
+	FGameplayAttributeData ShieldRechargeRate;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, ShieldRechargeRate);
+
+	// Shield 파괴 후 회복 시작까지 대기 시간
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ShieldRechargeCooldown, Category = "GAS|Attribute")
+	FGameplayAttributeData ShieldRechargeCooldown;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, ShieldRechargeCooldown);
 	
 	// 대쉬 횟수
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DashCount, Category = "GAS|Attribute")
@@ -87,6 +97,12 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
+
+	UFUNCTION()
+	void OnRep_ShieldRechargeRate(const FGameplayAttributeData& OldShieldRechargeRate);
+
+	UFUNCTION()
+	void OnRep_ShieldRechargeCooldown(const FGameplayAttributeData& OldShieldRechargeCooldown);
 	
 	UFUNCTION()
 	void OnRep_DashCount(const FGameplayAttributeData& OldDashCount);
