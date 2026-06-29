@@ -84,5 +84,5 @@ private:
 	static void HandleAugmentDropResult(const FNSRewardDropResult& DropResult);
 	
 	static FNSPartData MakePartDataFromDropResult(
-		const FNSRewardDropResult& DropResult, FRandomStream& RandomStream);
+		UWorld* World, const FNSRewardDropResult& DropResult, FRandomStream& RandomStream);
 };
