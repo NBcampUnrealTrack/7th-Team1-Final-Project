@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSThrowProjectileBase.generated.h"
 
@@ -11,12 +12,15 @@ class UProjectileMovementComponent;
 class USphereComponent;
 
 UCLASS(Abstract)
-class NEOSANCTUM_API ANSThrowProjectileBase : public AActor
+class NEOSANCTUM_API ANSThrowProjectileBase : public AActor,
+                                              public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	ANSThrowProjectileBase();
+
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return bGrantPlayerAttackFeedback; }
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
@@ -56,7 +60,7 @@ protected:
 protected:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
 	TObjectPtr<APawn> OwningPawn;
-	
+
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
 	TObjectPtr<AController> OwningController;
 
@@ -67,4 +71,7 @@ protected:
 	// 투척물 로직용 runtime payload
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|RuntimeStats")
 	TArray<FNSCombatStatMagnitude> RuntimeStatMagnitudes;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Feedback")
+	bool bGrantPlayerAttackFeedback = true;
 };

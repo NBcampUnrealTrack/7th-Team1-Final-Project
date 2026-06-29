@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NiagaraComponent.h"
@@ -33,6 +34,9 @@ ANSBarrier::ANSBarrier()
 	BarrierNiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BarrierNiagaraComponent"));
 	BarrierNiagaraComponent->SetupAttachment(BarrierCollisionComponent);
 	BarrierNiagaraComponent->SetAutoActivate(true);
+
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Barrier);
 }
 
 UAbilitySystemComponent* ANSBarrier::GetAbilitySystemComponent() const

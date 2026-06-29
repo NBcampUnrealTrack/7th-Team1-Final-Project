@@ -480,7 +480,7 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		AimTargetActor,
 		MuzzleObstructionHitResult))
 	{
-		ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
+		ApplyDamageToActor(MuzzleObstructionHitResult);
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
@@ -490,12 +490,13 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	ApplyDamageToActor(ServerHitResult.GetActor());
+	ApplyDamageToActor(ServerHitResult);
 	ExecuteImpactCue(ServerHitResult);
 }
 
-void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
+void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
 {
+	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
 	{
 		return;
@@ -532,6 +533,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	}
 	
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
+	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	
 	// 데미지 감지 가해자 지정
 	AssignDamageInstigator(DamageSpecHandle);

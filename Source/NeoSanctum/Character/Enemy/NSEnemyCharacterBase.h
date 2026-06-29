@@ -19,6 +19,7 @@ class UNSMonsterAttributeSet;
 class ANSEnemyWeaponBase;
 class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
+class UNSHitReactionComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface,
@@ -207,6 +208,10 @@ protected:
 	// 몬스터의 외형 MID 또는 기존 Overlay에 피격 효과를 적용하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
+
+	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
 	
 	// 현재 몬스터 외형에 적용된 런타임 MID 배열
 	UPROPERTY(Transient)

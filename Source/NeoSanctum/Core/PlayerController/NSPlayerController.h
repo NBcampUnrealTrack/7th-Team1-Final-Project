@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSPlayerController.generated.h"
 
 class ANSDeathSpectatorPawn;
@@ -117,6 +118,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_NotifySkillCooldownChanged(
 		const FNSSkillCooldownMessage& Message);
+
+	// 서버에서 확정된 공격 히트 피드백을 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayAttackHitFeedback(const FNSHitFeedbackContext& Context);
 
 private:
 	// 실제로 사망 관전자 상태로 진입

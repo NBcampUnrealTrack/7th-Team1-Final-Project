@@ -399,6 +399,7 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 	EffectContext.AddOrigin(ExplosionLocation);
+	EffectContext.AddInstigator(SourceASC->GetAvatarActor(), const_cast<ANSRangerProjectile*>(this));
 	
 	const FGameplayEffectSpecHandle DamageSpecHandle =
 		SourceASC->MakeOutgoingSpec(
