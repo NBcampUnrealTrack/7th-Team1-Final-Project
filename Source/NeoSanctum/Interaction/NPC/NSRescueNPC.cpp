@@ -60,7 +60,7 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 			continue;
 		}
 
-		if (ProgressComponent->IsNPCUnlocked(RescueNPCId))
+		if (ProgressComponent->IsNPCUnlocked(NPCId))
 		{
 			// 이미 구출 이력 있으면 보상 재화 누적
 			if (UNSCurrencyComponent* CurrencyComponent = NSPlayerState->GetCurrencyComponent())
@@ -73,7 +73,7 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 		else
 		{
 			// 최초 구출하면 즉시 해금
-			ProgressComponent->UnlockNPC(RescueNPCId);
+			ProgressComponent->UnlockNPC(NPCId);
 		}
 	}
 	
