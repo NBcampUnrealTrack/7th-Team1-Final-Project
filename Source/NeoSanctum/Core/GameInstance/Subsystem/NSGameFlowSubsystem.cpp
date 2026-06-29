@@ -3,6 +3,7 @@
 
 #include "NSGameFlowSubsystem.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
+#include "NeoSanctum/Data/World/NSDifficultyConfig.h"
 #include "NeoSanctum/Data/World/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
@@ -161,4 +162,63 @@ int32 UNSGameFlowSubsystem::PickRandomIndexExcludingCurrent() const
 	}
 	
 	return Next;
+}
+
+void UNSGameFlowSubsystem::ResumeDifficultyTimer()
+{
+	bDifficultyTimerRunning = true;
+}
+
+void UNSGameFlowSubsystem::PauseDifficultyTimer()
+{
+	bDifficultyTimerRunning = false;
+}
+
+void UNSGameFlowSubsystem::StopAndResetDifficultyTimer()
+{
+	bDifficultyTimerRunning = false;
+	RunElapsedSeconds = 0.0f;
+}
+
+FNSDifficultyScale UNSGameFlowSubsystem::GetCurrentMonsterScale(int32 PlayerCount) const
+{
+	const UNSDifficultyConfig* DifficultyConfig = nullptr;
+	if (INSGameInstanceInterface* GII = Cast<INSGameInstanceInterface>(GetGameInstance()))
+	{
+		DifficultyConfig = GII->GetDifficultyConfig();
+	}
+	
+	// config 미설정 시 기본값(1배) 폴백
+	if (!DifficultyConfig)
+	{
+		return FNSDifficultyScale();
+	}
+	
+	return DifficultyConfig->Evaluate(
+		RunElapsedSeconds,
+		CurrentStageNumber,
+		PlayerCount);
+}
+
+void UNSGameFlowSubsystem::Tick(float DeltaTime)
+{
+	if (!bDifficultyTimerRunning)
+	{
+		return;
+	}
+	
+	const UWorld* World = GetWorld();
+	
+	// 서버만 누적
+	if (!World || World->GetNetMode() == NM_Client)
+	{
+		return;
+	} 
+	
+	RunElapsedSeconds += DeltaTime;
+}
+
+TStatId UNSGameFlowSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UNSGameFlowSubsystem, STATGROUP_Tickables);
 }

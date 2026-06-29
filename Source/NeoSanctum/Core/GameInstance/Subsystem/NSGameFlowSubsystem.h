@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Tickable.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NSGameFlowSubsystem.generated.h"
 
 class UNSLevelCatalog;
@@ -13,7 +15,9 @@ class UNSLevelCatalog;
  */
 
 UCLASS()
-class NEOSANCTUM_API UNSGameFlowSubsystem : public UGameInstanceSubsystem
+class NEOSANCTUM_API UNSGameFlowSubsystem :
+public UGameInstanceSubsystem,
+public FTickableGameObject
 {
 	GENERATED_BODY()
 	
@@ -30,6 +34,20 @@ public:
 
 	int32 GetCurrentStageNumber() const { return CurrentStageNumber; }
 	
+	// 스테이지 입장 시
+	void ResumeDifficultyTimer();   
+	// 보스룸 진입 시
+	void PauseDifficultyTimer();  
+	// 런 시작/거점 귀환 시
+	void StopAndResetDifficultyTimer();   
+	float GetRunElapsedSeconds() const { return RunElapsedSeconds; }
+	FNSDifficultyScale GetCurrentMonsterScale(int32 PlayerCount) const;
+
+	// FTickableGameObject
+	virtual void Tick(float DeltaTime) override;
+	virtual TStatId GetStatId() const override;
+	virtual bool IsTickable() const override { return bDifficultyTimerRunning; }
+	
 private:
 	UNSLevelCatalog* GetCatalog() const;
 	
@@ -40,4 +58,8 @@ private:
 	int32 CurrentStageNumber = 0;
 	
 	int32 CurrentInRunIndex = INDEX_NONE;
+	
+	float RunElapsedSeconds = 0.f;
+	
+	bool  bDifficultyTimerRunning = false;
 };
