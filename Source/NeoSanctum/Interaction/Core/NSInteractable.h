@@ -34,6 +34,11 @@ public:
 	// 프롬프트 배경 색상에 쓸 등급 (-1 = 기본값)
 	UFUNCTION(BlueprintNativeEvent, Category="Interaction")
 	int32 GetPromptRarityIndex() const;
+	
+	// true면 서버에서 OnInteract를 직접 실행(해금/보상 등 서버 로직형),
+	// false면 기존 클라 위젯 경로(거점 기능 NPC, 드롭 파츠 등)
+	UFUNCTION(BlueprintNativeEvent, Category="Interaction")
+	bool ShouldHandleOnServer() const;
 
 	// 프롬프트 위젯이 떠야 할 월드 위치 (각 대상이 자기 앵커 위치를 반환)
 	UFUNCTION(BlueprintNativeEvent, Category="Interaction")
