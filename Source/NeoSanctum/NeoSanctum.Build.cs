@@ -13,6 +13,9 @@ public class NeoSanctum : ModuleRules
 		{
 			// Core
 			"Core", "CoreUObject", "Engine", "OnlineSubsystem", "OnlineSubsystemUtils", "NetCore",
+
+			// Settings
+			"DeveloperSettings",
 			
 			// Input
 			"InputCore", "EnhancedInput",
