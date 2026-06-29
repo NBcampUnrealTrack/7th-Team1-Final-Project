@@ -17,6 +17,8 @@
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
+#include "NeoSanctum/Data/Util/NSDataSettings.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
@@ -602,14 +604,30 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 	if (Ids.IsEmpty())
 	{
-		OnOutGameAssetsLoaded();
+		OnOutGamePrimaryAssetsLoaded();
 		return;
 	}
 
 	OutGameHandle = UAssetManager::Get().LoadPrimaryAssets(
 		Ids,
 		OutGameBundles,
-		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGameAssetsLoaded));
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGamePrimaryAssetsLoaded));
+}
+
+void UNSDataSubsystem::OnOutGamePrimaryAssetsLoaded()
+{
+	CacheLoaded({ HubAssetType, PartAssetType });
+
+	const UNSDataSettings* Settings = GetDefault<UNSDataSettings>();
+	if (Settings && !Settings->PartDefinitionTable.IsNull() && Settings->PartDefinitionTable.Get() == nullptr)
+	{
+		UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
+			{ Settings->PartDefinitionTable.ToSoftObjectPath() },
+			FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGameAssetsLoaded));
+		return;
+	}
+
+	OnOutGameAssetsLoaded();
 }
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
@@ -1130,15 +1148,17 @@ void UNSDataSubsystem::BuildPartRowCache()
 {
 	CachedPartRowsByDefId.Empty();
 
-	if (!PartDefinitionTable)
+	const UNSDataSettings* Settings = GetDefault<UNSDataSettings>();
+	UDataTable* DT = Settings ? Settings->PartDefinitionTable.Get() : nullptr;
+	if (!DT)
 	{
 		return;
 	}
 
-	for (const FName& RowName : PartDefinitionTable->GetRowNames())
+	for (const FName& RowName : DT->GetRowNames())
 	{
 		const FNSPartDefinitionRow* Row =
-			PartDefinitionTable->FindRow<FNSPartDefinitionRow>(RowName, TEXT("BuildPartRowCache"), false);
+			DT->FindRow<FNSPartDefinitionRow>(RowName, TEXT("BuildPartRowCache"), false);
 		if (!Row || !Row->bEnabled || Row->Definition.IsNull())
 		{
 			continue;
