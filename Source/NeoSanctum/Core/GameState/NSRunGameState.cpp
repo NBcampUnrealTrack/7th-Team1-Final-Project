@@ -17,6 +17,36 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, NextVotes);
 	DOREPLIFETIME(ANSRunGameState, HubVotes);
 	DOREPLIFETIME(ANSRunGameState, RunResultData);
+	DOREPLIFETIME(ANSRunGameState, CurrentRunConfig);
+	DOREPLIFETIME(ANSRunGameState, CurrentLevelConfig);
+}
+
+void ANSRunGameState::SetRunDataConfig(
+	TSoftObjectPtr<UNSRunConfig> InRunConfig,
+	TSoftObjectPtr<UNSLevelConfig> InLevelConfig)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	CurrentRunConfig = InRunConfig;
+	CurrentLevelConfig = InLevelConfig;
+	
+	// 서버가 자신은 OnRep이 호출되지 않으므로 직접 브로드캐스트.
+	OnRep_RunDataConfig();
+	
+	ForceNetUpdate();
+}
+
+bool ANSRunGameState::HasRunDataConfig() const
+{
+	return !CurrentRunConfig.IsNull() && !CurrentLevelConfig.IsNull();
+}
+
+void ANSRunGameState::OnRep_RunDataConfig()
+{
+	OnRunDataConfigChanged.Broadcast();
 }
 
 ANSRunGameState::ANSRunGameState()

@@ -383,6 +383,60 @@ void ANSPlayerController::BindRunEndPhase()
 	HandleRunEndPhaseChanged();
 }
 
+void ANSPlayerController::BindRunDataConfig()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState = World->GetGameState<ANSRunGameState>();
+	if (!IsValid(RunGameState))
+	{
+		return;
+	}
+	
+	CachedRunGameState = RunGameState;
+	
+	RunGameState->OnRunDataConfigChanged.RemoveDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	RunGameState->OnRunDataConfigChanged.AddDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	
+	// 이미 복제된 상태에서 바인딩될 수 잇으므로 즉시 한 번 확인.
+	HandleRunDataConfigChanged();
+}
+
+void ANSPlayerController::HandleRunDataConfigChanged()
+{
+	if (!IsLocalController() || !IsValid(CachedRunGameState))
+	{
+		return;
+	}
+	
+	// RunGameState에 아직 데이터 구성이 복제되지 않았다면 클라이언트 로드를 시작 안함.
+	if (!CachedRunGameState->HasRunDataConfig())
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		HandleClientRunDataReady();
+		return;
+	}
+	
+	Data->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleClientRunDataReady);
+	Data->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleClientRunDataReady);
+	
+	Data->EnterRun(CachedRunGameState->CurrentRunConfig, CachedRunGameState->CurrentLevelConfig);
+}
+
 void ANSPlayerController::HandleRunEndPhaseChanged()
 {
 	if (!IsValid(CachedRunGameState) || !GetGameInstance())
@@ -866,6 +920,7 @@ void ANSPlayerController::BeginPlay()
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
+	BindRunDataConfig();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
 	//UpdateSkillUIFromCurrentCharacter();
@@ -1104,7 +1159,9 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 	}
 }
 
-void ANSPlayerController::Client_NotifyRunStarted_Implementation(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
+void ANSPlayerController::Client_NotifyRunStarted_Implementation(
+	const TSoftObjectPtr<UNSRunConfig>& RunConfig,
+	const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
 {
 	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
 	{
@@ -1117,7 +1174,7 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation(const TSoftObje
 		
 		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
 		Data->OnRunGameDataReady.AddDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
-		Data->EnterRun(LevelConfig);
+		Data->EnterRun(RunConfig, LevelConfig);
 		return;
 	}
 	

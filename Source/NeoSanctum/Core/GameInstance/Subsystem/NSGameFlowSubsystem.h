@@ -10,6 +10,7 @@
 
 class UNSLevelCatalog;
 class UNSLevelConfig;
+class UNSRunConfig;
 
 /**
  * 아웃게임 <-> 인 런 간 트래블 로직 담당할 서브시스템
@@ -49,6 +50,9 @@ public:
 	virtual TStatId GetStatId() const override;
 	virtual bool IsTickable() const override { return bDifficultyTimerRunning; }
 	
+	const TSoftObjectPtr<UNSRunConfig>& GetSelectedRunConfig() const { return SelectedRunConfig; }
+	const TSoftObjectPtr<UNSLevelConfig>& GetSelectedRunLevelConfig() const { return SelectedRunLevelConfig; }
+	
 private:
 	UNSLevelCatalog* GetCatalog() const;
 	
@@ -56,10 +60,15 @@ private:
 	
 	bool ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options);
 	
-	bool RequestEnterRun(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
+	bool RequestEnterRun(
+		const TSoftObjectPtr<UNSRunConfig>& RunConfig, const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
 	
 	UFUNCTION()
 	void HandleRunGameDataReady();
+	
+	// ServerTravel 이후 RunGameMode가 RunGameState에 복제할 인런 데이터 구성.
+	TSoftObjectPtr<UNSRunConfig>	SelectedRunConfig;
+	TSoftObjectPtr<UNSLevelConfig>	SelectedRunLevelConfig;
 	
 	int32 CurrentStageNumber = 0;
 	

@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSDifficultyConfig.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
@@ -73,7 +74,7 @@ void UNSGameFlowSubsystem::StartNewRun()
 	// 기획상 스테이지 게임 시작은 무조건 스테이지 1부터(후에 수정될수도 있음)
 	CurrentInRunIndex = 0; 
 	
-	RequestEnterRun(NSCatalog->InRunLevels[0].LevelConfig);
+	RequestEnterRun(NSCatalog->RunConfig, NSCatalog->InRunLevels[0].LevelConfig);
 }
 
 int32 UNSGameFlowSubsystem::PickNextInRunIndex() const
@@ -103,12 +104,16 @@ int32 UNSGameFlowSubsystem::PickNextInRunIndex() const
 	return Next;
 }
 
-bool UNSGameFlowSubsystem::RequestEnterRun(const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
+bool UNSGameFlowSubsystem::RequestEnterRun(
+	const TSoftObjectPtr<UNSRunConfig>& RunConfig, const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
 {
-	if (LevelConfig.IsNull())
+	if (RunConfig.IsNull() || LevelConfig.IsNull())
 	{
 		return false;
 	}
+	
+	SelectedRunConfig = RunConfig;
+	SelectedRunLevelConfig = LevelConfig;
 	
 	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
 	if (!DataSubsystem)
@@ -119,7 +124,7 @@ bool UNSGameFlowSubsystem::RequestEnterRun(const TSoftObjectPtr<UNSLevelConfig>&
 	DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
 	DataSubsystem->OnRunGameDataReady.AddDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
 	
-	DataSubsystem->EnterRun(LevelConfig);
+	DataSubsystem->EnterRun(RunConfig, LevelConfig);
 	return true;
 }
 
@@ -145,16 +150,8 @@ void UNSGameFlowSubsystem::HandleRunGameDataReady()
 		return;
 	}
 	
-	// 서버 Run 데이터가 준비된 뒤 각 클라이언특 같은 LevelConfig로 로컬 Run 데이터를 로드하도록 알림.
-	const TSoftObjectPtr<UNSLevelConfig> RunLevelConfig(LevelConfig);
-	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
-	{
-		if (ANSPlayerController* PlayerController = Cast<ANSPlayerController>(It->Get()))
-		{
-			PlayerController->Client_NotifyRunStarted(RunLevelConfig);
-		}
-	}
-	
+	// 서버는 travel 전에 필요한 데이터를 선로딩하고
+	// 클라이언트는 인런 월드 진입 후 RunGameState 복제를 통해 로드
 	ServerTravelToWorld(LevelConfig->TravelMap, FString());
 }
 
@@ -186,7 +183,7 @@ bool UNSGameFlowSubsystem::AdvanceToNextStage()
 	CurrentInRunIndex = NextIndex;
 	CurrentStageNumber++;
 	
-	return RequestEnterRun(Catalog->InRunLevels[NextIndex].LevelConfig);
+	return RequestEnterRun(Catalog->RunConfig, Catalog->InRunLevels[NextIndex].LevelConfig);
 }
 
 bool UNSGameFlowSubsystem::ReturnToHub()
@@ -240,9 +237,13 @@ void UNSGameFlowSubsystem::StopAndResetDifficultyTimer()
 FNSDifficultyScale UNSGameFlowSubsystem::GetCurrentMonsterScale(int32 PlayerCount) const
 {
 	const UNSDifficultyConfig* DifficultyConfig = nullptr;
-	if (INSGameInstanceInterface* GII = Cast<INSGameInstanceInterface>(GetGameInstance()))
+	
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		DifficultyConfig = GII->GetDifficultyConfig();
+		if (const UNSRunConfig* RunConfig = DataSubsystem->GetCurrentRunConfig())
+		{
+			DifficultyConfig = RunConfig->DifficultyConfig.Get();
+		}
 	}
 	
 	// config 미설정 시 기본값(1배) 폴백

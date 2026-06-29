@@ -24,11 +24,9 @@
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
-#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 
@@ -658,6 +656,8 @@ void ANSRunGameMode::RespawnAllPlayers()
 			NSPlayerController->ExitSpectatorAndRespawn();
 		}
 	}
+	
+	SyncRunDataConfigToGameState();
 }
 
 void ANSRunGameMode::SetEnemyCount(int32 Count)
@@ -963,6 +963,21 @@ void ANSRunGameMode::SaveAllPlayersProgress()
 
 		NSPlayerController->SaveProgressToOwningClient();
 	}
+}
+
+void ANSRunGameMode::SyncRunDataConfigToGameState()
+{
+	UNSGameFlowSubsystem* GameFlow = 
+		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>() : nullptr;
+	
+	ANSRunGameState* RunGameState = GetGameState<ANSRunGameState>();
+	
+	if (!GameFlow || !RunGameState)
+	{
+		return;
+	}
+	
+	RunGameState->SetRunDataConfig(GameFlow->GetSelectedRunConfig(), GameFlow->GetSelectedRunLevelConfig());
 }
 
 void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice)
