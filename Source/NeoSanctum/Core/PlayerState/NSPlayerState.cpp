@@ -209,6 +209,15 @@ UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDat
 		return nullptr;
 	}
 
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		// CommonData에서 선로딩한 캐릭터 데이터가 있으면 동기 로드 없이 재사용한다.
+		if (UNSCharacterData* LoadedData = DataSubsystem->GetData<UNSCharacterData>(CharacterDataId))
+		{
+			return LoadedData;
+		}
+	}
+
 	const FSoftObjectPath CharacterDataPath = UAssetManager::Get().GetPrimaryAssetPath(CharacterDataId);
 	if (!CharacterDataPath.IsValid())
 	{
