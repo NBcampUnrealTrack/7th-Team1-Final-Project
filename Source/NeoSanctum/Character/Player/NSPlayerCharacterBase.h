@@ -67,6 +67,9 @@ public:
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	// PlayerAttackFeedbackComponent Getter
 	UNSPlayerAttackFeedbackComponent* GetPlayerAttackFeedbackComponent() const { return PlayerAttackFeedbackComp; }
+
+	// 캐릭터 데이터에 등록된 반응형 GE를 상황 태그 기준으로 적용
+	void ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag);
 	
 	bool TryGetAimTraceStartLocation(FVector& OutLocation) const;
 	
