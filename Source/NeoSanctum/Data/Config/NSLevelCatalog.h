@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "NSLevelCatalog.generated.h"
 
+class UNSRunConfig;
 class UNSLevelConfig;
 
 /**
@@ -22,7 +23,6 @@ struct FNSInRunLevelEntry
 	
 	UPROPERTY(EditAnywhere)
 	TSoftObjectPtr<UNSLevelConfig> LevelConfig;
-	
 };
 
 /**
@@ -42,6 +42,11 @@ public:
 	UPROPERTY(EditAnywhere, Category="Levels")
 	TSoftObjectPtr<UWorld> HubLevel;
 	
+	// 인런 시작 시 한 번 로드하고 런 종료 전까지 유지할 공통 런 데이터.
+	UPROPERTY(EditAnywhere, Category = "Run")
+	TSoftObjectPtr<UNSRunConfig> RunConfig;
+	
+	// 인런에서 순회할 스테이지 목록. 각 항목은 스테이지 전용 LevelConfig를 가리킴.
 	UPROPERTY(EditAnywhere, Category="Levels") 
 	TArray<FNSInRunLevelEntry> InRunLevels;
 };

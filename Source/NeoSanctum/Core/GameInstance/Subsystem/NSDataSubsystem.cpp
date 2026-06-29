@@ -2,14 +2,17 @@
 
 
 #include "NSDataSubsystem.h"
+
 #include "Engine/DataTable.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
+#include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 
@@ -23,6 +26,7 @@ const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType
 
 
 // InRun
+const FPrimaryAssetType UNSDataSubsystem::RunConfigAssetType				= FPrimaryAssetType(TEXT("NSRunConfig"));
 const FPrimaryAssetType UNSDataSubsystem::LevelConfigAssetType				= FPrimaryAssetType(TEXT("NSLevelConfig"));
 const FPrimaryAssetType UNSDataSubsystem::MonsterAssetType					= FPrimaryAssetType(TEXT("NSMonsterData"));
 const FPrimaryAssetType UNSDataSubsystem::AugmentAssetType					= FPrimaryAssetType(TEXT("NSAugmentData"));
@@ -78,6 +82,22 @@ const UNSRewardDataRegistry* UNSDataSubsystem::GetRewardDataRegistry() const
 	return RewardDataRegistry;
 }
 
+void UNSDataSubsystem::LoadCurrentStageSpawnerTables()
+{
+	if (bStageSpawnerTablesLoaded)
+	{
+		OnStageSpawnerTablesReady.Broadcast();
+		return;
+	}
+	
+	if (StageSpawnerTableHandle.IsValid())
+	{
+		return;
+	}
+	
+	StartLoadStageSpawnerTables();
+}
+
 // ================================================================
 // 전환 진입점
 // ================================================================
@@ -101,9 +121,9 @@ void UNSDataSubsystem::LoadOutGameData()
 	StartLoadOutGame();
 }
 
-void UNSDataSubsystem::EnterRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig)
+void UNSDataSubsystem::EnterRun(TSoftObjectPtr<UNSRunConfig> RunConfig, TSoftObjectPtr<UNSLevelConfig> LevelConfig)
 {
-	if (LevelConfig.IsNull())
+	if (RunConfig.IsNull() || LevelConfig.IsNull())
 	{
 		return;
 	}
@@ -113,16 +133,36 @@ void UNSDataSubsystem::EnterRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig)
 		return;
 	}
 
+	const bool bNeedsRunReload = 
+		!CurrentRunConfig ||
+		CurrentRunConfig->GetPrimaryAssetId().PrimaryAssetName != FName(*RunConfig.GetAssetName());
+	
 	if (CurrentPhase == ENSDataLoadPhase::OutGameReady)
 	{
 		UnloadOutGame();
 	}
 	else if (CurrentPhase == ENSDataLoadPhase::RunReady)
 	{
-		UnloadRun();
+		UnloadStage();
 	}
 
-	StartLoadRun(LevelConfig);
+	if (bNeedsRunReload)
+	{
+		// UnloadRun()은 기존 런 상태와 Pending 값을 모두 비우므로
+		// 새 RunConfig/LevelConfig는 언로드 이후에 다시 저장.
+		UnloadRun();
+	}
+	
+	PendingRunConfig = RunConfig;
+	PendingStageLevelConfig = LevelConfig;
+	
+	if (bNeedsRunReload)
+	{
+		StartLoadRunConfig();
+		return;
+	}
+	
+	StartLoadStageConfig();
 }
 
 void UNSDataSubsystem::ReturnToOutGame()
@@ -239,54 +279,53 @@ void UNSDataSubsystem::OnOutGameAssetsLoaded()
 // Run 로드
 // ================================================================
 
-void UNSDataSubsystem::StartLoadRun(TSoftObjectPtr<UNSLevelConfig> LevelConfig)
+void UNSDataSubsystem::StartLoadRunConfig()
 {
 	SetPhase(ENSDataLoadPhase::LoadingRun);
-
-	PendingRunLevelConfig = LevelConfig;
-	CurrentRunLevelConfig = nullptr;
+	
+	CurrentRunConfig = nullptr;
 	PendingRunAssetIds.Reset();
+	
+	const FPrimaryAssetId RunConfigId(RunConfigAssetType, FName(*PendingRunConfig.GetAssetName()));
 
-	// LevelConfig의 InRunData 번들을 먼저 로드한 뒤, 그 안의 DT에서 실제 런 에셋 목록을 수집.
-	const FPrimaryAssetId LevelConfigId(
-		LevelConfigAssetType, FName(*PendingRunLevelConfig.GetAssetName()));
-
-	RunLevelConfigHandle = UAssetManager::Get().LoadPrimaryAsset(
-		LevelConfigId,
+	RunConfigHandle = UAssetManager::Get().LoadPrimaryAsset(
+		RunConfigId,
 		RunBundles,
-		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunLevelConfigLoaded)
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnRunConfigLoaded)
 	);
 }
 
-void UNSDataSubsystem::OnRunLevelConfigLoaded()
+void UNSDataSubsystem::OnRunConfigLoaded()
 {
-	CurrentRunLevelConfig = PendingRunLevelConfig.Get();
-	if (!IsValid(CurrentRunLevelConfig))
+	CurrentRunConfig = PendingRunConfig.Get();
+	if (!IsValid(CurrentRunConfig))
 	{
 		SetPhase(ENSDataLoadPhase::NotStarted);
 		return;
 	}
-
+	
 	TArray<FPrimaryAssetId> Ids;
+	
+	// 파츠/보상 트리거는 런 전체에서 유지되는 데이터로 취급.
 	GatherAssetIds({ PartAssetType, RewardTriggerAssetType }, Ids);
-
-	if (!CurrentRunLevelConfig->AugmentRarityRuleSet.IsNull())
+	
+	if (!CurrentRunConfig->AugmentRarityRuleSet.IsNull())
 	{
 		Ids.AddUnique(FPrimaryAssetId(
 			AugmentRarityRuleSetAssetType,
-			FName(*CurrentRunLevelConfig->AugmentRarityRuleSet.GetAssetName()))
+			FName(*CurrentRunConfig->AugmentRarityRuleSet.GetAssetName()))
 		);
 	}
-
-	CollectAugmentDefinitionIdsFromTable(CurrentRunLevelConfig->AugmentDefinitionTable.Get(), Ids);
+	
+	CollectAugmentDefinitionIdsFromTable(CurrentRunConfig->AugmentDefinitionTable.Get(), Ids);
 	PendingRunAssetIds = Ids;
-
+	
 	if (Ids.IsEmpty())
 	{
 		OnRunAssetsLoaded();
 		return;
 	}
-
+	
 	RunHandle = UAssetManager::Get().LoadPrimaryAssets(
 		PendingRunAssetIds,
 		RunBundles,
@@ -296,12 +335,97 @@ void UNSDataSubsystem::OnRunLevelConfigLoaded()
 
 void UNSDataSubsystem::OnRunAssetsLoaded()
 {
-	// 이번 LevelConfig에서 수집한 에셋만 캐싱해 다음 스테이지 전환 시 정확히 언로드.
+	// RunConfig에서 수집한 런 공통 에셋을 캐싱하고, 이후 스테이지 전용 LevelConfig를 로드.
 	CacheLoadedByIds(PendingRunAssetIds);
 	BuildRewardDataRegistry();
 	
+	StartLoadStageConfig();
+}
+
+void UNSDataSubsystem::StartLoadStageConfig()
+{
+	SetPhase(ENSDataLoadPhase::LoadingRun);
+	
+	CurrentRunLevelConfig = nullptr;
+	PendingStageAssetIds.Reset();
+	
+	const FPrimaryAssetId LevelConfigId(LevelConfigAssetType, FName(*PendingStageLevelConfig.GetAssetName()));
+	
+	// Stage LevelConfig PrimaryAsset 자체만 캐시에 보관.
+	// TravelMap과 Spawner DT는 travel 전 번들 로드 대상에서 제외.
+	static const TArray<FName> ConfigOnlyBundles;
+
+	StageLevelConfigHandle = UAssetManager::Get().LoadPrimaryAsset(
+		LevelConfigId,
+		ConfigOnlyBundles,
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnStageConfigLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnStageConfigLoaded()
+{
+	CurrentRunLevelConfig = PendingStageLevelConfig.Get();
+	if (!IsValid(CurrentRunLevelConfig))
+	{
+		SetPhase(ENSDataLoadPhase::NotStarted);
+		return;
+	}
+	
+	// 현재 스테이지 LevelConfig PrimaryAsset 자체를 캐시에 보관.
+	PendingStageAssetIds.AddUnique(CurrentRunLevelConfig->GetPrimaryAssetId());
+	
+	CacheLoadedByIds(PendingStageAssetIds);
+	
 	SetPhase(ENSDataLoadPhase::RunReady);
 	OnRunGameDataReady.Broadcast();
+}
+
+void UNSDataSubsystem::StartLoadStageSpawnerTables()
+{
+	if (!IsValid(CurrentRunLevelConfig))
+	{
+		NS_OBJ_LOG(LogNS, Warning, "스테이지 스포너 DT 로드가 요청됐지만 CurrentRunLevelConfig가 아직 준비되지 않았습니다.");
+		return;
+	}
+	
+	TArray<FSoftObjectPath> AssetToLoad;
+	
+	if (!CurrentRunLevelConfig->MeleeSpawnerTable.IsNull())
+	{
+		AssetToLoad.Add(CurrentRunLevelConfig->MeleeSpawnerTable.ToSoftObjectPath());
+	}
+	
+	if (!CurrentRunLevelConfig->RangeSpawnerTable.IsNull())
+	{
+		AssetToLoad.Add(CurrentRunLevelConfig->RangeSpawnerTable.ToSoftObjectPath());
+	}
+	
+	if (AssetToLoad.IsEmpty())
+	{
+		OnStageSpawnerTableLoaded();
+		return;
+	}
+	
+	// 스테이지 안에서는 이 핸들을 유지해서 같은 DT를 여러 스포너가 재사용.
+	FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+	StageSpawnerTableHandle = StreamableManager.RequestAsyncLoad(
+		AssetToLoad,
+		FStreamableDelegate::CreateUObject(this, &ThisClass::OnStageSpawnerTableLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnStageSpawnerTableLoaded()
+{
+	CurrentMeleeSpawnerTable = CurrentRunLevelConfig ? CurrentRunLevelConfig->MeleeSpawnerTable.Get() : nullptr;
+	CurrentRangeSpawnerTable = CurrentRunLevelConfig ? CurrentRunLevelConfig->RangeSpawnerTable.Get() : nullptr;
+	bStageSpawnerTablesLoaded = true;
+	
+	if (!CurrentMeleeSpawnerTable && !CurrentRangeSpawnerTable)
+	{
+		NS_OBJ_LOG(LogNS, Warning, "스테이지 스포너 DT 로드가 완료됐지만 근접/원거리 스폰 테이블이 모두 비어 있습니다.");
+	}
+	
+	OnStageSpawnerTablesReady.Broadcast();
 }
 
 void UNSDataSubsystem::BuildRewardDataRegistry()
@@ -346,14 +470,47 @@ void UNSDataSubsystem::UnloadOutGame()
 	UnloadByTypes({ HubAssetType, PartAssetType });
 }
 
-void UNSDataSubsystem::UnloadRun()
+void UNSDataSubsystem::UnloadStage()
 {
-	if (RunLevelConfigHandle.IsValid())
+	if (StageLevelConfigHandle.IsValid())
 	{
-		RunLevelConfigHandle->ReleaseHandle();
-		RunLevelConfigHandle.Reset();
+		StageLevelConfigHandle->ReleaseHandle();
+		StageLevelConfigHandle.Reset();
 	}
 
+	if (StageHandle.IsValid())
+	{
+		StageHandle->ReleaseHandle();
+		StageHandle.Reset();
+	}
+	
+	UnloadByIds(PendingStageAssetIds);
+	
+	PendingStageAssetIds.Reset();
+	PendingStageLevelConfig.Reset();
+	CurrentRunLevelConfig = nullptr;
+	
+	if (StageSpawnerTableHandle.IsValid())
+	{
+		StageSpawnerTableHandle->ReleaseHandle();
+		StageSpawnerTableHandle.Reset();
+	}
+	
+	CurrentMeleeSpawnerTable = nullptr;
+	CurrentRangeSpawnerTable = nullptr;
+	bStageSpawnerTablesLoaded = false;
+}
+
+void UNSDataSubsystem::UnloadRun()
+{
+	UnloadStage();
+	
+	if (RunConfigHandle.IsValid())
+	{
+		RunConfigHandle->ReleaseHandle();
+		RunConfigHandle.Reset();
+	}
+	
 	if (RunHandle.IsValid())
 	{
 		RunHandle->ReleaseHandle();
@@ -365,12 +522,12 @@ void UNSDataSubsystem::UnloadRun()
 		RewardDataRegistry->Reset();
 		RewardDataRegistry = nullptr;
 	}
-
+	
 	UnloadByIds(PendingRunAssetIds);
-
+	
 	PendingRunAssetIds.Reset();
-	PendingRunLevelConfig.Reset();
-	CurrentRunLevelConfig = nullptr;
+	PendingRunConfig.Reset();
+	CurrentRunConfig = nullptr;
 }
 
 void UNSDataSubsystem::UnloadAll()

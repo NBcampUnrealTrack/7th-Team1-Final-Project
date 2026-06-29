@@ -13,8 +13,8 @@ class UWorld;
 /**
  * 인런 레벨 진입에 필요한 맵과 데이터 테이블을 정의하는 Primary Data Asset.
  * 
- * NSGameFlowSubsystem이 TravelMap으로 이동하고,
- * DataSubsystem은 이 설정을 기준으로 스테이지별 인런 데이터를 비동기 로드.
+ * 런 전체에서 유지되는 증강/몬스터/난이도 데이터는 UNSRunConfig가 담당하고,
+ * 이 클래스는 스테이지가 바뀔 때 교체되는 데이터만 가짐.
  */
 UCLASS(BlueprintType)
 class NEOSANCTUM_API UNSLevelConfig : public UPrimaryDataAsset
@@ -24,19 +24,19 @@ class NEOSANCTUM_API UNSLevelConfig : public UPrimaryDataAsset
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
 	
-	// 이동할 실제 월드. 데이터 선로딩이 끝난 뒤 NSGameFlowSubsystem이 이 맵으로 ServerTravel.
+	// ServerTravel 대상 맵.
+	// 맵 패키지는 DataSubsystem이 선로딩하지 않고 ServerTravel 흐름에 맡김.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level",
-		meta = (AssetBundles = "InRunData", AllowedClasses = "/Script/Engine.World"))
+		meta = (AllowedClasses = "/Script/Engine.World"))
 	TSoftObjectPtr<UWorld> TravelMap;
 	
-	// 이번 레벨에서 보상 트리거별 증강 희귀도 가중치를 결정하는 규칙.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Data", meta = (AssetBundles = "InRunData"))
-	TSoftObjectPtr<UNSAugmentRarityRuleSet> AugmentRarityRuleSet;
-	
-	// 이번 레벨에서 사용할 증강 후보/Modifier 원본. Definition DA 목록은 이 DT에서 수집.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Data", meta = (AssetBundles = "InRunData"))
-	TSoftObjectPtr<UDataTable> AugmentDefinitionTable;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Data", meta = (AssetBundles = "InRunData"))
-	TSoftObjectPtr<UDataTable> MonsterAttributeTable;
+	// 이 스테이지에서 사용할 근접 몬스터 스폰 테이블.
+	// ProceduralDungeon 방 로딩과 겹치지 않도록 DataSubsystem의 travel 전 번들 로드 대상에서는 제외.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Spawner")
+	TSoftObjectPtr<UDataTable> MeleeSpawnerTable;
+
+	// 이 스테이지에서 사용할 원거리 몬스터 스폰 테이블.
+	// 실제 사용 시점은 인런 월드 진입 후 스포너 초기화 단계.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Spawner")
+	TSoftObjectPtr<UDataTable> RangeSpawnerTable;
 };
