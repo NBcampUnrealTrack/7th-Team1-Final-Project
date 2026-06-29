@@ -27,6 +27,9 @@ public:
 	virtual TSubclassOf<UNSNPCInteractionWidgetBase> GetInteractionWidgetClass() const { return nullptr; }
 
 	FName GetNPCId() const { return NPCId; }
+	
+	// true면 OnInteract 서버에서 실행, false면 기존 로직 그대로 작동
+	virtual bool ShouldHandleOnServer_Implementation() const override { return false; }
 protected:
 	// 상호작용 감지용 콜리전
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")

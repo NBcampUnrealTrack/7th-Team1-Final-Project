@@ -12,8 +12,21 @@ UNSPlayerProgressComponent::UNSPlayerProgressComponent()
 
 void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 {
-	// 계정단위 저장, 서버에서 호출
-	UnlockedNPCIds.Add(NPCId);
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	
+	bool bAlreadyUnlocked = false;
+	UnlockedNPCIds.Add(NPCId, &bAlreadyUnlocked);
+	// 이미 있으면 복제 갱신 불필요
+	if (bAlreadyUnlocked)
+	{
+		return;   
+	}
+	
+	SyncReplicatedPayloadFromCurrentState();
+	BroadcastProgressChanged();
 }
 
 void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
