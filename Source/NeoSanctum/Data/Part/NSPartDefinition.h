@@ -20,18 +20,7 @@ public:
 
 public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
-	ENSPartSlot PartSlot = ENSPartSlot::Body;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	FText PartName;
-
-	// 레그 파츠는 false —> 인런 밸런스상 리롤 불가
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
-	bool bCanReroll = true;
-
-	// 등급별 수치 범위 (min~max), 장착/리롤/등급업 시 이 범위에서 랜덤 결정
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
-	TMap<ENSPartRarity, FNSPartValueRange> ValueRange;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|GAS", meta = (AssetBundles = "InRunData"))
 	TSoftClassPtr<UGameplayEffect> EffectClass;
