@@ -3,7 +3,11 @@
 
 #include "NSPlayerAttributeSet.h"
 
+#include "AbilitySystemComponent.h"
 #include "GameplayEffectExtension.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
 void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -12,6 +16,8 @@ void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 	
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, Shield, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxShield, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, ShieldRechargeRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, ShieldRechargeCooldown, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxDashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashRegenRate, COND_None, REPNOTIFY_Always);
@@ -34,6 +40,14 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxShield());
 	}
 	else if (Attribute == GetMaxShieldAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetShieldRechargeRateAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetShieldRechargeCooldownAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -90,11 +104,39 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	if (Data.EvaluatedData.Attribute == GetShieldAttribute())
 	{
 		SetShield(FMath::Clamp(GetShield(), 0.0f, GetMaxShield()));
+
+		if (GetShield() >= GetMaxShield())
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				FGameplayTagContainer RechargingTags;
+				RechargingTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargingTags);
+			}
+		}
 	}
 	else if (Data.EvaluatedData.Attribute == GetMaxShieldAttribute())
 	{
 		SetMaxShield(FMath::Max(GetMaxShield(), 0.0f));
 		SetShield(FMath::Clamp(GetShield(), 0.0f, GetMaxShield()));
+
+		if (GetShield() >= GetMaxShield())
+		{
+			if (UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent())
+			{
+				FGameplayTagContainer RechargingTags;
+				RechargingTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargingTags);
+			}
+		}
+	}
+	else if (Data.EvaluatedData.Attribute == GetShieldRechargeRateAttribute())
+	{
+		SetShieldRechargeRate(FMath::Max(GetShieldRechargeRate(), 0.0f));
+	}
+	else if (Data.EvaluatedData.Attribute == GetShieldRechargeCooldownAttribute())
+	{
+		SetShieldRechargeCooldown(FMath::Max(GetShieldRechargeCooldown(), 0.0f));
 	}
 	else if (Data.EvaluatedData.Attribute == GetDashCountAttribute())
 	{
@@ -147,8 +189,17 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	}
 }
 
-float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData&)
+float UNSPlayerAttributeSet::HandlePreHealthDamage(
+	float DamageAmount,
+	const FGameplayEffectModCallbackData& Data)
 {
+	// 데미지를 받은 시점에 데미지를 받았다는 트리거를 이벤트 태그로 발송
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor());
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+	}
+
 	const float CurrentShield = GetShield();
 	
 	if (CurrentShield <= 0.0f)
@@ -157,7 +208,16 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGa
 	}
 	
 	const float AbsorbedDamage = FMath::Min(CurrentShield, DamageAmount);
-	SetShield(CurrentShield - AbsorbedDamage);
+	const float NewShield = CurrentShield - AbsorbedDamage;
+	SetShield(NewShield);
+
+	if (NewShield <= 0.0f)
+	{
+		if (PlayerCharacter)
+		{
+			PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_Shield_Broken);
+		}
+	}
 	
 	return DamageAmount - AbsorbedDamage;
 }
@@ -170,6 +230,16 @@ void UNSPlayerAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield
 void UNSPlayerAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxShield, OldMaxShield);
+}
+
+void UNSPlayerAttributeSet::OnRep_ShieldRechargeRate(const FGameplayAttributeData& OldShieldRechargeRate)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, ShieldRechargeRate, OldShieldRechargeRate);
+}
+
+void UNSPlayerAttributeSet::OnRep_ShieldRechargeCooldown(const FGameplayAttributeData& OldShieldRechargeCooldown)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, ShieldRechargeCooldown, OldShieldRechargeCooldown);
 }
 
 void UNSPlayerAttributeSet::OnRep_DashCount(const FGameplayAttributeData& OldDashCount)

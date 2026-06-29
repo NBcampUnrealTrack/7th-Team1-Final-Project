@@ -13,6 +13,14 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Reloading);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Deactivate_HandIK);
 	
+	// Shield Regen
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Broken);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_RechargeCooldown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Recharging);
+	
+	// Barrier
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Barrier_Activated);
+	
 	// Buff State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_RangerSpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_EngineerSpeedBuff);

@@ -11,6 +11,20 @@
 class ANSWeaponBase;
 class UGameplayEffect;
 
+USTRUCT(BlueprintType)
+struct FNSReactiveGameplayEffectData
+{
+	GENERATED_BODY()
+
+	// 반응형 GE를 실행할 상황 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	FGameplayTag TriggerTag;
+
+	// 상황 태그가 발생했을 때 적용할 GE
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	TSoftClassPtr<UGameplayEffect> EffectClass;
+};
+
 /**
  * 캐릭터 초기화시 필요한 PrimaryAsset입니다.
  */
@@ -41,6 +55,9 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
 	TArray<TSoftClassPtr<UGameplayEffect>> DefaultGameplayEffects;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	TArray<FNSReactiveGameplayEffectData> ReactiveGameplayEffects;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon")
 	TSoftClassPtr<ANSWeaponBase> DefaultWeaponClass;

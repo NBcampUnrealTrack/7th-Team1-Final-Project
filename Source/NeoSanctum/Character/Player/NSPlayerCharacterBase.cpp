@@ -543,6 +543,11 @@ void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InC
 	{
 		DefaultEffect.LoadSynchronous();
 	}
+
+	for (const FNSReactiveGameplayEffectData& ReactiveEffect : InCharacterData->ReactiveGameplayEffects)
+	{
+		ReactiveEffect.EffectClass.LoadSynchronous();
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_CurrentCharacterData()
@@ -585,6 +590,39 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
 	
 	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
+}
+
+void ANSPlayerCharacterBase::ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag)
+{
+	if (!HasAuthority() || !CurrentCharacterData || !NSAbilitySystemComponent || !TriggerTag.IsValid())
+	{
+		return;
+	}
+
+	for (const FNSReactiveGameplayEffectData& ReactiveEffect : CurrentCharacterData->ReactiveGameplayEffects)
+	{
+		if (ReactiveEffect.TriggerTag != TriggerTag)
+		{
+			continue;
+		}
+
+		TSubclassOf<UGameplayEffect> EffectClass = ReactiveEffect.EffectClass.Get();
+		if (!EffectClass)
+		{
+			continue;
+		}
+
+		FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		FGameplayEffectSpecHandle SpecHandle =
+			NSAbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
+
+		if (SpecHandle.IsValid())
+		{
+			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
 
 void ANSPlayerCharacterBase::ApplyCharacterVisual()
