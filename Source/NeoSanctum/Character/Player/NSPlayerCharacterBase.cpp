@@ -25,6 +25,7 @@
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -81,6 +82,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 
 	GateAccessComp = CreateDefaultSubobject<UNSGateAccessComponent>(TEXT("GateAccessComp"));
 	PlayerAttackFeedbackComp = CreateDefaultSubobject<UNSPlayerAttackFeedbackComponent>(TEXT("PlayerAttackFeedbackComp"));
+	PlayerHitTakenFeedbackComp = CreateDefaultSubobject<UNSPlayerHitTakenFeedbackComponent>(
+		TEXT("PlayerHitTakenFeedbackComp"));
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
