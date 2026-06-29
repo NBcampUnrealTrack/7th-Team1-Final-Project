@@ -14,7 +14,9 @@ class NEOSANCTUM_API ANSRescueNPC : public ANSInteractableNPCBase
 public:
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
-
+	// 서버 처리용
+	virtual bool ShouldHandleOnServer_Implementation() const override { return true; } 
+	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
