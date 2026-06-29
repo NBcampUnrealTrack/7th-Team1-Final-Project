@@ -61,7 +61,14 @@ void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart, TOptional<FVec
 		return;
 	}
 
-	const ENSPartSlot Slot = Def->PartSlot;
+	const FPrimaryAssetId DefId = Def->GetPrimaryAssetId();
+	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
+	if (!Row)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] EquipPart: row 없음 (DefId=%s)"), *DefId.ToString());
+		return;
+	}
+	const ENSPartSlot Slot = Row->PartSlot;
 
 	DropPartInSlot(Slot, DropLocationOverride);
 
@@ -438,7 +445,9 @@ void UNSPartEquipComponent::RerollStat(ENSPartSlot Slot)
 	}
 
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	if (!Def || !Def->bCanReroll)
+	const FPrimaryAssetId DefId = Def ? Def->GetPrimaryAssetId() : FPrimaryAssetId();
+	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
+	if (!Def || !Row || !Row->bCanReroll)
 	{
 		return;
 	}
@@ -485,12 +494,20 @@ void UNSPartEquipComponent::UpgradeRarity(ENSPartSlot Slot)
 
 float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const
 {
-	const FNSPartValueRange* Range = Def->ValueRange.Find(Rarity);
-	if (!Range)
+	if (!Def)
 	{
 		return 0.f;
 	}
-	return FMath::RandRange(Range->Min, Range->Max);
+
+	const FPrimaryAssetId DefId = Def->GetPrimaryAssetId();
+	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
+	if (!Row)
+	{
+		return 0.f;
+	}
+
+	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
+	return Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
 }
 
 // ================================================================
