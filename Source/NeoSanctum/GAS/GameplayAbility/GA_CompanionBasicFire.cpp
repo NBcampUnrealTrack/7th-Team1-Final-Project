@@ -3,7 +3,7 @@
 
 #include "GA_CompanionBasicFire.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/AI/Companion/Spawner/NSDroneProjectile.h"
@@ -49,7 +49,7 @@ void UGA_CompanionBasicFire::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		return;
 	}
 	
-	ANSBaseCompanionAI* AvatarActor = Cast<ANSBaseCompanionAI>(ActorInfo->AvatarActor.Get());
+	ANSBaseDroneAI* AvatarActor = Cast<ANSBaseDroneAI>(ActorInfo->AvatarActor.Get());
 	if (!AvatarActor)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -125,7 +125,7 @@ FVector UGA_CompanionBasicFire::ComputeAimDirection(const FVector& Muzzle, AActo
 
 FVector UGA_CompanionBasicFire::GetMuzzleSocketLocation() const
 {
-	ANSBaseCompanionAI* CompanionAI = Cast<ANSBaseCompanionAI>(GetAvatarActorFromActorInfo());
+	ANSBaseDroneAI* CompanionAI = Cast<ANSBaseDroneAI>(GetAvatarActorFromActorInfo());
 	if (!CompanionAI) return FVector::ZeroVector;
 	
 	// 매쉬 캐싱
@@ -150,7 +150,7 @@ const UNSCompanionAttributeSet* UGA_CompanionBasicFire::GetCompanionSet() const
 
 AActor* UGA_CompanionBasicFire::GetCombatTarget() const
 {
-	ANSBaseCompanionAI* DronePawn = Cast<ANSBaseCompanionAI>(GetAvatarActorFromActorInfo());
+	ANSBaseDroneAI* DronePawn = Cast<ANSBaseDroneAI>(GetAvatarActorFromActorInfo());
 	if (!DronePawn) return nullptr;
 	
 	ANSDroneAIController* DroneAIController = Cast<ANSDroneAIController>(DronePawn->GetController());

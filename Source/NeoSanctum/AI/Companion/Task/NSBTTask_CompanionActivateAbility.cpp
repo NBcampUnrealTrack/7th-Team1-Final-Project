@@ -3,7 +3,7 @@
 
 #include "NSBTTask_CompanionActivateAbility.h"
 #include "AIController.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 
 UNSBTTask_CompanionActivateAbility::UNSBTTask_CompanionActivateAbility()
 {
@@ -17,7 +17,7 @@ EBTNodeResult::Type UNSBTTask_CompanionActivateAbility::ExecuteTask(UBehaviorTre
 	AAIController* AIController = OwnerComp.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
 	
-	ANSBaseCompanionAI* CompanionAI = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
+	ANSBaseDroneAI* CompanionAI = Cast<ANSBaseDroneAI>(AIController->GetPawn());
 	if (!CompanionAI) return EBTNodeResult::Failed;
 	
 	return EBTNodeResult::InProgress;
@@ -35,7 +35,7 @@ void UNSBTTask_CompanionActivateAbility::TickTask(UBehaviorTreeComponent& OwnerC
 		return;
 	}
 	
-	ANSBaseCompanionAI* CompanionAI = Cast<ANSBaseCompanionAI>(AIController->GetPawn());
+	ANSBaseDroneAI* CompanionAI = Cast<ANSBaseDroneAI>(AIController->GetPawn());
 	if (!CompanionAI)
 	{
 		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);

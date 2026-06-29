@@ -5,7 +5,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "AIController.h"
 #include "Kismet/KismetSystemLibrary.h"

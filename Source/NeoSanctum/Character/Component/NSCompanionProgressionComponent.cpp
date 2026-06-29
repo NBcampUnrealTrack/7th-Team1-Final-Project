@@ -3,7 +3,7 @@
 
 #include "NSCompanionProgressionComponent.h"
 
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 #include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 

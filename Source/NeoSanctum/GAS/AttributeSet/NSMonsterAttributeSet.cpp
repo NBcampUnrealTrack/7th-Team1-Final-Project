@@ -4,8 +4,9 @@
 #include "NSMonsterAttributeSet.h"
 
 #include "GameplayEffectExtension.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
@@ -153,7 +154,7 @@ AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorAct
 		return nullptr;
 	}
 
-	if (ANSBaseCompanionAI* AttackingDrone = Cast<ANSBaseCompanionAI>(InstigatorActor))
+	if (ANSBaseDroneAI* AttackingDrone = Cast<ANSBaseDroneAI>(InstigatorActor))
 	{
 		if (AActor* OwnerPlayer = AttackingDrone->GetOwnerPlayer())
 		{

@@ -5,7 +5,7 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BlackboardData.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 
 UNSBTTask_DroneMoveTo::UNSBTTask_DroneMoveTo()
 {
@@ -28,7 +28,7 @@ void UNSBTTask_DroneMoveTo::InitializeFromAsset(UBehaviorTree& Asset)
 EBTNodeResult::Type UNSBTTask_DroneMoveTo::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	AAIController* AIController = OwnerComp.GetAIOwner();
-	ANSBaseCompanionAI* DroneAI = AIController ? Cast<ANSBaseCompanionAI>(AIController->GetPawn()) : nullptr;
+	ANSBaseDroneAI* DroneAI = AIController ? Cast<ANSBaseDroneAI>(AIController->GetPawn()) : nullptr;
 	if (!DroneAI)
 	{
 		return EBTNodeResult::Failed;
@@ -41,7 +41,7 @@ void UNSBTTask_DroneMoveTo::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* N
 {
 	UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent();
 	AAIController* AIController = OwnerComp.GetAIOwner();
-	ANSBaseCompanionAI* DroneAI = AIController ? Cast<ANSBaseCompanionAI>(AIController->GetPawn()) : nullptr;
+	ANSBaseDroneAI* DroneAI = AIController ? Cast<ANSBaseDroneAI>(AIController->GetPawn()) : nullptr;
 	if (!BBComp || !DroneAI)
 	{
 		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
