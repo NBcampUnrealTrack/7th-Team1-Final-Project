@@ -5,6 +5,7 @@
 
 #include "NSDataSubsystem.h"
 #include "OnlineSubsystemUtils.h"
+#include "OnlineSubsystemNames.h"
 #include "OnlineSessionSettings.h"
 #include "Kismet/GameplayStatics.h" 
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
@@ -686,12 +687,34 @@ void UNSSessionSubsystem::StartCreateSession()
 		return;
 	}
 
+	// 활성 온라인 서브시스템 판별(true면 steam 세션, false면 기존 null(LAN) 테스트 세션)
+	IOnlineSubsystem* OnlineSubsystem = Online::GetSubsystem(GetWorld());
+	const bool bUsingSteam =
+		OnlineSubsystem && OnlineSubsystem->GetSubsystemName() == STEAM_SUBSYSTEM;
+
 	LastSessionSettings = MakeShared<FOnlineSessionSettings>();
-	LastSessionSettings->bIsLANMatch = true;
 	LastSessionSettings->NumPublicConnections = 4;
 	LastSessionSettings->bAllowJoinInProgress = false;
 	LastSessionSettings->bShouldAdvertise = true;
-	LastSessionSettings->bUsesPresence = false;
+
+	if (bUsingSteam)
+	{
+		LastSessionSettings->bIsLANMatch = false;
+		// 프레즌스 세션
+		LastSessionSettings->bUsesPresence = true;    
+		// 스팀 로비로 만듦
+		LastSessionSettings->bUseLobbiesIfAvailable = true;  
+		// 친구 목록의 게임 참여 허용
+		LastSessionSettings->bAllowJoinViaPresence = true;   
+		// 스팀 초대 허용
+		LastSessionSettings->bAllowInvites = true;
+	}
+	else
+	{
+		// 기존 LAN 테스트 경로
+		LastSessionSettings->bIsLANMatch = true;
+		LastSessionSettings->bUsesPresence = false;
+	}
 
 	bIsCreatingSession = true;
 
