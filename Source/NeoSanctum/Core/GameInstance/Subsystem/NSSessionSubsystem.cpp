@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "Online/OnlineSessionNames.h"
 
 // AppID 오염 방지용 키(후에 자체 AppID 발급받으면 제거 가능)
 static const FName NS_SESSION_KEY = FName(TEXT("NS_GAMEKEY"));
@@ -229,9 +230,9 @@ void UNSSessionSubsystem::FindAndJoinFirstSession()
 	LastSessionSearch->bIsLanQuery = false;
 	LastSessionSearch->MaxSearchResults = 50;
 	
-	// IP 검색말고 로비(PRESENCE)로 검색하도록 추가
+	// IP 검색말고 로비로 검색하도록 추가
 	LastSessionSearch->QuerySettings.Set(
-	FName(TEXT("PRESENCESEARCH")),
+	SEARCH_LOBBIES,
 	true,
 	EOnlineComparisonOp::Equals);
 	
