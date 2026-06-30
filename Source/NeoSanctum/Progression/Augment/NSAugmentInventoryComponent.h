@@ -63,27 +63,33 @@ private:
 	UFUNCTION()
 	void OnRep_Owned();
 	
-	// 스택형 GE 적용
+	// StackEffectClass가 설정된 증강만 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성합.
 	void ApplyStackEffect(
 		FNSAugmentInstance& Inst,
 		UNSAugmentDefinition* Def,
-		const FNSAugmentDefinitionRow& DefinitionRow,
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 		UAbilitySystemComponent* ASC
+	);
+	
+	static bool TryCalculateStackEffectMagnitude(
+		const FNSAugmentDefinitionRow& DefinitionRow,
+		int32 Stacks,
+		float& OutMagnitude
 	);
 
 	// 기믹 Legendary GA 부여
 	void GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC);
 
 	/**
-	 * Inventory가 보유하는 DefId에 대응하는 증강 정의 Row를 찾습니다.
-	 * 
-	 * 같은 Definition을 공유하는 여러 Modifier Row 중 하나를 반환,
-	 * 그룹 메타데이터 일관성은 데이터 검증 단계에서 보장.
-	 */
-	bool TryFindDefinitionRow(
+ 	 * Inventory가 보유하는 DefId에 대응하는 모든 증강 정의 Row를 찾습니다.
+ 	 *
+ 	 * 같은 Definition을 공유하는 여러 Modifier Row를 모두 반환하며,
+ 	 * 대표 메타데이터는 호출부에서 첫 Row를 기준으로 사용합니다.
+ 	 */
+	bool TryFindDefinitionRows(
 		UNSDataSubsystem* Data,
 		const FPrimaryAssetId& DefId, 
-		FNSAugmentDefinitionRow& OutRow
+		TArray<FNSAugmentDefinitionRow>& OutRows
 	) const;
 	
 	UPROPERTY(ReplicatedUsing=OnRep_Owned)

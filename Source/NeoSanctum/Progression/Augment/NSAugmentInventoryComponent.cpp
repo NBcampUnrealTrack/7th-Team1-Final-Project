@@ -22,12 +22,12 @@ void UNSAugmentInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	DOREPLIFETIME_CONDITION(UNSAugmentInventoryComponent, Owned, COND_OwnerOnly);
 }
 
-bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
+bool UNSAugmentInventoryComponent::TryFindDefinitionRows(
 	UNSDataSubsystem* Data,
 	const FPrimaryAssetId& DefId, 
-	FNSAugmentDefinitionRow& OutRow) const
+	TArray<FNSAugmentDefinitionRow>& OutRows) const
 {
-	OutRow = FNSAugmentDefinitionRow();
+	OutRows.Reset();
 	
 	const UDataTable* AugmentDefinitionTable =
 		Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
@@ -62,9 +62,13 @@ bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
 		
 		if (RowDefId == DefId)
 		{
-			OutRow = *Row;
-			return true;
+			OutRows.Add(*Row);
 		}
+	}
+	
+	if (!OutRows.IsEmpty())
+	{
+		return true;
 	}
 	
 	NS_OBJ_LOG(LogNS, Warning,
@@ -95,11 +99,13 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		return;
 	}
 	
-	FNSAugmentDefinitionRow DefinitionRow;
-	if (!TryFindDefinitionRow(Data, DefId, DefinitionRow))
+	TArray<FNSAugmentDefinitionRow> DefinitionRows;
+	if (!TryFindDefinitionRows(Data, DefId, DefinitionRows))
 	{
 		return;
 	}
+	
+	const FNSAugmentDefinitionRow& RepresentativeRow = DefinitionRows[0];
 	
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC)
@@ -116,16 +122,16 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		Existing->Stacks++;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(*Existing, Def, DefinitionRow, ASC);
+		ApplyStackEffect(*Existing, Def, DefinitionRows, ASC);
 	} else
 	{
 		FNSAugmentInstance NewInstance;
 		NewInstance.DefId = DefId;
-		NewInstance.Rarity = DefinitionRow.Rarity;
+		NewInstance.Rarity = RepresentativeRow.Rarity;
 		NewInstance.Stacks = 1;
-		NewInstance.bCountsAsLegendarySlot = DefinitionRow.bCountAsLegendarySlot;
+		NewInstance.bCountsAsLegendarySlot = RepresentativeRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(NewInstance, Def, DefinitionRow, ASC);
+		ApplyStackEffect(NewInstance, Def, DefinitionRows, ASC);
 		// Legendary 기믹 GA
 		GrantMechanicAbility(NewInstance, Def, ASC);
 		Owned.Add(NewInstance);
@@ -136,7 +142,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 void UNSAugmentInventoryComponent::ApplyStackEffect(
 	FNSAugmentInstance& Inst,
 	UNSAugmentDefinition* Def,
-	const FNSAugmentDefinitionRow& DefinitionRow,
+	const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 	UAbilitySystemComponent* ASC)
 {
 	if (Def->StackEffectClass.IsNull())
@@ -166,13 +172,93 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 		return;
 	}
 	
-	if (Def->StackEffectSetByCallerTag.IsValid())
+	if (Def->StackEffectSetByCallerMappings.IsEmpty())
 	{
-		const float Magnitude = DefinitionRow.ValuePerStack * static_cast<float>(Inst.Stacks);
-		SpecHandle.Data->SetSetByCallerMagnitude(Def->StackEffectSetByCallerTag, Magnitude);
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffectClass가 설정되어 있지만 SetByCaller 매핑이 비어 있습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("EffectClass", GEClass->GetName())
+		);
+	}
+
+	bool bMatchedAnySetByCallerRow = false;
+	bool bAppliedAnySetByCallerPayload = false;
+	for (const FNSAugmentStackEffectSetByCallerMapping& Mapping : Def->StackEffectSetByCallerMappings)
+	{
+		if (!Mapping.SourceStatTag.IsValid() || !Mapping.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+		
+		const FNSAugmentDefinitionRow* MatchingRow = DefinitionRows.FindByPredicate(
+			[&Mapping](const FNSAugmentDefinitionRow& Row)
+			{
+				return Row.StatTag == Mapping.SourceStatTag;
+			}
+		);
+		
+		if (!MatchingRow)
+		{
+			continue;
+		}
+		bMatchedAnySetByCallerRow = true;
+		
+		float Magnitude = 0.0f;
+		if (!TryCalculateStackEffectMagnitude(*MatchingRow, Inst.Stacks, Magnitude))
+		{
+			continue;
+		}
+		
+		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, Magnitude);
+		bAppliedAnySetByCallerPayload = true;
+	}
+
+	if (!Def->StackEffectSetByCallerMappings.IsEmpty() && !bMatchedAnySetByCallerRow)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffect SetByCaller 매핑과 일치하는 Row를 찾지 못했습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("EffectClass", GEClass->GetName())
+		);
+	}
+	else if (bMatchedAnySetByCallerRow && !bAppliedAnySetByCallerPayload)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffect SetByCaller payload를 생성하지 못했습니다. DefId={DefId}, Definition={Definition}, Stacks={Stacks}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("Stacks", Inst.Stacks)
+		);
 	}
 	
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+}
+
+bool UNSAugmentInventoryComponent::TryCalculateStackEffectMagnitude(
+	const FNSAugmentDefinitionRow& DefinitionRow,
+	int32 Stacks, 
+	float& OutMagnitude)
+{
+	if (Stacks <= 0)
+	{
+		return false;
+	}
+
+	switch (DefinitionRow.Operation)
+	{
+	case ENSCombatStatModifierOperation::Add:
+		OutMagnitude = DefinitionRow.ValuePerStack * static_cast<float>(Stacks);
+		return true;
+			
+	case ENSCombatStatModifierOperation::Multiply:
+		OutMagnitude = FMath::Pow(DefinitionRow.ValuePerStack, static_cast<float>(Stacks));
+		return true;
+			
+	default:
+		return false;
+	}
 }
 
 void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
@@ -271,13 +357,13 @@ void UNSAugmentInventoryComponent::ReapplyAll()
 		// 새 ASC 기준 핸들로 갱신, 누적 Stacks는 SetByCaller로 한 번에 적용
 		Inst.EffectHandle.Invalidate();
 		Inst.AbilityHandle = FGameplayAbilitySpecHandle();
-		FNSAugmentDefinitionRow DefinitionRow;
-		if (!TryFindDefinitionRow(Data, Inst.DefId, DefinitionRow))
+		TArray<FNSAugmentDefinitionRow> DefinitionRows;
+		if (!TryFindDefinitionRows(Data, Inst.DefId, DefinitionRows))
 		{
 			continue;
 		}
 		
-		ApplyStackEffect(Inst, Def, DefinitionRow, ASC);
+		ApplyStackEffect(Inst, Def, DefinitionRows, ASC);
 		GrantMechanicAbility(Inst, Def, ASC);
 	}
 
