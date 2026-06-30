@@ -166,3 +166,16 @@ struct NEOSANCTUM_API FNSHitTakenFeedbackStateMessage
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	bool bActive = false;
 };
+
+// GMS로 플레이어 피격 관련 생존 비율을 전달할 때 사용하는 메시지
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSHitTakenFeedbackVitalsMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	float HealthRatio = 1.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	float ShieldRatio = 1.0f;
+};
