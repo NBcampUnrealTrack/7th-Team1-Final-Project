@@ -54,6 +54,10 @@ public:
 	UFUNCTION(Exec)
 	void Debug_CompanionUpgrade(FString InTag);
 	
+	// 저장된 펫 강화 레벨과 누적 강화 횟수 초기화
+	UFUNCTION(Exec)
+	void Debug_ResetCompanionUpgrades();
+	
 	// @민재 테스트용 임시 코드 (Companion Upgrade 테스트 — 실제 트리거 연결 후 삭제)
 	UFUNCTION(Exec)
 	void Debug_CompanionSelect(FString InTag);
