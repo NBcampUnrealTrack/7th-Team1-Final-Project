@@ -9,6 +9,8 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
+#include "GameFramework/PlayerState.h"
 
 ANSOutGameMode::ANSOutGameMode()
 {
@@ -138,5 +140,27 @@ int32 ANSOutGameMode::FindFreeSlotIndex(const APlayerState* Requester) const
 		++Candidate;
 	}
 	
+	if (UNSSessionSubsystem* SessionSubsystem =
+		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
+	{
+		if (NewPlayer && NewPlayer->PlayerState)
+			SessionSubsystem->RegisterPlayerInSession(
+				NewPlayer->PlayerState->GetUniqueId());
+	}
+	
+	// TODO: 플레이어 입장 시 SaveData에서 진행도 받아서 연동해야함
 	return Candidate;
+}
+
+void ANSOutGameMode::Logout(AController* Exiting)
+{
+	if (UNSSessionSubsystem* SessionSubsystem =
+	   GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
+	{
+		if (Exiting && Exiting->PlayerState)
+			SessionSubsystem->UnregisterPlayerInSession(
+				Exiting->PlayerState->GetUniqueId());
+	}
+	
+	Super::Logout(Exiting);
 }

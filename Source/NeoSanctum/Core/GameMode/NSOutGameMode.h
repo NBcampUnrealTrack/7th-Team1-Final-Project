@@ -24,6 +24,7 @@ public:
 
 protected:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void Logout(AController* Exiting) override;
 	
 private:
 	// 사용 중이지 않은 가장 작은 슬롯 인덱스를 반환 (자기 자신 제외)
