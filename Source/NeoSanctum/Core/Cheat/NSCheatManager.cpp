@@ -14,6 +14,8 @@
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
+#include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
+#include "NeoSanctum/System/NSSaveGameSubsystem.h"
 
 class UNSRewardDataRegistry;
 class UNSDataSubsystem;
@@ -104,6 +106,51 @@ void UNSCheatManager::Debug_CompanionUpgrade(FString InTag)
 	}
 
 	OwningPC->CompanionCheatUpgrade(NodeTag);
+}
+
+void UNSCheatManager::Debug_ResetCompanionUpgrades()
+{
+	ANSPlayerController* OwningPC =
+		Cast<ANSPlayerController>(
+			GetOuterAPlayerController());
+
+	if (!OwningPC || !OwningPC->IsLocalController())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance =
+		OwningPC->GetGameInstance();
+
+	UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance
+			? GameInstance->GetSubsystem<UNSSaveGameSubsystem>()
+			: nullptr;
+
+	UNSPermanentSaveGame* PermanentSave =
+		SaveSubsystem
+			? SaveSubsystem->GetCachedPermanentData()
+			: nullptr;
+
+	if (!SaveSubsystem || !PermanentSave)
+	{
+		return;
+	}
+
+	// 노드별 저장 레벨 초기화
+	PermanentSave->Companion.NodeLevels.Reset();
+
+	// 펫별 누적 강화 횟수와 해금 진행도 초기화
+	PermanentSave->Companion.UpgradeCounts.Reset();
+
+	// 변경된 캐시 데이터를 영구 저장
+	SaveSubsystem->SavePermanent(
+		PermanentSave,
+		FNSSaveComplete());
+
+	// 리슨 서버 진행도에도 초기화된 노드 레벨 전달
+	OwningPC->UploadLocalProgress(
+		OwningPC->GetActiveCharacterIdForUpload());
 }
 
 void UNSCheatManager::Debug_CompanionSelect(FString InTag)
