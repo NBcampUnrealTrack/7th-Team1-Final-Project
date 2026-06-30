@@ -5,10 +5,12 @@
 
 #include "AbilitySystemComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NiagaraComponent.h"
 
 ANSBarrier::ANSBarrier()
@@ -35,8 +37,16 @@ ANSBarrier::ANSBarrier()
 	BarrierNiagaraComponent->SetupAttachment(BarrierCollisionComponent);
 	BarrierNiagaraComponent->SetAutoActivate(true);
 
+	BarrierFlashMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BarrierFlashMeshComponent"));
+	BarrierFlashMeshComponent->SetupAttachment(BarrierCollisionComponent);
+	BarrierFlashMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BarrierFlashMeshComponent->SetGenerateOverlapEvents(false);
+	BarrierFlashMeshComponent->SetCastShadow(false);
+
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Barrier);
+
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 }
 
 UAbilitySystemComponent* ANSBarrier::GetAbilitySystemComponent() const
@@ -161,6 +171,12 @@ void ANSBarrier::ApplyRadius(float InRadius)
 		const float VisualScale = Radius / DefaultRadius;
 		BarrierNiagaraComponent->SetRelativeScale3D(FVector(VisualScale));
 		BarrierNiagaraComponent->SetVariableFloat(TEXT("User.BarrierRadius"), Radius);
+	}
+
+	if (BarrierFlashMeshComponent)
+	{
+		const float FlashMeshScale = (Radius / FMath::Max(FlashMeshBaseRadius, KINDA_SMALL_NUMBER));
+		BarrierFlashMeshComponent->SetRelativeScale3D(FVector(FlashMeshScale));
 	}
 }
 
