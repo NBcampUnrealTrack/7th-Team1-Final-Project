@@ -135,3 +135,13 @@ struct NEOSANCTUM_API FNSHitTakenFeedbackContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
 	float HealthRatio = 0.0f;
 };
+
+// GMS로 플레이어 피격 피드백을 전달할 때 사용하는 메시지
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSHitTakenFeedbackMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	FNSHitTakenFeedbackContext Context;
+};

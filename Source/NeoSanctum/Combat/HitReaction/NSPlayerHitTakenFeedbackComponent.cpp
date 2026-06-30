@@ -2,7 +2,9 @@
 
 #include "NSPlayerHitTakenFeedbackComponent.h"
 
+#include "GameFramework/GameplayMessageSubsystem.h"
 #include "GameFramework/Pawn.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 
 UNSPlayerHitTakenFeedbackComponent::UNSPlayerHitTakenFeedbackComponent()
 {
@@ -16,8 +18,13 @@ void UNSPlayerHitTakenFeedbackComponent::HandleHitTakenFeedback(
 	{
 		return;
 	}
-	
-	// TODO : 여기에 래핑된 피드백들 전부 들어올 예정
+
+	FNSHitTakenFeedbackMessage Message;
+	Message.Context = Context;
+
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_HitTakenFeedback,
+		Message);
 }
 
 bool UNSPlayerHitTakenFeedbackComponent::ShouldPlayLocalFeedback() const
