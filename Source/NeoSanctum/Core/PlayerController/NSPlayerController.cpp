@@ -46,6 +46,7 @@
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
 
 
 ANSPlayerController::ANSPlayerController()
@@ -1989,6 +1990,31 @@ void ANSPlayerController::Client_PlayAttackHitFeedback_Implementation(const FNSH
 	
 	// Context에 따라 Feedback 재생흐름으로 진입
 	FeedbackComponent->HandleAttackHitFeedback(Context);
+}
+
+void ANSPlayerController::Client_PlayHitTakenFeedback_Implementation(
+	const FNSHitTakenFeedbackContext& Context)
+{
+	// 로컬 Pawn의 피드백 컴포넌트로 피격 결과를 전달
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	UNSPlayerHitTakenFeedbackComponent* FeedbackComponent =
+		PlayerCharacter->GetPlayerHitTakenFeedbackComponent();
+	if (!FeedbackComponent)
+	{
+		return;
+	}
+
+	FeedbackComponent->HandleHitTakenFeedback(Context);
 }
 
 void ANSPlayerController::Debug_EnqueueAugmentOffer()

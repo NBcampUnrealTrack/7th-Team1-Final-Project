@@ -127,6 +127,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PlayAttackHitFeedback(const FNSHitFeedbackContext& Context);
 
+	// 서버에서 확정된 피격 피드백을 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitTakenFeedback(const FNSHitTakenFeedbackContext& Context);
+
 private:
 	// 실제로 사망 관전자 상태로 진입
 	void EnterDeathSpectatorMode();
