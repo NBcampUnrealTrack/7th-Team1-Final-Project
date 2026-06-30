@@ -21,6 +21,7 @@ class ANSRunGameState;
 class UNSCurrencyComponent;
 class ANSInteractableNPCBase;
 class UNSNPCInteractionWidgetBase;
+class UUserWidget;
 struct FNSSkillCooldownMessage;
 
 UCLASS()
@@ -90,6 +91,10 @@ public:
 	// NPC 상호작용 위젯 열기/닫기 (InteractionComponent가 호출)
 	void OpenInteractionWidget(ANSInteractableNPCBase* NPC);
 	void CloseInteractionWidget();
+	
+	void EnterPetUpgradeInputMode(
+		UUserWidget* FocusWidget);
+	void ExitPetUpgradeInputMode();
 	
 	// 세이브 데이터 업로드/ 저장용 RPC 함수
 	UFUNCTION(Server, Reliable)

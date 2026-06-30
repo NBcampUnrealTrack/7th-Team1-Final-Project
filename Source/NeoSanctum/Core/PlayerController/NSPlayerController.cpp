@@ -19,6 +19,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "EngineUtils.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
@@ -45,6 +46,7 @@
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
+#include "Blueprint/UserWidget.h"
 
 
 ANSPlayerController::ANSPlayerController()
@@ -1512,6 +1514,78 @@ void ANSPlayerController::CloseInteractionWidget()
 	}
 }
 
+void ANSPlayerController::EnterPetUpgradeInputMode(UUserWidget* FocusWidget)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (ANSPlayerCharacterBase* PlayerCharacter =
+		Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder =
+			PlayerCharacter->GetInputBinderComponent())
+		{
+			FGameplayTagContainer UIOnlyTags;
+			UIOnlyTags.AddTag(
+				NSGameplayTags::InputMode_UI);
+
+			InputBinder->SetActiveInputModeTags(
+				UIOnlyTags);
+		}
+
+		if (UNSAbilitySystemComponent* ASC =
+			Cast<UNSAbilitySystemComponent>(
+				PlayerCharacter->GetAbilitySystemComponent()))
+		{
+			ASC->ClearAbilityInput();
+		}
+	}
+
+	FInputModeUIOnly InputMode;
+
+	if (IsValid(FocusWidget))
+	{
+		InputMode.SetWidgetToFocus(
+			FocusWidget->TakeWidget());
+	}
+
+	InputMode.SetLockMouseToViewportBehavior(
+		EMouseLockMode::DoNotLock);
+
+	SetInputMode(InputMode);
+	SetShowMouseCursor(true);
+}
+
+void ANSPlayerController::ExitPetUpgradeInputMode()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	if (ANSPlayerCharacterBase* PlayerCharacter =
+	Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder =
+			PlayerCharacter->GetInputBinderComponent())
+		{
+			InputBinder->SetActiveInputModeTags(
+				GetGameplayInputModeTags());
+		}
+
+		if (UNSAbilitySystemComponent* ASC =
+			Cast<UNSAbilitySystemComponent>(
+				PlayerCharacter->GetAbilitySystemComponent()))
+		{
+			ASC->ClearAbilityInput();
+		}
+	}
+
+	SetInputMode(FInputModeGameOnly());
+	SetShowMouseCursor(false);
+}
 void ANSPlayerController::TryInteract()
 {
 	if (bCharacterSelectOpen)
