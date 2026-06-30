@@ -7,7 +7,6 @@
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
-#include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
 #include "NeoSanctum/Data/Ability/NSCompanionAbilitySetTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBaseDroneAI.generated.h"
@@ -18,7 +17,7 @@ class UNSCompanionAttributeSet;
 class USphereComponent;
 class USkeletalMeshComponent;
 class UFloatingPawnMovement;
-class ANSDroneAIController;
+class AAIController;
 
 UCLASS()
 class NEOSANCTUM_API ANSBaseDroneAI : public APawn,
@@ -31,10 +30,19 @@ public:
 	ANSBaseDroneAI();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	
+#pragma region DroneTeamId
+	
+public:
 	virtual FGenericTeamId GetGenericTeamId() const override
 	{
-		return FGenericTeamId(static_cast<uint8>(ETeamId::Player));
+		return FGenericTeamId(static_cast<uint8>(TeamId));
 	}
+	
+protected:
+	ETeamId TeamId = ETeamId::Player;
+	
+#pragma endregion
 	
 	USkeletalMeshComponent* GetSkeletalMeshComponent() const {return SkeletalMeshComponent;}
 	
@@ -48,24 +56,6 @@ public:
 	// @민재 : 드론 움직임 함수 BT연동
 	UFUNCTION()
 	void MoveTowards(const FVector& TargetLocation);
-	
-#pragma region 일정거리 멀어질시 순간이동
-	
-	UFUNCTION()
-	void CheckDistanceToOwner();
-	
-	UFUNCTION()
-	void TeleportToOwner();
-	
-	void SetCurrentState(ECompanionState NewState);
-	
-protected:
-	FTimerHandle CheckDistanceToOwnerTimer;
-	
-	UPROPERTY(EditDefaultsOnly, Category="DroneAI")
-	float MaxDistance = 500.f;
-	
-#pragma endregion
 	
 protected:
 	// @민재 : 고도유지 이동관련 함수
@@ -111,6 +101,8 @@ protected:
 	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
 	float MinSpeedToRotate = 50.f;
 	
+#pragma region Altitude
+	
 	// @민재 : 드론 고도 유지위한 변수
 	UPROPERTY(EditAnywhere, Category="DroneAI|Altitude")
 	float Altitude = 300.f;
@@ -123,8 +115,6 @@ protected:
  
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float AltitudeCorrectionRange = 200.f;
-	
-#pragma region FollowGround
 	
 	// @민재 : 지형추적 기능
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
@@ -179,17 +169,11 @@ protected:
 #pragma region CachedData
 	// @민재 : 캐싱 데이터
 public:
-	void SetOwnerPlayer(AActor* Actor);
-	AActor* GetOwnerPlayer() { return OwnerPlayer;}
-	
 	void SetPendingDefinition(const UNSCompanionDefinition* InDefinition);
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "AI|CachedData")
-	TObjectPtr<ANSDroneAIController> CachedAIController;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="OwnerPlayer")
-	TObjectPtr<AActor> OwnerPlayer;
+	TObjectPtr<AAIController> CachedAIController;
 	
 public:
 	void SetCurrentEnemy(AActor* InEnemy) {CurrentEnemy = InEnemy;}
@@ -201,7 +185,7 @@ protected:
 #pragma endregion
 	
 #pragma region CompanionGAS
-	// @민재 : GAS관련
+	
 public:
 	FORCEINLINE UAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return AbilitySystemComponent;}
 	
@@ -236,8 +220,6 @@ protected:
 public:
 	void ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition);
 	
-	void ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel);
-	
 	void ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition);
 	
 	UFUNCTION()
@@ -252,35 +234,6 @@ protected:
 	// 현재 드론의 타입 정보
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentDefinition)
 	TObjectPtr<const UNSCompanionDefinition> CurrentDefinition;
-	
-	// 단계별 업그레이드가 저장되어있는 MAP
-	UPROPERTY()
-	TMap<FGameplayTag, FActiveGameplayEffectHandle> StatUpgradeHandles;
-	
-#pragma endregion
-	
-#pragma region CompanionCurrency
-	
-private:
-	ECompanionState CurrentState = ECompanionState::Follow;
-	
-	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
-	float HardLeashDistance = 4000.f;
-	
-	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
-	float StuckRecoverTime = 2.0f;
-	
-	float TimeBeyondLeash = 0.f;
-	float PrevDistSqToOwner = -1.f;
-	
-	static constexpr float CheckInterval = 0.25f;
-	
-	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
-	float CurrencyVaccumRadius = 250.f;
-	
-	FTimerHandle CurrencyVacuumTimer;
-private:
-	void VacuumNearbyCurrency();
 	
 #pragma endregion
 	

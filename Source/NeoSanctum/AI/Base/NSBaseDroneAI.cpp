@@ -1,19 +1,17 @@
 ﻿// Copyright 2026 One Team. All rights reserved.
 
 #include "NSBaseDroneAI.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "Components/SphereComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/FloatingPawnMovement.h"
 #include "AbilitySystemComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/StreamableManager.h"
+#include "AIController.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
-#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
-#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "Net/UnrealNetwork.h"
 
 ANSBaseDroneAI::ANSBaseDroneAI()
@@ -22,7 +20,6 @@ ANSBaseDroneAI::ANSBaseDroneAI()
 	
 	// AIController 자동빙의
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-	AIControllerClass = ANSDroneAIController::StaticClass();
 	
 	SphereComponent = CreateDefaultSubobject<USphereComponent>("Collision");
 	SetRootComponent(SphereComponent);
@@ -74,22 +71,9 @@ void ANSBaseDroneAI::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 	if (!HasAuthority() || !IsValid(NewController)) return;
 	
-	ANSDroneAIController* DroneAIController = Cast<ANSDroneAIController>(NewController);
+	AAIController* DroneAIController = Cast<AAIController>(NewController);
 	if (!IsValid(DroneAIController)) return;
 	CachedAIController = DroneAIController;
-	
-	GetWorldTimerManager().SetTimer(
-		CheckDistanceToOwnerTimer,
-		this,
-		&ANSBaseDroneAI::CheckDistanceToOwner,
-		0.25f,
-		true);
-	
-	GetWorldTimerManager().SetTimer(
-		CurrencyVacuumTimer, 
-		this,
-		&ANSBaseDroneAI::VacuumNearbyCurrency,
-		0.1f, true);
 	
 	if (!CurrentDefinition) return;
 	
@@ -120,88 +104,6 @@ void ANSBaseDroneAI::MoveTowards(const FVector& TargetLocation)
 	FVector SteeringDirection = ChooseSteeringDirection();  
   
 	AddMovementInput(SteeringDirection, 1.0f);
-}
-
-void ANSBaseDroneAI::CheckDistanceToOwner()
-{
-	if (!OwnerPlayer || !HasAuthority()) return;
-	
-	float DistSq = FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation());
-	
-	// 오너와 거리 계산
-	if (DistSq > FMath::Square(HardLeashDistance))
-	{
-		// 오너 쪽 순간이동
-		// @TODO 민재 : 재화 탐색으로 인한 거리 멀어질시 텔포x
-		TeleportToOwner();
-		TimeBeyondLeash = 0.f;
-		PrevDistSqToOwner = 0.f;
-		return;
-	}
-	
-	if (CurrentState != ECompanionState::Follow)
-	{
-		TimeBeyondLeash = 0.f;
-		PrevDistSqToOwner = -1.f;
-		return;
-	}
-	
-	if (DistSq <= FMath::Square(MaxDistance))
-	{
-		TimeBeyondLeash = 0.f;
-		PrevDistSqToOwner = 0.f;
-		return;
-	}
-	
-	if (PrevDistSqToOwner >= 0.f && DistSq < PrevDistSqToOwner)
-	{
-		TimeBeyondLeash = 0.f;
-	}
-	else
-	{
-		TimeBeyondLeash += CheckInterval;
-	}
-	
-	if (TimeBeyondLeash >= StuckRecoverTime)
-	{
-		TeleportToOwner();
-		TimeBeyondLeash = 0.f;
-	}
-	
-	PrevDistSqToOwner = DistSq;
-}
-
-void ANSBaseDroneAI::TeleportToOwner()
-{
-	// 서버 및 오너 존재 체크
-	if (!HasAuthority() || !OwnerPlayer) return;
-	
-	// Owner도착 지점 값 가져오기
-	const FVector Target = OwnerPlayer->GetActorLocation();
-	
-	// 텔레포트전 이동속도 0 세팅
-	if (FloatingPawnMovementComponent)
-	{
-		FloatingPawnMovementComponent->Velocity = FVector::ZeroVector;
-	}
-	
-	// 텔레포트 적용
-	SetActorLocation(Target, false, nullptr, ETeleportType::TeleportPhysics);
-	
-	bHasValidGround = false;
-	
-}
-
-void ANSBaseDroneAI::SetCurrentState(ECompanionState NewState)
-{
-	CurrentState = NewState;
-}
-
-void ANSBaseDroneAI::SetOwnerPlayer(AActor* Actor)
-{
-	if (!IsValid(Actor)) return;
-	
-	OwnerPlayer = Actor;
 }
 
 void ANSBaseDroneAI::SetPendingDefinition(const UNSCompanionDefinition* InDefinition)
@@ -297,61 +199,6 @@ void ANSBaseDroneAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefin
 	CurrentDefinition = NewDefinition;
 }
 
-void ANSBaseDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
-{
-	// 서버 체크
-	if (!HasAuthority() || !CurrentDefinition) return;
-	
-	// 현재 업그레이드 정보 받아오기 순회
-	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CurrentDefinition->UpgradeNodes)
-	{
-		// 업그레이드가 존재하는 노드 태그 찾기
-		if (CurrentUpgradeNode.NodeTag != NodeTag) continue;
-		
-		// 들어온 업그레이드 레벨 값 정상화 방어 코드
-		NewLevel = FMath::Clamp(NewLevel, 0, CurrentUpgradeNode.MaxLevel);
-		// 실제 적용 수치 
-		float ApplyStat = NewLevel * CurrentUpgradeNode.MagnitudePerLevel;
-		
-		// 현재 적용중인 업그레이드 수치가 있는지 확인
-		if (FActiveGameplayEffectHandle* BeforeEffectHandle = StatUpgradeHandles.Find(CurrentUpgradeNode.NodeTag))
-		{
-			// 있다면 모두 제거
-			AbilitySystemComponent->RemoveActiveGameplayEffect(*BeforeEffectHandle);
-		}
-		
-		if (NewLevel == 0)
-		{
-			StatUpgradeHandles.Remove(CurrentUpgradeNode.NodeTag);
-			break;
-		}
-		
-		// 새로운 contextHandle
-		FGameplayEffectContextHandle ContextHandle =
-				AbilitySystemComponent->MakeEffectContext();
-			
-		// 새로운 SpecHandle
-		FGameplayEffectSpecHandle UpgradeSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
-		CurrentUpgradeNode.UpgradeEffect,
-		NewLevel,
-		ContextHandle);
-			
-		// SpecHandle을 만드는데 성공했다면
-		if (UpgradeSpecHandle.IsValid())
-		{
-			// setsetbycaller로 값 저장 후 현재 업그레이드 Map에 추가
-			UpgradeSpecHandle.Data->SetSetByCallerMagnitude(CurrentUpgradeNode.SetByCallerTag, ApplyStat);
-			
-			StatUpgradeHandles.Add(
-			NodeTag,
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*UpgradeSpecHandle.Data.Get())
-			);
-		}
-		
-		break;
-	}
-}
-
 void ANSBaseDroneAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition)
 {
 	if (!NewDefinition) return;
@@ -383,29 +230,6 @@ void ANSBaseDroneAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefin
 void ANSBaseDroneAI::OnRep_CurrentDefinition()
 {
 	ApplyCompanionVisual(CurrentDefinition);
-}
-
-void ANSBaseDroneAI::VacuumNearbyCurrency()
-{
-	if (!HasAuthority() || !OwnerPlayer) return;
-	
-	APawn* OwnerPawn = Cast<APawn>(OwnerPlayer);
-	if (!OwnerPawn) return;
-	
-	ANSPlayerState* OwnerPS = Cast<ANSPlayerState>(OwnerPawn->GetPlayerState());
-	if (!OwnerPS) return;
-	
-	UNSCurrencyDropSubsystem* DropSubsystem = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>();
-	if (!DropSubsystem) return;
-	
-	const FVector CompanionLocation = GetActorLocation();
-	int32 OutDropId = INDEX_NONE;
-	FVector OutLocation = FVector::ZeroVector;
-	
-	if(DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionLocation, CurrencyVaccumRadius,OutDropId,OutLocation))
-	{
-		DropSubsystem->TryCollectByCompanion(OutDropId, OwnerPS, CompanionLocation);
-	}
 }
 
 void ANSBaseDroneAI::MaintainAltitude(float DeltaSeconds)
@@ -471,7 +295,6 @@ bool ANSBaseDroneAI::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
 	FHitResult Hit;
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
-	CollisionParams.AddIgnoredActor(OwnerPlayer);
 	
 	if (GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, ECC_Visibility, CollisionParams))
 	{
