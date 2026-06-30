@@ -10,6 +10,7 @@ UENUM(BlueprintType)
 enum class ENSHitFeedbackTargetType : uint8
 {
 	Any,
+	Player,
 	Enemy,
 	Barrier,
 	DestructibleObject,
@@ -34,6 +35,15 @@ enum class ENSHitFeedbackOutcome : uint8
 	None,
 	Destroy,
 	Kill
+};
+
+// 데미지가 적용된 레이어 분류
+UENUM(BlueprintType)
+enum class ENSHitReactionDamageLayer : uint8
+{
+	Any,
+	Health,
+	Shield
 };
 
 // 크로스헤어 공격 피드백 종류 : 추후에 추가될 사항까지 고려했으나 아직 Critical, Headshot은 로직이 없음
