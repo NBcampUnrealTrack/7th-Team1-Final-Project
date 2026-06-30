@@ -194,6 +194,9 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 	float DamageAmount,
 	const FGameplayEffectModCallbackData& Data)
 {
+	// 데미지를 받으면 강제로 ShieldRecharge관련 태그들을 리셋하고 다시 시작
+	ResetShieldRechargeFlowOnDamage();
+	
 	// 데미지를 받은 시점에 데미지를 받았다는 트리거를 이벤트 태그로 발송
 	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor());
 	if (PlayerCharacter)
@@ -227,6 +230,20 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 		AbsorbedDamage);
 	
 	return DamageAmount - AbsorbedDamage;
+}
+
+void UNSPlayerAttributeSet::ResetShieldRechargeFlowOnDamage() const
+{
+	UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FGameplayTagContainer RechargeTags;
+	RechargeTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+	RechargeTags.AddTag(NSGameplayTags::State_Shield_RechargeCooldown);
+	ASC->RemoveActiveEffectsWithGrantedTags(RechargeTags);
 }
 
 void UNSPlayerAttributeSet::NotifyHitTakenFeedbackAfterHealthDamage(

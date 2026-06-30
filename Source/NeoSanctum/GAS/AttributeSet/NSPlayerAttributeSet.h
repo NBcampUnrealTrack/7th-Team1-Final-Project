@@ -97,6 +97,9 @@ protected:
 		float PreviousHealth) const override;
 	
 private:
+	
+	void ResetShieldRechargeFlowOnDamage() const;
+	
 	// 실제 Notify를 진행해주는 함수
 	void NotifyHitTakenFeedback(
 		const FGameplayEffectModCallbackData& Data,
