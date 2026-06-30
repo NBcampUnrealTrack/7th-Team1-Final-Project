@@ -228,8 +228,6 @@ void UNSSessionSubsystem::FindAndJoinFirstSession()
 	LastSessionSearch = MakeShared<FOnlineSessionSearch>();
 	LastSessionSearch->bIsLanQuery = false;
 	LastSessionSearch->MaxSearchResults = 50;
-	LastSessionSearch->QuerySettings.Set(
-		SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 	LastSessionSearch->QuerySettings.Set( 
 		NS_SESSION_KEY, FString(TEXT("NeoSanctum")), EOnlineComparisonOp::Equals);
 
