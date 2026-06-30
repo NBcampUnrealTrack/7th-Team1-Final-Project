@@ -57,6 +57,55 @@ void UNSPlayerProgressComponent::AddJobCurrency(int64 Amount)
 	BroadcastProgressChanged();
 }
 
+int32 UNSPlayerProgressComponent::GetCompanionNodeLevel(FGameplayTag NodeTag) const
+{
+	if (!NodeTag.IsValid())
+	{
+		return 0;
+	}
+	
+	return CompanionNodeLevels.FindRef(NodeTag);
+}
+
+
+bool UNSPlayerProgressComponent::TryPurchaseCompanionUpgrade(
+	FGameplayTag NodeTag, int32 MaxLevel, int64 UpgradeCost)
+{
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return false;
+	}
+
+	if (!NodeTag.IsValid() ||
+		MaxLevel <= 0 ||
+		UpgradeCost < 0)
+	{
+		return false;
+	}
+
+	int32& CurrentLevel =
+		CompanionNodeLevels.FindOrAdd(NodeTag);
+
+	if (CurrentLevel >= MaxLevel)
+	{
+		return false;
+	}
+
+	if (CommonCurrency < UpgradeCost)
+	{
+		return false;
+	}
+
+	CommonCurrency -= UpgradeCost;
+	++CurrentLevel;
+
+	//재화와 강화 레벨을 한 번에 복제하고 UI에 알린다.
+	SyncReplicatedPayloadFromCurrentState();
+	BroadcastProgressChanged();
+
+	return true;
+}
+
 void UNSPlayerProgressComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);

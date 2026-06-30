@@ -50,7 +50,15 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddJobCurrency(int64 Amount);
 
-
+	
+	UFUNCTION(BlueprintPure, Category = "Companion|Upgrade")
+	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
+	
+	bool TryPurchaseCompanionUpgrade(
+	FGameplayTag NodeTag,
+	int32 MaxLevel,
+	int64 UpgradeCost);
+	
 private:
 	// 계정 단위
 	int64 CommonCurrency = 0;
