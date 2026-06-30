@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
@@ -113,6 +114,26 @@ UDataTable* UNSDataSubsystem::GetCommonAbilityBaseStatTable() const
 	}
 	
 	return CommonConfig->AbilityBaseStatTable.Get();
+}
+
+UDataTable* UNSDataSubsystem::GetCurrentAugmentDefinitionTable() const
+{
+	if (!CurrentRunConfig)
+	{
+		return nullptr;
+	}
+	
+	return CurrentRunConfig->AugmentDefinitionTable.Get();
+}
+
+const UNSAugmentRarityRuleSet* UNSDataSubsystem::GetCurrentAugmentRarityRuleSet() const
+{
+	if (!CurrentRunConfig)
+	{
+		return nullptr;
+	}
+	
+	return CurrentRunConfig->AugmentRarityRuleSet.Get();
 }
 
 void UNSDataSubsystem::LoadCurrentStageSpawnerTables()

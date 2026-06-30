@@ -43,8 +43,27 @@ void UNSCombatStatComponent::BeginPlay()
 		RebuildBaseStatCache();
 	}
 	
-	// Modifier DataTable은 먼저 원본 기준으로 캐싱
-	RebuildAugmentSourceCache();
+	if (TryResolveAugmentDefinitionTableFromDataSubsystem())
+	{
+		RebuildAugmentSourceCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (DataSubsystem->IsRunReady())
+		{
+			RebuildAugmentSourceCache();
+		}
+		else
+		{
+			// 인런 데이터가 아직 준비되지 않은 경우 완료 시점에 증강 Modifier 캐시를 생성.
+			DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+			DataSubsystem->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleRunGameDataReady);
+		}
+	}
+	else
+	{
+		RebuildAugmentSourceCache();
+	}
 	
 	// AugmentInventory 변경 이벤트를 받아 Active Modifier를 갱신
 	BindAugmentInventory();
@@ -58,6 +77,7 @@ void UNSCombatStatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
 		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
 	}
 	
 	Super::EndPlay(EndPlayReason);
@@ -89,6 +109,35 @@ void UNSCombatStatComponent::HandleCommonDataReady()
 	
 	TryResolveAbilityBaseStatTableFromDataSubsystem();
 	RebuildBaseStatCache();
+}
+
+bool UNSCombatStatComponent::TryResolveAugmentDefinitionTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return AugmentDefinitionTable != nullptr;
+	}
+	
+	if (UDataTable* LoadedTable = DataSubsystem->GetCurrentAugmentDefinitionTable())
+	{
+		AugmentDefinitionTable = LoadedTable;
+		return true;
+	}
+	
+	return DataSubsystem->IsRunReady() && AugmentDefinitionTable != nullptr;
+}
+
+void UNSCombatStatComponent::HandleRunGameDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+	}
+	
+	TryResolveAugmentDefinitionTableFromDataSubsystem();
+	RebuildAugmentSourceCache();
+	RebuildActiveModifierCache();
 }
 
 void UNSCombatStatComponent::RebuildBaseStatCache()

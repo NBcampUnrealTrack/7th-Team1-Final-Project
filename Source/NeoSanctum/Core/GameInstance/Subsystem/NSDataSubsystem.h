@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSDataSubsystem.generated.h"
 
+class UNSAugmentRarityRuleSet;
 class UNSCommonDataConfig;
 class UNSRunConfig;
 class UDataTable;
@@ -118,6 +119,13 @@ public:
 	UDataTable* GetCommonAbilityBaseStatTable() const;
 
 	const UNSRunConfig* GetCurrentRunConfig() const { return CurrentRunConfig.Get(); }
+	// 현재 런에서 사용하는 증강 후보 테이블.
+	// EnterRun() 완료 이후 유효하며, 증강 선택/스탯 Modifier 캐싱의 기준 데이터로 사용.
+	UDataTable* GetCurrentAugmentDefinitionTable() const;
+	// 현재 런에서 사용하는 증강 희귀도/가중치 규칙.
+	// EnterRun() 완료 이후 유효.
+	const UNSAugmentRarityRuleSet* GetCurrentAugmentRarityRuleSet() const;
+	
 	const UNSLevelConfig* GetCurrentRunLevelConfig() const { return CurrentRunLevelConfig.Get(); }
 	
 	// 현재 스테이지의 스포너 DT가 필요할 때 한 번만 비동기 로드.

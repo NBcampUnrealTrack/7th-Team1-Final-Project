@@ -98,9 +98,16 @@ protected:
 	// CommonDataConfig에서 공용 AbilityBaseStatTable을 받아옴.
 	// 데이터가 아직 준비되지 않았다면 OnCommonDataReady 이후 다시 시도.
 	bool TryResolveAbilityBaseStatTableFromDataSubsystem();
-
+	
+	// RunConfig에서 현재 인런 증강 후보 테이블을 받아옴.
+	// 인런 데이터가 아직 준비되지 않았다면 OnRunGameDataReady 이후 다시 시도.
+	bool TryResolveAugmentDefinitionTableFromDataSubsystem();
+	
 	UFUNCTION()
 	void HandleCommonDataReady();
+	
+	UFUNCTION()
+	void HandleRunGameDataReady();
 	
 	// DataTable은 편집용 원본이고, 실제 Ability 실행 중에는 캐시를 조회
 	void RebuildBaseStatCache();
@@ -153,8 +160,8 @@ protected:
 		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAbilityBaseStatRow"))
 	TObjectPtr<UDataTable> AbilityBaseStatTable;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAugmentDefinitionRow"))
+	// 현재 런에서 사용하는 증강 후보 테이블 캐시. 원본은 NSRunConfig이고 NSDataSubsystem에서 받아옴.
+	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> AugmentDefinitionTable;
 
 private:
