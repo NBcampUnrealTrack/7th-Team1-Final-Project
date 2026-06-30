@@ -40,6 +40,14 @@ public:
 	
 	// 인런 진입 시 세션을 InProgress로 전환해 중간 참가를 차단
 	void StartRunSession();
+	
+	// 임시 검증용 함수
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void FindAndJoinFirstSession();
+	
+	// GameMode가 호출하는 세션 인원 등록,해제용 함수
+	void RegisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
+	void UnregisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
 
 	// 허브 복귀 시 세션을 다시 열어 참가를 허용
 	void EndRunSession();
@@ -67,6 +75,10 @@ private:
 	void OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful);
 	void OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful);
 	
+	void JoinResolvedSession(const FOnlineSessionSearchResult& SearchResult);
+	void OnFindSessionsCompleted(bool bWasSuccessful);
+	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	
 	// 세션 생성 완료 후 실제 Hub ServerTravel을 수행하는 내부 헬퍼
 	void StartHostTravelToHub();
 	// 데이터가 준비되면 거점으로 ServerTravel 수행.
@@ -82,6 +94,10 @@ private:
 
 	FDelegateHandle CreateSessionDelegateHandle;
 	FDelegateHandle DestroySessionDelegateHandle;
+	
+	FDelegateHandle FindSessionsDelegateHandle;
+	FDelegateHandle JoinSessionDelegateHandle;
+	TSharedPtr<class FOnlineSessionSearch> LastSessionSearch;
 
 	TSharedPtr<FOnlineSessionSettings> LastSessionSettings;
 	

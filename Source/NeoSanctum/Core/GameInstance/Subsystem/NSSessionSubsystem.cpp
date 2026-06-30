@@ -12,6 +12,8 @@
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
+// AppID 오염 방지용 키(후에 자체 AppID 발급받으면 제거 가능)
+static const FName NS_SESSION_KEY = FName(TEXT("NS_GAMEKEY"));
 
 void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -41,7 +43,20 @@ void UNSSessionSubsystem::Deinitialize()
 
 	ClearCreateSessionDelegate();
 	ClearDestroySessionDelegate();
-
+	
+	if (SessionInterface.IsValid())
+	{
+		if (FindSessionsDelegateHandle.IsValid())
+			SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(
+				FindSessionsDelegateHandle);
+		if (JoinSessionDelegateHandle.IsValid())
+			SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(
+				JoinSessionDelegateHandle);
+	}
+	
+	FindSessionsDelegateHandle.Reset();
+	JoinSessionDelegateHandle.Reset();
+	LastSessionSearch.Reset();
 	LastSessionSettings.Reset();
 	SessionInterface.Reset();
 
@@ -201,6 +216,66 @@ void UNSSessionSubsystem::LeaveSessionToTitle()
 
 	// 보유 세션 없으면 즉시 타이틀로 이동
 	ReturnToTitle();
+}
+
+void UNSSessionSubsystem::FindAndJoinFirstSession()
+{
+	if (!SessionInterface.IsValid() || bIsJoining)
+	{
+		return;
+	}
+
+	LastSessionSearch = MakeShared<FOnlineSessionSearch>();
+	LastSessionSearch->bIsLanQuery = false;
+	LastSessionSearch->MaxSearchResults = 50;
+	LastSessionSearch->QuerySettings.Set(
+		SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
+	LastSessionSearch->QuerySettings.Set( 
+		NS_SESSION_KEY, FString(TEXT("NeoSanctum")), EOnlineComparisonOp::Equals);
+
+	FindSessionsDelegateHandle =
+		SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
+			FOnFindSessionsCompleteDelegate::CreateUObject(
+				this, &UNSSessionSubsystem::OnFindSessionsCompleted));
+
+	const ULocalPlayer* LocalPlayer = GetGameInstance()->GetFirstGamePlayer();
+	SessionInterface->FindSessions(
+		*LocalPlayer->GetPreferredUniqueNetId(), LastSessionSearch.ToSharedRef());
+}
+
+void UNSSessionSubsystem::RegisterPlayerInSession(const FUniqueNetIdRepl& PlayerId)
+{
+	if (!SessionInterface.IsValid() || !PlayerId.IsValid())
+	{
+		return;
+	}
+	
+	if (!SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		return;
+	}
+	
+	SessionInterface->RegisterPlayer(
+		NAME_GameSession, 
+		*PlayerId.GetUniqueNetId(),
+		false);
+}
+
+void UNSSessionSubsystem::UnregisterPlayerInSession(const FUniqueNetIdRepl& PlayerId)
+{
+	if (!SessionInterface.IsValid() || !PlayerId.IsValid())
+	{
+		return;
+	}
+	
+	if (!SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		return;
+	}
+	
+	SessionInterface->UnregisterPlayer(
+		NAME_GameSession,
+		*PlayerId.GetUniqueNetId());
 }
 
 void UNSSessionSubsystem::StartRunSession()
@@ -423,6 +498,110 @@ void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWas
 
 	bHostStartQueued = true;
 	QueueCreateSessionForNextTick();
+}
+
+void UNSSessionSubsystem::JoinResolvedSession(const FOnlineSessionSearchResult& SearchResult)
+{
+	if (!SessionInterface.IsValid() || bIsJoining)
+	{
+		OnJoinSessionComplete.Broadcast(false);
+		
+		return;
+	}
+	if (bIsCreatingSession||
+		bIsDestroyingSession ||
+		bHostStartQueued || 
+		bSwitchingToHost)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Host 작업 중이므로 Join 거부"));
+		
+		return;
+	}
+
+	const ULocalPlayer* LocalPlayer =
+		GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	if (!LocalPlayer || !LocalPlayer->GetPreferredUniqueNetId().IsValid())
+	{
+		OnJoinSessionComplete.Broadcast(false);
+		
+		return;
+	}
+
+	bIsJoining = true;
+	JoinSessionDelegateHandle =
+		SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(
+			FOnJoinSessionCompleteDelegate::CreateUObject(
+				this, &UNSSessionSubsystem::OnJoinSessionCompleted));
+
+	SessionInterface->JoinSession(
+		*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, SearchResult);
+
+}
+
+void UNSSessionSubsystem::OnFindSessionsCompleted(bool bWasSuccessful)
+{
+	if (SessionInterface.IsValid() && FindSessionsDelegateHandle.IsValid())
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(
+			FindSessionsDelegateHandle);
+	}
+	FindSessionsDelegateHandle.Reset();
+
+	if (!bWasSuccessful || 
+		!LastSessionSearch.IsValid()||
+		LastSessionSearch->SearchResults.Num() == 0)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("검색된 세션 없음"));
+		OnJoinSessionComplete.Broadcast(false);
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("세션 %d개 발견, 첫 결과로 Join"),
+		LastSessionSearch->SearchResults.Num());
+	JoinResolvedSession(LastSessionSearch->SearchResults[0]);
+}
+
+void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
+{
+	if (SessionInterface.IsValid() && JoinSessionDelegateHandle.IsValid())
+		SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionDelegateHandle);
+	JoinSessionDelegateHandle.Reset();
+	bIsJoining = false;
+
+	if (Result != EOnJoinSessionCompleteResult::Success)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("JoinSession 실패: %d"), (int32)Result);
+		OnJoinSessionComplete.Broadcast(false);
+		ReturnToTitle();
+		
+		return;
+	}
+
+	FString ConnectString;
+	if (!SessionInterface->GetResolvedConnectString(NAME_GameSession, ConnectString))
+	{
+		UE_LOG(LogTemp, Error, TEXT("연결 문자열 해석 실패"));
+		OnJoinSessionComplete.Broadcast(false);
+		ReturnToTitle();
+		
+		return;
+	}
+	UE_LOG(LogTemp, Log, TEXT("ConnectString: %s"), *ConnectString);
+
+	APlayerController* PC =
+		GetGameInstance() ? GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
+	if (!PC)
+	{
+		OnJoinSessionComplete.Broadcast(false);
+		ReturnToTitle();
+		return;
+	}
+
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+		UIManager->ShowTravelLoadingScreen(PC);
+
+	OnJoinSessionComplete.Broadcast(true);
+	PC->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
 }
 
 void UNSSessionSubsystem::HandleNetworkFailure(
@@ -708,6 +887,12 @@ void UNSSessionSubsystem::StartCreateSession()
 		LastSessionSettings->bAllowJoinViaPresence = true;   
 		// 스팀 초대 허용
 		LastSessionSettings->bAllowInvites = true;
+		
+		// 키 필터: 같은 키를 가진 세션끼리만 검색에 잡힘
+		LastSessionSettings->Set(
+			NS_SESSION_KEY,
+			FString(TEXT("NeoSanctum")),
+			EOnlineDataAdvertisementType::ViaOnlineService);
 	}
 	else
 	{
