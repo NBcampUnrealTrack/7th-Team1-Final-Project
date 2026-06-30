@@ -31,6 +31,7 @@ class UNSMeleeAttackReservationComponent;
 class UNSGateAccessComponent;
 class UNSPlayerAttackFeedbackComponent;
 class UNSPlayerHitTakenFeedbackComponent;
+class UNSHitReactionComponent;
 class UNSDamageFlashComponent;
 
 UCLASS()
@@ -162,6 +163,10 @@ protected:
 	// 플레이어가 피해를 받았을 때의 로컬 피격 피드백 처리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
 	TObjectPtr<UNSPlayerHitTakenFeedbackComponent> PlayerHitTakenFeedbackComp;
+
+	// 피격 위치에 월드 리액션 GameplayCue를 재생
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
 
 	// Shield 피격 시 캐릭터 머티리얼 플래시를 재생
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")

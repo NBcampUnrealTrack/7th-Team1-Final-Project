@@ -24,6 +24,7 @@
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
@@ -85,6 +86,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	PlayerAttackFeedbackComp = CreateDefaultSubobject<UNSPlayerAttackFeedbackComponent>(TEXT("PlayerAttackFeedbackComp"));
 	PlayerHitTakenFeedbackComp = CreateDefaultSubobject<UNSPlayerHitTakenFeedbackComponent>(
 		TEXT("PlayerHitTakenFeedbackComp"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Player);
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	DamageFlashComponent->SetTriggerPolicy(ENSDamageFlashTriggerPolicy::Shield);
 
