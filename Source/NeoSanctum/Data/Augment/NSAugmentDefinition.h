@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Engine/DataAsset.h"
 #include "NSAugmentDefinition.generated.h"
 
@@ -32,9 +33,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Display", meta = (MultiLine = true))
 	FText Description;
 	
+	// StackEffectClass에 ValuePerStack * Stacks 값을 전달할 SetByCaller 태그.
+	// 비워두면 StackEffectClass에는 증강 수치 payload를 전달하지 않습니다.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Effect",
+		meta = (Categories = "Effect"))
+	FGameplayTag StackEffectSetByCallerTag;
+	
 	/**
-	 * Common / Rare / Epic / Legendary (수치 강화) 같은 스택형 GE저장
-	 * SetByCaller로 현재 스택 카운터 전달
+	 * Common / Rare / Epic / Legendary 같은 수치 강화 GE.
+	 * StackEffectSetByCallerTag가 유효하면 SetByCaller로 ValuePerStack * Stacks 값을 전달합니다.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Effect", meta = (AssetBundles = "InRunData"))
 	TSoftClassPtr<UGameplayEffect> StackEffectClass;

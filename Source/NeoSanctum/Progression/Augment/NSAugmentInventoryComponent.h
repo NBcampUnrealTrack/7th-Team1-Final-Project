@@ -64,7 +64,12 @@ private:
 	void OnRep_Owned();
 	
 	// 스택형 GE 적용
-	void ApplyStackEffect(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC);
+	void ApplyStackEffect(
+		FNSAugmentInstance& Inst,
+		UNSAugmentDefinition* Def,
+		const FNSAugmentDefinitionRow& DefinitionRow,
+		UAbilitySystemComponent* ASC
+	);
 
 	// 기믹 Legendary GA 부여
 	void GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC);

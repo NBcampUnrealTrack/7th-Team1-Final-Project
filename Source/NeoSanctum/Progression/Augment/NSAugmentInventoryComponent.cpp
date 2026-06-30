@@ -9,7 +9,6 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogCategories.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
 
 UNSAugmentInventoryComponent::UNSAugmentInventoryComponent()
 {
@@ -117,7 +116,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		Existing->Stacks++;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(*Existing, Def, ASC);
+		ApplyStackEffect(*Existing, Def, DefinitionRow, ASC);
 	} else
 	{
 		FNSAugmentInstance NewInstance;
@@ -126,7 +125,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		NewInstance.Stacks = 1;
 		NewInstance.bCountsAsLegendarySlot = DefinitionRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(NewInstance, Def, ASC);
+		ApplyStackEffect(NewInstance, Def, DefinitionRow, ASC);
 		// Legendary 기믹 GA
 		GrantMechanicAbility(NewInstance, Def, ASC);
 		Owned.Add(NewInstance);
@@ -134,7 +133,11 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	OnInventoryChanged.Broadcast();
 }
 
-void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
+void UNSAugmentInventoryComponent::ApplyStackEffect(
+	FNSAugmentInstance& Inst,
+	UNSAugmentDefinition* Def,
+	const FNSAugmentDefinitionRow& DefinitionRow,
+	UAbilitySystemComponent* ASC)
 {
 	if (Def->StackEffectClass.IsNull())
 	{
@@ -163,7 +166,12 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UN
 		return;
 	}
 	
-	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Augment_SetByCaller_Stack, static_cast<float>(Inst.Stacks));
+	if (Def->StackEffectSetByCallerTag.IsValid())
+	{
+		const float Magnitude = DefinitionRow.ValuePerStack * static_cast<float>(Inst.Stacks);
+		SpecHandle.Data->SetSetByCallerMagnitude(Def->StackEffectSetByCallerTag, Magnitude);
+	}
+	
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 }
 
@@ -263,7 +271,13 @@ void UNSAugmentInventoryComponent::ReapplyAll()
 		// 새 ASC 기준 핸들로 갱신, 누적 Stacks는 SetByCaller로 한 번에 적용
 		Inst.EffectHandle.Invalidate();
 		Inst.AbilityHandle = FGameplayAbilitySpecHandle();
-		ApplyStackEffect(Inst, Def, ASC);
+		FNSAugmentDefinitionRow DefinitionRow;
+		if (!TryFindDefinitionRow(Data, Inst.DefId, DefinitionRow))
+		{
+			continue;
+		}
+		
+		ApplyStackEffect(Inst, Def, DefinitionRow, ASC);
 		GrantMechanicAbility(Inst, Def, ASC);
 	}
 
