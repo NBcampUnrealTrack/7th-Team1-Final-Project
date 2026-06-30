@@ -19,8 +19,29 @@ UNSCombatStatComponent::UNSCombatStatComponent()
 void UNSCombatStatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	RebuildBaseStatCache();
+	
+	if (TryResolveAbilityBaseStatTableFromDataSubsystem())
+	{
+		RebuildBaseStatCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (DataSubsystem->IsCommonReady())
+		{
+			RebuildBaseStatCache();
+		}
+		else
+		{
+			// CommonData가 비동기로 아직 준비되지 않은 경우 완료 시점에 기본 스탯 캐시를 생성.
+			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+			DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+		}
+	}
+	else
+	{
+		// DataSubsystem이 없는 테스트 환경에서는 기존 직접 지정값 기준으로 경고 남김.
+		RebuildBaseStatCache();
+	}
 	
 	// Modifier DataTable은 먼저 원본 기준으로 캐싱
 	RebuildAugmentSourceCache();
@@ -30,6 +51,44 @@ void UNSCombatStatComponent::BeginPlay()
 	
 	// 이미 보유 중인 증강이 있다면 현재 상태 기준으로 한 번 갱신
 	RebuildActiveModifierCache();
+}
+
+void UNSCombatStatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	Super::EndPlay(EndPlayReason);
+}
+
+bool UNSCombatStatComponent::TryResolveAbilityBaseStatTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return AbilityBaseStatTable != nullptr;
+	}
+
+	if (UDataTable* LoadedTable = DataSubsystem->GetCommonAbilityBaseStatTable())
+	{
+		AbilityBaseStatTable = LoadedTable;
+		return true;
+	}
+
+	return DataSubsystem->IsCommonReady() && AbilityBaseStatTable != nullptr;
+}
+
+void UNSCombatStatComponent::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	TryResolveAbilityBaseStatTableFromDataSubsystem();
+	RebuildBaseStatCache();
 }
 
 void UNSCombatStatComponent::RebuildBaseStatCache()

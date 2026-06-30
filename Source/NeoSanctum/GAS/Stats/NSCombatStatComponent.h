@@ -93,6 +93,14 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
+	// CommonDataConfig에서 공용 AbilityBaseStatTable을 받아옴.
+	// 데이터가 아직 준비되지 않았다면 OnCommonDataReady 이후 다시 시도.
+	bool TryResolveAbilityBaseStatTableFromDataSubsystem();
+
+	UFUNCTION()
+	void HandleCommonDataReady();
 	
 	// DataTable은 편집용 원본이고, 실제 Ability 실행 중에는 캐시를 조회
 	void RebuildBaseStatCache();
@@ -139,6 +147,8 @@ protected:
 	) const;
 	
 protected:
+	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
+	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData 로드 완료 시 캐싱.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
 		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAbilityBaseStatRow"))
 	TObjectPtr<UDataTable> AbilityBaseStatTable;

@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSDataSubsystem.generated.h"
 
+class UNSCommonDataConfig;
 class UNSRunConfig;
 class UDataTable;
 class UNSLevelConfig;
@@ -109,6 +110,12 @@ public:
 	const UNSRewardTriggerData* FindRewardTriggerDataByTag(const FGameplayTag& TriggerTag) const;
 
 	const UNSRewardDataRegistry* GetRewardDataRegistry() const;
+	
+	const UNSCommonDataConfig* GetCommonDataConfig() const;
+	
+	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
+	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData로드 완료 시 캐싱.
+	UDataTable* GetCommonAbilityBaseStatTable() const;
 
 	const UNSRunConfig* GetCurrentRunConfig() const { return CurrentRunConfig.Get(); }
 	const UNSLevelConfig* GetCurrentRunLevelConfig() const { return CurrentRunLevelConfig.Get(); }

@@ -8,6 +8,7 @@
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
+#include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
@@ -80,6 +81,38 @@ const UNSRewardTriggerData* UNSDataSubsystem::FindRewardTriggerDataByTag(const F
 const UNSRewardDataRegistry* UNSDataSubsystem::GetRewardDataRegistry() const
 {
 	return RewardDataRegistry;
+}
+
+const UNSCommonDataConfig* UNSDataSubsystem::GetCommonDataConfig() const
+{
+	const TArray<UNSCommonDataConfig*> CommonConfigs = 
+		GetAllDataOfType<UNSCommonDataConfig>(CommonDataConfigAssetType);
+	
+	if (CommonConfigs.IsEmpty())
+	{
+		return nullptr;
+	}
+	
+	if (CommonConfigs.Num() > 1)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"NSCommonDataConfig가 여러 개 로드되었습니다. 첫 번째 설정을 사용합니다. Count={Count}",
+			("Count", CommonConfigs.Num())
+		);
+	}
+	
+	return CommonConfigs[0];
+}
+
+UDataTable* UNSDataSubsystem::GetCommonAbilityBaseStatTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	if (!CommonConfig)
+	{
+		return nullptr;
+	}
+	
+	return CommonConfig->AbilityBaseStatTable.Get();
 }
 
 void UNSDataSubsystem::LoadCurrentStageSpawnerTables()
