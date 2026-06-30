@@ -146,6 +146,41 @@ void UNSCheatManager::Debug_UnlockNPC(FString NpcId)
 	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
 }
 
+void UNSCheatManager::Debug_ResetCompanionUpgrades()
+{
+	ANSPlayerController* OwningPC =
+    		Cast<ANSPlayerController>(
+    			GetOuterAPlayerController());
+    
+    	if (!OwningPC)
+    	{
+    		return;
+    	}
+    
+    	UGameInstance* GameInstance =
+    		OwningPC->GetGameInstance();
+    
+    	UNSProgressionSubsystem* Progression =
+    		GameInstance
+    			? GameInstance->GetSubsystem<
+    				UNSProgressionSubsystem>()
+    			: nullptr;
+    
+    	if (!Progression)
+    	{
+    		return;
+    	}
+    
+    	if (!Progression->ResetCompanionUpgrades())
+    	{
+    		return;
+    	}
+    
+    	// 초기화된 로컬 데이터를 서버 PlayerState에 반영
+    	OwningPC->UploadLocalProgress(
+    		OwningPC->GetActiveCharacterIdForUpload());
+}
+
 // 테스트용 임시 코드 (인런 구출 NPC 구현 후 삭제)
 void UNSCheatManager::Debug_LockNPC(FString NpcId)
 {

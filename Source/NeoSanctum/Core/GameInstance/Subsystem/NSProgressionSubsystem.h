@@ -82,6 +82,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
 	
+	UFUNCTION(BlueprintCallable, Category = "Progression|Companion")
+	bool ResetCompanionUpgrades();
+	
 	// 구매: 미소유면 값 1회 롤해 인벤토리에 추가
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	bool PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost);

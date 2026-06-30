@@ -197,6 +197,22 @@ int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag NodeTag) const
 	return Save ? Save->Companion.NodeLevels.FindRef(NodeTag) : 0;
 }
 
+bool UNSProgressionSubsystem::ResetCompanionUpgrades()
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save)
+	{
+		return false;
+	}
+
+	// 선택된 펫과 재화는 유지하고 강화 정보만 초기화
+	Save->Companion.NodeLevels.Reset();
+	Save->Companion.UpgradeCounts.Reset();
+
+	SaveNow();
+	return true;
+}
+
 bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();

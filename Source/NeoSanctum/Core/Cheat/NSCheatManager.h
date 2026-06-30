@@ -62,6 +62,10 @@ public:
 	// 특정 NPC를 해금하고 서버에 동기화 (입장 게이트 테스트용). 인자 = NPCId
 	UFUNCTION(Exec)
 	void Debug_UnlockNPC(FString NpcId);
+	
+	// 모든 펫 강화 레벨 초기화
+	UFUNCTION(Exec)
+	void Debug_ResetCompanionUpgrades();
 
 	// 테스트용 임시 코드 (인런 구출 NPC 구현 후 삭제)
 	// 특정 NPC 해금을 취소(잠금)하고 서버에 동기화. 인자 = NPCId
