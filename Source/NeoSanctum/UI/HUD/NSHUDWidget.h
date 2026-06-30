@@ -9,6 +9,7 @@
 class UNSHPShieldWidget;
 class UNSGoodsWidget;
 class UNSCrosshairWidget;
+class UNSHitTakenFeedbackWidget;
 class UNSAugmentationWidget;
 class UNSPartPanelWidget;
 class UNSAmmoWidget;
@@ -115,6 +116,9 @@ private:
 	//조준점 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSCrosshairWidget> CrosshairWidget;
+	// 플레이어 피격 반응 HUD 위젯
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSHitTakenFeedbackWidget> HitTakenFeedbackWidget;
 	//증강 선택 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSAugmentationWidget> AugmentationWidget;
