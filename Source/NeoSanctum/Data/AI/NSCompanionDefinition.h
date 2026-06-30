@@ -34,6 +34,34 @@ struct FNSCompanionUpgradeNode
 	// 레벨당 증가량
 	UPROPERTY(EditDefaultsOnly)
 	float MagnitudePerLevel = 0.f;
+	
+	//UI에 표시할 강화 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	FText DisplayName;
+	
+	//UI에 표시할 강화 설명
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	FText Description;
+	
+	//노드 아이콘
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSoftObjectPtr<UTexture2D> Icon;
+	
+	// 첫 강화 비용
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Upgrade|Cost",
+		meta = (ClampMin = "0"))
+	int64 BaseUpgradeCost = 0;
+
+	// 레벨이 오를 때마다 추가되는 비용
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Upgrade|Cost",
+		meta = (ClampMin = "0"))
+	int64 CostIncreasePerLevel = 0;
 };
 
 UCLASS(BlueprintType)
