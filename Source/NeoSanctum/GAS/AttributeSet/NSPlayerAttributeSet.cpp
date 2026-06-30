@@ -199,21 +199,26 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 	
 	// 데미지를 받은 시점에 데미지를 받았다는 트리거를 이벤트 태그로 발송
 	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Data.Target.GetAvatarActor());
-	if (PlayerCharacter)
-	{
-		PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
-	}
 
 	const float CurrentShield = GetShield();
 	
 	if (CurrentShield <= 0.0f)
 	{
+		if (PlayerCharacter)
+		{
+			PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+		}
 		return DamageAmount;
 	}
 	
 	const float AbsorbedDamage = FMath::Min(CurrentShield, DamageAmount);
 	const float NewShield = CurrentShield - AbsorbedDamage;
 	SetShield(NewShield);
+
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+	}
 
 	if (NewShield <= 0.0f)
 	{
