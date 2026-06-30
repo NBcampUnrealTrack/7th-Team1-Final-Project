@@ -59,6 +59,14 @@ enum class ENSHitTakenFeedbackType : uint8
 	HealthHit
 };
 
+// 플레이어 피격 피드백의 상태성 연출 종류
+UENUM(BlueprintType)
+enum class ENSHitTakenFeedbackStateType : uint8
+{
+	None,
+	ShieldRecharging
+};
+
 // 히트 피드백 판정에 필요한 공통 Context
 USTRUCT(BlueprintType)
 struct NEOSANCTUM_API FNSHitFeedbackContext
@@ -144,4 +152,17 @@ struct NEOSANCTUM_API FNSHitTakenFeedbackMessage
 
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	FNSHitTakenFeedbackContext Context;
+};
+
+// GMS로 플레이어 피격 상태성 피드백을 전달할 때 사용하는 메시지
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSHitTakenFeedbackStateMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	ENSHitTakenFeedbackStateType StateType = ENSHitTakenFeedbackStateType::None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	bool bActive = false;
 };
