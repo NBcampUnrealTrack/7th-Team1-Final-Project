@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
@@ -218,8 +219,79 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 			PlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_Shield_Broken);
 		}
 	}
+
+	// 쉴드 감소 시점에도 Notify : 쉴드가 0 이하로 떨어지면 Broken, 그 외는 ShieldHit 타입으로
+	NotifyHitTakenFeedback(
+		Data,
+		NewShield <= 0.0f ? ENSHitTakenFeedbackType::ShieldBroken : ENSHitTakenFeedbackType::ShieldHit,
+		AbsorbedDamage);
 	
 	return DamageAmount - AbsorbedDamage;
+}
+
+void UNSPlayerAttributeSet::NotifyHitTakenFeedbackAfterHealthDamage(
+	const FGameplayEffectModCallbackData& Data,
+	const float PreviousHealth) const
+{
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+	
+	// Health 감소 시점에도 Notify : 일반적으로 HealthHit 타입
+	NotifyHitTakenFeedback(Data, ENSHitTakenFeedbackType::HealthHit, AppliedHealthDamage);
+}
+
+void UNSPlayerAttributeSet::NotifyHitTakenFeedback(
+	const FGameplayEffectModCallbackData& Data,
+	const ENSHitTakenFeedbackType FeedbackType,
+	const float DamageAmount) const
+{
+	if (DamageAmount <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+	
+	AActor* TargetActor = Data.Target.GetAvatarActor();
+	APawn* TargetPawn = Cast<APawn>(TargetActor);
+	if (!TargetActor || !TargetPawn)
+	{
+		return;
+	}
+	
+	ANSPlayerController* PlayerController = Cast<ANSPlayerController>(TargetPawn->GetController());
+	if (!PlayerController)
+	{
+		return;
+	}
+	
+	FNSHitTakenFeedbackContext FeedbackContext;
+	FeedbackContext.FeedbackType = FeedbackType;
+	FeedbackContext.DamageAmount = DamageAmount;
+	FeedbackContext.HitLocation = TargetActor->GetActorLocation();
+	// Shield의 현재 %
+	FeedbackContext.ShieldRatio = GetMaxShield() > 0.0f
+		                              ? FMath::Clamp(GetShield() / GetMaxShield(), 0.0f, 1.0f)
+		                              : 0.0f;
+	// Health의 현재 %
+	FeedbackContext.HealthRatio = GetMaxHealth() > 0.0f
+		                              ? FMath::Clamp(GetHealth() / GetMaxHealth(), 0.0f, 1.0f)
+		                              : 0.0f;
+	
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+	if (const FHitResult* HitResult = EffectContext.GetHitResult())
+	{
+		FeedbackContext.HitLocation = HitResult->ImpactPoint;
+	}
+	
+	if (AActor* InstigatorActor = EffectContext.GetInstigator())
+	{
+		FeedbackContext.InstigatorLocation = InstigatorActor->GetActorLocation();
+	}
+	
+	// 컨트롤러 - 피격 피드백 컴포넌트에서 피격 피드백 재생까지 이어지는 흐름 진입
+	PlayerController->Client_PlayHitTakenFeedback(FeedbackContext);
 }
 
 void UNSPlayerAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)

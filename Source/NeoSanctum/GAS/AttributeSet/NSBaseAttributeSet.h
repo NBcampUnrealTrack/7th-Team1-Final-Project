@@ -70,6 +70,11 @@ protected:
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
 
+	// 실제 Health 감소 후 피격자 로컬 피드백을 요청
+	virtual void NotifyHitTakenFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const;
+
 	// Damage Source가 플레이어 공격 결과 피드백을 허용하는지 확인
 	bool ShouldTriggerPlayerAttackFeedback(const FGameplayEffectModCallbackData& Data) const;
 

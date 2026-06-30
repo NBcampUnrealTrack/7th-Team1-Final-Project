@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSBaseAttributeSet.h"
 #include "NSPlayerAttributeSet.generated.h"
 
@@ -90,8 +91,18 @@ public:
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
+
+	virtual void NotifyHitTakenFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const override;
 	
 private:
+	// 실제 Notify를 진행해주는 함수
+	void NotifyHitTakenFeedback(
+		const FGameplayEffectModCallbackData& Data,
+		ENSHitTakenFeedbackType FeedbackType,
+		float DamageAmount) const;
+
 	UFUNCTION()
 	void OnRep_Shield(const FGameplayAttributeData& OldShield);
 	
