@@ -18,6 +18,9 @@ struct NEOSANCTUM_API FNSHitReactionData : public FTableRowBase
 	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitReaction")
+	ENSHitReactionDamageLayer DamageLayer = ENSHitReactionDamageLayer::Any;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitReaction")
 	ENSHitFeedbackQuality HitQuality = ENSHitFeedbackQuality::Any;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "HitReaction")
