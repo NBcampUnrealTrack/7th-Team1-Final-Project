@@ -1633,6 +1633,26 @@ void ANSPlayerController::Client_SaveProgress_Implementation(const FNSProgressPa
 	{
 		PermanentSave->PetUpgradeLevels.Add(NodeLevel.NodeId, NodeLevel.Level);
 	}
+	
+	PermanentSave->Companion.SelectedCompanionTag =
+	Payload.SelectedCompanionTag;
+
+	PermanentSave->Companion.NodeLevels.Reset();
+	PermanentSave->Companion.NodeLevels.Reserve(
+		Payload.CompanionNodeLevels.Num());
+
+	for (const FNSCompanionNodeLevel& NodeLevel :
+		Payload.CompanionNodeLevels)
+	{
+		if (!NodeLevel.Tag.IsValid())
+		{
+			continue;
+		}
+
+		PermanentSave->Companion.NodeLevels.Add(
+			NodeLevel.Tag,
+			NodeLevel.Level);
+	}
 
 	// 활성 캐릭터 슬롯 갱신
 	if (!Payload.ActiveCharacterId.IsNone())
