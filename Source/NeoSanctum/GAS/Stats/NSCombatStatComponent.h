@@ -154,10 +154,9 @@ protected:
 	) const;
 	
 protected:
-	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
-	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData 로드 완료 시 캐싱.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAbilityBaseStatRow"))
+	// CommonDataConfig에서 로드된 공용 스킬 기본 스탯 테이블 캐시.
+	// 에디터에서 직접 지정하지 않고 NSDataSubsystem의 CommonData 로딩 결과를 사용.
+	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> AbilityBaseStatTable;
 	
 	// 현재 런에서 사용하는 증강 후보 테이블 캐시. 원본은 NSRunConfig이고 NSDataSubsystem에서 받아옴.

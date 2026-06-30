@@ -26,21 +26,20 @@ void UNSCombatStatComponent::BeginPlay()
 	}
 	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		if (DataSubsystem->IsCommonReady())
-		{
-			RebuildBaseStatCache();
-		}
-		else
+		if (!DataSubsystem->IsCommonReady())
 		{
 			// CommonData가 비동기로 아직 준비되지 않은 경우 완료 시점에 기본 스탯 캐시를 생성.
 			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
 			DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
 		}
+		else
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning, "CommonData는 준비됐지만 스킬 기본 스탯 DataTable을 찾지 못했습니다.");
+		}
 	}
 	else
 	{
-		// DataSubsystem이 없는 테스트 환경에서는 기존 직접 지정값 기준으로 경고 남김.
-		RebuildBaseStatCache();
+		NS_OBJ_LOG(LogNSGAS, Warning, "DataSubsystem을 찾지 못해 스킬 기본 스탯 DataTable을 조회할 수 없습니다.");
 	}
 	
 	if (TryResolveAugmentDefinitionTableFromDataSubsystem())
@@ -86,18 +85,19 @@ void UNSCombatStatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 bool UNSCombatStatComponent::TryResolveAbilityBaseStatTableFromDataSubsystem()
 {
 	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-	if (!DataSubsystem)
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady())
 	{
-		return AbilityBaseStatTable != nullptr;
+		return false;
 	}
 
-	if (UDataTable* LoadedTable = DataSubsystem->GetCommonAbilityBaseStatTable())
+	UDataTable* LoadedTable = DataSubsystem->GetCommonAbilityBaseStatTable();
+	if (!IsValid(LoadedTable))
 	{
-		AbilityBaseStatTable = LoadedTable;
-		return true;
+		return false;
 	}
 
-	return DataSubsystem->IsCommonReady() && AbilityBaseStatTable != nullptr;
+	AbilityBaseStatTable = LoadedTable;
+	return true;
 }
 
 void UNSCombatStatComponent::HandleCommonDataReady()
@@ -146,8 +146,7 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 	
 	if (!AbilityBaseStatTable)
 	{
-		NS_OBJ_LOG(LogNSGAS, Warning, "스킬 기본 스탯 DataTable이 설정되지 않았습니다.");
-		
+		NS_OBJ_LOG(LogNSGAS, Warning, "CommonDataConfig의 스킬 기본 스탯 DataTable이 로드되지 않았습니다.");
 		return;
 	}
 	
@@ -157,7 +156,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 			"스킬 기본 스탯 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
 			("Table", AbilityBaseStatTable->GetName())
 		);
-		
 		return;
 	}
 	
@@ -181,7 +179,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		
@@ -197,7 +194,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		
