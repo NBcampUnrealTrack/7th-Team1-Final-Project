@@ -24,9 +24,14 @@ void UNSAugmentInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 }
 
 bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
-	const FPrimaryAssetId& DefId, FNSAugmentDefinitionRow& OutRow) const
+	UNSDataSubsystem* Data,
+	const FPrimaryAssetId& DefId, 
+	FNSAugmentDefinitionRow& OutRow) const
 {
 	OutRow = FNSAugmentDefinitionRow();
+	
+	const UDataTable* AugmentDefinitionTable =
+		Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
 	
 	if (!IsValid(AugmentDefinitionTable) || !DefId.IsValid())
 	{
@@ -92,7 +97,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	}
 	
 	FNSAugmentDefinitionRow DefinitionRow;
-	if (!TryFindDefinitionRow(DefId, DefinitionRow))
+	if (!TryFindDefinitionRow(Data, DefId, DefinitionRow))
 	{
 		return;
 	}

@@ -9,8 +9,8 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentInventoryChanged);
 
-class UDataTable;
 class UNSAugmentDefinition;
+class UNSDataSubsystem;
 class UAbilitySystemComponent;
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
@@ -59,10 +59,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="NS|Augment", meta=(ClampMin="0"))
 	int32 MaxLegendarySlots = 3;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Data",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAugmentDefinitionRow"))
-	TObjectPtr<UDataTable> AugmentDefinitionTable;
-	
 private:
 	UFUNCTION()
 	void OnRep_Owned();
@@ -79,7 +75,11 @@ private:
 	 * 같은 Definition을 공유하는 여러 Modifier Row 중 하나를 반환,
 	 * 그룹 메타데이터 일관성은 데이터 검증 단계에서 보장.
 	 */
-	bool TryFindDefinitionRow(const FPrimaryAssetId& DefId, FNSAugmentDefinitionRow& OutRow) const;
+	bool TryFindDefinitionRow(
+		UNSDataSubsystem* Data,
+		const FPrimaryAssetId& DefId, 
+		FNSAugmentDefinitionRow& OutRow
+	) const;
 	
 	UPROPERTY(ReplicatedUsing=OnRep_Owned)
 	TArray<FNSAugmentInstance> Owned;
