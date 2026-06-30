@@ -228,8 +228,17 @@ void UNSSessionSubsystem::FindAndJoinFirstSession()
 	LastSessionSearch = MakeShared<FOnlineSessionSearch>();
 	LastSessionSearch->bIsLanQuery = false;
 	LastSessionSearch->MaxSearchResults = 50;
+	
+	// IP 검색말고 로비(PRESENCE)로 검색하도록 추가
+	LastSessionSearch->QuerySettings.Set(
+	FName(TEXT("PRESENCESEARCH")),
+	true,
+	EOnlineComparisonOp::Equals);
+	
 	LastSessionSearch->QuerySettings.Set( 
-		NS_SESSION_KEY, FString(TEXT("NeoSanctum")), EOnlineComparisonOp::Equals);
+		NS_SESSION_KEY,
+		FString(TEXT("NeoSanctum")),
+		EOnlineComparisonOp::Equals);
 
 	FindSessionsDelegateHandle =
 		SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
