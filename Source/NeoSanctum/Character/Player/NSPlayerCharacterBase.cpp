@@ -36,6 +36,7 @@
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
@@ -84,6 +85,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	PlayerAttackFeedbackComp = CreateDefaultSubobject<UNSPlayerAttackFeedbackComponent>(TEXT("PlayerAttackFeedbackComp"));
 	PlayerHitTakenFeedbackComp = CreateDefaultSubobject<UNSPlayerHitTakenFeedbackComponent>(
 		TEXT("PlayerHitTakenFeedbackComp"));
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	DamageFlashComponent->SetTriggerPolicy(ENSDamageFlashTriggerPolicy::Shield);
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));

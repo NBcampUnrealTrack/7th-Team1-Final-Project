@@ -31,6 +31,7 @@ class UNSMeleeAttackReservationComponent;
 class UNSGateAccessComponent;
 class UNSPlayerAttackFeedbackComponent;
 class UNSPlayerHitTakenFeedbackComponent;
+class UNSDamageFlashComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -161,6 +162,10 @@ protected:
 	// 플레이어가 피해를 받았을 때의 로컬 피격 피드백 처리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
 	TObjectPtr<UNSPlayerHitTakenFeedbackComponent> PlayerHitTakenFeedbackComp;
+
+	// Shield 피격 시 캐릭터 머티리얼 플래시를 재생
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
