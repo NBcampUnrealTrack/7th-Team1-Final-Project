@@ -23,7 +23,7 @@ void UNSHitTakenFeedbackWidget::PlayHitTakenFeedback(const FNSHitTakenFeedbackCo
 	UImage* FeedbackImage = GetHitTakenFeedbackImage(Context.FeedbackType);
 	UWidgetAnimation* FeedbackAnimation = GetHitTakenFeedbackAnimation(Context.FeedbackType);
 
-	UpdateLowHealthVignette(Context.HealthRatio);
+	UpdateLowHealthVignette(Context.HealthRatio, Context.ShieldRatio);
 
 	if (!FeedbackImage && !FeedbackAnimation)
 	{
@@ -31,7 +31,7 @@ void UNSHitTakenFeedbackWidget::PlayHitTakenFeedback(const FNSHitTakenFeedbackCo
 	}
 
 	HideHitTakenFeedbackImages();
-	UpdateLowHealthVignette(Context.HealthRatio);
+	UpdateLowHealthVignette(Context.HealthRatio, Context.ShieldRatio);
 
 	if (FeedbackImage)
 	{
@@ -51,7 +51,7 @@ void UNSHitTakenFeedbackWidget::NativeConstruct()
 
 	// 기본 상태에서는 순간 피격 이미지를 숨기고 상태성 연출을 초기화
 	HideHitTakenFeedbackImages();
-	UpdateLowHealthVignette(1.0f);
+	UpdateLowHealthVignette(1.0f, 1.0f);
 	SetShieldRechargingFeedbackVisible(false);
 	
 	// GMS 피격 피드백 바인딩
@@ -67,6 +67,13 @@ void UNSHitTakenFeedbackWidget::NativeConstruct()
 			NSGameplayTags::Message_UI_HitTakenFeedback_State,
 			this,
 			&ThisClass::HandleHitTakenFeedbackStateMessage);
+	
+	// GMS에서 바이탈(Health와 Shield) 변화 바인딩
+	HitTakenFeedbackVitalsListenerHandle =
+		UGameplayMessageSubsystem::Get(this).RegisterListener<FNSHitTakenFeedbackVitalsMessage>(
+			NSGameplayTags::Message_UI_HitTakenFeedback_Vitals,
+			this,
+			&ThisClass::HandleHitTakenFeedbackVitalsMessage);
 }
 
 void UNSHitTakenFeedbackWidget::NativeDestruct()
@@ -74,6 +81,7 @@ void UNSHitTakenFeedbackWidget::NativeDestruct()
 	// 제거된 위젯으로 콜백이 들어오지 않도록 리스너를 정리
 	HitTakenFeedbackListenerHandle.Unregister();
 	HitTakenFeedbackStateListenerHandle.Unregister();
+	HitTakenFeedbackVitalsListenerHandle.Unregister();
 
 	Super::NativeDestruct();
 }
@@ -94,6 +102,13 @@ void UNSHitTakenFeedbackWidget::HandleHitTakenFeedbackStateMessage(
 	SetHitTakenFeedbackStateVisible(Message.StateType, Message.bActive);
 }
 
+void UNSHitTakenFeedbackWidget::HandleHitTakenFeedbackVitalsMessage(
+	FGameplayTag Channel,
+	const FNSHitTakenFeedbackVitalsMessage& Message)
+{
+	UpdateLowHealthVignette(Message.HealthRatio, Message.ShieldRatio);
+}
+
 void UNSHitTakenFeedbackWidget::HideHitTakenFeedbackImages() const
 {
 	// 순간 피격 이미지만 숨기고 상태성 비네트/재충전 이미지는 유지
@@ -112,7 +127,9 @@ void UNSHitTakenFeedbackWidget::HideHitTakenFeedbackImages() const
 	}
 }
 
-void UNSHitTakenFeedbackWidget::UpdateLowHealthVignette(const float HealthRatio)
+void UNSHitTakenFeedbackWidget::UpdateLowHealthVignette(
+	const float HealthRatio,
+	const float ShieldRatio)
 {
 	// 낮은 체력 구간에서만 비네트를 유지
 	if (!LowHealthVignetteImage)
@@ -120,7 +137,7 @@ void UNSHitTakenFeedbackWidget::UpdateLowHealthVignette(const float HealthRatio)
 		return;
 	}
 
-	if (HealthRatio > LowHealthThreshold)
+	if (HealthRatio > LowHealthThreshold || ShieldRatio > LowShieldThresholdForLowHealth)
 	{
 		LowHealthVignetteImage->SetVisibility(ESlateVisibility::Collapsed);
 		if (bLowHealthVignetteActive && LowHealthVignetteAnimation)

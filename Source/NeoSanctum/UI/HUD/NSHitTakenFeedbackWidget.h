@@ -37,12 +37,13 @@ private:
 	void HandleHitTakenFeedbackMessage(FGameplayTag Channel, const FNSHitTakenFeedbackMessage& Message);
 	// GMS 피격 상태성 피드백 메시지 수신
 	void HandleHitTakenFeedbackStateMessage(FGameplayTag Channel, const FNSHitTakenFeedbackStateMessage& Message);
+	void HandleHitTakenFeedbackVitalsMessage(FGameplayTag Channel, const FNSHitTakenFeedbackVitalsMessage& Message);
 	
 private:
 	// 연출용 이미지를 모두 숨김
 	void HideHitTakenFeedbackImages() const;
 	// 낮은 체력 비네트 표시 상태 갱신
-	void UpdateLowHealthVignette(float HealthRatio);
+	void UpdateLowHealthVignette(float HealthRatio, float ShieldRatio);
 	// 상태성 피드백 표시 상태 변경
 	void SetHitTakenFeedbackStateVisible(ENSHitTakenFeedbackStateType StateType, bool bVisible);
 	// Shield Recharging 연출 표시 상태 변경
@@ -91,6 +92,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "HitFeedback|Intensity", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float LowHealthThreshold = 0.3f;
 
+	// 낮은 체력 비네트를 표시하기 시작할 Shield 비율
+	UPROPERTY(EditDefaultsOnly, Category = "HitFeedback|Intensity", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float LowShieldThresholdForLowHealth = 0.1f;
+
 	// 낮은 체력 비네트의 고정 투명도
 	UPROPERTY(EditDefaultsOnly, Category = "HitFeedback|Intensity", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float LowHealthVignetteOpacity = 1.0f;
@@ -100,6 +105,7 @@ private:
 	FGameplayMessageListenerHandle HitTakenFeedbackListenerHandle;
 	// GMS 피격 상태성 피드백 리스너 핸들
 	FGameplayMessageListenerHandle HitTakenFeedbackStateListenerHandle;
+	FGameplayMessageListenerHandle HitTakenFeedbackVitalsListenerHandle;
 	
 	// 낮은 체력 비네트가 현재 활성화되어 있는지 여부
 	bool bLowHealthVignetteActive = false;
