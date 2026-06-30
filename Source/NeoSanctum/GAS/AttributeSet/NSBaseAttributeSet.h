@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSBaseAttributeSet.generated.h"
 
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
@@ -82,6 +83,13 @@ protected:
 	void NotifyHitReactionAfterHealthDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
+
+	// 데미지 레이어 정보를 포함해서 월드 피격 리액션을 요청
+	void NotifyHitReaction(
+		const FGameplayEffectModCallbackData& Data,
+		ENSHitReactionDamageLayer DamageLayer,
+		float DamageAmount,
+		bool bTargetDead) const;
 	
 private:
 	UFUNCTION()

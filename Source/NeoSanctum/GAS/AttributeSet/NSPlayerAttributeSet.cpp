@@ -233,6 +233,12 @@ float UNSPlayerAttributeSet::HandlePreHealthDamage(
 		Data,
 		NewShield <= 0.0f ? ENSHitTakenFeedbackType::ShieldBroken : ENSHitTakenFeedbackType::ShieldHit,
 		AbsorbedDamage);
+
+	NotifyHitReaction(
+		Data,
+		ENSHitReactionDamageLayer::Shield,
+		AbsorbedDamage,
+		false);
 	
 	return DamageAmount - AbsorbedDamage;
 }

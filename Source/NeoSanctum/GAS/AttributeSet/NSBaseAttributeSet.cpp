@@ -203,6 +203,24 @@ void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 		return;
 	}
 
+	NotifyHitReaction(
+		Data,
+		ENSHitReactionDamageLayer::Health,
+		AppliedHealthDamage,
+		GetHealth() <= 0.0f);
+}
+
+void UNSBaseAttributeSet::NotifyHitReaction(
+	const FGameplayEffectModCallbackData& Data,
+	const ENSHitReactionDamageLayer DamageLayer,
+	const float DamageAmount,
+	const bool bTargetDead) const
+{
+	if (DamageAmount <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
 	AActor* TargetActor = Data.Target.GetAvatarActor();
 	if (!TargetActor)
 	{
@@ -217,11 +235,12 @@ void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 	}
 
 	FNSHitReactionContext ReactionContext;
+	ReactionContext.DamageLayer = DamageLayer;
 	ReactionContext.TargetActor = TargetActor;
 	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
-	ReactionContext.DamageAmount = AppliedHealthDamage;
+	ReactionContext.DamageAmount = DamageAmount;
 	ReactionContext.HitQuality = ENSHitFeedbackQuality::Normal;
-	ReactionContext.bTargetDead = GetHealth() <= 0.0f;
+	ReactionContext.bTargetDead = bTargetDead;
 	ReactionContext.HitLocation = TargetActor->GetActorLocation();
 	ReactionContext.HitNormal = FVector::UpVector;
 
