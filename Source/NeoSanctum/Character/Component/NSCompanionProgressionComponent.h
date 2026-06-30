@@ -29,6 +29,11 @@ public:
 	// 노드 레벨 적용
 	void ApplyNodeLevels(const TMap<FGameplayTag, int32>& NodeLevels);
 	
+	UFUNCTION(Server, Reliable)
+	void Server_TryUpgrade(FGameplayTag NodeTag);
+	
+	UNSCompanionProgressionComponent();
+	
 protected:
 	UPROPERTY()
 	TObjectPtr<ANSBaseCompanionAI> OwnedCompanion;
