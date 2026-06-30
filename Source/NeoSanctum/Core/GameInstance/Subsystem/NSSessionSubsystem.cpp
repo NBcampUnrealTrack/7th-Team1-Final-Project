@@ -2,11 +2,13 @@
 
 
 #include "NSSessionSubsystem.h"
+
+#include "NSDataSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 #include "OnlineSessionSettings.h"
 #include "Kismet/GameplayStatics.h" 
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
-#include "NeoSanctum/Data/World/NSLevelCatalog.h"
+#include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 
@@ -223,7 +225,45 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 		OnCreateSessionComplete.Broadcast(false);
 		return;
 	}
+	
+	StartHostTravelToHub();
+}
 
+void UNSSessionSubsystem::StartHostTravelToHub()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		bSwitchingToHost = false;
+		OnCreateSessionComplete.Broadcast(false);
+		return;
+	}
+	
+	if (!DataSubsystem->IsCommonReady())
+	{
+		// Hub 진입 전에 캐릭터 기본 데이터 같은 공통 데이터가 준비되도록 기다림.
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleHostCommonDataReady);
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleHostCommonDataReady);
+		
+		DataSubsystem->LoadCommonData();
+		return;
+	}
+	
+	if (!DataSubsystem->IsOutGameReady())
+	{
+		// 거점 진입 직후 거점/파트/진행 데이터가 비지 않도록 OutGame 데이터 준비 후 Travel.
+		DataSubsystem->OnOutGameDataReady.RemoveDynamic(this, &ThisClass::HandleHostOutGameDataReady);
+		DataSubsystem->OnOutGameDataReady.AddDynamic(this, &ThisClass::HandleHostOutGameDataReady);
+		
+		DataSubsystem->LoadOutGameData();
+		return;
+	}
+	
+	TravelToHubAfterDataReady();
+}
+
+void UNSSessionSubsystem::TravelToHubAfterDataReady()
+{
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -231,20 +271,21 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 		OnCreateSessionComplete.Broadcast(false);
 		return;
 	}
-
+	
 	FString HubPackage;
 	if (UNSLevelCatalog* Catalog = GetLevelCatalog(); Catalog && !Catalog->HubLevel.IsNull())
 	{
 		HubPackage = Catalog->HubLevel.ToSoftObjectPath().GetLongPackageName();
 	}
+	
 	if (HubPackage.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("카탈로그에서 거점 레벨을 찾지 못해서 호스트 트래블 중단"));
+		UE_LOG(LogTemp, Warning, TEXT("카탈로그에서 거점 레벨을 찾지 못해서 호스트 트래블 중단."));
 		bSwitchingToHost = false;
 		OnCreateSessionComplete.Broadcast(false);
 		return;
 	}
-
+	
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
 		if (UGameInstance* GameInstance = GetGameInstance())
@@ -255,10 +296,30 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 			}
 		}
 	}
-
+	
 	const bool bTravelStarted = World->ServerTravel(HubPackage + TEXT("?listen"));
 	bSwitchingToHost = false;
 	OnCreateSessionComplete.Broadcast(bTravelStarted);
+}
+
+void UNSSessionSubsystem::HandleHostCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleHostCommonDataReady);
+	}
+	
+	StartHostTravelToHub();
+}
+
+void UNSSessionSubsystem::HandleHostOutGameDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnOutGameDataReady.RemoveDynamic(this, &ThisClass::HandleHostOutGameDataReady);
+	}
+	
+	StartHostTravelToHub();
 }
 
 void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful)

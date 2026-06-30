@@ -14,6 +14,20 @@ class UNSEnemyData;
 class URoom;
 class USphereComponent;
 
+/**
+ * 스포너가 사용할 테이블의 출저.
+ *
+ * 기본 흐름은 LevelConfig의 스테이지 공용 DT를 사용하고,
+ * Manual은 테스트/특수 스폰용 예외 경로.
+ */
+UENUM(BlueprintType)
+enum class ENSSpawnDataTableSource : uint8
+{
+	StageMelee	UMETA(DisplayName = "Stage Melee"),
+	StageRange	UMETA(DisplayName = "Stage Range"),
+	Manual		UMETA(DisplayName = "Manual")
+};
+
 UCLASS()
 class NEOSANCTUM_API ANSSpawner : public AActor
 {
@@ -37,6 +51,10 @@ public:
 	// 배치된 위치를 받아서 최소 간격 이상으로 새 위치 선출
 	FVector GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const;
 	
+	// 현재 스포너가 LevelConfig의 어떤 스테이지 공용 DT를 사용할지 결정.
+	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
+	ENSSpawnDataTableSource SpawnDataTableSource = ENSSpawnDataTableSource::Manual;
+	
 	// 인스턴스마다 어떤 몬스터 스폰할지 정하는 용도
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	TObjectPtr<UDataTable> SpawnDataTable;
@@ -47,6 +65,11 @@ private:
 	void OnLoadCompleted();
 	void ExecuteFinalSpawn();
 	
+	UDataTable* ResolveSpawnDataTable() const;
+	void RequestStageSpawnerTableLoad();
+	UFUNCTION()
+	void HandleStageSpawnerTablesReady();
+	
 	bool bHasSpawned = false;
 	
 	// 스포너가 스폰한 몬스터 저장용
@@ -56,6 +79,7 @@ private:
 protected:
 	virtual void BeginPlay() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	// 이 스포너가 활성화되는 최소 접속 인원 (1=항상 켜짐, 2=2인 이상부터, 3=3인부터, 4=4인부터)
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet", meta = (ClampMin = "1"))

@@ -92,8 +92,11 @@ protected:
 	int64 StageClearCommonReward = 0;
 	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
 	int64 StageClearJobReward = 0;
-
+	
 private:
+	// 인런 월드가 열린 뒤, GameFlow가 보관환 데이터 구성을 RunGameState에 복제.
+	void SyncRunDataConfigToGameState();
+	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
 	

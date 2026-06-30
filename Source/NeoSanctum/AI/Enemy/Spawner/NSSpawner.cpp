@@ -15,6 +15,8 @@
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/GameStateBase.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -94,7 +96,7 @@ void ANSSpawner::EvaluateRelevancy(int32 MinRelevancy)
 
 void ANSSpawner::ActivateSpawner()
 {
-	if (!HasAuthority() || !SpawnDataTable)
+	if (!HasAuthority())
 	{
 		return;
 	}
@@ -113,8 +115,15 @@ void ANSSpawner::ActivateSpawner()
 		return;
 	}
 
+	UDataTable* ResolvedSpawnTable = ResolveSpawnDataTable();
+	if (!ResolvedSpawnTable)
+	{
+		RequestStageSpawnerTableLoad();
+		return;
+	}
+	
 	bHasSpawned = true;
-	ProcessSpawnProbability(SpawnDataTable);
+	ProcessSpawnProbability(ResolvedSpawnTable);
 	RequestAsyncLoad();
 }
 
@@ -147,6 +156,73 @@ void ANSSpawner::ReturnMonstersToPool()
 
 	SpawnedMonsters.Empty();
 	bHasSpawned = false;
+}
+
+UDataTable* ANSSpawner::ResolveSpawnDataTable() const
+{
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::Manual)
+	{
+		return SpawnDataTable;
+	}
+	
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return nullptr;
+	}
+	
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::StageMelee)
+	{
+		return DataSubsystem->GetCurrentMeleeSpawnerTable();
+	}
+	
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::StageRange)
+	{
+		return DataSubsystem->GetCurrentRangeSpawnerTable();
+	}
+	
+	return nullptr;
+}
+
+void ANSSpawner::RequestStageSpawnerTableLoad()
+{
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::Manual)
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+	
+	if (DataSubsystem->AreCurrentStageSpawnerTablesLoaded())
+	{
+		const FString SourceName = StaticEnum<ENSSpawnDataTableSource>()->GetNameStringByValue(
+			static_cast<int64>(SpawnDataTableSource));
+		NS_OBJ_LOG(LogNS, Warning,
+			"스테이지 스포너 DT 로드는 완료됐지만 이 스포너가 사용할 테이블을 찾지 못했습니다. Source={Source}",
+			("Source", SourceName)
+		);
+		return;
+	}
+	
+	// 여러 스포너가 동시에 요청해도 DataSubsystem은 한 번만 로드.
+	// 완료 후 각 스포너가 다시 ActivateSpawner()를 시도.
+	DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+	DataSubsystem->OnStageSpawnerTablesReady.AddDynamic(this, &ANSSpawner::HandleStageSpawnerTablesReady);
+	DataSubsystem->LoadCurrentStageSpawnerTables();
+}
+
+void ANSSpawner::HandleStageSpawnerTablesReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+		
+		ActivateSpawner();
+	}
 }
 
 void ANSSpawner::ProcessSpawnProbability(UDataTable* SpawnTable)
@@ -291,6 +367,16 @@ void ANSSpawner::BeginPlay()
 	}
 #endif
 
+}
+
+void ANSSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+	}
+	
+	Super::EndPlay(EndPlayReason);
 }
 
 FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const

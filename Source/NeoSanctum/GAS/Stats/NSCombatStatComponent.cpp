@@ -19,16 +19,124 @@ UNSCombatStatComponent::UNSCombatStatComponent()
 void UNSCombatStatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	RebuildBaseStatCache();
 	
-	// Modifier DataTable은 먼저 원본 기준으로 캐싱
-	RebuildAugmentSourceCache();
+	if (TryResolveAbilityBaseStatTableFromDataSubsystem())
+	{
+		RebuildBaseStatCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (!DataSubsystem->IsCommonReady())
+		{
+			// CommonData가 비동기로 아직 준비되지 않은 경우 완료 시점에 기본 스탯 캐시를 생성.
+			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+			DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+		}
+		else
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning, "CommonData는 준비됐지만 스킬 기본 스탯 DataTable을 찾지 못했습니다.");
+		}
+	}
+	else
+	{
+		NS_OBJ_LOG(LogNSGAS, Warning, "DataSubsystem을 찾지 못해 스킬 기본 스탯 DataTable을 조회할 수 없습니다.");
+	}
+	
+	if (TryResolveAugmentDefinitionTableFromDataSubsystem())
+	{
+		RebuildAugmentSourceCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (DataSubsystem->IsRunReady())
+		{
+			RebuildAugmentSourceCache();
+		}
+		else
+		{
+			// 인런 데이터가 아직 준비되지 않은 경우 완료 시점에 증강 Modifier 캐시를 생성.
+			DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+			DataSubsystem->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleRunGameDataReady);
+		}
+	}
+	else
+	{
+		RebuildAugmentSourceCache();
+	}
 	
 	// AugmentInventory 변경 이벤트를 받아 Active Modifier를 갱신
 	BindAugmentInventory();
 	
 	// 이미 보유 중인 증강이 있다면 현재 상태 기준으로 한 번 갱신
+	RebuildActiveModifierCache();
+}
+
+void UNSCombatStatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+	}
+	
+	Super::EndPlay(EndPlayReason);
+}
+
+bool UNSCombatStatComponent::TryResolveAbilityBaseStatTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady())
+	{
+		return false;
+	}
+
+	UDataTable* LoadedTable = DataSubsystem->GetCommonAbilityBaseStatTable();
+	if (!IsValid(LoadedTable))
+	{
+		return false;
+	}
+
+	AbilityBaseStatTable = LoadedTable;
+	return true;
+}
+
+void UNSCombatStatComponent::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	TryResolveAbilityBaseStatTableFromDataSubsystem();
+	RebuildBaseStatCache();
+}
+
+bool UNSCombatStatComponent::TryResolveAugmentDefinitionTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return AugmentDefinitionTable != nullptr;
+	}
+	
+	if (UDataTable* LoadedTable = DataSubsystem->GetCurrentAugmentDefinitionTable())
+	{
+		AugmentDefinitionTable = LoadedTable;
+		return true;
+	}
+	
+	return DataSubsystem->IsRunReady() && AugmentDefinitionTable != nullptr;
+}
+
+void UNSCombatStatComponent::HandleRunGameDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+	}
+	
+	TryResolveAugmentDefinitionTableFromDataSubsystem();
+	RebuildAugmentSourceCache();
 	RebuildActiveModifierCache();
 }
 
@@ -38,8 +146,7 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 	
 	if (!AbilityBaseStatTable)
 	{
-		NS_OBJ_LOG(LogNSGAS, Warning, "스킬 기본 스탯 DataTable이 설정되지 않았습니다.");
-		
+		NS_OBJ_LOG(LogNSGAS, Warning, "CommonDataConfig의 스킬 기본 스탯 DataTable이 로드되지 않았습니다.");
 		return;
 	}
 	
@@ -49,7 +156,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 			"스킬 기본 스탯 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
 			("Table", AbilityBaseStatTable->GetName())
 		);
-		
 		return;
 	}
 	
@@ -73,7 +179,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		
@@ -89,7 +194,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		

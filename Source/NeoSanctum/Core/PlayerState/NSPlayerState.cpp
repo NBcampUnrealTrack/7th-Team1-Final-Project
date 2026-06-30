@@ -7,6 +7,7 @@
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -181,6 +182,13 @@ void ANSPlayerState::SetCurrentCharacterDataId(FPrimaryAssetId InCharacterDataId
 	ForceNetUpdate();
 }
 
+FPrimaryAssetId ANSPlayerState::GetDefaultCharacterDataId() const
+{
+	return DefaultCharacterData.IsNull()
+		? FPrimaryAssetId()
+		: FPrimaryAssetId(UNSDataSubsystem::CharacterAssetType, FName(*DefaultCharacterData.GetAssetName()));
+}
+
 UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
 {
 	if (CurrentCharacterDataId.IsValid())
@@ -191,7 +199,7 @@ UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
 		}
 	}
 
-	return LoadCharacterData(DefaultCharacterDataId);
+	return LoadCharacterData(GetDefaultCharacterDataId());
 }
 
 UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDataId) const
@@ -199,6 +207,15 @@ UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDat
 	if (!CharacterDataId.IsValid())
 	{
 		return nullptr;
+	}
+
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		// CommonData에서 선로딩한 캐릭터 데이터가 있으면 동기 로드 없이 재사용한다.
+		if (UNSCharacterData* LoadedData = DataSubsystem->GetData<UNSCharacterData>(CharacterDataId))
+		{
+			return LoadedData;
+		}
 	}
 
 	const FSoftObjectPath CharacterDataPath = UAssetManager::Get().GetPrimaryAssetPath(CharacterDataId);

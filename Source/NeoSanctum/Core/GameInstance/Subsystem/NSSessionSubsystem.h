@@ -60,6 +60,17 @@ private:
 	
 	void OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful);
 	void OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful);
+	
+	// 세션 생성 완료 후 실제 Hub ServerTravel을 수행하는 내부 헬퍼
+	void StartHostTravelToHub();
+	// 데이터가 준비되면 거점으로 ServerTravel 수행.
+	void TravelToHubAfterDataReady();
+	// CommonData 로드 완료 델릭이트 콜백
+	UFUNCTION()
+	void HandleHostCommonDataReady();
+	// OutGameData 로드 완료 델리게이트 콜백
+	UFUNCTION()
+	void HandleHostOutGameDataReady();
 
 	IOnlineSessionPtr SessionInterface;
 

@@ -9,8 +9,6 @@
 #include "NSAugmentSelectionComponent.generated.h"
 
 struct FNSAugmentRarityRule;
-class UDataTable;
-class UNSAugmentRarityRuleSet;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 
@@ -85,14 +83,6 @@ public:
 
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	// 증강 효과 행 기반 DataTable.
-	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment|Data",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAugmentDefinitionRow"))
-	TObjectPtr<UDataTable> AugmentDefinitionTable;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Data")
-	TObjectPtr<UNSAugmentRarityRuleSet> AugmentRarityRuleSet;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment", meta = (ClampMin = "1"))
 	int32 CardsCount = 3;
@@ -126,7 +116,11 @@ private:
 	// 같은 AugmentTag 그룹의 공통 선택 메타데이터와 Definition 식별자 ↔ AugmentTag 연결 무결성을 검사.
 	void ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const;
 
-	bool TryFindRarityRule(const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const;
+	bool TryFindRarityRule(
+		UNSDataSubsystem* Data,
+		const FGameplayTag& RewardTriggerTag, 
+		FNSAugmentRarityRule& OutRule
+	) const;
 
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;

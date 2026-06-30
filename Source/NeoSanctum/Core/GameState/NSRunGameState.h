@@ -7,11 +7,14 @@
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NSRunGameState.generated.h"
 
+class UNSLevelConfig;
+class UNSRunConfig;
 class ANSPlayerState;
 class UNSProjectileManagerComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndPhaseChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndVoteChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunDataConfigChanged);
 
 /**
  *
@@ -52,6 +55,24 @@ public:
 	void GetAlivePlayerStates(TArray<ANSPlayerState*>& AlivePlayerStates, const ANSPlayerState* ExcludedPlayerState = nullptr) const;
 	
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	// 인런 월드 진입 후 클라이언트가 로드해야 할 데이터 구성이 복제됐음을 알림.
+	UPROPERTY(BlueprintAssignable, Category = "Run|Data")
+	FNSOnRunDataConfigChanged OnRunDataConfigChanged;
+	
+	// 서버가 선택한 인런 공통 데이터. 클라이언트는 이 값을 복제된 뒤 로드 시작.
+	UPROPERTY(ReplicatedUsing = OnRep_RunDataConfig, BlueprintReadOnly, Category = "Run|Data")
+	TSoftObjectPtr<UNSRunConfig> CurrentRunConfig;
+	
+	// 서버가 선택한 현재 스테이지 데이터. 클라이언트는 이 값이 복제된 뒤 로드 시작.
+	UPROPERTY(ReplicatedUsing = OnRep_RunDataConfig, BlueprintReadOnly, Category = "Run|Data")
+	TSoftObjectPtr<UNSLevelConfig> CurrentLevelConfig;
+	
+	void SetRunDataConfig(TSoftObjectPtr<UNSRunConfig> InRunConfig, TSoftObjectPtr<UNSLevelConfig> InLevelConfig);
+	bool HasRunDataConfig() const;
+	
+	UFUNCTION()
+	void OnRep_RunDataConfig();
 	
 	// UI가 바인딩해서 열고/닫고 전환
 	UPROPERTY(BlueprintAssignable, Category="RunEnd")

@@ -39,6 +39,7 @@
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/Cheat/NSCheatManager.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
@@ -380,6 +381,60 @@ void ANSPlayerController::BindRunEndPhase()
 	
 	//이미 Result상태라면 바인딩 직후 동기화
 	HandleRunEndPhaseChanged();
+}
+
+void ANSPlayerController::BindRunDataConfig()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState = World->GetGameState<ANSRunGameState>();
+	if (!IsValid(RunGameState))
+	{
+		return;
+	}
+	
+	CachedRunGameState = RunGameState;
+	
+	RunGameState->OnRunDataConfigChanged.RemoveDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	RunGameState->OnRunDataConfigChanged.AddDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	
+	// 이미 복제된 상태에서 바인딩될 수 잇으므로 즉시 한 번 확인.
+	HandleRunDataConfigChanged();
+}
+
+void ANSPlayerController::HandleRunDataConfigChanged()
+{
+	if (!IsLocalController() || !IsValid(CachedRunGameState))
+	{
+		return;
+	}
+	
+	// RunGameState에 아직 데이터 구성이 복제되지 않았다면 클라이언트 로드를 시작 안함.
+	if (!CachedRunGameState->HasRunDataConfig())
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		HandleClientRunDataReady();
+		return;
+	}
+	
+	Data->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleClientRunDataReady);
+	Data->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleClientRunDataReady);
+	
+	Data->EnterRun(CachedRunGameState->CurrentRunConfig, CachedRunGameState->CurrentLevelConfig);
 }
 
 void ANSPlayerController::HandleRunEndPhaseChanged()
@@ -865,6 +920,7 @@ void ANSPlayerController::BeginPlay()
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
+	BindRunDataConfig();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
 	//UpdateSkillUIFromCurrentCharacter();
@@ -1101,37 +1157,44 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 	{
 		INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
 	}
-
-	//서버 인런 데이터 로드
-	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
-	{
-		Data->EnterRun();
-	}
-
-	//각 클라이언트에 인런 데이터 로드 지시
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
-		{
-			PC->Client_NotifyRunStarted();
-		}
-	}
 }
 
-void ANSPlayerController::Client_NotifyRunStarted_Implementation()
+void ANSPlayerController::Client_NotifyRunStarted_Implementation(
+	const TSoftObjectPtr<UNSRunConfig>& RunConfig,
+	const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
 {
 	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
 	{
-		Data->EnterRun();
+		// 리슨 서버 호스트는 서버 선로딩으로 이미 Run 데이터가 준비돼 있을 수 있으므로 중복 로드를 피함.
+		if (Data->IsRunReady() && Data->GetCurrentRunLevelConfig() == LevelConfig.Get())
+		{
+			HandleClientRunDataReady();
+			return;
+		}
+		
+		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+		Data->OnRunGameDataReady.AddDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+		Data->EnterRun(RunConfig, LevelConfig);
+		return;
 	}
-	if (UNSUIManagerSubsystem* UIManager =
+	
+	HandleClientRunDataReady();
+}
+
+void ANSPlayerController::HandleClientRunDataReady()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+	}
+	
+	if (UNSUIManagerSubsystem* UIManager = 
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
 	{
 		UIManager->ResetRunResultStats();
 		UIManager->ShowHUD();
 		UIManager->ShowInRunGoods();
 	}
-
 }
 
 void ANSPlayerController::Client_NotifyReturnToHub_Implementation()
