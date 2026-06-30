@@ -41,8 +41,15 @@ void UNSAugmentSelectionComponent::EnqueueOffer(FGameplayTag RewardTriggerTag)
 		return;
 	}
 	
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
+	{
+		NS_OBJ_LOG(LogNS, Warning, "증강 데이터가 준비되지 않아 오퍼를 대기열에 추가할 수 없습니다.");
+		return;
+	}
+	
 	FNSAugmentRarityRule RarityRule;
-	if (!TryFindRarityRule(RewardTriggerTag, RarityRule))
+	if (!TryFindRarityRule(Data, RewardTriggerTag, RarityRule))
 	{
 		return;
 	}
@@ -198,9 +205,9 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 		return;
 	}
 	
-	if (!IsValid(AugmentDefinitionTable))
+	if (!IsValid(Data->GetCurrentAugmentDefinitionTable()))
 	{
-		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
+		NS_OBJ_LOG(LogNS, Warning, "현재 RunConfig의 증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
 	}
 	
@@ -220,7 +227,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 	while (!RewardTriggerQueue.IsEmpty())
 	{
 		FNSAugmentRarityRule RarityRule;
-		if (!TryFindRarityRule(RewardTriggerQueue[0], RarityRule))
+		if (!TryFindRarityRule(Data, RewardTriggerQueue[0], RarityRule))
 		{
 			return;
 		}
@@ -258,8 +265,10 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 
 void UNSAugmentSelectionComponent::ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const
 {
+	UDataTable* AugmentDefinitionTable = Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
 	if (!IsValid(AugmentDefinitionTable))
 	{
+		NS_OBJ_LOG(LogNS, Warning, "현재 RunConfig의 증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
 	}
 	
@@ -514,13 +523,18 @@ void UNSAugmentSelectionComponent::Client_AutoOpenPanel_Implementation()
 }
 
 bool UNSAugmentSelectionComponent::TryFindRarityRule(
-	const FGameplayTag& RewardTriggerTag, FNSAugmentRarityRule& OutRule) const
+	UNSDataSubsystem* Data,
+	const FGameplayTag& RewardTriggerTag, 
+	FNSAugmentRarityRule& OutRule) const
 {
 	OutRule = FNSAugmentRarityRule();
 	
-	if (!IsValid(AugmentRarityRuleSet))
+	const UNSAugmentRarityRuleSet* RarityRuleSet =
+		Data ? Data->GetCurrentAugmentRarityRuleSet() : nullptr;
+	
+	if (!IsValid(RarityRuleSet))
 	{
-		NS_OBJ_LOG(LogNS, Warning, "증강 희귀도 규칙 세트가 설정되지 않았습니다.");
+		NS_OBJ_LOG(LogNS, Warning, "현재 RunConfig의 증강 희귀도 규칙 세트가 설정되지 않았습니다.");
 		return false;
 	}
 	
@@ -529,7 +543,7 @@ bool UNSAugmentSelectionComponent::TryFindRarityRule(
 		return false;
 	}
 	
-	for (const FNSAugmentRarityRule& Rule : AugmentRarityRuleSet->RarityRules)
+	for (const FNSAugmentRarityRule& Rule : RarityRuleSet->RarityRules)
 	{
 		if (Rule.RewardTriggerTag == RewardTriggerTag)
 		{
@@ -661,7 +675,14 @@ bool UNSAugmentSelectionComponent::TryFindCandidateByDefinitionId(
 {
 	OutCandidate = FNSAugmentCandidate();
 	
-	if (!IsValid(AugmentDefinitionTable) || !DefId.IsValid())
+	UDataTable* AugmentDefinitionTable = Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
+	if (!IsValid(AugmentDefinitionTable))
+	{
+		NS_OBJ_LOG(LogNS, Warning, "현재 RunConfig의 증강 효과 정의 DataTable이 설정되지 않았습니다.");
+		return false;
+	}
+	
+	if (!DefId.IsValid())
 	{
 		return false;
 	}
@@ -760,9 +781,10 @@ void UNSAugmentSelectionComponent::BuildRarityBuckets(
 {
 	OutByRarity.Reset();
 	
-	if (!Data || !IsValid(AugmentDefinitionTable))
+	UDataTable* AugmentDefinitionTable = Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
+	if (!IsValid(AugmentDefinitionTable))
 	{
-		NS_OBJ_LOG(LogNS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
+		NS_OBJ_LOG(LogNS, Warning, "현재 RunConfig의 증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
 	}
 	
