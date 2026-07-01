@@ -5,7 +5,7 @@
 
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
-#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
@@ -154,7 +154,7 @@ AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorAct
 		return nullptr;
 	}
 
-	if (ANSBaseDroneAI* AttackingDrone = Cast<ANSBaseDroneAI>(InstigatorActor))
+	if (ANSCompanionDroneAI* AttackingDrone = Cast<ANSCompanionDroneAI>(InstigatorActor))
 	{
 		if (AActor* OwnerPlayer = AttackingDrone->GetOwnerPlayer())
 		{
