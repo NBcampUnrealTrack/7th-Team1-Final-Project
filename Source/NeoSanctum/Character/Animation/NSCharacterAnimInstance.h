@@ -236,17 +236,17 @@ protected:
 	float RunSpeedThreshold = 650.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion")
-	float HeavyLandSpeedThreshold = 900.f;
+	float HeavyLandSpeedThreshold = 700.f;
 
 	// 자연스러운 애니메이션 재생을 위한 상태 유지 시간 (예를들면 Air -> Land 된 후 Land 상태를 얼마나 유지할 것인지)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
 	float LandStateHoldTime = 0.2f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
-	float StartStateHoldTime = 0.2f;
+	float StartStateHoldTime = 0.3f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "0.0"))
-	float PivotStateHoldTime = 0.2f;
+	float PivotStateHoldTime = 0.4f;
 
 	// 피벗과 회전 상태 전환 판정을 위한 값들
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Locomotion", meta = (ClampMin = "-1.0", ClampMax = "1.0"))
