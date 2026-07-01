@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -22,17 +23,17 @@ class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
 
 UCLASS(Abstract)
-class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface,
-                                             public IGenericTeamAgentInterface
+class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, 
+											 public IAbilitySystemInterface,
+                                             public IGenericTeamAgentInterface,
+											 public INSEnemyAgent
 {
 	GENERATED_BODY()
 
 public:
 	ANSEnemyCharacterBase();
 	virtual void BeginPlay() override;
-
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
-
+	
 	/*
 	 * EnemyCharacter가 타겟팅 혹은 피격되었을 때 진영을 알기 위한 TeamId 조회
 	 */
@@ -43,21 +44,28 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+	virtual UNSEnemyData* GetEnemyData() const override { return EnemyData; }
+	
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
+
+	// Enemy 공통 Interface에서 사용하는 주 메시 반환 함수
+	virtual USkeletalMeshComponent* GetEnemyMesh() const override { return GetMesh(); }
+	
+	// 현재 실행 중인 공격 Row를 저장하는 함수
+	virtual void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow) override;
+
+	// 현재 실행 중인 공격 Row를 반환하는 함수
+	virtual const FNSEnemyAttackRow* GetCurrentAttackRow() const override;
+
+	// 현재 실행 중인 공격 Row를 초기화하는 함수
+	virtual void ClearCurrentAttackRow() override;
+	
+	// Enemy 공통 Interface에서 공격, 조준, Trace 기준으로 사용할 위치를 반환하는 함수
+	virtual FVector GetAimLocation() const override;
 
 	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
-	
-public:
-	// 현재 실행 중인 공격 Row를 저장하는 함수
-	void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow);
-
-	// 현재 실행 중인 공격 Row를 반환하는 함수
-	const FNSEnemyAttackRow* GetCurrentAttackRow() const;
-
-	// 현재 실행 중인 공격 Row를 초기화하는 함수
-	void ClearCurrentAttackRow();
 	
 private:
 	// 현재 실행 중인 공격 Row
@@ -195,7 +203,7 @@ public:
 
 	// 현재 몬스터가 피격 경직 행동을 수행 중인지 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Combat|Hit Reaction")
-	bool IsHitReacting() const { return bIsHitReacting; }
+	virtual bool IsHitReacting() const override { return bIsHitReacting; }
 
 	// 피격 경직 Ability 종료 후 이동과 Behavior Tree 행동을 복구하는 함수
 	void FinishHitReaction();

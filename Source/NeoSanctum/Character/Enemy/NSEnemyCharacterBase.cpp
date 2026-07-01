@@ -113,6 +113,17 @@ void ANSEnemyCharacterBase::ClearCurrentAttackRow()
 	bHasCurrentAttackRow = false;
 }
 
+FVector ANSEnemyCharacterBase::GetAimLocation() const
+{
+	const USkeletalMeshComponent* MeshComponent = GetMesh();
+	if (MeshComponent)
+	{
+		return MeshComponent->Bounds.Origin;
+	}
+
+	return GetActorLocation();
+}
+
 void ANSEnemyCharacterBase::Die()
 {
 	if (bIsDead) return;
