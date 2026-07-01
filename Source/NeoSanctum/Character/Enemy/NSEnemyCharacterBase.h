@@ -22,6 +22,7 @@ class ANSEnemyWeaponBase;
 class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
+class UNSEnemyPhaseComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, 
@@ -87,6 +88,10 @@ protected:
 	// Enemy의 현재 공격 상태를 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyCombatComponent> CombatComponent;
+	
+	// Enemy의 Phase 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyPhaseComponent> PhaseComponent;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

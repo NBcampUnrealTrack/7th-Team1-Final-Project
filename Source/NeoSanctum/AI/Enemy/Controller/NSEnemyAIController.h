@@ -14,6 +14,7 @@ class UNSEnemyData;
 class ANSEnemyCharacterBase;
 class UStateTreeAIComponent;
 class INSEnemyAgent;
+class UNSEnemyPhaseComponent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 struct FAbilityEndedData;
@@ -408,31 +409,10 @@ private:
 	// 현재 체력 비율 기준으로 Enemy Phase 변경 여부를 확인하는 함수
 	void UpdateEnemyPhase();
 
-	// 새 Phase에 진입할 때 PhaseTag, TransitionGA, Pattern Lock을 적용하는 함수
-	void EnterEnemyPhase(const FNSEnemyPhaseRow& NewPhaseRow, bool bPlayTransition);
-
-	// Phase Transition GA가 끝났을 때 Pattern Lock을 해제하는 함수
-	void OnPhaseTransitionAbilityEnded(const FAbilityEndedData& AbilityEndedData);
-
 	// Phase 전환 중 공격 패턴 선택을 막고 있는지 확인하는 함수
-	bool IsPhasePatternLocked() const { return bPhasePatternLocked; }
+	bool IsPhasePatternLocked() const;
 
 private:
-	// 현재 적용된 PhaseId
-	FName CurrentPhaseId = NAME_None;
-
-	// 현재 적용된 PhaseTag
-	FGameplayTag CurrentPhaseTag;
-
-	// 최초 Phase 초기화가 끝났는지 여부
-	bool bPhaseInitialized = false;
-
-	// Phase 전환 중 공격 패턴 선택을 막는지 여부
-	bool bPhasePatternLocked = false;
-
-	// 현재 실행 중인 Phase Transition GA
-	TSubclassOf<UGameplayAbility> CurrentPhaseTransitionGA;
-
 	// Phase Lock 상태를 저장할 Blackboard 키 이름
 	FName PhasePatternLockedKey = TEXT("bPhasePatternLocked");
 
@@ -462,5 +442,11 @@ private:
 
 	// 현재 Possess 중인 Enemy가 피격 경직 상태인지 반환하는 함수
 	bool IsControlledEnemyHitReacting() const;
+	
+	// 현재 Possess 중인 Enemy의 Phase Component를 반환하는 함수
+	UNSEnemyPhaseComponent* GetEnemyPhaseComponent() const;
+
+	// Phase Component 상태를 Blackboard에 반영하는 함수
+	void SyncPhaseBlackboard(const UNSEnemyPhaseComponent* PhaseComponent);
 #pragma endregion
 };
