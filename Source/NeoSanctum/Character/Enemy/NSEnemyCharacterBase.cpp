@@ -216,6 +216,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	if (!EnemyData) return;
 	// 스탯은 최초, 재사용할 때 항상 초기화
 	// GAS 데이터 테이블 기반 스탯 초기화
+	EnemyData->InvalidateCachedRows();
 	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
 	{
 		FName RowName = EnemyData->EnemyId.GetTagName();

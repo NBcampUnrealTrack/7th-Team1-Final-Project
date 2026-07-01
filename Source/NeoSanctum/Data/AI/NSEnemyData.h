@@ -408,12 +408,6 @@ public:
 	// 현재 EnemyId와 일치하는 공격 Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyAttackRow*>& GetAttackRows() const;
 	
-	// AttackId와 일치하는 공격 수치 Row를 AttackTable에서 찾는 함수
-	const FNSEnemyAttackRow* FindAttackRow(FName AttackId) const;
-
-	// AttackTable Row가 없을 때도 기본 수치로 동작하도록 공격 수치 Row를 반환하는 함수
-	FNSEnemyAttackRow ResolveAttackRow(FName AttackId) const;
-	
 	// 현재 EnemyId와 일치하는 Phase Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyPhaseRow*>& GetPhaseRows() const;
 	
@@ -421,6 +415,12 @@ public:
 		// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
 		virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 	#endif
+
+	// 현재 체력 비율에 맞는 Phase Row를 반환하는 함수. Phase Row가 없으면 nullptr를 반환
+	const FNSEnemyPhaseRow* FindPhaseRowByHealthRatio(float HealthRatio) const;
+
+	// 현재 체력 비율 기준으로 AttackId가 사용 가능한지 확인하는 함수. Phase Row가 없으면 모든 공격을 허용함
+	bool IsAttackAllowedByPhase(FName AttackId, float HealthRatio) const;
 
 private:
 	// AttackTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시

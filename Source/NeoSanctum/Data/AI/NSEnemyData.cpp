@@ -81,7 +81,7 @@ void UNSEnemyData::CachePhaseRows() const
 	CachedPhaseRows.Sort(
 		[](const FNSEnemyPhaseRow& A, const FNSEnemyPhaseRow& B)
 		{
-			return A.HPThreshold > B.HPThreshold;
+			return A.HPThreshold < B.HPThreshold;
 		});
 }
 
@@ -100,39 +100,6 @@ const TArray<const FNSEnemyAttackRow*>& UNSEnemyData::GetAttackRows() const
 	return CachedAttackRows;
 }
 
-const FNSEnemyAttackRow* UNSEnemyData::FindAttackRow(FName AttackId) const
-{
-	if (AttackId.IsNone())
-	{
-		return nullptr;
-	}
-
-	CacheAttackRows();
-
-	for (const FNSEnemyAttackRow* Row : CachedAttackRows)
-	{
-		if (Row && Row->AttackId == AttackId)
-		{
-			return Row;
-		}
-	}
-
-	return nullptr;
-}
-
-FNSEnemyAttackRow UNSEnemyData::ResolveAttackRow(FName AttackId) const
-{
-	if (const FNSEnemyAttackRow* Row = FindAttackRow(AttackId))
-	{
-		return *Row;
-	}
-
-	FNSEnemyAttackRow DefaultRow;
-	DefaultRow.EnemyId = EnemyId;
-	DefaultRow.AttackId = AttackId;
-	return DefaultRow;
-}
-
 const TArray<const FNSEnemyPhaseRow*>& UNSEnemyData::GetPhaseRows() const
 {
 	CachePhaseRows();
@@ -147,3 +114,44 @@ void UNSEnemyData::PostEditChangeProperty(FPropertyChangedEvent& PropertyChanged
 	InvalidateCachedRows();
 }
 #endif
+
+const FNSEnemyPhaseRow* UNSEnemyData::FindPhaseRowByHealthRatio(float HealthRatio) const
+{
+	const TArray<const FNSEnemyPhaseRow*>& PhaseRows = GetPhaseRows();
+
+	if (PhaseRows.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	const float ClampedHealthRatio = FMath::Clamp(HealthRatio, 0.0f, 1.0f);
+
+	for (const FNSEnemyPhaseRow* PhaseRow : PhaseRows)
+	{
+		if (PhaseRow && ClampedHealthRatio <= PhaseRow->HPThreshold)
+		{
+			return PhaseRow;
+		}
+	}
+
+	return PhaseRows.Last();
+}
+
+bool UNSEnemyData::IsAttackAllowedByPhase(FName AttackId, float HealthRatio) const
+{
+	if (AttackId.IsNone())
+	{
+		return false;
+	}
+
+	const FNSEnemyPhaseRow* PhaseRow = FindPhaseRowByHealthRatio(HealthRatio);
+
+	// Phase Row가 없으면 Phase 시스템을 사용하지 않는 몬스터로 보고 모든 공격을 허용함
+	if (!PhaseRow)
+	{
+		return true;
+	}
+
+	return PhaseRow->AttackIds.Contains(AttackId);
+}
+

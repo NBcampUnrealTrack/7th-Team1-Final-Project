@@ -389,4 +389,8 @@ protected:
 	float CoverAttackAimZOffsetRatio = 0.15f;
 
 #pragma endregion
+	
+private:
+	// 현재 몬스터의 Health / MaxHealth 기준 체력 비율을 반환하는 함수
+	float GetControlledEnemyHealthRatio() const;
 };

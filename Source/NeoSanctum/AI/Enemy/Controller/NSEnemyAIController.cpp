@@ -14,6 +14,7 @@
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
@@ -352,13 +353,29 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 	const float Distance =
 		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
 	TArray<const FNSEnemyAttackRow*> Candidates;
 	int32 BestPriority = TNumericLimits<int32>::Lowest();
 
 	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (!AttackRow ||
-			!CanUseAttackRow(*AttackRow, TargetActor, AttackActor, Distance, bHasDirectLineOfSight))
+		if (!AttackRow)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (!CanUseAttackRow(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
 		{
 			continue;
 		}
@@ -1055,12 +1072,12 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 
 bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
 {
-	if (!bAttackDestructibleCover || !IsValidLivingTarget(TargetActor))
+	if (!TargetActor)
 	{
 		return false;
 	}
 
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 	if (!Enemy)
 	{
 		return false;
@@ -1087,9 +1104,16 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 		Enemy->GetActorLocation(),
 		TargetActor->GetActorLocation());
 
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
 	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
 		if (!AttackRow || !AttackRow->AbilityClass)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
 		{
 			continue;
 		}
@@ -1467,15 +1491,26 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 		Enemy->GetActorLocation(),
 		TargetActor->GetActorLocation());
 
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
 	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (AttackRow &&
-			CanUseAttackRow(
-				*AttackRow,
-				TargetActor,
-				AttackActor,
-				Distance,
-				bHasDirectLineOfSight))
+		if (!AttackRow)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (CanUseAttackRow(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
 		{
 			return true;
 		}
@@ -1648,4 +1683,32 @@ bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
 
 	return AttackRow.AttackType == ENSEnemyAttackType::Projectile ||
 		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
+}
+
+float ANSEnemyAIController::GetControlledEnemyHealthRatio() const
+{
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (!Enemy)
+	{
+		return 1.0f;
+	}
+
+	const UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return 1.0f;
+	}
+
+	const UNSMonsterAttributeSet* MonsterAttributes =
+		ASC->GetSet<UNSMonsterAttributeSet>();
+
+	if (!MonsterAttributes)
+	{
+		return 1.0f;
+	}
+
+	const float MaxHealth = FMath::Max(MonsterAttributes->GetMaxHealth(), 1.0f);
+	const float Health = FMath::Clamp(MonsterAttributes->GetHealth(), 0.0f, MaxHealth);
+
+	return Health / MaxHealth;
 }
