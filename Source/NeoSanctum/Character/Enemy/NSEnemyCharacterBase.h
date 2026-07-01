@@ -26,6 +26,7 @@ class UNSHitReactionComponent;
 class UNSEnemyPhaseComponent;
 class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
+class UNSEnemyThreatComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, 
@@ -116,6 +117,10 @@ protected:
 	// Enemy의 공격 대상 판정과 엄폐물 Trace를 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyTargetComponent> TargetComponent;
+	
+	// Enemy의 Threat 기록과 어그로 타겟 선택을 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyThreatComponent> ThreatComponent;
 	
 	// 디졸브 효과 컴포넌트
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
