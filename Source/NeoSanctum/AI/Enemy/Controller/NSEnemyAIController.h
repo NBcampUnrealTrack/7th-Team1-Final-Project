@@ -3,8 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
-#include "GameplayTagContainer.h"
+#include "NSEnemyControllerBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
@@ -12,12 +11,8 @@
 class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
-class UStateTreeAIComponent;
-class INSEnemyAgent;
-class UNSEnemyPhaseComponent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
-struct FAbilityEndedData;
 
 // 타임스탬프 데미지
 struct FNSThreatDamageSample
@@ -42,7 +37,7 @@ struct FNSTargetThreatRecord
 };
 
 UCLASS()
-class NEOSANCTUM_API ANSEnemyAIController : public AAIController
+class NEOSANCTUM_API ANSEnemyAIController : public ANSEnemyControllerBase
 {
 	GENERATED_BODY()
 
@@ -99,9 +94,6 @@ protected:
 private:
 	/* 타겟 액터 키 이름 */
 	FName TargetActorKey = TEXT("TargetActor");
-
-	UPROPERTY(Transient)
-	TObjectPtr<UBlackboardComponent> CachedBBComp;
 
 	/* AttackId별 마지막 사용 시간 */
 	TMap<FName, float> LastAttackTimeById;
@@ -398,55 +390,5 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack", meta = (ClampMin = "0.0"))
 	float CoverAttackAimZOffsetRatio = 0.15f;
 
-#pragma endregion
-#pragma region 페이즈 전환
-
-public:
-	// 현재 몬스터의 Health / MaxHealth 기준 체력 비율을 반환하는 함수
-	float GetControlledEnemyHealthRatio() const;
-
-private:
-	// 현재 체력 비율 기준으로 Enemy Phase 변경 여부를 확인하는 함수
-	void UpdateEnemyPhase();
-
-	// Phase 전환 중 공격 패턴 선택을 막고 있는지 확인하는 함수
-	bool IsPhasePatternLocked() const;
-
-private:
-	// Phase Lock 상태를 저장할 Blackboard 키 이름
-	FName PhasePatternLockedKey = TEXT("bPhasePatternLocked");
-
-	// 현재 PhaseId를 저장할 Blackboard 키 이름
-	FName CurrentPhaseIdKey = TEXT("CurrentPhaseId");
-
-#pragma endregion
-#pragma region State Tree
-protected:
-	// StateTree 방식 Enemy가 사용할 AI Brain Component
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStateTreeAIComponent> StateTreeComponent;
-
-	// EnemyData의 BrainType에 맞는 AI Brain을 시작하는 함수
-	void StartEnemyBrain(const UNSEnemyData* EnemyData);
-
-	// 현재 실행 중인 AI Brain을 정지하는 함수
-	void StopEnemyBrain(const FString& Reason);
-#pragma endregion
-#pragma region Enemy 공통 헬퍼
-private:
-	// 현재 Possess 중인 Pawn을 Enemy 공통 Interface로 반환하는 함수
-	const INSEnemyAgent* GetControlledEnemyAgent() const;
-
-	// 현재 Possess 중인 Enemy의 DataAsset을 반환하는 함수
-	const UNSEnemyData* GetControlledEnemyData() const;
-
-	// 현재 Possess 중인 Enemy가 피격 경직 상태인지 반환하는 함수
-	bool IsControlledEnemyHitReacting() const;
-	
-	// 현재 Possess 중인 Enemy의 Phase Component를 반환하는 함수
-	UNSEnemyPhaseComponent* GetEnemyPhaseComponent() const;
-
-	// Phase Component 상태를 Blackboard에 반영하는 함수
-	void SyncPhaseBlackboard(const UNSEnemyPhaseComponent* PhaseComponent);
 #pragma endregion
 };

@@ -7,7 +7,6 @@
 #include "AttributeSet.h"
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Components/StateTreeAIComponent.h"
 #include "EnvironmentQuery/EnvQuery.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
@@ -16,13 +15,13 @@
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
-#include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Damage.h"
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AISense_Sight.h"
+#include "NeoSanctum/AI/Enemy/Controller/NSEnemyControllerBase.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
@@ -31,10 +30,8 @@ ANSEnemyAIController::ANSEnemyAIController()
 	PrimaryActorTick.TickInterval = 0.1f;
 
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
-	StateTreeComponent = CreateDefaultSubobject<UStateTreeAIComponent>(TEXT("StateTreeComponent"));
 
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSEnemyAIController::OnTargetPerceptionUpdated);
-	StateTreeComponent->SetStartLogicAutomatically(false);
 }
 
 void ANSEnemyAIController::Tick(float DeltaTime)
@@ -1760,142 +1757,4 @@ bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
 
 	return AttackRow.AttackType == ENSEnemyAttackType::Projectile ||
 		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
-}
-
-float ANSEnemyAIController::GetControlledEnemyHealthRatio() const
-{
-	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn());
-	if (!ASI)
-	{
-		return 1.0f;
-	}
-
-	const UAbilitySystemComponent* ASC = ASI->GetAbilitySystemComponent();
-	if (!ASC)
-	{
-		return 1.0f;
-	}
-
-	const UNSMonsterAttributeSet* MonsterAttributes = ASC->GetSet<UNSMonsterAttributeSet>();
-
-	if (!MonsterAttributes)
-	{
-		return 1.0f;
-	}
-
-	const float MaxHealth = FMath::Max(MonsterAttributes->GetMaxHealth(), 1.0f);
-	const float Health = FMath::Clamp(MonsterAttributes->GetHealth(), 0.0f, MaxHealth);
-
-	return Health / MaxHealth;
-}
-
-void ANSEnemyAIController::UpdateEnemyPhase()
-{
-	UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent();
-	if (!PhaseComponent)
-	{
-		SyncPhaseBlackboard(nullptr);
-		return;
-	}
-
-	PhaseComponent->UpdatePhase(GetControlledEnemyHealthRatio());
-	SyncPhaseBlackboard(PhaseComponent);
-}
-
-bool ANSEnemyAIController::IsPhasePatternLocked() const
-{
-	const UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent();
-	return PhaseComponent && PhaseComponent->IsPatternLocked();
-}
-
-void ANSEnemyAIController::StartEnemyBrain(const UNSEnemyData* EnemyData)
-{
-	if (!EnemyData)
-	{
-		return;
-	}
-
-	StopEnemyBrain(TEXT("Restart Enemy Brain"));
-
-	switch (EnemyData->BrainType)
-	{
-	case ENSEnemyBrainType::BehaviorTree:
-	{
-		if (!EnemyData->BehaviorTree)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("BehaviorTree 타입인데, 비어 있음."));
-			return;
-		}
-
-		RunBehaviorTree(EnemyData->BehaviorTree);
-		CachedBBComp = GetBlackboardComponent();
-		break;
-	}
-
-	case ENSEnemyBrainType::StateTree:
-	{
-		if (!StateTreeComponent || !EnemyData->StateTree)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("StateTree 타입인데, 비어 있음."));
-			return;
-		}
-
-		BrainComponent = StateTreeComponent;
-		StateTreeComponent->SetStateTree(EnemyData->StateTree);
-		StateTreeComponent->StartLogic();
-
-		CachedBBComp = GetBlackboardComponent();
-		break;
-	}
-	}
-}
-
-void ANSEnemyAIController::StopEnemyBrain(const FString& Reason)
-{
-	if (BrainComponent)
-	{
-		BrainComponent->StopLogic(Reason);
-	}
-}
-
-const INSEnemyAgent* ANSEnemyAIController::GetControlledEnemyAgent() const
-{
-	return Cast<INSEnemyAgent>(GetPawn());
-}
-
-const UNSEnemyData* ANSEnemyAIController::GetControlledEnemyData() const
-{
-	const INSEnemyAgent* EnemyAgent = GetControlledEnemyAgent();
-	return EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
-}
-
-bool ANSEnemyAIController::IsControlledEnemyHitReacting() const
-{
-	const INSEnemyAgent* EnemyAgent = GetControlledEnemyAgent();
-	return EnemyAgent && EnemyAgent->IsHitReacting();
-}
-
-UNSEnemyPhaseComponent* ANSEnemyAIController::GetEnemyPhaseComponent() const
-{
-	const APawn* ControlledPawn = GetPawn();
-	return ControlledPawn
-		? ControlledPawn->FindComponentByClass<UNSEnemyPhaseComponent>()
-		: nullptr;
-}
-
-void ANSEnemyAIController::SyncPhaseBlackboard(
-	const UNSEnemyPhaseComponent* PhaseComponent)
-{
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	CachedBBComp->SetValueAsBool(
-		PhasePatternLockedKey,
-		PhaseComponent && PhaseComponent->IsPatternLocked());
-
-	CachedBBComp->SetValueAsName(
-		CurrentPhaseIdKey,
-		PhaseComponent ? PhaseComponent->GetCurrentPhaseId() : NAME_None);
 }
