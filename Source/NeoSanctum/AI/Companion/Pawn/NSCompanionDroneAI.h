@@ -7,6 +7,8 @@
 #include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
 #include "NSCompanionDroneAI.generated.h"
 
+class UNSCompanionAttributeSet;
+
 UCLASS()
 class NEOSANCTUM_API ANSCompanionDroneAI : public ANSBaseDroneAI
 {
@@ -86,5 +88,16 @@ private:
 	
 	FTimerHandle CurrencyVacuumTimer;
 	
+#pragma endregion
+	
+#pragma region CompanionGAS
+public:
+	// 컴패니언 전용 어트리뷰트 세트 접근자
+	FORCEINLINE UNSCompanionAttributeSet* GetCompanionAttributeSet() const { return CompanionAttributeSet; }
+
+protected:
+	// 컴패니언 업그레이드 스탯이 담기는 어트리뷰트 세트 (체력 없음)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
+	TObjectPtr<UNSCompanionAttributeSet> CompanionAttributeSet;
 #pragma endregion
 };

@@ -7,6 +7,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 
 
@@ -16,6 +17,7 @@ ANSCompanionDroneAI::ANSCompanionDroneAI()
 	
 	TeamId = ETeamId::Player;
 	AIControllerClass = ANSDroneAIController::StaticClass();
+	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
 }
 
 void ANSCompanionDroneAI::PossessedBy(AController* NewController)
@@ -47,7 +49,10 @@ void ANSCompanionDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 	if (!HasAuthority() || !CurrentDefinition) return;
 	
 	// 현재 업그레이드 정보 받아오기 순회
-	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CurrentDefinition->UpgradeNodes)
+	const UNSCompanionDefinition* CompDef = Cast<UNSCompanionDefinition>(CurrentDefinition);
+	if (!CompDef) return;
+	
+	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CompDef->UpgradeNodes)
 	{
 		// 업그레이드가 존재하는 노드 태그 찾기
 		if (CurrentUpgradeNode.NodeTag != NodeTag) continue;
