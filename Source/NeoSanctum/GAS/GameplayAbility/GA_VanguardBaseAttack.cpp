@@ -1,0 +1,246 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#include "GA_VanguardBaseAttack.h"
+
+#include "AbilitySystemComponent.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
+
+UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
+{
+	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+
+	FGameplayTagContainer AssetTags = GetAssetTags();
+	AssetTags.AddTag(NSGameplayTags::Ability_Vanguard_BaseAttack);
+	SetAssetTags(AssetTags);
+
+	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
+	// 한 사이클이 끝나기 전에 재실행 방지
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Attacking);
+	// 대쉬공격 사이클이 끝나기 전에 재실행 방지
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+}
+
+void UGA_VanguardBaseAttack::ActivateAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
+{
+	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	// 입력 시점 상태 기준 기본공격 파생 공격 결정
+	ActiveAttackMode = SelectAttackMode(ActorInfo);
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::None ||
+		!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	AddVanguardStateTags();
+
+	switch (ActiveAttackMode)
+	{
+	case ENSVanguardBaseAttackMode::GroundCombo:
+		StartGroundCombo();
+		break;
+	case ENSVanguardBaseAttackMode::AirSlam:
+		StartAirSlam();
+		break;
+	case ENSVanguardBaseAttackMode::DashCharge:
+		StartDashCharge();
+		break;
+	default:
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		break;
+	}
+}
+
+void UGA_VanguardBaseAttack::InputReleased(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo)
+{
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge)
+	{
+		FinishDashCharge();
+	}
+}
+
+void UGA_VanguardBaseAttack::EndAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
+{
+	RemoveVanguardStateTags();
+	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
+	DashChargeStartTime = 0.0;
+
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+ENSVanguardBaseAttackMode UGA_VanguardBaseAttack::SelectAttackMode(
+	const FGameplayAbilityActorInfo* ActorInfo) const
+{
+	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
+	{
+		return ENSVanguardBaseAttackMode::None;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
+	const UCharacterMovementComponent* MovementComponent =
+		Character ? Character->GetCharacterMovement() : nullptr;
+
+	// 공중에서는 지상 콤보보다 내려찍기 공격 우선
+	if (MovementComponent && MovementComponent->IsFalling())
+	{
+		return ENSVanguardBaseAttackMode::AirSlam;
+	}
+
+	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	// 대쉬 직후 입력 창 안에서는 대쉬 차지 공격으로 전환
+	if (ASC && ASC->HasMatchingGameplayTag(NSGameplayTags::State_DashAttackWindow))
+	{
+		return ENSVanguardBaseAttackMode::DashCharge;
+	}
+
+	return ENSVanguardBaseAttackMode::GroundCombo;
+}
+
+void UGA_VanguardBaseAttack::StartGroundCombo()
+{
+	if (bLogVanguardAttackMode)
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Log,
+			"뱅가드 콤보어택 모드 선택");
+	}
+
+	FinishInstantMode();
+}
+
+void UGA_VanguardBaseAttack::StartAirSlam()
+{
+	if (bLogVanguardAttackMode)
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Log,
+			"뱅가드 공중 공격 모드 선택");
+	}
+
+	FinishInstantMode();
+}
+
+void UGA_VanguardBaseAttack::StartDashCharge()
+{
+	// 대쉬 차지 진입 시 대쉬공격 입력 창 소비
+	ConsumeDashAttackWindow();
+
+	if (bLogVanguardAttackMode)
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Log,
+			"뱅가드 대쉬공격 차지 시작");
+	}
+
+	// 릴리즈 시 차지 비율 계산 기준 시각
+	DashChargeStartTime = FPlatformTime::Seconds();
+}
+
+void UGA_VanguardBaseAttack::FinishDashCharge()
+{
+	if (ActiveAttackMode != ENSVanguardBaseAttackMode::DashCharge)
+	{
+		return;
+	}
+
+	// 현재는 로그 확인용 계산. 후속 단계에서 거리/데미지 배율에 사용
+	const float ChargeElapsedTime = GetDashChargeElapsedTime();
+	const float ChargeRatio = FMath::Clamp(
+		ChargeElapsedTime / FMath::Max(MaxDashChargeTime, 0.01f),
+		0.0f,
+		1.0f);
+
+	if (bLogVanguardAttackMode)
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Log,
+			"대쉬공격 차징 끝. 차징 시간 = {ChargeElapsedTime}, 차징 퍼센트 = {ChargeRatio}",
+			("ChargeElapsedTime", ChargeElapsedTime),
+			("ChargeRatio", ChargeRatio));
+	}
+
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false);
+}
+
+void UGA_VanguardBaseAttack::FinishInstantMode()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false);
+}
+
+void UGA_VanguardBaseAttack::AddVanguardStateTags()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		return;
+	}
+
+	// 다른 Vanguard 기본공격 재진입 방지용 공통 공격 상태태그
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge)
+	{
+		// 차지 중 애니메이션/이펙트 분기용 별도 상태태그
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+	}
+}
+
+void UGA_VanguardBaseAttack::RemoveVanguardStateTags()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		return;
+	}
+
+	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
+	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+}
+
+void UGA_VanguardBaseAttack::ConsumeDashAttackWindow()
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
+	}
+}
+
+float UGA_VanguardBaseAttack::GetDashChargeElapsedTime() const
+{
+	if (DashChargeStartTime <= 0.0)
+	{
+		return 0.0f;
+	}
+
+	return static_cast<float>(FPlatformTime::Seconds() - DashChargeStartTime);
+}

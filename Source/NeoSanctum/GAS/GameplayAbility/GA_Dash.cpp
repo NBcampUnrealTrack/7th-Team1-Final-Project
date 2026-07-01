@@ -153,6 +153,12 @@ void UGA_Dash::EndAbility(
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
 		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Common_Dash);
 	}
+
+	if (!bWasCancelled)
+	{
+		// 정상 종료 대쉬만 후속 대쉬공격으로 연결
+		AddDashAttackWindow();
+	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -179,4 +185,35 @@ bool UGA_Dash::CheckCost(const FGameplayAbilitySpecHandle Handle, const FGamepla
 void UGA_Dash::OnDashFinished()
 {
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
+}
+
+void UGA_Dash::AddDashAttackWindow()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!ASC || !World || DashAttackWindowDuration <= 0.0f)
+	{
+		return;
+	}
+
+	// 연속 대쉬로 태그 카운트가 누적되지 않도록 1로 고정
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 1);
+
+	World->GetTimerManager().ClearTimer(DashAttackWindowTimerHandle);
+	World->GetTimerManager().SetTimer(
+		DashAttackWindowTimerHandle,
+		this,
+		&ThisClass::RemoveDashAttackWindow,
+		DashAttackWindowDuration,
+		false);
+}
+
+void UGA_Dash::RemoveDashAttackWindow()
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		// 후속 공격 창 종료 시 태그 카운트 초기화
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
+	}
 }
