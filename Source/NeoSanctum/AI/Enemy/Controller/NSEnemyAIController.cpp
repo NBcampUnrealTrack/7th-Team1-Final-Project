@@ -45,6 +45,22 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
+	UpdateEnemyPhase();
+
+	if (bPhasePatternLocked)
+	{
+		StopMovement();
+
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+			CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+		}
+
+		return;
+	}
+
 	if (Enemy && Enemy->IsHitReacting())
 	{
 		StopMovement();
@@ -122,6 +138,18 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 
 bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 {
+	UpdateEnemyPhase();
+
+	if (bPhasePatternLocked)
+	{
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		}
+
+		return false;
+	}
+
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
 	if (Enemy && Enemy->IsHitReacting())
@@ -164,6 +192,18 @@ void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 
 const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 {
+	UpdateEnemyPhase();
+
+	if (bPhasePatternLocked)
+	{
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		}
+
+		return nullptr;
+	}
+
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
 	if (Enemy && Enemy->IsHitReacting())
@@ -221,6 +261,11 @@ void ANSEnemyAIController::OnUnPossess()
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(nullptr);
 
+	CurrentPhaseId = NAME_None;
+	CurrentPhaseTag = FGameplayTag();
+	bPhaseInitialized = false;
+	bPhasePatternLocked = false;
+	CurrentPhaseTransitionGA = nullptr;
 	CachedBBComp = nullptr;
 
 	Super::OnUnPossess();
@@ -1729,4 +1774,144 @@ float ANSEnemyAIController::GetControlledEnemyHealthRatio() const
 	const float Health = FMath::Clamp(MonsterAttributes->GetHealth(), 0.0f, MaxHealth);
 
 	return Health / MaxHealth;
+}
+
+void ANSEnemyAIController::UpdateEnemyPhase()
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (!Enemy)
+	{
+		return;
+	}
+
+	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	if (!EnemyData)
+	{
+		return;
+	}
+
+	const FNSEnemyPhaseRow* PhaseRow =
+		EnemyData->FindPhaseRowByHealthRatio(GetControlledEnemyHealthRatio());
+
+	if (!PhaseRow)
+	{
+		return;
+	}
+
+	if (!bPhaseInitialized)
+	{
+		bPhaseInitialized = true;
+		EnterEnemyPhase(*PhaseRow, false);
+		return;
+	}
+
+	if (CurrentPhaseId != PhaseRow->PhaseId)
+	{
+		EnterEnemyPhase(*PhaseRow, true);
+	}
+}
+
+void ANSEnemyAIController::EnterEnemyPhase(
+	const FNSEnemyPhaseRow& NewPhaseRow,
+	bool bPlayTransition)
+{
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (!Enemy)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (CurrentPhaseTag.IsValid())
+	{
+		ASC->RemoveLooseGameplayTag(CurrentPhaseTag);
+	}
+
+	CurrentPhaseId = NewPhaseRow.PhaseId;
+	CurrentPhaseTag = NewPhaseRow.PhaseTag;
+
+	if (CurrentPhaseTag.IsValid())
+	{
+		ASC->AddLooseGameplayTag(CurrentPhaseTag);
+	}
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsName(CurrentPhaseIdKey, CurrentPhaseId);
+		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+	}
+
+	bPhasePatternLocked = false;
+	CurrentPhaseTransitionGA = nullptr;
+
+	if (!bPlayTransition || !NewPhaseRow.TransitionGA)
+	{
+		return;
+	}
+
+	bPhasePatternLocked = NewPhaseRow.bLockPattern;
+	CurrentPhaseTransitionGA = NewPhaseRow.TransitionGA;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, bPhasePatternLocked);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+	}
+
+	if (bPhasePatternLocked)
+	{
+		StopMovement();
+	}
+
+	ASC->OnAbilityEnded.AddUObject(
+		this,
+		&ANSEnemyAIController::OnPhaseTransitionAbilityEnded);
+
+	const bool bActivated = ASC->TryActivateAbilityByClass(NewPhaseRow.TransitionGA);
+	if (!bActivated)
+	{
+		ASC->OnAbilityEnded.RemoveAll(this);
+
+		bPhasePatternLocked = false;
+		CurrentPhaseTransitionGA = nullptr;
+
+		if (CachedBBComp)
+		{
+			CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+		}
+	}
+}
+
+void ANSEnemyAIController::OnPhaseTransitionAbilityEnded(
+	const FAbilityEndedData& AbilityEndedData)
+{
+	if (CurrentPhaseTransitionGA &&
+		AbilityEndedData.AbilityThatEnded &&
+		!AbilityEndedData.AbilityThatEnded->IsA(CurrentPhaseTransitionGA))
+	{
+		return;
+	}
+
+	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy)
+	{
+		if (UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent())
+		{
+			ASC->OnAbilityEnded.RemoveAll(this);
+		}
+	}
+
+	bPhasePatternLocked = false;
+	CurrentPhaseTransitionGA = nullptr;
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+	}
 }
