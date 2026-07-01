@@ -186,6 +186,8 @@ private:
 	//최대 실드 변경시 갱신
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
 	
+	// TODO: 본인 경험치 HUD 갱신 함수와 경험치 변경 콜백 추가
+	
 	//HUD Attribute Delegate 중복 바인딩 방지
 	bool bHUDAttributeBound = false;
 	

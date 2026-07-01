@@ -196,7 +196,7 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
-	
+	// TODO: 본인 Experience/RequiredExperience 변경 델리게이트 등록
 	ASC->GetGameplayAttributeValueChangeDelegate(
 	UNSPlayerAttributeSet::GetAmmoAttribute()
 ).AddUObject(this, &ANSPlayerController::OnAmmoChanged);
@@ -213,6 +213,7 @@ void ANSPlayerController::BindAttributeToHUD()
 	bHUDAttributeBound = true;
 	
 	UpdateHUDHealthAndShield();
+	// TODO: 본인 경험치 초기값 HUD 반영
 	UpdateHUDAmmo();
 }
 
@@ -2101,6 +2102,7 @@ void ANSPlayerController::UnbindAttributeFromHUD()
 			UNSPlayerAttributeSet::GetMaxShieldAttribute()).RemoveAll(this);
 		ASC->GetGameplayAttributeValueChangeDelegate(
 			UNSPlayerAttributeSet::GetAmmoAttribute()).RemoveAll(this);
+		// TODO: 본인 Experience/RequiredExperience 변경 델리게이트 해제
 		ASC->GetGameplayAttributeValueChangeDelegate(
 			UNSPlayerAttributeSet::GetMaxAmmoAttribute()).RemoveAll(this);
 
