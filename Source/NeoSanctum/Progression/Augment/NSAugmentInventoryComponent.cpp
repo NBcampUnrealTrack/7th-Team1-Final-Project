@@ -382,8 +382,8 @@ bool UNSAugmentInventoryComponent::TryCalculateStackEffectMagnitude(
 		return true;
 			
 	case ENSCombatStatModifierOperation::Multiply:
-		OutMagnitude = FMath::Pow(DefinitionRow.ValuePerStack, static_cast<float>(Stacks));
-		return true;
+		OutMagnitude = NSAugment::CalculateStackedMultiplyPercent(DefinitionRow.ValuePerStack, Stacks);
+		return OutMagnitude > 0.0f;
 			
 	default:
 		return false;
