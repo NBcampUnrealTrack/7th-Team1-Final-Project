@@ -5,6 +5,7 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NSDataSubsystem.h"
 #include "Engine/DataTable.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
@@ -24,15 +25,28 @@ void UNSVFXSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	// TODO : 지금은 GameInstance에서 가져오지만, 결국은 비동기로딩을 통해 로딩된 테이블이나 데이터를 Get할 예정
-	if (const UNSGameInstance* GameInstance = UNSGameInstance::Get(GetWorld()))
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		VFXDataTable = GameInstance->VFXDataTable;
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+		
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
 	}
 }
 
 void UNSVFXSubsystem::Deinitialize()
 {
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	VFXRowCache.Reset();
 	VFXDataTable = nullptr;
 	Super::Deinitialize();
 }
@@ -143,28 +157,13 @@ UNiagaraComponent* UNSVFXSubsystem::SpawnVFXAttached(
 
 const FNSVFXDataTableRow* UNSVFXSubsystem::FindVFXRow(const FName VFXID) const
 {
-	if (!VFXDataTable || VFXID.IsNone())
-	{
-		return nullptr;
-	}
-	
-	return VFXDataTable->FindRow<FNSVFXDataTableRow>(VFXID, TEXT("NSVFXSubsystem"));
+	return VFXID.IsNone() ? nullptr : VFXRowCache.Find(VFXID);
 }
 
 UNiagaraSystem* UNSVFXSubsystem::ResolveNiagaraSystem(const FNSVFXDataTableRow& VFXRow) const
 {
-	if (VFXRow.NiagaraSystem.IsNull())
-	{
-		return nullptr;
-	}
-	
-	if (UNiagaraSystem* LoadedSystem = VFXRow.NiagaraSystem.Get())
-	{
-		return LoadedSystem;
-	}
-	
-	// 임시 동기 로드. 추후 DataSubsystem 비동기 로딩 흐름으로 대체
-	return VFXRow.NiagaraSystem.LoadSynchronous();
+	// NSDataSubsystem에서 CommonDataReady 전에 선로드하므로 여기서는 동기 로드를 하지 않음.
+	return VFXRow.NiagaraSystem.Get();
 }
 
 FVector UNSVFXSubsystem::GetFinalScale(
@@ -172,4 +171,36 @@ FVector UNSVFXSubsystem::GetFinalScale(
 	const float ScaleMultiplier) const
 {
 	return FVector::OneVector * VFXRow.ScaleMultiplier * ScaleMultiplier;
+}
+
+void UNSVFXSubsystem::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		VFXDataTable = DataSubsystem->GetCommonVFXDataTable();
+	}
+	
+	RebuildVFXRowCache();
+	
+}
+
+void UNSVFXSubsystem::RebuildVFXRowCache()
+{
+	VFXRowCache.Reset();
+	
+	if (!VFXDataTable)
+	{
+		return;
+	}
+	
+	const FString ContextString = TEXT("NSVFXSubsystem");
+	for (const FName& RowName : VFXDataTable->GetRowNames())
+	{
+		if (const FNSVFXDataTableRow* Row =
+			VFXDataTable->FindRow<FNSVFXDataTableRow>(RowName, ContextString, false))
+		{
+			VFXRowCache.Add(RowName, *Row);
+		}
+	}
 }

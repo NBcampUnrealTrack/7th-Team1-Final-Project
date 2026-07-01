@@ -3,13 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "NSVFXSubsystem.generated.h"
 
 class UNiagaraComponent;
 class UNiagaraSystem;
 class UDataTable;
-struct FNSVFXDataTableRow;
 
 UCLASS()
 class NEOSANCTUM_API UNSVFXSubsystem : public UGameInstanceSubsystem
@@ -66,7 +66,16 @@ private:
 	UNiagaraSystem* ResolveNiagaraSystem(const FNSVFXDataTableRow& VFXRow) const;
 	FVector GetFinalScale(const FNSVFXDataTableRow& VFXRow, float ScaleMultiplier) const;
 
+	// CommonData 로드 완료 후 VFXDataTable을 받아 VFX Row 캐시를 초기화.
+	UFUNCTION()
+	void HandleCommonDataReady();
+	// VFX RowName을 키로 캐싱해 재생 시 DataTable 조회를 반복하지 않음.
+	void RebuildVFXRowCache();
+
 private:
 	UPROPERTY()
 	TObjectPtr<UDataTable> VFXDataTable;
+	
+	UPROPERTY()
+	TMap<FName, FNSVFXDataTableRow> VFXRowCache;
 };

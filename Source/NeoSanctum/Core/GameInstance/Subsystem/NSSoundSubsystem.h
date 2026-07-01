@@ -169,10 +169,19 @@ private:
 	// 볼륨 설정을 직접 적용시키는 함수 : 주로 루프 재생되는 사운드에서 한 루프가 끝나고 나면 다시 볼륨을 조정해줘야하기 때문에 사용
 	void ApplyVolume(ENSSoundCategory Category);
 
+	// CommonData 로드 완료 후 SoundData를 받아 사운드 Row 캐시와 카테고리 볼륨을 초기화.
+	UFUNCTION()
+	void HandleCommonDataReady();
+	// SoundDataTable RowName을 키로 캐싱해 사운드 재생 시 FindRow 반복 호출을 피함.
+	void RebuildSoundRowCache();
+
 private:
 	// 사운드 데이터 캐시
 	UPROPERTY()
 	TObjectPtr<UNSSoundData> SoundData;
+	
+	UPROPERTY()
+	TMap<FName, FNSSoundDataTableRow> SoundRowCache;
 
 	// 현재 지속적으로 재생중인 사운드 맵 : BGM이나 환경음처럼 계속 재생되는 사운드
 	UPROPERTY()
