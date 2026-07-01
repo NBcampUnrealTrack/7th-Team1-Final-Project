@@ -5,7 +5,9 @@
 #include "NiagaraComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
+#include "NSDataSubsystem.h"
 #include "Engine/DataTable.h"
+#include "TimerManager.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
@@ -24,16 +26,31 @@ void UNSVFXSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	
-	// TODO : 지금은 GameInstance에서 가져오지만, 결국은 비동기로딩을 통해 로딩된 테이블이나 데이터를 Get할 예정
-	if (const UNSGameInstance* GameInstance = UNSGameInstance::Get(GetWorld()))
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		VFXDataTable = GameInstance->VFXDataTable;
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+		
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
 	}
 }
 
 void UNSVFXSubsystem::Deinitialize()
 {
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	VFXRowCache.Reset();
 	VFXDataTable = nullptr;
+	bCommonVFXWarmedUp = false;
+
 	Super::Deinitialize();
 }
 
@@ -143,28 +160,13 @@ UNiagaraComponent* UNSVFXSubsystem::SpawnVFXAttached(
 
 const FNSVFXDataTableRow* UNSVFXSubsystem::FindVFXRow(const FName VFXID) const
 {
-	if (!VFXDataTable || VFXID.IsNone())
-	{
-		return nullptr;
-	}
-	
-	return VFXDataTable->FindRow<FNSVFXDataTableRow>(VFXID, TEXT("NSVFXSubsystem"));
+	return VFXID.IsNone() ? nullptr : VFXRowCache.Find(VFXID);
 }
 
 UNiagaraSystem* UNSVFXSubsystem::ResolveNiagaraSystem(const FNSVFXDataTableRow& VFXRow) const
 {
-	if (VFXRow.NiagaraSystem.IsNull())
-	{
-		return nullptr;
-	}
-	
-	if (UNiagaraSystem* LoadedSystem = VFXRow.NiagaraSystem.Get())
-	{
-		return LoadedSystem;
-	}
-	
-	// 임시 동기 로드. 추후 DataSubsystem 비동기 로딩 흐름으로 대체
-	return VFXRow.NiagaraSystem.LoadSynchronous();
+	// NSDataSubsystem에서 CommonDataReady 전에 선로드하므로 여기서는 동기 로드를 하지 않음.
+	return VFXRow.NiagaraSystem.Get();
 }
 
 FVector UNSVFXSubsystem::GetFinalScale(
@@ -172,4 +174,92 @@ FVector UNSVFXSubsystem::GetFinalScale(
 	const float ScaleMultiplier) const
 {
 	return FVector::OneVector * VFXRow.ScaleMultiplier * ScaleMultiplier;
+}
+
+void UNSVFXSubsystem::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		VFXDataTable = DataSubsystem->GetCommonVFXDataTable();
+	}
+	
+	RebuildVFXRowCache();
+
+	if (!bCommonVFXWarmedUp)
+	{
+		WarmupCommonVFX();
+		bCommonVFXWarmedUp = true;
+	}
+}
+
+void UNSVFXSubsystem::RebuildVFXRowCache()
+{
+	VFXRowCache.Reset();
+	
+	if (!VFXDataTable)
+	{
+		return;
+	}
+	
+	const FString ContextString = TEXT("NSVFXSubsystem");
+	for (const FName& RowName : VFXDataTable->GetRowNames())
+	{
+		if (const FNSVFXDataTableRow* Row =
+			VFXDataTable->FindRow<FNSVFXDataTableRow>(RowName, ContextString, false))
+		{
+			VFXRowCache.Add(RowName, *Row);
+		}
+	}
+}
+
+void UNSVFXSubsystem::WarmupCommonVFX()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	for (const TPair<FName, FNSVFXDataTableRow>& Pair : VFXRowCache)
+	{
+		const FNSVFXDataTableRow& VFXRow = Pair.Value;
+		if (!VFXRow.bWarmupOnCommonDataReady)
+		{
+			continue;
+		}
+
+		UNiagaraSystem* NiagaraSystem = ResolveNiagaraSystem(VFXRow);
+		if (!NiagaraSystem)
+		{
+			continue;
+		}
+
+		// 화면에 보이지 않는 임시 컴포넌트를 한 번 활성화해서 Niagara 첫 사용 컴파일 비용을 앞당김.
+		UNiagaraComponent* WarmupComponent = NewObject<UNiagaraComponent>(World);
+		if (!WarmupComponent)
+		{
+			continue;
+		}
+
+		WarmupComponent->SetAsset(NiagaraSystem);
+		WarmupComponent->SetAutoActivate(false);
+		WarmupComponent->SetHiddenInGame(true);
+		WarmupComponent->SetVisibility(false, true);
+		WarmupComponent->SetWorldLocation(FVector(0.0f, 0.0f, -100000.0f));
+		WarmupComponent->RegisterComponentWithWorld(World);
+		WarmupComponent->Activate(true);
+
+		TWeakObjectPtr<UNiagaraComponent> WeakWarmupComponent = WarmupComponent;
+		World->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(this, [WeakWarmupComponent]()
+			{
+				if (WeakWarmupComponent.IsValid())
+				{
+					WeakWarmupComponent->DeactivateImmediate();
+					WeakWarmupComponent->DestroyComponent();
+				}
+			})
+		);
+	}
 }

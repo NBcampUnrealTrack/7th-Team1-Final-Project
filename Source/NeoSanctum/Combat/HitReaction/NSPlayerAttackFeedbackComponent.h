@@ -7,7 +7,6 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSPlayerAttackFeedbackComponent.generated.h"
 
-class UDataTable;
 struct FNSPlayerAttackFeedbackData;
 
 // 플레이어가 공격으로 만든 실제 히트 결과를 UI 피드백으로 변환하는 컴포넌트
@@ -44,7 +43,4 @@ private:
 	// 클라이언트 로컬에 AttackFeedback Sound를 재생
 	void PlaySoundFeedback(FName SoundID) const;
 
-private:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "HitFeedback", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UDataTable> AttackFeedbackDataTable;
 };

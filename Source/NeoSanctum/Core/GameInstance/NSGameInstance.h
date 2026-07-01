@@ -27,21 +27,6 @@ public:
 	
 	virtual void HideLoadingScreen_Implementation() override;
 	
-	// SoundDataTable 
-	// TODO : 추후에 비동기로딩 흐름으로 옮기면 리팩토링 필요함
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
-	TObjectPtr<UNSSoundData> SoundData;
-
-	// VFXDataTable 
-	// TODO : 추후에 비동기로딩 흐름으로 옮기면 리팩토링 필요함
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
-	TObjectPtr<UDataTable> VFXDataTable;
-
-	// HitReactionDataTable
-	// TODO : 추후 비동기 로딩 흐름으로 대체되면 로드된 DataSet에서 조회
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
-	TObjectPtr<UDataTable> HitReactionDataTable;
-	
 	virtual UNSLevelCatalog* GetLevelCatalog() const override { return LevelCatalog; }
 	virtual UNSDifficultyConfig* GetDifficultyConfig() const override { return DifficultyConfig; }
 

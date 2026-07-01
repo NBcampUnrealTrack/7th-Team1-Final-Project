@@ -8,6 +8,7 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSBarrier.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
@@ -112,31 +113,22 @@ ENSHitFeedbackOutcome UNSPlayerAttackFeedbackComponent::ResolveOutcome(
 const FNSPlayerAttackFeedbackData* UNSPlayerAttackFeedbackComponent::FindBestFeedbackData(
 	const FNSHitFeedbackContext& Context) const
 {
-	// Any 조건을 포함해 매칭되는 Row 중 가장 높은 Priority를 사용
-	if (!AttackFeedbackDataTable)
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
 	{
 		return nullptr;
 	}
 	
-	TArray<FNSPlayerAttackFeedbackData*> Rows;
-	AttackFeedbackDataTable->GetAllRows(TEXT("PlayerAttackFeedback"), Rows);
-	
+	const TArray<FNSPlayerAttackFeedbackData>& Rows = DataSubsystem->GetCachedPlayerAttackFeedbackRows();
 	const FNSPlayerAttackFeedbackData* BestData = nullptr;
 	int32 BestPriority = TNumericLimits<int32>::Lowest();
 	
-	for (const FNSPlayerAttackFeedbackData* Row : Rows)
+	for (const FNSPlayerAttackFeedbackData& Row : Rows)
 	{
-		// 데이터 테이블의 정보와 매칭되는 대상을 맞춘 것인지 검사
-		if (!Row || !CheckFeedbackDataMatch(*Row, Context))
+		if (CheckFeedbackDataMatch(Row, Context) && (!BestData || Row.Priority > BestPriority))
 		{
-			continue;
-		}
-		
-		// 통과되는 매칭이 있으면 해당하는 Row로 Data를 선정
-		if (!BestData || Row->Priority > BestPriority)
-		{
-			BestData = Row;
-			BestPriority = Row->Priority;
+			BestData = &Row;
+			BestPriority = Row.Priority;
 		}
 	}
 	

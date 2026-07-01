@@ -8,7 +8,6 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
 #include "NSHitReactionComponent.generated.h"
 
-class UDataTable;
 struct FNSHitReactionData;
 
 // Health Damage를 받은 액터의 월드 피격 리액션을 재생하는 컴포넌트
@@ -36,10 +35,7 @@ private:
 
 	// DataTable 매칭 결과를 우선 사용, 없으면 Default Cue Tag를 사용
 	FGameplayTag ResolveCueTag(const FNSHitReactionContext& Context) const;
-
-	// 임시 : GameInstance에 등록된 HitReaction DataTable을 가져옴
-	const UDataTable* GetHitReactionDataTable() const;
-
+	
 	// Context와 매칭되는 HitReaction Row를 Priority 기준으로 검색함
 	const FNSHitReactionData* FindBestReactionData(const FNSHitReactionContext& Context) const;
 
