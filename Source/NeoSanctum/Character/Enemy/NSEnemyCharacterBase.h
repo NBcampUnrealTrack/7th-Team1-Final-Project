@@ -147,9 +147,6 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayAbility> DeathAbilityClass;
-
 protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
 	bool bIsDead = false;

@@ -42,8 +42,7 @@ public:
 	// EnemyData를 기준으로 스탯과 기본 Ability/Effect를 초기화하는 함수
 	void InitializeFromData(
 		bool bFullInit,
-		UNSMonsterAttributeSet* AttributeSet,
-		TSubclassOf<UGameplayAbility> DeathAbilityClass);
+		UNSMonsterAttributeSet* AttributeSet);
 
 private:
 	// 클라이언트에서 EnemyData가 복제됐을 때 호출되는 함수
@@ -57,7 +56,7 @@ private:
 	void InitializeAttributes(UNSMonsterAttributeSet* AttributeSet);
 
 	// DefaultEffect, DefaultAbility, AttackAbility를 부여하는 함수
-	void GrantStartupAbilities(TSubclassOf<UGameplayAbility> DeathAbilityClass);
+	void GrantStartupAbilities();
 
 private:
 	// Enemy가 사용할 데이터 에셋

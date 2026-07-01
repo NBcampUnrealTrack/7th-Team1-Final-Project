@@ -51,8 +51,7 @@ void UNSEnemyCoreComponent::OnRep_EnemyData()
 
 void UNSEnemyCoreComponent::InitializeFromData(
 	bool bFullInit,
-	UNSMonsterAttributeSet* AttributeSet,
-	TSubclassOf<UGameplayAbility> DeathAbilityClass)
+	UNSMonsterAttributeSet* AttributeSet)
 {
 	if (!EnemyData)
 	{
@@ -65,7 +64,7 @@ void UNSEnemyCoreComponent::InitializeFromData(
 
 	if (bFullInit)
 	{
-		GrantStartupAbilities(DeathAbilityClass);
+		GrantStartupAbilities();
 	}
 }
 
@@ -111,8 +110,7 @@ void UNSEnemyCoreComponent::InitializeAttributes(UNSMonsterAttributeSet* Attribu
 	AttributeSet->ResetHitGauge();
 }
 
-void UNSEnemyCoreComponent::GrantStartupAbilities(
-	TSubclassOf<UGameplayAbility> DeathAbilityClass)
+void UNSEnemyCoreComponent::GrantStartupAbilities()
 {
 	const AActor* Owner = GetOwner();
 	if (!Owner || !Owner->HasAuthority() || !EnemyData)
@@ -193,5 +191,5 @@ void UNSEnemyCoreComponent::GrantStartupAbilities(
 		}
 	}
 
-	GiveAbilityOnce(DeathAbilityClass, false);
+	GiveAbilityOnce(EnemyData->DeathAbilityClass, false);
 }

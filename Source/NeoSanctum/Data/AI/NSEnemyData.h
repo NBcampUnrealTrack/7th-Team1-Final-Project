@@ -372,6 +372,10 @@ public:
 	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
+	
+	// 체력이 0에 도달했을 때 실행할 몬스터 전용 사망 Ability
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	TSubclassOf<UGameplayAbility> DeathAbilityClass;
 
 	// 공격별 거리, 쿨타임, 가중치 등 수치를 읽을 DataTable
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")

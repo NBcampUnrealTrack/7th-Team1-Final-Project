@@ -175,9 +175,11 @@ void ANSEnemyCharacterBase::Die()
 			AIController->Destroy();
 		}
 
-		if (ASC && DeathAbilityClass)
+		UNSEnemyData* EnemyData = GetEnemyData();
+
+		if (ASC && EnemyData && EnemyData->DeathAbilityClass)
 		{
-			ASC->TryActivateAbilityByClass(DeathAbilityClass);
+			ASC->TryActivateAbilityByClass(EnemyData->DeathAbilityClass);
 		}
 	}
 }
@@ -260,8 +262,7 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	{
 		CoreComponent->InitializeFromData(
 			bFullInit,
-			AttributeSet,
-			DeathAbilityClass);
+			AttributeSet);
 	}
 
 	if (bFullInit)
