@@ -11,6 +11,7 @@
 class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
+class UNSEnemyAttackComponent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 
@@ -94,9 +95,9 @@ protected:
 private:
 	/* 타겟 액터 키 이름 */
 	FName TargetActorKey = TEXT("TargetActor");
-
-	/* AttackId별 마지막 사용 시간 */
-	TMap<FName, float> LastAttackTimeById;
+	
+	// 현재 Possess 중인 Enemy의 Attack Component를 반환하는 함수
+	UNSEnemyAttackComponent* GetEnemyAttackComponent() const;
 
 private:
 	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
@@ -349,25 +350,9 @@ public:
 	AActor* GetCurrentAttackActor() const;
 
 private:
-	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
-	bool CanUseAttackRow(
-		const FNSEnemyAttackRow& AttackRow,
-		const UNSEnemyData* EnemyData,
-		float HealthRatio,
-		const AActor* TargetActor,
-		const AActor* AttackActor,
-		float Distance,
-		bool bHasDirectLineOfSight) const;
 
 	// 플레이어까지 Trace해서 실제로 쏠 Actor를 계산하는 함수
 	AActor* ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const;
-
-	// 파괴 가능 엄폐물을 원거리 공격 대상으로 사용할 수 있는지 확인하는 함수
-	bool CanUseDestructibleCoverAttack(
-		const FNSEnemyAttackRow& AttackRow,
-		const AActor* TargetActor,
-		const AActor* AttackActor,
-		bool bHasDirectLineOfSight) const;
 
 	// Actor Bounds 기준 조준 위치를 계산하는 함수
 	FVector GetAttackAimLocation(const AActor* Actor) const;

@@ -22,6 +22,7 @@
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AISense_Sight.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyControllerBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
@@ -175,18 +176,10 @@ void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 {
 	NotifyAttackStarted();
 
-	if (AttackRow.AttackId.IsNone())
+	if (UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent())
 	{
-		return;
+		AttackComponent->RecordAttackUsed(AttackRow);
 	}
-
-	const UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	LastAttackTimeById.FindOrAdd(AttackRow.AttackId) = World->GetTimeSeconds();
 }
 
 const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
@@ -232,8 +225,10 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	// 공격 쿨다운 기록을 초기화
-	LastAttackTimeById.Reset();
+	if (UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent())
+	{
+		AttackComponent->ResetAttackState();
+	}
 	
 	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
 	{
@@ -361,6 +356,7 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 {
 	if (!CachedBBComp)
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
@@ -381,8 +377,8 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 		return nullptr;
 	}
 
-	const UNSEnemyData* EnemyData = EnemyAgent->GetEnemyData();
-	if (!EnemyData)
+	UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+	if (!AttackComponent)
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
@@ -396,8 +392,7 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
 	const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
 
-	const bool bFacingTarget = FacingDot >= RequiredDot;
-	if (!bFacingTarget)
+	if (FacingDot < RequiredDot)
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
@@ -406,165 +401,34 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	const float Distance =
-		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
-
-	const float HealthRatio = GetControlledEnemyHealthRatio();
-
-	TArray<const FNSEnemyAttackRow*> Candidates;
-	int32 BestPriority = TNumericLimits<int32>::Lowest();
-
-	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
-	{
-		if (!AttackRow)
-		{
-			continue;
-		}
-
-		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
-		{
-			continue;
-		}
-
-		if (!CanUseAttackRow(
-			*AttackRow,
-			EnemyData,
-			HealthRatio,
-			TargetActor,
-			AttackActor,
-			Distance,
-			bHasDirectLineOfSight))
-		{
-			continue;
-		}
-
-		if (!bSelectWeightedAttack)
-		{
-			SetAttackActorBlackboard(AttackActor);
-			return AttackRow;
-		}
-
-		if (AttackRow->Priority > BestPriority)
-		{
-			BestPriority = AttackRow->Priority;
-			Candidates.Reset();
-		}
-
-		if (AttackRow->Priority == BestPriority)
-		{
-			Candidates.Add(AttackRow);
-		}
-	}
-
-	if (Candidates.IsEmpty())
+	if (!IsValid(AttackActor))
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const FNSEnemyAttackRow* SelectedAttack = nullptr;
+	const float Distance =
+		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
-	float TotalWeight = 0.0f;
-	for (const FNSEnemyAttackRow* Candidate : Candidates)
-	{
-		if (!Candidate)
-		{
-			continue;
-		}
+	const FNSEnemyAttackRow* SelectedAttack = AttackComponent->SelectAttack(
+		TargetActor,
+		AttackActor,
+		Distance,
+		bHasDirectLineOfSight,
+		bSelectWeightedAttack
+	);
 
-		TotalWeight += EnemyData->GetPhaseAttackWeight(*Candidate, HealthRatio);
-	}
+	SetAttackActorBlackboard(SelectedAttack ? AttackActor : nullptr);
 
-	if (TotalWeight <= 0.0f)
-	{
-		SelectedAttack = Candidates[0];
-	}
-	else
-	{
-		float Pick = FMath::FRandRange(0.0f, TotalWeight);
-
-		for (const FNSEnemyAttackRow* Candidate : Candidates)
-		{
-			if (!Candidate)
-			{
-				continue;
-			}
-
-			Pick -= EnemyData->GetPhaseAttackWeight(*Candidate, HealthRatio);
-
-			if (Pick <= 0.0f)
-			{
-				SelectedAttack = Candidate;
-				break;
-			}
-		}
-
-		if (!SelectedAttack)
-		{
-			SelectedAttack = Candidates.Last();
-		}
-	}
-
-	SetAttackActorBlackboard(AttackActor);
 	return SelectedAttack;
 }
 
-bool ANSEnemyAIController::CanUseAttackRow(
-	const FNSEnemyAttackRow& AttackRow,
-	const UNSEnemyData* EnemyData,
-	float HealthRatio,
-	const AActor* TargetActor,
-	const AActor* AttackActor,
-	float Distance,
-	bool bHasDirectLineOfSight) const
+UNSEnemyAttackComponent* ANSEnemyAIController::GetEnemyAttackComponent() const
 {
-	if (!EnemyData ||
-		AttackRow.AttackId.IsNone() ||
-		!AttackRow.AbilityClass ||
-		!IsValidLivingTarget(TargetActor) ||
-		!IsValid(AttackActor))
-	{
-		return false;
-	}
-
-	if (Distance < AttackRow.Condition.MinRange ||
-		Distance > AttackRow.Condition.MaxRange)
-	{
-		return false;
-	}
-
-	if (AttackRow.Condition.bRequireLineOfSight &&
-		!bHasDirectLineOfSight &&
-		!CanUseDestructibleCoverAttack(
-			AttackRow,
-			TargetActor,
-			AttackActor,
-			bHasDirectLineOfSight))
-	{
-		return false;
-	}
-
-	const float Cooldown = EnemyData->GetPhaseAttackCooldown(AttackRow, HealthRatio);
-	if (Cooldown > 0.0f)
-	{
-		const float* LastAttackTime = LastAttackTimeById.Find(AttackRow.AttackId);
-		if (LastAttackTime)
-		{
-			const UWorld* World = GetWorld();
-			if (!World)
-			{
-				return false;
-			}
-
-			const float ElapsedTime = World->GetTimeSeconds() - *LastAttackTime;
-			if (ElapsedTime < Cooldown)
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
+	const APawn* ControlledPawn = GetPawn();
+	return ControlledPawn
+		? ControlledPawn->FindComponentByClass<UNSEnemyAttackComponent>()
+		: nullptr;
 }
 
 void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor)
@@ -1144,19 +1008,25 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 
 bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
 {
-	if (!TargetActor)
+	if (!IsValid(TargetActor))
 	{
 		return false;
 	}
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-	if (!Enemy)
+	const APawn* AIPawn = GetPawn();
+	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
 		return false;
 	}
 
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
 	if (!EnemyData)
+	{
+		return false;
+	}
+
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+	if (!AttackComponent)
 	{
 		return false;
 	}
@@ -1164,43 +1034,43 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	if (bHasDirectLineOfSight ||
-		!IsValidLivingTarget(AttackActor) ||
-		AttackActor == TargetActor ||
-		!AttackActor->IsA<ANSDestructibleObjectBase>())
+	if (bHasDirectLineOfSight)
 	{
 		return false;
 	}
 
-	const float Distance = FVector::Dist(
-		Enemy->GetActorLocation(),
-		TargetActor->GetActorLocation());
+	if (!IsValidLivingTarget(AttackActor))
+	{
+		return false;
+	}
 
-	const float HealthRatio = GetControlledEnemyHealthRatio();
+	if (AttackActor == TargetActor)
+	{
+		return false;
+	}
+
+	if (!AttackActor->IsA<ANSDestructibleObjectBase>())
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
 	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (!AttackRow || !AttackRow->AbilityClass)
+		if (!AttackRow)
 		{
 			continue;
 		}
 
-		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
-		{
-			continue;
-		}
-
-		if (Distance < AttackRow->Condition.MinRange ||
-			Distance > AttackRow->Condition.MaxRange)
-		{
-			continue;
-		}
-
-		if (CanUseDestructibleCoverAttack(
+		if (AttackComponent->CanUseAttack(
 			*AttackRow,
 			TargetActor,
 			AttackActor,
-			bHasDirectLineOfSight))
+			Distance,
+			bHasDirectLineOfSight
+		))
 		{
 			return true;
 		}
@@ -1543,7 +1413,8 @@ void ANSEnemyAIController::UpdateFacingMode(
 
 bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 	const ANSEnemyCharacterBase* Enemy,
-	AActor* TargetActor) const
+	AActor* TargetActor
+) const
 {
 	if (!Enemy || !IsValidLivingTarget(TargetActor))
 	{
@@ -1556,14 +1427,22 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 		return false;
 	}
 
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+	if (!AttackComponent)
+	{
+		return false;
+	}
+
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	const float Distance = FVector::Dist(
-		Enemy->GetActorLocation(),
-		TargetActor->GetActorLocation());
+	if (!IsValid(AttackActor))
+	{
+		return false;
+	}
 
-	const float HealthRatio = GetControlledEnemyHealthRatio();
+	const float Distance =
+		FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
 
 	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
@@ -1572,19 +1451,13 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 			continue;
 		}
 
-		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
-		{
-			continue;
-		}
-
-		if (CanUseAttackRow(
+		if (AttackComponent->CanUseAttack(
 			*AttackRow,
-			EnemyData,
-			HealthRatio,
 			TargetActor,
 			AttackActor,
 			Distance,
-			bHasDirectLineOfSight))
+			bHasDirectLineOfSight
+		))
 		{
 			return true;
 		}
@@ -1734,27 +1607,4 @@ AActor* ANSEnemyAIController::ResolveAttackActor(AActor* TargetActor, bool& bOut
 	}
 
 	return nullptr;
-}
-
-bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
-	const FNSEnemyAttackRow& AttackRow,
-	const AActor* TargetActor,
-	const AActor* AttackActor,
-	bool bHasDirectLineOfSight) const
-{
-	if (bHasDirectLineOfSight ||
-		!IsValidLivingTarget(TargetActor) ||
-		!IsValidLivingTarget(AttackActor) ||
-		AttackActor == TargetActor)
-	{
-		return false;
-	}
-
-	if (!AttackActor->IsA<ANSDestructibleObjectBase>())
-	{
-		return false;
-	}
-
-	return AttackRow.AttackType == ENSEnemyAttackType::Projectile ||
-		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
 }

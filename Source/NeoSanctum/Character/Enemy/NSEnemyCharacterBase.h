@@ -24,6 +24,7 @@ class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
 class UNSEnemyPhaseComponent;
+class UNSEnemyAttackComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, 
@@ -106,6 +107,10 @@ protected:
 	// EnemyData와 GAS 초기화를 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyCoreComponent> CoreComponent;
+	
+	// Enemy의 공격 선택과 공격 쿨다운을 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyAttackComponent> AttackComponent;
 	
 	// 디졸브 효과 컴포넌트
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
