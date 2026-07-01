@@ -25,6 +25,7 @@ class AController;
 class APawn;
 class UNSMeleeAttackReservationComponent;
 class UNSHitReactionComponent;
+class UNSDamageFlashComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor,
@@ -173,6 +174,10 @@ protected:
 	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
+
+	// 피격 시 머티리얼 플래시를 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")

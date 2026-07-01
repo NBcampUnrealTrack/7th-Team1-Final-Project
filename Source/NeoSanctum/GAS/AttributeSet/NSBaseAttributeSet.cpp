@@ -85,6 +85,8 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 
 		// 실제 Health 감소가 확정된 뒤 공격자 로컬 피드백을 요청
 		NotifyAttackFeedbackAfterHealthDamage(Data, PreviousHealth);
+		// 실제 Health 감소가 확정된 뒤 피격 로컬 피드백을 요청
+		NotifyHitTakenFeedbackAfterHealthDamage(Data, PreviousHealth);
 		NotifyHitReactionAfterHealthDamage(Data, PreviousHealth);
 	}
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
@@ -157,6 +159,13 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 	PlayerController->Client_PlayAttackHitFeedback(FeedbackContext);
 }
 
+void UNSBaseAttributeSet::NotifyHitTakenFeedbackAfterHealthDamage(
+	const FGameplayEffectModCallbackData&,
+	const float) const
+{
+	// 사실상 아직은 Player 전용로직이므로 virtual 함수를 PlayerAttributeSet에서 구현
+}
+
 bool UNSBaseAttributeSet::ShouldTriggerPlayerAttackFeedback(
 	const FGameplayEffectModCallbackData& Data) const
 {
@@ -194,6 +203,24 @@ void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 		return;
 	}
 
+	NotifyHitReaction(
+		Data,
+		ENSHitReactionDamageLayer::Health,
+		AppliedHealthDamage,
+		GetHealth() <= 0.0f);
+}
+
+void UNSBaseAttributeSet::NotifyHitReaction(
+	const FGameplayEffectModCallbackData& Data,
+	const ENSHitReactionDamageLayer DamageLayer,
+	const float DamageAmount,
+	const bool bTargetDead) const
+{
+	if (DamageAmount <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
 	AActor* TargetActor = Data.Target.GetAvatarActor();
 	if (!TargetActor)
 	{
@@ -208,11 +235,12 @@ void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 	}
 
 	FNSHitReactionContext ReactionContext;
+	ReactionContext.DamageLayer = DamageLayer;
 	ReactionContext.TargetActor = TargetActor;
 	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
-	ReactionContext.DamageAmount = AppliedHealthDamage;
+	ReactionContext.DamageAmount = DamageAmount;
 	ReactionContext.HitQuality = ENSHitFeedbackQuality::Normal;
-	ReactionContext.bTargetDead = GetHealth() <= 0.0f;
+	ReactionContext.bTargetDead = bTargetDead;
 	ReactionContext.HitLocation = TargetActor->GetActorLocation();
 	ReactionContext.HitNormal = FVector::UpVector;
 

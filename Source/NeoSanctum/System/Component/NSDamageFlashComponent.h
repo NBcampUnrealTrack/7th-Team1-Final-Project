@@ -11,6 +11,14 @@ class UMaterialInstanceDynamic;
 class UMeshComponent;
 class UCurveFloat;
 
+UENUM(BlueprintType)
+enum class ENSDamageFlashTriggerPolicy : uint8
+{
+	Health,
+	Shield,
+	Both
+};
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSDamageFlashComponent : public UActorComponent
 {
@@ -28,7 +36,14 @@ public:
 	// 사망/풀링 시 진행 중 플래시 정리 (타이머 클리어 + 오버레이 해제)
 	void CancelFlash();
 
+	// 플래시 재생 조건 변경
+	void SetTriggerPolicy(ENSDamageFlashTriggerPolicy NewTriggerPolicy);
+
 protected:
+	// 플래시 재생 조건
+	UPROPERTY(EditDefaultsOnly, Category = "Flash")
+	ENSDamageFlashTriggerPolicy TriggerPolicy = ENSDamageFlashTriggerPolicy::Health;
+
 	// 오버레이용 머티리얼 (Translucent + Unlit, FlashColor/Opacity 파라미터 보유)
 	UPROPERTY(EditDefaultsOnly, Category = "Flash")
 	TObjectPtr<UMaterialInterface> FlashMaterial;
@@ -52,10 +67,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Flash")
 	float LowHealthThreshold = 0.10f;
 
+	// Shield 플래시에 사용할 색상
+	UPROPERTY(EditDefaultsOnly, Category = "Flash")
+	FLinearColor ShieldFlashColor = FLinearColor(0.05f, 0.45f, 1.0f, 1.0f);
+
 private:
 	void EnsureDynamicMaterials();
 	void UpdateFlash(); 
 	void StopFlash();                 
+	bool ShouldPlayFlash() const;
+	bool HasActiveShield() const;
+	bool TryGetShieldRatio(float& OutShieldRatio) const;
 	FLinearColor ResolveFlashColor() const;
 	
 	UPROPERTY(Transient)

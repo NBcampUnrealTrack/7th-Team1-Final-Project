@@ -30,6 +30,9 @@ class UNSInteractionComponent;
 class UNSMeleeAttackReservationComponent;
 class UNSGateAccessComponent;
 class UNSPlayerAttackFeedbackComponent;
+class UNSPlayerHitTakenFeedbackComponent;
+class UNSHitReactionComponent;
+class UNSDamageFlashComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -67,6 +70,7 @@ public:
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	// PlayerAttackFeedbackComponent Getter
 	UNSPlayerAttackFeedbackComponent* GetPlayerAttackFeedbackComponent() const { return PlayerAttackFeedbackComp; }
+	UNSPlayerHitTakenFeedbackComponent* GetPlayerHitTakenFeedbackComponent() const { return PlayerHitTakenFeedbackComp; }
 
 	// 캐릭터 데이터에 등록된 반응형 GE를 상황 태그 기준으로 적용
 	void ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag);
@@ -155,6 +159,18 @@ protected:
 	// 플레이어가 공격으로 만든 히트 결과 피드백 처리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
 	TObjectPtr<UNSPlayerAttackFeedbackComponent> PlayerAttackFeedbackComp;
+
+	// 플레이어가 피해를 받았을 때의 로컬 피격 피드백 처리
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSPlayerHitTakenFeedbackComponent> PlayerHitTakenFeedbackComp;
+
+	// 피격 위치에 월드 리액션 GameplayCue를 재생
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
+
+	// Shield 피격 시 캐릭터 머티리얼 플래시를 재생
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트

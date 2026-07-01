@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSBaseAttributeSet.generated.h"
 
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
@@ -70,6 +71,11 @@ protected:
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
 
+	// 실제 Health 감소 후 피격자 로컬 피드백을 요청
+	virtual void NotifyHitTakenFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const;
+
 	// Damage Source가 플레이어 공격 결과 피드백을 허용하는지 확인
 	bool ShouldTriggerPlayerAttackFeedback(const FGameplayEffectModCallbackData& Data) const;
 
@@ -77,6 +83,13 @@ protected:
 	void NotifyHitReactionAfterHealthDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
+
+	// 데미지 레이어 정보를 포함해서 월드 피격 리액션을 요청
+	void NotifyHitReaction(
+		const FGameplayEffectModCallbackData& Data,
+		ENSHitReactionDamageLayer DamageLayer,
+		float DamageAmount,
+		bool bTargetDead) const;
 	
 private:
 	UFUNCTION()

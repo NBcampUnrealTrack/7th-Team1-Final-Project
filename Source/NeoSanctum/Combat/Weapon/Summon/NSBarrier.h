@@ -15,8 +15,10 @@ class UGameplayEffect;
 class UNSAbilitySystemComponent;
 class UNSBaseAttributeSet;
 class USphereComponent;
+class UStaticMeshComponent;
 class UNiagaraComponent;
 class UNSHitReactionComponent;
+class UNSDamageFlashComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSBarrier : public AActor,
@@ -72,15 +74,27 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
 	TObjectPtr<UNiagaraComponent> BarrierNiagaraComponent;
 
+	// 피격 플래시 표현에 사용하는 투명 Sphere Mesh
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
+	TObjectPtr<UStaticMeshComponent> BarrierFlashMeshComponent;
+
 	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
 	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
+
+	// 피격 시 머티리얼 플래시를 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	float DefaultRadius = 150.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	float MinimumRadius = 50.0f;
+
+	// Flash용 Sphere Mesh의 기본 반지름.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
+	float FlashMeshBaseRadius = 60.0f;
 
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;

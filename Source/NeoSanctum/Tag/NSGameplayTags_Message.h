@@ -9,6 +9,9 @@ namespace NSGameplayTags
 	// GMS 쿨다운 상태 변경 채널
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_SkillCooldown_Changed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_Crosshair_AttackFeedback);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_HitTakenFeedback);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_HitTakenFeedback_State);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_HitTakenFeedback_Vitals);
 	
 	// 펫 강화 상태 조회 요청
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_PetUpgrade_Query);
