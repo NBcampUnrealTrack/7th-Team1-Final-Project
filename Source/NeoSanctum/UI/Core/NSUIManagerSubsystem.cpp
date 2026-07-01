@@ -424,6 +424,17 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 		MaxShield);
 }
 
+void UNSUIManagerSubsystem::UpdateExperience(float CurrentExperience, float RequiredExperience)
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateExperience(
+		CurrentExperience,
+		RequiredExperience);
+}
+
 void UNSUIManagerSubsystem::ClearTitle()
 {
 	if (TitleWidget)

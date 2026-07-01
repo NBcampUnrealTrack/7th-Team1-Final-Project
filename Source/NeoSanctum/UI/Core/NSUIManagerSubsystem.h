@@ -55,6 +55,10 @@ public:
 		float MaxHealth,
 		float CurrentShield,
 		float MaxShield);
+	//본인 경험치 HUD 전달
+	void UpdateExperience(
+		float CurrentExperience,
+		float RequiredExperience);
 	//증강 패널 열기 (Tab 토글 / 자동 오픈)
 	void OpenAugmentationPanel();
 	//증강 패널 닫기 (Tab 토글)

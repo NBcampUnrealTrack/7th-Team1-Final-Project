@@ -65,6 +65,34 @@ void UNSHPShieldWidget::ResetHealthAndShield()
 	//TODO(영웅):플레이어 사망 또는 런 재시작시 체력 실드 초기화
 	SetHealth(0.0f, 0.0f);
 	SetShield(0.0f, 0.0f);
+	SetExperience(0.0f, 0.0f);
+}
+
+void UNSHPShieldWidget::SetExperience(float CurrentExperience, float RequiredExperience)
+{
+	if (PlayerExperienceBar)
+	{
+		PlayerExperienceBar->SetPercent(
+			GetSafePercent(
+				CurrentExperience,
+				RequiredExperience));
+	}
+	
+	if (PlayerExperienceValueText)
+	{
+		PlayerExperienceValueText->SetText(
+			FText::Format(
+				NSLOCTEXT(
+					"PlayerStatus",
+					"ExperienceFormat",
+					"EXP {0}/{1}"),
+				FText::AsNumber(
+					FMath::RoundToInt(
+						CurrentExperience)),
+				FText::AsNumber(
+					FMath::RoundToInt(
+						RequiredExperience))));
+	}
 }
 
 float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)const
