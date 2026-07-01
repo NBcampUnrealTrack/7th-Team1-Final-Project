@@ -49,12 +49,8 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	{
 		StopMovement();
 
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-			CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		}
+		ClearAttackBB();
+		ClearRetreatBB();
 
 		return;
 	}
@@ -63,12 +59,8 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	{
 		StopMovement();
 
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-			CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		}
+		ClearAttackBB();
+		ClearRetreatBB();
 
 		return;
 	}
@@ -137,30 +129,19 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 
 	if (IsPhasePatternLocked())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return false;
 	}
 
 	if (IsControlledEnemyHitReacting())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return false;
 	}
 
 	const FNSEnemyAttackRow* UsableAttack = FindAttackRowByDistance(false);
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), UsableAttack != nullptr);
-	}
+	SetCanAttackBB(UsableAttack != nullptr);
 
 	return UsableAttack != nullptr;
 }
@@ -181,30 +162,19 @@ const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 
 	if (IsPhasePatternLocked())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return nullptr;
 	}
 
 	if (IsControlledEnemyHitReacting())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return nullptr;
 	}
 
 	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowByDistance(true);
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), SelectedAttack != nullptr);
-	}
+	SetCanAttackBB(SelectedAttack != nullptr);
 
 	return SelectedAttack;
 }
@@ -248,14 +218,7 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 
 	StartEnemyBrain(EnemyData);
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
-	}
-
+	InitBBState();
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(EnemyData);
 }
@@ -530,15 +493,7 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	CancelMeleeReservationRequest(false);
 	ResetMeleeEQSForCurrentTarget();
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	}
+	ClearTargetBB(true);
 }
 
 void ANSEnemyAIController::ResetTargetingState()
@@ -552,15 +507,7 @@ void ANSEnemyAIController::ResetTargetingState()
 
 	ResetMeleeEQSForCurrentTarget();
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	}
+	ClearTargetBB(true);
 }
 
 void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
@@ -574,10 +521,7 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 
 	if (!IsValidLivingTarget(TargetActor))
 	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+		ClearTargetBB(false);
 		return;
 	}
 
@@ -836,23 +780,15 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 		MeleeComponent->MarkAttackInterrupted();
 	}
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, true);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		CachedBBComp->ClearValue(RetreatLocationKey);
-	}
+	SetHitReactBB(true);
+	ClearAttackBB();
+	ClearRetreatBB();
 }
 
 void ANSEnemyAIController::HandleHitReactionFinished()
 {
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	}
+	SetHitReactBB(false);
+	SetCanAttackBB(false);
 
 	UpdateMeleeReservationState();
 }
@@ -911,6 +847,79 @@ void ANSEnemyAIController::SetAttackActorBlackboard(AActor* AttackActor)
 	}
 }
 
+void ANSEnemyAIController::InitBBState()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	SetHitReactBB(false);
+	ClearAttackBB();
+	ClearRetreatBB();
+	ClearTargetBB(false);
+	SetMeleeReservationBlackboard(false, false);
+
+	CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+}
+
+void ANSEnemyAIController::SetCanAttackBB(bool bCanAttack)
+{
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), bCanAttack);
+	}
+}
+
+void ANSEnemyAIController::SetHitReactBB(bool bHitReacting)
+{
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(IsHitReactingKey, bHitReacting);
+	}
+}
+
+void ANSEnemyAIController::ClearAttackBB()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+	SetAttackActorBlackboard(nullptr);
+}
+
+void ANSEnemyAIController::ClearTargetBB(bool bClearCanAttack)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->ClearValue(TargetActorKey);
+	CachedBBComp->ClearValue(AttackActorKey);
+	CachedBBComp->ClearValue(TargetLastKnownLocationKey);
+	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+
+	if (bClearCanAttack)
+	{
+		SetCanAttackBB(false);
+	}
+}
+
+void ANSEnemyAIController::ClearRetreatBB()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
+	CachedBBComp->ClearValue(RetreatLocationKey);
+}
+
 AActor* ANSEnemyAIController::ResolveAttackActor(
 	AActor* TargetActor,
 	bool& bOutHasDirectLineOfSight
@@ -962,6 +971,6 @@ UNSEnemyMoveComponent* ANSEnemyAIController::GetEnemyMoveComponent() const
 	const APawn* ControlledPawn = GetPawn();
 
 	return ControlledPawn
-		? ControlledPawn->FindComponentByClass<UNSEnemyMoveComponent>()
-		: nullptr;
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyMoveComponent>()
+		       : nullptr;
 }

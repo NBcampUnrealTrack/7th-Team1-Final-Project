@@ -229,7 +229,6 @@ public:
 	AActor* GetCurrentAttackActor() const;
 
 private:
-
 	// 플레이어까지 Trace해서 실제로 쏠 Actor를 계산하는 함수
 	AActor* ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const;
 
@@ -238,6 +237,27 @@ private:
 
 	// 실제 발사 대상을 저장할 Blackboard 키 이름
 	FName AttackActorKey = TEXT("AttackActor");
+
+#pragma endregion
+#pragma region 블랙보드 상태
+
+	// Possess 시 기본 Blackboard 상태를 초기화하는 함수
+	void InitBBState();
+
+	// 공격 가능 여부를 Blackboard에 기록하는 함수
+	void SetCanAttackBB(bool bCanAttack);
+
+	// 피격 경직 상태를 Blackboard에 기록하는 함수
+	void SetHitReactBB(bool bHitReacting);
+
+	// 공격 진행 상태를 초기화하는 함수
+	void ClearAttackBB();
+
+	// 타겟 관련 Blackboard 값을 초기화하는 함수
+	void ClearTargetBB(bool bClearCanAttack);
+
+	// 후퇴 관련 Blackboard 값을 초기화하는 함수
+	void ClearRetreatBB();
 
 #pragma endregion
 };
