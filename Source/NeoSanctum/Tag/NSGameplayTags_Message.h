@@ -24,4 +24,11 @@ namespace NSGameplayTags
 
 	// 특정 노드 강화 결과
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_PetUpgrade_Upgrade_Result);
+	
+	//팀원 상태 목록 조회 요청
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Query);
+	//팀원 상태 전체 Snapshot응답
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Snapshot);
+	//특정 팀원의 체력, 쉴드 상태 변경
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Changed);
 }
