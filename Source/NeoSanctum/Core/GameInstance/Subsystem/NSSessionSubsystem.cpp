@@ -92,6 +92,41 @@ void UNSSessionSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+void UNSSessionSubsystem::StartGameToHub()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	FString HubPackage;
+	if (UNSLevelCatalog* Catalog = GetLevelCatalog(); Catalog && !Catalog->HubLevel.IsNull())
+	{
+		HubPackage = Catalog->HubLevel.ToSoftObjectPath().GetLongPackageName();
+	}
+	if (HubPackage.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("허브 레벨을 찾지 못해 게임 시작 불가"));
+		return;
+	}
+
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		if (APlayerController* PC = World->GetFirstPlayerController())
+		{
+			UIManager->ShowTravelLoadingScreen(PC);
+		}
+	}
+
+	// 세션은 열지않고 리슨 서버로만 오픈
+	UGameplayStatics::OpenLevel(
+		World,
+		FName(*HubPackage),
+		true,
+		TEXT("listen"));
+}
+
 void UNSSessionSubsystem::CreateSession()
 {
 	// 이미 Host 생성/삭제/예약 과정이 진행 중이면 연타 요청 무시
@@ -372,6 +407,7 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 {
 	ClearCreateSessionDelegate();
 	bIsCreatingSession = false;
+	bSwitchingToHost = false;
 
 	if (!bWasSuccessful)
 	{
@@ -451,6 +487,8 @@ void UNSSessionSubsystem::TravelToHubAfterDataReady()
 		OnCreateSessionComplete.Broadcast(false);
 		return;
 	}
+
+	OnCreateSessionComplete.Broadcast(true);
 	
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{

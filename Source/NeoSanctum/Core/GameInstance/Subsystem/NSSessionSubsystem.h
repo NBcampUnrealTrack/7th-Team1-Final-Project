@@ -22,8 +22,12 @@ class NEOSANCTUM_API UNSSessionSubsystem : public UGameInstanceSubsystem
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
+	
+	// 리슨 서버, 세션 생성 분리용 함수(리슨 서버로 여는 함수)
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	void StartGameToHub();
 
-	// 세션 생성(호스트용)
+	// 세션 생성
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void CreateSession();
 
