@@ -434,4 +434,18 @@ private:
 
 	// PhaseTable 캐시가 초기화되었는지 여부
 	mutable bool bPhaseRowsCached = false;
+	
+public:
+	// 현재 페이즈 기준으로 공격 Weight Override를 반영한 최종 Weight를 반환하는 함수
+	float GetPhaseAttackWeight(const FNSEnemyAttackRow& AttackRow, float HealthRatio) const;
+
+	// 현재 페이즈 기준으로 공격 Cooldown Override를 반영한 최종 Cooldown을 반환하는 함수
+	float GetPhaseAttackCooldown(const FNSEnemyAttackRow& AttackRow, float HealthRatio) const;
+
+private:
+	// Phase Override 목록에서 AttackId와 일치하는 값을 찾고, 없으면 기본값을 반환하는 함수
+	float GetPhaseAttackOverrideValue(
+		const TArray<FNSEnemyAttackValue>& Overrides,
+		FName AttackId,
+		float DefaultValue) const;
 };

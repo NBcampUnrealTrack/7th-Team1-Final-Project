@@ -372,6 +372,8 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 
 		if (!CanUseAttackRow(
 			*AttackRow,
+			EnemyData,
+			HealthRatio,
 			TargetActor,
 			AttackActor,
 			Distance,
@@ -409,7 +411,12 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 	float TotalWeight = 0.0f;
 	for (const FNSEnemyAttackRow* Candidate : Candidates)
 	{
-		TotalWeight += FMath::Max(Candidate->Weight, 0.0f);
+		if (!Candidate)
+		{
+			continue;
+		}
+
+		TotalWeight += EnemyData->GetPhaseAttackWeight(*Candidate, HealthRatio);
 	}
 
 	if (TotalWeight <= 0.0f)
@@ -422,7 +429,12 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 
 		for (const FNSEnemyAttackRow* Candidate : Candidates)
 		{
-			Pick -= FMath::Max(Candidate->Weight, 0.0f);
+			if (!Candidate)
+			{
+				continue;
+			}
+
+			Pick -= EnemyData->GetPhaseAttackWeight(*Candidate, HealthRatio);
 
 			if (Pick <= 0.0f)
 			{
@@ -443,12 +455,15 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 
 bool ANSEnemyAIController::CanUseAttackRow(
 	const FNSEnemyAttackRow& AttackRow,
+	const UNSEnemyData* EnemyData,
+	float HealthRatio,
 	const AActor* TargetActor,
 	const AActor* AttackActor,
 	float Distance,
 	bool bHasDirectLineOfSight) const
 {
-	if (AttackRow.AttackId.IsNone() ||
+	if (!EnemyData ||
+		AttackRow.AttackId.IsNone() ||
 		!AttackRow.AbilityClass ||
 		!IsValidLivingTarget(TargetActor) ||
 		!IsValid(AttackActor))
@@ -473,7 +488,8 @@ bool ANSEnemyAIController::CanUseAttackRow(
 		return false;
 	}
 
-	if (AttackRow.Cooldown > 0.0f)
+	const float Cooldown = EnemyData->GetPhaseAttackCooldown(AttackRow, HealthRatio);
+	if (Cooldown > 0.0f)
 	{
 		const float* LastAttackTime = LastAttackTimeById.Find(AttackRow.AttackId);
 		if (LastAttackTime)
@@ -485,7 +501,7 @@ bool ANSEnemyAIController::CanUseAttackRow(
 			}
 
 			const float ElapsedTime = World->GetTimeSeconds() - *LastAttackTime;
-			if (ElapsedTime < AttackRow.Cooldown)
+			if (ElapsedTime < Cooldown)
 			{
 				return false;
 			}
@@ -1507,6 +1523,8 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 
 		if (CanUseAttackRow(
 			*AttackRow,
+			EnemyData,
+			HealthRatio,
 			TargetActor,
 			AttackActor,
 			Distance,

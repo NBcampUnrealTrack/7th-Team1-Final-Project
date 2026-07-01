@@ -155,3 +155,58 @@ bool UNSEnemyData::IsAttackAllowedByPhase(FName AttackId, float HealthRatio) con
 	return PhaseRow->AttackIds.Contains(AttackId);
 }
 
+float UNSEnemyData::GetPhaseAttackWeight(
+	const FNSEnemyAttackRow& AttackRow,
+	float HealthRatio) const
+{
+	const FNSEnemyPhaseRow* PhaseRow = FindPhaseRowByHealthRatio(HealthRatio);
+	if (!PhaseRow)
+	{
+		return FMath::Max(AttackRow.Weight, 0.0f);
+	}
+
+	return GetPhaseAttackOverrideValue(
+		PhaseRow->WeightOverrides,
+		AttackRow.AttackId,
+		AttackRow.Weight);
+}
+
+float UNSEnemyData::GetPhaseAttackCooldown(
+	const FNSEnemyAttackRow& AttackRow,
+	float HealthRatio) const
+{
+	const FNSEnemyPhaseRow* PhaseRow = FindPhaseRowByHealthRatio(HealthRatio);
+	if (!PhaseRow)
+	{
+		return FMath::Max(AttackRow.Cooldown, 0.0f);
+	}
+
+	return GetPhaseAttackOverrideValue(
+		PhaseRow->CooldownOverrides,
+		AttackRow.AttackId,
+		AttackRow.Cooldown);
+}
+
+float UNSEnemyData::GetPhaseAttackOverrideValue(
+	const TArray<FNSEnemyAttackValue>& Overrides,
+	FName AttackId,
+	float DefaultValue) const
+{
+	const float ClampedDefaultValue = FMath::Max(DefaultValue, 0.0f);
+
+	if (AttackId.IsNone())
+	{
+		return ClampedDefaultValue;
+	}
+
+	for (const FNSEnemyAttackValue& Override : Overrides)
+	{
+		if (Override.AttackId == AttackId)
+		{
+			return FMath::Max(Override.Value, 0.0f);
+		}
+	}
+
+	return ClampedDefaultValue;
+}
+
