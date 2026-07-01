@@ -265,37 +265,28 @@ bool UNSCombatStatComponent::TryGetFinalAbilityStat(
 		return false;
 	}
 	
-	const TMap<FGameplayTag, FNSCombatStatModifierSum>* StatMap = ActiveModifiersByAbility.Find(AbilityTag);
+	// 증강과 Temporary Buff의 Add / Multiply%를 먼저 합산한 뒤 최종 배율을 한 번만 적용.
+	FNSCombatStatModifierSum CombinedModifierSum;
 	
-	if (!StatMap)
+	if (const TMap<FGameplayTag, FNSCombatStatModifierSum>* StatMap =
+		ActiveModifiersByAbility.Find(AbilityTag))
 	{
-		OutValue = BaseValue;
-		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
+		if (const FNSCombatStatModifierSum* ActiveModifierSum = StatMap->Find(StatTag))
 		{
-			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
+			CombinedModifierSum.AddValue += ActiveModifierSum->AddValue;
+			CombinedModifierSum.MultiplyPercent += ActiveModifierSum->MultiplyPercent;
 		}
-		return true;
 	}
 	
-	const FNSCombatStatModifierSum* ModifierSum = StatMap->Find(StatTag);
-	
-	if (!ModifierSum)
+	if (const FNSCombatStatModifierSum* TemporaryModifierSum =
+		FindTemporaryModifierSum(AbilityTag, StatTag))
 	{
-		OutValue = BaseValue;
-		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
-		{
-			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
-		}
-		return true;
+		CombinedModifierSum.AddValue += TemporaryModifierSum->AddValue;
+		CombinedModifierSum.MultiplyPercent += TemporaryModifierSum->MultiplyPercent;
 	}
 	
-	// 최종 스탯은 Add 보정을 먼저 더한 뒤 Multiply 보정을 곱함
-	OutValue = (BaseValue + ModifierSum->AddValue) * ModifierSum->MultiplyValue;
-	if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
-	{
-		ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
-	}
-
+	const float Multiplier = 1.0f + (CombinedModifierSum.MultiplyPercent * 0.01f);
+	OutValue = (BaseValue + CombinedModifierSum.AddValue) * Multiplier;
 	return true;
 }
 
@@ -316,7 +307,7 @@ FGuid UNSCombatStatComponent::AddTemporaryCombatStatModifier(
 		return FGuid();
 	}
 
-	if (Operation == ENSCombatStatModifierOperation::Multiply && Value <= 0.0f)
+	if (Operation == ENSCombatStatModifierOperation::Multiply && Value <= -100.0f)
 	{
 		return FGuid();
 	}
@@ -445,14 +436,22 @@ void UNSCombatStatComponent::RebuildAugmentSourceCache()
 			continue;
 		}
 		
-		if (Row->Operation == ENSCombatStatModifierOperation::Multiply && Row->ValuePerStack <= 0.0f)
+		if (Row->Operation == ENSCombatStatModifierOperation::Multiply)
 		{
-			NS_OBJ_LOG(LogNSGAS, Warning,
-				"유효하지 않은 증강 Multiply Modifier Row입니다. RowName={RowName}, Value={Value}",
-				("RowName", RowName.ToString()),
-				("Value", Row->ValuePerStack)
-			);
-			continue;
+			const float MaxStackMultiplier =
+				NSAugment::CalculateStackedMultiplyPercent(Row->ValuePerStack, Row->MaxStack);
+
+			if (MaxStackMultiplier <= 0.0f)
+			{
+				NS_OBJ_LOG(LogNSGAS, Warning,
+					"증강 Multiply Modifier의 최대 스택 배율이 0 이하입니다. RowName={RowName}, Value={Value}, MaxStack={MaxStack}, FinalMultiplier={FinalMultiplier}",
+					("RowName", RowName.ToString()),
+					("Value", Row->ValuePerStack),
+					("MaxStack", Row->MaxStack),
+					("FinalMultiplier", MaxStackMultiplier)
+				);
+				continue;
+			}
 		}
 		
 		// Inventory는 DefId를 저장하므로 Definition SoftPtr의 에셋 이름을 같은 DefId로 변환.
@@ -535,8 +534,7 @@ void UNSCombatStatComponent::ApplyModifierRow(const FNSAugmentDefinitionRow& Mod
 		break;
 		
 	case ENSCombatStatModifierOperation::Multiply:
-		// Multiply는 스택마다 같은 배율을 반복 적용
-		ModifierSum.MultiplyValue *= FMath::Pow(ModifierRow.ValuePerStack, static_cast<float>(Stacks));
+		ModifierSum.MultiplyPercent += ModifierRow.ValuePerStack * static_cast<float>(Stacks);
 		break;
 		
 	default:
@@ -563,7 +561,7 @@ void UNSCombatStatComponent::RebuildTemporaryModifierCache()
 			ModifierSum.AddValue += TemporaryModifier.Value;
 			break;
 		case ENSCombatStatModifierOperation::Multiply:
-			ModifierSum.MultiplyValue *= TemporaryModifier.Value;
+			ModifierSum.MultiplyPercent += TemporaryModifier.Value;
 			break;
 		default:
 			break;
@@ -583,12 +581,4 @@ const FNSCombatStatModifierSum* UNSCombatStatComponent::FindTemporaryModifierSum
 	}
 
 	return StatMap->Find(StatTag);
-}
-
-void UNSCombatStatComponent::ApplyTemporaryModifierToFinalValue(
-	const FNSCombatStatModifierSum& ModifierSum,
-	float& InOutValue) const
-{
-	// 기존 Final 값 위에 TemporaryModifier 보정 적용
-	InOutValue = (InOutValue + ModifierSum.AddValue) * ModifierSum.MultiplyValue;
 }

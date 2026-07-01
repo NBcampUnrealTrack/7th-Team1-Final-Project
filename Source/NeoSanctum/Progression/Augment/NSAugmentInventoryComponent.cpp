@@ -9,7 +9,93 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogCategories.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+
+namespace
+{
+	// StackEffect 재적용 전후 Max Attribute 증가분만 Current Attribute에 반영하기 위한 스냅샷.
+	struct FNSAugmentMaxDeltaSnapshot
+	{
+		bool bShouldAdjust = false;
+		// Health처럼 0에서 보정되면 부활처럼 보일 수 있는 Attribute는 현재값 보정을 건너뜀.
+		bool bSkipIfOldCurrentIsZero = false;
+
+		FGameplayAttribute CurrentAttribute;
+		FGameplayAttribute MaxAttribute;
+
+		float OldCurrentValue = 0.0f;
+		float OldMaxValue = 0.0f;
+	};
+
+	bool HasDefinitionRowWithStatTag(
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+		const FGameplayTag StatTag)
+	{
+		return DefinitionRows.ContainsByPredicate(
+			[StatTag](const FNSAugmentDefinitionRow& Row)
+			{
+				return Row.StatTag == StatTag;
+			}
+		);
+	}
+
+	FNSAugmentMaxDeltaSnapshot CaptureMaxDeltaSnapshot(
+		UAbilitySystemComponent* ASC,
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+		const FGameplayTag SourceStatTag,
+		const FGameplayAttribute CurrentAttribute,
+		const FGameplayAttribute MaxAttribute,
+		const bool bSkipIfOldCurrentIsZero = false)
+	{
+		FNSAugmentMaxDeltaSnapshot Snapshot;
+		Snapshot.bShouldAdjust = HasDefinitionRowWithStatTag(DefinitionRows, SourceStatTag);
+		Snapshot.bSkipIfOldCurrentIsZero = bSkipIfOldCurrentIsZero;
+		Snapshot.CurrentAttribute = CurrentAttribute;
+		Snapshot.MaxAttribute = MaxAttribute;
+
+		if (!ASC || !Snapshot.bShouldAdjust)
+		{
+			return Snapshot;
+		}
+
+		Snapshot.OldCurrentValue = ASC->GetNumericAttribute(CurrentAttribute);
+		Snapshot.OldMaxValue = ASC->GetNumericAttribute(MaxAttribute);
+
+		return Snapshot;
+	}
+
+	void ApplyMaxDeltaSnapshot(
+		UAbilitySystemComponent* ASC,
+		const FNSAugmentMaxDeltaSnapshot& Snapshot)
+	{
+		if (!ASC || !Snapshot.bShouldAdjust)
+		{
+			return;
+		}
+
+		if (Snapshot.bSkipIfOldCurrentIsZero && Snapshot.OldCurrentValue <= 0.0f)
+		{
+			return;
+		}
+
+		const float NewMaxValue = ASC->GetNumericAttribute(Snapshot.MaxAttribute);
+		const float MaxDelta = NewMaxValue - Snapshot.OldMaxValue;
+		if (MaxDelta <= KINDA_SMALL_NUMBER)
+		{
+			return;
+		}
+
+		const float NewCurrentValue = FMath::Clamp(
+			Snapshot.OldCurrentValue + MaxDelta,
+			0.0f,
+			NewMaxValue
+		);
+
+		ASC->SetNumericAttributeBase(Snapshot.CurrentAttribute, NewCurrentValue);
+	}
+}
 
 UNSAugmentInventoryComponent::UNSAugmentInventoryComponent()
 {
@@ -23,12 +109,12 @@ void UNSAugmentInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimePr
 	DOREPLIFETIME_CONDITION(UNSAugmentInventoryComponent, Owned, COND_OwnerOnly);
 }
 
-bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
+bool UNSAugmentInventoryComponent::TryFindDefinitionRows(
 	UNSDataSubsystem* Data,
 	const FPrimaryAssetId& DefId, 
-	FNSAugmentDefinitionRow& OutRow) const
+	TArray<FNSAugmentDefinitionRow>& OutRows) const
 {
-	OutRow = FNSAugmentDefinitionRow();
+	OutRows.Reset();
 	
 	const UDataTable* AugmentDefinitionTable =
 		Data ? Data->GetCurrentAugmentDefinitionTable() : nullptr;
@@ -63,9 +149,13 @@ bool UNSAugmentInventoryComponent::TryFindDefinitionRow(
 		
 		if (RowDefId == DefId)
 		{
-			OutRow = *Row;
-			return true;
+			OutRows.Add(*Row);
 		}
+	}
+	
+	if (!OutRows.IsEmpty())
+	{
+		return true;
 	}
 	
 	NS_OBJ_LOG(LogNS, Warning,
@@ -96,11 +186,13 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		return;
 	}
 	
-	FNSAugmentDefinitionRow DefinitionRow;
-	if (!TryFindDefinitionRow(Data, DefId, DefinitionRow))
+	TArray<FNSAugmentDefinitionRow> DefinitionRows;
+	if (!TryFindDefinitionRows(Data, DefId, DefinitionRows))
 	{
 		return;
 	}
+	
+	const FNSAugmentDefinitionRow& RepresentativeRow = DefinitionRows[0];
 	
 	UAbilitySystemComponent* ASC = GetOwnerASC();
 	if (!ASC)
@@ -117,16 +209,16 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		Existing->Stacks++;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(*Existing, Def, ASC);
+		ApplyStackEffect(*Existing, Def, DefinitionRows, ASC, true);
 	} else
 	{
 		FNSAugmentInstance NewInstance;
 		NewInstance.DefId = DefId;
-		NewInstance.Rarity = DefinitionRow.Rarity;
+		NewInstance.Rarity = RepresentativeRow.Rarity;
 		NewInstance.Stacks = 1;
-		NewInstance.bCountsAsLegendarySlot = DefinitionRow.bCountAsLegendarySlot;
+		NewInstance.bCountsAsLegendarySlot = RepresentativeRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(NewInstance, Def, ASC);
+		ApplyStackEffect(NewInstance, Def, DefinitionRows, ASC, true);
 		// Legendary 기믹 GA
 		GrantMechanicAbility(NewInstance, Def, ASC);
 		Owned.Add(NewInstance);
@@ -134,13 +226,51 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	OnInventoryChanged.Broadcast();
 }
 
-void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
+void UNSAugmentInventoryComponent::ApplyStackEffect(
+	FNSAugmentInstance& Inst,
+	UNSAugmentDefinition* Def,
+	const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+	UAbilitySystemComponent* ASC,
+	bool bAdjustCurrentByMaxDelta)
 {
 	if (Def->StackEffectClass.IsNull())
 	{
 		return;
 	}
 
+	FNSAugmentMaxDeltaSnapshot HealthSnapshot;
+	FNSAugmentMaxDeltaSnapshot ShieldSnapshot;
+	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
+	
+	if (bAdjustCurrentByMaxDelta)
+	{
+		// 증강 획득/스택 증가 시에만 기존 Max 값을 저장해 GE 적용 후 순수 증가량만 현재값에 더함.
+		HealthSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxHealth,
+			UNSBaseAttributeSet::GetHealthAttribute(),
+			UNSBaseAttributeSet::GetMaxHealthAttribute(),
+			true
+		);
+	
+		ShieldSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxShield,
+			UNSPlayerAttributeSet::GetShieldAttribute(),
+			UNSPlayerAttributeSet::GetMaxShieldAttribute()
+		);
+
+		AmmoSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxAmmo,
+			UNSPlayerAttributeSet::GetAmmoAttribute(),
+			UNSPlayerAttributeSet::GetMaxAmmoAttribute()
+		);
+	}
+	
 	// 처음 골랐을때는 무시, 중복 증강을 또 고른경우 핸들을 제거하고 아래에서 다시 적용
 	if (Inst.EffectHandle.IsValid())
 	{
@@ -163,8 +293,101 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(FNSAugmentInstance& Inst, UN
 		return;
 	}
 	
-	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Augment_SetByCaller_Stack, static_cast<float>(Inst.Stacks));
+	if (Def->StackEffectSetByCallerMappings.IsEmpty())
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffectClass가 설정되어 있지만 SetByCaller 매핑이 비어 있습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("EffectClass", GEClass->GetName())
+		);
+	}
+
+	bool bMatchedAnySetByCallerRow = false;
+	bool bAppliedAnySetByCallerPayload = false;
+	for (const FNSAugmentStackEffectSetByCallerMapping& Mapping : Def->StackEffectSetByCallerMappings)
+	{
+		if (!Mapping.SourceStatTag.IsValid() || !Mapping.SetByCallerTag.IsValid())
+		{
+			continue;
+		}
+		
+		const FNSAugmentDefinitionRow* MatchingRow = DefinitionRows.FindByPredicate(
+			[&Mapping](const FNSAugmentDefinitionRow& Row)
+			{
+				return Row.StatTag == Mapping.SourceStatTag;
+			}
+		);
+		
+		if (!MatchingRow)
+		{
+			continue;
+		}
+		bMatchedAnySetByCallerRow = true;
+		
+		float Magnitude = 0.0f;
+		if (!TryCalculateStackEffectMagnitude(*MatchingRow, Inst.Stacks, Magnitude))
+		{
+			continue;
+		}
+		
+		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, Magnitude);
+		bAppliedAnySetByCallerPayload = true;
+	}
+
+	if (!Def->StackEffectSetByCallerMappings.IsEmpty() && !bMatchedAnySetByCallerRow)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffect SetByCaller 매핑과 일치하는 Row를 찾지 못했습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("EffectClass", GEClass->GetName())
+		);
+	}
+	else if (bMatchedAnySetByCallerRow && !bAppliedAnySetByCallerPayload)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"증강 StackEffect SetByCaller payload를 생성하지 못했습니다. DefId={DefId}, Definition={Definition}, Stacks={Stacks}",
+			("DefId", Inst.DefId.ToString()),
+			("Definition", Def->GetName()),
+			("Stacks", Inst.Stacks)
+		);
+	}
+	
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+	
+	if (bAdjustCurrentByMaxDelta)
+	{
+		// 새 StackEffect 적용으로 증가한 Max 값만큼 Health / Shield / Ammo 현재값을 보정.
+		ApplyMaxDeltaSnapshot(ASC, HealthSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, ShieldSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, AmmoSnapshot);
+	}
+}
+
+bool UNSAugmentInventoryComponent::TryCalculateStackEffectMagnitude(
+	const FNSAugmentDefinitionRow& DefinitionRow,
+	int32 Stacks, 
+	float& OutMagnitude)
+{
+	if (Stacks <= 0)
+	{
+		return false;
+	}
+
+	switch (DefinitionRow.Operation)
+	{
+	case ENSCombatStatModifierOperation::Add:
+		OutMagnitude = DefinitionRow.ValuePerStack * static_cast<float>(Stacks);
+		return true;
+			
+	case ENSCombatStatModifierOperation::Multiply:
+		OutMagnitude = NSAugment::CalculateStackedMultiplyPercent(DefinitionRow.ValuePerStack, Stacks);
+		return OutMagnitude > 0.0f;
+			
+	default:
+		return false;
+	}
 }
 
 void UNSAugmentInventoryComponent::GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC)
@@ -263,7 +486,13 @@ void UNSAugmentInventoryComponent::ReapplyAll()
 		// 새 ASC 기준 핸들로 갱신, 누적 Stacks는 SetByCaller로 한 번에 적용
 		Inst.EffectHandle.Invalidate();
 		Inst.AbilityHandle = FGameplayAbilitySpecHandle();
-		ApplyStackEffect(Inst, Def, ASC);
+		TArray<FNSAugmentDefinitionRow> DefinitionRows;
+		if (!TryFindDefinitionRows(Data, Inst.DefId, DefinitionRows))
+		{
+			continue;
+		}
+		
+		ApplyStackEffect(Inst, Def, DefinitionRows, ASC, false);
 		GrantMechanicAbility(Inst, Def, ASC);
 	}
 

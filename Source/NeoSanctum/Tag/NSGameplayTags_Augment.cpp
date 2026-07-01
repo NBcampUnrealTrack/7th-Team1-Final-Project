@@ -12,6 +12,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Augment_SetByCaller_Stack,   "Augment.SetByCaller.Stack");
 	
 	// 증강 카드와 증강 효과 정의 Row를 식별하는 태그.
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Common_Toughness, "Augment.Definition.Common.Toughness");
+	
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Ranger_AutoFire_Damage, "Augment.Definition.Ranger.AutoFire.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Ranger_AutoFire_FireRate, "Augment.Definition.Ranger.AutoFire.FireRate");
 	

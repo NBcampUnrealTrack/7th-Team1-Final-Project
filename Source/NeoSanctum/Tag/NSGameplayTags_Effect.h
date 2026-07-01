@@ -11,10 +11,13 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_AttackRange_Engineer_SpawnTurret);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_DetectionRange_Engineer_SpawnTurret);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Accuracy_Engineer_SpawnTurret);
+	
 	// Attribute SetByCaller
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Health);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_MaxHealth);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Defense);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Defense);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxAmmo);
+	
 	// Buff SetByCaller
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Buff_FireRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Buff_ReloadSpeed);

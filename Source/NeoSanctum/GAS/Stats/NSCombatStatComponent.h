@@ -24,12 +24,12 @@ struct FNSCachedAbilityBaseStat
 /**
  * 최종 스탯 계산에 사용할 Add / Multiply Modifier 누적값입니다.
  *
- * FinalValue = (BaseValue + AddValue) * MultiplyValue
+ * FinalValue = (BaseValue + AddValue) * (1 + MultiplyPercent * 0.01)
  */
 struct FNSCombatStatModifierSum
 {
 	float AddValue = 0.0f;
-	float MultiplyValue = 1.0f;
+	float MultiplyPercent = 0.0f;
 };
 
 // 일정 시간 동안 적용되는 CombatStat Modifier
@@ -144,15 +144,6 @@ protected:
 		const FGameplayTag& StatTag
 	) const;
 
-	/** 
-	 * 기존 Final 값에 TemporaryModifier 보정을 적용 
-	 * 일단 최종값에 적용하도록 만들었으나 밸런스상 위험할 가능성이 있다고 생각함
-	 */
-	void ApplyTemporaryModifierToFinalValue(
-		const FNSCombatStatModifierSum& ModifierSum,
-		float& InOutValue
-	) const;
-	
 protected:
 	// CommonDataConfig에서 로드된 공용 스킬 기본 스탯 테이블 캐시.
 	// 에디터에서 직접 지정하지 않고 NSDataSubsystem의 CommonData 로딩 결과를 사용.

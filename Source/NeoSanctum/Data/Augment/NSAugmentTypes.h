@@ -44,9 +44,9 @@ struct FNSAugmentDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier")
 	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
 	
-	// Multiply는 1.0이 기준. 1.2는 20% 증가, 0.8은 20% 감소.
+	// Multiply는 스택당 퍼센트로 입력합니다. 10은 스택당 +10%, -10은 스택당 -10%.
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Augment|Modifier",
-		meta = (ToolTip = "Multiply는 0보다 커야 합니다."))
+		meta = (ToolTip = "Multiply는 스택당 퍼센트입니다. 10 = +10%, -10 = -10%."))
 	float ValuePerStack = 0.0f;
 	
 	// 같은 등급 후보군 안에서의 증강 선택 가중치
@@ -135,3 +135,12 @@ struct FNSAugmentSelectionCard
 	UPROPERTY(BlueprintReadOnly, Category = "NS|Augment")
 	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
 };
+
+namespace NSAugment
+{
+	// PercentPerStack / Stacks를 GE나 최종 계산에 사용할 배율 값으로 변환.
+	FORCEINLINE float CalculateStackedMultiplyPercent(const float PercentPerStack, const int32 Stacks)
+	{
+		return 1.0f + (PercentPerStack * 0.01f * static_cast<float>(Stacks));
+	}
+}
