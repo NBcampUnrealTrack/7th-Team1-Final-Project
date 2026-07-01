@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
 #include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -46,7 +47,10 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	virtual UNSEnemyData* GetEnemyData() const override { return EnemyData; }
+	virtual UNSEnemyData* GetEnemyData() const override
+	{
+		return CoreComponent ? CoreComponent->GetEnemyData() : nullptr;
+	}
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
 
@@ -82,7 +86,13 @@ public:
 	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 	void DeactivateForPool();
 	
-	void SetDifficultyScale(const FNSDifficultyScale& InScale) { CurrentDifficultyScale = InScale; }
+	void SetDifficultyScale(const FNSDifficultyScale& InScale)
+	{
+		if (CoreComponent)
+		{
+			CoreComponent->SetDifficultyScale(InScale);
+		}
+	}
 
 protected:
 	// Enemy의 현재 공격 상태를 관리하는 공통 컴포넌트
@@ -93,6 +103,18 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyPhaseComponent> PhaseComponent;
 	
+	// EnemyData와 GAS 초기화를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyCoreComponent> CoreComponent;
+	
+	// 디졸브 효과 컴포넌트
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
+
+	// 무기 장착 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;
@@ -100,20 +122,8 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_EnemyData, Category = "Character Data")
-	TObjectPtr<UNSEnemyData> EnemyData;
-
-	UFUNCTION()
-	void OnRep_EnemyData();
-
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
 
 protected:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
@@ -133,14 +143,15 @@ private:
 	void OnDissolveFinished();
 	UPROPERTY(ReplicatedUsing = OnRep_bIsInPool)
 	bool bIsInPool = false;
-	// 기본값 = {1,1,1} (따로 값 호출안되면 기본 배율인 1배 적용)
-	FNSDifficultyScale CurrentDifficultyScale;
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
 
 	UPROPERTY(Transient)
 	bool bHasCurrentAttackDefinition = false;
+	
+	// CoreComponent의 EnemyData가 변경됐을 때 시각 데이터를 갱신하는 함수
+	void HandleEnemyDataChanged(UNSEnemyData* NewEnemyData);
 
 public:
 	void UpdateCombatAimTarget(AActor* TargetActor);

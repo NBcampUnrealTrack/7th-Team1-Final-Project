@@ -47,6 +47,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
 	PhaseComponent = CreateDefaultSubobject<UNSEnemyPhaseComponent>(TEXT("PhaseComponent"));
+	CoreComponent = CreateDefaultSubobject<UNSEnemyCoreComponent>(TEXT("CoreComponent"));
 	
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
 	
@@ -69,6 +70,13 @@ void ANSEnemyCharacterBase::BeginPlay()
 	
 	InitializeFromData(true);
 	
+	if (CoreComponent)
+	{
+		CoreComponent->OnEnemyDataChanged.AddUObject(
+			this,
+			&ANSEnemyCharacterBase::HandleEnemyDataChanged);
+	}
+	
 	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
 	{
@@ -89,7 +97,6 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
-	DOREPLIFETIME(ANSEnemyCharacterBase, EnemyData);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsHitReacting);
 }
@@ -176,7 +183,7 @@ void ANSEnemyCharacterBase::OnRep_bIsDead()
 	}
 }
 
-void ANSEnemyCharacterBase::OnRep_EnemyData()
+void ANSEnemyCharacterBase::HandleEnemyDataChanged(UNSEnemyData* NewEnemyData)
 {
 	ApplyVisualData();
 }
@@ -210,6 +217,7 @@ void ANSEnemyCharacterBase::ApplyDeadVisual()
 
 void ANSEnemyCharacterBase::ApplyVisualData()
 {
+	UNSEnemyData* EnemyData = GetEnemyData();
 	if (!EnemyData || !GetMesh())
 	{
 		return;
@@ -231,114 +239,24 @@ void ANSEnemyCharacterBase::ApplyVisualData()
 
 void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 {
-	if (!EnemyData) return;
-	// 스탯은 최초, 재사용할 때 항상 초기화
-	// GAS 데이터 테이블 기반 스탯 초기화
-	EnemyData->InvalidateCachedRows();
-	if (HasAuthority() && EnemyData->AttributeInitData && AttributeSet)
+	UNSEnemyData* EnemyData = GetEnemyData();
+	if (!EnemyData)
 	{
-		FName RowName = EnemyData->EnemyId.GetTagName();
-		FNSMonsterAttributeRow* StatRow =
-			EnemyData->AttributeInitData->FindRow<FNSMonsterAttributeRow>(RowName, TEXT(""));
-
-		if (StatRow)
-		{
-			const FNSDifficultyScale& S = CurrentDifficultyScale;
-			const float ScaledMaxHealth  =
-				(StatRow->MaxHealth  * (1.0f + S.HealthAddRatio)) * S.Multiply;
-			const float ScaledBaseDamage = 
-				(StatRow->BaseDamage * (1.0f + S.DamageAddRatio)) * S.Multiply;
-			const float ScaledDefense = 
-				(StatRow->Defense * (1.0f + S.DefenseAddRatio)) * S.Multiply;
-
-			AttributeSet->SetMaxHealth (ScaledMaxHealth);
-			AttributeSet->SetHealth    (ScaledMaxHealth);
-			AttributeSet->SetBaseDamage(ScaledBaseDamage);
-			AttributeSet->SetDefense   (ScaledDefense);
-
-			AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
-			AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
-			AttributeSet->ResetHitGauge();
-		}
+		return;
 	}
-	// 어빌리티, 메시, 무기 등은 최초 생성 1회시에만 적용
+
+	if (CoreComponent)
+	{
+		CoreComponent->InitializeFromData(
+			bFullInit,
+			AttributeSet,
+			DeathAbilityClass);
+	}
+
 	if (bFullInit)
 	{
 		ApplyVisualData();
 
-		// 서버 권한 초기 이펙트 및 고유 어빌리티 일괄 부여
-		if (HasAuthority())
-		{
-			for (const TSubclassOf<UGameplayEffect>& EffectClass : EnemyData->DefaultEffects)
-			{
-				if (EffectClass)
-				{
-					FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
-					Context.AddSourceObject(this);
-
-					FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectClass, 1.0f, Context);
-					if (SpecHandle.IsValid())
-					{
-						ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-					}
-				}
-			}
-			
-			TSet<TObjectPtr<UClass>> GrantedAbilityClasses;
-			
-			auto GiveAbilityOnce = [this, &GrantedAbilityClasses](TSubclassOf<UGameplayAbility> AbilityClass)
-			{
-				if (!ASC || !AbilityClass)
-				{
-					return;
-				}
-
-				UClass* AbilityRawClass = AbilityClass.Get();
-				if (!AbilityRawClass || GrantedAbilityClasses.Contains(AbilityRawClass))
-				{
-					return;
-				}
-
-				GrantedAbilityClasses.Add(AbilityRawClass);
-
-				const UGameplayAbility* AbilityCDO = AbilityClass.GetDefaultObject();
-				if (!AbilityCDO)
-				{
-					return;
-				}
-
-				ASC->GiveAbility(FGameplayAbilitySpec(
-					AbilityClass,
-					1,
-					static_cast<int32>(AbilityCDO->GetNetExecutionPolicy())));
-			};
-
-			for (const TSubclassOf<UGameplayAbility>& AbilityClass : EnemyData->DefaultAbilities)
-			{
-				GiveAbilityOnce(AbilityClass);
-			}
-			
-			GiveAbilityOnce(EnemyData->HitReactionAbilityClass);
-			
-			for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
-			{
-				if (AttackRow)
-				{
-					GiveAbilityOnce(AttackRow->AbilityClass);
-				}
-			}
-		}
-
-		// 서버에서만 사망 능력 부여
-		if (HasAuthority())
-		{
-			if (DeathAbilityClass)
-			{
-				ASC->GiveAbility(FGameplayAbilitySpec(DeathAbilityClass, 1, -1));
-			}
-		}
-
-		// 무기 장착
 		if (WeaponComponent)
 		{
 			WeaponComponent->EquipWeapon();
@@ -433,12 +351,12 @@ void ANSEnemyCharacterBase::ClearCombatAimTarget()
 
 void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
 {
-	if (!HasAuthority() || !InEnemyData)
+	if (!HasAuthority() || !InEnemyData || !CoreComponent)
 	{
 		return;
 	}
 
-	EnemyData = InEnemyData;
+	CoreComponent->SetEnemyData(InEnemyData);
 }
 
 void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation)
@@ -653,6 +571,8 @@ void ANSEnemyCharacterBase::FinishHitReaction()
 
 void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
 {
+	UNSEnemyData* EnemyData = GetEnemyData();
+
 	if (!HasAuthority() ||
 		bIsDead ||
 		bIsInPool ||
@@ -703,6 +623,8 @@ void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
 void ANSEnemyCharacterBase::InitializeRuntimeMaterials()
 {
 	USkeletalMeshComponent* MeshComponent = GetMesh();
+	UNSEnemyData* EnemyData = GetEnemyData();
+
 	if (!MeshComponent || !EnemyData)
 	{
 		return;
