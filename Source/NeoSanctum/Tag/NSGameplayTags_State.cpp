@@ -10,6 +10,9 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Dashing, "State.Dashing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Reloading, "State.Reloading");
 	UE_DEFINE_GAMEPLAY_TAG(State_Deactivate_HandIK, "State.Deactivate.HandIK");
+	UE_DEFINE_GAMEPLAY_TAG(State_DashAttackWindow, "State.DashAttackWindow");
+	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Attacking, "State.Vanguard.Attacking");
+	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ChargingDashAttack, "State.Vanguard.ChargingDashAttack");
 	
 	// Shield Regen
 	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Broken, "State.Shield.Broken");

@@ -6,6 +6,9 @@ namespace NSGameplayTags
 {
 	// Common Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Common_Dash, "Ability.Common.Dash");	
+
+	// Vanguard Ability
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_BaseAttack, "Ability.Vanguard.BaseAttack");
 	
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
@@ -29,6 +32,10 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Common_RequestReload, "Event.Common.RequestReload");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Common_DamageTaken, "Event.Common.DamageTaken");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Common_Shield_Broken, "Event.Common.Shield.Broken");
+
+	// Vanguard Ability Event Tags
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Hit, "Event.Vanguard.Hit");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ComboBranch, "Event.Vanguard.ComboBranch");
 	
 	// Common Ability Activate Fail Tags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_ActivateFail_OutOfAmmo, "Ability.ActivateFail.OutOfAmmo");
