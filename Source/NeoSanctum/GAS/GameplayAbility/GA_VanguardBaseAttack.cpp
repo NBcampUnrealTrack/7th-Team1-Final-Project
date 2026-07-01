@@ -3,6 +3,7 @@
 #include "GA_VanguardBaseAttack.h"
 
 #include "AbilitySystemComponent.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -92,6 +93,26 @@ void UGA_VanguardBaseAttack::EndAbility(
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
+void UGA_VanguardBaseAttack::OnAttackMontageCompleted()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false);
+}
+
+void UGA_VanguardBaseAttack::OnAttackMontageInterrupted()
+{
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		true);
+}
+
 ENSVanguardBaseAttackMode UGA_VanguardBaseAttack::SelectAttackMode(
 	const FGameplayAbilityActorInfo* ActorInfo) const
 {
@@ -128,7 +149,10 @@ void UGA_VanguardBaseAttack::StartGroundCombo()
 			"뱅가드 콤보어택 모드 선택");
 	}
 
-	FinishInstantMode();
+	if (!PlayAttackMontageAndWait(GroundComboMontage, AttackMontagePlayRate))
+	{
+		FinishInstantMode();
+	}
 }
 
 void UGA_VanguardBaseAttack::StartAirSlam()
@@ -139,7 +163,10 @@ void UGA_VanguardBaseAttack::StartAirSlam()
 			"뱅가드 공중 공격 모드 선택");
 	}
 
-	FinishInstantMode();
+	if (!PlayAttackMontageAndWait(AirSlamMontage, AttackMontagePlayRate))
+	{
+		FinishInstantMode();
+	}
 }
 
 void UGA_VanguardBaseAttack::StartDashCharge()
@@ -155,6 +182,8 @@ void UGA_VanguardBaseAttack::StartDashCharge()
 
 	// 릴리즈 시 차지 비율 계산 기준 시각
 	DashChargeStartTime = FPlatformTime::Seconds();
+
+	PlayAttackMontageOnly(DashChargeMontage, AttackMontagePlayRate);
 }
 
 void UGA_VanguardBaseAttack::FinishDashCharge()
@@ -179,12 +208,27 @@ void UGA_VanguardBaseAttack::FinishDashCharge()
 			("ChargeRatio", ChargeRatio));
 	}
 
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		false);
+	StartDashAttack(ChargeRatio);
+}
+
+void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
+{
+	ActiveAttackMode = ENSVanguardBaseAttackMode::DashAttack;
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+	}
+
+	if (!PlayAttackMontageAndWait(DashAttackMontage, AttackMontagePlayRate))
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			false);
+	}
 }
 
 void UGA_VanguardBaseAttack::FinishInstantMode()
@@ -195,6 +239,64 @@ void UGA_VanguardBaseAttack::FinishInstantMode()
 		GetCurrentActivationInfo(),
 		true,
 		false);
+}
+
+bool UGA_VanguardBaseAttack::PlayAttackMontageAndWait(UAnimMontage* Montage, float PlayRate)
+{
+	if (!Montage)
+	{
+		return false;
+	}
+
+	const float FinalPlayRate = FMath::Max(PlayRate, 0.01f);
+
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			Montage,
+			FinalPlayRate,
+			NAME_None,
+			true);
+
+	if (!MontageTask)
+	{
+		return false;
+	}
+
+	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnAttackMontageCompleted);
+	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnAttackMontageInterrupted);
+	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnAttackMontageInterrupted);
+	MontageTask->ReadyForActivation();
+
+	return true;
+}
+
+bool UGA_VanguardBaseAttack::PlayAttackMontageOnly(UAnimMontage* Montage, float PlayRate)
+{
+	if (!Montage)
+	{
+		return false;
+	}
+
+	const float FinalPlayRate = FMath::Max(PlayRate, 0.01f);
+
+	UAbilityTask_PlayMontageAndWait* MontageTask =
+		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+			this,
+			NAME_None,
+			Montage,
+			FinalPlayRate,
+			NAME_None,
+			true);
+
+	if (!MontageTask)
+	{
+		return false;
+	}
+
+	MontageTask->ReadyForActivation();
+	return true;
 }
 
 void UGA_VanguardBaseAttack::AddVanguardStateTags()
