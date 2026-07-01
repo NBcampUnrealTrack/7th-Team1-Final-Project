@@ -21,6 +21,7 @@
 #include "Perception/AISense_Sight.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyControllerBase.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyMeleeComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 
@@ -235,6 +236,11 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
 	{
 		PhaseComponent->ResetPhaseState();
+	}
+
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
+	{
+		MeleeComponent->ResetMeleeState();
 	}
 
 	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(InPawn);
@@ -730,107 +736,51 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 
 bool ANSEnemyAIController::RequestMeleeAttackReservation()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	if (!Enemy || !TargetActor || !UsesMeleeAttackReservation())
+	UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	if (!MeleeComponent)
 	{
+		SetMeleeReservationBlackboard(false, true);
 		return false;
 	}
 
-	UNSMeleeAttackReservationComponent* Component =
-		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+	const FNSMeleeState State = MeleeComponent->RequestReservation(
+		GetCurrentTargetActor(),
+		GetLatestDamageTimeFromCurrentTarget()
+	);
 
-	// 컴포넌트 없는 타깃은 EQS만 적용하고 접근 허용
-	if (!Component)
-	{
-		CancelMeleeReservationRequest(false);
-		SetMeleeReservationBlackboard(false, true);
-		return true;
-	}
+	SetMeleeReservationBlackboard(State.bHasReservation, State.bCanApproach);
 
-	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != TargetActor)
-	{
-		CancelMeleeReservationRequest(false);
-	}
-
-	MeleeReservationTarget = TargetActor;
-
-	const ENSMeleeReservationRequestResult Result =
-		Component->RequestReservation(Enemy, GetLatestDamageTimeFromCurrentTarget());
-
-	const bool bReserved = Result == ENSMeleeReservationRequestResult::Reserved;
-
-	SetMeleeReservationBlackboard(bReserved, bReserved);
-
-	return Result != ENSMeleeReservationRequestResult::Rejected;
+	return State.bAccepted;
 }
 
 bool ANSEnemyAIController::HasMeleeAttackReservation() const
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* ReservedTarget = MeleeReservationTarget.Get();
-
-	if (!Enemy || !ReservedTarget)
-	{
-		return false;
-	}
-
-	UNSMeleeAttackReservationComponent* Component =
-		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
-
-	return Component && Component->HasReservation(Enemy);
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	return MeleeComponent && MeleeComponent->HasReservation();
 }
 
 bool ANSEnemyAIController::CanApproachMeleeTarget() const
 {
-	if (!UsesMeleeAttackReservation())
-	{
-		return true;
-	}
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
 
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	if (!TargetActor)
-	{
-		return false;
-	}
-
-	const bool bReservationRequired =
-		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
-
-	return !bReservationRequired || this->HasMeleeAttackReservation();
+	return MeleeComponent
+		       ? MeleeComponent->CanApproachTarget(GetCurrentTargetActor())
+		       : true;
 }
 
 bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
 {
-	if (!UsesMeleeAttackReservation())
-	{
-		return false;
-	}
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
 
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	return TargetActor && TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
+	return MeleeComponent &&
+		MeleeComponent->TargetRequiresReservation(GetCurrentTargetActor());
 }
 
 void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* ReservedTarget = MeleeReservationTarget.Get();
-
-	if (!Enemy || !ReservedTarget)
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		return;
-	}
-
-	if (UNSMeleeAttackReservationComponent* Component =
-		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-	{
-		Component->MarkAttackStarted(Enemy);
+		MeleeComponent->NotifyAttackStarted();
 	}
 }
 
@@ -843,80 +793,34 @@ void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCoo
 
 void ANSEnemyAIController::UpdateMeleeReservationState()
 {
-	if (!UsesMeleeAttackReservation())
+	UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+
+	if (!MeleeComponent)
 	{
 		SetMeleeReservationBlackboard(false, true);
 		return;
 	}
 
-	AActor* CurrentTarget = GetCurrentTargetActor();
-	if (!CurrentTarget)
-	{
-		CancelMeleeReservationRequest(false);
-		return;
-	}
+	const FNSMeleeState State =
+		MeleeComponent->UpdateState(GetCurrentTargetActor());
 
-	UNSMeleeAttackReservationComponent* Component =
-		CurrentTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
-	if (!Component)
-	{
-		if (MeleeReservationTarget.IsValid())
-		{
-			CancelMeleeReservationRequest(false);
-		}
-
-		SetMeleeReservationBlackboard(false, true);
-		return;
-	}
-
-	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != CurrentTarget)
-	{
-		CancelMeleeReservationRequest(false);
-		return;
-	}
-
-	const bool bReserved = HasMeleeAttackReservation();
-	SetMeleeReservationBlackboard(bReserved, bReserved);
+	SetMeleeReservationBlackboard(State.bHasReservation, State.bCanApproach);
 }
 
 void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCooldown)
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		if (UNSMeleeAttackReservationComponent* Component =
-			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-		{
-			Component->ReleaseReservation(Enemy, bStartReacquireCooldown);
-		}
+		MeleeComponent->ReleaseReservation(bStartReacquireCooldown);
 	}
 
-	MeleeReservationTarget.Reset();
 	SetMeleeReservationBlackboard(false, false);
 }
 
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-	const UNSEnemyData* EnemyData = Enemy ? Enemy->GetEnemyData() : nullptr;
-
-	if (!EnemyData)
-	{
-		return false;
-	}
-
-	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
-	{
-		if (AttackRow &&
-			AttackRow->AbilityClass &&
-			AttackRow->AttackType == ENSEnemyAttackType::MeleeSweep)
-		{
-			return true;
-		}
-	}
-
-	return false;
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	return MeleeComponent && MeleeComponent->UsesReservation();
 }
 
 double ANSEnemyAIController::GetLatestDamageTimeFromCurrentTarget() const
@@ -1000,13 +904,9 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 	}
 
 	// 근접 예약은 반환하지 않고 공격 중에서 접근 중 상태로 되돌림
-	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		if (UNSMeleeAttackReservationComponent* Component =
-			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-		{
-			Component->MarkAttackInterrupted(Enemy);
-		}
+		MeleeComponent->MarkAttackInterrupted();
 	}
 
 	if (CachedBBComp)
@@ -1197,5 +1097,14 @@ UNSEnemyThreatComponent* ANSEnemyAIController::GetEnemyThreatComponent() const
 
 	return ControlledPawn
 		       ? ControlledPawn->FindComponentByClass<UNSEnemyThreatComponent>()
+		       : nullptr;
+}
+
+UNSEnemyMeleeComponent* ANSEnemyAIController::GetEnemyMeleeComponent() const
+{
+	const APawn* ControlledPawn = GetPawn();
+
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyMeleeComponent>()
 		       : nullptr;
 }

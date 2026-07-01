@@ -14,6 +14,8 @@ class ANSEnemyCharacterBase;
 class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
+class UNSEnemyMeleeComponent;
+
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 
@@ -47,6 +49,9 @@ private:
 	
 	// 현재 Possess 중인 Enemy의 Threat Component를 반환하는 함수
 	UNSEnemyThreatComponent* GetEnemyThreatComponent() const;
+	
+	// 현재 Possess 중인 Enemy의 Melee Component를 반환하는 함수
+	UNSEnemyMeleeComponent* GetEnemyMeleeComponent() const;
 
 public:
 	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
@@ -183,9 +188,6 @@ private:
 
 protected:
 	/* 런타임 변수 */
-	
-	/* 현재 예약을 요청했거나 활성 예약을 보유한 타깃 */
-	TWeakObjectPtr<AActor> MeleeReservationTarget;
 
 	/* 근접 공격 예약 보유 상태를 저장하는 블랙보드 키 이름 */
 	FName HasMeleeAttackReservationKey = TEXT("bHasMeleeAttackReservation");

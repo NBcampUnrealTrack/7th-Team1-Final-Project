@@ -18,6 +18,7 @@
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyMeleeComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
@@ -54,13 +55,14 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	AttackComponent = CreateDefaultSubobject<UNSEnemyAttackComponent>(TEXT("AttackComponent"));
 	TargetComponent = CreateDefaultSubobject<UNSEnemyTargetComponent>(TEXT("TargetComponent"));
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
-	
+	MeleeComponent = CreateDefaultSubobject<UNSEnemyMeleeComponent>(TEXT("MeleeComponent"));
+
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
-	
+
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-	
+
 	GetCharacterMovement()->bUseRVOAvoidance = true;
 	GetCharacterMovement()->AvoidanceConsiderationRadius = 200.0f;
 	GetCharacterMovement()->AvoidanceWeight = 0.5f;
@@ -73,16 +75,16 @@ void ANSEnemyCharacterBase::BeginPlay()
 	if (!ASC) return;
 
 	ASC->InitAbilityActorInfo(this, this);
-	
+
 	InitializeFromData(true);
-	
+
 	if (CoreComponent)
 	{
 		CoreComponent->OnEnemyDataChanged.AddUObject(
 			this,
 			&ANSEnemyCharacterBase::HandleEnemyDataChanged);
 	}
-	
+
 	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
 	{
@@ -332,7 +334,7 @@ void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
 
 	FVector AimBoundsOrigin = TargetActor->GetActorLocation();
 	FVector AimBoundsExtent = FVector::ZeroVector;
-	
+
 	if (const UPrimitiveComponent* RootPrimitive = Cast<UPrimitiveComponent>(TargetActor->GetRootComponent()))
 	{
 		AimBoundsOrigin = RootPrimitive->Bounds.Origin;
@@ -377,7 +379,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsHitReacting = false;
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
-	
+
 	SetRetreating(false);
 	SetActorLocationAndRotation(
 		SpawnLocation,
@@ -387,13 +389,13 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 		ETeleportType::TeleportPhysics);
 	SetActorTickEnabled(true);
 	SetActorEnableCollision(true);
-	
+
 	// 이동을 멈췄으므로 재가동
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->SetMovementMode(MOVE_Walking);
 	}
-	
+
 	ApplyAliveVisual();
 
 	// 종료할 때 전부 없앴으므로 전부 재주입
@@ -448,12 +450,12 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		ASC->RemoveActiveEffects(FGameplayEffectQuery());
 		ASC->ClearAllAbilities();
 	}
-	
+
 	if (WeaponComponent)
 	{
 		WeaponComponent->UnEquipWeapon();
 	}
-	
+
 	if (DamageFlashComponent)
 	{
 		DamageFlashComponent->CancelFlash();
@@ -468,7 +470,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 void ANSEnemyCharacterBase::Landed(const FHitResult& Hit)
 {
 	Super::Landed(Hit);
-	
+
 	if (!bNavLinkJumping)
 	{
 		return;
@@ -527,7 +529,7 @@ void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
 
 void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
 {
-		if (!HasAuthority())
+	if (!HasAuthority())
 	{
 		return;
 	}
