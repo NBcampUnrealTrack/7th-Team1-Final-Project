@@ -7,8 +7,11 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
+#include "NeoSanctum/Data/Combat/NSHitReactionData.h"
+#include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
 #include "NSDataSubsystem.generated.h"
 
+class UNSSoundData;
 class UNSAugmentRarityRuleSet;
 class UNSCommonDataConfig;
 class UNSRunConfig;
@@ -117,6 +120,14 @@ public:
 	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
 	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData로드 완료 시 캐싱.
 	UDataTable* GetCommonAbilityBaseStatTable() const;
+	
+	UNSSoundData* GetCommonSoundData() const;
+	UDataTable* GetCommonVFXDataTable() const;
+	UDataTable* GetCommonHitReactionDataTable() const;
+	UDataTable* GetCommonPlayerAttackFeedbackDataTable() const;
+	
+	const TArray<FNSHitReactionData>& GetCachedHitReactionRows() const { return CachedHitReactionRows; }
+	const TArray<FNSPlayerAttackFeedbackData>& GetCachedPlayerAttackFeedbackRows() const { return CachedPlayerAttackFeedbackRows; }
 
 	const UNSRunConfig* GetCurrentRunConfig() const { return CurrentRunConfig.Get(); }
 	// 현재 런에서 사용하는 증강 후보 테이블.
@@ -201,6 +212,17 @@ private:
 	void StartLoadCommon();
 	void OnCommonAssetsLoaded();
 
+	// CommonDataConfig와 CharacterData PrimaryAsset 로드 후,
+	// Row 내부 SoftObject까지 필요한 공용 참조 에셋을 추가로 로드.
+	void StartLoadCommonReferenceAssets();
+	// 공용 참조 에셋 로드가 끝난 뒤 런타임 조회용 캐시를 만들고 CommonReady를 알림.
+	void OnCommonReferenceAssetsLoaded();
+	// VFX DataTable Row가 가진 NiagaraSystem SoftObject를 수집.
+	// VFX 재생 시 동기 로드를 피하기 위해 CommonDataReady 전에 선로드.
+	void CollectVFXSystemPathsFromTable(const UDataTable* VFXTable, TArray<FSoftObjectPath>& OutPaths) const;
+	// HitReaction/PlayerAttackFeedback 테이블을 매번 순회하지 않도록 CommonData 로드 시 1회 캐싱.
+	void CacheCommonFeedbackRows();
+
 	void StartLoadOutGame();
 	void OnOutGameAssetsLoaded();
 
@@ -252,6 +274,11 @@ private:
 
 	UPROPERTY()
 	TMap<FPrimaryAssetId, TObjectPtr<UObject>> DataCache;
+	
+	TArray<FNSHitReactionData> CachedHitReactionRows;
+	TArray<FNSPlayerAttackFeedbackData> CachedPlayerAttackFeedbackRows;
+	
+	TSharedPtr<FStreamableHandle> CommonReferencedAssetsHandle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSRewardDataRegistry> RewardDataRegistry;

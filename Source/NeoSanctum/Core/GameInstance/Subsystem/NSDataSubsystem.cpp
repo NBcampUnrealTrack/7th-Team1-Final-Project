@@ -14,7 +14,8 @@
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
-#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Data/Sound/NSSoundData.h"
+#include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 
@@ -94,14 +95,6 @@ const UNSCommonDataConfig* UNSDataSubsystem::GetCommonDataConfig() const
 		return nullptr;
 	}
 	
-	if (CommonConfigs.Num() > 1)
-	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"NSCommonDataConfig가 여러 개 로드되었습니다. 첫 번째 설정을 사용합니다. Count={Count}",
-			("Count", CommonConfigs.Num())
-		);
-	}
-	
 	return CommonConfigs[0];
 }
 
@@ -114,6 +107,30 @@ UDataTable* UNSDataSubsystem::GetCommonAbilityBaseStatTable() const
 	}
 	
 	return CommonConfig->AbilityBaseStatTable.Get();
+}
+
+UNSSoundData* UNSDataSubsystem::GetCommonSoundData() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->SoundData.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonVFXDataTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->VFXDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonHitReactionDataTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->HitReactionDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonPlayerAttackFeedbackDataTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->PlayerAttackFeedbackDataTable.Get() : nullptr;
 }
 
 UDataTable* UNSDataSubsystem::GetCurrentAugmentDefinitionTable() const
@@ -293,8 +310,86 @@ void UNSDataSubsystem::OnCommonAssetsLoaded()
 			CharacterAssetType
 		}
 	);
+	StartLoadCommonReferenceAssets();
+}
+
+void UNSDataSubsystem::StartLoadCommonReferenceAssets()
+{
+	TArray<FSoftObjectPath> AssetsToLoad;
+	
+	// VFX DT Row 안의 NiagaraSystem은 DataAsset 번들로만으로는 보장되지 않으므로 별도 선로드.
+	CollectVFXSystemPathsFromTable(GetCommonVFXDataTable(), AssetsToLoad);
+	
+	if (AssetsToLoad.IsEmpty())
+	{
+		OnCommonReferenceAssetsLoaded();
+		return;
+	}
+	
+	FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+	CommonReferencedAssetsHandle = StreamableManager.RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateUObject(this, &ThisClass::OnCommonReferenceAssetsLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnCommonReferenceAssetsLoaded()
+{
+	CacheCommonFeedbackRows();
+	
 	SetPhase(ENSDataLoadPhase::CommonReady);
 	OnCommonDataReady.Broadcast();
+}
+
+void UNSDataSubsystem::CollectVFXSystemPathsFromTable(
+	const UDataTable* VFXTable, TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (!IsValid(VFXTable) || VFXTable->GetRowStruct() != FNSVFXDataTableRow::StaticStruct())
+	{
+		return;
+	}
+	
+	const FString ContextString = TEXT("CollectVFXSystemPathsFromTable");
+	for (const FName& RowName : VFXTable->GetRowNames())
+	{
+		const FNSVFXDataTableRow* Row = VFXTable->FindRow<FNSVFXDataTableRow>(RowName, ContextString, false);
+		if (Row && !Row->NiagaraSystem.IsNull())
+		{
+			OutPaths.AddUnique(Row->NiagaraSystem.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CacheCommonFeedbackRows()
+{
+	CachedHitReactionRows.Reset();
+	CachedPlayerAttackFeedbackRows.Reset();
+	
+	if (const UDataTable* HitReactionTable = GetCommonHitReactionDataTable())
+	{
+		TArray<FNSHitReactionData*> Rows;
+		HitReactionTable->GetAllRows(TEXT("CacheCommonFeedbackRows"), Rows);
+		for (const FNSHitReactionData* Row : Rows)
+		{
+			if (Row)
+			{
+				CachedHitReactionRows.Add(*Row);
+			}
+		}
+	}
+	
+	if (const UDataTable* PlayerAttackFeedbackTable = GetCommonPlayerAttackFeedbackDataTable())
+	{
+		TArray<FNSPlayerAttackFeedbackData*> Rows;
+		PlayerAttackFeedbackTable->GetAllRows(TEXT("CacheCommonPlayerAttackFeedbackRows"), Rows);
+		for (const FNSPlayerAttackFeedbackData* Row : Rows)
+		{
+			if (Row)
+			{
+				CachedPlayerAttackFeedbackRows.Add(*Row);
+			}
+		}
+	}
 }
 
 // ================================================================
@@ -438,7 +533,6 @@ void UNSDataSubsystem::StartLoadStageSpawnerTables()
 {
 	if (!IsValid(CurrentRunLevelConfig))
 	{
-		NS_OBJ_LOG(LogNS, Warning, "스테이지 스포너 DT 로드가 요청됐지만 CurrentRunLevelConfig가 아직 준비되지 않았습니다.");
 		return;
 	}
 	
@@ -474,11 +568,6 @@ void UNSDataSubsystem::OnStageSpawnerTableLoaded()
 	CurrentRangeSpawnerTable = CurrentRunLevelConfig ? CurrentRunLevelConfig->RangeSpawnerTable.Get() : nullptr;
 	bStageSpawnerTablesLoaded = true;
 	
-	if (!CurrentMeleeSpawnerTable && !CurrentRangeSpawnerTable)
-	{
-		NS_OBJ_LOG(LogNS, Warning, "스테이지 스포너 DT 로드가 완료됐지만 근접/원거리 스폰 테이블이 모두 비어 있습니다.");
-	}
-	
 	OnStageSpawnerTablesReady.Broadcast();
 }
 
@@ -506,12 +595,21 @@ void UNSDataSubsystem::UnloadCommon()
 		CommonHandle->ReleaseHandle();
 		CommonHandle.Reset();
 	}
+	
+	if (CommonReferencedAssetsHandle.IsValid())
+	{
+		CommonReferencedAssetsHandle->ReleaseHandle();
+		CommonReferencedAssetsHandle.Reset();
+	}
+	
+	CachedHitReactionRows.Reset();
+	CachedPlayerAttackFeedbackRows.Reset();
+	
 	UnloadByTypes(
-	{ 
-			CommonDataConfigAssetType,
-			CharacterAssetType, 
-		}
-	);
+	{
+		CommonDataConfigAssetType,
+		CharacterAssetType,
+	});
 }
 
 void UNSDataSubsystem::UnloadOutGame()
