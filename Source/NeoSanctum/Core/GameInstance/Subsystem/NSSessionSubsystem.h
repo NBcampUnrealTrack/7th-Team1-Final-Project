@@ -62,22 +62,42 @@ public:
 	FNSOnDestroySessionComplete OnDestroySessionComplete;
 
 private:
+	// CreateSession을 다음 틱에 시작하도록 예약
 	void QueueCreateSessionForNextTick();
+	// 실제 세션 생성 실행
 	void StartCreateSession();
+	// 실제 세션 제거 실행
 	void StartDestroySession();
 
+	// 진행 중인 Pending 네트워크 게임(조인 대기)이 있는지 확인
 	bool HasPendingNetGame() const;
+	// Pending Join을 취소하고 Host 생성으로 전환
 	void CancelPendingJoinForHost();
 
+	// CreateSession 엔진 델리게이트 핸들 해제
 	void ClearCreateSessionDelegate();
+	// DestroySession 엔진 델리게이트 핸들 해제
 	void ClearDestroySessionDelegate();
 	
+	// 세션 생성 완료 콜백 (성공 시 허브로 ServerTravel)
 	void OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful);
+	// 세션 제거 완료 콜백
 	void OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful);
 	
+	// 모든 참가의 공통 진입점 
 	void JoinResolvedSession(const FOnlineSessionSearchResult& SearchResult);
+	// 세션 검색 완료 콜백
 	void OnFindSessionsCompleted(bool bWasSuccessful);
+	// 세션 참가 완료 콜백 (연결 문자열 해석 후 ClientTravel)
 	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	
+	// 스팀 친구 초대 수락 콜백
+	void OnSessionUserInviteAccepted(
+	const bool bWasSuccessful,
+	const int32 ControllerId,
+	FUniqueNetIdPtr UserId,
+	const FOnlineSessionSearchResult& InviteResult);
+
 	
 	// 세션 생성 완료 후 실제 Hub ServerTravel을 수행하는 내부 헬퍼
 	void StartHostTravelToHub();
@@ -97,9 +117,15 @@ private:
 	
 	FDelegateHandle FindSessionsDelegateHandle;
 	FDelegateHandle JoinSessionDelegateHandle;
+	
+	FDelegateHandle SessionInviteAcceptedDelegateHandle;
+	
 	TSharedPtr<class FOnlineSessionSearch> LastSessionSearch;
 
 	TSharedPtr<FOnlineSessionSettings> LastSessionSettings;
+	
+	// 콜드 런치 대비: 초기화 전에 수락된 초대를 잠깐 보관
+	TSharedPtr<FOnlineSessionSearchResult> PendingInviteResult;
 	
 	// 조인/트래블 실패 시 타이틀로 복귀시키는 핸들러
 	void HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
@@ -126,6 +152,14 @@ private:
 	// Destroy 완료 후 타이틀로 복귀할지 여부
 	bool bReturnToTitleAfterDestroy = false;
 	
+	// 초기화 전,처리 지연된 초대가 있는지 여부
+	bool bHasPendingInvite = false;
+
+	// Destroy 완료 후 보류된 초대로 조인할지 여부
+	bool bJoinInviteAfterDestroy = false;
+	
 	class UNSLevelCatalog* GetLevelCatalog() const;
 	void ReturnToTitle();
+	// 보류된 초대를 조인 가능한 시점에 처리
+	void TryConsumePendingInvite();
 };

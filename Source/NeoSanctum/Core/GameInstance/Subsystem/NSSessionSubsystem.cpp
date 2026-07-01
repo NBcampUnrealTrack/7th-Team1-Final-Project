@@ -26,6 +26,17 @@ void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		SessionInterface = OnlineSubsystem->GetSessionInterface();
 	}
 	
+	if (SessionInterface.IsValid())
+	{
+		SessionInviteAcceptedDelegateHandle =
+			SessionInterface->AddOnSessionUserInviteAcceptedDelegate_Handle(
+				FOnSessionUserInviteAcceptedDelegate::CreateUObject(
+					this, &UNSSessionSubsystem::OnSessionUserInviteAccepted));
+	}
+	
+	// 콜드 런치로 이미 수락 상태로 켜졌는지 확인용
+	TryConsumePendingInvite();
+	
 	// 조인/트래블 실패 시 복구용
 	if (GEngine)
 	{
@@ -55,11 +66,19 @@ void UNSSessionSubsystem::Deinitialize()
 				JoinSessionDelegateHandle);
 	}
 	
+	if (SessionInterface.IsValid() && SessionInviteAcceptedDelegateHandle.IsValid())
+	{
+		SessionInterface->ClearOnSessionUserInviteAcceptedDelegate_Handle(
+			   SessionInviteAcceptedDelegateHandle);
+	}
+	
 	FindSessionsDelegateHandle.Reset();
 	JoinSessionDelegateHandle.Reset();
 	LastSessionSearch.Reset();
 	LastSessionSettings.Reset();
 	SessionInterface.Reset();
+	SessionInviteAcceptedDelegateHandle.Reset();
+	PendingInviteResult.Reset();
 
 	bIsJoining = false;
 	bIsCreatingSession = false;
@@ -68,6 +87,7 @@ void UNSSessionSubsystem::Deinitialize()
 	bSwitchingToHost = false;
 	bCreateSessionAfterDestroy = false;
 	bReturnToTitleAfterDestroy = false;
+	bHasPendingInvite = false;
 
 	Super::Deinitialize();
 }
@@ -473,6 +493,29 @@ void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWas
 	ClearDestroySessionDelegate();
 	bIsDestroyingSession = false;
 	
+	// 초대로 인한 Destroy였다면 여기서 조인
+	if (bJoinInviteAfterDestroy && PendingInviteResult.IsValid())
+	{
+		bJoinInviteAfterDestroy = false;
+		// Destroy 실패 시엔 조인하지 않고 보류 초대 정리
+		if (!bWasSuccessful || !PendingInviteResult.IsValid())
+		{
+			bHasPendingInvite = false;
+			PendingInviteResult.Reset();
+			OnDestroySessionComplete.Broadcast(bWasSuccessful);
+			// 조인 실패 신호 (UI용)
+			OnJoinSessionComplete.Broadcast(false);
+			return;
+		}
+		
+		bHasPendingInvite = false;
+		const FOnlineSessionSearchResult Result = *PendingInviteResult;
+		PendingInviteResult.Reset();
+		JoinResolvedSession(Result);
+		
+		return;
+	}
+	
 	// Destroy 끝났으면 타이틀 화면으로
 	if (bReturnToTitleAfterDestroy)
 	{
@@ -612,6 +655,33 @@ void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessi
 	PC->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
 }
 
+void UNSSessionSubsystem::OnSessionUserInviteAccepted(
+	const bool bWasSuccessful, 
+	const int32 ControllerId,
+	FUniqueNetIdPtr UserId,
+	const FOnlineSessionSearchResult& InviteResult)
+{
+	if (!bWasSuccessful || !InviteResult.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("초대 수락 실패 또는 결과 무효"));
+		
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("초대 수락됨 → 조인 시도"));
+
+	// 지금 바로 조인 가능한 상태가 아니면 보관 후 지연 처리
+	if (bIsCreatingSession || bIsDestroyingSession || bHostStartQueued
+		|| bSwitchingToHost || bIsJoining)
+	{
+		PendingInviteResult = MakeShared<FOnlineSessionSearchResult>(InviteResult);
+		bHasPendingInvite = true;
+		return;
+	}
+
+	JoinResolvedSession(InviteResult);
+}
+
 void UNSSessionSubsystem::HandleNetworkFailure(
 	UWorld* World,
 	UNetDriver* NetDriver,
@@ -720,6 +790,41 @@ void UNSSessionSubsystem::ReturnToTitle()
 	// 복구용 로직
 	UE_LOG(LogTemp, Warning, TEXT("카탈로그 TitleLevel 없음, 폴백 진행"));
 	UGameplayStatics::OpenLevel(World, FName(TEXT("L_Title")));
+}
+
+void UNSSessionSubsystem::TryConsumePendingInvite()
+{
+	if (!bHasPendingInvite || !PendingInviteResult.IsValid())
+	{
+		return;
+	}
+	
+	if (!SessionInterface.IsValid())
+	{
+		return;
+	}
+
+	// 아직 다른 작업이 남아있는 상태라면
+	if (bIsCreatingSession || bIsDestroyingSession || bHostStartQueued
+		|| bSwitchingToHost || bIsJoining)
+	{
+		return;
+	}
+
+	// 내가 이미 세션을 갖고 있으면 먼저 정리 후 조인
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		bJoinInviteAfterDestroy = true;
+		DestroySession();
+		
+		return;
+	}
+
+	// 세션이 없으면 바로 조인
+	const FOnlineSessionSearchResult Result = *PendingInviteResult;
+	bHasPendingInvite = false;
+	PendingInviteResult.Reset();
+	JoinResolvedSession(Result);
 }
 
 bool UNSSessionSubsystem::HasPendingNetGame() const
