@@ -7,6 +7,7 @@
 #include "AttributeSet.h"
 #include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Components/StateTreeAIComponent.h"
 #include "EnvironmentQuery/EnvQuery.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
@@ -29,8 +30,10 @@ ANSEnemyAIController::ANSEnemyAIController()
 	PrimaryActorTick.TickInterval = 0.1f;
 
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
+	StateTreeComponent = CreateDefaultSubobject<UStateTreeAIComponent>(TEXT("StateTreeComponent"));
 
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &ANSEnemyAIController::OnTargetPerceptionUpdated);
+	StateTreeComponent->SetStartLogicAutomatically(false);
 }
 
 void ANSEnemyAIController::Tick(float DeltaTime)
@@ -235,29 +238,45 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 
-	// 쿨다운 시간 초기화
+	// 공격 쿨다운 기록을 초기화
 	LastAttackTimeById.Reset();
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(InPawn);
-	if (!Enemy) return;
+	// Phase 상태를 초기화
+	CurrentPhaseId = NAME_None;
+	CurrentPhaseTag = FGameplayTag();
+	bPhaseInitialized = false;
+	bPhasePatternLocked = false;
+	CurrentPhaseTransitionGA = nullptr;
 
-	UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-	if (!EnemyData) return;
-
-	if (EnemyData->BehaviorTree)
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(InPawn);
+	if (!EnemyAgent)
 	{
-		RunBehaviorTree(EnemyData->BehaviorTree);
-		CachedBBComp = GetBlackboardComponent();
-
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
-
-		ResetTargetingState();
-		InitializeMeleeEQSBlackboard(EnemyData);
+		return;
 	}
+
+	UNSEnemyData* EnemyData = EnemyAgent->GetEnemyData();
+	if (!EnemyData)
+	{
+		return;
+	}
+
+	StartEnemyBrain(EnemyData);
+
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
+		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+	}
+
+	ResetTargetingState();
+	InitializeMeleeEQSBlackboard(EnemyData);
 }
 
 void ANSEnemyAIController::OnUnPossess()
 {
+	StopEnemyBrain(TEXT("UnPossess"));
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(nullptr);
 
@@ -1913,5 +1932,55 @@ void ANSEnemyAIController::OnPhaseTransitionAbilityEnded(
 	if (CachedBBComp)
 	{
 		CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
+	}
+}
+
+void ANSEnemyAIController::StartEnemyBrain(const UNSEnemyData* EnemyData)
+{
+	if (!EnemyData)
+	{
+		return;
+	}
+
+	StopEnemyBrain(TEXT("Restart Enemy Brain"));
+
+	switch (EnemyData->BrainType)
+	{
+	case ENSEnemyBrainType::BehaviorTree:
+	{
+		if (!EnemyData->BehaviorTree)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BehaviorTree 타입인데, 비어 있음."));
+			return;
+		}
+
+		RunBehaviorTree(EnemyData->BehaviorTree);
+		CachedBBComp = GetBlackboardComponent();
+		break;
+	}
+
+	case ENSEnemyBrainType::StateTree:
+	{
+		if (!StateTreeComponent || !EnemyData->StateTree)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("StateTree 타입인데, 비어 있음."));
+			return;
+		}
+
+		BrainComponent = StateTreeComponent;
+		StateTreeComponent->SetStateTree(EnemyData->StateTree);
+		StateTreeComponent->StartLogic();
+
+		CachedBBComp = GetBlackboardComponent();
+		break;
+	}
+	}
+}
+
+void ANSEnemyAIController::StopEnemyBrain(const FString& Reason)
+{
+	if (BrainComponent)
+	{
+		BrainComponent->StopLogic(Reason);
 	}
 }

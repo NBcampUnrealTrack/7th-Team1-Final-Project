@@ -12,6 +12,7 @@
 class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
+class UStateTreeAIComponent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 struct FAbilityEndedData;
@@ -396,7 +397,6 @@ protected:
 	float CoverAttackAimZOffsetRatio = 0.15f;
 
 #pragma endregion
-private:
 #pragma region 페이즈 전환
 
 public:
@@ -438,5 +438,17 @@ private:
 	// 현재 PhaseId를 저장할 Blackboard 키 이름
 	FName CurrentPhaseIdKey = TEXT("CurrentPhaseId");
 
+#pragma endregion
+#pragma region State Tree
+protected:
+	// StateTree 방식 Enemy가 사용할 AI Brain Component
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "AI", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStateTreeAIComponent> StateTreeComponent;
+
+	// EnemyData의 BrainType에 맞는 AI Brain을 시작하는 함수
+	void StartEnemyBrain(const UNSEnemyData* EnemyData);
+
+	// 현재 실행 중인 AI Brain을 정지하는 함수
+	void StopEnemyBrain(const FString& Reason);
 #pragma endregion
 };

@@ -60,6 +60,13 @@ enum class ENSBossLaserMode : uint8
 	Radial UMETA(DisplayName = "Radial")
 };
 
+UENUM(BlueprintType)
+enum class ENSEnemyBrainType : uint8
+{
+	BehaviorTree UMETA(DisplayName = "Behavior Tree"),
+	StateTree UMETA(DisplayName = "State Tree")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -374,11 +381,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UDataTable> PhaseTable;
 
+	// 몬스터 AI 실행 방식
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
+	ENSEnemyBrainType BrainType = ENSEnemyBrainType::BehaviorTree;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "AI Config",
+		meta = (EditCondition = "BrainType == ENSEnemyBrainType::BehaviorTree", EditConditionHides))
 	TObjectPtr<UBehaviorTree> BehaviorTree;
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config",
-		meta = (EditCondition = "EnemyRank == ENSEnemyRank::Boss", EditConditionHides))
+		meta = (EditCondition = "BrainType == ENSEnemyBrainType::StateTree", EditConditionHides))
 	TObjectPtr<UStateTree> StateTree;
 
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config",
