@@ -25,19 +25,23 @@ UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 void UGA_EnemyAttackMelee::InitializeAttack()
 {
 	DamagedTraceWindowIds.Reset();
-	
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+
+	const ANSEnemyCharacterBase* Enemy =
+		Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
 
 	if (!IsValid(Enemy))
 	{
 		return;
 	}
 
-	if (const FNSEnemyAttackDefinition* CurrentAttackDefinition = Enemy->GetCurrentAttackDefinition())
+	const FNSEnemyAttackRow* CurrentAttackRow = Enemy->GetCurrentAttackRow();
+	if (!CurrentAttackRow)
 	{
-		AttackTraceDistance = CurrentAttackDefinition->Condition.MaxRange;
-		AttackTraceRadius = CurrentAttackDefinition->MeleeTraceRadius;
+		return;
 	}
+
+	AttackTraceDistance = CurrentAttackRow->Condition.MaxRange;
+	AttackTraceRadius = CurrentAttackRow->MeleeTraceRadius;
 }
 
 void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)

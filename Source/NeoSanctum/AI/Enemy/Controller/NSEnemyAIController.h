@@ -4,13 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
+class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
-struct FNSEnemyAttackDefinition;
+struct FNSEnemyAttackRow;
+struct FNSEnemyPhaseRow;
+struct FAbilityEndedData;
 
 // 타임스탬프 데미지
 struct FNSThreatDamageSample
@@ -53,17 +57,17 @@ public:
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
 	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
-	const FNSEnemyAttackDefinition* GetAttackDefinitionByDistance();
-	
+	const FNSEnemyAttackRow* GetAttackRowByDistance();
+
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
-	
+
 public:
 	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
 	bool CanUseAnyAttackByDistance();
-	
+
 	// 공격이 실제로 활성화된 뒤 쿨다운 시작 시간을 기록
-	void RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition);
+	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
 
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
@@ -77,8 +81,8 @@ protected:
 private:
 	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
 	bool IsValidLivingTarget(const AActor* Target) const;
-	
-	const FNSEnemyAttackDefinition* FindAttackDefinitionByDistance(bool bSelectWeightedAttack);
+
+	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);
 
 protected:
 	/* 시야/청각 설정 컴포넌트 */
@@ -95,10 +99,10 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBlackboardComponent> CachedBBComp;
-	
+
 	/* AttackId별 마지막 사용 시간 */
 	TMap<FName, float> LastAttackTimeById;
-	
+
 private:
 	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
 
@@ -117,12 +121,13 @@ private:
 	float RetreatDestinationAcceptanceRadius = 75.0f;
 
 #pragma region 몬스터 어그로 관리
+
 public:
 	/* 함수 */
-	
+
 	// 현재 타깃을 향한 공격이 시작됐음을 기록하고 추적 제한 시간을 갱신하는 함수
 	void NotifyAttackStarted();
-	
+
 private:
 	// 현재 Threat 정보를 평가해 타깃 선택·유지·전환·해제를 처리하는 함수
 	void UpdateTargetSelection();
@@ -156,7 +161,7 @@ private:
 
 	// 현재 타깃, 마지막 위치, 시야 여부를 Blackboard에 반영하는 함수
 	void UpdateCurrentTargetBlackboard();
-	
+
 	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
 	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;
 
@@ -235,8 +240,8 @@ private:
 
 	/* 현재 타깃이 시야에 보이는지 저장할 Blackboard 키 이름 */
 	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
-	
-#pragma endregion 
+
+#pragma endregion
 #pragma region 근접 공격 예약
 
 public:
@@ -328,18 +333,18 @@ private:
 
 	// 추적·공격·후퇴 상태에 따라 이동 방향 회전과 타깃 방향 회전을 전환되는 함수
 	void UpdateFacingMode(
-		ANSEnemyCharacterBase* Enemy, 
+		ANSEnemyCharacterBase* Enemy,
 		AActor* TargetActor);
 
 	// 현재 거리가 몬스터 공격 중 하나의 사용 가능 거리 안에 있는지 확인하는 함수
 	bool IsWithinPotentialAttackRange(
-		const ANSEnemyCharacterBase* Enemy, 
+		const ANSEnemyCharacterBase* Enemy,
 		AActor* TargetActor) const;
 
 	// 이동 방향 회전 또는 타깃 방향 회전 설정을 CharacterMovement에 적용하는 함수
 	void ApplyFacingMode(
-		ANSEnemyCharacterBase* Enemy, 
-		AActor* TargetActor, 
+		ANSEnemyCharacterBase* Enemy,
+		AActor* TargetActor,
 		bool bFaceTarget);
 #pragma endregion
 #pragma region 타깃 트레이스
@@ -350,8 +355,10 @@ public:
 
 private:
 	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
-	bool CanUseAttackDefinition(
-		const FNSEnemyAttackDefinition& AttackDefinition,
+	bool CanUseAttackRow(
+		const FNSEnemyAttackRow& AttackRow,
+		const UNSEnemyData* EnemyData,
+		float HealthRatio,
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		float Distance,
@@ -362,7 +369,7 @@ private:
 
 	// 파괴 가능 엄폐물을 원거리 공격 대상으로 사용할 수 있는지 확인하는 함수
 	bool CanUseDestructibleCoverAttack(
-		const FNSEnemyAttackDefinition& AttackDefinition,
+		const FNSEnemyAttackRow& AttackRow,
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		bool bHasDirectLineOfSight) const;
@@ -387,6 +394,49 @@ protected:
 	// 엄폐물 Trace/조준 위치를 Bounds 중심에서 위로 보정하는 비율
 	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack", meta = (ClampMin = "0.0"))
 	float CoverAttackAimZOffsetRatio = 0.15f;
+
+#pragma endregion
+private:
+#pragma region 페이즈 전환
+
+public:
+	// 현재 몬스터의 Health / MaxHealth 기준 체력 비율을 반환하는 함수
+	float GetControlledEnemyHealthRatio() const;
+
+private:
+	// 현재 체력 비율 기준으로 Enemy Phase 변경 여부를 확인하는 함수
+	void UpdateEnemyPhase();
+
+	// 새 Phase에 진입할 때 PhaseTag, TransitionGA, Pattern Lock을 적용하는 함수
+	void EnterEnemyPhase(const FNSEnemyPhaseRow& NewPhaseRow, bool bPlayTransition);
+
+	// Phase Transition GA가 끝났을 때 Pattern Lock을 해제하는 함수
+	void OnPhaseTransitionAbilityEnded(const FAbilityEndedData& AbilityEndedData);
+
+	// Phase 전환 중 공격 패턴 선택을 막고 있는지 확인하는 함수
+	bool IsPhasePatternLocked() const { return bPhasePatternLocked; }
+
+private:
+	// 현재 적용된 PhaseId
+	FName CurrentPhaseId = NAME_None;
+
+	// 현재 적용된 PhaseTag
+	FGameplayTag CurrentPhaseTag;
+
+	// 최초 Phase 초기화가 끝났는지 여부
+	bool bPhaseInitialized = false;
+
+	// Phase 전환 중 공격 패턴 선택을 막는지 여부
+	bool bPhasePatternLocked = false;
+
+	// 현재 실행 중인 Phase Transition GA
+	TSubclassOf<UGameplayAbility> CurrentPhaseTransitionGA;
+
+	// Phase Lock 상태를 저장할 Blackboard 키 이름
+	FName PhasePatternLockedKey = TEXT("bPhasePatternLocked");
+
+	// 현재 PhaseId를 저장할 Blackboard 키 이름
+	FName CurrentPhaseIdKey = TEXT("CurrentPhaseId");
 
 #pragma endregion
 };

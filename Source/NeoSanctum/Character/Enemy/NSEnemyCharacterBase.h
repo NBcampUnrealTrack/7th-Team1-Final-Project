@@ -46,12 +46,27 @@ public:
 	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
 
 	ANSEnemyWeaponBase* GetCurrentWeapon() const;
-	
-	void SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition);
-	const FNSEnemyAttackDefinition* GetCurrentAttackDefinition() const;
-	void ClearCurrentAttackDefinition();
 
 	FOnEnemyDead OnEnemyDead;
+	
+public:
+	// 현재 실행 중인 공격 Row를 저장하는 함수
+	void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow);
+
+	// 현재 실행 중인 공격 Row를 반환하는 함수
+	const FNSEnemyAttackRow* GetCurrentAttackRow() const;
+
+	// 현재 실행 중인 공격 Row를 초기화하는 함수
+	void ClearCurrentAttackRow();
+	
+private:
+	// 현재 실행 중인 공격 Row
+	UPROPERTY(Transient)
+	FNSEnemyAttackRow CurrentAttackRow;
+
+	// 현재 공격 Row가 유효한지 여부
+	UPROPERTY(Transient)
+	bool bHasCurrentAttackRow = false;
 
 public:
 	void Die();
@@ -113,9 +128,6 @@ private:
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
-	
-	UPROPERTY(Transient)
-	FNSEnemyAttackDefinition CurrentAttackDefinition;
 
 	UPROPERTY(Transient)
 	bool bHasCurrentAttackDefinition = false;
