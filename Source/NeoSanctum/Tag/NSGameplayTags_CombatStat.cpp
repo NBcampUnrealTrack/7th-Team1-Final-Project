@@ -8,6 +8,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Damage,					"CombatStat.Damage");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Health,					"CombatStat.Health");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxHealth,				"CombatStat.MaxHealth");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Shield,					"CombatStat.Shield");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxShield,				"CombatStat.MaxShield");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Defense,					"CombatStat.Defense");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Cooldown,					"CombatStat.Cooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Duration,					"CombatStat.Duration");

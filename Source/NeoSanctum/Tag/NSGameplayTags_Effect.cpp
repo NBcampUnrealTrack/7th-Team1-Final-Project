@@ -9,10 +9,13 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_AttackRange_Engineer_SpawnTurret, "Effect.AttackRange.Engineer.SpawnTurret");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_DetectionRange_Engineer_SpawnTurret, "Effect.DetectionRange.Engineer.SpawnTurret");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Accuracy_Engineer_SpawnTurret, "Effect.Accuracy.Engineer.SpawnTurret");
+	
 	// Attribute SetByCaller
-	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Health, "Effect.SetByCaller.Health");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxHealth, "Effect.SetByCaller.MaxHealth");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield, "Effect.SetByCaller.MaxShield");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense, "Effect.SetByCaller.Defense");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxAmmo, "Effect.SetByCaller.MaxAmmo");
+	
 	// Buff SetByCaller
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Buff_FireRate, "Effect.Buff.FireRate");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Buff_ReloadSpeed, "Effect.Buff.ReloadSpeed");

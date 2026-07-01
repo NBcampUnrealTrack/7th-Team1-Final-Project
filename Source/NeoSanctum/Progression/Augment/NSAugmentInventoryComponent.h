@@ -63,12 +63,13 @@ private:
 	UFUNCTION()
 	void OnRep_Owned();
 	
-	// StackEffectClass가 설정된 증강만 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성합.
+	// StackEffectClass가 설정된 증강만 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성.
 	void ApplyStackEffect(
 		FNSAugmentInstance& Inst,
 		UNSAugmentDefinition* Def,
 		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
-		UAbilitySystemComponent* ASC
+		UAbilitySystemComponent* ASC,
+		bool bAdjustCurrentByMaxDelta
 	);
 	
 	static bool TryCalculateStackEffectMagnitude(

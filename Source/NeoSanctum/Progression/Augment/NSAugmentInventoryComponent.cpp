@@ -9,6 +9,93 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogCategories.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+
+namespace
+{
+	// StackEffect 재적용 전후 Max Attribute 증가분만 Current Attribute에 반영하기 위한 스냅샷.
+	struct FNSAugmentMaxDeltaSnapshot
+	{
+		bool bShouldAdjust = false;
+		// Health처럼 0에서 보정되면 부활처럼 보일 수 있는 Attribute는 현재값 보정을 건너뜀.
+		bool bSkipIfOldCurrentIsZero = false;
+
+		FGameplayAttribute CurrentAttribute;
+		FGameplayAttribute MaxAttribute;
+
+		float OldCurrentValue = 0.0f;
+		float OldMaxValue = 0.0f;
+	};
+
+	bool HasDefinitionRowWithStatTag(
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+		const FGameplayTag StatTag)
+	{
+		return DefinitionRows.ContainsByPredicate(
+			[StatTag](const FNSAugmentDefinitionRow& Row)
+			{
+				return Row.StatTag == StatTag;
+			}
+		);
+	}
+
+	FNSAugmentMaxDeltaSnapshot CaptureMaxDeltaSnapshot(
+		UAbilitySystemComponent* ASC,
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+		const FGameplayTag SourceStatTag,
+		const FGameplayAttribute CurrentAttribute,
+		const FGameplayAttribute MaxAttribute,
+		const bool bSkipIfOldCurrentIsZero = false)
+	{
+		FNSAugmentMaxDeltaSnapshot Snapshot;
+		Snapshot.bShouldAdjust = HasDefinitionRowWithStatTag(DefinitionRows, SourceStatTag);
+		Snapshot.bSkipIfOldCurrentIsZero = bSkipIfOldCurrentIsZero;
+		Snapshot.CurrentAttribute = CurrentAttribute;
+		Snapshot.MaxAttribute = MaxAttribute;
+
+		if (!ASC || !Snapshot.bShouldAdjust)
+		{
+			return Snapshot;
+		}
+
+		Snapshot.OldCurrentValue = ASC->GetNumericAttribute(CurrentAttribute);
+		Snapshot.OldMaxValue = ASC->GetNumericAttribute(MaxAttribute);
+
+		return Snapshot;
+	}
+
+	void ApplyMaxDeltaSnapshot(
+		UAbilitySystemComponent* ASC,
+		const FNSAugmentMaxDeltaSnapshot& Snapshot)
+	{
+		if (!ASC || !Snapshot.bShouldAdjust)
+		{
+			return;
+		}
+
+		if (Snapshot.bSkipIfOldCurrentIsZero && Snapshot.OldCurrentValue <= 0.0f)
+		{
+			return;
+		}
+
+		const float NewMaxValue = ASC->GetNumericAttribute(Snapshot.MaxAttribute);
+		const float MaxDelta = NewMaxValue - Snapshot.OldMaxValue;
+		if (MaxDelta <= KINDA_SMALL_NUMBER)
+		{
+			return;
+		}
+
+		const float NewCurrentValue = FMath::Clamp(
+			Snapshot.OldCurrentValue + MaxDelta,
+			0.0f,
+			NewMaxValue
+		);
+
+		ASC->SetNumericAttributeBase(Snapshot.CurrentAttribute, NewCurrentValue);
+	}
+}
 
 UNSAugmentInventoryComponent::UNSAugmentInventoryComponent()
 {
@@ -122,7 +209,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		Existing->Stacks++;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(*Existing, Def, DefinitionRows, ASC);
+		ApplyStackEffect(*Existing, Def, DefinitionRows, ASC, true);
 	} else
 	{
 		FNSAugmentInstance NewInstance;
@@ -131,7 +218,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		NewInstance.Stacks = 1;
 		NewInstance.bCountsAsLegendarySlot = RepresentativeRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(NewInstance, Def, DefinitionRows, ASC);
+		ApplyStackEffect(NewInstance, Def, DefinitionRows, ASC, true);
 		// Legendary 기믹 GA
 		GrantMechanicAbility(NewInstance, Def, ASC);
 		Owned.Add(NewInstance);
@@ -143,13 +230,47 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	FNSAugmentInstance& Inst,
 	UNSAugmentDefinition* Def,
 	const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
-	UAbilitySystemComponent* ASC)
+	UAbilitySystemComponent* ASC,
+	bool bAdjustCurrentByMaxDelta)
 {
 	if (Def->StackEffectClass.IsNull())
 	{
 		return;
 	}
 
+	FNSAugmentMaxDeltaSnapshot HealthSnapshot;
+	FNSAugmentMaxDeltaSnapshot ShieldSnapshot;
+	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
+	
+	if (bAdjustCurrentByMaxDelta)
+	{
+		// 증강 획득/스택 증가 시에만 기존 Max 값을 저장해 GE 적용 후 순수 증가량만 현재값에 더함.
+		HealthSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxHealth,
+			UNSBaseAttributeSet::GetHealthAttribute(),
+			UNSBaseAttributeSet::GetMaxHealthAttribute(),
+			true
+		);
+	
+		ShieldSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxShield,
+			UNSPlayerAttributeSet::GetShieldAttribute(),
+			UNSPlayerAttributeSet::GetMaxShieldAttribute()
+		);
+
+		AmmoSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxAmmo,
+			UNSPlayerAttributeSet::GetAmmoAttribute(),
+			UNSPlayerAttributeSet::GetMaxAmmoAttribute()
+		);
+	}
+	
 	// 처음 골랐을때는 무시, 중복 증강을 또 고른경우 핸들을 제거하고 아래에서 다시 적용
 	if (Inst.EffectHandle.IsValid())
 	{
@@ -234,6 +355,14 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	}
 	
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
+	
+	if (bAdjustCurrentByMaxDelta)
+	{
+		// 새 StackEffect 적용으로 증가한 Max 값만큼 Health / Shield / Ammo 현재값을 보정.
+		ApplyMaxDeltaSnapshot(ASC, HealthSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, ShieldSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, AmmoSnapshot);
+	}
 }
 
 bool UNSAugmentInventoryComponent::TryCalculateStackEffectMagnitude(
@@ -363,7 +492,7 @@ void UNSAugmentInventoryComponent::ReapplyAll()
 			continue;
 		}
 		
-		ApplyStackEffect(Inst, Def, DefinitionRows, ASC);
+		ApplyStackEffect(Inst, Def, DefinitionRows, ASC, false);
 		GrantMechanicAbility(Inst, Def, ASC);
 	}
 
