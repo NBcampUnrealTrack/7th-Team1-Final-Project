@@ -10,6 +10,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxHealth,				"CombatStat.MaxHealth");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Shield,					"CombatStat.Shield");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxShield,				"CombatStat.MaxShield");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ShieldRechargeRate,		"CombatStat.ShieldRechargeRate");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ShieldRechargeCooldown,	"CombatStat.ShieldRechargeCooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Defense,					"CombatStat.Defense");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Cooldown,					"CombatStat.Cooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Duration,					"CombatStat.Duration");
@@ -22,6 +24,11 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ReloadSpeed,				"CombatStat.ReloadSpeed");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ReloadSpeedBuff,			"CombatStat.ReloadSpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxAmmo,					"CombatStat.MaxAmmo");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxDashCount,				"CombatStat.MaxDashCount");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DashRegenRate,			"CombatStat.DashRegenRate");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill1Count,			"CombatStat.MaxSkill1Count");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill2Count,			"CombatStat.MaxSkill2Count");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill3Count,			"CombatStat.MaxSkill3Count");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_PelletCount,				"CombatStat.PelletCount");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_PelletSpread,				"CombatStat.PelletSpread");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_FireRange,				"CombatStat.FireRange");

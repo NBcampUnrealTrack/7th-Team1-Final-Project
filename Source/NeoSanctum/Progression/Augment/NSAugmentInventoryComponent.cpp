@@ -12,9 +12,96 @@
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+
 
 namespace
 {
+	struct FNSAugmentAttributeEffectMapping
+	{
+		FGameplayTag StatTag;
+		FGameplayTag AddSetByCallerTag;
+		FGameplayTag MultiplySetByCallerTag;
+	};
+
+	// DT Row의 StatTag / Operation을 공용 Attribute GE의 SetByCaller 태그로 변환하는 테이블.
+	// Count 계열처럼 Multiply를 허용하지 않는 Stat은 MultiplySetByCallerTag를 비워 둠.
+	const TArray<FNSAugmentAttributeEffectMapping>& GetAttributeEffectMappings()
+	{
+		static const TArray<FNSAugmentAttributeEffectMapping> Mappings =
+		{
+			{ NSGameplayTags::CombatStat_MaxHealth, NSGameplayTags::Effect_SetByCaller_MaxHealth_Add, NSGameplayTags::Effect_SetByCaller_MaxHealth_Multiply },
+			{ NSGameplayTags::CombatStat_MaxShield, NSGameplayTags::Effect_SetByCaller_MaxShield_Add, NSGameplayTags::Effect_SetByCaller_MaxShield_Multiply },
+			{ NSGameplayTags::CombatStat_Defense, NSGameplayTags::Effect_SetByCaller_Defense_Add, NSGameplayTags::Effect_SetByCaller_Defense_Multiply },
+			{ NSGameplayTags::CombatStat_MaxAmmo, NSGameplayTags::Effect_SetByCaller_MaxAmmo_Add, NSGameplayTags::Effect_SetByCaller_MaxAmmo_Multiply },
+			{ NSGameplayTags::CombatStat_ShieldRechargeRate, NSGameplayTags::Effect_SetByCaller_ShieldRechargeRate_Add, NSGameplayTags::Effect_SetByCaller_ShieldRechargeRate_Multiply },
+			{ NSGameplayTags::CombatStat_ShieldRechargeCooldown, NSGameplayTags::Effect_SetByCaller_ShieldRechargeCooldown_Add, NSGameplayTags::Effect_SetByCaller_ShieldRechargeCooldown_Multiply },
+			{ NSGameplayTags::CombatStat_MaxDashCount, NSGameplayTags::Effect_SetByCaller_MaxDashCount_Add, FGameplayTag() },
+			{ NSGameplayTags::CombatStat_DashRegenRate, NSGameplayTags::Effect_SetByCaller_DashRegenRate_Add, NSGameplayTags::Effect_SetByCaller_DashRegenRate_Multiply },
+			{ NSGameplayTags::CombatStat_MaxSkill1Count, NSGameplayTags::Effect_SetByCaller_MaxSkill1Count_Add, FGameplayTag() },
+			{ NSGameplayTags::CombatStat_MaxSkill2Count, NSGameplayTags::Effect_SetByCaller_MaxSkill2Count_Add, FGameplayTag() },
+			{ NSGameplayTags::CombatStat_MaxSkill3Count, NSGameplayTags::Effect_SetByCaller_MaxSkill3Count_Add, FGameplayTag() },
+		};
+
+		return Mappings;
+	}
+
+	const FNSAugmentAttributeEffectMapping* FindAttributeEffectMapping(FGameplayTag StatTag)
+	{
+		return GetAttributeEffectMappings().FindByPredicate(
+			[StatTag](const FNSAugmentAttributeEffectMapping& Mapping)
+			{
+				return Mapping.StatTag == StatTag;
+			}
+		);
+	}
+
+	// 공용 GE에는 여러 Attribute Modifier가 항상 들어 있으므로 모든 SetByCaller에 중립값을 먼저 채움.
+	// Add는 0, Multiply는 1을 기본값으로 넣어 Row가 없는 Modifier가 실제 수치에 영향을 주지 않게 함.
+	void InitializeNeutralAttributeSetByCallers(FGameplayEffectSpecHandle& SpecHandle)
+	{
+		if (!SpecHandle.IsValid())
+		{
+			return;
+		}
+
+		for (const FNSAugmentAttributeEffectMapping& Mapping : GetAttributeEffectMappings())
+		{
+			if (Mapping.AddSetByCallerTag.IsValid())
+			{
+				SpecHandle.Data->SetSetByCallerMagnitude(Mapping.AddSetByCallerTag, 0.0f);
+			}
+
+			if (Mapping.MultiplySetByCallerTag.IsValid())
+			{
+				SpecHandle.Data->SetSetByCallerMagnitude(Mapping.MultiplySetByCallerTag, 1.0f);
+			}
+		}
+	}
+
+	bool TryGetAttributeSetByCallerTag(const FNSAugmentDefinitionRow& Row, FGameplayTag& OutSetByCallerTag)
+	{
+		const FNSAugmentAttributeEffectMapping* Mapping = FindAttributeEffectMapping(Row.StatTag);
+		if (!Mapping)
+		{
+			return false;
+		}
+
+		switch (Row.Operation)
+		{
+		case ENSCombatStatModifierOperation::Add:
+			OutSetByCallerTag = Mapping->AddSetByCallerTag;
+			return OutSetByCallerTag.IsValid();
+
+		case ENSCombatStatModifierOperation::Multiply:
+			OutSetByCallerTag = Mapping->MultiplySetByCallerTag;
+			return OutSetByCallerTag.IsValid();
+
+		default:
+			return false;
+		}
+	}
+
 	// StackEffect 재적용 전후 Max Attribute 증가분만 Current Attribute에 반영하기 위한 스냅샷.
 	struct FNSAugmentMaxDeltaSnapshot
 	{
@@ -82,16 +169,17 @@ namespace
 
 		const float NewMaxValue = ASC->GetNumericAttribute(Snapshot.MaxAttribute);
 		const float MaxDelta = NewMaxValue - Snapshot.OldMaxValue;
-		if (MaxDelta <= KINDA_SMALL_NUMBER)
+
+		float NewCurrentValue = Snapshot.OldCurrentValue;
+
+		if (MaxDelta > KINDA_SMALL_NUMBER)
 		{
-			return;
+			// Max가 증가한 경우에는 증가분 만큼 Current도 같이 올림.
+			NewCurrentValue += MaxDelta;
 		}
 
-		const float NewCurrentValue = FMath::Clamp(
-			Snapshot.OldCurrentValue + MaxDelta,
-			0.0f,
-			NewMaxValue
-		);
+		// Max가 감소했거나 기존 Current가 새 Max보다 큰 경우에는 새 Max로 클램프.
+		NewCurrentValue = FMath::Clamp(NewCurrentValue, 0.0f, NewMaxValue);
 
 		ASC->SetNumericAttributeBase(Snapshot.CurrentAttribute, NewCurrentValue);
 	}
@@ -209,7 +297,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 	{
 		Existing->Stacks++;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(*Existing, Def, DefinitionRows, ASC, true);
+		ApplyStackEffect(*Existing, DefinitionRows, ASC, true);
 	} else
 	{
 		FNSAugmentInstance NewInstance;
@@ -218,7 +306,7 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 		NewInstance.Stacks = 1;
 		NewInstance.bCountsAsLegendarySlot = RepresentativeRow.bCountAsLegendarySlot;
 		// Common / Rare / Epic / Legendary(수치강화)
-		ApplyStackEffect(NewInstance, Def, DefinitionRows, ASC, true);
+		ApplyStackEffect(NewInstance, DefinitionRows, ASC, true);
 		// Legendary 기믹 GA
 		GrantMechanicAbility(NewInstance, Def, ASC);
 		Owned.Add(NewInstance);
@@ -228,23 +316,46 @@ void UNSAugmentInventoryComponent::ApplyAugment(const FPrimaryAssetId& DefId)
 
 void UNSAugmentInventoryComponent::ApplyStackEffect(
 	FNSAugmentInstance& Inst,
-	UNSAugmentDefinition* Def,
 	const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 	UAbilitySystemComponent* ASC,
 	bool bAdjustCurrentByMaxDelta)
 {
-	if (Def->StackEffectClass.IsNull())
+	// 스킬 수치만 바꾸는 증강은 기존 CombatStat Modifier 흐름만 사용하고 Attribute GE는 적용하지 않음.
+	const bool bHasAttributeEffectRow = DefinitionRows.ContainsByPredicate(
+		[](const FNSAugmentDefinitionRow& Row)
+		{
+			return FindAttributeEffectMapping(Row.StatTag) != nullptr;
+		}
+	);
+
+	if (!bHasAttributeEffectRow)
 	{
+		if (Inst.EffectHandle.IsValid())
+		{
+			ASC->RemoveActiveGameplayEffect(Inst.EffectHandle);
+			Inst.EffectHandle.Invalidate();
+		}
+
+		return;
+	}
+
+	if (!SharedAttributeStackEffectClass)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"공용 어트리뷰트 스택 이펙트 클래스가 설정되어 있지 않습니다. DefId={DefId}",
+			("DefId", Inst.DefId.ToString())
+		);
 		return;
 	}
 
 	FNSAugmentMaxDeltaSnapshot HealthSnapshot;
 	FNSAugmentMaxDeltaSnapshot ShieldSnapshot;
 	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
-	
+
+	// 새 증강 획득/스택 증가 시에만 Max 증가분을 Current에 더하기 위해 적용 전 값을 저장.
+	// ReapplyAll()에서는 false로 호출해 스테이지 이동 중 의도치 않은 회복/탄약 회복을 막음.
 	if (bAdjustCurrentByMaxDelta)
 	{
-		// 증강 획득/스택 증가 시에만 기존 Max 값을 저장해 GE 적용 후 순수 증가량만 현재값에 더함.
 		HealthSnapshot = CaptureMaxDeltaSnapshot(
 			ASC,
 			DefinitionRows,
@@ -278,82 +389,58 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 		Inst.EffectHandle.Invalidate();
 	}
 	
-	// InRunData 번들로 미리 로드되어 DataSubsystem 캐시에 상주하므로 동기 로드 없이 .Get()으로 조회
-	UClass* GEClass = Def->StackEffectClass.Get();
-	if (!GEClass)
-	{
-		return;
-	}
-
 	FGameplayEffectContextHandle ContextHandle = ASC->MakeEffectContext();
-	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(GEClass, 1.f, ContextHandle);
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(SharedAttributeStackEffectClass, 1.0f, ContextHandle);
 
 	if (!SpecHandle.IsValid())
 	{
 		return;
 	}
-	
-	if (Def->StackEffectSetByCallerMappings.IsEmpty())
-	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"증강 StackEffectClass가 설정되어 있지만 SetByCaller 매핑이 비어 있습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
-			("DefId", Inst.DefId.ToString()),
-			("Definition", Def->GetName()),
-			("EffectClass", GEClass->GetName())
-		);
-	}
 
-	bool bMatchedAnySetByCallerRow = false;
-	bool bAppliedAnySetByCallerPayload = false;
-	for (const FNSAugmentStackEffectSetByCallerMapping& Mapping : Def->StackEffectSetByCallerMappings)
+	InitializeNeutralAttributeSetByCallers(SpecHandle);
+	
+	bool bAppliedAnyPayload = false;
+
+	for (const FNSAugmentDefinitionRow& Row : DefinitionRows)
 	{
-		if (!Mapping.SourceStatTag.IsValid() || !Mapping.SetByCallerTag.IsValid())
+		const bool bHasAttributeMapping = FindAttributeEffectMapping(Row.StatTag) != nullptr;
+
+		FGameplayTag SetByCallerTag;
+		if (!TryGetAttributeSetByCallerTag(Row, SetByCallerTag))
 		{
-			continue;
-		}
-		
-		const FNSAugmentDefinitionRow* MatchingRow = DefinitionRows.FindByPredicate(
-			[&Mapping](const FNSAugmentDefinitionRow& Row)
+			if (bHasAttributeMapping)
 			{
-				return Row.StatTag == Mapping.SourceStatTag;
+				NS_OBJ_LOG(LogNS, Warning,
+					"증강 어트리뷰트 행에 지원하지 않는 연산이 설정되어 있습니다. DefId={DefId}, StatTag={StatTag}, Operation={Operation}",
+					("DefId", Inst.DefId.ToString()),
+					("StatTag", Row.StatTag.ToString()),
+					("Operation", StaticEnum<ENSCombatStatModifierOperation>()->GetNameStringByValue(static_cast<int64>(Row.Operation)))
+				);
 			}
-		);
-		
-		if (!MatchingRow)
-		{
 			continue;
 		}
-		bMatchedAnySetByCallerRow = true;
-		
+
 		float Magnitude = 0.0f;
-		if (!TryCalculateStackEffectMagnitude(*MatchingRow, Inst.Stacks, Magnitude))
+		if (!TryCalculateStackEffectMagnitude(Row, Inst.Stacks, Magnitude))
 		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 어트리뷰트 적용값 계산에 실패했습니다. DefId={DefId}, StatTag={StatTag}, Stacks={Stacks}",
+				("DefId", Inst.DefId.ToString()),
+				("StatTag", Row.StatTag.ToString()),
+				("Stacks", Inst.Stacks)
+			);
 			continue;
 		}
-		
-		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, Magnitude);
-		bAppliedAnySetByCallerPayload = true;
+
+		SpecHandle.Data->SetSetByCallerMagnitude(SetByCallerTag, Magnitude);
+		bAppliedAnyPayload = true;
 	}
 
-	if (!Def->StackEffectSetByCallerMappings.IsEmpty() && !bMatchedAnySetByCallerRow)
+	if (!bAppliedAnyPayload)
 	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"증강 StackEffect SetByCaller 매핑과 일치하는 Row를 찾지 못했습니다. DefId={DefId}, Definition={Definition}, EffectClass={EffectClass}",
-			("DefId", Inst.DefId.ToString()),
-			("Definition", Def->GetName()),
-			("EffectClass", GEClass->GetName())
-		);
+		return;
 	}
-	else if (bMatchedAnySetByCallerRow && !bAppliedAnySetByCallerPayload)
-	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"증강 StackEffect SetByCaller payload를 생성하지 못했습니다. DefId={DefId}, Definition={Definition}, Stacks={Stacks}",
-			("DefId", Inst.DefId.ToString()),
-			("Definition", Def->GetName()),
-			("Stacks", Inst.Stacks)
-		);
-	}
-	
+
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
 	
 	if (bAdjustCurrentByMaxDelta)
@@ -492,7 +579,7 @@ void UNSAugmentInventoryComponent::ReapplyAll()
 			continue;
 		}
 		
-		ApplyStackEffect(Inst, Def, DefinitionRows, ASC, false);
+		ApplyStackEffect(Inst, DefinitionRows, ASC, false);
 		GrantMechanicAbility(Inst, Def, ASC);
 	}
 
@@ -533,5 +620,3 @@ int32 UNSAugmentInventoryComponent::GetLegendaryCount() const
 	}
 	return LegendaryCount;
 }
-
-
