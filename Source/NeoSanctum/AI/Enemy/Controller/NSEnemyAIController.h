@@ -13,6 +13,7 @@ class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
 class UStateTreeAIComponent;
+class INSEnemyAgent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 struct FAbilityEndedData;
@@ -450,5 +451,16 @@ protected:
 
 	// 현재 실행 중인 AI Brain을 정지하는 함수
 	void StopEnemyBrain(const FString& Reason);
+#pragma endregion
+#pragma region Enemy 공통 헬퍼
+private:
+	// 현재 Possess 중인 Pawn을 Enemy 공통 Interface로 반환하는 함수
+	const INSEnemyAgent* GetControlledEnemyAgent() const;
+
+	// 현재 Possess 중인 Enemy의 DataAsset을 반환하는 함수
+	const UNSEnemyData* GetControlledEnemyData() const;
+
+	// 현재 Possess 중인 Enemy가 피격 경직 상태인지 반환하는 함수
+	bool IsControlledEnemyHitReacting() const;
 #pragma endregion
 };

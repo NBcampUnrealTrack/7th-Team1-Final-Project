@@ -153,9 +153,7 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 		return false;
 	}
 
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	if (Enemy && Enemy->IsHitReacting())
+	if (IsControlledEnemyHitReacting())
 	{
 		if (CachedBBComp)
 		{
@@ -207,9 +205,7 @@ const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 		return nullptr;
 	}
 
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	if (Enemy && Enemy->IsHitReacting())
+	if (IsControlledEnemyHitReacting())
 	{
 		if (CachedBBComp)
 		{
@@ -382,14 +378,14 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 		return nullptr;
 	}
 
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
-	if (!Enemy)
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(AIPawn);
+	if (!EnemyAgent || EnemyAgent->IsHitReacting())
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	const UNSEnemyData* EnemyData = EnemyAgent->GetEnemyData();
 	if (!EnemyData)
 	{
 		SetAttackActorBlackboard(nullptr);
@@ -1769,20 +1765,19 @@ bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
 
 float ANSEnemyAIController::GetControlledEnemyHealthRatio() const
 {
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-	if (!Enemy)
+	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetPawn());
+	if (!ASI)
 	{
 		return 1.0f;
 	}
 
-	const UAbilitySystemComponent* ASC = Enemy->GetAbilitySystemComponent();
+	const UAbilitySystemComponent* ASC = ASI->GetAbilitySystemComponent();
 	if (!ASC)
 	{
 		return 1.0f;
 	}
 
-	const UNSMonsterAttributeSet* MonsterAttributes =
-		ASC->GetSet<UNSMonsterAttributeSet>();
+	const UNSMonsterAttributeSet* MonsterAttributes = ASC->GetSet<UNSMonsterAttributeSet>();
 
 	if (!MonsterAttributes)
 	{
@@ -1797,20 +1792,13 @@ float ANSEnemyAIController::GetControlledEnemyHealthRatio() const
 
 void ANSEnemyAIController::UpdateEnemyPhase()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-	if (!Enemy)
-	{
-		return;
-	}
-
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
 	if (!EnemyData)
 	{
 		return;
 	}
 
-	const FNSEnemyPhaseRow* PhaseRow =
-		EnemyData->FindPhaseRowByHealthRatio(GetControlledEnemyHealthRatio());
+	const FNSEnemyPhaseRow* PhaseRow = EnemyData->FindPhaseRowByHealthRatio(GetControlledEnemyHealthRatio());
 
 	if (!PhaseRow)
 	{
@@ -1983,4 +1971,21 @@ void ANSEnemyAIController::StopEnemyBrain(const FString& Reason)
 	{
 		BrainComponent->StopLogic(Reason);
 	}
+}
+
+const INSEnemyAgent* ANSEnemyAIController::GetControlledEnemyAgent() const
+{
+	return Cast<INSEnemyAgent>(GetPawn());
+}
+
+const UNSEnemyData* ANSEnemyAIController::GetControlledEnemyData() const
+{
+	const INSEnemyAgent* EnemyAgent = GetControlledEnemyAgent();
+	return EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+}
+
+bool ANSEnemyAIController::IsControlledEnemyHitReacting() const
+{
+	const INSEnemyAgent* EnemyAgent = GetControlledEnemyAgent();
+	return EnemyAgent && EnemyAgent->IsHitReacting();
 }
