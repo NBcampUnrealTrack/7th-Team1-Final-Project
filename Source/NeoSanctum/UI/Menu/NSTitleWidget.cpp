@@ -21,7 +21,7 @@ void UNSTitleWidget::OnClickedHostButton()
 		return;
 	}
 	//호스트 세션 생성 요청
-	SessionSubsystem->CreateSession();
+	SessionSubsystem->StartGameToHub();
 	UE_LOG(LogTemp, Warning, TEXT("호스트 방 생성 버튼 클릭"));
 }
 
