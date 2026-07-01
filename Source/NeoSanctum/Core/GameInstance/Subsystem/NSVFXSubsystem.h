@@ -72,10 +72,15 @@ private:
 	// VFX RowName을 키로 캐싱해 재생 시 DataTable 조회를 반복하지 않음.
 	void RebuildVFXRowCache();
 
+	// CommonData 로드 직후, 선택된 NiagaraSystem을 보이지 않는 임시 컴포넌트로 한 번 활성화해 첫 재생 렉을 앞당김.
+	void WarmupCommonVFX();
+
 private:
 	UPROPERTY()
 	TObjectPtr<UDataTable> VFXDataTable;
 	
 	UPROPERTY()
 	TMap<FName, FNSVFXDataTableRow> VFXRowCache;
+
+	bool bCommonVFXWarmedUp = false;
 };

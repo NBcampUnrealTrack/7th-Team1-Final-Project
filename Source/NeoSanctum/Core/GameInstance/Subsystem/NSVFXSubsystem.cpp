@@ -7,6 +7,7 @@
 #include "NiagaraSystem.h"
 #include "NSDataSubsystem.h"
 #include "Engine/DataTable.h"
+#include "TimerManager.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
@@ -48,6 +49,8 @@ void UNSVFXSubsystem::Deinitialize()
 	
 	VFXRowCache.Reset();
 	VFXDataTable = nullptr;
+	bCommonVFXWarmedUp = false;
+
 	Super::Deinitialize();
 }
 
@@ -182,7 +185,12 @@ void UNSVFXSubsystem::HandleCommonDataReady()
 	}
 	
 	RebuildVFXRowCache();
-	
+
+	if (!bCommonVFXWarmedUp)
+	{
+		WarmupCommonVFX();
+		bCommonVFXWarmedUp = true;
+	}
 }
 
 void UNSVFXSubsystem::RebuildVFXRowCache()
@@ -202,5 +210,56 @@ void UNSVFXSubsystem::RebuildVFXRowCache()
 		{
 			VFXRowCache.Add(RowName, *Row);
 		}
+	}
+}
+
+void UNSVFXSubsystem::WarmupCommonVFX()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	for (const TPair<FName, FNSVFXDataTableRow>& Pair : VFXRowCache)
+	{
+		const FNSVFXDataTableRow& VFXRow = Pair.Value;
+		if (!VFXRow.bWarmupOnCommonDataReady)
+		{
+			continue;
+		}
+
+		UNiagaraSystem* NiagaraSystem = ResolveNiagaraSystem(VFXRow);
+		if (!NiagaraSystem)
+		{
+			continue;
+		}
+
+		// 화면에 보이지 않는 임시 컴포넌트를 한 번 활성화해서 Niagara 첫 사용 컴파일 비용을 앞당김.
+		UNiagaraComponent* WarmupComponent = NewObject<UNiagaraComponent>(World);
+		if (!WarmupComponent)
+		{
+			continue;
+		}
+
+		WarmupComponent->SetAsset(NiagaraSystem);
+		WarmupComponent->SetAutoActivate(false);
+		WarmupComponent->SetHiddenInGame(true);
+		WarmupComponent->SetVisibility(false, true);
+		WarmupComponent->SetWorldLocation(FVector(0.0f, 0.0f, -100000.0f));
+		WarmupComponent->RegisterComponentWithWorld(World);
+		WarmupComponent->Activate(true);
+
+		TWeakObjectPtr<UNiagaraComponent> WeakWarmupComponent = WarmupComponent;
+		World->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(this, [WeakWarmupComponent]()
+			{
+				if (WeakWarmupComponent.IsValid())
+				{
+					WeakWarmupComponent->DeactivateImmediate();
+					WeakWarmupComponent->DestroyComponent();
+				}
+			})
+		);
 	}
 }

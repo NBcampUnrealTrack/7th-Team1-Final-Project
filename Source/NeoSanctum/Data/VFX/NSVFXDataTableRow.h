@@ -17,6 +17,10 @@ struct NEOSANCTUM_API FNSVFXDataTableRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFXData")
 	TSoftObjectPtr<UNiagaraSystem> NiagaraSystem;
 
+	// 첫 재생 시 Niagara 컴파일 비용이 크게 체감되는 VFX만 CommonDataReady 이후 미리 초기화.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFXData")
+	bool bWarmupOnCommonDataReady = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFXData")
 	float ScaleMultiplier = 1.0f;
 
