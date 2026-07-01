@@ -12,6 +12,7 @@ class UGameplayAbility;
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
 class UNSEnemyAttackComponent;
+class UNSEnemyTargetComponent;
 struct FNSEnemyAttackRow;
 struct FNSEnemyPhaseRow;
 
@@ -60,6 +61,10 @@ public:
 
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
+	
+private:
+	// 현재 Possess 중인 Enemy의 Target Component를 반환하는 함수
+	UNSEnemyTargetComponent* GetEnemyTargetComponent() const;
 
 public:
 	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
@@ -354,26 +359,11 @@ private:
 	// 플레이어까지 Trace해서 실제로 쏠 Actor를 계산하는 함수
 	AActor* ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const;
 
-	// Actor Bounds 기준 조준 위치를 계산하는 함수
-	FVector GetAttackAimLocation(const AActor* Actor) const;
-
-	// 엄폐물 판정 Trace 시작 위치를 계산하는 함수
-	FVector GetCoverAttackTraceStart() const;
-
 	// Blackboard의 AttackActor 키를 갱신하는 함수
 	void SetAttackActorBlackboard(AActor* AttackActor);
 
 	// 실제 발사 대상을 저장할 Blackboard 키 이름
 	FName AttackActorKey = TEXT("AttackActor");
-
-protected:
-	// 파괴 가능 엄폐물이 시야를 막으면 그 엄폐물을 원거리 공격 대상으로 삼을지 여부
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack")
-	bool bAttackDestructibleCover = true;
-
-	// 엄폐물 Trace/조준 위치를 Bounds 중심에서 위로 보정하는 비율
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack", meta = (ClampMin = "0.0"))
-	float CoverAttackAimZOffsetRatio = 0.15f;
 
 #pragma endregion
 };

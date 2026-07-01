@@ -10,10 +10,8 @@
 #include "EnvironmentQuery/EnvQuery.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -23,6 +21,7 @@
 #include "Perception/AISense_Sight.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyControllerBase.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
@@ -229,7 +228,7 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		AttackComponent->ResetAttackState();
 	}
-	
+
 	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
 	{
 		PhaseComponent->ResetPhaseState();
@@ -266,9 +265,9 @@ void ANSEnemyAIController::OnUnPossess()
 	StopEnemyBrain(TEXT("UnPossess"));
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(nullptr);
-	
+
 	CachedBBComp = nullptr;
-	
+
 	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
 	{
 		PhaseComponent->ResetPhaseState();
@@ -427,8 +426,8 @@ UNSEnemyAttackComponent* ANSEnemyAIController::GetEnemyAttackComponent() const
 {
 	const APawn* ControlledPawn = GetPawn();
 	return ControlledPawn
-		? ControlledPawn->FindComponentByClass<UNSEnemyAttackComponent>()
-		: nullptr;
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyAttackComponent>()
+		       : nullptr;
 }
 
 void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor)
@@ -1527,84 +1526,30 @@ void ANSEnemyAIController::SetAttackActorBlackboard(AActor* AttackActor)
 	}
 }
 
-FVector ANSEnemyAIController::GetAttackAimLocation(const AActor* Actor) const
-{
-	if (!IsValid(Actor)) return FVector::ZeroVector;
-
-	FVector Origin = Actor->GetActorLocation();
-	FVector Extent = FVector::ZeroVector;
-
-	if (const UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Actor->GetRootComponent()))
-	{
-		Origin = Primitive->Bounds.Origin;
-		Extent = Primitive->Bounds.BoxExtent;
-	}
-
-	return Origin + FVector::UpVector * (Extent.Z * CoverAttackAimZOffsetRatio);
-}
-
-FVector ANSEnemyAIController::GetCoverAttackTraceStart() const
-{
-	const APawn* AIPawn = GetPawn();
-	if (!AIPawn) return FVector::ZeroVector;
-
-	if (const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn))
-	{
-		if (const ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon())
-		{
-			FTransform MuzzleTransform;
-			if (Weapon->TryGetMuzzleTransform(MuzzleTransform))
-			{
-				return MuzzleTransform.GetLocation();
-			}
-		}
-	}
-
-	return AIPawn->GetPawnViewLocation();
-}
-
-AActor* ANSEnemyAIController::ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const
+AActor* ANSEnemyAIController::ResolveAttackActor(
+	AActor* TargetActor,
+	bool& bOutHasDirectLineOfSight
+) const
 {
 	bOutHasDirectLineOfSight = false;
 
-	if (!IsValidLivingTarget(TargetActor) || !GetWorld())
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	if (!TargetComponent)
 	{
 		return nullptr;
 	}
 
-	const APawn* AIPawn = GetPawn();
-	if (!AIPawn)
-	{
-		return nullptr;
-	}
+	return TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bOutHasDirectLineOfSight
+	);
+}
 
-	FHitResult HitResult;
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyCoverAttackTrace), false, AIPawn);
-	QueryParams.AddIgnoredActor(AIPawn);
+UNSEnemyTargetComponent* ANSEnemyAIController::GetEnemyTargetComponent() const
+{
+	const APawn* ControlledPawn = GetPawn();
 
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
-		HitResult,
-		GetCoverAttackTraceStart(),
-		GetAttackAimLocation(TargetActor),
-		NSCollisionChannels::CombatSight,
-		QueryParams);
-
-	if (!bHit || HitResult.GetActor() == TargetActor)
-	{
-		bOutHasDirectLineOfSight = true;
-		return const_cast<AActor*>(TargetActor);
-	}
-
-	if (!bAttackDestructibleCover)
-	{
-		return nullptr;
-	}
-
-	AActor* HitActor = HitResult.GetActor();
-	if (IsValid(HitActor) && HitActor->IsA<ANSDestructibleObjectBase>())
-	{
-		return HitActor;
-	}
-
-	return nullptr;
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyTargetComponent>()
+		       : nullptr;
 }
