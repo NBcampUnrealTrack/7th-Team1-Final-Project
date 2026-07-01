@@ -7,6 +7,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -66,15 +67,6 @@ public:
 	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
-	
-private:
-	// 현재 실행 중인 공격 Row
-	UPROPERTY(Transient)
-	FNSEnemyAttackRow CurrentAttackRow;
-
-	// 현재 공격 Row가 유효한지 여부
-	UPROPERTY(Transient)
-	bool bHasCurrentAttackRow = false;
 
 public:
 	void Die();
@@ -91,6 +83,11 @@ public:
 	
 	void SetDifficultyScale(const FNSDifficultyScale& InScale) { CurrentDifficultyScale = InScale; }
 
+protected:
+	// Enemy의 현재 공격 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyCombatComponent> CombatComponent;
+	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> ASC;

@@ -98,19 +98,23 @@ ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
 
 void ANSEnemyCharacterBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
 {
-	CurrentAttackRow = InAttackRow;
-	bHasCurrentAttackRow = true;
+	if (CombatComponent)
+	{
+		CombatComponent->SetAttackRow(InAttackRow);
+	}
 }
 
 const FNSEnemyAttackRow* ANSEnemyCharacterBase::GetCurrentAttackRow() const
 {
-	return bHasCurrentAttackRow ? &CurrentAttackRow : nullptr;
+	return CombatComponent ? CombatComponent->GetAttackRow() : nullptr;
 }
 
 void ANSEnemyCharacterBase::ClearCurrentAttackRow()
 {
-	CurrentAttackRow = FNSEnemyAttackRow();
-	bHasCurrentAttackRow = false;
+	if (CombatComponent)
+	{
+		CombatComponent->ClearAttackRow();
+	}
 }
 
 FVector ANSEnemyCharacterBase::GetAimLocation() const
