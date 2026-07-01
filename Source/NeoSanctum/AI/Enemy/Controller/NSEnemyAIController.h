@@ -10,7 +10,7 @@
 
 class UNSEnemyData;
 class ANSEnemyCharacterBase;
-struct FNSEnemyAttackDefinition;
+struct FNSEnemyAttackRow;
 
 // 타임스탬프 데미지
 struct FNSThreatDamageSample
@@ -53,7 +53,7 @@ public:
 	virtual ETeamAttitude::Type GetTeamAttitudeTo(const AActor& Other) const;
 
 	// 타겟과의 실시간 거리 기준으로 현재 사용할 공격 GA를 선택
-	const FNSEnemyAttackDefinition* GetAttackDefinitionByDistance();
+	const FNSEnemyAttackRow* GetAttackRowByDistance();
 	
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
@@ -63,7 +63,7 @@ public:
 	bool CanUseAnyAttackByDistance();
 	
 	// 공격이 실제로 활성화된 뒤 쿨다운 시작 시간을 기록
-	void RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition);
+	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
 
 protected:
 	// 빙의 시점에 에디터에서 할당된 BT 가동
@@ -78,7 +78,7 @@ private:
 	// 대상이 체력 데이터를 갖고 있는지, 살아 있는 유효한 타겟인지 검증
 	bool IsValidLivingTarget(const AActor* Target) const;
 	
-	const FNSEnemyAttackDefinition* FindAttackDefinitionByDistance(bool bSelectWeightedAttack);
+	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);
 
 protected:
 	/* 시야/청각 설정 컴포넌트 */
@@ -350,9 +350,8 @@ public:
 
 private:
 	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
-	bool CanUseAttackDefinition(
-		const UNSEnemyData* EnemyData,
-		const FNSEnemyAttackDefinition& AttackDefinition,
+	bool CanUseAttackRow(
+		const FNSEnemyAttackRow& AttackRow,
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		float Distance,
@@ -363,7 +362,7 @@ private:
 
 	// 파괴 가능 엄폐물을 원거리 공격 대상으로 사용할 수 있는지 확인하는 함수
 	bool CanUseDestructibleCoverAttack(
-		const FNSEnemyAttackDefinition& AttackDefinition,
+		const FNSEnemyAttackRow& AttackRow,
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		bool bHasDirectLineOfSight) const;

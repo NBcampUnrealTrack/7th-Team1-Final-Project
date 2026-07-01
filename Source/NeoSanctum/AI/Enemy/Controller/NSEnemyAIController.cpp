@@ -35,7 +35,7 @@ ANSEnemyAIController::ANSEnemyAIController()
 void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -57,7 +57,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 		return;
 	}
-	
+
 	const double CurrentTime = World->GetTimeSeconds();
 
 	if (CurrentTime >= NextTargetEvaluationTime)
@@ -86,7 +86,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 		{
 			Enemy->SetRetreating(false);
 		}
-		
+
 		if (CachedBBComp)
 		{
 			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
@@ -132,8 +132,8 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 
 		return false;
 	}
-	
-	const FNSEnemyAttackDefinition* UsableAttack = FindAttackDefinitionByDistance(false);
+
+	const FNSEnemyAttackRow* UsableAttack = FindAttackRowByDistance(false);
 
 	if (CachedBBComp)
 	{
@@ -143,11 +143,11 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 	return UsableAttack != nullptr;
 }
 
-void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition)
+void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 {
 	NotifyAttackStarted();
-	
-	if (AttackDefinition.AttackId.IsNone())
+
+	if (AttackRow.AttackId.IsNone())
 	{
 		return;
 	}
@@ -158,10 +158,10 @@ void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& Atta
 		return;
 	}
 
-	LastAttackTimeById.FindOrAdd(AttackDefinition.AttackId) = World->GetTimeSeconds();
+	LastAttackTimeById.FindOrAdd(AttackRow.AttackId) = World->GetTimeSeconds();
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
+const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 {
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
 
@@ -174,8 +174,8 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDista
 
 		return nullptr;
 	}
-	
-	const FNSEnemyAttackDefinition* SelectedAttack = FindAttackDefinitionByDistance(true);
+
+	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowByDistance(true);
 
 	if (CachedBBComp)
 	{
@@ -193,7 +193,7 @@ AActor* ANSEnemyAIController::GetCurrentTargetActor() const
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	
+
 	// 쿨다운 시간 초기화
 	LastAttackTimeById.Reset();
 
@@ -207,7 +207,7 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		RunBehaviorTree(EnemyData->BehaviorTree);
 		CachedBBComp = GetBlackboardComponent();
-		
+
 		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
 
 		ResetTargetingState();
@@ -219,9 +219,9 @@ void ANSEnemyAIController::OnUnPossess()
 {
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(nullptr);
-	
+
 	CachedBBComp = nullptr;
-	
+
 	Super::OnUnPossess();
 }
 
@@ -300,7 +300,7 @@ bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
 	return true;
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDistance(bool bSelectWeightedAttack)
+const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSelectWeightedAttack)
 {
 	if (!CachedBBComp)
 	{
@@ -317,7 +317,7 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 		return nullptr;
 	}
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
 	if (!Enemy)
 	{
 		SetAttackActorBlackboard(nullptr);
@@ -331,7 +331,9 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 		return nullptr;
 	}
 
-	const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+	const FVector ToTarget =
+		(TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+
 	const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
 
 	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
@@ -347,20 +349,16 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
+	const float Distance =
+		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
-	TArray<const FNSEnemyAttackDefinition*> Candidates;
+	TArray<const FNSEnemyAttackRow*> Candidates;
 	int32 BestPriority = TNumericLimits<int32>::Lowest();
 
-	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (!CanUseAttackDefinition(
-			EnemyData,
-			AttackDefinition,
-			TargetActor,
-			AttackActor,
-			Distance,
-			bHasDirectLineOfSight))
+		if (!AttackRow ||
+			!CanUseAttackRow(*AttackRow, TargetActor, AttackActor, Distance, bHasDirectLineOfSight))
 		{
 			continue;
 		}
@@ -368,20 +366,18 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 		if (!bSelectWeightedAttack)
 		{
 			SetAttackActorBlackboard(AttackActor);
-			return &AttackDefinition;
+			return AttackRow;
 		}
 
-		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
-
-		if (AttackRow.Priority > BestPriority)
+		if (AttackRow->Priority > BestPriority)
 		{
-			BestPriority = AttackRow.Priority;
+			BestPriority = AttackRow->Priority;
 			Candidates.Reset();
 		}
 
-		if (AttackRow.Priority == BestPriority)
+		if (AttackRow->Priority == BestPriority)
 		{
-			Candidates.Add(&AttackDefinition);
+			Candidates.Add(AttackRow);
 		}
 	}
 
@@ -391,14 +387,12 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 		return nullptr;
 	}
 
-	const FNSEnemyAttackDefinition* SelectedAttack = nullptr;
+	const FNSEnemyAttackRow* SelectedAttack = nullptr;
 
 	float TotalWeight = 0.0f;
-	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
+	for (const FNSEnemyAttackRow* Candidate : Candidates)
 	{
-		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(Candidate->AttackId);
-
-		TotalWeight += FMath::Max(AttackRow.Weight, 0.0f);
+		TotalWeight += FMath::Max(Candidate->Weight, 0.0f);
 	}
 
 	if (TotalWeight <= 0.0f)
@@ -409,11 +403,9 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	{
 		float Pick = FMath::FRandRange(0.0f, TotalWeight);
 
-		for (const FNSEnemyAttackDefinition* Candidate : Candidates)
+		for (const FNSEnemyAttackRow* Candidate : Candidates)
 		{
-			const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(Candidate->AttackId);
-
-			Pick -= FMath::Max(AttackRow.Weight, 0.0f);
+			Pick -= FMath::Max(Candidate->Weight, 0.0f);
 
 			if (Pick <= 0.0f)
 			{
@@ -432,24 +424,20 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	return SelectedAttack;
 }
 
-bool ANSEnemyAIController::CanUseAttackDefinition(
-	const UNSEnemyData* EnemyData,
-	const FNSEnemyAttackDefinition& AttackDefinition,
+bool ANSEnemyAIController::CanUseAttackRow(
+	const FNSEnemyAttackRow& AttackRow,
 	const AActor* TargetActor,
 	const AActor* AttackActor,
 	float Distance,
 	bool bHasDirectLineOfSight) const
 {
-	if (!EnemyData ||
-		AttackDefinition.AttackId.IsNone() ||
+	if (AttackRow.AttackId.IsNone() ||
+		!AttackRow.AbilityClass ||
 		!IsValidLivingTarget(TargetActor) ||
-		!IsValid(AttackActor) ||
-		!AttackDefinition.AbilityClass)
+		!IsValid(AttackActor))
 	{
 		return false;
 	}
-
-	const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
 
 	if (Distance < AttackRow.Condition.MinRange ||
 		Distance > AttackRow.Condition.MaxRange)
@@ -460,7 +448,7 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 	if (AttackRow.Condition.bRequireLineOfSight &&
 		!bHasDirectLineOfSight &&
 		!CanUseDestructibleCoverAttack(
-			AttackDefinition,
+			AttackRow,
 			TargetActor,
 			AttackActor,
 			bHasDirectLineOfSight))
@@ -470,7 +458,7 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 
 	if (AttackRow.Cooldown > 0.0f)
 	{
-		const float* LastAttackTime = LastAttackTimeById.Find(AttackDefinition.AttackId);
+		const float* LastAttackTime = LastAttackTimeById.Find(AttackRow.AttackId);
 		if (LastAttackTime)
 		{
 			const UWorld* World = GetWorld();
@@ -522,11 +510,11 @@ void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, cons
 	const float ExitRange = MinRange + RetreatExitBuffer;
 
 	const bool bShouldRetreat = bWasRetreating
-		? Distance < ExitRange
-		: Distance < MinRange;
+		                            ? Distance < ExitRange
+		                            : Distance < MinRange;
 
 	CachedBBComp->SetValueAsBool(ShouldRetreatKey, bShouldRetreat);
-	
+
 	Enemy->SetRetreating(bShouldRetreat);
 
 	if (!bShouldRetreat)
@@ -538,11 +526,11 @@ void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, cons
 	const FVector CurrentDestination = CachedBBComp->GetValueAsVector(RetreatLocationKey);
 
 	const bool bDestinationReached = FVector::DistSquared2D(
-			EnemyLocation,
-			CurrentDestination) <= FMath::Square(RetreatDestinationAcceptanceRadius);
-	
+		EnemyLocation,
+		CurrentDestination) <= FMath::Square(RetreatDestinationAcceptanceRadius);
+
 	const bool bHasRetreatDestination = CachedBBComp->IsVectorValueSet(RetreatLocationKey);
-	
+
 	// 처음 후퇴 시 / 기존 후퇴 지점 도착 시
 	if (bWasRetreating && bHasRetreatDestination && !bDestinationReached)
 	{
@@ -557,8 +545,8 @@ void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, cons
 	}
 
 	const float RequiredDistance = FMath::Max(
-	ExitRange - Distance,
-	RetreatStepDistance);
+		ExitRange - Distance,
+		RetreatStepDistance);
 
 	const FVector DesiredLocation = EnemyLocation + AwayDirection * RequiredDistance;
 
@@ -583,18 +571,15 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 	float MinimumRange = TNumericLimits<float>::Max();
 	bool bFoundAttack = false;
 
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (!Attack.AbilityClass || Attack.AttackId.IsNone())
+		if (!AttackRow || !AttackRow->AbilityClass)
 		{
 			continue;
 		}
 
-		const FNSEnemyAttackRow AttackRow =
-			EnemyData->ResolveAttackRow(Attack.AttackId);
-
 		bFoundAttack = true;
-		MinimumRange = FMath::Min(MinimumRange, AttackRow.Condition.MinRange);
+		MinimumRange = FMath::Min(MinimumRange, AttackRow->Condition.MinRange);
 	}
 
 	return bFoundAttack ? MinimumRange : 0.0f;
@@ -815,7 +800,7 @@ AActor* ANSEnemyAIController::FindBestTarget(double CurrentTime) const
 
 		if (DamageThreat > BestDamageThreat ||
 			(FMath::IsNearlyEqual(DamageThreat, BestDamageThreat) &&
-			 DistanceSq < BestDamageTargetDistanceSq))
+				DistanceSq < BestDamageTargetDistanceSq))
 		{
 			BestDamageThreat = DamageThreat;
 			BestDamageTarget = TargetActor;
@@ -958,7 +943,7 @@ void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
 	{
 		return;
 	}
-	
+
 	if (CurrentCombatTarget.IsValid() && CurrentCombatTarget.Get() != NewTarget)
 	{
 		CancelMeleeReservationRequest(false);
@@ -986,12 +971,12 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 	{
 		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
 	}
-	
+
 	CancelMeleeReservationRequest(false);
 
 	CurrentCombatTarget.Reset();
 	bAttackStartedOnCurrentTarget = false;
-	
+
 	ResetMeleeEQSForCurrentTarget();
 
 	if (CachedBBComp)
@@ -1008,11 +993,11 @@ void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 void ANSEnemyAIController::ResetTargetingState()
 {
 	CancelMeleeReservationRequest(false);
-	
+
 	ThreatRecords.Reset();
 	ReacquireBlockedUntil.Reset();
 	CurrentCombatTarget.Reset();
-	
+
 	ResetMeleeEQSForCurrentTarget();
 
 	CurrentTargetSelectedTime = 0.0;
@@ -1102,23 +1087,21 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 		Enemy->GetActorLocation(),
 		TargetActor->GetActorLocation());
 
-	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (!AttackDefinition.AbilityClass || AttackDefinition.AttackId.IsNone())
+		if (!AttackRow || !AttackRow->AbilityClass)
 		{
 			continue;
 		}
 
-		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
-
-		if (Distance < AttackRow.Condition.MinRange ||
-			Distance > AttackRow.Condition.MaxRange)
+		if (Distance < AttackRow->Condition.MinRange ||
+			Distance > AttackRow->Condition.MaxRange)
 		{
 			continue;
 		}
 
 		if (CanUseDestructibleCoverAttack(
-			AttackDefinition,
+			*AttackRow,
 			TargetActor,
 			AttackActor,
 			bHasDirectLineOfSight))
@@ -1141,7 +1124,7 @@ bool ANSEnemyAIController::RequestMeleeAttackReservation()
 		return false;
 	}
 
-	UNSMeleeAttackReservationComponent* Component = 
+	UNSMeleeAttackReservationComponent* Component =
 		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>();
 
 	// 컴포넌트 없는 타깃은 EQS만 적용하고 접근 허용
@@ -1159,7 +1142,7 @@ bool ANSEnemyAIController::RequestMeleeAttackReservation()
 
 	MeleeReservationTarget = TargetActor;
 
-	const ENSMeleeReservationRequestResult Result = 
+	const ENSMeleeReservationRequestResult Result =
 		Component->RequestReservation(Enemy, GetLatestDamageTimeFromCurrentTarget());
 
 	const bool bReserved = Result == ENSMeleeReservationRequestResult::Reserved;
@@ -1180,7 +1163,7 @@ bool ANSEnemyAIController::HasMeleeAttackReservation() const
 		return false;
 	}
 
-	UNSMeleeAttackReservationComponent* Component = 
+	UNSMeleeAttackReservationComponent* Component =
 		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
 
 	return Component && Component->HasReservation(Enemy);
@@ -1200,7 +1183,7 @@ bool ANSEnemyAIController::CanApproachMeleeTarget() const
 		return false;
 	}
 
-	const bool bReservationRequired = 
+	const bool bReservationRequired =
 		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
 
 	return !bReservationRequired || this->HasMeleeAttackReservation();
@@ -1239,7 +1222,7 @@ void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
 void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCooldown)
 {
 	CancelMeleeReservationRequest(bStartReacquireCooldown);
-	
+
 	ResetMeleeEQSForCurrentTarget();
 }
 
@@ -1288,7 +1271,7 @@ void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCoo
 	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
 	{
 		if (UNSMeleeAttackReservationComponent* Component =
-				ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
+			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
 		{
 			Component->ReleaseReservation(Enemy, bStartReacquireCooldown);
 		}
@@ -1301,7 +1284,6 @@ void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCoo
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
 	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
 	const UNSEnemyData* EnemyData = Enemy ? Enemy->GetEnemyData() : nullptr;
 
 	if (!EnemyData)
@@ -1309,9 +1291,11 @@ bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 		return false;
 	}
 
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (Attack.AttackType == ENSEnemyAttackType::MeleeSweep)
+		if (AttackRow &&
+			AttackRow->AbilityClass &&
+			AttackRow->AttackType == ENSEnemyAttackType::MeleeSweep)
 		{
 			return true;
 		}
@@ -1406,7 +1390,7 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 
 	Enemy->ClearCombatAimTarget();
 	Enemy->SetRetreating(false);
-	
+
 	if (UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement())
 	{
 		Movement->bOrientRotationToMovement = true;
@@ -1471,7 +1455,6 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 	}
 
 	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-
 	if (!EnemyData)
 	{
 		return false;
@@ -1480,17 +1463,19 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	const float Distance = FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
+	const float Distance = FVector::Dist(
+		Enemy->GetActorLocation(),
+		TargetActor->GetActorLocation());
 
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 	{
-		if (CanUseAttackDefinition(
-			EnemyData,
-			Attack,
-			TargetActor,
-			AttackActor,
-			Distance,
-			bHasDirectLineOfSight))
+		if (AttackRow &&
+			CanUseAttackRow(
+				*AttackRow,
+				TargetActor,
+				AttackActor,
+				Distance,
+				bHasDirectLineOfSight))
 		{
 			return true;
 		}
@@ -1643,7 +1628,7 @@ AActor* ANSEnemyAIController::ResolveAttackActor(AActor* TargetActor, bool& bOut
 }
 
 bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
-	const FNSEnemyAttackDefinition& AttackDefinition,
+	const FNSEnemyAttackRow& AttackRow,
 	const AActor* TargetActor,
 	const AActor* AttackActor,
 	bool bHasDirectLineOfSight) const
@@ -1661,6 +1646,6 @@ bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
 		return false;
 	}
 
-	return AttackDefinition.AttackType == ENSEnemyAttackType::Projectile ||
-		AttackDefinition.AttackType == ENSEnemyAttackType::Hitscan;
+	return AttackRow.AttackType == ENSEnemyAttackType::Projectile ||
+		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
 }

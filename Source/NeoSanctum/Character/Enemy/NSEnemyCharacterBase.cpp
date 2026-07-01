@@ -96,21 +96,21 @@ ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
 	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
 }
 
-void ANSEnemyCharacterBase::SetCurrentAttackDefinition(const FNSEnemyAttackDefinition& InAttackDefinition)
+void ANSEnemyCharacterBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
 {
-	CurrentAttackDefinition = InAttackDefinition;
-	bHasCurrentAttackDefinition = true;
+	CurrentAttackRow = InAttackRow;
+	bHasCurrentAttackRow = true;
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyCharacterBase::GetCurrentAttackDefinition() const
+const FNSEnemyAttackRow* ANSEnemyCharacterBase::GetCurrentAttackRow() const
 {
-	return bHasCurrentAttackDefinition ? &CurrentAttackDefinition : nullptr;
+	return bHasCurrentAttackRow ? &CurrentAttackRow : nullptr;
 }
 
-void ANSEnemyCharacterBase::ClearCurrentAttackDefinition()
+void ANSEnemyCharacterBase::ClearCurrentAttackRow()
 {
-	CurrentAttackDefinition = FNSEnemyAttackDefinition();
-	bHasCurrentAttackDefinition = false;
+	CurrentAttackRow = FNSEnemyAttackRow();
+	bHasCurrentAttackRow = false;
 }
 
 void ANSEnemyCharacterBase::Die()
@@ -123,7 +123,7 @@ void ANSEnemyCharacterBase::Die()
 		FinishHitReaction();
 		ResetHitGauge();
 		SetRetreating(false);
-		ClearCurrentAttackDefinition();
+		ClearCurrentAttackRow();
 		ClearCombatAimTarget();
 		ApplyDeadVisual();
 		// (이용호 추가) 죽을 때 게임모드에 알림
@@ -301,9 +301,12 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 			
 			GiveAbilityOnce(EnemyData->HitReactionAbilityClass);
 			
-			for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+			for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
 			{
-				GiveAbilityOnce(AttackDefinition.AbilityClass);
+				if (AttackRow)
+				{
+					GiveAbilityOnce(AttackRow->AbilityClass);
+				}
 			}
 		}
 
@@ -429,7 +432,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 	bIsInPool = false;
 	bIsDead = false;
 	bIsHitReacting = false;
-	ClearCurrentAttackDefinition();
+	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
 	
 	SetRetreating(false);
@@ -468,7 +471,7 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	SetRetreating(false);
 	FinishHitReaction();
 	ResetHitGauge();
-	ClearCurrentAttackDefinition();
+	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
 
 	// 이동 즉시 정지 및 비활성화

@@ -99,31 +99,25 @@ struct FNSEnemyAttackCondition
 };
 
 USTRUCT(BlueprintType)
-struct FNSEnemyAttackDefinition
-{
-	GENERATED_BODY()
-
-	// 공격 식별 ID
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
-	FName AttackId;
-
-	// 공격 실행 GA
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
-	TSubclassOf<UGameplayAbility> AbilityClass;
-
-	// 공격 분류
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
-	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
-};
-
-USTRUCT(BlueprintType)
 struct FNSEnemyAttackRow : public FTableRowBase
 {
 	GENERATED_BODY()
-
+	
+	// 이 공격 Row를 사용할 몬스터 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	FGameplayTag EnemyId;
+	
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
+	
+	// 공격 실행 GA
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	TSubclassOf<UGameplayAbility> AbilityClass;
+	
+	// 공격 분류
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
+	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
 
 	// 공격 거리, 시야 조건 등 사용 가능 조건
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
@@ -141,16 +135,10 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (ClampMin = "0.0"))
 	float Weight = 1.0f;
 
-	// 공격 선택 시 먼저 비교할 우선순위입니다. 높은 값이 먼저 후보가 됨
+	// 공격 선택 시 먼저 비교할 우선순위. 높은 값이 먼저 후보가 됨
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	int32 Priority = 0;
-};
-
-USTRUCT(BlueprintType)
-struct FNSBossAttackRow : public FNSEnemyAttackRow
-{
-	GENERATED_BODY()
-
+	
 	// 공격 판정 전에 플레이어에게 보여줄 경고 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float WarnTime = 0.0f;
@@ -214,6 +202,10 @@ USTRUCT(BlueprintType)
 struct FNSEnemyPhaseRow : public FTableRowBase
 {
 	GENERATED_BODY()
+	
+	// 이 Phase Row를 사용할 몬스터 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase")
+	FGameplayTag EnemyId;
 
 	// 페이즈를 식별하는 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase")
@@ -374,10 +366,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
 
-	// 몬스터가 사용할 수 있는 공격 목록
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
-	TArray<FNSEnemyAttackDefinition> AttackList;
-
 	// 공격별 거리, 쿨타임, 가중치 등 수치를 읽을 DataTable
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UDataTable> AttackTable;
@@ -408,9 +396,42 @@ public:
 	TArray<FNSBossWeaponPoint> BossWeapons;
 	
 public:
+	// EnemyId와 일치하는 공격 Row를 AttackTable에서 미리 캐싱하는 함수
+	void CacheAttackRows() const;
+
+	// EnemyId와 일치하는 Phase Row를 PhaseTable에서 미리 캐싱하는 함수
+	void CachePhaseRows() const;
+
+	// AttackTable과 PhaseTable에서 캐싱한 Row를 모두 초기화하는 함수
+	void InvalidateCachedRows() const;
+
+	// 현재 EnemyId와 일치하는 공격 Row 목록을 반환하는 함수
+	const TArray<const FNSEnemyAttackRow*>& GetAttackRows() const;
+	
 	// AttackId와 일치하는 공격 수치 Row를 AttackTable에서 찾는 함수
 	const FNSEnemyAttackRow* FindAttackRow(FName AttackId) const;
 
 	// AttackTable Row가 없을 때도 기본 수치로 동작하도록 공격 수치 Row를 반환하는 함수
 	FNSEnemyAttackRow ResolveAttackRow(FName AttackId) const;
+	
+	// 현재 EnemyId와 일치하는 Phase Row 목록을 반환하는 함수
+	const TArray<const FNSEnemyPhaseRow*>& GetPhaseRows() const;
+	
+	#if WITH_EDITOR
+		// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
+		virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	#endif
+
+private:
+	// AttackTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
+	mutable TArray<const FNSEnemyAttackRow*> CachedAttackRows;
+
+	// PhaseTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
+	mutable TArray<const FNSEnemyPhaseRow*> CachedPhaseRows;
+
+	// AttackTable 캐시가 초기화되었는지 여부
+	mutable bool bAttackRowsCached = false;
+
+	// PhaseTable 캐시가 초기화되었는지 여부
+	mutable bool bPhaseRowsCached = false;
 };
