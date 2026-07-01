@@ -351,6 +351,7 @@ public:
 private:
 	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
 	bool CanUseAttackDefinition(
+		const UNSEnemyData* EnemyData,
 		const FNSEnemyAttackDefinition& AttackDefinition,
 		const AActor* TargetActor,
 		const AActor* AttackActor,

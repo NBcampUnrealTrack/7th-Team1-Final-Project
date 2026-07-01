@@ -147,7 +147,7 @@ void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& Atta
 {
 	NotifyAttackStarted();
 	
-	if (AttackDefinition.Cooldown <= 0.0f || AttackDefinition.AttackId.IsNone())
+	if (AttackDefinition.AttackId.IsNone())
 	{
 		return;
 	}
@@ -354,7 +354,13 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 
 	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 	{
-		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, AttackActor, Distance, bHasDirectLineOfSight))
+		if (!CanUseAttackDefinition(
+			EnemyData,
+			AttackDefinition,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
 		{
 			continue;
 		}
@@ -365,13 +371,15 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 			return &AttackDefinition;
 		}
 
-		if (AttackDefinition.Priority > BestPriority)
+		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
+
+		if (AttackRow.Priority > BestPriority)
 		{
-			BestPriority = AttackDefinition.Priority;
+			BestPriority = AttackRow.Priority;
 			Candidates.Reset();
 		}
 
-		if (AttackDefinition.Priority == BestPriority)
+		if (AttackRow.Priority == BestPriority)
 		{
 			Candidates.Add(&AttackDefinition);
 		}
@@ -388,7 +396,9 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	float TotalWeight = 0.0f;
 	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
 	{
-		TotalWeight += FMath::Max(Candidate->Weight, 0.0f);
+		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(Candidate->AttackId);
+
+		TotalWeight += FMath::Max(AttackRow.Weight, 0.0f);
 	}
 
 	if (TotalWeight <= 0.0f)
@@ -401,7 +411,9 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 
 		for (const FNSEnemyAttackDefinition* Candidate : Candidates)
 		{
-			Pick -= FMath::Max(Candidate->Weight, 0.0f);
+			const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(Candidate->AttackId);
+
+			Pick -= FMath::Max(AttackRow.Weight, 0.0f);
 
 			if (Pick <= 0.0f)
 			{
@@ -421,40 +433,43 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 }
 
 bool ANSEnemyAIController::CanUseAttackDefinition(
+	const UNSEnemyData* EnemyData,
 	const FNSEnemyAttackDefinition& AttackDefinition,
 	const AActor* TargetActor,
 	const AActor* AttackActor,
 	float Distance,
 	bool bHasDirectLineOfSight) const
 {
-	if (!IsValidLivingTarget(TargetActor) || !IsValid(AttackActor))
-	{
-		return false;
-	}
-	if (!AttackDefinition.AbilityClass)
-	{
-		return false;
-	}
-
-	if (Distance < AttackDefinition.Condition.MinRange ||
-		Distance > AttackDefinition.Condition.MaxRange)
+	if (!EnemyData ||
+		AttackDefinition.AttackId.IsNone() ||
+		!IsValidLivingTarget(TargetActor) ||
+		!IsValid(AttackActor) ||
+		!AttackDefinition.AbilityClass)
 	{
 		return false;
 	}
 
-	if (AttackDefinition.Condition.bRequireLineOfSight &&
+	const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
+
+	if (Distance < AttackRow.Condition.MinRange ||
+		Distance > AttackRow.Condition.MaxRange)
+	{
+		return false;
+	}
+
+	if (AttackRow.Condition.bRequireLineOfSight &&
 		!bHasDirectLineOfSight &&
-		!CanUseDestructibleCoverAttack(AttackDefinition, TargetActor, AttackActor, bHasDirectLineOfSight))
+		!CanUseDestructibleCoverAttack(
+			AttackDefinition,
+			TargetActor,
+			AttackActor,
+			bHasDirectLineOfSight))
 	{
 		return false;
 	}
-	if (AttackDefinition.Cooldown > 0.0f)
-	{
-		if (AttackDefinition.AttackId.IsNone())
-		{
-			return false;
-		}
 
+	if (AttackRow.Cooldown > 0.0f)
+	{
 		const float* LastAttackTime = LastAttackTimeById.Find(AttackDefinition.AttackId);
 		if (LastAttackTime)
 		{
@@ -465,7 +480,7 @@ bool ANSEnemyAIController::CanUseAttackDefinition(
 			}
 
 			const float ElapsedTime = World->GetTimeSeconds() - *LastAttackTime;
-			if (ElapsedTime < AttackDefinition.Cooldown)
+			if (ElapsedTime < AttackRow.Cooldown)
 			{
 				return false;
 			}
@@ -570,13 +585,16 @@ float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData)
 
 	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
 	{
-		if (!Attack.AbilityClass)
+		if (!Attack.AbilityClass || Attack.AttackId.IsNone())
 		{
 			continue;
 		}
 
+		const FNSEnemyAttackRow AttackRow =
+			EnemyData->ResolveAttackRow(Attack.AttackId);
+
 		bFoundAttack = true;
-		MinimumRange = FMath::Min(MinimumRange, Attack.Condition.MinRange);
+		MinimumRange = FMath::Min(MinimumRange, AttackRow.Condition.MinRange);
 	}
 
 	return bFoundAttack ? MinimumRange : 0.0f;
@@ -1086,13 +1104,15 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 
 	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
 	{
-		if (!AttackDefinition.AbilityClass)
+		if (!AttackDefinition.AbilityClass || AttackDefinition.AttackId.IsNone())
 		{
 			continue;
 		}
 
-		if (Distance < AttackDefinition.Condition.MinRange ||
-			Distance > AttackDefinition.Condition.MaxRange)
+		const FNSEnemyAttackRow AttackRow = EnemyData->ResolveAttackRow(AttackDefinition.AttackId);
+
+		if (Distance < AttackRow.Condition.MinRange ||
+			Distance > AttackRow.Condition.MaxRange)
 		{
 			continue;
 		}
@@ -1465,6 +1485,7 @@ bool ANSEnemyAIController::IsWithinPotentialAttackRange(
 	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
 	{
 		if (CanUseAttackDefinition(
+			EnemyData,
 			Attack,
 			TargetActor,
 			AttackActor,

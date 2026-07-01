@@ -406,4 +406,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss",
 		meta = (EditCondition = "EnemyRank == ENSEnemyRank::Boss", EditConditionHides))
 	TArray<FNSBossWeaponPoint> BossWeapons;
+	
+public:
+	// AttackId와 일치하는 공격 수치 Row를 AttackTable에서 찾는 함수
+	const FNSEnemyAttackRow* FindAttackRow(FName AttackId) const;
+
+	// AttackTable Row가 없을 때도 기본 수치로 동작하도록 공격 수치 Row를 반환하는 함수
+	FNSEnemyAttackRow ResolveAttackRow(FName AttackId) const;
 };
