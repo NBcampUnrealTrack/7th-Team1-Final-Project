@@ -5,7 +5,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Engine/DataTable.h"
-#include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 
 UNSHitReactionComponent::UNSHitReactionComponent()
@@ -83,41 +83,25 @@ FGameplayTag UNSHitReactionComponent::ResolveCueTag(const FNSHitReactionContext&
 	return DefaultHitCueTag;
 }
 
-const UDataTable* UNSHitReactionComponent::GetHitReactionDataTable() const
-{
-	// 임시 공통 보관소. 추후 비동기 로딩 DataSet 흐름으로 대체 예정
-	const UNSGameInstance* GameInstance = UNSGameInstance::Get(this);
-	return GameInstance ? GameInstance->HitReactionDataTable : nullptr;
-}
-
 const FNSHitReactionData* UNSHitReactionComponent::FindBestReactionData(
 	const FNSHitReactionContext& Context) const
 {
-	const UDataTable* HitReactionDataTable = GetHitReactionDataTable();
-	if (!HitReactionDataTable)
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
 	{
 		return nullptr;
 	}
 	
-	TArray<FNSHitReactionData*> Rows;
-	HitReactionDataTable->GetAllRows(TEXT("HitReaction"), Rows);
-	
+	const TArray<FNSHitReactionData>& Rows = DataSubsystem->GetCachedHitReactionRows();
 	const FNSHitReactionData* BestData = nullptr;
 	int32 BestPriority = TNumericLimits<int32>::Lowest();
 	
-	for (const FNSHitReactionData* Row : Rows)
+	for (const FNSHitReactionData& Row : Rows)
 	{
-		// Any 조건을 포함해 현재 Context에 맞는 Row만 후보로 사용
-		if (!Row || !CheckReactionDataMatch(*Row, Context))
+		if (CheckReactionDataMatch(Row, Context) && (!BestData || Row.Priority > BestPriority))
 		{
-			continue;
-		}
-		
-		// BestData를 갱신함. Priority가 높은 대상인 경우에도 교체됨
-		if (!BestData || Row->Priority > BestPriority)
-		{
-			BestData = Row;
-			BestPriority = Row->Priority;
+			BestData = &Row;
+			BestPriority = Row.Priority;
 		}
 	}
 	
