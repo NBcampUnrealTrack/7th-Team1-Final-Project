@@ -9,9 +9,8 @@
 #include "Engine/StreamableManager.h"
 #include "AIController.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
-#include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
-#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
+#include "NeoSanctum/Data/AI/NSDroneDefinition.h"
 #include "Net/UnrealNetwork.h"
 
 ANSBaseDroneAI::ANSBaseDroneAI()
@@ -36,7 +35,6 @@ ANSBaseDroneAI::ANSBaseDroneAI()
 	FloatingPawnMovementComponent->TurningBoost = 8.f;
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
-	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
@@ -106,7 +104,7 @@ void ANSBaseDroneAI::MoveTowards(const FVector& TargetLocation)
 	AddMovementInput(SteeringDirection, 1.0f);
 }
 
-void ANSBaseDroneAI::SetPendingDefinition(const UNSCompanionDefinition* InDefinition)
+void ANSBaseDroneAI::SetPendingDefinition(const UNSDroneDefinition* InDefinition)
 {
 	if (!InDefinition) return;
 	
@@ -165,7 +163,7 @@ void ANSBaseDroneAI::GiveDefaultAbilities()
 	bDefaultAbilitiesGranted = true;
 }
 
-void ANSBaseDroneAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyDroneDefinition(const UNSDroneDefinition* NewDefinition)
 {
 	if (!HasAuthority() || !NewDefinition) return;
 	
@@ -194,22 +192,22 @@ void ANSBaseDroneAI::ApplyDroneDefinition(const UNSCompanionDefinition* NewDefin
 		AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 	}
 	
-	ApplyCompanionVisual(NewDefinition);
+	ApplyDroneVisual(NewDefinition);
 	
 	CurrentDefinition = NewDefinition;
 }
 
-void ANSBaseDroneAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyDroneVisual(const UNSDroneDefinition* NewDefinition)
 {
 	if (!NewDefinition) return;
 	
-	if (NewDefinition->CompanionMesh.Get() != nullptr)
+	if (NewDefinition->Mesh.Get() != nullptr)
 	{
-		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->CompanionMesh.Get());
+		SkeletalMeshComponent->SetSkeletalMesh(NewDefinition->Mesh.Get());
 	}
 	else
 	{
-		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->CompanionMesh;
+		const TSoftObjectPtr<USkeletalMesh> MeshToLoad = NewDefinition->Mesh;
 		
 		FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
 		StreamableManager.RequestAsyncLoad(
@@ -229,7 +227,7 @@ void ANSBaseDroneAI::ApplyCompanionVisual(const UNSCompanionDefinition* NewDefin
 
 void ANSBaseDroneAI::OnRep_CurrentDefinition()
 {
-	ApplyCompanionVisual(CurrentDefinition);
+	ApplyDroneVisual(CurrentDefinition);
 }
 
 void ANSBaseDroneAI::MaintainAltitude(float DeltaSeconds)

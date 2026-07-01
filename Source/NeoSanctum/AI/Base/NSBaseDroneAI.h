@@ -11,9 +11,8 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBaseDroneAI.generated.h"
 
-class UNSCompanionDefinition;
+class UNSDroneDefinition;
 class UGameplayEffect;
-class UNSCompanionAttributeSet;
 class USphereComponent;
 class USkeletalMeshComponent;
 class UFloatingPawnMovement;
@@ -43,7 +42,7 @@ protected:
 	ETeamId TeamId = ETeamId::Player;
 	
 #pragma endregion
-	
+public:
 	USkeletalMeshComponent* GetSkeletalMeshComponent() const {return SkeletalMeshComponent;}
 	
 	// @민재 : 멀티 관련
@@ -168,9 +167,7 @@ protected:
 	
 #pragma region CachedData
 	// @민재 : 캐싱 데이터
-public:
-	void SetPendingDefinition(const UNSCompanionDefinition* InDefinition);
-	
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "AI|CachedData")
 	TObjectPtr<AAIController> CachedAIController;
@@ -187,16 +184,12 @@ protected:
 #pragma region CompanionGAS
 	
 public:
-	FORCEINLINE UAbilitySystemComponent* GetCompanionAbilitySystemComponent() const {return AbilitySystemComponent;}
-	
-	FORCEINLINE UNSCompanionAttributeSet* GetCompanionAttributeSet() const {return CompanionAttributeSet;}
+	FORCEINLINE UAbilitySystemComponent* GetDroneAbilitySystemComponent() const {return AbilitySystemComponent;}
+
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
-	TObjectPtr<UNSCompanionAttributeSet> CompanionAttributeSet;
 
 	UPROPERTY(EditDefaultsOnly, Category="GAS|Init")
 	TSubclassOf<UGameplayEffect> DefaultStatsEffect;
@@ -218,9 +211,11 @@ protected:
 #pragma region DataDriven
 	
 public:
-	void ApplyDroneDefinition(const UNSCompanionDefinition* NewDefinition);
+	void SetPendingDefinition(const UNSDroneDefinition* InDefinition);
 	
-	void ApplyCompanionVisual(const UNSCompanionDefinition* NewDefinition);
+	void ApplyDroneDefinition(const UNSDroneDefinition* NewDefinition);
+	
+	void ApplyDroneVisual(const UNSDroneDefinition* NewDefinition);
 	
 	UFUNCTION()
 	void OnRep_CurrentDefinition();
@@ -233,7 +228,7 @@ protected:
 	
 	// 현재 드론의 타입 정보
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentDefinition)
-	TObjectPtr<const UNSCompanionDefinition> CurrentDefinition;
+	TObjectPtr<const UNSDroneDefinition> CurrentDefinition;
 	
 #pragma endregion
 	

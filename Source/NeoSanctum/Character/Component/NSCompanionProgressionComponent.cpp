@@ -4,13 +4,14 @@
 #include "NSCompanionProgressionComponent.h"
 
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 
 	
 
-void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSBaseDroneAI* Owner)
+void UNSCompanionProgressionComponent::SetOwnedCompanion(ANSCompanionDroneAI* Owner)
 {
 	if (!Owner) return;
 		

@@ -6,6 +6,7 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "BehaviorTree/BlackboardData.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 
 UNSBTTask_DroneMoveTo::UNSBTTask_DroneMoveTo()
 {

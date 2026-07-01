@@ -5,6 +5,7 @@
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 
@@ -29,7 +30,7 @@ EBTNodeResult::Type UNSBTTask_CompanionCollectCurrency::ExecuteTask(UBehaviorTre
 	AAIController* AIController = OwnerComp.GetAIOwner();
 	if (!AIController) return EBTNodeResult::Failed;
 	
-	ANSBaseDroneAI* CompanionPawn = Cast<ANSBaseDroneAI>(AIController->GetPawn());
+	ANSCompanionDroneAI* CompanionPawn = Cast<ANSCompanionDroneAI>(AIController->GetPawn());
 	if (!CompanionPawn) return EBTNodeResult::Failed;
 	
 	FVector CompanionLocation = CompanionPawn->GetActorLocation();

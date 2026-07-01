@@ -11,6 +11,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class ANSCompanionDroneAI;
 class UNSCompanionDefinition;
 class ANSBaseDroneAI;
 class ANSWeaponBase;
@@ -249,7 +250,7 @@ protected:
 	
 protected:
 	UPROPERTY(Transient)
-	TWeakObjectPtr<ANSBaseDroneAI> CompanionAI;
+	TWeakObjectPtr<ANSCompanionDroneAI> CompanionAI;
 	
 	bool bBoundToCompanionDataReady = false;
 	
