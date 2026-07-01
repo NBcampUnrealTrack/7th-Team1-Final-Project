@@ -8,16 +8,14 @@
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
-class UGameplayAbility;
 class UNSEnemyData;
-class ANSEnemyCharacterBase;
 class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
 class UNSEnemyMeleeComponent;
+class UNSEnemyMoveComponent;
 
 struct FNSEnemyAttackRow;
-struct FNSEnemyPhaseRow;
 
 UCLASS()
 class NEOSANCTUM_API ANSEnemyAIController : public ANSEnemyControllerBase
@@ -52,6 +50,9 @@ private:
 	
 	// 현재 Possess 중인 Enemy의 Melee Component를 반환하는 함수
 	UNSEnemyMeleeComponent* GetEnemyMeleeComponent() const;
+	
+	// 현재 Possess 중인 Enemy의 Move Component를 반환하는 함수
+	UNSEnemyMoveComponent* GetEnemyMoveComponent() const;
 
 public:
 	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
@@ -92,21 +93,10 @@ private:
 	UNSEnemyAttackComponent* GetEnemyAttackComponent() const;
 
 private:
-	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
-
-	float GetMinimumAttackRange(const UNSEnemyData* EnemyData) const;
+	void UpdateRetreatState(AActor* TargetActor);
 
 	FName ShouldRetreatKey = TEXT("bShouldRetreat");
 	FName RetreatLocationKey = TEXT("RetreatLocation");
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatExitBuffer = 100.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatStepDistance = 250.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatDestinationAcceptanceRadius = 75.0f;
 
 #pragma region 몬스터 어그로 관리
 
@@ -119,9 +109,6 @@ public:
 private:
 	// 현재 Threat 정보를 평가해 타깃 선택·유지·전환·해제를 처리하는 함수
 	void UpdateTargetSelection();
-
-	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영하는 함수
-	void UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus);
 
 	// 현재 타깃과 관련 Blackboard 값을 제거하고 필요하면 재선택을 잠시 차단하는 함수
 	void ClearCurrentCombatTarget(bool bBlockReacquisition);
@@ -232,20 +219,8 @@ private:
 #pragma region 추적 방향
 
 	// 추적·공격·후퇴 상태에 따라 이동 방향 회전과 타깃 방향 회전을 전환되는 함수
-	void UpdateFacingMode(
-		ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor);
+	void UpdateFacingMode(AActor* TargetActor);
 
-	// 현재 거리가 몬스터 공격 중 하나의 사용 가능 거리 안에 있는지 확인하는 함수
-	bool IsWithinPotentialAttackRange(
-		const ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor) const;
-
-	// 이동 방향 회전 또는 타깃 방향 회전 설정을 CharacterMovement에 적용하는 함수
-	void ApplyFacingMode(
-		ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor,
-		bool bFaceTarget);
 #pragma endregion
 #pragma region 타깃 트레이스
 

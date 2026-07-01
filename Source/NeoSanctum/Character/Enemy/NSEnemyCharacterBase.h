@@ -28,6 +28,7 @@ class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
 class UNSEnemyMeleeComponent;
+class UNSEnemyMoveComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, 
@@ -127,6 +128,10 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyMeleeComponent> MeleeComponent;
 	
+	// Enemy의 후퇴와 전투 회전 방향을 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyMoveComponent> MoveComponent;
+	
 	// 디졸브 효과 컴포넌트
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
@@ -166,9 +171,6 @@ private:
 	
 	UFUNCTION()
 	void OnRep_bIsInPool();
-
-	UPROPERTY(Transient)
-	bool bHasCurrentAttackDefinition = false;
 	
 	// CoreComponent의 EnemyData가 변경됐을 때 시각 데이터를 갱신하는 함수
 	void HandleEnemyDataChanged(UNSEnemyData* NewEnemyData);
