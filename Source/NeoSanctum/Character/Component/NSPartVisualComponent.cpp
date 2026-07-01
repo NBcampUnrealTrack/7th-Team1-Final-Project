@@ -5,6 +5,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Engine/SkeletalMesh.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
@@ -22,7 +23,7 @@ void UNSPartVisualComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		PartChangedHandle.Reset();
 	}
 
-	for (TPair<ENSPartSlot, TSharedPtr<FStreamableHandle>>& Pair : MeshLoadHandles)
+	for (TPair<FGameplayTag, TSharedPtr<FStreamableHandle>>& Pair : MeshLoadHandles)
 	{
 		if (Pair.Value.IsValid())
 		{
@@ -60,11 +61,14 @@ void UNSPartVisualComponent::BindToEquipComponent(UNSPartEquipComponent* EquipCo
 	PartChangedHandle = EquipComp->OnPartChanged.AddUObject(this, &UNSPartVisualComponent::HandlePartChanged);
 
 	// 구독 전 이미 복제된 파츠가 있을 수 있음
-	for (const ENSPartSlot Slot : { ENSPartSlot::Body, ENSPartSlot::Arm, ENSPartSlot::Leg })
+	if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner()))
 	{
-		if (const FNSPartData* Part = EquipComp->GetEquippedPart(Slot))
+		for (const auto& Pair : DataSS->GetAllSlotRows())
 		{
-			HandlePartChanged(Slot, *Part);
+			if (const FNSPartData* Part = EquipComp->GetEquippedPart(Pair.Key))
+			{
+				HandlePartChanged(Pair.Key, *Part);
+			}
 		}
 	}
 }
@@ -82,8 +86,15 @@ void UNSPartVisualComponent::EnsureSlotComponents()
 		return;
 	}
 
-	for (const ENSPartSlot Slot : { ENSPartSlot::Body, ENSPartSlot::Arm, ENSPartSlot::Leg })
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(Owner);
+	if (!DataSS)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartVisual] EnsureSlotComponents: DataSubsystem 없음"));
+		return;
+	}
+	for (const auto& Pair : DataSS->GetAllSlotRows())
+	{
+		const FGameplayTag Slot = Pair.Key;
 		USkeletalMeshComponent* MeshComp = NewObject<USkeletalMeshComponent>(Owner);
 		MeshComp->SetupAttachment(LeaderMeshComp);
 		MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -95,14 +106,14 @@ void UNSPartVisualComponent::EnsureSlotComponents()
 	}
 }
 
-USkeletalMeshComponent* UNSPartVisualComponent::GetSlotMeshComp(ENSPartSlot Slot) const
+USkeletalMeshComponent* UNSPartVisualComponent::GetSlotMeshComp(FGameplayTag Slot) const
 {
 	const TObjectPtr<USkeletalMeshComponent>* Found = SlotMeshComps.Find(Slot);
 	return Found ? *Found : nullptr;
 }
 
 
-void UNSPartVisualComponent::HandlePartChanged(ENSPartSlot Slot, const FNSPartData& Part)
+void UNSPartVisualComponent::HandlePartChanged(FGameplayTag Slot, const FNSPartData& Part)
 {
 	// 비동기 로드 중 교체 대비용
 	PendingParts.Add(Slot, Part);
@@ -115,7 +126,7 @@ void UNSPartVisualComponent::HandlePartChanged(ENSPartSlot Slot, const FNSPartDa
  * 비동기 콜백으로 자기자신을 넘겨서 최신파츠만 갱신될 수 있도록 해줌
  * @param Slot 슬롯 (레그, 바디, 암)
  */
-void UNSPartVisualComponent::UpdateSlotVisual(ENSPartSlot Slot)
+void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 {
 	USkeletalMeshComponent* MeshComp = GetSlotMeshComp(Slot);
 	if (!MeshComp)
@@ -163,7 +174,7 @@ void UNSPartVisualComponent::UpdateSlotVisual(ENSPartSlot Slot)
 	MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
 }
 
-void UNSPartVisualComponent::ClearSlotVisual(ENSPartSlot Slot)
+void UNSPartVisualComponent::ClearSlotVisual(FGameplayTag Slot)
 {
 	if (USkeletalMeshComponent* MeshComp = GetSlotMeshComp(Slot))
 	{
