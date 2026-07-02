@@ -11,7 +11,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBaseDroneAI.generated.h"
 
-class UNSDroneDefinition;
+class UNSBaseDroneDefinition;
 class UGameplayEffect;
 class USphereComponent;
 class USkeletalMeshComponent;
@@ -79,6 +79,7 @@ protected:
 	
 	bool SampleHighestGround(float& OutGroundZ) const;
 	
+	virtual void InitializeFromData();
 protected:
 	// @민재 : 컴포넌트 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
@@ -99,6 +100,10 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Rotation")
 	float MinSpeedToRotate = 50.f;
+	
+	// @민재 : 도착거리 판정
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Movement")
+	float ArrivalRadius = 60.f;
 	
 #pragma region Altitude
 	
@@ -124,6 +129,12 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float GroundLookAheadDistance = 200.f;
+	
+	UPROPERTY(VisibleAnywhere, Category = "DroneAI|Altitude")
+	float GroundSampleAccumulator = 0.f;
+	
+	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
+	float GroundSampleInterval = 0.1f;
 	
 	UPROPERTY(EditAnywhere, Category = "DroneAI|Altitude")
 	float MaxClimbSpeed = 600.f;
@@ -160,10 +171,6 @@ protected:
 	TArray<float> DangerMap;
 	
 #pragma endregion 
-	
-	// @민재 : 도착거리 판정
-	UPROPERTY(EditAnywhere, Category = "DroneAI|Movement")
-	float ArrivalRadius = 60.f;
 	
 #pragma region CachedData
 	// @민재 : 캐싱 데이터
@@ -211,11 +218,11 @@ protected:
 #pragma region DataDriven
 	
 public:
-	void SetPendingDefinition(const UNSDroneDefinition* InDefinition);
+	void SetPendingDefinition(const UNSBaseDroneDefinition* InDefinition);
 	
-	void ApplyDroneDefinition(const UNSDroneDefinition* NewDefinition);
+	void ApplyDroneDefinition(const UNSBaseDroneDefinition* NewDefinition);
 	
-	void ApplyDroneVisual(const UNSDroneDefinition* NewDefinition);
+	void ApplyDroneVisual(const UNSBaseDroneDefinition* NewDefinition);
 	
 	UFUNCTION()
 	void OnRep_CurrentDefinition();
@@ -228,7 +235,7 @@ protected:
 	
 	// 현재 드론의 타입 정보
 	UPROPERTY(ReplicatedUsing = OnRep_CurrentDefinition)
-	TObjectPtr<const UNSDroneDefinition> CurrentDefinition;
+	TObjectPtr<const UNSBaseDroneDefinition> CurrentDefinition;
 	
 #pragma endregion
 	

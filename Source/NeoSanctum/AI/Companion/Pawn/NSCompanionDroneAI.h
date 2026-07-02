@@ -17,6 +17,9 @@ class NEOSANCTUM_API ANSCompanionDroneAI : public ANSBaseDroneAI
 public:
 	ANSCompanionDroneAI();
 
+protected:
+	virtual void InitializeFromData();
+	
 public:
 	virtual void PossessedBy(AController* NewController) override;
 	
@@ -99,5 +102,7 @@ protected:
 	// 컴패니언 업그레이드 스탯이 담기는 어트리뷰트 세트 (체력 없음)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="GAS")
 	TObjectPtr<UNSCompanionAttributeSet> CompanionAttributeSet;
+	
+
 #pragma endregion
 };

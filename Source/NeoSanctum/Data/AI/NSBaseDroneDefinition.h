@@ -4,14 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "NSDroneDefinition.generated.h"
+#include "NSBaseDroneDefinition.generated.h"
 
 class USkeletalMesh;
 class UNSCompanionAbilitySet;
 class UGameplayEffect;
 
 UCLASS()
-class NEOSANCTUM_API UNSDroneDefinition : public UPrimaryDataAsset
+class NEOSANCTUM_API UNSBaseDroneDefinition : public UPrimaryDataAsset
 {
 	GENERATED_BODY()
 

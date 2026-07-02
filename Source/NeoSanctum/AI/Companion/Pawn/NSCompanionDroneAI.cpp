@@ -20,6 +20,15 @@ ANSCompanionDroneAI::ANSCompanionDroneAI()
 	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
 }
 
+void ANSCompanionDroneAI::InitializeFromData()
+{
+	Super::InitializeFromData();
+	
+	if (!CurrentDefinition) return;
+	
+	ApplyDroneDefinition(CurrentDefinition);
+}
+
 void ANSCompanionDroneAI::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "NSDroneDefinition.h"
+#include "NSBaseDroneDefinition.h"
 #include "Engine/DataAsset.h"
 #include "NSCompanionDefinition.generated.h"
 
@@ -37,7 +37,7 @@ struct FNSCompanionUpgradeNode
 };
 
 UCLASS(BlueprintType)
-class NEOSANCTUM_API UNSCompanionDefinition : public UNSDroneDefinition
+class NEOSANCTUM_API UNSCompanionDefinition : public UNSBaseDroneDefinition
 {
 	GENERATED_BODY()
 public:

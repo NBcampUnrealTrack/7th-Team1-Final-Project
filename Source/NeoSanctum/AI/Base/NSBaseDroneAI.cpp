@@ -10,7 +10,7 @@
 #include "AIController.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Data/AI/NSCompanionAbilitySet.h"
-#include "NeoSanctum/Data/AI/NSDroneDefinition.h"
+#include "NeoSanctum/Data/AI/NSBaseDroneDefinition.h"
 #include "Net/UnrealNetwork.h"
 
 ANSBaseDroneAI::ANSBaseDroneAI()
@@ -50,10 +50,17 @@ UAbilitySystemComponent* ANSBaseDroneAI::GetAbilitySystemComponent() const
 void ANSBaseDroneAI::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	
 	if (HasAuthority())
 	{
-		MaintainAltitude(DeltaSeconds);
 		DroneAIRotate(DeltaSeconds);
+
+		GroundSampleAccumulator += DeltaSeconds;
+		if (GroundSampleAccumulator >= GroundSampleInterval)  // 예: 0.1초
+		{
+			MaintainAltitude(GroundSampleAccumulator);
+			GroundSampleAccumulator = 0.f;
+		}
 	}
 }
 
@@ -67,17 +74,14 @@ void ANSBaseDroneAI::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 void ANSBaseDroneAI::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+	
 	if (!HasAuthority() || !IsValid(NewController)) return;
 	
 	AAIController* DroneAIController = Cast<AAIController>(NewController);
 	if (!IsValid(DroneAIController)) return;
 	CachedAIController = DroneAIController;
 	
-	if (!CurrentDefinition) return;
-	
-	InitAbilityActorInfo();
-	ApplyDroneDefinition(CurrentDefinition);
-	
+	InitializeFromData();
 }
 
 void ANSBaseDroneAI::BeginPlay()
@@ -104,7 +108,7 @@ void ANSBaseDroneAI::MoveTowards(const FVector& TargetLocation)
 	AddMovementInput(SteeringDirection, 1.0f);
 }
 
-void ANSBaseDroneAI::SetPendingDefinition(const UNSDroneDefinition* InDefinition)
+void ANSBaseDroneAI::SetPendingDefinition(const UNSBaseDroneDefinition* InDefinition)
 {
 	if (!InDefinition) return;
 	
@@ -163,7 +167,7 @@ void ANSBaseDroneAI::GiveDefaultAbilities()
 	bDefaultAbilitiesGranted = true;
 }
 
-void ANSBaseDroneAI::ApplyDroneDefinition(const UNSDroneDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyDroneDefinition(const UNSBaseDroneDefinition* NewDefinition)
 {
 	if (!HasAuthority() || !NewDefinition) return;
 	
@@ -197,7 +201,7 @@ void ANSBaseDroneAI::ApplyDroneDefinition(const UNSDroneDefinition* NewDefinitio
 	CurrentDefinition = NewDefinition;
 }
 
-void ANSBaseDroneAI::ApplyDroneVisual(const UNSDroneDefinition* NewDefinition)
+void ANSBaseDroneAI::ApplyDroneVisual(const UNSBaseDroneDefinition* NewDefinition)
 {
 	if (!NewDefinition) return;
 	
@@ -355,6 +359,11 @@ bool ANSBaseDroneAI::SampleHighestGround(float& OutGroundZ) const
 	// 순회 후 가장 높은 지형을 반환 및 bool 값 반환
 	OutGroundZ = HighestZ;
 	return bFound;
+}
+
+void ANSBaseDroneAI::InitializeFromData()
+{
+	
 }
 
 void ANSBaseDroneAI::DroneAIRotate(float DeltaSeconds)
