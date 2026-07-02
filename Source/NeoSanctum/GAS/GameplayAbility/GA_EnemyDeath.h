@@ -64,7 +64,7 @@ private:
 	void DisableDeathCollision(AActor* AvatarActor, USkeletalMeshComponent* MeshComponent) const;
 
 	// Mesh를 래그돌 상태로 전환하는 함수
-	void ApplyRagdoll(USkeletalMeshComponent* MeshComponent) const;
+	bool ApplyRagdoll(USkeletalMeshComponent* MeshComponent) const;
 
 	// DissolveComponent가 있으면 디졸브를 시작하는 함수
 	void StartDissolve() const;

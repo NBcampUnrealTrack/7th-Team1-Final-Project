@@ -58,7 +58,14 @@ void UGA_EnemyDeath::ActivateAbility(
 
 	if (!DeathMontage)
 	{
-		ApplyRagdoll(MeshComponent);
+		const bool bRagdollStarted = ApplyRagdoll(MeshComponent);
+
+		if (!bRagdollStarted)
+		{
+			MeshComponent->bPauseAnims = true;
+			MeshComponent->SetComponentTickEnabled(false);
+		}
+
 		StartDissolve();
 		FinishDeathAbility(false);
 		return;
@@ -181,11 +188,11 @@ void UGA_EnemyDeath::DisableDeathCollision(
 	}
 }
 
-void UGA_EnemyDeath::ApplyRagdoll(USkeletalMeshComponent* MeshComponent) const
+bool UGA_EnemyDeath::ApplyRagdoll(USkeletalMeshComponent* MeshComponent) const
 {
-	if (!MeshComponent)
+	if (!MeshComponent || !MeshComponent->GetPhysicsAsset())
 	{
-		return;
+		return false;
 	}
 
 	MeshComponent->bPauseAnims = false;
@@ -194,6 +201,8 @@ void UGA_EnemyDeath::ApplyRagdoll(USkeletalMeshComponent* MeshComponent) const
 	MeshComponent->SetAllBodiesSimulatePhysics(true);
 	MeshComponent->SetSimulatePhysics(true);
 	MeshComponent->WakeAllRigidBodies();
+
+	return MeshComponent->IsAnySimulatingPhysics();
 }
 
 void UGA_EnemyDeath::StartDissolve() const
