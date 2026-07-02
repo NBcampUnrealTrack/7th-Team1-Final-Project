@@ -432,6 +432,28 @@ FString UNSSessionSubsystem::GetCurrentInviteCode() const
 	return CurrentInviteCode;
 }
 
+void UNSSessionSubsystem::InviteFriendToSession(const FString& FriendNetIdString)
+{
+	if (!SessionInterface.IsValid() || FriendNetIdString.IsEmpty())
+	{
+		return;
+	}
+
+	// 세션이 이미 있으면 바로 초대
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		SendInviteToFriendInternal(FriendNetIdString);
+		return;
+	}
+
+	// 세션이 없으면 보류 목록에 추가하고 세션 생성 우선시
+	PendingInviteFriendNetIds.AddUnique(FriendNetIdString);
+	if (!bIsCreatingSession && !bHostStartQueued)
+	{
+		CreateSession();
+	}
+}
+
 void UNSSessionSubsystem::StartRunSession()
 {
 	// 클라는 세션 상태 제어 안 함
@@ -503,6 +525,9 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 	if (!bWasSuccessful)
 	{
 		OnCreateSessionComplete.Broadcast(false);
+		// 세션 생성에 실패하면 보류 초대 목록 클리어
+		PendingInviteFriendNetIds.Reset(); 
+		
 		return;
 	}
 	
@@ -518,6 +543,15 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("세션 ID를 얻지 못해 초대 코드 발급 실패"));
+	}
+	
+	// 세션 생성 중 쌓인 보류 친구들 전부 초대
+	if (PendingInviteFriendNetIds.Num() > 0)
+	{
+		TArray<FString> ToInvite = MoveTemp(PendingInviteFriendNetIds);
+		PendingInviteFriendNetIds.Reset();
+		for (const FString& FriendId : ToInvite)
+			SendInviteToFriendInternal(FriendId);
 	}
 }
 
@@ -716,6 +750,34 @@ void UNSSessionSubsystem::OnSessionUserInviteAccepted(
 	}
 
 	JoinResolvedSession(InviteResult);
+}
+
+void UNSSessionSubsystem::SendInviteToFriendInternal(const FString& FriendNetIdString)
+{
+	const ULocalPlayer* LP = 
+		GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	if (!LP || !LP->GetPreferredUniqueNetId().IsValid())
+	{
+		return;
+	}
+
+	IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld());
+	IOnlineIdentityPtr Identity = OSS ? OSS->GetIdentityInterface() : nullptr;
+	if (!Identity.IsValid())
+	{
+		return;
+	}
+
+	FUniqueNetIdPtr FriendId = Identity->CreateUniquePlayerId(FriendNetIdString);
+	if (!FriendId.IsValid())
+	{
+		return;
+	}
+
+	const bool bSent = SessionInterface->SendSessionInviteToFriend(
+		*LP->GetPreferredUniqueNetId(), NAME_GameSession, *FriendId);
+	UE_LOG(LogTemp, Log, TEXT("세션 초대 전송(%s): %s"),
+		bSent ? TEXT("성공") : TEXT("실패"), *FriendNetIdString);
 }
 
 void UNSSessionSubsystem::HandleNetworkFailure(
@@ -928,7 +990,7 @@ void UNSSessionSubsystem::GetCachedFriends(TArray<FNSFriendInfo>& OutFriends) co
 {
 	OutFriends.Reset();
 
-	IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
+	IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld());
 	IOnlineFriendsPtr Friends = OSS ? OSS->GetFriendsInterface() : nullptr;
 	if (!Friends.IsValid())
 	{
