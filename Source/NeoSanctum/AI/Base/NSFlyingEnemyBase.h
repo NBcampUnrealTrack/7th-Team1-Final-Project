@@ -3,17 +3,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "NeoSanctum/Character/Enemy/NSBossPawnBase.h"
-#include "NSBossMotherShip.generated.h"
+#include "GameFramework/Pawn.h"
+#include "NSFlyingEnemyBase.generated.h"
 
 UCLASS()
-class NEOSANCTUM_API ANSBossMotherShip : public ANSBossPawnBase
+class NEOSANCTUM_API ANSFlyingEnemyBase : public APawn
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this pawn's properties
-	ANSBossMotherShip();
+	ANSFlyingEnemyBase();
 
 protected:
 	// Called when the game starts or when spawned
