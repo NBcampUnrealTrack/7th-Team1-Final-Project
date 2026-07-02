@@ -155,7 +155,6 @@ protected:
 protected:
 	//(이용호 추가)
 	void ApplyAliveVisual();
-	void ApplyDeadVisual();
 	void ApplyVisualData();
 	void InitializeFromData(bool bFullInit);
 

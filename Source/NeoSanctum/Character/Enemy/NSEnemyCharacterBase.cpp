@@ -182,33 +182,6 @@ void ANSEnemyCharacterBase::HandleEnemyDataChanged(UNSEnemyData* NewEnemyData)
 	ApplyVisualData();
 }
 
-void ANSEnemyCharacterBase::ApplyDeadVisual()
-{
-	// 물리 캡슐 콜리전 비활성화
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-
-	if (GetMesh())
-	{
-		// 애니메이션 인스턴스 중단
-		GetMesh()->bPauseAnims = true;
-
-		// 콜리전 프로필을 Ragdoll로 변경
-		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-
-		// 스켈레탈 메시의 물리 시뮬레이션을 활성화
-		GetMesh()->SetSimulatePhysics(true);
-
-		// 디졸브 효과 적용
-		if (DissolveComponent)
-		{
-			DissolveComponent->StartDissolve();
-		}
-	}
-
-	OnEnemyDead.Broadcast();
-}
-
 void ANSEnemyCharacterBase::ApplyVisualData()
 {
 	UNSEnemyData* EnemyData = GetEnemyData();
@@ -564,6 +537,8 @@ void ANSEnemyCharacterBase::HandleDeathStarted()
 		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
 	}
 
+	OnEnemyDead.Broadcast();
+
 	if (AAIController* AIController = Cast<AAIController>(GetController()))
 	{
 		AIController->UnPossess();
@@ -575,7 +550,14 @@ void ANSEnemyCharacterBase::HandleDeadStateChanged(bool bDead)
 {
 	if (bDead)
 	{
-		ApplyDeadVisual();
+		if (UCapsuleComponent* CurrentCapsuleComponent = GetCapsuleComponent())
+		{
+			CurrentCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			CurrentCapsuleComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+		}
+
+		ClearCurrentAttackRow();
+		ClearCombatAimTarget();
 	}
 	else
 	{
