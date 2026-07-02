@@ -77,6 +77,9 @@ private:
 	void OnComboWindowOpened(FGameplayEventData Payload);
 
 	UFUNCTION()
+	void OnDashAttackRecoverStarted(FGameplayEventData Payload);
+
+	UFUNCTION()
 	void OnDashAttackMoveFinished();
 
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
@@ -114,6 +117,15 @@ private:
 
 	// 대쉬공격 몽타주와 이동 완료 확인
 	void TryEndDashAttack();
+
+	// 대쉬공격 Recover 시작 이벤트 대기
+	void StartDashAttackRecoverEventTask();
+
+	// 대쉬공격 GameplayCue 시작
+	void AddDashAttackGameplayCue();
+
+	// 대쉬공격 GameplayCue 종료
+	void RemoveDashAttackGameplayCue();
 
 	// 화면 중앙 조준점 기준 대쉬공격 방향 계산
 	bool TryGetDashAttackDirection(FVector& OutDirection) const;
@@ -200,6 +212,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_WaitGameplayEvent> DashAttackRecoverEventTask;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashAttackMoveTask;

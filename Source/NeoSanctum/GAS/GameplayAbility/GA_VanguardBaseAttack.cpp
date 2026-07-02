@@ -16,6 +16,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
@@ -121,10 +122,12 @@ void UGA_VanguardBaseAttack::EndAbility(
 		DashAttackMoveTask = nullptr;
 	}
 
+	RemoveDashAttackGameplayCue();
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
 	ComboWindowEventTask = nullptr;
+	DashAttackRecoverEventTask = nullptr;
 	CurrentGroundComboIndex = INDEX_NONE;
 	bComboInputBuffered = false;
 	bComboAdvancedInCurrentWindow = false;
@@ -186,6 +189,17 @@ void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
 		// Window 이전 선입력 소비
 		TryAdvanceGroundCombo();
 	}
+}
+
+void UGA_VanguardBaseAttack::OnDashAttackRecoverStarted(FGameplayEventData Payload)
+{
+	if (ActiveAttackMode != ENSVanguardBaseAttackMode::DashAttack)
+	{
+		return;
+	}
+
+	// Recover 진입 시 대쉬공격 연출 Cue 종료
+	RemoveDashAttackGameplayCue();
 }
 
 ENSVanguardBaseAttackMode UGA_VanguardBaseAttack::SelectAttackMode(
@@ -396,9 +410,15 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 	bDashAttackMoveStarted = StartDashAttackMovement(ChargeRatio);
 	bDashAttackMoveFinished = !bDashAttackMoveStarted;
 
+	StartDashAttackRecoverEventTask();
+
 	// 몽타주의 공격 Section으로 이동
 	bDashAttackMontageStarted = JumpToDashAttackSection();
 	bDashAttackMontageFinished = !bDashAttackMontageStarted;
+	if (bDashAttackMontageStarted)
+	{
+		AddDashAttackGameplayCue();
+	}
 
 	if (!bDashAttackMoveStarted && !bDashAttackMontageStarted)
 	{
@@ -492,6 +512,43 @@ void UGA_VanguardBaseAttack::TryEndDashAttack()
 		GetCurrentActivationInfo(),
 		true,
 		false);
+}
+
+void UGA_VanguardBaseAttack::StartDashAttackRecoverEventTask()
+{
+	// 대쉬공격 Recover 시작 Notify 이벤트 대기
+	DashAttackRecoverEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		NSGameplayTags::Event_Vanguard_DashAttackRecoverStarted,
+		nullptr,
+		true,
+		true);
+
+	if (!DashAttackRecoverEventTask)
+	{
+		return;
+	}
+
+	DashAttackRecoverEventTask->EventReceived.AddDynamic(this, &ThisClass::OnDashAttackRecoverStarted);
+	DashAttackRecoverEventTask->ReadyForActivation();
+}
+
+void UGA_VanguardBaseAttack::AddDashAttackGameplayCue()
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		// 대쉬공격 연출 Cue 시작
+		ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+	}
+}
+
+void UGA_VanguardBaseAttack::RemoveDashAttackGameplayCue()
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		// 대쉬공격 연출 Cue 종료
+		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+	}
 }
 
 bool UGA_VanguardBaseAttack::TryGetDashAttackDirection(FVector& OutDirection) const
