@@ -44,10 +44,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UImage> PreviewImage;	
 
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect")
-	TObjectPtr<UDataTable> CharacterDataTable;
-
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void SelectNext();
 
@@ -66,7 +62,7 @@ private:
 	FTimerHandle FadeTimerHandle;
 	int32 CurrentIndex = 0;
 
-	TArray<FNSCharacterSelectData*> CachedCharacters;
+	TArray<FNSCharacterSelectData> CachedCharacters;
 
 	void ApplyPreviewImage(const FNSCharacterSelectData& Data);
 	

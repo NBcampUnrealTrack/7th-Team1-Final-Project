@@ -9,14 +9,18 @@
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSCharacterSlotWidget.h"
 #include "Components/Image.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 
 void UNSCharacterSelectWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
-	if (CharacterDataTable)
+	CachedCharacters.Reset();
+	CurrentIndex = 0;
+
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		CharacterDataTable->GetAllRows<FNSCharacterSelectData>(TEXT("CharacterSelect"), CachedCharacters);
+		CachedCharacters = DataSubsystem->GetCachedCharacterSelectRows();
 	}
 
 	if (NextButton)
@@ -67,19 +71,22 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 {
 	if (CachedCharacters.IsEmpty()) { return; }
 
-	const FNSCharacterSelectData* Data = CachedCharacters[CurrentIndex];
-	if (!Data) { return; }
+	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
+	if (!CachedCharacters.IsValidIndex(CurrentIndex))
+	{
+		return;
+	}
 	
-	ApplyPreviewImage(*Data);
+	ApplyPreviewImage(Data);
 	
 	if (CharacterNameText)
 	{
-		CharacterNameText->SetText(Data->CharacterName);
+		CharacterNameText->SetText(Data.CharacterName);
 	}
 
 	if (CharacterDescriptionText)
 	{
-		CharacterDescriptionText->SetText(Data->CharacterDescription);
+		CharacterDescriptionText->SetText(Data.CharacterDescription);
 	}
 
 	if (CharacterSwitcher)
@@ -90,7 +97,7 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 			Cast<UNSCharacterSlotWidget>(CharacterSwitcher->GetWidgetAtIndex(CurrentIndex));
 		if (CurrentSlot)
 		{
-			CurrentSlot->SetCharacterData(*Data);
+			CurrentSlot->SetCharacterData(Data);
 		}
 	}
 
@@ -105,19 +112,22 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 {
 	if (CachedCharacters.IsEmpty()) { return; }
 
-	const FNSCharacterSelectData* Data = CachedCharacters[CurrentIndex];
-	if (!Data) { return; }
+	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
+	if (!CachedCharacters.IsValidIndex(CurrentIndex))
+	{
+		return;
+	}
 
-	ApplyPreviewImage(*Data);
+	ApplyPreviewImage(Data);
 
 	if (CharacterNameText)
 	{
-		CharacterNameText->SetText(Data->CharacterName);
+		CharacterNameText->SetText(Data.CharacterName);
 	}
 
 	if (CharacterDescriptionText)
 	{
-		CharacterDescriptionText->SetText(Data->CharacterDescription);
+		CharacterDescriptionText->SetText(Data.CharacterDescription);
 	}
 
 	if (CharacterSwitcher && CurrentIndex < CharacterSwitcher->GetChildrenCount())
@@ -133,15 +143,12 @@ void UNSCharacterSelectWidget::ConfirmSelection()
 		return;
 	}
 
-	const FNSCharacterSelectData* SelectedData = CachedCharacters[CurrentIndex];
-	if (!SelectedData)
-	{
-		return;
-	}
+	const FNSCharacterSelectData& SelectedData = CachedCharacters[CurrentIndex];
 
-	UNSCharacterData* SelectedCharacterData = SelectedData->CharacterData.LoadSynchronous();
+	UNSCharacterData* SelectedCharacterData = SelectedData.CharacterData.Get();
 	if (!SelectedCharacterData)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CharacterSelect] 선택한 캐릭터 데이터가 로드되어 있지 않습니다."));
 		return;
 	}
 
@@ -154,7 +161,7 @@ void UNSCharacterSelectWidget::ApplyPreviewImage(const FNSCharacterSelectData& D
 		return;
 	}
 	
-	UTexture2D* Texture = Data.PreviewTexture.LoadSynchronous();
+	UTexture2D* Texture = Data.PreviewTexture.Get();
 	if (!Texture)
 	{
 		PreviewImage->SetBrushFromTexture(nullptr);
