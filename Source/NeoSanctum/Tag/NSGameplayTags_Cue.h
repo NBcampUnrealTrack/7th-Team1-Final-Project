@@ -26,6 +26,9 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_Grenade_Explosion);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_SpeedBuff);
+
+	// Vanguard
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BaseAttack_DashAttack);
 	
 	// Engineer
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_MuzzleFire);
