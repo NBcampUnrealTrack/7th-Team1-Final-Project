@@ -13,6 +13,8 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Accuracy_Engineer_SpawnTurret);
 	
 	// Attribute SetByCaller
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_BaseDamage_Add);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_BaseDamage_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxHealth_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxHealth_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxShield_Add);

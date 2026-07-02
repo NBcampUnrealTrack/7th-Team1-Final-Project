@@ -40,4 +40,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Accuracy);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSpawnableAngle);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Radius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritChance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
 }
