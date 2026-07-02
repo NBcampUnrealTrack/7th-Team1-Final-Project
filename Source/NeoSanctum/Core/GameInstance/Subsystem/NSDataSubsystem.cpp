@@ -162,6 +162,28 @@ UDataTable* UNSDataSubsystem::GetCommonGoodsUIDataTable() const
 	return CommonDataConfig ? CommonDataConfig->GoodsUIDataTable.Get() : nullptr;
 }
 
+const FNSGoodsUIData* UNSDataSubsystem::FindCommonGoodsUIDataByTag(const FGameplayTag& GoodsTag) const
+{
+	const UDataTable* GoodsTable = GetCommonGoodsUIDataTable();
+	if (!IsValid(GoodsTable) || GoodsTable->GetRowStruct() != FNSGoodsUIData::StaticStruct())
+	{
+		return nullptr;
+	}
+
+	TArray<FNSGoodsUIData*> Rows;
+	GoodsTable->GetAllRows(TEXT("FindCommonGoodsUIDataByTag"), Rows);
+
+	for (const FNSGoodsUIData* Row :Rows)
+	{
+		if (Row && Row->GoodsTag.MatchesTagExact(GoodsTag))
+		{
+			return Row;
+		}
+	}
+
+	return nullptr;
+}
+
 const UNSOutGameDataConfig* UNSDataSubsystem::GetOutGameDataConfig() const
 {
 	const TArray<UNSOutGameDataConfig*> OutGameDataConfigs =
