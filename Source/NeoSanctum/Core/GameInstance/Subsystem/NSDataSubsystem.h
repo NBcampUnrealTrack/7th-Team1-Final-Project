@@ -9,8 +9,10 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
+#include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSDataSubsystem.generated.h"
 
+class UNSOutGameDataConfig;
 class UNSSoundData;
 class UNSAugmentRarityRuleSet;
 class UNSCommonDataConfig;
@@ -127,6 +129,11 @@ public:
 	UDataTable* GetCommonPlayerAttackFeedbackDataTable() const;
 
 	UDataTable* GetCommonUIWidgetDataTable() const;
+
+	const UNSOutGameDataConfig* GetOutGameDataConfig() const;
+
+	// 거점 캐릭터 선택 UI에서 사용할 캐릭터 목록 Row 캐시. LoadOutGameData() 완료 이후 유효.
+	const TArray<FNSCharacterSelectData>& GetCachedCharacterSelectRows() const { return CachedCharacterSelectRows; }
 	
 	const TArray<FNSHitReactionData>& GetCachedHitReactionRows() const { return CachedHitReactionRows; }
 	const TArray<FNSPlayerAttackFeedbackData>& GetCachedPlayerAttackFeedbackRows() const { return CachedPlayerAttackFeedbackRows; }
@@ -190,6 +197,7 @@ public:
 	static const FPrimaryAssetType CharacterAssetType;
 
 	// OutRun
+	static const FPrimaryAssetType OutGameDataConfigAssetType;
 	static const FPrimaryAssetType HubAssetType;
 	static const FPrimaryAssetType PartAssetType;
 
@@ -233,7 +241,18 @@ private:
 	void CacheCommonFeedbackRows();
 
 	void StartLoadOutGame();
+	void StartLoadOutGameReferenceAssets();
+	void OnOutGameReferenceAssetsLoaded();
 	void OnOutGameAssetsLoaded();
+
+	// DT_CharacterList Row 내부 SoftReference를 수집.
+	// 캐릭터 선택 UI에서 동기 로드가 발생하지 않도록 OutGameReady 전에 선로드.
+	void CollectCharacterSelectPathsFromTable(
+		const UDataTable* CharacterSelectTable,
+		TArray<FSoftObjectPath>& OutPaths) const;
+
+	// 캐릭터 선택 테이블을 매번 순회하지 않도록 OutGameData 로드 시 1회 캐싱.
+	void CacheCharacterSelectRows();
 
 	// RunConfig를 먼저 로드해 런 전체 유지 데이터를 준비한 뒤, 현재 스테이지 LevelConfig를 로드. 
 	void StartLoadRunConfig();
@@ -286,8 +305,8 @@ private:
 	
 	TArray<FNSHitReactionData> CachedHitReactionRows;
 	TArray<FNSPlayerAttackFeedbackData> CachedPlayerAttackFeedbackRows;
-	
-	TSharedPtr<FStreamableHandle> CommonReferencedAssetsHandle;
+
+	TArray<FNSCharacterSelectData> CachedCharacterSelectRows;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSRewardDataRegistry> RewardDataRegistry;
@@ -322,7 +341,9 @@ private:
 	
 	// 비동기 로드 핸들 관리
 	TSharedPtr<FStreamableHandle> CommonHandle;
+	TSharedPtr<FStreamableHandle> CommonReferencedAssetsHandle;
 	TSharedPtr<FStreamableHandle> OutGameHandle;
+	TSharedPtr<FStreamableHandle> OutGameReferencedAssetHandle;
 	TSharedPtr<FStreamableHandle> RunConfigHandle;
 	TSharedPtr<FStreamableHandle> RunHandle;
 	TSharedPtr<FStreamableHandle> StageLevelConfigHandle;

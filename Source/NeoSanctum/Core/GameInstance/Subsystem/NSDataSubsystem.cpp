@@ -11,6 +11,7 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
+#include "NeoSanctum/Data/Config/NSOutGameDataConfig.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
@@ -27,7 +28,7 @@ const FPrimaryAssetType UNSDataSubsystem::HubAssetType						= FPrimaryAssetType(
 const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType(TEXT("NSPartData"));
 
 // OutGame
-
+const FPrimaryAssetType UNSDataSubsystem::OutGameDataConfigAssetType		= FPrimaryAssetType(TEXT("NSOutGameDataConfig"));
 
 // InRun
 const FPrimaryAssetType UNSDataSubsystem::RunConfigAssetType				= FPrimaryAssetType(TEXT("NSRunConfig"));
@@ -138,6 +139,19 @@ UDataTable* UNSDataSubsystem::GetCommonUIWidgetDataTable() const
 {
 	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
 	return CommonDataConfig ? CommonDataConfig->UIWidgetDataTable.Get() : nullptr;
+}
+
+const UNSOutGameDataConfig* UNSDataSubsystem::GetOutGameDataConfig() const
+{
+	const TArray<UNSOutGameDataConfig*> OutGameDataConfigs =
+		GetAllDataOfType<UNSOutGameDataConfig>(OutGameDataConfigAssetType);
+
+	if (OutGameDataConfigs.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	return OutGameDataConfigs[0];
 }
 
 UDataTable* UNSDataSubsystem::GetCurrentAugmentDefinitionTable() const
@@ -429,7 +443,12 @@ void UNSDataSubsystem::StartLoadOutGame()
 {
 	SetPhase(ENSDataLoadPhase::LoadingOutGame);
 
-	const TArray<FPrimaryAssetType> Types = { HubAssetType, PartAssetType };
+	const TArray<FPrimaryAssetType> Types =
+	{
+		OutGameDataConfigAssetType,
+		HubAssetType,
+		PartAssetType
+	};
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -448,9 +467,102 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
 {
-	CacheLoaded({ HubAssetType, PartAssetType });
+	CacheLoaded(
+	{
+		OutGameDataConfigAssetType,
+		HubAssetType,
+		PartAssetType
+	});
+
+	StartLoadOutGameReferenceAssets();
+}
+
+void UNSDataSubsystem::StartLoadOutGameReferenceAssets()
+{
+	TArray<FSoftObjectPath> AssetsToLoad;
+
+	if (const UNSOutGameDataConfig* OutGameConfig = GetOutGameDataConfig())
+	{
+		CollectCharacterSelectPathsFromTable(
+			OutGameConfig->CharacterSelectDataTable.Get(),
+			AssetsToLoad
+		);
+	}
+
+	if (AssetsToLoad.IsEmpty())
+	{
+		OnOutGameReferenceAssetsLoaded();
+		return;
+	}
+
+	FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+	OutGameReferencedAssetHandle = StreamableManager.RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateUObject(this, &ThisClass::OnOutGameReferenceAssetsLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnOutGameReferenceAssetsLoaded()
+{
+	CacheCharacterSelectRows();
+
 	SetPhase(ENSDataLoadPhase::OutGameReady);
 	OnOutGameDataReady.Broadcast();
+}
+
+void UNSDataSubsystem::CollectCharacterSelectPathsFromTable(
+	const UDataTable* CharacterSelectTable, TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (!IsValid(CharacterSelectTable) || CharacterSelectTable->GetRowStruct() != FNSCharacterSelectData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("CollectCharacterSelectPathsFromTable");
+	for (const FName& RowName : CharacterSelectTable->GetRowNames())
+	{
+		const FNSCharacterSelectData* Row =
+			CharacterSelectTable->FindRow<FNSCharacterSelectData>(RowName, ContextString, false);
+
+		if (!Row)
+		{
+			continue;
+		}
+
+		if (!Row->CharacterData.IsNull())
+		{
+			OutPaths.AddUnique(Row->CharacterData.ToSoftObjectPath());
+		}
+
+		if (!Row->PreviewTexture.IsNull())
+		{
+			OutPaths.AddUnique(Row->PreviewTexture.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CacheCharacterSelectRows()
+{
+	CachedCharacterSelectRows.Reset();
+
+	const UNSOutGameDataConfig* OutGameConfig = GetOutGameDataConfig();
+	const UDataTable* CharacterSelectTable = OutGameConfig ? OutGameConfig->CharacterSelectDataTable.Get() : nullptr;
+
+	if (!IsValid(CharacterSelectTable) || CharacterSelectTable->GetRowStruct() != FNSCharacterSelectData::StaticStruct())
+	{
+		return;
+	}
+
+	TArray<FNSCharacterSelectData*> Rows;
+	CharacterSelectTable->GetAllRows(TEXT("CachedCharacterSelectRows"), Rows);
+
+	for (const FNSCharacterSelectData* Row : Rows)
+	{
+		if (Row)
+		{
+			CachedCharacterSelectRows.Add(*Row);
+		}
+	}
 }
 
 // ================================================================
@@ -648,7 +760,16 @@ void UNSDataSubsystem::UnloadOutGame()
 		OutGameHandle->ReleaseHandle();
 		OutGameHandle.Reset();
 	}
-	UnloadByTypes({ HubAssetType, PartAssetType });
+
+	if (OutGameReferencedAssetHandle.IsValid())
+	{
+		OutGameReferencedAssetHandle->ReleaseHandle();
+		OutGameReferencedAssetHandle.Reset();
+	}
+
+	CachedCharacterSelectRows.Reset();
+
+	UnloadByTypes({OutGameDataConfigAssetType, HubAssetType, PartAssetType });
 }
 
 void UNSDataSubsystem::UnloadStage()
