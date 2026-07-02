@@ -71,11 +71,11 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 {
 	if (CachedCharacters.IsEmpty()) { return; }
 
-	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
 	if (!CachedCharacters.IsValidIndex(CurrentIndex))
 	{
 		return;
 	}
+	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
 	
 	ApplyPreviewImage(Data);
 	
@@ -112,11 +112,12 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 {
 	if (CachedCharacters.IsEmpty()) { return; }
 
-	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
 	if (!CachedCharacters.IsValidIndex(CurrentIndex))
 	{
 		return;
 	}
+
+	const FNSCharacterSelectData& Data = CachedCharacters[CurrentIndex];
 
 	ApplyPreviewImage(Data);
 

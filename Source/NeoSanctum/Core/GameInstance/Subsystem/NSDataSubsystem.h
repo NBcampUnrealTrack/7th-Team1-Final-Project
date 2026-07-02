@@ -130,6 +130,8 @@ public:
 
 	UDataTable* GetCommonUIWidgetDataTable() const;
 
+	// 현재 프로젝트는 OutGameDataConfig를 하나만 운용.
+	// 여러 개가 등록되면 첫 번째 로드 에셋을 사용하므로 Asset Manager 등록/에셋 수를 1개로 유지해야 함.
 	const UNSOutGameDataConfig* GetOutGameDataConfig() const;
 
 	// 거점 캐릭터 선택 UI에서 사용할 캐릭터 목록 Row 캐시. LoadOutGameData() 완료 이후 유효.
@@ -241,7 +243,11 @@ private:
 	void CacheCommonFeedbackRows();
 
 	void StartLoadOutGame();
+	// OutGame PrimaryAsset 로드 후, DT_CharacterList Row 내부 SoftObject까지 추가로 로드.
+	// 캐릭터 선택 UI가 CharacterData/PreviewTexture를 동기 로드하지 않도록 OutGameReady 전에 끝냄.
 	void StartLoadOutGameReferenceAssets();
+
+	// OutGame 참조 에셋 로드가 끝난 뒤 캐릭터 선택 Row 캐시를 만들고 OutGameReady를 알림.
 	void OnOutGameReferenceAssetsLoaded();
 	void OnOutGameAssetsLoaded();
 

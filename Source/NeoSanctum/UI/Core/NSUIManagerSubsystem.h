@@ -205,7 +205,8 @@ private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleWidget;
 
-	// @원종 : CommonData 로딩 전에 Title 생성이 요청되면, 로딩 완료 후 다시 생성하기 위해 보관.
+
+	// @원종: CommonDataReady 전에 Title 생성이 요청되면 로딩 완료 후 같은 PlayerController로 재시도하기 위해 보관.
 	TWeakObjectPtr<APlayerController> PendingTitleOwningPlayer;
 	bool bPendingTitleCreation = false;
 	
