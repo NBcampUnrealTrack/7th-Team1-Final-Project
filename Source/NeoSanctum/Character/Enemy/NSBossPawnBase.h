@@ -23,6 +23,7 @@ class UNSEnemyPhaseComponent;
 class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
+class UNSBossModeComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSBossPawnBase : public APawn,
@@ -84,6 +85,9 @@ public:
 	{
 		return StateComponent && StateComponent->IsDead();
 	}
+	
+	// Boss의 ModeComponent를 반환하는 함수
+	UNSBossModeComponent* GetBossModeComponent() const { return BossModeComponent; }
 
 protected:
 	// Boss의 루트 충돌 컴포넌트
@@ -121,6 +125,10 @@ protected:
 	// Boss의 사망, 비활성, 피격 경직 상태를 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyStateComponent> StateComponent;
+	
+	// Boss의 현재 전투 Mode를 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSBossModeComponent> BossModeComponent;
 
 	// Boss의 Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

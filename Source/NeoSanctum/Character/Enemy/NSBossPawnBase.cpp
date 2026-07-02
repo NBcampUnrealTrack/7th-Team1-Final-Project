@@ -7,6 +7,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
+#include "NeoSanctum/Combat/Component/NSBossModeComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
@@ -43,6 +44,7 @@ ANSBossPawnBase::ANSBossPawnBase()
 	TargetComponent = CreateDefaultSubobject<UNSEnemyTargetComponent>(TEXT("TargetComponent"));
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
+	BossModeComponent = CreateDefaultSubobject<UNSBossModeComponent>(TEXT("BossModeComponent"));
 }
 
 void ANSBossPawnBase::BeginPlay()
@@ -67,6 +69,11 @@ void ANSBossPawnBase::BeginPlay()
 		CoreComponent->OnEnemyDataChanged.AddUObject(
 			this,
 			&ThisClass::HandleEnemyDataChanged);
+	}
+	
+	if (BossModeComponent)
+	{
+		BossModeComponent->InitializeMode();
 	}
 }
 
