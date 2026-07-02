@@ -6,6 +6,7 @@
 #include "GA_SkillBase.h"
 #include "GA_VanguardBaseAttack.generated.h"
 
+class UAbilityTask_ApplyRootMotionConstantForce;
 class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 
@@ -75,6 +76,9 @@ private:
 	UFUNCTION()
 	void OnComboWindowOpened(FGameplayEventData Payload);
 
+	UFUNCTION()
+	void OnDashAttackMoveFinished();
+
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
 	ENSVanguardBaseAttackMode SelectAttackMode(const FGameplayAbilityActorInfo* ActorInfo) const;
 
@@ -102,14 +106,26 @@ private:
 	// 대쉬 차지 해제 후 대쉬공격 몽타주 재생
 	void StartDashAttack(float ChargeRatio);
 
+	// 통합 몽타주 Attack Section 이동
+	bool JumpToDashAttackSection();
+
+	// 차지 비율 기반 대쉬공격 돌진 이동 시작
+	bool StartDashAttackMovement(float ChargeRatio);
+
+	// 대쉬공격 몽타주와 이동 완료 확인
+	void TryEndDashAttack();
+
+	// 화면 중앙 조준점 기준 대쉬공격 방향 계산
+	bool TryGetDashAttackDirection(FVector& OutDirection) const;
+
+	// 화면 중앙 조준점 추적
+	bool TryGetCrosshairTarget(FVector& OutTarget) const;
+
 	// 아직 몽타주가 없는 즉시형 모드 종료
 	void FinishInstantMode();
 
 	// 몽타주 완료/취소 시 Ability 종료
 	bool PlayAttackMontageAndWait(UAnimMontage* Montage, float PlayRate);
-
-	// Ability 종료와 무관한 몽타주 재생
-	bool PlayAttackMontageOnly(UAnimMontage* Montage, float PlayRate);
 
 	// Vanguard 공격 중 상태태그 부여
 	void AddVanguardStateTags();
@@ -136,10 +152,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UAnimMontage> DashChargeMontage;
 
-	// 대쉬공격 차지 해제 후 재생할 몽타주
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> DashAttackMontage;
-
 	// Vanguard 기본공격 몽타주 재생 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float AttackMontagePlayRate = 1.0f;
@@ -148,9 +160,33 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
 	TArray<FName> GroundComboSectionNames = { TEXT("Combo_1"), TEXT("Combo_2"), TEXT("Combo_3") };
 
+	// 통합 대쉬공격 몽타주의 공격 섹션 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
+	FName DashAttackSectionName = TEXT("Attack");
+
 	// 대쉬공격 최대 충전 도달 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashCharge", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float MaxDashChargeTime = 1.0f;
+
+	// 대쉬공격 최소 돌진 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackMinDistance = 350.f;
+
+	// 대쉬공격 최대 돌진 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackMaxDistance = 1000.f;
+
+	// 대쉬공격 돌진 지속 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
+	float DashAttackDuration = 0.18f;
+
+	// 대쉬공격 크로스헤어 추적 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackAimTraceRange = 10000.f;
+
+	// 대쉬공격 돌진 중 중력 적용 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true"))
+	bool bEnableGravityDuringDashAttack = true;
 
 	// 기본공격 모드 선택과 차지 결과 로그 출력 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug", meta = (AllowPrivateAccess = "true"))
@@ -165,6 +201,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashAttackMoveTask;
+
 	// 현재 재생 중인 지상 콤보 단계
 	int32 CurrentGroundComboIndex = INDEX_NONE;
 
@@ -176,4 +215,16 @@ private:
 
 	// 첫 공격 입력이 콤보 입력으로 재사용되는 것 방지
 	bool bGroundComboInitialInputReleased = false;
+
+	// 대쉬공격 이동 태스크 시작 여부
+	bool bDashAttackMoveStarted = false;
+
+	// 대쉬공격 이동 태스크 완료 여부
+	bool bDashAttackMoveFinished = false;
+
+	// 대쉬공격 몽타주 Section 이동 성공 여부
+	bool bDashAttackMontageStarted = false;
+
+	// 대쉬공격 몽타주 완료 여부
+	bool bDashAttackMontageFinished = false;
 };

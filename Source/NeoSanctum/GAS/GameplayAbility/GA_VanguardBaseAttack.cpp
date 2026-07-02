@@ -4,10 +4,16 @@
 
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/RootMotionSource.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -23,6 +29,8 @@ UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
 
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
+	// 대쉬 중 기본공격 선입력 방지
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
 	// 한 사이클이 끝나기 전에 재실행 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Attacking);
 	// 대쉬공격 사이클이 끝나기 전에 재실행 방지
@@ -107,6 +115,12 @@ void UGA_VanguardBaseAttack::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	if (DashAttackMoveTask)
+	{
+		DashAttackMoveTask->EndTask();
+		DashAttackMoveTask = nullptr;
+	}
+
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
@@ -115,12 +129,23 @@ void UGA_VanguardBaseAttack::EndAbility(
 	bComboInputBuffered = false;
 	bComboAdvancedInCurrentWindow = false;
 	bGroundComboInitialInputReleased = false;
+	bDashAttackMoveStarted = false;
+	bDashAttackMoveFinished = false;
+	bDashAttackMontageStarted = false;
+	bDashAttackMontageFinished = false;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 void UGA_VanguardBaseAttack::OnAttackMontageCompleted()
 {
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack)
+	{
+		bDashAttackMontageFinished = true;
+		TryEndDashAttack();
+		return;
+	}
+
 	EndAbility(
 		GetCurrentAbilitySpecHandle(),
 		GetCurrentActorInfo(),
@@ -137,6 +162,13 @@ void UGA_VanguardBaseAttack::OnAttackMontageInterrupted()
 		GetCurrentActivationInfo(),
 		true,
 		true);
+}
+
+void UGA_VanguardBaseAttack::OnDashAttackMoveFinished()
+{
+	DashAttackMoveTask = nullptr;
+	bDashAttackMoveFinished = true;
+	TryEndDashAttack();
 }
 
 void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
@@ -314,7 +346,10 @@ void UGA_VanguardBaseAttack::StartDashCharge()
 	// 릴리즈 시 차지 비율 계산 기준 시각
 	DashChargeStartTime = FPlatformTime::Seconds();
 
-	PlayAttackMontageOnly(DashChargeMontage, AttackMontagePlayRate);
+	if (!PlayAttackMontageAndWait(DashChargeMontage, AttackMontagePlayRate))
+	{
+		FinishInstantMode();
+	}
 }
 
 void UGA_VanguardBaseAttack::FinishDashCharge()
@@ -344,14 +379,28 @@ void UGA_VanguardBaseAttack::FinishDashCharge()
 
 void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 {
+	// 대쉬공격 실행 상태로 전환
 	ActiveAttackMode = ENSVanguardBaseAttackMode::DashAttack;
+	bDashAttackMoveStarted = false;
+	bDashAttackMoveFinished = false;
+	bDashAttackMontageStarted = false;
+	bDashAttackMontageFinished = false;
 
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
+		// 차징 종료 상태태그 제거
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
 	}
 
-	if (!PlayAttackMontageAndWait(DashAttackMontage, AttackMontagePlayRate))
+	// 차지 비율에 따른 전방 돌진 시작
+	bDashAttackMoveStarted = StartDashAttackMovement(ChargeRatio);
+	bDashAttackMoveFinished = !bDashAttackMoveStarted;
+
+	// 몽타주의 공격 Section으로 이동
+	bDashAttackMontageStarted = JumpToDashAttackSection();
+	bDashAttackMontageFinished = !bDashAttackMontageStarted;
+
+	if (!bDashAttackMoveStarted && !bDashAttackMontageStarted)
 	{
 		EndAbility(
 			GetCurrentAbilitySpecHandle(),
@@ -360,6 +409,184 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 			true,
 			false);
 	}
+}
+
+bool UGA_VanguardBaseAttack::JumpToDashAttackSection()
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !DashChargeMontage || DashAttackSectionName.IsNone())
+	{
+		return false;
+	}
+
+	if (!AnimInstance->Montage_IsPlaying(DashChargeMontage))
+	{
+		return false;
+	}
+
+	// Charge Loop에서 Attack Section으로 즉시 분기
+	AnimInstance->Montage_JumpToSection(DashAttackSectionName, DashChargeMontage);
+	return true;
+}
+
+bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
+{
+	if (DashAttackDuration <= 0.0f || DashAttackMaxDistance <= 0.0f)
+	{
+		return false;
+	}
+
+	FVector DashAttackDirection = FVector::ZeroVector;
+	if (!TryGetDashAttackDirection(DashAttackDirection))
+	{
+		return false;
+	}
+
+	const float ClampedChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
+	const float DashAttackDistance = FMath::Lerp(DashAttackMinDistance, DashAttackMaxDistance, ClampedChargeRatio);
+	const float DashAttackSpeed = DashAttackDistance / FMath::Max(DashAttackDuration, 0.01f);
+
+	// GameplayAbility RootMotionSource 기반 강제 이동
+	DashAttackMoveTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
+		this,
+		TEXT("VanguardDashAttack"),
+		DashAttackDirection,
+		DashAttackSpeed,
+		DashAttackDuration,
+		false,
+		nullptr,
+		ERootMotionFinishVelocityMode::SetVelocity,
+		FVector::ZeroVector,
+		0.0f,
+		bEnableGravityDuringDashAttack);
+
+	if (!DashAttackMoveTask)
+	{
+		return false;
+	}
+
+	DashAttackMoveTask->OnFinish.AddDynamic(this, &ThisClass::OnDashAttackMoveFinished);
+	DashAttackMoveTask->ReadyForActivation();
+	return true;
+}
+
+void UGA_VanguardBaseAttack::TryEndDashAttack()
+{
+	if (ActiveAttackMode != ENSVanguardBaseAttackMode::DashAttack)
+	{
+		return;
+	}
+
+	const bool bMoveFinished = !bDashAttackMoveStarted || bDashAttackMoveFinished;
+	const bool bMontageFinished = !bDashAttackMontageStarted || bDashAttackMontageFinished;
+	if (!bMoveFinished || !bMontageFinished)
+	{
+		return;
+	}
+
+	// 몽타주와 돌진 이동이 모두 끝난 뒤 Ability 종료
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false);
+}
+
+bool UGA_VanguardBaseAttack::TryGetDashAttackDirection(FVector& OutDirection) const
+{
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		return false;
+	}
+
+	FVector AimTarget = FVector::ZeroVector;
+	if (TryGetCrosshairTarget(AimTarget))
+	{
+		// 화면 중앙 조준점 기준 수평 돌진 방향 계산
+		OutDirection = (AimTarget - Character->GetActorLocation()).GetSafeNormal2D();
+		if (!OutDirection.IsNearlyZero())
+		{
+			return true;
+		}
+	}
+
+	OutDirection = Character->GetBaseAimRotation().Vector().GetSafeNormal2D();
+	if (OutDirection.IsNearlyZero())
+	{
+		OutDirection = Character->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	return !OutDirection.IsNearlyZero();
+}
+
+bool UGA_VanguardBaseAttack::TryGetCrosshairTarget(FVector& OutTarget) const
+{
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		return false;
+	}
+
+	const UWorld* World = Character->GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	const APawn* OwnerPawn = Cast<APawn>(Character);
+	const APlayerController* PlayerController = OwnerPawn
+		? Cast<APlayerController>(OwnerPawn->GetController())
+		: nullptr;
+
+	if (PlayerController && PlayerController->IsLocalController())
+	{
+		int32 ViewportSizeX = 0;
+		int32 ViewportSizeY = 0;
+		PlayerController->GetViewportSize(ViewportSizeX, ViewportSizeY);
+
+		FVector ScreenWorldLocation = FVector::ZeroVector;
+		FVector ScreenWorldDirection = FVector::ForwardVector;
+		if (ViewportSizeX > 0 && ViewportSizeY > 0 &&
+			PlayerController->DeprojectScreenPositionToWorld(
+				ViewportSizeX * 0.5f,
+				ViewportSizeY * 0.5f,
+				ScreenWorldLocation,
+				ScreenWorldDirection))
+		{
+			FVector TraceStart = ScreenWorldLocation;
+			if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Character))
+			{
+				PlayerCharacter->TryGetAimTraceStartLocation(TraceStart);
+			}
+
+			const FVector TraceEnd = TraceStart + ScreenWorldDirection.GetSafeNormal() * DashAttackAimTraceRange;
+			FHitResult HitResult;
+			FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSVanguardDashAttackAimTrace), false, Character);
+			if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Character))
+			{
+				if (ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon())
+				{
+					QueryParams.AddIgnoredActor(CurrentWeapon);
+				}
+			}
+
+			const bool bHit = World->LineTraceSingleByChannel(
+				HitResult,
+				TraceStart,
+				TraceEnd,
+				NSCollisionChannels::PlayerWeaponTrace,
+				QueryParams);
+
+			OutTarget = bHit ? HitResult.ImpactPoint : TraceEnd;
+			return true;
+		}
+	}
+
+	OutTarget = Character->GetActorLocation() + Character->GetBaseAimRotation().Vector() * DashAttackAimTraceRange;
+	return true;
 }
 
 void UGA_VanguardBaseAttack::FinishInstantMode()
@@ -400,33 +627,6 @@ bool UGA_VanguardBaseAttack::PlayAttackMontageAndWait(UAnimMontage* Montage, flo
 	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnAttackMontageInterrupted);
 	MontageTask->ReadyForActivation();
 
-	return true;
-}
-
-bool UGA_VanguardBaseAttack::PlayAttackMontageOnly(UAnimMontage* Montage, float PlayRate)
-{
-	if (!Montage)
-	{
-		return false;
-	}
-
-	const float FinalPlayRate = FMath::Max(PlayRate, 0.01f);
-
-	UAbilityTask_PlayMontageAndWait* MontageTask =
-		UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-			this,
-			NAME_None,
-			Montage,
-			FinalPlayRate,
-			NAME_None,
-			true);
-
-	if (!MontageTask)
-	{
-		return false;
-	}
-
-	MontageTask->ReadyForActivation();
 	return true;
 }
 

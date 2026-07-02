@@ -156,8 +156,13 @@ void UGA_Dash::EndAbility(
 
 	if (!bWasCancelled)
 	{
-		// 정상 종료 대쉬만 후속 대쉬공격으로 연결
-		AddDashAttackWindow();
+		// 공격 중 대쉬 종료로 인한 후속 입력 창 지연 생성 방지
+		const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+		if (!ASC || !ASC->HasMatchingGameplayTag(NSGameplayTags::State_Vanguard_Attacking))
+		{
+			// 정상 종료 대쉬만 후속 대쉬공격으로 연결
+			AddDashAttackWindow();
+		}
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
