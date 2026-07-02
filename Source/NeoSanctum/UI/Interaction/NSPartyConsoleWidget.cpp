@@ -3,6 +3,8 @@
 
 #include "NSPartyConsoleWidget.h"
 #include "CommonButtonBase.h"
+#include "NSFriendEntryWidget.h"
+#include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
@@ -36,6 +38,12 @@ void UNSPartyConsoleWidget::OpenForInteractor(APlayerController* Interactor)
 			this,
 			&UNSPartyConsoleWidget::OnClickedCopyCode);
 	}
+	if (JoinByCodeButton)
+	{
+		JoinByCodeButton->OnClicked().AddUObject(
+			this,
+		 	&UNSPartyConsoleWidget::OnClickedJoinByCode);
+	}
 	
 	// 초대 코드 발급 구독
 	if (Session)
@@ -53,8 +61,17 @@ void UNSPartyConsoleWidget::OpenForInteractor(APlayerController* Interactor)
 		{
 			InviteCodeText->SetText(FText::FromString(ExistingCode));
 		}
+		
+		// 친구 목록 갱신 구독과 요청
+		Session->OnFriendsListUpdated.RemoveDynamic(
+			this, 
+			&UNSPartyConsoleWidget::HandleFriendsListUpdated);
+		Session->OnFriendsListUpdated.AddDynamic(
+			this,
+			&UNSPartyConsoleWidget::HandleFriendsListUpdated);
+		Session->RequestFriendsList();
 	}
-
+	
 	// 입력 모드: 허브에서 계속 돌아다닐 수 있게 게임+UI
 	if (Interactor)
 	{
@@ -74,6 +91,9 @@ void UNSPartyConsoleWidget::CloseWidget()
 		Session->OnInviteCodeReady.RemoveDynamic(
 			this,
 			&UNSPartyConsoleWidget::HandleInviteCodeReady);
+		Session->OnFriendsListUpdated.RemoveDynamic(
+			this,
+			&UNSPartyConsoleWidget::HandleFriendsListUpdated);
 	}
 	
 	if (APlayerController* PC = OwningPC.Get())
@@ -112,4 +132,63 @@ void UNSPartyConsoleWidget::OnClickedCopyCode()
 {
 	if (!CurrentInviteCode.IsEmpty())
 		FPlatformApplicationMisc::ClipboardCopy(*CurrentInviteCode);
+}
+
+void UNSPartyConsoleWidget::OnClickedJoinByCode()
+{
+	if (!CodeInputBox)
+	{
+		return;
+	}
+
+	const FString EnteredCode = CodeInputBox->GetText().ToString().TrimStartAndEnd();
+	if (EnteredCode.IsEmpty())
+	{
+		return;
+	}
+
+	if (UNSSessionSubsystem* Session =
+		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
+	{
+		Session->JoinSessionByCode(EnteredCode);
+	}
+}
+
+void UNSPartyConsoleWidget::HandleFriendsListUpdated()
+{
+	RefreshFriendList();
+}
+
+void UNSPartyConsoleWidget::RefreshFriendList()
+{
+	if (!FriendListContainer || !FriendEntryClass)
+	{
+		return;
+	}
+
+	UNSSessionSubsystem* Session =
+		GetGameInstance() ? 
+	GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr;
+	if (!Session)
+	{
+		return;
+	}
+
+	// 기존 항목 비우기
+	FriendListContainer->ClearChildren();
+
+	// 캐시된 친구 목록 꺼내기
+	TArray<FNSFriendInfo> Friends;
+	Session->GetCachedFriends(Friends);
+
+	for (const FNSFriendInfo& FriendInfo : Friends)
+	{
+		UNSFriendEntryWidget* Entry =
+			CreateWidget<UNSFriendEntryWidget>(this, FriendEntryClass);
+		if (Entry)
+		{
+			Entry->Setup(FriendInfo);
+			FriendListContainer->AddChild(Entry);
+		}
+	}
 }
