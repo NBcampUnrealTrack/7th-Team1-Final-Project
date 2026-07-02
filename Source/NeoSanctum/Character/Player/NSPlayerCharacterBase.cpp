@@ -54,8 +54,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
-	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 60.0f));
-	SpringArmComp->TargetArmLength = 165.0f;
+	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 70.0f));
+	SpringArmComp->TargetArmLength = 225.0f;
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
