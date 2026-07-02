@@ -31,8 +31,7 @@ void UNSTitleWidget::OnClickedJoinButton()
 	UNSSessionSubsystem* SessionSubsystem =
 	   GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr;
 	if (!SessionSubsystem) return;
-
-	SessionSubsystem->FindAndJoinFirstSession(); 
+	
 	UE_LOG(LogTemp, Warning, TEXT("검색 기반 조인 시도"));
 	
 	//TODO(영웅): 호스트가 생성한 방에 들어가는 로직
