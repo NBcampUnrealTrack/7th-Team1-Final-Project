@@ -6,6 +6,7 @@
 #include "OnlineSubsystemUtils.h"
 #include "OnlineSubsystemNames.h"
 #include "OnlineSessionSettings.h"
+#include "Interfaces/OnlinePresenceInterface.h"
 #include "Kismet/GameplayStatics.h" 
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
@@ -196,69 +197,113 @@ void UNSSessionSubsystem::CreateSession()
 	QueueCreateSessionForNextTick();
 }
 
-void UNSSessionSubsystem::JoinSessionByAddress(const FString& Address)
+void UNSSessionSubsystem::JoinSessionByCode(const FString& InviteCode)
 {
-	const FString TrimmedAddress = Address.TrimStartAndEnd();
-
-	UE_LOG(
-		LogTemp,
-		Warning,
-		TEXT("JoinSessionByAddress 호출: %s"),
-		*TrimmedAddress);
-
-	if (TrimmedAddress.IsEmpty())
+	const FString TrimmedCode = InviteCode.TrimStartAndEnd();
+	if (TrimmedCode.IsEmpty())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("참가 주소가 비어 있음"));
+		UE_LOG(LogTemp, Warning, TEXT("초대 코드가 비어 있음"));
 		OnJoinSessionComplete.Broadcast(false);
+		
 		return;
 	}
 
-	if (bIsJoining)
+	if (!SessionInterface.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("이미 Join 시도 중"));
-		return;
-	}
-
-	// Host 생성/삭제 중 ClientTravel이 시작되는 것을 막음
-	if (bIsCreatingSession ||
-		bIsDestroyingSession ||
-		bHostStartQueued ||
-		bSwitchingToHost)
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Host 세션 작업 중이므로 Join 요청 거부"));
-		return;
-	}
-
-	UGameInstance* GameInstance = GetGameInstance();
-	APlayerController* PlayerController =
-		GameInstance ? GameInstance->GetFirstLocalPlayerController() : nullptr;
-
-	if (!PlayerController)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("PlayerController 없음"));
 		OnJoinSessionComplete.Broadcast(false);
+		
+		return;
+	}
+	
+	// 검색 중복 방지와 조인 진행 중 방지
+	if (bIsSearchingForCode || bIsJoining)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("이미 검색 or 조인 중"));
+		return;
+	}
+	
+	// Host 작업 중 거부
+	if (bIsCreatingSession || bIsDestroyingSession || bHostStartQueued || bSwitchingToHost)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Host 세션 작업 중이므로 Join 요청 거부"));
+		return;
+	}
+	
+	const ULocalPlayer* LP = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	if (!LP || !LP->GetPreferredUniqueNetId().IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("로컬 플레이어/NetId 없음"));
+		OnJoinSessionComplete.Broadcast(false);
+		
+		return;
+	}
+	
+	bIsSearchingForCode = true; 
+	PendingJoinCode = TrimmedCode.ToUpper();
+
+	LastSessionSearch = MakeShared<FOnlineSessionSearch>();
+	LastSessionSearch->bIsLanQuery = false;
+	LastSessionSearch->MaxSearchResults = 50;
+	LastSessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+
+	FindSessionsDelegateHandle = SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
+		FOnFindSessionsCompleteDelegate::CreateUObject(
+			this,
+			&UNSSessionSubsystem::OnFindSessionsForCodeCompleted));
+
+	SessionInterface->FindSessions(
+		*LP->GetPreferredUniqueNetId(),
+		LastSessionSearch.ToSharedRef());
+}
+
+void UNSSessionSubsystem::OnFindSessionsForCodeCompleted(bool bWasSuccessful)
+{
+	if (FindSessionsDelegateHandle.IsValid())
+	{
+		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(FindSessionsDelegateHandle);
+		FindSessionsDelegateHandle.Reset();
+	}
+	
+	// 검색 끝났으니 초기화
+	bIsSearchingForCode = false; 
+
+	if (!bWasSuccessful || !LastSessionSearch.IsValid())
+	{
+		OnJoinSessionComplete.Broadcast(false);
+		
 		return;
 	}
 
-	bIsJoining = true;
-
-	UE_LOG(
-		LogTemp,
-		Warning,
-		TEXT("ClientTravel 호출: %s"),
-		*TrimmedAddress);
-
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	for (const FOnlineSessionSearchResult& Result : LastSessionSearch->SearchResults)
 	{
-		UIManager->ShowTravelLoadingScreen(PlayerController);
+		FString FoundCode;
+		if (Result.Session.SessionSettings.Get(NS_INVITE_CODE_KEY, FoundCode)
+			&& FoundCode.ToUpper() == PendingJoinCode)
+		{
+			// JoinResolvedSession으로 진행
+			JoinResolvedSession(Result);
+			
+			return;
+		}
 	}
 
-	PlayerController->ClientTravel(
-		TrimmedAddress,
-		ETravelType::TRAVEL_Absolute);
+	// 일치 코드 없음
+	UE_LOG(LogTemp, Warning, TEXT("초대 코드에 해당하는 세션 없음: %s"), *PendingJoinCode);
+	OnJoinSessionComplete.Broadcast(false);
+}
+
+void UNSSessionSubsystem::OnReadFriendsListCompleted(int32 LocalUserNum, bool bWasSuccessful, const FString& ListName,
+	const FString& ErrorStr)
+{
+	if (!bWasSuccessful)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("친구 목록 읽기 실패: %s"), *ErrorStr);
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("친구 목록 읽기 성공"));
+	// UI가 GetCachedFriends로 꺼내감
+	OnFriendsListUpdated.Broadcast();
 }
 
 void UNSSessionSubsystem::DestroySession()
@@ -377,6 +422,13 @@ void UNSSessionSubsystem::UnregisterPlayerInSession(const FUniqueNetIdRepl& Play
 
 FString UNSSessionSubsystem::GetCurrentInviteCode() const
 {
+	// 실제 세션이 없으면 코드값 무효값
+	if (!SessionInterface.IsValid() ||
+		!SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		return FString();
+	}
+	
 	return CurrentInviteCode;
 }
 
@@ -473,6 +525,9 @@ void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWas
 {
 	ClearDestroySessionDelegate();
 	bIsDestroyingSession = false;
+	
+	// 저장되어있는 초대 코드 정리
+	CurrentInviteCode.Empty();
 	
 	// 초대로 인한 Destroy였다면 여기서 조인
 	if (bJoinInviteAfterDestroy && PendingInviteResult.IsValid())
@@ -852,6 +907,68 @@ void UNSSessionSubsystem::CancelPendingJoinForHost()
 		nullptr);
 }
 
+void UNSSessionSubsystem::RequestFriendsList()
+{
+	IOnlineSubsystem* OSS = Online::GetSubsystem(GetWorld());
+	IOnlineFriendsPtr Friends = OSS ? OSS->GetFriendsInterface() : nullptr;
+	if (!Friends.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("친구 인터페이스 없음"));
+		return;
+	}
+
+	Friends->ReadFriendsList(
+		0,
+		EFriendsLists::ToString(EFriendsLists::Default),
+		FOnReadFriendsListComplete::CreateUObject(
+			this, &UNSSessionSubsystem::OnReadFriendsListCompleted));
+}
+
+void UNSSessionSubsystem::GetCachedFriends(TArray<FNSFriendInfo>& OutFriends) const
+{
+	OutFriends.Reset();
+
+	IOnlineSubsystem* OSS = IOnlineSubsystem::Get();
+	IOnlineFriendsPtr Friends = OSS ? OSS->GetFriendsInterface() : nullptr;
+	if (!Friends.IsValid())
+	{
+		return;
+	}
+
+	TArray<TSharedRef<FOnlineFriend>> FriendList;
+	// ReadFriendsList로 캐시된 목록을 꺼냄 (같은 필터 이름 사용)
+	if (!Friends->GetFriendsList(
+		0,
+		EFriendsLists::ToString(EFriendsLists::Default),
+		FriendList))
+	{
+		return;
+	}
+
+	OutFriends.Reserve(FriendList.Num());
+	for (const TSharedRef<FOnlineFriend>& Friend : FriendList)
+	{
+		FNSFriendInfo Info;
+		Info.DisplayName = Friend->GetDisplayName();
+		Info.NetIdString = Friend->GetUserId()->ToString();
+		
+		const FOnlineUserPresence& Presence = Friend->GetPresence();
+		Info.bIsOnline = Presence.bIsOnline;
+
+		OutFriends.Add(Info);
+	}
+	
+	// 온라인 여부로 정렬
+	OutFriends.Sort([](const FNSFriendInfo& A, const FNSFriendInfo& B)
+	{
+		if (A.bIsOnline != B.bIsOnline)
+		{
+			return A.bIsOnline; 
+		}
+		return A.DisplayName < B.DisplayName;
+	});
+}
+
 void UNSSessionSubsystem::QueueCreateSessionForNextTick()
 {
 	UWorld* World = GetWorld();
@@ -982,12 +1099,13 @@ void UNSSessionSubsystem::StartCreateSession()
 		// 스팀 초대 허용
 		LastSessionSettings->bAllowInvites = true;
 		
-		// 키 필터: 같은 키를 가진 세션끼리만 검색에 잡힘
+		// 세션별 고유 코드 대조용
 		CurrentInviteCode = GenerateInviteCode();
 		LastSessionSettings->Set(
 			NS_INVITE_CODE_KEY,
 			CurrentInviteCode,
 			EOnlineDataAdvertisementType::ViaOnlineService);
+		// 같은 AppID 내에서 우리 게임만 걸러내기 위한 키
 		LastSessionSettings->Set(
 			NS_SESSION_KEY,
 			FString(TEXT("NeoSanctum")),

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
+#include "NeoSanctum/Core/GameFlow/NSSessionType.h"
 #include "Engine/EngineBaseTypes.h"
 #include "NSSessionSubsystem.generated.h"
 
@@ -12,6 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnCreateSessionComplete, bool, bW
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnJoinSessionComplete, bool, bWasSuccessful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnDestroySessionComplete, bool, bWasSuccessful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnInviteCodeReady, const FString&, InviteCode);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnFriendsListUpdated);
 
 
 // 세션 생성, 참가, 종료 담당 클래스
@@ -35,8 +37,8 @@ public:
 
 	// 초대 주소로 직접 참가(참가하는 클라이언트용)
 	UFUNCTION(BlueprintCallable, Category = "Session")
-	void JoinSessionByAddress(const FString& Address);
-	
+	void JoinSessionByCode(const FString& InviteCode);
+
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void DestroySession();
 	
@@ -73,6 +75,18 @@ public:
 	
 	UPROPERTY(BlueprintAssignable, Category = "Session")
 	FNSOnInviteCodeReady OnInviteCodeReady;
+	
+	// 친구 목록관련 함수 (후에 시간이 남는다면 세션서브시스템에서 분리)
+	// 스팀 친구 목록 비동기 읽기 요청
+	UFUNCTION(BlueprintCallable, Category = "Session|Friends")
+	void RequestFriendsList();
+
+	// 캐시된 친구 목록을 UI 표시용 구조체로 반환
+	void GetCachedFriends(TArray<FNSFriendInfo>& OutFriends) const;
+
+	// 친구 목록 읽기 완료 시 브로드캐스트
+	UPROPERTY(BlueprintAssignable, Category = "Session|Friends")
+	FNSOnFriendsListUpdated OnFriendsListUpdated;
 
 private:
 	// CreateSession을 다음 틱에 시작하도록 예약
@@ -103,6 +117,13 @@ private:
 	void OnFindSessionsCompleted(bool bWasSuccessful);
 	// 세션 참가 완료 콜백 (연결 문자열 해석 후 ClientTravel)
 	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+	
+	void OnFindSessionsForCodeCompleted(bool bWasSuccessful);
+	
+	// ReadFriendsList 완료 콜백
+	void OnReadFriendsListCompleted(
+		int32 LocalUserNum, bool bWasSuccessful,
+		const FString& ListName, const FString& ErrorStr);
 	
 	// 스팀 친구 초대 수락 콜백
 	void OnSessionUserInviteAccepted(
@@ -159,6 +180,8 @@ private:
 	// Destroy 완료 후 보류된 초대로 조인할지 여부
 	bool bJoinInviteAfterDestroy = false;
 	
+	bool bIsSearchingForCode = false;
+	
 	class UNSLevelCatalog* GetLevelCatalog() const;
 	void ReturnToTitle();
 	// 보류된 초대를 조인 가능한 시점에 처리
@@ -166,4 +189,7 @@ private:
 	
 	// 발급한 초대코드 저장용
 	FString CurrentInviteCode;
+	
+	// 검색 시 대조할 코드 보관
+	FString PendingJoinCode;
 };
