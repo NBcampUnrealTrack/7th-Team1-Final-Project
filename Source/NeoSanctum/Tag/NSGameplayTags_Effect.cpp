@@ -11,10 +11,24 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Accuracy_Engineer_SpawnTurret, "Effect.Accuracy.Engineer.SpawnTurret");
 	
 	// Attribute SetByCaller
-	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxHealth, "Effect.SetByCaller.MaxHealth");
-	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield, "Effect.SetByCaller.MaxShield");
-	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense, "Effect.SetByCaller.Defense");
-	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxAmmo, "Effect.SetByCaller.MaxAmmo");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxHealth_Add, "Effect.SetByCaller.MaxHealth.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxHealth_Multiply, "Effect.SetByCaller.MaxHealth.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield_Add, "Effect.SetByCaller.MaxShield.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield_Multiply, "Effect.SetByCaller.MaxShield.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Add, "Effect.SetByCaller.Defense.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Multiply, "Effect.SetByCaller.Defense.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Add, "Effect.SetByCaller.ShieldRechargeRate.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Multiply, "Effect.SetByCaller.ShieldRechargeRate.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Add, "Effect.SetByCaller.ShieldRechargeCooldown.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Multiply, "Effect.SetByCaller.ShieldRechargeCooldown.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxDashCount_Add, "Effect.SetByCaller.MaxDashCount.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_DashRegenRate_Add, "Effect.SetByCaller.DashRegenRate.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_DashRegenRate_Multiply, "Effect.SetByCaller.DashRegenRate.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxAmmo_Add, "Effect.SetByCaller.MaxAmmo.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxAmmo_Multiply, "Effect.SetByCaller.MaxAmmo.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxSkill1Count_Add, "Effect.SetByCaller.MaxSkill1Count.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxSkill2Count_Add, "Effect.SetByCaller.MaxSkill2Count.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxSkill3Count_Add, "Effect.SetByCaller.MaxSkill3Count.Add");
 	
 	// Buff SetByCaller
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Buff_FireRate, "Effect.Buff.FireRate");

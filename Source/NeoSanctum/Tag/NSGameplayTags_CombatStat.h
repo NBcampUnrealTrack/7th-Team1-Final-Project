@@ -12,6 +12,8 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxHealth);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Shield);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeCooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Defense);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Cooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Duration);
@@ -24,6 +26,11 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ReloadSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ReloadSpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxAmmo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxDashCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DashRegenRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill1Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill2Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill3Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);

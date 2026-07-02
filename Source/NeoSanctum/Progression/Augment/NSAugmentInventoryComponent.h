@@ -9,6 +9,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentInventoryChanged);
 
+class UGameplayEffect;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 class UAbilitySystemComponent;
@@ -58,15 +59,19 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="NS|Augment", meta=(ClampMin="0"))
 	int32 MaxLegendarySlots = 3;
+
+	// Attribute 변경 증강들이 공유하는 GE.
+	// GE에는 지원할 Attribute/Operation별 Modifier와 SetByCaller 태그가 미리 정의되어 있어야 함.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Effect")
+	TSubclassOf<UGameplayEffect> SharedAttributeStackEffectClass;
 	
 private:
 	UFUNCTION()
 	void OnRep_Owned();
 	
-	// StackEffectClass가 설정된 증강만 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성.
+	// Attribute 변경 Row가 있는 증강에 공용 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성.
 	void ApplyStackEffect(
 		FNSAugmentInstance& Inst,
-		UNSAugmentDefinition* Def,
 		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 		UAbilitySystemComponent* ASC,
 		bool bAdjustCurrentByMaxDelta
