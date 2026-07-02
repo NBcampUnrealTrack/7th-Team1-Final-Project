@@ -37,7 +37,7 @@ namespace NSGameplayTags
 
 	// Vanguard Ability Event Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_Hit);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_ComboBranch);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_ComboWindowOpened);
 	
 	// Common Ability Activate Fail Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_ActivateFail_OutOfAmmo);
