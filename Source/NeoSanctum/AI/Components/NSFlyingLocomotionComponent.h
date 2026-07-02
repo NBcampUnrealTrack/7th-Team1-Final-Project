@@ -6,7 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "NSFlyingLocomotionComponent.generated.h"
 
-class UFloatingMovementComponent;
+class UFloatingPawnMovement;
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSFlyingLocomotionComponent : public UActorComponent
@@ -34,8 +34,28 @@ public:
 	FORCEINLINE AActor* GetRotationTarget() const { return RotationTarget.Get(); }
 	
 	bool HasReachedLocation(
-		const FVector& TargetLocation);
+		const FVector& TargetLocation) const;
 	
+#pragma endregion
+	
+#pragma region Rotation
+protected:
+	// @민재 : 오너 폰의 회전 갱신. 타겟이 있으면 타겟 방향, 없으면 velocity 방향으로 보간
+	void UpdateRotation(float DeltaSeconds);
+    
+	UPROPERTY(EditAnywhere, Category="Locomotion|Rotation")
+	float YawInterpSpeed = 5.f;
+    
+	UPROPERTY(EditAnywhere, Category="Locomotion|Rotation")
+	float CombatYawInterpSpeed = 10.f;
+    
+	UPROPERTY(EditAnywhere, Category="Locomotion|Rotation")
+	float MinSpeedToRotate = 50.f;
+    
+	// @민재 : 전투 회전 시 타겟과 최소 XY 거리 (이보다 가까우면 회전 스킵) - 기존 버그 픽스
+	UPROPERTY(EditAnywhere, Category="Locomotion|Rotation")
+	float MinCombatDistanceToRotate = 50.f;
+    
 #pragma endregion
 	
 #pragma region Altitude
