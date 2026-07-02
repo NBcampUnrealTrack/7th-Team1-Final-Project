@@ -205,16 +205,6 @@ void UNSHUDWidget::SetReloading(bool bReloading)
 	AmmoWidget->SetReloading(bReloading);
 }
 
-void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
-{
-	if (!GoodsWidget)
-	{
-		return;
-	}
-
-	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
-}
-
 void UNSHUDWidget::ShowInRunGoods()
 {
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowInRunGoods"));

@@ -146,10 +146,7 @@ public:
 	
 	//리로드 상태 UI 갱신
 	void SetReloading(bool bReloading);
-	
-	//인런 스킬 재화 UI 갱신
-	void UpdateRunSkillGoods(int32 NewGoodsAmount);
-	
+
 	//인런 재화 UI 표시
 	void ShowInRunGoods();
 

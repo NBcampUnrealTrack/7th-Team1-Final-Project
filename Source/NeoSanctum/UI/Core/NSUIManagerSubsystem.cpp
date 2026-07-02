@@ -973,16 +973,6 @@ void UNSUIManagerSubsystem::SetReloading(bool bReloading)
 	HUDWidget->SetReloading(bReloading);
 }
 
-void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
-{
-	if (!IsValid(HUDWidget))
-	{
-		return;
-	}
-
-	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
-}
-
 void UNSUIManagerSubsystem::ShowInRunGoods()
 {
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] UIManager ShowInRunGoods"));

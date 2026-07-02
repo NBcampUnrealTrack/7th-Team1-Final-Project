@@ -637,11 +637,6 @@ void ANSPlayerController::UpdateHUDCurrency()
 	UIManager->UpdateRunOutGoods(
 		static_cast<int32>(CurrencyComponent->GetPermanent(
 			NSGameplayTags::Currency_Common)));
-
-	//이번 런에서 얻은 스킬 재화
-	UIManager->UpdateRunSkillGoods(
-		static_cast<int32>(CurrencyComponent->GetPermanent(
-			NSGameplayTags::Currency_Skill)));
 }
 
 void ANSPlayerController::OnTempCurrencyChanged(int64 Amount)
@@ -677,9 +672,9 @@ void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Am
 		return;
 	}
 
+	// @원종: 현재 기획상 스킬 재화가 사라졌으므로 HUD 표시만 우선적으로 제거 했음.
 	if (Type == NSGameplayTags::Currency_Skill)
 	{
-		UIManager->UpdateRunSkillGoods(static_cast<int32>(Amount));
 		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
 		return;
 	}

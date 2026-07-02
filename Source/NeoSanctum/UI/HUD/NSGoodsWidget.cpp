@@ -4,33 +4,9 @@
 #include "NSGoodsWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
-#include "CommonTextBlock.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
 
-namespace
-{
-	const FNSGoodsUIData* FindGoodsUIDataByTag(const UDataTable* GoodsTable, const FGameplayTag& GoodsTag)
-	{
-		if (!IsValid(GoodsTable) || GoodsTable->GetRowStruct() != FNSGoodsUIData::StaticStruct())
-		{
-			return nullptr;
-		}
-
-		TArray<FNSGoodsUIData*> Rows;
-		GoodsTable->GetAllRows(TEXT("FindGoodsUIDataByTag"), Rows);
-
-		for (const FNSGoodsUIData* Row : Rows)
-		{
-			if (Row && Row->GoodsTag.MatchesTagExact(GoodsTag))
-			{
-				return Row;
-			}
-		}
-
-		return nullptr;
-	}
-}
 
 void UNSGoodsWidget::SetRunInGoodsAmount(int32 NewGoodsAmount)
 {
@@ -97,10 +73,13 @@ void UNSGoodsWidget::ResetRunInGoodsAmount()
 void UNSGoodsWidget::ApplyGoodsUIData()
 {
 	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-	const UDataTable* GoodsTable = DataSubsystem ? DataSubsystem->GetCommonGoodsUIDataTable() : nullptr;
+	if (!DataSubsystem)
+	{
+		return;
+	}
 
 	const FGameplayTag RunInTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunIn")));
-	const FNSGoodsUIData* RunInGoodsData = FindGoodsUIDataByTag(GoodsTable, RunInTag);
+	const FNSGoodsUIData* RunInGoodsData = DataSubsystem->FindCommonGoodsUIDataByTag(RunInTag);
 	
 	if (RunInGoodsData && RunInGoodsIcon)
 	{
@@ -114,7 +93,7 @@ void UNSGoodsWidget::ApplyGoodsUIData()
 	}
 
 	const FGameplayTag RunOutTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunOut")));
-	const FNSGoodsUIData* RunOutGoodsData =	FindGoodsUIDataByTag(GoodsTable, RunOutTag);
+	const FNSGoodsUIData* RunOutGoodsData =	DataSubsystem->FindCommonGoodsUIDataByTag(RunOutTag);
 	
 	if (RunOutGoodsData && RunOutGoodsIcon)
 	{
@@ -136,15 +115,4 @@ void UNSGoodsWidget::NativeConstruct()
 	//실제 값이 들어오기 전 기본 상태
 	SetRunInGoodsAmount(0);
 	SetRunOutGoodsAmount(0);
-	SetRunSkillGoodsAmount(0);
-}
-void UNSGoodsWidget::SetRunSkillGoodsAmount(int32 NewGoodsAmount)
-{
-	if (!RunSkillGoodsText)
-	{
-		return;
-	}
-
-	RunSkillGoodsText->SetText(
-		FText::AsNumber(FMath::Max(NewGoodsAmount, 0)));
 }

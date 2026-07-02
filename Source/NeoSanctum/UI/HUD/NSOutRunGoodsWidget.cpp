@@ -2,17 +2,40 @@
 
 
 #include "NSOutRunGoodsWidget.h"
-#include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "CommonTextBlock.h"
+#include "Components/Image.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/UI/NSGoodsUIData.h"
 
 void UNSOutRunGoodsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	ApplyGoodsUIData();
 	RefreshGoods();
+}
+
+void UNSOutRunGoodsWidget::ApplyGoodsUIData()
+{
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !CommonGoodsIcon)
+	{
+		return;
+	}
+
+	const FGameplayTag CommonGoodsTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunOut")));
+	const FNSGoodsUIData* CommonGoodsData = DataSubsystem->FindCommonGoodsUIDataByTag(CommonGoodsTag);
+
+	if (CommonGoodsData)
+	{
+		if (UTexture2D* LoadedIcon = CommonGoodsData->GoodsIcon.Get())
+		{
+			CommonGoodsIcon->SetBrushFromTexture(LoadedIcon);
+		}
+	}
 }
 
 void UNSOutRunGoodsWidget::RefreshGoods()
@@ -36,11 +59,8 @@ void UNSOutRunGoodsWidget::RefreshGoods()
 	{
 		return;
 	}
-	UE_LOG(LogTemp, Log, TEXT("[OutRunGoods] Common=%lld Skill=%lld"),
-		ProgressComponent->GetCommonCurrency(),
-		ProgressComponent->GetJobCurrency());
+	UE_LOG(LogTemp, Log, TEXT("[OutRunGoods] Common=%lld"),	ProgressComponent->GetCommonCurrency());
 	SetCommonGoodsAmount(ProgressComponent->GetCommonCurrency());
-	SetSkillGoodsAmount(ProgressComponent->GetJobCurrency());
 }
 
 void UNSOutRunGoodsWidget::SetCommonGoodsAmount(int32 NewAmount)
@@ -51,16 +71,5 @@ void UNSOutRunGoodsWidget::SetCommonGoodsAmount(int32 NewAmount)
 	}
 
 	CommonGoodsText->SetText(
-		FText::AsNumber(FMath::Max(NewAmount, 0)));
-}
-
-void UNSOutRunGoodsWidget::SetSkillGoodsAmount(int32 NewAmount)
-{
-	if (!SkillGoodsText)
-	{
-		return;
-	}
-
-	SkillGoodsText->SetText(
 		FText::AsNumber(FMath::Max(NewAmount, 0)));
 }
