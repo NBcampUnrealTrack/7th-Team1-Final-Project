@@ -28,8 +28,9 @@ void UNSFriendEntryWidget::Setup(const FNSFriendInfo& InFriendInfo)
 void UNSFriendEntryWidget::OnClickedInvite()
 {
 	UE_LOG(LogTemp, Log, TEXT("초대 버튼 클릭: %s"), *FriendNetIdString);
-
-	// 후에 작업 후 연결
-	// if (UNSSessionSubsystem* Session = GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
-	//     Session->InviteFriendToSession(FriendNetIdString);
+	
+	if (UNSSessionSubsystem* Session = GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
+	{
+		Session->InviteFriendToSession(FriendNetIdString);
+	}
 }
