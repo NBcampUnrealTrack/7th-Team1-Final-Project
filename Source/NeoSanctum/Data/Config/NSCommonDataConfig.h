@@ -47,4 +47,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PlayerAttackFeedbackDataTable;
+
+	// UIManagerSubsystem이 위젯 RowName으로 위젯 클래스를 찾을 때 사용하는 공용 UI 테이블.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> UIWidgetDataTable;
 };

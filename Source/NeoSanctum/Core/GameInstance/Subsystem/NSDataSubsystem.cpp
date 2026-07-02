@@ -15,6 +15,7 @@
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
+#include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
@@ -131,6 +132,12 @@ UDataTable* UNSDataSubsystem::GetCommonPlayerAttackFeedbackDataTable() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
 	return CommonConfig ? CommonConfig->PlayerAttackFeedbackDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonUIWidgetDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->UIWidgetDataTable.Get() : nullptr;
 }
 
 UDataTable* UNSDataSubsystem::GetCurrentAugmentDefinitionTable() const
@@ -319,6 +326,8 @@ void UNSDataSubsystem::StartLoadCommonReferenceAssets()
 	
 	// VFX DT Row 안의 NiagaraSystem은 DataAsset 번들로만으로는 보장되지 않으므로 별도 선로드.
 	CollectVFXSystemPathsFromTable(GetCommonVFXDataTable(), AssetsToLoad);
+	// UIManager가 생성하는 위젯 클래스는 Row 안의 SoftClass라서 DataTable과 별도로 선로드.
+	CollectUIWidgetClassPathsFromTable(GetCommonUIWidgetDataTable(), AssetsToLoad);
 	
 	if (AssetsToLoad.IsEmpty())
 	{
@@ -356,6 +365,26 @@ void UNSDataSubsystem::CollectVFXSystemPathsFromTable(
 		if (Row && !Row->NiagaraSystem.IsNull())
 		{
 			OutPaths.AddUnique(Row->NiagaraSystem.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CollectUIWidgetClassPathsFromTable(
+	const UDataTable* UIWidgetTable, TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (!IsValid(UIWidgetTable) || UIWidgetTable->GetRowStruct() != FNSUIWidgetData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("CollectUIWidgetClassPathsFromTable");
+	for (const FName& RowName : UIWidgetTable->GetRowNames())
+	{
+		const FNSUIWidgetData* Row = UIWidgetTable->FindRow<FNSUIWidgetData>(RowName, ContextString, false);
+
+		if (Row && !Row->WidgetClass.IsNull())
+		{
+			OutPaths.AddUnique(Row->WidgetClass.ToSoftObjectPath());
 		}
 	}
 }

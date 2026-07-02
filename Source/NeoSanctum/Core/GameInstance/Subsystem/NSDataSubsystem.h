@@ -125,6 +125,8 @@ public:
 	UDataTable* GetCommonVFXDataTable() const;
 	UDataTable* GetCommonHitReactionDataTable() const;
 	UDataTable* GetCommonPlayerAttackFeedbackDataTable() const;
+
+	UDataTable* GetCommonUIWidgetDataTable() const;
 	
 	const TArray<FNSHitReactionData>& GetCachedHitReactionRows() const { return CachedHitReactionRows; }
 	const TArray<FNSPlayerAttackFeedbackData>& GetCachedPlayerAttackFeedbackRows() const { return CachedPlayerAttackFeedbackRows; }
@@ -215,11 +217,18 @@ private:
 	// CommonDataConfig와 CharacterData PrimaryAsset 로드 후,
 	// Row 내부 SoftObject까지 필요한 공용 참조 에셋을 추가로 로드.
 	void StartLoadCommonReferenceAssets();
+
 	// 공용 참조 에셋 로드가 끝난 뒤 런타임 조회용 캐시를 만들고 CommonReady를 알림.
 	void OnCommonReferenceAssetsLoaded();
+
 	// VFX DataTable Row가 가진 NiagaraSystem SoftObject를 수집.
 	// VFX 재생 시 동기 로드를 피하기 위해 CommonDataReady 전에 선로드.
 	void CollectVFXSystemPathsFromTable(const UDataTable* VFXTable, TArray<FSoftObjectPath>& OutPaths) const;
+
+	// UIWidget DataTable Row가 가진 위젯 클래스 SoftClass를 수집.
+	// CommonDataReady 이후 UIManager가 동기 로드 없이 캐시를 만들 수 있게 미리 로드.
+	void CollectUIWidgetClassPathsFromTable(const UDataTable* UIWidgetTable, TArray<FSoftObjectPath>& OutPaths) const;
+
 	// HitReaction/PlayerAttackFeedback 테이블을 매번 순회하지 않도록 CommonData 로드 시 1회 캐싱.
 	void CacheCommonFeedbackRows();
 
