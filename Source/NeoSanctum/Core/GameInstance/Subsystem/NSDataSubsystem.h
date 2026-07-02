@@ -129,6 +129,12 @@ public:
 	UDataTable* GetCommonPlayerAttackFeedbackDataTable() const;
 
 	UDataTable* GetCommonUIWidgetDataTable() const;
+	// 캐릭터별 스킬 슬롯 구성을 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonCharacterSkillUISetTable() const;
+	// 개별 스킬 아이콘/태그 표시 정보를 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonSkillUIDataTable() const;
+	// 인런/아웃런 재화 아이콘 표시 정보를 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonGoodsUIDataTable() const;
 
 	// 현재 프로젝트는 OutGameDataConfig를 하나만 운용.
 	// 여러 개가 등록되면 첫 번째 로드 에셋을 사용하므로 Asset Manager 등록/에셋 수를 1개로 유지해야 함.
@@ -238,6 +244,15 @@ private:
 	// UIWidget DataTable Row가 가진 위젯 클래스 SoftClass를 수집.
 	// CommonDataReady 이후 UIManager가 동기 로드 없이 캐시를 만들 수 있게 미리 로드.
 	void CollectUIWidgetClassPathsFromTable(const UDataTable* UIWidgetTable, TArray<FSoftObjectPath>& OutPaths) const;
+
+	// HUD UI DataTable Row 내부의 아이콘 SoftObject를 수집.
+	// CommonDataReady 이후 HUD/Goods/Skill 위젯이 동기 로드 없이 아이콘을 사용할 수 있게 미리 로드.
+	void CollectCommonUIIconPaths(
+		const UDataTable* CharacterSkillUISetTable,
+		const UDataTable* SkillUIDataTable,
+		const UDataTable* GoodsUIDataTable,
+		TArray<FSoftObjectPath>& OutPaths
+	) const;
 
 	// HitReaction/PlayerAttackFeedback 테이블을 매번 순회하지 않도록 CommonData 로드 시 1회 캐싱.
 	void CacheCommonFeedbackRows();

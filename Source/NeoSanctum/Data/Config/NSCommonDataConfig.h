@@ -52,4 +52,22 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
 		meta = (AssetBundles = "CommonUI"))
 	TSoftObjectPtr<UDataTable> UIWidgetDataTable;
+
+	// 캐릭터별 스킬 슬롯 구성을 정의하는 UI 테이블.
+	// HUD가 캐릭터 변경 시 스킬 슬롯 RowHandle을 갱신할 때 사용.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> CharacterSkillUISetTable;
+
+	// 개별 스킬 아이콘/태그 표시 정보를 정의하는 UI 테이블.
+	// SkillSlotWidget이 동기 로드 없이 아이콘을 적용할 수 있도록 CommonUI에서 선로드.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> SkillUIDataTable;
+
+	// 인런/아웃런 재화 아이콘 표시 정보를 정의하는 UI 테이블.
+	// GoodsWidget이 생성될 때 동기 로드 없이 아이콘을 적용할 수 있도록 CommonUI에서 선로드.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> GoodsUIDataTable;
 };

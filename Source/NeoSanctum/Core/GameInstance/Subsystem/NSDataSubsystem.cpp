@@ -16,6 +16,9 @@
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+#include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+#include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
@@ -139,6 +142,24 @@ UDataTable* UNSDataSubsystem::GetCommonUIWidgetDataTable() const
 {
 	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
 	return CommonDataConfig ? CommonDataConfig->UIWidgetDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonCharacterSkillUISetTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->CharacterSkillUISetTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonSkillUIDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->SkillUIDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonGoodsUIDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->GoodsUIDataTable.Get() : nullptr;
 }
 
 const UNSOutGameDataConfig* UNSDataSubsystem::GetOutGameDataConfig() const
@@ -342,6 +363,13 @@ void UNSDataSubsystem::StartLoadCommonReferenceAssets()
 	CollectVFXSystemPathsFromTable(GetCommonVFXDataTable(), AssetsToLoad);
 	// UIManager가 생성하는 위젯 클래스는 Row 안의 SoftClass라서 DataTable과 별도로 선로드.
 	CollectUIWidgetClassPathsFromTable(GetCommonUIWidgetDataTable(), AssetsToLoad);
+	// HUD/Goods/Skill가 필요한 아이콘 SoftObject를 미리 선로드.
+	CollectCommonUIIconPaths(
+		GetCommonCharacterSkillUISetTable(),
+		GetCommonSkillUIDataTable(),
+		GetCommonGoodsUIDataTable(),
+		AssetsToLoad
+	);
 	
 	if (AssetsToLoad.IsEmpty())
 	{
@@ -399,6 +427,74 @@ void UNSDataSubsystem::CollectUIWidgetClassPathsFromTable(
 		if (Row && !Row->WidgetClass.IsNull())
 		{
 			OutPaths.AddUnique(Row->WidgetClass.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CollectCommonUIIconPaths(
+	const UDataTable* CharacterSkillUISetTable,
+	const UDataTable* SkillUIDataTable,
+	const UDataTable* GoodsUIDataTable,
+	TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (IsValid(CharacterSkillUISetTable) &&
+		CharacterSkillUISetTable->GetRowStruct() == FNSCharacterSkillUISet::StaticStruct())
+	{
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_CharacterSkillUISet");
+		for (const FName& RowName : CharacterSkillUISetTable->GetRowNames())
+		{
+			const FNSCharacterSkillUISet* Row =
+				CharacterSkillUISetTable->FindRow<FNSCharacterSkillUISet>(RowName, ContextString, false);
+
+			if (!Row)
+			{
+				continue;
+			}
+
+			if (!Row->Skill1InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill1InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+
+			if (!Row->Skill2InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill2InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+
+			if (!Row->Skill3InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill3InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+		}
+	}
+
+	if (IsValid(SkillUIDataTable) && SkillUIDataTable->GetRowStruct() == FNSSkillUIData::StaticStruct())
+	{
+		const FString CotextString = TEXT("CollectCommonUIIconPaths_SkillUI");
+		for (const FName& RowName : SkillUIDataTable->GetRowNames())
+		{
+			const FNSSkillUIData* Row =
+				SkillUIDataTable->FindRow<FNSSkillUIData>(RowName, CotextString, false);
+
+			if (Row && !Row->SkillIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->SkillIcon.ToSoftObjectPath());
+			}
+		}
+	}
+
+	if (IsValid(GoodsUIDataTable) && GoodsUIDataTable->GetRowStruct() == FNSGoodsUIData::StaticStruct())
+	{
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_GoodsUI");
+		for (const FName& RowName : GoodsUIDataTable->GetRowNames())
+		{
+			const FNSGoodsUIData* Row =
+				GoodsUIDataTable->FindRow<FNSGoodsUIData>(RowName, ContextString, false);
+
+			if (Row && !Row->GoodsIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->GoodsIcon.ToSoftObjectPath());
+			}
 		}
 	}
 }
