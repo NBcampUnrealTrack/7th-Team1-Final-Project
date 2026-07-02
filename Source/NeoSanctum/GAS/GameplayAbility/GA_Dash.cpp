@@ -103,6 +103,11 @@ void UGA_Dash::ActivateAbility(
 	if (ASC)
 	{
 		ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+
+		// 대쉬 성공 시 Vanguard 기본공격 중단
+		FGameplayTagContainer CancelTags;
+		CancelTags.AddTag(NSGameplayTags::Ability_Vanguard_BaseAttack);
+		ASC->CancelAbilities(&CancelTags, nullptr, this);
 	}
 
 	// 대쉬 속도 = 거리 / 지속시간
@@ -156,13 +161,8 @@ void UGA_Dash::EndAbility(
 
 	if (!bWasCancelled)
 	{
-		// 공격 중 대쉬 종료로 인한 후속 입력 창 지연 생성 방지
-		const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-		if (!ASC || !ASC->HasMatchingGameplayTag(NSGameplayTags::State_Vanguard_Attacking))
-		{
-			// 정상 종료 대쉬만 후속 대쉬공격으로 연결
-			AddDashAttackWindow();
-		}
+		// 정상 종료 대쉬만 후속 대쉬공격으로 연결
+		AddDashAttackWindow();
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
