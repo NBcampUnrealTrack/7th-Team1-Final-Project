@@ -36,6 +36,7 @@ public:
 
 	// 서버 권한, 새 ASC에 보유 증강의 GE/GA를 재적용하고 핸들을 갱신
 	void ReapplyAll();
+
 	
 public:
 	UFUNCTION(BlueprintPure, Category="NS|Augment")
@@ -54,6 +55,11 @@ public:
 	int32 GetMaxLegendarySlots() const { return MaxLegendarySlots; }
 	
 	UAbilitySystemComponent* GetOwnerASC() const;
+
+	// StatTag가 공용 Attribute GE로 처리되는 항목인지 여부.
+	// CombatStatComponent 등 다른 시스템에서 TargetAbilityTag 검증 기준으로 사용.
+	static bool IsAttributeStatTag(const FGameplayTag& StatTag);
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	

@@ -609,6 +609,11 @@ UAbilitySystemComponent* UNSAugmentInventoryComponent::GetOwnerASC() const
 	return nullptr;
 }
 
+bool UNSAugmentInventoryComponent::IsAttributeStatTag(const FGameplayTag& StatTag)
+{
+	return FindAttributeEffectMapping(StatTag) != nullptr;
+}
+
 int32 UNSAugmentInventoryComponent::GetLegendaryCount() const
 {
 	int32 LegendaryCount = 0;
