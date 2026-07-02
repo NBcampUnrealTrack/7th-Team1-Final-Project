@@ -64,6 +64,9 @@ public:
 
 	// 현재 선택된 전투 타겟을 반환하는 함수
 	AActor* GetCurrentTarget() const;
+	
+	// 현재 Threat 기록에 남아 있는 유효한 타겟 목록을 반환하는 함수
+	void GetKnownTargets(TArray<AActor*>& OutTargets, bool bOnlyVisible = false) const;
 
 	// 현재 타겟을 해제하고 필요하면 재획득 쿨다운을 적용하는 함수
 	void ClearCurrentTarget(bool bBlockReacquisition);

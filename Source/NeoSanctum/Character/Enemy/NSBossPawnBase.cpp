@@ -8,6 +8,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSBossModeComponent.h"
+#include "NeoSanctum/Combat/Component/NSBossTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
@@ -45,6 +46,7 @@ ANSBossPawnBase::ANSBossPawnBase()
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
 	BossModeComponent = CreateDefaultSubobject<UNSBossModeComponent>(TEXT("BossModeComponent"));
+	BossTargetComponent = CreateDefaultSubobject<UNSBossTargetComponent>(TEXT("BossTargetComponent"));
 }
 
 void ANSBossPawnBase::BeginPlay()
@@ -191,6 +193,11 @@ void ANSBossPawnBase::ApplyDeadState()
 	if (CollisionComponent)
 	{
 		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	
+	if (BossTargetComponent)
+	{
+		BossTargetComponent->ResetTargets();
 	}
 
 	ClearCurrentAttackRow();

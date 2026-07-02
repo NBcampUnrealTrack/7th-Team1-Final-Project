@@ -24,6 +24,7 @@ class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
 class UNSBossModeComponent;
+class UNSBossTargetComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSBossPawnBase : public APawn,
@@ -89,6 +90,9 @@ public:
 	// Boss의 ModeComponent를 반환하는 함수
 	UNSBossModeComponent* GetBossModeComponent() const { return BossModeComponent; }
 
+	// Boss의 다중 타깃 컴포넌트를 반환하는 함수
+	UNSBossTargetComponent* GetBossTargetComponent() const { return BossTargetComponent; }
+	
 protected:
 	// Boss의 루트 충돌 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -118,7 +122,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyTargetComponent> TargetComponent;
 
-	// Boss의 Threat 기록과 타겟 선택을 관리하는 공통 컴포넌트
+	// Boss의 Threat 기록과 타깃 선택을 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyThreatComponent> ThreatComponent;
 	
@@ -129,6 +133,10 @@ protected:
 	// Boss의 현재 전투 Mode를 관리하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSBossModeComponent> BossModeComponent;
+	
+	// Boss의 공격별 다중 타깃 목록을 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSBossTargetComponent> BossTargetComponent;
 
 	// Boss의 Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

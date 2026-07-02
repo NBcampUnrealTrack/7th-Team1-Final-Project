@@ -67,6 +67,15 @@ enum class ENSEnemyBrainType : uint8
 	StateTree UMETA(DisplayName = "State Tree")
 };
 
+UENUM(BlueprintType)
+enum class ENSBossTargetPolicy : uint8
+{
+	PrimaryOnly UMETA(DisplayName = "Primary Only"),
+	NearbyKnown UMETA(DisplayName = "Nearby Known"),
+	AllKnown UMETA(DisplayName = "All Known"),
+	RandomKnown UMETA(DisplayName = "Random Known")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -189,6 +198,22 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 중 허용되는 상하 조준 제한 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float PitchLimit = 0.0f;
+	
+	// 타깃 지정 정책
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
+	ENSBossTargetPolicy TargetPolicy = ENSBossTargetPolicy::PrimaryOnly;
+
+	// 최대 타깃 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "1"))
+	int32 MaxTargets = 1;
+
+	// 타깃 탐색 거리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "0.0"))
+	float TargetSearchRadius = 6000.0f;
+
+	// 현재 타깃 포함 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
+	bool bIncludePrimaryTarget = true;
 };
 
 USTRUCT(BlueprintType)
