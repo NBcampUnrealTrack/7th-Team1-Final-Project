@@ -12,6 +12,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSTurret.generated.h"
 
+class UNSCombatStatComponent;
 class UAbilitySystemComponent;
 class UCapsuleComponent;
 class UGameplayEffect;
@@ -135,6 +136,8 @@ private:
 	void StartDeathPresentation();
 	void StartLifetimeTimer();
 	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
+	// 발사 판정마다 소환자 CombatStatComponent에서 FireRate를 라이브 조회. 실패 시 소환 시점 스냅샷으로 대체.
+	float GetCurrentFireRate() const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -142,6 +145,11 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSTurretAttributeSet> AttributeSet;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNSCombatStatComponent> OwningCombatStatComponent;
+
+	FGameplayTag SourceAbilityTag;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
