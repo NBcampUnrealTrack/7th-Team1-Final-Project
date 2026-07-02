@@ -26,6 +26,11 @@ class NEOSANCTUM_API UNSUIManagerSubsystem : public UGameInstanceSubsystem
 public:
 	static UNSUIManagerSubsystem* Get(const UObject* WorldContext);
 
+	// @원종
+	void Initialize(FSubsystemCollectionBase& Collection) override;
+	// @원종
+	void Deinitialize() override;
+
 	//HUD 위젯 생성
 	void CreateHUD(APlayerController* OwningPlayer);
 	//HUD 화면 표시
@@ -178,8 +183,15 @@ public:
 	void ClearSpectator();
 	
 	void UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState);
-	
-	UNSUIManagerSubsystem();
+
+	// @원종 추가
+private:
+	UFUNCTION()
+	void HandleCommonDataReady();
+
+	// CommonData에서 받은 DT_UIWidget을 RowName -> WidgetClass 캐시로 변환.
+	void RebuildWidgetClassCache();
+
 private:
 	//생성된 HUD 보관
 	UPROPERTY()
@@ -211,9 +223,13 @@ private:
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
+
 	//UI 위젯 정보 테이블
 	UPROPERTY()
 	TObjectPtr<UDataTable> UIWidgetDataTable;
+
+	UPROPERTY()
+	TMap<FName, TSubclassOf<UUserWidget>> WidgetClassCache;
 	
 	bool bPartPanelOpen = false;
 	

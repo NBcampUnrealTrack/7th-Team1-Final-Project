@@ -7,8 +7,8 @@
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
-#include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
 #include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
@@ -22,6 +22,37 @@ UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 	}
 
 	return GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+}
+
+void UNSUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+}
+
+void UNSUIManagerSubsystem::Deinitialize()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+
+	WidgetClassCache.Reset();
+	UIWidgetDataTable = nullptr;
+
+	Super::Deinitialize();
 }
 
 float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
@@ -166,42 +197,59 @@ void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameStat
 		ResultData.KillCount);
 }
 
-UNSUIManagerSubsystem::UNSUIManagerSubsystem()
+void UNSUIManagerSubsystem::HandleCommonDataReady()
 {
-	static ConstructorHelpers::FObjectFinder<UDataTable>
-	UIWidgetTableFinder(
-		TEXT("/Game/NeoSanctum/Data/UI/DT_UIWidget.DT_UIWidget"));
-	if (UIWidgetTableFinder.Succeeded())
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		UIWidgetDataTable = UIWidgetTableFinder.Object;
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		UIWidgetDataTable = DataSubsystem->GetCommonUIWidgetDataTable();
+	}
+
+	RebuildWidgetClassCache();
+}
+
+void UNSUIManagerSubsystem::RebuildWidgetClassCache()
+{
+	WidgetClassCache.Reset();
+
+	if (!UIWidgetDataTable || UIWidgetDataTable->GetRowStruct() != FNSUIWidgetData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("RebuildWidgetClassCache");
+	for (const FName& RowName : UIWidgetDataTable->GetRowNames())
+	{
+		const FNSUIWidgetData* WidgetData =
+			UIWidgetDataTable->FindRow<FNSUIWidgetData>(RowName, ContextString, false);
+
+		if (!WidgetData || WidgetData->WidgetClass.IsNull())
+		{
+			continue;
+		}
+
+		// NSDataSubsystem에서 CommonDataReady 전에 선로드하므로 여기서는 동기 로드하지 않음.
+		UClass* LoadedWidgetClass = WidgetData->WidgetClass.Get();
+		if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UUserWidget::StaticClass()))
+		{
+			WidgetClassCache.Add(RowName, LoadedWidgetClass);
+		}
 	}
 }
-TSubclassOf<UUserWidget>
-UNSUIManagerSubsystem::GetWidgetClassFromTable(
-	FName RowName) const
+
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetWidgetClassFromTable(FName RowName) const
 {
-	if (!UIWidgetDataTable)
+	if (RowName.IsNone())
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] DT_UIWidget을 찾지 못했습니다."));
 		return nullptr;
 	}
-	const FNSUIWidgetData* WidgetData =
-		UIWidgetDataTable->FindRow<FNSUIWidgetData>(
-			RowName,
-			TEXT("GetWidgetClassFromTable"));
-	if (!WidgetData)
+
+	if (const TSubclassOf<UUserWidget>* CacheWidgetClass = WidgetClassCache.Find(RowName))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] Row를 찾지 못했습니다: %s"),
-			*RowName.ToString());
-		return nullptr;
+		return *CacheWidgetClass;
 	}
-	return WidgetData->WidgetClass.LoadSynchronous();
+
+	return nullptr;
 }
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
