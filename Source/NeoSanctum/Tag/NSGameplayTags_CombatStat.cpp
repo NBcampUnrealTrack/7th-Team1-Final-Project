@@ -39,5 +39,4 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSpawnableAngle,		"CombatStat.MaxSpawnableAngle");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Radius,					"CombatStat.Radius");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_CritChance,				"CombatStat.CritChance");
-	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ShieldRechargeRate,		"CombatStat.ShieldRechargeRate");
 }
