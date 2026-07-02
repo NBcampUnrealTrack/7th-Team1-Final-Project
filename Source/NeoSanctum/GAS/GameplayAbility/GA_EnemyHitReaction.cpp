@@ -4,6 +4,7 @@
 
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -41,11 +42,13 @@ void UGA_EnemyHitReaction::ActivateAbility(
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UNSEnemyStateComponent* EnemyState =
+		AvatarActor ? AvatarActor->FindComponentByClass<UNSEnemyStateComponent>() : nullptr;
 
-	if (!Enemy ||
-		Enemy->IsDead() ||
-		Enemy->IsInPool() ||
+	if (!EnemyState ||
+		EnemyState->IsDead() ||
+		EnemyState->IsInactive() ||
 		!HitReactionMontage)
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -84,9 +87,13 @@ void UGA_EnemyHitReaction::EndAbility(
 	const bool bReplicateEndAbility,
 	const bool bWasCancelled)
 {
-	if (ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo()))
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UNSEnemyStateComponent* EnemyState =
+		AvatarActor ? AvatarActor->FindComponentByClass<UNSEnemyStateComponent>() : nullptr;
+
+	if (EnemyState)
 	{
-		Enemy->FinishHitReaction();
+		EnemyState->FinishHitReaction();
 	}
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

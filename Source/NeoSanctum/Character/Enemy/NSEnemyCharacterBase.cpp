@@ -21,6 +21,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyMeleeComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyMoveComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
@@ -59,6 +60,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	MeleeComponent = CreateDefaultSubobject<UNSEnemyMeleeComponent>(TEXT("MeleeComponent"));
 	MoveComponent = CreateDefaultSubobject<UNSEnemyMoveComponent>(TEXT("MoveComponent"));
 	CombatComponent = CreateDefaultSubobject<UNSEnemyCombatComponent>(TEXT("CombatComponent"));
+	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
 
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
 
@@ -75,9 +77,21 @@ void ANSEnemyCharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (!ASC) return;
+	if (!ASC)
+	{
+		return;
+	}
 
 	ASC->InitAbilityActorInfo(this, this);
+
+	if (StateComponent)
+	{
+		StateComponent->InitState(AttributeSet);
+		StateComponent->OnDeathStarted.AddUObject(this, &ThisClass::HandleDeathStarted);
+		StateComponent->OnDeadStateChanged.AddUObject(this, &ThisClass::HandleDeadStateChanged);
+		StateComponent->OnInactiveStateChanged.AddUObject(this, &ThisClass::HandleInactiveStateChanged);
+		StateComponent->OnHitReactionStateChanged.AddUObject(this, &ThisClass::HandleHitReactionStateChanged);
+	}
 
 	InitializeFromData(true);
 
@@ -88,15 +102,9 @@ void ANSEnemyCharacterBase::BeginPlay()
 			&ANSEnemyCharacterBase::HandleEnemyDataChanged);
 	}
 
-	// 디졸브 완료 콜백 바인딩
 	if (DissolveComponent && HasAuthority())
 	{
 		DissolveComponent->OnDissolveComplete.BindUObject(this, &ANSEnemyCharacterBase::OnDissolveFinished);
-	}
-
-	if (HasAuthority())
-	{
-		OnHitGaugeThresholdReached.AddUObject(this, &ThisClass::HandleHitGaugeThresholdReached);
 	}
 }
 
@@ -104,12 +112,9 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(ANSEnemyCharacterBase, bIsDead);
-	DOREPLIFETIME(ANSEnemyCharacterBase, bIsInPool);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
-	DOREPLIFETIME(ANSEnemyCharacterBase, bIsHitReacting);
 }
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
@@ -151,49 +156,25 @@ FVector ANSEnemyCharacterBase::GetAimLocation() const
 
 void ANSEnemyCharacterBase::Die()
 {
-	if (bIsDead) return;
-
-	if (HasAuthority())
+	if (StateComponent)
 	{
-		bIsDead = true;
-		FinishHitReaction();
-		ResetHitGauge();
-		SetRetreating(false);
-		ClearCurrentAttackRow();
-		ClearCombatAimTarget();
-		ApplyDeadVisual();
-		// (이용호 추가) 죽을 때 게임모드에 알림
-		AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
-		if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
-		{
-			INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
-		}
-
-		if (AAIController* AIController = Cast<AAIController>(GetController()))
-		{
-			AIController->UnPossess();
-			AIController->Destroy();
-		}
-
-		UNSEnemyData* EnemyData = GetEnemyData();
-
-		if (ASC && EnemyData && EnemyData->DeathAbilityClass)
-		{
-			ASC->TryActivateAbilityByClass(EnemyData->DeathAbilityClass);
-		}
+		StateComponent->Die();
 	}
 }
 
-void ANSEnemyCharacterBase::OnRep_bIsDead()
+bool ANSEnemyCharacterBase::IsDead() const
 {
-	if (bIsDead)
-	{
-		ApplyDeadVisual();
-	}
-	else
-	{
-		ApplyAliveVisual();
-	}
+	return StateComponent && StateComponent->IsDead();
+}
+
+bool ANSEnemyCharacterBase::IsInPool() const
+{
+	return StateComponent && StateComponent->IsInactive();
+}
+
+bool ANSEnemyCharacterBase::IsHitReacting() const
+{
+	return StateComponent && StateComponent->IsHitReacting();
 }
 
 void ANSEnemyCharacterBase::HandleEnemyDataChanged(UNSEnemyData* NewEnemyData)
@@ -321,13 +302,6 @@ void ANSEnemyCharacterBase::OnDissolveFinished()
 	}
 }
 
-void ANSEnemyCharacterBase::OnRep_bIsInPool()
-{
-	// 클라이언트에 남아있는 콜리전 정리
-	SetActorHiddenInGame(bIsInPool);
-	SetActorEnableCollision(!bIsInPool);
-}
-
 void ANSEnemyCharacterBase::UpdateCombatAimTarget(AActor* TargetActor)
 {
 	if (!HasAuthority() || !IsValid(TargetActor))
@@ -378,9 +352,11 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 		return;
 	}
 
-	bIsInPool = false;
-	bIsDead = false;
-	bIsHitReacting = false;
+	if (StateComponent)
+	{
+		StateComponent->ResetForReuse();
+	}
+
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
 
@@ -391,6 +367,7 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 		false,
 		nullptr,
 		ETeleportType::TeleportPhysics);
+
 	SetActorTickEnabled(true);
 	SetActorEnableCollision(true);
 
@@ -416,10 +393,14 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		return;
 	}
 
-	bIsInPool = true;
+	if (StateComponent)
+	{
+		StateComponent->SetInactive(true);
+		StateComponent->FinishHitReaction();
+		StateComponent->ResetHitGauge();
+	}
+
 	SetRetreating(false);
-	FinishHitReaction();
-	ResetHitGauge();
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
 
@@ -543,86 +524,85 @@ void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
 
 float ANSEnemyCharacterBase::GetHitGauge() const
 {
-	return AttributeSet ? AttributeSet->GetHitGauge() : 0.0f;
+	return StateComponent ? StateComponent->GetHitGauge() : 0.0f;
 }
 
 float ANSEnemyCharacterBase::GetMaxHitGauge() const
 {
-	return AttributeSet ? AttributeSet->GetMaxHitGauge() : 0.0f;
+	return StateComponent ? StateComponent->GetMaxHitGauge() : 0.0f;
 }
 
 void ANSEnemyCharacterBase::ResetHitGauge()
 {
-	if (!HasAuthority() || !AttributeSet)
+	if (StateComponent)
 	{
-		return;
+		StateComponent->ResetHitGauge();
 	}
-
-	AttributeSet->ResetHitGauge();
-}
-
-void ANSEnemyCharacterBase::NotifyHitGaugeThresholdReached()
-{
-	if (!HasAuthority() || bIsDead || bIsInPool)
-	{
-		return;
-	}
-
-	OnHitGaugeThresholdReached.Broadcast();
 }
 
 void ANSEnemyCharacterBase::FinishHitReaction()
 {
-	if (!HasAuthority() || !bIsHitReacting)
+	if (StateComponent)
 	{
-		return;
-	}
-
-	SetHitReactionState(false);
-}
-
-void ANSEnemyCharacterBase::HandleHitGaugeThresholdReached()
-{
-	UNSEnemyData* EnemyData = GetEnemyData();
-
-	if (!HasAuthority() ||
-		bIsDead ||
-		bIsInPool ||
-		bIsHitReacting ||
-		!ASC ||
-		!EnemyData ||
-		!EnemyData->HitReactionAbilityClass)
-	{
-		return;
-	}
-
-	// 공격 GA 취소보다 먼저 상태를 설정해야 BT Task가 예약을 반환하지 않음
-	SetHitReactionState(true);
-
-	const bool bActivated = ASC->TryActivateAbilityByClass(EnemyData->HitReactionAbilityClass);
-
-	if (!bActivated)
-	{
-		FinishHitReaction();
+		StateComponent->FinishHitReaction();
 	}
 }
 
-void ANSEnemyCharacterBase::SetHitReactionState(bool bNewHitReacting)
+void ANSEnemyCharacterBase::HandleDeathStarted()
 {
-	if (!HasAuthority() || bIsHitReacting == bNewHitReacting)
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	bIsHitReacting = bNewHitReacting;
+	SetRetreating(false);
+	ClearCombatAimTarget();
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+	}
+
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->UnPossess();
+		AIController->Destroy();
+	}
+}
+
+void ANSEnemyCharacterBase::HandleDeadStateChanged(bool bDead)
+{
+	if (bDead)
+	{
+		ApplyDeadVisual();
+	}
+	else
+	{
+		ApplyAliveVisual();
+	}
+}
+
+void ANSEnemyCharacterBase::HandleInactiveStateChanged(bool bInactive)
+{
+	SetActorHiddenInGame(bInactive);
+	SetActorEnableCollision(!bInactive);
+}
+
+void ANSEnemyCharacterBase::HandleHitReactionStateChanged(bool bHitReacting)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
 	ANSEnemyAIController* EnemyController = Cast<ANSEnemyAIController>(GetController());
-
 	if (!EnemyController)
 	{
 		return;
 	}
 
-	if (bIsHitReacting)
+	if (bHitReacting)
 	{
 		EnemyController->HandleHitReactionStarted();
 	}
