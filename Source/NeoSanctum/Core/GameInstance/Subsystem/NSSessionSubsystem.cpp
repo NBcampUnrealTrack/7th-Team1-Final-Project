@@ -353,38 +353,6 @@ void UNSSessionSubsystem::LeaveSessionToTitle()
 	ReturnToTitle();
 }
 
-void UNSSessionSubsystem::FindAndJoinFirstSession()
-{
-	if (!SessionInterface.IsValid() || bIsJoining)
-	{
-		return;
-	}
-
-	LastSessionSearch = MakeShared<FOnlineSessionSearch>();
-	LastSessionSearch->bIsLanQuery = false;
-	LastSessionSearch->MaxSearchResults = 50;
-	
-	// IP 검색말고 로비로 검색하도록 추가
-	LastSessionSearch->QuerySettings.Set(
-	SEARCH_LOBBIES,
-	true,
-	EOnlineComparisonOp::Equals);
-	
-	LastSessionSearch->QuerySettings.Set( 
-		NS_SESSION_KEY,
-		FString(TEXT("NeoSanctum")),
-		EOnlineComparisonOp::Equals);
-
-	FindSessionsDelegateHandle =
-		SessionInterface->AddOnFindSessionsCompleteDelegate_Handle(
-			FOnFindSessionsCompleteDelegate::CreateUObject(
-				this, &UNSSessionSubsystem::OnFindSessionsCompleted));
-
-	const ULocalPlayer* LocalPlayer = GetGameInstance()->GetFirstGamePlayer();
-	SessionInterface->FindSessions(
-		*LocalPlayer->GetPreferredUniqueNetId(), LastSessionSearch.ToSharedRef());
-}
-
 void UNSSessionSubsystem::RegisterPlayerInSession(const FUniqueNetIdRepl& PlayerId)
 {
 	if (!SessionInterface.IsValid() || !PlayerId.IsValid())
@@ -657,29 +625,6 @@ void UNSSessionSubsystem::JoinResolvedSession(const FOnlineSessionSearchResult& 
 	SessionInterface->JoinSession(
 		*LocalPlayer->GetPreferredUniqueNetId(), NAME_GameSession, SearchResult);
 
-}
-
-void UNSSessionSubsystem::OnFindSessionsCompleted(bool bWasSuccessful)
-{
-	if (SessionInterface.IsValid() && FindSessionsDelegateHandle.IsValid())
-	{
-		SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(
-			FindSessionsDelegateHandle);
-	}
-	FindSessionsDelegateHandle.Reset();
-
-	if (!bWasSuccessful || 
-		!LastSessionSearch.IsValid()||
-		LastSessionSearch->SearchResults.Num() == 0)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("검색된 세션 없음"));
-		OnJoinSessionComplete.Broadcast(false);
-		return;
-	}
-
-	UE_LOG(LogTemp, Log, TEXT("세션 %d개 발견, 첫 결과로 Join"),
-		LastSessionSearch->SearchResults.Num());
-	JoinResolvedSession(LastSessionSearch->SearchResults[0]);
 }
 
 void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result)

@@ -117,8 +117,7 @@ private:
 	
 	// 모든 참가의 공통 진입점 
 	void JoinResolvedSession(const FOnlineSessionSearchResult& SearchResult);
-	// 세션 검색 완료 콜백
-	void OnFindSessionsCompleted(bool bWasSuccessful);
+	
 	// 세션 참가 완료 콜백 (연결 문자열 해석 후 ClientTravel)
 	void OnJoinSessionCompleted(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
 	
