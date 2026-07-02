@@ -11,6 +11,8 @@
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnCreateSessionComplete, bool, bWasSuccessful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnJoinSessionComplete, bool, bWasSuccessful);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnDestroySessionComplete, bool, bWasSuccessful);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnInviteCodeReady, const FString&, InviteCode);
+
 
 // 세션 생성, 참가, 종료 담당 클래스
 // 타이틀 화면에서의 연결 로직 처리용
@@ -52,6 +54,10 @@ public:
 	// GameMode가 호출하는 세션 인원 등록,해제용 함수
 	void RegisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
 	void UnregisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
+	
+	// 현재 세션의 로비 ID를 초대 코드 문자열로 반환 (없으면 빈 문자열)
+	UFUNCTION(BlueprintCallable, Category = "Session")
+	FString GetCurrentInviteCode() const;
 
 	// 허브 복귀 시 세션을 다시 열어 참가를 허용
 	void EndRunSession();
@@ -64,6 +70,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Session")
 	FNSOnDestroySessionComplete OnDestroySessionComplete;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Session")
+	FNSOnInviteCodeReady OnInviteCodeReady;
 
 private:
 	// CreateSession을 다음 틱에 시작하도록 예약
@@ -154,4 +163,7 @@ private:
 	void ReturnToTitle();
 	// 보류된 초대를 조인 가능한 시점에 처리
 	void TryConsumePendingInvite();
+	
+	// 발급한 초대코드 저장용
+	FString CurrentInviteCode;
 };
