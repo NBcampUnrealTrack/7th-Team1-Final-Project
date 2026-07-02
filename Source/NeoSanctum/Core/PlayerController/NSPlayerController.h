@@ -394,6 +394,14 @@ public:
 	// PauseMenu 사용 용도 → 세션 정리 후 타이틀
 	void RequestLeaveToMainMenu();
 	void RestoreGameplayInputMode();
+	
+#pragma region Data Load
+	
+	UFUNCTION() 
+	void HandleCommonThenLoadOutGame();
+	
+#pragma endregion Data Load
+	
 
 public:
 	//보스전 강제 진입 치트용 임시 함수
