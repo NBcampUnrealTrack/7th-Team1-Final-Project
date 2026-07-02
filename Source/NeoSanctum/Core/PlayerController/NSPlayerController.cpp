@@ -52,6 +52,7 @@
 #include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 
+
 ANSPlayerController::ANSPlayerController()
 {
 	// 기본 태그 초기화
@@ -1408,6 +1409,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 					this, &ANSPlayerController::HandlePermanentDataLoaded);
 			}
 		}
+		// OutGame 에셋 로드 보장
+		EnsureOutGameDataLoaded();
 	}
 }
 
@@ -2722,6 +2725,22 @@ void ANSPlayerController::RestoreGameplayInputMode()
 	FInputModeGameOnly InputMode;
 	SetInputMode(InputMode);
 	bShowMouseCursor = false;
+}
+
+void ANSPlayerController::HandleCommonThenLoadOutGame()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+
+	// 자기 자신 바인딩 해제
+	Data->OnCommonDataReady.RemoveDynamic(
+		this, &ANSPlayerController::HandleCommonThenLoadOutGame);
+
+	// Common이 끝났으니 OutGame 로드
+	Data->LoadOutGameData();
 }
 
 void ANSPlayerController::Server_DebugForceBossFight_Implementation()
