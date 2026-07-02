@@ -6,6 +6,7 @@
 #include "GA_SkillBase.h"
 #include "GA_VanguardBaseAttack.generated.h"
 
+class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 
 UENUM(BlueprintType)
@@ -50,6 +51,12 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo
 	) override;
 
+	virtual void InputPressed(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) override;
+
 	virtual void EndAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -65,11 +72,23 @@ private:
 	UFUNCTION()
 	void OnAttackMontageInterrupted();
 
+	UFUNCTION()
+	void OnComboWindowOpened(FGameplayEventData Payload);
+
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
 	ENSVanguardBaseAttackMode SelectAttackMode(const FGameplayAbilityActorInfo* ActorInfo) const;
 
 	// 지상 기본 콤보 시작
 	void StartGroundCombo();
+
+	// 콤보 입력 처리
+	void HandleGroundComboInput();
+
+	// Combo Window Open 이벤트 대기
+	void StartComboWindowEventTask();
+
+	// 다음 콤보 섹션으로 이동
+	bool TryAdvanceGroundCombo();
 
 	// 공중 내려찍기 공격 시작
 	void StartAirSlam();
@@ -125,6 +144,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float AttackMontagePlayRate = 1.0f;
 
+	// 지상 기본 콤보 섹션 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
+	TArray<FName> GroundComboSectionNames = { TEXT("Combo_1"), TEXT("Combo_2"), TEXT("Combo_3") };
+
 	// 대쉬공격 최대 충전 도달 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashCharge", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float MaxDashChargeTime = 1.0f;
@@ -138,4 +161,19 @@ private:
 
 	// 차지 비율 계산용 대쉬 차지 시작 시각
 	double DashChargeStartTime = 0.0;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
+
+	// 현재 재생 중인 지상 콤보 단계
+	int32 CurrentGroundComboIndex = INDEX_NONE;
+
+	// Combo Window 이전 선입력 저장
+	bool bComboInputBuffered = false;
+
+	// 같은 Combo Window 안에서 중복 섹션 이동 방지
+	bool bComboAdvancedInCurrentWindow = false;
+
+	// 첫 공격 입력이 콤보 입력으로 재사용되는 것 방지
+	bool bGroundComboInitialInputReleased = false;
 };
