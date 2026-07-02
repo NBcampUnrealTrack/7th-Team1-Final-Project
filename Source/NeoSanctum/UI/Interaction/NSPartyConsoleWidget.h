@@ -47,7 +47,14 @@ protected:
 	void OnClickedCreateSession();
 	UFUNCTION()
 	void OnClickedClose();
+	UFUNCTION()
+	void HandleInviteCodeReady(const FString& InviteCode);
+	UFUNCTION()
+	void OnClickedCopyCode();
 
 private:
 	TWeakObjectPtr<APlayerController> OwningPC;
+	
+	// HandleInviteCodeReady에서 보관 (코드 복사용)
+	FString CurrentInviteCode;
 };
