@@ -15,7 +15,6 @@ class UNSPartPanelWidget;
 class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
-class UDataTable;
 
 
 /**
@@ -95,10 +94,6 @@ public:
 	//캐릭터별 스킬 UI 세트 적용
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ApplyCharacterSkillUISet(FName CharacterId);
-	
-	//캐릭터별 스킬 UI 세트 테이블
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Skill")
-	TObjectPtr<UDataTable> CharacterSkillUISetTable;
 	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 

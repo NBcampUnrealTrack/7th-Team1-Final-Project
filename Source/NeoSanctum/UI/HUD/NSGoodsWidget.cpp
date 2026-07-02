@@ -5,7 +5,32 @@
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "CommonTextBlock.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+
+namespace
+{
+	const FNSGoodsUIData* FindGoodsUIDataByTag(const UDataTable* GoodsTable, const FGameplayTag& GoodsTag)
+	{
+		if (!IsValid(GoodsTable) || GoodsTable->GetRowStruct() != FNSGoodsUIData::StaticStruct())
+		{
+			return nullptr;
+		}
+
+		TArray<FNSGoodsUIData*> Rows;
+		GoodsTable->GetAllRows(TEXT("FindGoodsUIDataByTag"), Rows);
+
+		for (const FNSGoodsUIData* Row : Rows)
+		{
+			if (Row && Row->GoodsTag.MatchesTagExact(GoodsTag))
+			{
+				return Row;
+			}
+		}
+
+		return nullptr;
+	}
+}
 
 void UNSGoodsWidget::SetRunInGoodsAmount(int32 NewGoodsAmount)
 {
@@ -71,28 +96,30 @@ void UNSGoodsWidget::ResetRunInGoodsAmount()
 
 void UNSGoodsWidget::ApplyGoodsUIData()
 {
-	const FNSGoodsUIData* RunInGoodsData =
-		RunInGoodsUIDataRow.GetRow<FNSGoodsUIData>(
-			TEXT("ApplyGoodsUIData_RunIn"));
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* GoodsTable = DataSubsystem ? DataSubsystem->GetCommonGoodsUIDataTable() : nullptr;
+
+	const FGameplayTag RunInTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunIn")));
+	const FNSGoodsUIData* RunInGoodsData = FindGoodsUIDataByTag(GoodsTable, RunInTag);
 	
 	if (RunInGoodsData && RunInGoodsIcon)
 	{
 		UTexture2D* LoadedIcon =
-			RunInGoodsData->GoodsIcon.LoadSynchronous();
+			RunInGoodsData->GoodsIcon.Get();
 		
 		if (LoadedIcon)
 		{
 			RunInGoodsIcon->SetBrushFromTexture(LoadedIcon);
 		}
 	}
-	const FNSGoodsUIData* RunOutGoodsData =
-		RunOutGoodsUIDataRow.GetRow<FNSGoodsUIData>(
-			TEXT("ApplyGoodsUIData_RunOut"));
+
+	const FGameplayTag RunOutTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunOut")));
+	const FNSGoodsUIData* RunOutGoodsData =	FindGoodsUIDataByTag(GoodsTable, RunOutTag);
 	
 	if (RunOutGoodsData && RunOutGoodsIcon)
 	{
 		UTexture2D* LoadedIcon =
-			RunOutGoodsData->GoodsIcon.LoadSynchronous();
+			RunOutGoodsData->GoodsIcon.Get();
 		if (LoadedIcon)
 		{
 			RunOutGoodsIcon->SetBrushFromTexture(LoadedIcon);

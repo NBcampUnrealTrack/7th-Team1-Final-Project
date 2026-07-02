@@ -470,11 +470,11 @@ void UNSDataSubsystem::CollectCommonUIIconPaths(
 
 	if (IsValid(SkillUIDataTable) && SkillUIDataTable->GetRowStruct() == FNSSkillUIData::StaticStruct())
 	{
-		const FString CotextString = TEXT("CollectCommonUIIconPaths_SkillUI");
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_SkillUI");
 		for (const FName& RowName : SkillUIDataTable->GetRowNames())
 		{
 			const FNSSkillUIData* Row =
-				SkillUIDataTable->FindRow<FNSSkillUIData>(RowName, CotextString, false);
+				SkillUIDataTable->FindRow<FNSSkillUIData>(RowName, ContextString, false);
 
 			if (Row && !Row->SkillIcon.IsNull())
 			{

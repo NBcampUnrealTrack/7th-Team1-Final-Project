@@ -6,6 +6,7 @@
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 #include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
@@ -245,6 +246,10 @@ void UNSHUDWidget::ShowOutRunGoods()
 
 void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 {
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* CharacterSkillUISetTable =
+		DataSubsystem ? DataSubsystem->GetCommonCharacterSkillUISetTable() : nullptr;
+
 	if (!CharacterSkillUISetTable)
 	{
 		return;
