@@ -60,6 +60,10 @@ public:
 	// 현재 세션의 로비 ID를 초대 코드 문자열로 반환 (없으면 빈 문자열)
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	FString GetCurrentInviteCode() const;
+	
+	// 친구를 세션에 초대 (세션 없으면 생성 후 초대)
+	UFUNCTION(BlueprintCallable, Category = "Session|Friends")
+	void InviteFriendToSession(const FString& FriendNetIdString);
 
 	// 허브 복귀 시 세션을 다시 열어 참가를 허용
 	void EndRunSession();
@@ -131,6 +135,9 @@ private:
 	const int32 ControllerId,
 	FUniqueNetIdPtr UserId,
 	const FOnlineSessionSearchResult& InviteResult);
+	
+	// 실제 스팀 세션 초대 전송 (세션이 있는 상태에서 호출)
+	void SendInviteToFriendInternal(const FString& FriendNetIdString);
 
 	IOnlineSessionPtr SessionInterface;
 
@@ -192,4 +199,7 @@ private:
 	
 	// 검색 시 대조할 코드 보관
 	FString PendingJoinCode;
+	
+	// 세션 생성 완료 후 초대할 친구 목록 보관용(여러 사람에게 초대 연타 방지용)
+	TArray<FString> PendingInviteFriendNetIds;
 };
