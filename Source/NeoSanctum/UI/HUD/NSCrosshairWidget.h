@@ -10,6 +10,7 @@
 
 class UImage;
 class UWidgetAnimation;
+class UNSUISettingsSubsystem;
 
 /**
  * 플레이어의 조준점을 표시하는 HUD위젯
@@ -88,6 +89,9 @@ private:
 	// 피드백 타입에 맞는 애니메이션 반환
 	UWidgetAnimation* GetAttackFeedbackAnimation(ENSCrosshairAttackFeedbackType FeedbackType) const;
 	
+	void HandleCrosshairColorChanged(const FLinearColor& NewColor);
+	
+	TWeakObjectPtr<UNSUISettingsSubsystem> CachedUISettingsSubsystem;
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;

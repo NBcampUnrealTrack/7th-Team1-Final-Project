@@ -3,8 +3,10 @@
 
 #include "NSCrosshairWidget.h"
 #include "Components/Image.h"
+#include "Engine/GameInstance.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
+#include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
 
 void UNSCrosshairWidget::ShowCrosshair()
 {
@@ -135,12 +137,37 @@ UWidgetAnimation* UNSCrosshairWidget::GetAttackFeedbackAnimation(
 	}
 }
 
+void UNSCrosshairWidget::HandleCrosshairColorChanged(const FLinearColor& NewColor)
+{
+	SetCrosshairColor(NewColor);
+}
+
 void UNSCrosshairWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	//기본 상태에서 조준점 보임
 	ShowCrosshair();
 	HideAttackFeedbackImages();
+	
+	if (UGameInstance* GameInstance = GetGameInstance())
+	{
+		UNSUISettingsSubsystem* Settings =
+			GameInstance->GetSubsystem<
+				UNSUISettingsSubsystem>();
+		
+		if (Settings)
+		{
+			CachedUISettingsSubsystem = Settings;
+			
+			SetCrosshairColor(
+				Settings->GetCrosshairColor());
+			
+			Settings->OnCrosshairColorChanged.RemoveAll(this);
+			Settings->OnCrosshairColorChanged.AddUObject(
+				this,
+				&ThisClass::HandleCrosshairColorChanged);
+		}
+	}
 
 	AttackFeedbackListenerHandle =
 		UGameplayMessageSubsystem::Get(this).RegisterListener<FNSCrosshairAttackFeedbackMessage>(
@@ -153,5 +180,12 @@ void UNSCrosshairWidget::NativeDestruct()
 {
 	AttackFeedbackListenerHandle.Unregister();
 
+	if (CachedUISettingsSubsystem.IsValid())
+	{
+		CachedUISettingsSubsystem->OnCrosshairColorChanged.RemoveAll(this);
+
+		CachedUISettingsSubsystem.Reset();
+	}
+	
 	Super::NativeDestruct();
 }
