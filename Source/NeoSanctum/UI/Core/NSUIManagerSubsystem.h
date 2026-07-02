@@ -192,6 +192,9 @@ private:
 	// CommonData에서 받은 DT_UIWidget을 RowName -> WidgetClass 캐시로 변환.
 	void RebuildWidgetClassCache();
 
+	// CommonDataReady 전에 실패했던 Title 생성을 UI 위젯 캐시 구축 후 재시도.
+	void RetryPendingTitleCreation();
+
 private:
 	//생성된 HUD 보관
 	UPROPERTY()
@@ -201,6 +204,10 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleWidget;
+
+	// @원종 : CommonData 로딩 전에 Title 생성이 요청되면, 로딩 완료 후 다시 생성하기 위해 보관.
+	TWeakObjectPtr<APlayerController> PendingTitleOwningPlayer;
+	bool bPendingTitleCreation = false;
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;

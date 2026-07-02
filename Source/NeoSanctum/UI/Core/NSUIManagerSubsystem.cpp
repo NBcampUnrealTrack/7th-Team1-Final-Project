@@ -206,6 +206,28 @@ void UNSUIManagerSubsystem::HandleCommonDataReady()
 	}
 
 	RebuildWidgetClassCache();
+	RetryPendingTitleCreation();
+}
+
+void UNSUIManagerSubsystem::RetryPendingTitleCreation()
+{
+	if (!bPendingTitleCreation)
+	{
+		return;
+	}
+
+	bPendingTitleCreation = false;
+
+	APlayerController* OwningPlayer = PendingTitleOwningPlayer.Get();
+	PendingTitleOwningPlayer.Reset();
+
+	if (!OwningPlayer || TitleWidget)
+	{
+		return;
+	}
+
+	CreateTitle(OwningPlayer);
+	ShowTitle();
 }
 
 void UNSUIManagerSubsystem::RebuildWidgetClassCache()
@@ -483,41 +505,60 @@ UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 {
-		if (!OwningPlayer)
-		{
-			return;
-		}
+	// @원종: pending 초기화.
+	bPendingTitleCreation = false;
+	PendingTitleOwningPlayer.Reset();
 
-		if (TitleWidget)
-		{
-			return;
-		}
+	if (!OwningPlayer)
+	{
+		return;
+	}
+
+	if (TitleWidget)
+	{
+		return;
+	}
 	
-		//데이터테이블에 없을경우 기존 Title위젯으로
-		TSubclassOf<UUserWidget> WidgetClassToUse =
-			GetWidgetClassFromTable(TEXT("Title"));
+	//데이터테이블에 없을경우 기존 Title위젯으로
+	TSubclassOf<UUserWidget> WidgetClassToUse =
+		GetWidgetClassFromTable(TEXT("Title"));
 
-		//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴 
-		if (!WidgetClassToUse)
+	//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴
+	if (!WidgetClassToUse)
+	{
+		WidgetClassToUse = TitleWidgetClass;
+	}
+
+	//데이터테이블과 fallback 이 모두 없으면 종료
+	if (!WidgetClassToUse)
+	{
+		// @원종: 위젯 클래스가 없으면 pending처리로 넘김
+		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
-			WidgetClassToUse = TitleWidgetClass;
+			if (!DataSubsystem->IsCommonReady())
+			{
+				// DT_UIWidget 로딩이 끝나기 전에 Title 생성이 요청된 경우, CommonDataReady 이후 다시 CreateTitle을 호출.
+				PendingTitleOwningPlayer = OwningPlayer;
+				bPendingTitleCreation = true;
+
+				DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+				DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+				return;
+			}
 		}
 
-		//데이터테이블과 fallback 이 모두 없으면 종료
-		if (!WidgetClassToUse)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
-			return;
-		}
+		UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
+		return;
+	}
 
-		TitleWidget = CreateWidget<UUserWidget>(
-			OwningPlayer,
-			WidgetClassToUse);
+	TitleWidget = CreateWidget<UUserWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
 
-		if (TitleWidget)
-		{
-			TitleWidget->AddToViewport();
-		}	
+	if (TitleWidget)
+	{
+		TitleWidget->AddToViewport();
+	}
 	/*
 	TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, TitleWidgetClass);
 	if (TitleWidget)
