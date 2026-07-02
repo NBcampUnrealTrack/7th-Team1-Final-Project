@@ -9,6 +9,7 @@
 class USoundSettingWidget;
 class UCommonButtonBase;
 class UWidgetSwitcher;
+class UNSGameplaySettingWidget;
 
 /**
  * 옵션창 Widget
@@ -21,6 +22,7 @@ class NEOSANCTUM_API UNSOptionWidget : public UCommonUserWidget
 	
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	
 private:
 	UFUNCTION()
@@ -28,6 +30,9 @@ private:
 	
 	UFUNCTION()
 	void OnClickedGraphicCategoryButton();
+	
+	UFUNCTION()
+	void OnClickedGameplayCategoryButton();
 	
 private:
 	void ShowOptionCategoryWidget(UWidget* OptionWidget);
@@ -45,6 +50,9 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonButtonBase> GraphicCategoryButton;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonButtonBase> GameplayCategoryButton;
+	
 	// TODO : 앞으로 다양한 Option Button들이 생기면 여기에 추가
 	
 	// (이용호 추가) 옵션창 닫는 버튼
@@ -59,6 +67,9 @@ private:
 	// 테스트용 임시 그래픽 세팅 위젯
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> GraphicSettingWidget;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UNSGameplaySettingWidget> GameplaySettingWidget;
 	
 	// TODO : 앞으로 Graphic, Game 등 다양한 세팅 위젯들이 추가될 때 이 곳에 추가
 	

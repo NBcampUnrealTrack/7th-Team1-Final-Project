@@ -7,6 +7,7 @@
 #include "Components/WidgetSwitcher.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "SoundSetting/SoundSettingWidget.h"
+#include "GameplaySetting/NSGameplaySettingWidget.h"
 
 void UNSOptionWidget::NativeConstruct()
 {
@@ -25,8 +26,39 @@ void UNSOptionWidget::NativeConstruct()
 		CloseButton->OnClicked().AddUObject(this, &UNSOptionWidget::OnClickedCloseButton);
 	}
 	
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->OnClicked().AddUObject(
+			this,
+			&ThisClass::OnClickedGameplayCategoryButton);
+	}
+	
 }
 
+void UNSOptionWidget::NativeDestruct()
+{
+	if (SoundCategoryButton)
+	{
+		SoundCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (GraphicCategoryButton)
+	{
+		GraphicCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (CloseButton)
+	{
+		CloseButton->OnClicked().RemoveAll(this);
+	}
+
+	Super::NativeDestruct();
+}
 void UNSOptionWidget::OnClickedSoundCategoryButton()
 {
 	ShowOptionCategoryWidget(SoundSettingWidget);
@@ -35,6 +67,11 @@ void UNSOptionWidget::OnClickedSoundCategoryButton()
 void UNSOptionWidget::OnClickedGraphicCategoryButton()
 {
 	ShowOptionCategoryWidget(GraphicSettingWidget);
+}
+
+void UNSOptionWidget::OnClickedGameplayCategoryButton()
+{
+	ShowOptionCategoryWidget(GameplaySettingWidget);
 }
 
 void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
