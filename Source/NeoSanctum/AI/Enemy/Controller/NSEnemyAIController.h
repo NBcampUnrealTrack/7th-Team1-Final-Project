@@ -3,43 +3,22 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "AIController.h"
-#include "GameplayTagContainer.h"
+#include "NSEnemyControllerBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionTypes.h" // FAIStimulus
 #include "NSEnemyAIController.generated.h"
 
-class UGameplayAbility;
 class UNSEnemyData;
-class ANSEnemyCharacterBase;
+class UNSEnemyAttackComponent;
+class UNSEnemyTargetComponent;
+class UNSEnemyThreatComponent;
+class UNSEnemyMeleeComponent;
+class UNSEnemyMoveComponent;
+
 struct FNSEnemyAttackRow;
-struct FNSEnemyPhaseRow;
-struct FAbilityEndedData;
-
-// 타임스탬프 데미지
-struct FNSThreatDamageSample
-{
-	double Timestamp = 0.0;
-	float Damage = 0.0f;
-};
-
-// 최근 일정 시간의 데미지를 기록해 위험도 측정
-struct FNSTargetThreatRecord
-{
-	TWeakObjectPtr<AActor> TargetActor;
-
-	TArray<FNSThreatDamageSample> DamageSamples;
-
-	FVector LastKnownLocation = FVector::ZeroVector;
-
-	double LastSeenTime = -1.0;
-	double LastStimulusTime = -1.0;
-
-	bool bCurrentlyVisible = false;
-};
 
 UCLASS()
-class NEOSANCTUM_API ANSEnemyAIController : public AAIController
+class NEOSANCTUM_API ANSEnemyAIController : public ANSEnemyControllerBase
 {
 	GENERATED_BODY()
 
@@ -61,6 +40,19 @@ public:
 
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
+	
+private:
+	// 현재 Possess 중인 Enemy의 Target Component를 반환하는 함수
+	UNSEnemyTargetComponent* GetEnemyTargetComponent() const;
+	
+	// 현재 Possess 중인 Enemy의 Threat Component를 반환하는 함수
+	UNSEnemyThreatComponent* GetEnemyThreatComponent() const;
+	
+	// 현재 Possess 중인 Enemy의 Melee Component를 반환하는 함수
+	UNSEnemyMeleeComponent* GetEnemyMeleeComponent() const;
+	
+	// 현재 Possess 중인 Enemy의 Move Component를 반환하는 함수
+	UNSEnemyMoveComponent* GetEnemyMoveComponent() const;
 
 public:
 	// 타겟과의 현재 거리/방향/시야 기준으로 사용 가능한 공격이 하나라도 있는지 확인
@@ -96,29 +88,15 @@ protected:
 private:
 	/* 타겟 액터 키 이름 */
 	FName TargetActorKey = TEXT("TargetActor");
-
-	UPROPERTY(Transient)
-	TObjectPtr<UBlackboardComponent> CachedBBComp;
-
-	/* AttackId별 마지막 사용 시간 */
-	TMap<FName, float> LastAttackTimeById;
+	
+	// 현재 Possess 중인 Enemy의 Attack Component를 반환하는 함수
+	UNSEnemyAttackComponent* GetEnemyAttackComponent() const;
 
 private:
-	void UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor);
-
-	float GetMinimumAttackRange(const UNSEnemyData* EnemyData) const;
+	void UpdateRetreatState(AActor* TargetActor);
 
 	FName ShouldRetreatKey = TEXT("bShouldRetreat");
 	FName RetreatLocationKey = TEXT("RetreatLocation");
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatExitBuffer = 100.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatStepDistance = 250.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Combat")
-	float RetreatDestinationAcceptanceRadius = 75.0f;
 
 #pragma region 몬스터 어그로 관리
 
@@ -132,27 +110,6 @@ private:
 	// 현재 Threat 정보를 평가해 타깃 선택·유지·전환·해제를 처리하는 함수
 	void UpdateTargetSelection();
 
-	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영하는 함수
-	void UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus);
-
-	// 만료된 피해 기록, 무효 타깃, 재선택 제한 정보를 정리하는 함수
-	void PruneThreatRecords(double CurrentTime);
-
-	// 피해량 우선, 피해가 없으면 거리 우선으로 가장 적합한 타깃을 찾는 함수
-	AActor* FindBestTarget(double CurrentTime) const;
-
-	// 설정된 시간 안에 특정 타깃이 가한 누적 피해량을 계산하는 함수
-	float GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const;
-
-	// 시야·최근 감지·피해 기록을 기준으로 해당 타깃을 계속 기억할지 판단하는 함수
-	bool IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const;
-
-	// 타깃 잠금시간과 Threat 차이를 확인해 현재 타깃을 교체할지 결정하는 함수
-	bool ShouldSwitchTarget(AActor* CandidateTarget, double CurrentTime) const;
-
-	// 새 전투 타깃을 지정하고 선택 시간과 Blackboard 상태를 초기화하는 함수
-	void SetCurrentCombatTarget(AActor* NewTarget);
-
 	// 현재 타깃과 관련 Blackboard 값을 제거하고 필요하면 재선택을 잠시 차단하는 함수
 	void ClearCurrentCombatTarget(bool bBlockReacquisition);
 
@@ -165,75 +122,8 @@ private:
 	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
 	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;
 
-protected:
-	/* 설정 변수 */
-
-	/* 타깃 선택 로직을 다시 평가하는 최소 간격 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.05"))
-	float TargetEvaluationInterval = 0.25f;
-
-	/* 시야에서 사라진 타깃을 계속 기억하는 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
-	float SightMemoryDuration = 2.0f;
-
-	/* 청각 등 비시각 감지 정보를 유지하는 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
-	float StimulusMemoryDuration = 3.0f;
-
-	/* 누적 피해 Threat 계산에 포함할 최근 시간 범위 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
-	float DamageThreatWindow = 10.0f;
-
-	/* 새 타깃 선택 직후 타깃 변경을 막는 최소 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
-	float InitialTargetLockDuration = 2.5f;
-
-	/* 한 번 타깃을 변경한 뒤 다시 변경할 수 있을 때까지의 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
-	float TargetSwitchCooldown = 2.0f;
-
-	/* 새 타깃의 피해 Threat가 현재 타깃보다 얼마나 높아야 전환할지 기준 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "1.0"))
-	float DamageThreatSwitchRatio = 1.25f;
-
-	/* 피해 기록이 없을 때 새 타깃이 얼마나 더 가까워야 전환할지 기준 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float DistanceSwitchRatio = 0.7f;
-
-	/* 공격하지 못한 상태로 타깃을 계속 추적할 수 있는 최대 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.1"))
-	float MaxPursuitWithoutAttackDuration = 10.0f;
-
-	/* 추적 제한으로 포기한 타깃을 다시 선택하지 않는 시간 */
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Targeting", meta = (ClampMin = "0.0"))
-	float TargetReacquireCooldown = 2.0f;
-
 private:
 	/* 런타임 변수 */
-
-	/* 감지한 타깃별 시야, 위치, 피해 기록을 보관 */
-	TMap<TWeakObjectPtr<AActor>, FNSTargetThreatRecord> ThreatRecords;
-
-	/* 어그로가 해제된 타깃을 다시 선택할 수 있는 시간을 기록 */
-	TMap<TWeakObjectPtr<AActor>, double> ReacquireBlockedUntil;
-
-	/* 현재 AI가 선택한 전투 타깃 */
-	TWeakObjectPtr<AActor> CurrentCombatTarget;
-
-	/* 현재 타깃이 선택된 시점 */
-	double CurrentTargetSelectedTime = 0.0;
-
-	/* 마지막으로 타깃을 변경한 시점 */
-	double LastTargetSwitchTime = 0.0;
-
-	/* 현재 타깃을 향해 공격을 시작했거나 전투 진행이 발생한 마지막 시점 */
-	double LastCombatProgressTime = 0.0;
-
-	/* 다음 타깃 평가를 실행할 시점 */
-	double NextTargetEvaluationTime = 0.0;
-
-	/* 현재 타깃을 대상으로 한 공격이 한 번이라도 시작됐는지 여부 */
-	bool bAttackStartedOnCurrentTarget = false;
 
 	/* 마지막으로 확인한 타깃 위치를 저장할 Blackboard 키 이름 */
 	FName TargetLastKnownLocationKey = TEXT("TargetLastKnownLocation");
@@ -285,9 +175,6 @@ private:
 
 protected:
 	/* 런타임 변수 */
-	
-	/* 현재 예약을 요청했거나 활성 예약을 보유한 타깃 */
-	TWeakObjectPtr<AActor> MeleeReservationTarget;
 
 	/* 근접 공격 예약 보유 상태를 저장하는 블랙보드 키 이름 */
 	FName HasMeleeAttackReservationKey = TEXT("bHasMeleeAttackReservation");
@@ -332,20 +219,8 @@ private:
 #pragma region 추적 방향
 
 	// 추적·공격·후퇴 상태에 따라 이동 방향 회전과 타깃 방향 회전을 전환되는 함수
-	void UpdateFacingMode(
-		ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor);
+	void UpdateFacingMode(AActor* TargetActor);
 
-	// 현재 거리가 몬스터 공격 중 하나의 사용 가능 거리 안에 있는지 확인하는 함수
-	bool IsWithinPotentialAttackRange(
-		const ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor) const;
-
-	// 이동 방향 회전 또는 타깃 방향 회전 설정을 CharacterMovement에 적용하는 함수
-	void ApplyFacingMode(
-		ANSEnemyCharacterBase* Enemy,
-		AActor* TargetActor,
-		bool bFaceTarget);
 #pragma endregion
 #pragma region 타깃 트레이스
 
@@ -354,31 +229,8 @@ public:
 	AActor* GetCurrentAttackActor() const;
 
 private:
-	// 공격 정의가 현재 타깃/발사 대상/거리/시야 조건을 만족하는지 확인하는 함수
-	bool CanUseAttackRow(
-		const FNSEnemyAttackRow& AttackRow,
-		const UNSEnemyData* EnemyData,
-		float HealthRatio,
-		const AActor* TargetActor,
-		const AActor* AttackActor,
-		float Distance,
-		bool bHasDirectLineOfSight) const;
-
 	// 플레이어까지 Trace해서 실제로 쏠 Actor를 계산하는 함수
 	AActor* ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const;
-
-	// 파괴 가능 엄폐물을 원거리 공격 대상으로 사용할 수 있는지 확인하는 함수
-	bool CanUseDestructibleCoverAttack(
-		const FNSEnemyAttackRow& AttackRow,
-		const AActor* TargetActor,
-		const AActor* AttackActor,
-		bool bHasDirectLineOfSight) const;
-
-	// Actor Bounds 기준 조준 위치를 계산하는 함수
-	FVector GetAttackAimLocation(const AActor* Actor) const;
-
-	// 엄폐물 판정 Trace 시작 위치를 계산하는 함수
-	FVector GetCoverAttackTraceStart() const;
 
 	// Blackboard의 AttackActor 키를 갱신하는 함수
 	void SetAttackActorBlackboard(AActor* AttackActor);
@@ -386,57 +238,26 @@ private:
 	// 실제 발사 대상을 저장할 Blackboard 키 이름
 	FName AttackActorKey = TEXT("AttackActor");
 
-protected:
-	// 파괴 가능 엄폐물이 시야를 막으면 그 엄폐물을 원거리 공격 대상으로 삼을지 여부
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack")
-	bool bAttackDestructibleCover = true;
-
-	// 엄폐물 Trace/조준 위치를 Bounds 중심에서 위로 보정하는 비율
-	UPROPERTY(EditDefaultsOnly, Category = "AI|Cover Attack", meta = (ClampMin = "0.0"))
-	float CoverAttackAimZOffsetRatio = 0.15f;
-
 #pragma endregion
-private:
-#pragma region 페이즈 전환
+#pragma region 블랙보드 상태
 
-public:
-	// 현재 몬스터의 Health / MaxHealth 기준 체력 비율을 반환하는 함수
-	float GetControlledEnemyHealthRatio() const;
+	// Possess 시 기본 Blackboard 상태를 초기화하는 함수
+	void InitBBState();
 
-private:
-	// 현재 체력 비율 기준으로 Enemy Phase 변경 여부를 확인하는 함수
-	void UpdateEnemyPhase();
+	// 공격 가능 여부를 Blackboard에 기록하는 함수
+	void SetCanAttackBB(bool bCanAttack);
 
-	// 새 Phase에 진입할 때 PhaseTag, TransitionGA, Pattern Lock을 적용하는 함수
-	void EnterEnemyPhase(const FNSEnemyPhaseRow& NewPhaseRow, bool bPlayTransition);
+	// 피격 경직 상태를 Blackboard에 기록하는 함수
+	void SetHitReactBB(bool bHitReacting);
 
-	// Phase Transition GA가 끝났을 때 Pattern Lock을 해제하는 함수
-	void OnPhaseTransitionAbilityEnded(const FAbilityEndedData& AbilityEndedData);
+	// 공격 진행 상태를 초기화하는 함수
+	void ClearAttackBB();
 
-	// Phase 전환 중 공격 패턴 선택을 막고 있는지 확인하는 함수
-	bool IsPhasePatternLocked() const { return bPhasePatternLocked; }
+	// 타겟 관련 Blackboard 값을 초기화하는 함수
+	void ClearTargetBB(bool bClearCanAttack);
 
-private:
-	// 현재 적용된 PhaseId
-	FName CurrentPhaseId = NAME_None;
-
-	// 현재 적용된 PhaseTag
-	FGameplayTag CurrentPhaseTag;
-
-	// 최초 Phase 초기화가 끝났는지 여부
-	bool bPhaseInitialized = false;
-
-	// Phase 전환 중 공격 패턴 선택을 막는지 여부
-	bool bPhasePatternLocked = false;
-
-	// 현재 실행 중인 Phase Transition GA
-	TSubclassOf<UGameplayAbility> CurrentPhaseTransitionGA;
-
-	// Phase Lock 상태를 저장할 Blackboard 키 이름
-	FName PhasePatternLockedKey = TEXT("bPhasePatternLocked");
-
-	// 현재 PhaseId를 저장할 Blackboard 키 이름
-	FName CurrentPhaseIdKey = TEXT("CurrentPhaseId");
+	// 후퇴 관련 Blackboard 값을 초기화하는 함수
+	void ClearRetreatBB();
 
 #pragma endregion
 };

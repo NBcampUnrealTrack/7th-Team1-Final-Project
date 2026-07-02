@@ -5,7 +5,7 @@
 
 #include "GameplayEffectExtension.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
-#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
@@ -42,13 +42,9 @@ void UNSMonsterAttributeSet::ResetHitGauge()
 	SetHitGauge(0.0f);
 }
 
-void UNSMonsterAttributeSet::AccumulateHitGauge(ANSEnemyCharacterBase* EnemyCharacter)
+void UNSMonsterAttributeSet::AccumulateHitGauge(UNSEnemyStateComponent* EnemyState)
 {
-	if (!EnemyCharacter ||
-		!EnemyCharacter->HasAuthority() ||
-		EnemyCharacter->IsDead() ||
-		EnemyCharacter->IsInPool() ||
-		EnemyCharacter->IsHitReacting())
+	if (!EnemyState || !EnemyState->CanReceiveHitGauge())
 	{
 		return;
 	}
@@ -67,10 +63,10 @@ void UNSMonsterAttributeSet::AccumulateHitGauge(ANSEnemyCharacterBase* EnemyChar
 
 	if (NewGauge >= GaugeMaximum)
 	{
-		// 경직 처리가 현재 최대 게이지를 확인할 수 있도록 이벤트를 먼저 발생
-		EnemyCharacter->NotifyHitGaugeThresholdReached();
-
-		// 요구사항에 따라 임계 이벤트 발생 후 게이지를 0으로 초기화
+		// 피격 게이지 최대치 도달 시 Hit Reaction GA 실행 시도 
+		EnemyState->StartHitReaction();
+		
+		// 현재 피격 게이지를 0으로 초기화
 		ResetHitGauge();
 	}
 }
@@ -120,9 +116,11 @@ void UNSMonsterAttributeSet::ReportDamageSenseEvent(const FGameplayEffectModCall
 		DamagedActor->GetActorLocation());
 }
 
-void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(ANSEnemyCharacterBase* EnemyCharacter, float PreviousHealth)
+void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(
+	UNSEnemyStateComponent* EnemyState,
+	float PreviousHealth)
 {
-	if (!EnemyCharacter)
+	if (!EnemyState)
 	{
 		return;
 	}
@@ -135,17 +133,17 @@ void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(ANSEnemyCharacterBase* En
 		return;
 	}
 
-	AccumulateHitGauge(EnemyCharacter);
+	AccumulateHitGauge(EnemyState);
 }
 
-void UNSMonsterAttributeSet::HandleDeathAfterEffect(ANSEnemyCharacterBase* EnemyCharacter) const
+void UNSMonsterAttributeSet::HandleDeathAfterEffect(UNSEnemyStateComponent* EnemyState) const
 {
-	if (!EnemyCharacter || GetHealth() > 0.0f)
+	if (!EnemyState || GetHealth() > 0.0f)
 	{
 		return;
 	}
 
-	EnemyCharacter->Die();
+	EnemyState->Die();
 }
 
 AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorActor) const
@@ -170,11 +168,13 @@ void UNSMonsterAttributeSet::ExecuteDamageFlashCueAfterDamage(
 	const FGameplayEffectModCallbackData& Data,
 	float PreviousHealth) const
 {
-	ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor());
+	UNSEnemyStateComponent* EnemyState = GetTargetEnemyState(Data);
+	AActor* AvatarActor = Data.Target.GetAvatarActor();
 
-	if (!EnemyCharacter ||
-		!EnemyCharacter->HasAuthority() ||
-		EnemyCharacter->IsInPool())
+	if (!EnemyState ||
+		!AvatarActor ||
+		!AvatarActor->HasAuthority() ||
+		EnemyState->IsInactive())
 	{
 		return;
 	}
@@ -197,7 +197,7 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 {
 	const bool bIsDamageExecution = Data.EvaluatedData.Attribute == GetDamageAttribute();
 	const float PreviousHealth = GetHealth();
-	ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(Data.Target.GetAvatarActor());
+	UNSEnemyStateComponent* EnemyState = GetTargetEnemyState(Data);
 
 	// 부모 AttributeSet이 Damage Attribute를 소비하기 전에 처리
 	if (bIsDamageExecution)
@@ -207,12 +207,18 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 
 	// Defense 적용, Damage 초기화, 실제 Health 차감을 처리
 	Super::PostGameplayEffectExecute(Data);
-	
 	if (bIsDamageExecution)
 	{
 		ExecuteDamageFlashCueAfterDamage(Data, PreviousHealth);
-		HandleHitGaugeAfterDamage(EnemyCharacter, PreviousHealth);
+		HandleHitGaugeAfterDamage(EnemyState, PreviousHealth);
 	}
 
-	HandleDeathAfterEffect(EnemyCharacter);
+	HandleDeathAfterEffect(EnemyState);
+}
+
+UNSEnemyStateComponent* UNSMonsterAttributeSet::GetTargetEnemyState(
+	const FGameplayEffectModCallbackData& Data) const
+{
+	AActor* AvatarActor = Data.Target.GetAvatarActor();
+	return AvatarActor ? AvatarActor->FindComponentByClass<UNSEnemyStateComponent>() : nullptr;
 }

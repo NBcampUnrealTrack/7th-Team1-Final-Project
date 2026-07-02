@@ -6,6 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
 #include "NeoSanctum/Core/GameFlow/NSDifficultyType.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
@@ -20,18 +23,25 @@ class ANSEnemyWeaponBase;
 class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
+class UNSEnemyPhaseComponent;
+class UNSEnemyAttackComponent;
+class UNSEnemyTargetComponent;
+class UNSEnemyThreatComponent;
+class UNSEnemyMeleeComponent;
+class UNSEnemyMoveComponent;
+class UNSEnemyStateComponent;
 
 UCLASS(Abstract)
-class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter, public IAbilitySystemInterface,
-                                             public IGenericTeamAgentInterface
+class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter,
+                                             public IAbilitySystemInterface,
+                                             public IGenericTeamAgentInterface,
+                                             public INSEnemyAgent
 {
 	GENERATED_BODY()
 
 public:
 	ANSEnemyCharacterBase();
 	virtual void BeginPlay() override;
-
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
 
 	/*
 	 * EnemyCharacter가 타겟팅 혹은 피격되었을 때 진영을 알기 위한 TeamId 조회
@@ -43,45 +53,97 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	FORCEINLINE UNSEnemyData* GetEnemyData() const { return EnemyData; }
+	virtual UNSEnemyData* GetEnemyData() const override
+	{
+		return CoreComponent ? CoreComponent->GetEnemyData() : nullptr;
+	}
+
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
+
+	// Enemy 공통 Interface에서 사용하는 주 메시 반환 함수
+	virtual USkeletalMeshComponent* GetEnemyMesh() const override { return GetMesh(); }
+
+	// 현재 실행 중인 공격 Row를 저장하는 함수
+	virtual void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow) override;
+
+	// 현재 실행 중인 공격 Row를 반환하는 함수
+	virtual const FNSEnemyAttackRow* GetCurrentAttackRow() const override;
+
+	// 현재 실행 중인 공격 Row를 초기화하는 함수
+	virtual void ClearCurrentAttackRow() override;
+
+	// Enemy 공통 Interface에서 공격, 조준, Trace 기준으로 사용할 위치를 반환하는 함수
+	virtual FVector GetAimLocation() const override;
 
 	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
-	
-public:
-	// 현재 실행 중인 공격 Row를 저장하는 함수
-	void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow);
-
-	// 현재 실행 중인 공격 Row를 반환하는 함수
-	const FNSEnemyAttackRow* GetCurrentAttackRow() const;
-
-	// 현재 실행 중인 공격 Row를 초기화하는 함수
-	void ClearCurrentAttackRow();
-	
-private:
-	// 현재 실행 중인 공격 Row
-	UPROPERTY(Transient)
-	FNSEnemyAttackRow CurrentAttackRow;
-
-	// 현재 공격 Row가 유효한지 여부
-	UPROPERTY(Transient)
-	bool bHasCurrentAttackRow = false;
 
 public:
 	void Die();
 
 	// (이용호 추가) 외부에서 생존 여부 확인용
-	bool IsDead() const { return bIsDead; }
-	bool IsInPool() const { return bIsInPool; }
-	
+	bool IsDead() const;
+	bool IsInPool() const;
+
 	// 스폰 시 데이터 주입용 (BeginPlay 전 호출)
 	void SetEnemyData(UNSEnemyData* InEnemyData);
-	
+
 	void PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation);
 	void DeactivateForPool();
-	
-	void SetDifficultyScale(const FNSDifficultyScale& InScale) { CurrentDifficultyScale = InScale; }
+
+	void SetDifficultyScale(const FNSDifficultyScale& InScale)
+	{
+		if (CoreComponent)
+		{
+			CoreComponent->SetDifficultyScale(InScale);
+		}
+	}
+
+protected:
+	// Enemy의 현재 공격 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyCombatComponent> CombatComponent;
+
+	// Enemy의 Phase 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyPhaseComponent> PhaseComponent;
+
+	// EnemyData와 GAS 초기화를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyCoreComponent> CoreComponent;
+
+	// Enemy의 공격 선택과 공격 쿨다운을 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyAttackComponent> AttackComponent;
+
+	// Enemy의 공격 대상 판정과 엄폐물 Trace를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyTargetComponent> TargetComponent;
+
+	// Enemy의 Threat 기록과 어그로 타겟 선택을 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyThreatComponent> ThreatComponent;
+
+	// Enemy의 근접 예약 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyMeleeComponent> MeleeComponent;
+
+	// Enemy의 후퇴와 전투 회전 방향을 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyMoveComponent> MoveComponent;
+
+	// Enemy의 사망, 비활성, 피격 경직 상태를 관리하는 공통 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyStateComponent> StateComponent;
+
+	// 디졸브 효과 컴포넌트
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
+
+	// 무기 장착 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -90,47 +152,18 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
 
-	UPROPERTY(EditDefaultsOnly, ReplicatedUsing = OnRep_EnemyData, Category = "Character Data")
-	TObjectPtr<UNSEnemyData> EnemyData;
-
-	UFUNCTION()
-	void OnRep_EnemyData();
-
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<UGameplayAbility> DeathAbilityClass;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
-
 protected:
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_bIsDead, Category = "GAS|Death")
-	bool bIsDead = false;
-
-	UFUNCTION()
-	void OnRep_bIsDead();
-	
 	//(이용호 추가)
 	void ApplyAliveVisual();
-	void ApplyDeadVisual();
 	void ApplyVisualData();
 	void InitializeFromData(bool bFullInit);
 
 private:
 	//(이용호 추가)
 	void OnDissolveFinished();
-	UPROPERTY(ReplicatedUsing = OnRep_bIsInPool)
-	bool bIsInPool = false;
-	// 기본값 = {1,1,1} (따로 값 호출안되면 기본 배율인 1배 적용)
-	FNSDifficultyScale CurrentDifficultyScale;
-	
-	UFUNCTION()
-	void OnRep_bIsInPool();
 
-	UPROPERTY(Transient)
-	bool bHasCurrentAttackDefinition = false;
+	// CoreComponent의 EnemyData가 변경됐을 때 시각 데이터를 갱신하는 함수
+	void HandleEnemyDataChanged(UNSEnemyData* NewEnemyData);
 
 public:
 	void UpdateCombatAimTarget(AActor* TargetActor);
@@ -148,7 +181,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Aim")
 	float AimTargetZOffsetRatio = 0.15f;
-	
+
 	//NavLink 점프 관련 - 이준로 추가
 public:
 	virtual void Landed(const FHitResult& Hit) override;
@@ -160,7 +193,7 @@ public:
 private:
 	// NavLink 점프로 인한 착지인지 확인 (일반 착지엔 NavMesh 보정 개입 X)
 	bool bNavLinkJumping = false;
-	
+
 public:
 	void SetRetreating(bool bInRetreating);
 	bool IsRetreating() const { return bIsRetreating; }
@@ -172,12 +205,6 @@ protected:
 #pragma region 피격 관리
 
 public:
-	// 피격 게이지가 최대치에 도달했음을 전달하는 델리게이트
-	DECLARE_MULTICAST_DELEGATE(FOnHitGaugeThresholdReached);
-
-	// 피격 게이지가 최대치에 도달했을 때 서버에서 발생하는 이벤트
-	FOnHitGaugeThresholdReached OnHitGaugeThresholdReached;
-
 	// 현재 피격 게이지를 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Combat|Hit Gauge")
 	float GetHitGauge() const;
@@ -190,30 +217,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat|Hit Gauge")
 	void ResetHitGauge();
 
-	// AttributeSet이 게이지 최대치 도달을 캐릭터에 알려줄 때 사용하는 함수
-	void NotifyHitGaugeThresholdReached();
-
 	// 현재 몬스터가 피격 경직 행동을 수행 중인지 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Combat|Hit Reaction")
-	bool IsHitReacting() const { return bIsHitReacting; }
+	virtual bool IsHitReacting() const override;
 
 	// 피격 경직 Ability 종료 후 이동과 Behavior Tree 행동을 복구하는 함수
 	void FinishHitReaction();
 
-protected:
-	// 현재 피격 경직 여부를 서버에서 관리하고 클라이언트에 복제
-	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Hit Reaction")
-	bool bIsHitReacting = false;
-
 private:
-	// 피격 게이지 임계 이벤트를 받아 경직 Ability 실행을 시도하는 함수
-	void HandleHitGaugeThresholdReached();
+	// StateComponent에서 사망 처리가 시작됐을 때 서버 전용 후처리를 수행하는 함수
+	void HandleDeathStarted();
 
-	// 경직 상태를 변경하고 AI Controller에 시작 또는 종료를 알리는 함수
-	void SetHitReactionState(bool bNewHitReacting);
+	// StateComponent의 사망 상태 변경을 받아 시각 상태를 갱신하는 함수
+	void HandleDeadStateChanged(bool bDead);
+
+	// StateComponent의 비활성 상태 변경을 받아 풀링 시각 상태를 갱신하는 함수
+	void HandleInactiveStateChanged(bool bInactive);
+
+	// StateComponent의 피격 경직 상태 변경을 받아 AI 상태를 갱신하는 함수
+	void HandleHitReactionStateChanged(bool bHitReacting);
 
 #pragma endregion
-	
+
 #pragma region MID 적용
 
 protected:
@@ -224,7 +249,7 @@ protected:
 	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
-	
+
 	// 현재 몬스터 외형에 적용된 런타임 MID 배열
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> RuntimeVisualMaterials;
