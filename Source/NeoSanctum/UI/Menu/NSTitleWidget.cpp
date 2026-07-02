@@ -96,7 +96,7 @@ void UNSTitleWidget::OnClickedConfirmJoinButton()
 		return;
 	}
 	//입력한 IP 주소로 참가 요청
-	SessionSubsystem->JoinSessionByAddress(InputAddress);
+	// SessionSubsystem->JoinSessionByAddress(InputAddress);
 	UE_LOG(LogTemp,Warning,TEXT("참가 : %s"), *InputAddress);
 }
 
