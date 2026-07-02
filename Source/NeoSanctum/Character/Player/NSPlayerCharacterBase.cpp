@@ -540,6 +540,7 @@ void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InC
 	
 	InCharacterData->SkeletalMesh.LoadSynchronous();
 	InCharacterData->AnimClass.LoadSynchronous();
+	InCharacterData->UpperBodyAnimLayerClass.LoadSynchronous();
 	InCharacterData->InitialAttributeEffect.LoadSynchronous();
 	InCharacterData->DefaultWeaponClass.LoadSynchronous();
 	
@@ -651,6 +652,12 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 	if (LoadedAnimClass)
 	{
 		GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
+	}
+
+	UClass* LoadedUpperBodyAnimLayerClass = CurrentCharacterData->UpperBodyAnimLayerClass.Get();
+	if (LoadedUpperBodyAnimLayerClass)
+	{
+		GetMesh()->LinkAnimClassLayers(LoadedUpperBodyAnimLayerClass);
 	}
 }
 
