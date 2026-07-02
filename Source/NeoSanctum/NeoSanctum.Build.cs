@@ -17,6 +17,9 @@ public class NeoSanctum : ModuleRules
 			// Settings
 			"DeveloperSettings",
 			
+			// 클립보드 복사용
+			"ApplicationCore",
+			
 			// Input
 			"InputCore", "EnhancedInput",
 			
