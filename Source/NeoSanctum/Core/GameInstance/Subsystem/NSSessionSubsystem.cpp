@@ -14,6 +14,22 @@
 
 // AppID 오염 방지용 키(후에 자체 AppID 발급받으면 제거 가능)
 static const FName NS_SESSION_KEY = FName(TEXT("NS_GAMEKEY"));
+// 초대코드용 키
+static const FName NS_INVITE_CODE_KEY = FName(TEXT("NS_INVITECODE"));
+
+// 초대 코드 발급용 함수
+static FString GenerateInviteCode()
+{
+	// 헷갈리는 0,O,1,I 제외 (후에 수정 가능)
+	static const FString Charset = TEXT("ABCDEFGHJKLMNPQRSTUVWXYZ23456789");
+	FString Code;
+	for (int32 i = 0; i < 8; ++i)
+	{
+		Code.AppendChar(Charset[FMath::RandRange(0, Charset.Len() - 1)]);
+	}
+	
+	return Code;
+}
 
 void UNSSessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -128,6 +144,25 @@ void UNSSessionSubsystem::StartGameToHub()
 
 void UNSSessionSubsystem::CreateSession()
 {
+	if (!SessionInterface.IsValid())
+	{
+		return;
+	}
+
+	// 이미 세션이 존재하면 재생성하지 않음
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("이미 세션이 존재하므로 재생성 무시"));
+		// 기존 코드를 UI에 다시 알려줌 (세션 생성 버튼 눌러도 코드 변경 X)
+		const FString ExistingCode = GetCurrentInviteCode();
+		if (!ExistingCode.IsEmpty())
+		{
+			OnInviteCodeReady.Broadcast(ExistingCode);
+		}
+		
+			return;
+	}
+	
 	// 이미 Host 생성/삭제/예약 과정이 진행 중이면 연타 요청 무시
 	if (bIsCreatingSession ||
 		bIsDestroyingSession ||
@@ -340,6 +375,11 @@ void UNSSessionSubsystem::UnregisterPlayerInSession(const FUniqueNetIdRepl& Play
 		*PlayerId.GetUniqueNetId());
 }
 
+FString UNSSessionSubsystem::GetCurrentInviteCode() const
+{
+	return CurrentInviteCode;
+}
+
 void UNSSessionSubsystem::StartRunSession()
 {
 	// 클라는 세션 상태 제어 안 함
@@ -415,6 +455,18 @@ void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasS
 	}
 	
 	OnCreateSessionComplete.Broadcast(true);
+	
+	// 초대 코드 발급하면 UI로 전달
+	const FString InviteCode = GetCurrentInviteCode();
+	if (!InviteCode.IsEmpty())
+	{
+		UE_LOG(LogTemp, Log, TEXT("초대 코드 발급: %s"), *InviteCode);
+		OnInviteCodeReady.Broadcast(InviteCode);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("세션 ID를 얻지 못해 초대 코드 발급 실패"));
+	}
 }
 
 void UNSSessionSubsystem::OnDestroySessionCompleted(FName SessionName, bool bWasSuccessful)
@@ -931,6 +983,11 @@ void UNSSessionSubsystem::StartCreateSession()
 		LastSessionSettings->bAllowInvites = true;
 		
 		// 키 필터: 같은 키를 가진 세션끼리만 검색에 잡힘
+		CurrentInviteCode = GenerateInviteCode();
+		LastSessionSettings->Set(
+			NS_INVITE_CODE_KEY,
+			CurrentInviteCode,
+			EOnlineDataAdvertisementType::ViaOnlineService);
 		LastSessionSettings->Set(
 			NS_SESSION_KEY,
 			FString(TEXT("NeoSanctum")),
