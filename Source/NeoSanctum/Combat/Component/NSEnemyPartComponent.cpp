@@ -141,6 +141,37 @@ void UNSEnemyPartComponent::GetPartRowsByAttackId(
 	}
 }
 
+bool UNSEnemyPartComponent::TryGetMuzzleTransformByAttackId(
+	FName AttackId,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (AttackId.IsNone())
+	{
+		return false;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (PartRow && TryGetMuzzleTransformFromPartRow(*PartRow, OutTransform))
+		{
+			return true;
+		}
+	}
+
+	// DT_EnemyParts가 없는 기존 데이터 보호용 fallback
+	if (IsValid(CurrentWeapon))
+	{
+		return CurrentWeapon->TryGetMuzzleTransform(OutTransform);
+	}
+
+	return false;
+}
+
 void UNSEnemyPartComponent::HandleOwnerDeathStarted()
 {
 	for (const FNSSpawnedEnemyPart& SpawnedPart : SpawnedParts)
@@ -265,4 +296,84 @@ FAttachmentTransformRules UNSEnemyPartComponent::MakeAttachmentRules(const FNSEn
 	default:
 		return FAttachmentTransformRules::KeepRelativeTransform;
 	}
+}
+
+bool UNSEnemyPartComponent::TryGetMuzzleTransformFromPartRow(
+	const FNSEnemyPartRow& PartRow,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (PartRow.MuzzleSocket.IsNone())
+	{
+		if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+		{
+			if (const ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(SpawnedActor))
+			{
+				return Weapon->TryGetMuzzleTransform(OutTransform);
+			}
+		}
+
+		return false;
+	}
+
+	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+	{
+		if (TryGetSocketTransformFromActor(SpawnedActor, PartRow.MuzzleSocket, OutTransform))
+		{
+			return true;
+		}
+	}
+
+	return TryGetSocketTransformFromOwnerMesh(PartRow.MuzzleSocket, OutTransform);
+}
+
+bool UNSEnemyPartComponent::TryGetSocketTransformFromActor(
+	AActor* Actor,
+	FName SocketName,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (!IsValid(Actor) || SocketName.IsNone())
+	{
+		return false;
+	}
+
+	TArray<USceneComponent*> SceneComponents;
+	Actor->GetComponents<USceneComponent>(SceneComponents);
+
+	for (USceneComponent* SceneComponent : SceneComponents)
+	{
+		if (IsValid(SceneComponent) && SceneComponent->DoesSocketExist(SocketName))
+		{
+			OutTransform = SceneComponent->GetSocketTransform(SocketName, RTS_World);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UNSEnemyPartComponent::TryGetSocketTransformFromOwnerMesh(
+	FName SocketName,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (SocketName.IsNone())
+	{
+		return false;
+	}
+
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(GetOwner());
+	USkeletalMeshComponent* MeshComponent = EnemyAgent ? EnemyAgent->GetEnemyMesh() : nullptr;
+
+	if (!IsValid(MeshComponent) || !MeshComponent->DoesSocketExist(SocketName))
+	{
+		return false;
+	}
+
+	OutTransform = MeshComponent->GetSocketTransform(SocketName, RTS_World);
+	return true;
 }

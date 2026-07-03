@@ -7,7 +7,8 @@
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -51,7 +52,7 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 			NextSection,
 			AttackMontage);
 	}
-	
+
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
 
 	// 서버에서만 실행
@@ -75,10 +76,19 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 
 	Enemy->UpdateCombatAimTarget(AttackActor);
 
-	ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon();
+	const FNSEnemyAttackRow* CurrentAttackRow = Enemy->GetCurrentAttackRow();
+	if (!CurrentAttackRow)
+	{
+		return;
+	}
+
+	const UNSEnemyPartComponent* PartComponent = Enemy->FindComponentByClass<UNSEnemyPartComponent>();
 
 	FTransform MuzzleTransform;
-	if (!IsValid(Weapon) || !Weapon->TryGetMuzzleTransform(MuzzleTransform))
+	if (!PartComponent ||
+		!PartComponent->TryGetMuzzleTransformByAttackId(
+			CurrentAttackRow->AttackId,
+			MuzzleTransform))
 	{
 		return;
 	}
@@ -95,8 +105,8 @@ void UGA_EnemyAttackRanger::HandleAttackEvent(const FGameplayEventData& Payload)
 
 	const FVector StartLocation = MuzzleTransform.GetLocation();
 	const FVector AimLocation = Enemy->HasCombatAimTarget()
-		? Enemy->GetCombatAimTargetLocation()
-		: AttackActor->GetActorLocation();
+		                            ? Enemy->GetCombatAimTargetLocation()
+		                            : AttackActor->GetActorLocation();
 
 	FVector Direction = (AimLocation - StartLocation).GetSafeNormal();
 

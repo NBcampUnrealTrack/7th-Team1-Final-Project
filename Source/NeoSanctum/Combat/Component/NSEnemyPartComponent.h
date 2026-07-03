@@ -59,6 +59,9 @@ public:
 	// AttackId와 연결된 Part Row 목록을 반환하는 함수
 	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
 
+	// AttackId와 연결된 첫 번째 사용 가능 Muzzle Transform을 반환하는 함수
+	bool TryGetMuzzleTransformByAttackId(FName AttackId, FTransform& OutTransform) const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -80,6 +83,15 @@ private:
 
 	// EnemyPart AttachRule을 엔진 Attachment Rule로 변환하는 함수
 	FAttachmentTransformRules MakeAttachmentRules(const FNSEnemyPartRow& PartRow) const;
+
+	// Part Row가 가리키는 Muzzle Transform을 반환하는 함수
+	bool TryGetMuzzleTransformFromPartRow(const FNSEnemyPartRow& PartRow, FTransform& OutTransform) const;
+
+	// Actor 내부 SceneComponent에서 소켓 Transform을 찾는 함수
+	bool TryGetSocketTransformFromActor(AActor* Actor, FName SocketName, FTransform& OutTransform) const;
+
+	// Owner Enemy Mesh에서 소켓 Transform을 찾는 함수
+	bool TryGetSocketTransformFromOwnerMesh(FName SocketName, FTransform& OutTransform) const;
 
 private:
 	// 기존 일반 몬스터 코드와 호환되는 대표 무기 Actor
