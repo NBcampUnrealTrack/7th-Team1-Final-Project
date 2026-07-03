@@ -43,6 +43,12 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield_Multiply, "Effect.SetByCaller.MaxShield.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Add, "Effect.SetByCaller.Defense.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Multiply, "Effect.SetByCaller.Defense.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MoveSpeed_Add, "Effect.SetByCaller.MoveSpeed.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MoveSpeed_Multiply, "Effect.SetByCaller.MoveSpeed.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritChance_Add, "Effect.SetByCaller.CritChance.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritChance_Multiply, "Effect.SetByCaller.CritChance.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritDamage_Add, "Effect.SetByCaller.CritDamage.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritDamage_Multiply, "Effect.SetByCaller.CritDamage.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Add, "Effect.SetByCaller.ShieldRechargeRate.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Multiply, "Effect.SetByCaller.ShieldRechargeRate.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Add, "Effect.SetByCaller.ShieldRechargeCooldown.Add");
