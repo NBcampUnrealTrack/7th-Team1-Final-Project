@@ -24,10 +24,10 @@ struct FNSCharacterBaseStatRow : public FTableRowBase
 	float MaxHealth = 100.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float BaseDamage = 100.0f;
+	float BaseDamage = 20.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float Defense = 0.0f;
+	float Defense = 10.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MoveSpeed = 600.0f;
@@ -41,29 +41,29 @@ struct FNSCharacterBaseStatRow : public FTableRowBase
 	float CritDamage = 150.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxShield = 0.0f;
+	float MaxShield = 50.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float ShieldRechargeRate = 0.0f;
+	float ShieldRechargeRate = 10.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float ShieldRechargeCooldown = 0.0f;
+	float ShieldRechargeCooldown = 4.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxDashCount = 1.0f;
+	float MaxDashCount = 2.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float DashRegenRate = 0.0f;
+	float DashRegenRate = 0.5f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxAmmo = 0.0f;
+	float MaxAmmo = 5.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxSkill1Count = 0.0f;
+	float MaxSkill1Count = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxSkill2Count = 0.0f;
+	float MaxSkill2Count = 1.0f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
-	float MaxSkill3Count = 0.0f;
+	float MaxSkill3Count = 1.0f;
 };
