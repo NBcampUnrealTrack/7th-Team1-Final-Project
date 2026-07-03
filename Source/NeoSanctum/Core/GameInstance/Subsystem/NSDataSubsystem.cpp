@@ -17,8 +17,8 @@
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
-#include "NeoSanctum/Data/Util/NSDataSettings.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
@@ -399,11 +399,13 @@ void UNSDataSubsystem::StartLoadCommon()
 void UNSDataSubsystem::OnCommonAssetsLoaded()
 {
 	CacheLoaded(
-{ 
+{
 			CommonDataConfigAssetType,
 			CharacterAssetType
 		}
 	);
+	BuildPartRowCache();
+	BuildSlotRowCache();
 	StartLoadCommonReferenceAssets();
 }
 
@@ -617,21 +619,15 @@ void UNSDataSubsystem::StartLoadOutGame()
 void UNSDataSubsystem::OnOutGamePrimaryAssetsLoaded()
 {
 	CacheLoaded({ HubAssetType, PartAssetType });
-
-	const UNSDataSettings* Settings = GetDefault<UNSDataSettings>();
-	if (Settings && !Settings->PartDefinitionTable.IsNull() && Settings->PartDefinitionTable.Get() == nullptr)
-	{
-		UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
-			{ Settings->PartDefinitionTable.ToSoftObjectPath() },
-			FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGameAssetsLoaded));
-		return;
-	}
-
 	OnOutGameAssetsLoaded();
 }
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
 {
+	// 파츠샵을 열기 전에 모든 파츠 메시를 미리 로드해 첫 프리뷰부터 풀 밉 텍스처가 나오게 한다
+	// (허브 진입마다 실행 — 웜업 스테이지는 레벨과 함께 파괴되므로 복귀 시 재웜업 필요)
+	ANSPartPreviewStage::WarmupAllPartMeshes(GetGameInstance());
+
 	CacheLoaded(
 	{
 		OutGameDataConfigAssetType,
@@ -1148,8 +1144,8 @@ void UNSDataSubsystem::BuildPartRowCache()
 {
 	CachedPartRowsByDefId.Empty();
 
-	const UNSDataSettings* Settings = GetDefault<UNSDataSettings>();
-	UDataTable* DT = Settings ? Settings->PartDefinitionTable.Get() : nullptr;
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	UDataTable* DT = CommonConfig ? CommonConfig->PartsBaseStatTable.Get() : nullptr;
 	if (!DT)
 	{
 		return;
@@ -1181,4 +1177,42 @@ const FNSPartDefinitionRow* UNSDataSubsystem::GetPartRow(const FPrimaryAssetId& 
 const TMap<FPrimaryAssetId, FNSPartDefinitionRow>& UNSDataSubsystem::GetAllPartRows() const
 {
 	return CachedPartRowsByDefId;
+}
+
+// ================================================================
+// 슬롯 row 캐시
+// ================================================================
+
+void UNSDataSubsystem::BuildSlotRowCache()
+{
+	CachedSlotRowsBySlot.Empty();
+
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	UDataTable* DT = CommonConfig ? CommonConfig->PartsSlotBaseStatTable.Get() : nullptr;
+	if (!DT)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[DataSubsystem] PartSlotTable이 설정되지 않았습니다."));
+		return;
+	}
+
+	for (const FName& RowName : DT->GetRowNames())
+	{
+		const FNSPartSlotRow* Row =
+			DT->FindRow<FNSPartSlotRow>(RowName, TEXT("BuildSlotRowCache"), false);
+		if (!Row || !Row->bEnabled)
+		{
+			continue;
+		}
+		CachedSlotRowsBySlot.Add(Row->SlotTag, *Row);
+	}
+}
+
+const FNSPartSlotRow* UNSDataSubsystem::GetSlotRow(FGameplayTag Slot) const
+{
+	return CachedSlotRowsBySlot.Find(Slot);
+}
+
+const TMap<FGameplayTag, FNSPartSlotRow>& UNSDataSubsystem::GetAllSlotRows() const
+{
+	return CachedSlotRowsBySlot;
 }
