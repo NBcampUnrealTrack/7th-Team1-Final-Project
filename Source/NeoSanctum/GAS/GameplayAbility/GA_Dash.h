@@ -45,6 +45,12 @@ protected:
 	UFUNCTION()
 	void OnDashFinished();
 
+	// 대쉬 정상 종료 직후 Vanguard 대쉬공격 입력 창 열기
+	void AddDashAttackWindow();
+
+	// 대쉬공격 입력 가능 창 종료 및 상태태그 제거
+	void RemoveDashAttackWindow();
+
 protected:
 	// 대쉬 거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Dash", meta = (ClampMin = "0.0"))
@@ -62,7 +68,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Dash")
 	bool bEnableGravityDuringDash = true;
 
+	// 대쉬 종료 후 대쉬공격 입력 허용 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Dash", meta = (ClampMin = "0.0"))
+	float DashAttackWindowDuration = 0.45f;
+
 private:
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashTask;
+
+	// 대쉬공격 입력 가능 창 자동 종료 타이머
+	FTimerHandle DashAttackWindowTimerHandle;
 };

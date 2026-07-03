@@ -10,5 +10,5 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Character_Player, "Character.Player");
 	UE_DEFINE_GAMEPLAY_TAG(Character_Player_Ranger, "Character.Player.Ranger");
 	UE_DEFINE_GAMEPLAY_TAG(Character_Player_Engineer, "Character.Player.Engineer");
-	UE_DEFINE_GAMEPLAY_TAG(Character_Player_Warrior, "Character.Player.Warrior");
+	UE_DEFINE_GAMEPLAY_TAG(Character_Player_Vanguard, "Character.Player.Vanguard");
 }
