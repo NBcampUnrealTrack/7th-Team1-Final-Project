@@ -17,6 +17,7 @@
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -617,8 +618,9 @@ void UGA_VanguardBaseAttack::FinishDashCharge()
 
 	// 현재는 로그 확인용 계산. 후속 단계에서 거리/데미지 배율에 사용
 	const float ChargeElapsedTime = GetDashChargeElapsedTime();
+	const float FinalMaxDashChargeTime = GetFinalDashChargeTime();
 	const float ChargeRatio = FMath::Clamp(
-		ChargeElapsedTime / FMath::Max(MaxDashChargeTime, 0.01f),
+		ChargeElapsedTime / FMath::Max(FinalMaxDashChargeTime, 0.01f),
 		0.0f,
 		1.0f);
 
@@ -694,7 +696,10 @@ bool UGA_VanguardBaseAttack::JumpToDashAttackSection()
 
 bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
 {
-	if (DashAttackDuration <= 0.0f || DashAttackMaxDistance <= 0.0f)
+	float FinalMinDistance = 0.0f;
+	float FinalMaxDistance = 0.0f;
+	float FinalDuration = 0.0f;
+	if (!TryResolveDashAttackMovementStats(FinalMinDistance, FinalMaxDistance, FinalDuration))
 	{
 		return false;
 	}
@@ -706,8 +711,8 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
 	}
 
 	const float ClampedChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
-	const float DashAttackDistance = FMath::Lerp(DashAttackMinDistance, DashAttackMaxDistance, ClampedChargeRatio);
-	const float DashAttackSpeed = DashAttackDistance / FMath::Max(DashAttackDuration, 0.01f);
+	const float DashAttackDistance = FMath::Lerp(FinalMinDistance, FinalMaxDistance, ClampedChargeRatio);
+	const float DashAttackSpeed = DashAttackDistance / FMath::Max(FinalDuration, 0.01f);
 
 	// GameplayAbility RootMotionSource 기반 강제 이동
 	DashAttackMoveTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
@@ -715,7 +720,7 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
 		TEXT("VanguardDashAttack"),
 		DashAttackDirection,
 		DashAttackSpeed,
-		DashAttackDuration,
+		FinalDuration,
 		false,
 		nullptr,
 		ERootMotionFinishVelocityMode::SetVelocity,
@@ -975,4 +980,54 @@ float UGA_VanguardBaseAttack::GetDashChargeElapsedTime() const
 	}
 
 	return static_cast<float>(FPlatformTime::Seconds() - DashChargeStartTime);
+}
+
+float UGA_VanguardBaseAttack::GetVanguardFinalStatOrDefault(
+	const FGameplayTag& StatTag,
+	float DefaultValue) const
+{
+	return GetFinalAbilityStatOrDefault(
+		NSGameplayTags::Ability_Vanguard_BaseAttack,
+		StatTag,
+		DefaultValue);
+}
+
+float UGA_VanguardBaseAttack::GetFinalDashChargeTime() const
+{
+	const float FinalChargingTime = GetVanguardFinalStatOrDefault(
+		NSGameplayTags::CombatStat_ChargingTime,
+		MaxDashChargeTime);
+
+	return FMath::Max(FinalChargingTime, 0.01f);
+}
+
+bool UGA_VanguardBaseAttack::TryResolveDashAttackMovementStats(
+	float& OutMinDistance,
+	float& OutMaxDistance,
+	float& OutDuration) const
+{
+	OutMinDistance = FMath::Max(
+		GetVanguardFinalStatOrDefault(
+			NSGameplayTags::CombatStat_MinSkillRange,
+			DashAttackMinDistance),
+		0.0f);
+
+	OutMaxDistance = FMath::Max(
+		GetVanguardFinalStatOrDefault(
+			NSGameplayTags::CombatStat_SkillRange,
+			DashAttackMaxDistance),
+		0.0f);
+
+	OutDuration = FMath::Max(
+		GetVanguardFinalStatOrDefault(
+			NSGameplayTags::CombatStat_Duration,
+			DashAttackDuration),
+		0.01f);
+
+	if (OutMinDistance > OutMaxDistance)
+	{
+		Swap(OutMinDistance, OutMaxDistance);
+	}
+
+	return OutMaxDistance > 0.0f;
 }
