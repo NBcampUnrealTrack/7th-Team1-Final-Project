@@ -671,13 +671,6 @@ void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Am
 		UIManager->UpdateRunResultCommonGoods(static_cast<int32>(Amount));
 		return;
 	}
-
-	// @원종: 현재 기획상 스킬 재화가 사라졌으므로 HUD 표시만 우선적으로 제거 했음.
-	if (Type == NSGameplayTags::Currency_Skill)
-	{
-		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
-		return;
-	}
 }
 
 void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()

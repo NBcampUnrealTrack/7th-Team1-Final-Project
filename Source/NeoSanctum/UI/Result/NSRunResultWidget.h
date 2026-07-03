@@ -27,7 +27,6 @@ public:
 		bool bCleared,
 		int32 EarnedGoods,
 		int32 CommonGoods,
-		int32 SkillGoods,
 		float RunTimeSeconds,
 		int32 KillCount);
 	UFUNCTION(BlueprintCallable, Category = "UI|RunResult")
@@ -85,10 +84,6 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> CommonGoodsText;
 
-	//스킬재화 획득량 텍스트
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SkillGoodsText;
-	
 	//어떤 플레이어가 어디를 투표했는지 보여주는 텍스트
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> NextVotersText;

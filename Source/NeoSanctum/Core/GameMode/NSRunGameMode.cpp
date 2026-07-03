@@ -145,9 +145,6 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 					Currency->AddPermanentDirect(
 						NSGameplayTags::Currency_Common,
 						StageClearCommonReward);
-					Currency->AddPermanentDirect(
-						NSGameplayTags::Currency_Skill,
-						StageClearJobReward);
 				}
 			}
 		}
@@ -834,8 +831,6 @@ void ANSRunGameMode::OpenRunEndVote(bool bHubOnly)
 		ResultData.EarnedGoods += static_cast<int32>(Currency->GetTemp());
 		ResultData.CommonGoods += static_cast<int32>(
 			Currency->GetPermanent(NSGameplayTags::Currency_Common));
-		ResultData.SkillGoods += static_cast<int32>(
-			Currency->GetPermanent(NSGameplayTags::Currency_Skill));
 	}
 
 	if (UGameInstance* GameInstance = GetGameInstance())

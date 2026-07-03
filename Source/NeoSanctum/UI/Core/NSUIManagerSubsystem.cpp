@@ -89,11 +89,6 @@ void UNSUIManagerSubsystem::UpdateRunResultCommonGoods(int32 NewAmount)
 	RunResultCommonGoods = FMath::Max(NewAmount, 0);
 }
 
-void UNSUIManagerSubsystem::UpdateRunResultSkillGoods(int32 NewAmount)
-{
-	RunResultSkillGoods = FMath::Max(NewAmount, 0);
-}
-
 void UNSUIManagerSubsystem::ApplyCharacterSkillUISet(FName CharacterId)
 {
 	if (!IsValid(HUDWidget))
@@ -192,7 +187,6 @@ void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameStat
 		RunGameState->bIsClear,
 		ResultData.EarnedGoods,
 		ResultData.CommonGoods,
-		ResultData.SkillGoods,
 		ResultData.RunTimeSeconds,
 		ResultData.KillCount);
 }
@@ -909,7 +903,6 @@ void UNSUIManagerSubsystem::ResetRunResultStats()
 	RunResultKillCount = 0;
 	
 	RunResultCommonGoods = 0;
-	RunResultSkillGoods = 0;
 
 	CachedRunResultTimeSeconds = 0.0f;
 	bRunResultTimeCached = false;
@@ -936,7 +929,6 @@ void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
 		bCleared,
 		RunResultGoods,
 		RunResultCommonGoods,
-		RunResultSkillGoods,
 		GetRunResultTimeSeconds(),
 		RunResultKillCount);
 }

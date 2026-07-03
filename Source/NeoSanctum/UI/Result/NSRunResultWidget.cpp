@@ -12,12 +12,11 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 
 void UNSRunResultWidget::SetRunResult(
-bool bCleared,
-int32 EarnedGoods,
-int32 CommonGoods,
-int32 SkillGoods,
-float RunTimeSeconds,
-int32 KillCount)
+	bool bCleared,
+	int32 EarnedGoods,
+	int32 CommonGoods,
+	float RunTimeSeconds,
+	int32 KillCount)
 {
 	bLastRunCleared = bCleared;
 	
@@ -57,13 +56,6 @@ int32 KillCount)
 			FText::AsNumber(CommonGoods)));
 	}
 
-	if (SkillGoodsText)
-	{
-		SkillGoodsText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "SkillGoodsFormat", "Skill : {0}"),
-			FText::AsNumber(SkillGoods)));
-	}
-	
 	if (NextStageButton)
 	{
 		NextStageButton->SetVisibility(
@@ -173,14 +165,14 @@ void UNSRunResultWidget::NativePreConstruct()
 	Super::NativePreConstruct();
 	
 	//에디터에서 위젯을 열어쓸때 기본표시 상태 확인
-	SetRunResult(false,0,0,0,0.0f,0);
+	SetRunResult(false, 0, 0, 0.0f, 0);
 }
 
 void UNSRunResultWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
-	SetRunResult(false,0,0,0,0.0f,0);
+	SetRunResult(false, 0, 0, 0.0f, 0);
 	SetVoteSubmitted(false);
 	
 	if (NextStageButton)

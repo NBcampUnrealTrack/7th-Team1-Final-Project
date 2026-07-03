@@ -134,7 +134,6 @@ public:
 	//런 종료 투표 수를 결과창 위젯에 전달
 	void UpdateRunEndVotes(int32 NextVotes, int32 HubVotes);
 
-	int32 GetRunResultGoods() const { return RunResultGoods; }
 	int32 GetRunResultKillCount() const { return RunResultKillCount; }
 	float GetRunResultTimeSeconds() const;
 	
@@ -156,14 +155,10 @@ public:
 	void RefreshOutRunGoods();
 
 	int32 GetRunResultCommonGoods() const { return RunResultCommonGoods; }
-	int32 GetRunResultSkillGoods() const { return RunResultSkillGoods; }
 	
 	//런 결과창에 표시할 영구재화 획득량 갱신
 	void UpdateRunResultCommonGoods(int32 NewAmount);
 
-	//런 결과창에 표시할 스킬재화 획득량 갱신
-	void UpdateRunResultSkillGoods(int32 NewAmount);
-	
 	//캐릭터별 스킬 슬롯 UI 적용
 	void ApplyCharacterSkillUISet(FName CharacterId);
 	
@@ -258,9 +253,6 @@ private:
 	//런 결과창에 표시할 공통 영구재화 획득량
 	int32 RunResultCommonGoods = 0;
 
-	//런 결과창에 표시할 스킬재화 획득량
-	int32 RunResultSkillGoods = 0;
-	
 	//관전자 상태 UI위젯
 	UPROPERTY()
 	TObjectPtr<UNSSpectatorWidget> SpectatorWidget;
