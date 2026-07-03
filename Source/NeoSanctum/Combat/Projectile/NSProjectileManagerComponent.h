@@ -4,12 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "NSProjectileTypes.h"
 #include "NSProjectileManagerComponent.generated.h"
 
 class ANSProjectileReplicationProxy;
-struct FNSServerProjectileData;
-struct FNSProjectileFireRequest;
-struct FNSProjectileSpawnEvent;
 
 /**
  * 서버의 모든 Enemy 투사체를 구조체 배열로 관리하는 Component

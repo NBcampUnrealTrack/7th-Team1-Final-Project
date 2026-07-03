@@ -8,7 +8,6 @@
 #include "GameplayEffect.h"
 #include "GenericTeamAgentInterface.h"
 #include "NSProjectileReplicationProxy.h"
-#include "NSProjectileTypes.h"
 #include "GameFramework/GameStateBase.h"
 
 
