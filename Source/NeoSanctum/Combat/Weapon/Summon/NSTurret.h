@@ -122,6 +122,9 @@ private:
 	void TryFire();
 	bool CanFireToCurrentTarget() const;
 	void FireHitscan();
+	// 터렛 자체 Attribute에는 크리티컬 스탯이 없으므로, 소환자의 현재 CritChance/CritDamage를
+	// Damage GE Spec에 SetByCaller로 전달해 발사 시점 기준 크리티컬이 적용되게 함.
+	void ApplyCritOverrideToSpec(FGameplayEffectSpecHandle& SpecHandle) const;
 	void ReportFireNoise(const FVector& NoiseLocation);
 	FTransform GetMuzzleTransform() const;
 	FTransform GetTraceSocketTransform() const;

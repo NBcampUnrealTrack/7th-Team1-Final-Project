@@ -15,6 +15,7 @@
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -23,6 +24,7 @@
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Net/UnrealNetwork.h"
@@ -760,6 +762,9 @@ void ANSTurret::FireHitscan()
 					DamageEffectClass, 1.0f, EffectContext);
 				if (NewSpecHandle.IsValid())
 				{
+					// 소환자의 현재 CritChance/CritDamage를 전달해 크리티컬이 적용되게 함
+					ApplyCritOverrideToSpec(NewSpecHandle);
+
 					// 타겟 ASC에 GE 적용
 					TurretASC->ApplyGameplayEffectSpecToTarget(*NewSpecHandle.Data.Get(), TargetASC);
 				}
@@ -958,6 +963,28 @@ float ANSTurret::GetCurrentFireRate() const
 
 	// 소환자 정보가 없으면 소환 시점 스냅샷으로 대체
 	return AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+}
+
+void ANSTurret::ApplyCritOverrideToSpec(FGameplayEffectSpecHandle& SpecHandle) const
+{
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	const ANSPlayerState* NSPlayerState = OwningPawn ? OwningPawn->GetPlayerState<ANSPlayerState>() : nullptr;
+	const UNSPlayerAttributeSet* PlayerAttributeSet = NSPlayerState ? NSPlayerState->GetPlayerAttributeSet() : nullptr;
+
+	// 소환자를 찾지 못하면 GEC 캡처 기본값(크리티컬 없음)이 그대로 적용됨
+	if (!PlayerAttributeSet)
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritChanceOverride, PlayerAttributeSet->GetCritChance());
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritDamageOverride, PlayerAttributeSet->GetCritDamage());
 }
 
 void ANSTurret::StartDeathPresentation()
