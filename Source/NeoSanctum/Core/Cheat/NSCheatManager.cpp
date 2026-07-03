@@ -215,6 +215,29 @@ void UNSCheatManager::Debug_LockNPC(FString NpcId)
 	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
 }
 
+// 테스트용 치트 (슬롯 언락/파츠 구매 테스트 — 캐시된 영구 공통재화를 즉시 10000으로 설정, 디스크 저장/서버 동기화 없음)
+void UNSCheatManager::Debug_SetCommonCurrency()
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSSaveGameSubsystem* SaveSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+	UNSPermanentSaveGame* PermanentSave =
+		SaveSubsystem ? SaveSubsystem->GetCachedPermanentData() : nullptr;
+	if (!PermanentSave)
+	{
+		return;
+	}
+
+	// NSProgressionSubsystem::GetSaveData()가 읽는 캐시 객체와 동일. 저장/서버 동기화 없이 즉시 반영됨
+	PermanentSave->CommonCurrency = 10000;
+}
+
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
 {
 	APlayerController* OwningPlayerController = GetOuterAPlayerController();
