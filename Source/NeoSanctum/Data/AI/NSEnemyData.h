@@ -344,6 +344,14 @@ struct FNSEnemyPartRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
 	FName TraceSocket = NAME_None;
 
+	// Melee Sweep 판정의 시작점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceStartSocket = NAME_None;
+
+	// Melee Sweep 판정의 끝점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceEndSocket = NAME_None;
+
 	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	FName AimBone = NAME_None;
@@ -581,7 +589,7 @@ private:
 
 	// PhaseTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
 	mutable TArray<const FNSEnemyPhaseRow*> CachedPhaseRows;
-	
+
 	// PartsTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
 	mutable TArray<const FNSEnemyPartRow*> CachedPartRows;
 
@@ -590,7 +598,7 @@ private:
 
 	// PhaseTable 캐시가 초기화되었는지 여부
 	mutable bool bPhaseRowsCached = false;
-	
+
 	// PartsTable 캐시가 초기화되었는지 여부
 	mutable bool bPartRowsCached = false;
 

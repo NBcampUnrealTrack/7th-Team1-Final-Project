@@ -62,6 +62,17 @@ public:
 	// AttackId와 연결된 첫 번째 사용 가능 Muzzle Transform을 반환하는 함수
 	bool TryGetMuzzleTransformByAttackId(FName AttackId, FTransform& OutTransform) const;
 
+	// AttackId와 연결된 첫 번째 사용 가능 Trace 구간을 반환하는 함수
+	bool TryGetTraceSegmentByAttackId(
+		FName AttackId,
+		float FallbackDistance,
+		const FVector& FallbackDirection,
+		FVector& OutStart,
+		FVector& OutEnd) const;
+
+	// AttackId와 연결된 스폰 파츠 Actor 목록을 반환하는 함수
+	void GetSpawnedPartActorsByAttackId(FName AttackId, TArray<AActor*>& OutActors) const;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -92,6 +103,20 @@ private:
 
 	// Owner Enemy Mesh에서 소켓 Transform을 찾는 함수
 	bool TryGetSocketTransformFromOwnerMesh(FName SocketName, FTransform& OutTransform) const;
+
+	// Part Row가 가리키는 Trace 구간을 반환하는 함수
+	bool TryGetTraceSegmentFromPartRow(
+		const FNSEnemyPartRow& PartRow,
+		float FallbackDistance,
+		const FVector& FallbackDirection,
+		FVector& OutStart,
+		FVector& OutEnd) const;
+
+	// Part Row와 SocketName으로 스폰 Actor 또는 Owner Mesh에서 소켓 Transform을 찾는 함수
+	bool TryGetSocketTransformFromPartRow(
+		const FNSEnemyPartRow& PartRow,
+		FName SocketName,
+		FTransform& OutTransform) const;
 
 private:
 	// 기존 일반 몬스터 코드와 호환되는 대표 무기 Actor

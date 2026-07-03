@@ -172,6 +172,69 @@ bool UNSEnemyPartComponent::TryGetMuzzleTransformByAttackId(
 	return false;
 }
 
+bool UNSEnemyPartComponent::TryGetTraceSegmentByAttackId(
+	FName AttackId,
+	float FallbackDistance,
+	const FVector& FallbackDirection,
+	FVector& OutStart,
+	FVector& OutEnd) const
+{
+	OutStart = FVector::ZeroVector;
+	OutEnd = FVector::ZeroVector;
+
+	if (AttackId.IsNone())
+	{
+		return false;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (PartRow &&
+			TryGetTraceSegmentFromPartRow(
+				*PartRow,
+				FallbackDistance,
+				FallbackDirection,
+				OutStart,
+				OutEnd))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UNSEnemyPartComponent::GetSpawnedPartActorsByAttackId(
+	FName AttackId,
+	TArray<AActor*>& OutActors) const
+{
+	OutActors.Reset();
+
+	if (AttackId.IsNone())
+	{
+		return;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (!PartRow)
+		{
+			continue;
+		}
+
+		if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow->PartId))
+		{
+			OutActors.AddUnique(SpawnedActor);
+		}
+	}
+}
+
 void UNSEnemyPartComponent::HandleOwnerDeathStarted()
 {
 	for (const FNSSpawnedEnemyPart& SpawnedPart : SpawnedParts)
@@ -376,4 +439,70 @@ bool UNSEnemyPartComponent::TryGetSocketTransformFromOwnerMesh(
 
 	OutTransform = MeshComponent->GetSocketTransform(SocketName, RTS_World);
 	return true;
+}
+
+bool UNSEnemyPartComponent::TryGetTraceSegmentFromPartRow(
+	const FNSEnemyPartRow& PartRow,
+	float FallbackDistance,
+	const FVector& FallbackDirection,
+	FVector& OutStart,
+	FVector& OutEnd) const
+{
+	OutStart = FVector::ZeroVector;
+	OutEnd = FVector::ZeroVector;
+
+	FTransform StartTransform;
+	FTransform EndTransform;
+
+	if (!PartRow.TraceStartSocket.IsNone() &&
+		!PartRow.TraceEndSocket.IsNone() &&
+		TryGetSocketTransformFromPartRow(PartRow, PartRow.TraceStartSocket, StartTransform) &&
+		TryGetSocketTransformFromPartRow(PartRow, PartRow.TraceEndSocket, EndTransform))
+	{
+		OutStart = StartTransform.GetLocation();
+		OutEnd = EndTransform.GetLocation();
+		return true;
+	}
+
+	if (!PartRow.TraceSocket.IsNone() &&
+		TryGetSocketTransformFromPartRow(PartRow, PartRow.TraceSocket, StartTransform))
+	{
+		const FVector TraceDirection = StartTransform.GetRotation().GetForwardVector().IsNearlyZero()
+			                               ? FallbackDirection.GetSafeNormal()
+			                               : StartTransform.GetRotation().GetForwardVector().GetSafeNormal();
+
+		if (TraceDirection.IsNearlyZero())
+		{
+			return false;
+		}
+
+		OutStart = StartTransform.GetLocation();
+		OutEnd = OutStart + TraceDirection * FMath::Max(FallbackDistance, 0.0f);
+		return true;
+	}
+
+	return false;
+}
+
+bool UNSEnemyPartComponent::TryGetSocketTransformFromPartRow(
+	const FNSEnemyPartRow& PartRow,
+	FName SocketName,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (SocketName.IsNone())
+	{
+		return false;
+	}
+
+	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+	{
+		if (TryGetSocketTransformFromActor(SpawnedActor, SocketName, OutTransform))
+		{
+			return true;
+		}
+	}
+
+	return TryGetSocketTransformFromOwnerMesh(SocketName, OutTransform);
 }
