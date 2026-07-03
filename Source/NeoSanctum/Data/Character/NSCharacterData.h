@@ -51,10 +51,7 @@ public:
 	// 캐릭터별 상체 Anim Layer
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Animation")
 	TSoftClassPtr<UAnimInstance> UpperBodyAnimLayerClass;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
-	TSoftClassPtr<UGameplayEffect> InitialAttributeEffect;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
 	TArray<FNSCharacterAbilityData> DefaultAbilities;
 	
