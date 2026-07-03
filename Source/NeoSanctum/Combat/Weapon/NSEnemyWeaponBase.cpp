@@ -14,16 +14,6 @@ ANSEnemyWeaponBase::ANSEnemyWeaponBase()
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WeaponMesh"));
 	RootComponent = WeaponMesh;
 	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
-}
-
-void ANSEnemyWeaponBase::StartDissolve()
-{
-	if (DissolveComponent)
-	{
-		DissolveComponent->StartDissolve();
-	}
 }
 
 bool ANSEnemyWeaponBase::TryGetLeftHandIKTransform(FTransform& OutTransform) const
