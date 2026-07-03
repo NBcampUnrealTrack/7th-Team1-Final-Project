@@ -38,7 +38,11 @@ public:
 	//슬롯이 비어 있는지 반환한다
 	UFUNCTION(BlueprintPure, Category = "UI|Part")
 	bool IsEmpty() const;
-	
+
+	// 이 슬롯버튼이 현재 선택된 상태인지 표시 (SelectedHighlight 보임/숨김). CommonButtonStyle에 의존하지 않는 수동 하이라이트
+	UFUNCTION(BlueprintCallable, Category = "UI|Part")
+	void SetHighlighted(bool bHighlighted);
+
 protected:
 	virtual void NativePreConstruct() override;
 
@@ -53,6 +57,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "UI|Part", meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> RarityBorder;
+
+	// 선택 표시용 오버레이 위젯 (WBP에서 배치, 기본 숨김)
+	UPROPERTY(BlueprintReadOnly, Category = "UI|Part", meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> SelectedHighlight;
 
 private:
 	void RefreshEmptyState();

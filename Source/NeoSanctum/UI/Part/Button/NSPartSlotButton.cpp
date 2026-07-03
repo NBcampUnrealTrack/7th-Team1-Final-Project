@@ -117,6 +117,14 @@ bool UNSPartSlotButton::IsEmpty() const
 	return !bHasPart;
 }
 
+void UNSPartSlotButton::SetHighlighted(bool bHighlighted)
+{
+	if (IsValid(SelectedHighlight))
+	{
+		SelectedHighlight->SetVisibility(bHighlighted ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
 void UNSPartSlotButton::RefreshEmptyState()
 {
 	if (bHasPart)
