@@ -12,6 +12,7 @@
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSDataSubsystem.generated.h"
 
+struct FNSCharacterBaseStatRow;
 struct FNSGoodsUIData;
 class UNSOutGameDataConfig;
 class UNSSoundData;
@@ -123,6 +124,10 @@ public:
 	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
 	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData로드 완료 시 캐싱.
 	UDataTable* GetCommonAbilityBaseStatTable() const;
+
+	UDataTable* GetCommonCharacterBaseStatTable() const;
+	TSubclassOf<UGameplayEffect> GetCharacterBaseStatInitEffectClass() const;
+	const FNSCharacterBaseStatRow* FindCharacterBaseStatRow(const FGameplayTag& CharacterTag) const;
 	
 	UNSSoundData* GetCommonSoundData() const;
 	UDataTable* GetCommonVFXDataTable() const;
