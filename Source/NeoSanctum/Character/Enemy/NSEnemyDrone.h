@@ -6,23 +6,29 @@
 #include "NSEnemyPawnBase.h"
 #include "NSEnemyDrone.generated.h"
 
+class UNSFlyingLocomotionComponent;
+
 UCLASS()
 class NEOSANCTUM_API ANSEnemyDrone : public ANSEnemyPawnBase
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this pawn's properties
 	ANSEnemyDrone();
 
 protected:
-	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	// 풀 대기 상태인지 반환
+	bool IsInPool() const;
 
-	// Called to bind functionality to input
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	// 풀에서 꺼내 재활성화 (위치/회전 재배치 + 상태 리셋)
+	void PrepareForReuse(const FVector& Location, const FRotator& Rotation);
+
+	// 풀로 반환하기 위해 비활성화
+	void DeactivateForPool();
+private:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess))
+	TObjectPtr<UNSFlyingLocomotionComponent> FlyingLocomotionComponent;
 };

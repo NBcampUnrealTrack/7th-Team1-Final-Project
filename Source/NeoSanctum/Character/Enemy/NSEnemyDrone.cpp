@@ -3,30 +3,87 @@
 
 #include "NSEnemyDrone.h"
 
+#include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
+#include "AbilitySystemComponent.h"
+#include "AIController.h"
 
-// Sets default values
 ANSEnemyDrone::ANSEnemyDrone()
 {
-	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
+	FlyingLocomotionComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>("MovementComponent");
 }
 
-// Called when the game starts or when spawned
 void ANSEnemyDrone::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
-// Called every frame
-void ANSEnemyDrone::Tick(float DeltaTime)
+bool ANSEnemyDrone::IsInPool() const
 {
-	Super::Tick(DeltaTime);
+	const UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent();
+	return MotherShipStateComponent && MotherShipStateComponent->IsInactive();
 }
 
-// Called to bind functionality to input
-void ANSEnemyDrone::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void ANSEnemyDrone::PrepareForReuse(const FVector& Location, const FRotator& Rotation)
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	if (!HasAuthority()) return;
+	
+	UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent();
+	if (!MotherShipStateComponent) return;
+	MotherShipStateComponent->ResetForReuse();
+	ClearCurrentAttackRow();
+	
+	SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorTickEnabled(true); SetActorEnableCollision(true);
+	
+	if (FlyingLocomotionComponent)
+	{
+		FlyingLocomotionComponent->SetComponentTickEnabled(true);
+	}
+	
+	ApplyAliveState();
+	InitializeFromData(true);
+	SpawnDefaultController();
+}
+
+void ANSEnemyDrone::DeactivateForPool()
+{
+	if (!HasAuthority()) return;
+	
+	
+	if (UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent())
+	{
+		MotherShipStateComponent->SetInactive(true);
+		MotherShipStateComponent->FinishHitReaction();
+		MotherShipStateComponent->ResetHitGauge();
+	}
+	
+	ClearCurrentAttackRow();
+	
+	if (FlyingLocomotionComponent)
+	{
+		FlyingLocomotionComponent->StopMovementImmediately();
+		FlyingLocomotionComponent->SetComponentTickEnabled(false);
+	}
+	
+	if(AAIController* DroneAIC = Cast<AAIController>(GetController()))
+	{
+		DroneAIC->UnPossess();
+		DroneAIC->Destroy();
+	}
+	
+	
+	if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
+	{
+		MotherShipASC->CancelAllAbilities();
+		MotherShipASC->RemoveActiveEffects(FGameplayEffectQuery());
+		MotherShipASC->ClearAllAbilities();
+	}
+	
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
 }
 
