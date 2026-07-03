@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
+#include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/Character.h"
@@ -122,7 +123,24 @@ void UGA_VanguardBaseAttack::EndAbility(
 		DashAttackMoveTask = nullptr;
 	}
 
-	RemoveDashAttackGameplayCue();
+	if (AirSlamHoverTask)
+	{
+		AirSlamHoverTask->EndTask();
+		AirSlamHoverTask = nullptr;
+	}
+	
+	if (AirSlamDiveTask)
+	{
+		AirSlamDiveTask->EndTask();
+		AirSlamDiveTask = nullptr;
+	}
+	
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::AirSlam)
+	{
+		RestoreAirSlamMovementMode();
+	}
+	
+	RemoveAttackFlashGameplayCue();
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
@@ -174,6 +192,39 @@ void UGA_VanguardBaseAttack::OnDashAttackMoveFinished()
 	TryEndDashAttack();
 }
 
+void UGA_VanguardBaseAttack::OnAirSlamHoverFinished()
+{
+	if (AirSlamHoverTask)
+	{
+		AirSlamHoverTask->EndTask();
+	}
+	AirSlamHoverTask = nullptr;
+	
+	if (ActiveAttackMode != ENSVanguardBaseAttackMode::AirSlam)
+	{
+		return;
+	}
+	
+	StartAirSlamDive();
+}
+
+void UGA_VanguardBaseAttack::OnAirSlamDiveFinished()
+{
+	if (AirSlamDiveTask)
+	{
+		AirSlamDiveTask->EndTask();
+	}
+	AirSlamDiveTask = nullptr;
+	
+	if (ActiveAttackMode != ENSVanguardBaseAttackMode::AirSlam)
+	{
+		return;
+	}
+	
+	RestoreAirSlamMovementMode();
+	StartAirSlamImpact();
+}
+
 void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
 {
 	if (ActiveAttackMode != ENSVanguardBaseAttackMode::GroundCombo)
@@ -199,7 +250,7 @@ void UGA_VanguardBaseAttack::OnDashAttackRecoverStarted(FGameplayEventData Paylo
 	}
 
 	// Recover 진입 시 대쉬공격 연출 Cue 종료
-	RemoveDashAttackGameplayCue();
+	RemoveAttackFlashGameplayCue();
 }
 
 ENSVanguardBaseAttackMode UGA_VanguardBaseAttack::SelectAttackMode(
@@ -343,7 +394,198 @@ void UGA_VanguardBaseAttack::StartAirSlam()
 	if (!PlayAttackMontageAndWait(AirSlamMontage, AttackMontagePlayRate))
 	{
 		FinishInstantMode();
+		return;
 	}
+	
+	StartAirSlamHover();
+}
+
+void UGA_VanguardBaseAttack::StartAirSlamHover()
+{
+	if (!JumpToAirSlamSection(AirSlamHoverSectionName))
+	{
+		FinishInstantMode();
+		return;
+	}
+	
+	if (AirSlamHoverDuration <= 0.0f)
+	{
+		StartAirSlamDive();
+		return;
+	}
+	
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		FinishInstantMode();
+		return;
+	}
+	
+	// 현재 위치에서 짧은 체공
+	AirSlamHoverTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
+		this,
+		TEXT("VanguardAirSlamHover"),
+		Character->GetActorLocation(),
+		AirSlamHoverDuration,
+		true,
+		MOVE_Flying,
+		true,
+		nullptr,
+		ERootMotionFinishVelocityMode::SetVelocity,
+		FVector::ZeroVector,
+		0.0f);
+	
+	if (!AirSlamHoverTask)
+	{
+		StartAirSlamDive();
+		return;
+	}
+	
+	AirSlamHoverTask->OnTimedOut.AddDynamic(this, &ThisClass::OnAirSlamHoverFinished);
+	AirSlamHoverTask->OnTimedOutAndDestinationReached.AddDynamic(this, &ThisClass::OnAirSlamHoverFinished);
+	AirSlamHoverTask->ReadyForActivation();
+}
+
+void UGA_VanguardBaseAttack::StartAirSlamDive()
+{
+	if (!JumpToAirSlamSection(AirSlamDiveSectionName))
+	{
+		FinishInstantMode();
+		return;
+	}
+	
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		FinishInstantMode();
+		return;
+	}
+	
+	FVector TargetLocation = FVector::ZeroVector;
+	if (!TryGetAirSlamTargetLocation(TargetLocation))
+	{
+		FinishInstantMode();
+		return;
+	}
+	
+	const float DiveDistance = FVector::Dist(Character->GetActorLocation(), TargetLocation);
+	const float DiveDuration = FMath::Max(DiveDistance / FMath::Max(AirSlamDiveSpeed, 0.01f), 0.01f);
+	
+	// 지면 목표 지점까지 빠른 낙하 이동
+	AirSlamDiveTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
+		this,
+		TEXT("VanguardAirSlamDive"),
+		TargetLocation,
+		DiveDuration,
+		true,
+		MOVE_Flying,
+		true,
+		nullptr,
+		ERootMotionFinishVelocityMode::SetVelocity,
+		FVector::ZeroVector,
+		0.0f);
+	
+	if (!AirSlamDiveTask)
+	{
+		StartAirSlamImpact();
+		return;
+	}
+	
+	AirSlamDiveTask->OnTimedOut.AddDynamic(this, &ThisClass::OnAirSlamDiveFinished);
+	AirSlamDiveTask->OnTimedOutAndDestinationReached.AddDynamic(this, &ThisClass::OnAirSlamDiveFinished);
+	AirSlamDiveTask->ReadyForActivation();
+}
+
+void UGA_VanguardBaseAttack::StartAirSlamImpact()
+{
+	if (!JumpToAirSlamSection(AirSlamImpactSectionName))
+	{
+		FinishInstantMode();
+	}
+}
+
+bool UGA_VanguardBaseAttack::JumpToAirSlamSection(FName SectionName) const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AirSlamMontage || SectionName.IsNone())
+	{
+		return false;
+	}
+	
+	if (!AnimInstance->Montage_IsPlaying(AirSlamMontage))
+	{
+		return false;
+	}
+	
+	AnimInstance->Montage_JumpToSection(SectionName, AirSlamMontage);
+	return true;
+}
+
+bool UGA_VanguardBaseAttack::TryGetAirSlamTargetLocation(FVector& OutTargetLocation) const
+{
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		return false;
+	}
+	
+	const UWorld* World = Character->GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+	
+	const FVector TraceStart = Character->GetActorLocation();
+	const FVector TraceEnd = TraceStart - FVector::UpVector * AirSlamGroundTraceDistance;
+	
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSVanguardAirSlamGroundTrace), false, Character);
+	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(Character))
+	{
+		if (ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon())
+		{
+			QueryParams.AddIgnoredActor(CurrentWeapon);
+		}
+	}
+	
+	const bool bHit = World->LineTraceSingleByChannel(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		ECC_Visibility,
+		QueryParams);
+	
+	if (!bHit)
+	{
+		return false;
+	}
+	
+	OutTargetLocation = HitResult.ImpactPoint + FVector::UpVector * AirSlamImpactGroundOffset;
+	return true;
+}
+
+void UGA_VanguardBaseAttack::RestoreAirSlamMovementMode() const
+{
+	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
+	{
+		return;
+	}
+	
+	UCharacterMovementComponent* MovementComponent = Character->GetCharacterMovement();
+	if (!MovementComponent)
+	{
+		return;
+	}
+	
+	// 공중 내려찍기 RootMotion 종료 후 잔여 속도 제거
+	MovementComponent->StopMovementImmediately();
+	
+	const EMovementMode RestoreMode = MovementComponent->IsMovingOnGround()
+		? MOVE_Walking
+		: MOVE_Falling;
+	MovementComponent->SetMovementMode(RestoreMode);
 }
 
 void UGA_VanguardBaseAttack::StartDashCharge()
@@ -417,7 +659,7 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 	bDashAttackMontageFinished = !bDashAttackMontageStarted;
 	if (bDashAttackMontageStarted)
 	{
-		AddDashAttackGameplayCue();
+		AddAttackFlashGameplayCue();
 	}
 
 	if (!bDashAttackMoveStarted && !bDashAttackMontageStarted)
@@ -533,21 +775,21 @@ void UGA_VanguardBaseAttack::StartDashAttackRecoverEventTask()
 	DashAttackRecoverEventTask->ReadyForActivation();
 }
 
-void UGA_VanguardBaseAttack::AddDashAttackGameplayCue()
+void UGA_VanguardBaseAttack::AddAttackFlashGameplayCue()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		// 대쉬공격 연출 Cue 시작
-		ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+		ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_Flash);
 	}
 }
 
-void UGA_VanguardBaseAttack::RemoveDashAttackGameplayCue()
+void UGA_VanguardBaseAttack::RemoveAttackFlashGameplayCue()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		// 대쉬공격 연출 Cue 종료
-		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_Flash);
 	}
 }
 
