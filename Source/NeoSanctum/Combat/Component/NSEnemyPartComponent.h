@@ -59,6 +59,9 @@ public:
 	// AttackId와 연결된 Part Row 목록을 반환하는 함수
 	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
 
+	// 사용 가능한 첫 번째 Muzzle Transform을 반환하는 함수
+	bool TryGetAnyMuzzleTransform(FTransform& OutTransform) const;
+	
 	// AttackId와 연결된 첫 번째 사용 가능 Muzzle Transform을 반환하는 함수
 	bool TryGetMuzzleTransformByAttackId(FName AttackId, FTransform& OutTransform) const;
 

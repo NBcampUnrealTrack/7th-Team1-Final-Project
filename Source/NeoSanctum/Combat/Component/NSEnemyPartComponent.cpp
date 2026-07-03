@@ -141,6 +141,34 @@ void UNSEnemyPartComponent::GetPartRowsByAttackId(
 	}
 }
 
+bool UNSEnemyPartComponent::TryGetAnyMuzzleTransform(FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	const AActor* Owner = GetOwner();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(Owner);
+	const UNSEnemyData* EnemyData = EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+
+	if (EnemyData)
+	{
+		for (const FNSEnemyPartRow* PartRow : EnemyData->GetPartRows())
+		{
+			if (PartRow && TryGetMuzzleTransformFromPartRow(*PartRow, OutTransform))
+			{
+				return true;
+			}
+		}
+	}
+
+	// DT_EnemyParts가 없는 기존 데이터 보호용 fallback
+	if (IsValid(CurrentWeapon))
+	{
+		return CurrentWeapon->TryGetMuzzleTransform(OutTransform);
+	}
+
+	return false;
+}
+
 bool UNSEnemyPartComponent::TryGetMuzzleTransformByAttackId(
 	FName AttackId,
 	FTransform& OutTransform) const

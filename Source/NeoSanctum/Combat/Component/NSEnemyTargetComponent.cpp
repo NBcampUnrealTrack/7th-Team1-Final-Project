@@ -8,9 +8,9 @@
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
-#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 
 UNSEnemyTargetComponent::UNSEnemyTargetComponent()
@@ -127,19 +127,31 @@ FVector UNSEnemyTargetComponent::GetTraceStart() const
 		return FVector::ZeroVector;
 	}
 
-	if (const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(OwnerPawn))
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(OwnerPawn);
+	const UNSEnemyPartComponent* PartComponent =
+		OwnerPawn->FindComponentByClass<UNSEnemyPartComponent>();
+
+	if (PartComponent)
 	{
-		if (const ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon())
+		FTransform MuzzleTransform;
+
+		const FNSEnemyAttackRow* CurrentAttackRow = EnemyAgent ? EnemyAgent->GetCurrentAttackRow() : nullptr;
+
+		if (CurrentAttackRow &&
+			PartComponent->TryGetMuzzleTransformByAttackId(
+				CurrentAttackRow->AttackId,
+				MuzzleTransform))
 		{
-			FTransform MuzzleTransform;
-			if (Weapon->TryGetMuzzleTransform(MuzzleTransform))
-			{
-				return MuzzleTransform.GetLocation();
-			}
+			return MuzzleTransform.GetLocation();
+		}
+
+		if (PartComponent->TryGetAnyMuzzleTransform(MuzzleTransform))
+		{
+			return MuzzleTransform.GetLocation();
 		}
 	}
 
-	if (const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(OwnerPawn))
+	if (EnemyAgent)
 	{
 		return EnemyAgent->GetAimLocation();
 	}
