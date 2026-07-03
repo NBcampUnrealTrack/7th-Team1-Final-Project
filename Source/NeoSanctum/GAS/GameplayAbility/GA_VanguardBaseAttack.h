@@ -176,6 +176,19 @@ private:
 	// 대쉬 차지 시작 후 경과 시간 반환
 	float GetDashChargeElapsedTime() const;
 
+	// Vanguard 기본공격 AbilityTag 기준으로 CombatStat 최종값을 조회하고, 없으면 기본값을 사용
+	float GetVanguardFinalStatOrDefault(const FGameplayTag& StatTag, float DefaultValue) const;
+
+	// DashCharge 최대 차징 시간을 CombatStat.ChargingTime 기준으로 조회
+	float GetFinalDashChargeTime() const;
+
+	// DashAttack 이동 수치를 CombatStat.MinSkillRange / SkillRange / Duration 기준으로 조회
+	bool TryResolveDashAttackMovementStats(
+		float& OutMinDistance,
+		float& OutMaxDistance,
+		float& OutDuration
+	) const;
+
 private:
 	// 지상 기본 콤보 테스트용 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
