@@ -104,6 +104,7 @@ void UNSGameplaySettingWidget::NativeConstruct()
 			&ThisClass::OnApplyCustomColorClicked);
 	}
 	UpdateApplyButtonState();
+	InitializeLanguageOptions();
 }
 
 void UNSGameplaySettingWidget::NativeDestruct()
@@ -128,6 +129,10 @@ void UNSGameplaySettingWidget::NativeDestruct()
 		ApplyCustomColorButton->OnClicked.RemoveAll(this);
 	}
 
+	if (LanguageComboBox)
+	{
+		LanguageComboBox->OnSelectionChanged.RemoveAll(this);
+	}
 	Super::NativeDestruct();
 }
 
@@ -173,6 +178,24 @@ void UNSGameplaySettingWidget::OnBlueValueChanged(float Value)
 void UNSGameplaySettingWidget::OnApplyCustomColorClicked()
 {
 	ApplyCrosshairColor(PendingCrosshairColor);
+}
+
+void UNSGameplaySettingWidget::OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType)
+{
+	UNSUISettingsSubsystem* Settings =
+		GetUISettingSubsystem();
+	
+	if (!Settings)
+	{
+		return;
+	}
+	
+	const FString CultureCode =
+		SelectionItem == TEXT("English")
+			? TEXT("en")
+			: TEXT("ko-KR");
+	
+	Settings->SetLanguageCode(CultureCode);
 }
 
 void UNSGameplaySettingWidget::SynchronizeSliders(
@@ -259,4 +282,30 @@ void UNSGameplaySettingWidget::UpdateApplyButtonState()
 					"AppliedCrosshairColor",
 					"적용됨"));
 	}
+}
+
+void UNSGameplaySettingWidget::InitializeLanguageOptions()
+{
+	if (!LanguageComboBox)
+	{
+		return;
+	}
+	
+	LanguageComboBox->ClearOptions();
+	LanguageComboBox->AddOption(TEXT("한국어"));
+	LanguageComboBox->AddOption(TEXT("English"));
+	
+	const UNSUISettingsSubsystem* Settings =
+		GetUISettingSubsystem();
+	
+	const bool bIsEnglish =
+		Settings &&
+			Settings->GetLanguageCode().StartsWith(TEXT("en"));
+	
+	LanguageComboBox->SetSelectedOption(
+		bIsEnglish ? TEXT("English") : TEXT("한국어"));
+	
+	LanguageComboBox->OnSelectionChanged.AddDynamic(
+		this,
+		&ThisClass::OnLanguageSelectionChanged);
 }

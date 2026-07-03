@@ -3,6 +3,10 @@
 
 #include "NSUISettingsSubsystem.h"
 #include "Misc/ConfigCacheIni.h"
+#if WITH_EDITOR
+#include "Internationalization/TextLocalizationManager.h"
+#endif
+#include "Internationalization/Internationalization.h"
 
 namespace NSUISettings
 {
@@ -46,6 +50,54 @@ void UNSUISettingsSubsystem::ResetCrosshairColor()
 	SetCrosshairColor(FLinearColor::White);
 }
 
+FString UNSUISettingsSubsystem::GetLanguageCode() const
+{
+	return LanguageCode;
+}
+
+bool UNSUISettingsSubsystem::SetLanguageCode(const FString& NewLanguageCode)
+{
+	if (NewLanguageCode != TEXT("ko-KR") &&
+		NewLanguageCode != TEXT("en"))
+	{
+		return false;
+	}
+
+	bool bApplied = false;
+
+#if WITH_EDITOR
+	if (GIsEditor)
+	{
+		FTextLocalizationManager::Get()
+			.EnableGameLocalizationPreview(NewLanguageCode);
+
+		bApplied = true;
+	}
+	else
+#endif
+	{
+		bApplied = FInternationalization::Get()
+			.SetCurrentCulture(NewLanguageCode);
+	}
+
+	if (!bApplied)
+	{
+		return false;
+	}
+
+	const bool bLanguageChanged =
+		LanguageCode != NewLanguageCode;
+
+	LanguageCode = NewLanguageCode;
+
+	if (bLanguageChanged)
+	{
+		SaveSettings();
+	}
+
+	return true;
+}
+
 void UNSUISettingsSubsystem::LoadSettings()
 {
 	if (!GConfig)
@@ -72,6 +124,14 @@ void UNSUISettingsSubsystem::LoadSettings()
 		GGameUserSettingsIni);
 	
 	CrosshairColor.A = 1.0f;
+	
+	GConfig->GetString(
+		NSUISettings::ConfigSection,
+		TEXT("LanguageCode"),
+		LanguageCode,
+		GGameUserSettingsIni);
+	
+	SetLanguageCode(LanguageCode);
 }
 
 void UNSUISettingsSubsystem::SaveSettings() const
@@ -97,6 +157,12 @@ void UNSUISettingsSubsystem::SaveSettings() const
 		NSUISettings::ConfigSection,
 		TEXT("CrosshairColorB"),
 		CrosshairColor.B,
+		GGameUserSettingsIni);
+	
+	GConfig->SetString(
+		NSUISettings::ConfigSection,
+		TEXT("LanguageCode"),
+		*LanguageCode,
 		GGameUserSettingsIni);
 	
 	GConfig->Flush(false, GGameUserSettingsIni);

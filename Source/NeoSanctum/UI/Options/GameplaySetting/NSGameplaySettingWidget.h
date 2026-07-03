@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "Components/ComboBoxString.h"
 #include "NSGameplaySettingWidget.generated.h"
 
 class UImage;
@@ -44,11 +45,16 @@ private:
     UFUNCTION()
     void OnApplyCustomColorClicked();
 	
+	UFUNCTION()
+	void OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType);
+	
     void SynchronizeSliders(const FLinearColor& Color);
 	
 	void UpdateRGBValueTexts();
 	
 	void UpdateApplyButtonState();
+	
+	void InitializeLanguageOptions();
 	
 private:
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -77,6 +83,9 @@ private:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ApplyCustomColorText;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UComboBoxString> LanguageComboBox;
 
 	FLinearColor PendingCrosshairColor =
 		FLinearColor::White;
