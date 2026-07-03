@@ -48,7 +48,6 @@
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
 
-
 ANSPlayerController::ANSPlayerController()
 {
 	// 기본 태그 초기화
@@ -883,8 +882,9 @@ void ANSPlayerController::BeginPlay()
 
 		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
+			// DataSubsystem->LoadOutGameData();
 			if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
-			{
+		{
 				DataSubsystem->ApplyCachedProgressTo(
 				NSPlayerState->GetProgressComponent());
 			}
@@ -900,7 +900,7 @@ void ANSPlayerController::BeginPlay()
 	}
 	// 현재 레벨이 인 런일 때
 	else
-	{
+{
 		UIManager->HideTitle();
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
@@ -2226,6 +2226,12 @@ void ANSPlayerController::TogglePauseMenu()
 		{
 			return;
 		}
+	}
+	
+	if (ActiveInteractionWidget)
+	{
+		CloseInteractionWidget();
+		return;
 	}
 	
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()
