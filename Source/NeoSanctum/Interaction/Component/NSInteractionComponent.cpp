@@ -7,6 +7,7 @@
 #include "Components/WidgetComponent.h"
 #include "NeoSanctum/Interaction/Core/NSInteractable.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
@@ -185,10 +186,10 @@ void UNSInteractionComponent::Client_OnInteractApproved_Implementation(AActor* T
 		return;
 	}
 
-	// NPC 상호작용은 PC가 위젯 생성을 담당
+	// NPC 상호작용은 PC가 위젯 생성을 담당 (위젯 클래스가 없으면 OnInteract가 직접 처리하는 NPC)
 	ANSInteractableNPCBase* NPC = Cast<ANSInteractableNPCBase>(Target);
 	ANSPlayerController* NSPC = Cast<ANSPlayerController>(PC);
-	if (NPC && NSPC)
+	if (NPC && NSPC && NPC->GetInteractionWidgetClass())
 	{
 		if (NPC->GetInteractionWidgetClass())
 		{
