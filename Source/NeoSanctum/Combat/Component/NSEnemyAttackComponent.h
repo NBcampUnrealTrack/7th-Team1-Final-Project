@@ -49,6 +49,12 @@ private:
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		bool bHasDirectLineOfSight) const;
+	
+	// Boss Mode 기준으로 공격 Row가 현재 Mode에서 사용 가능한지 확인하는 함수
+	bool IsAttackAllowedByMode(const FNSEnemyAttackRow& AttackRow) const;
+
+	// Owner가 BossModeComponent를 가지고 있으면 현재 Boss ModeTag를 반환하는 함수
+	FGameplayTag GetOwnerBossModeTag() const;
 
 private:
 	// AttackId별 마지막 사용 시간을 저장하는 Map

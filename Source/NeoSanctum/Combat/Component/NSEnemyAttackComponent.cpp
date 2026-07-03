@@ -5,6 +5,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "NSBossModeComponent.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
@@ -138,6 +139,11 @@ bool UNSEnemyAttackComponent::CanUseAttack(
 		return false;
 	}
 
+	if (!IsAttackAllowedByMode(AttackRow))
+	{
+		return false;
+	}
+
 	if (Distance < AttackRow.Condition.MinRange ||
 		Distance > AttackRow.Condition.MaxRange)
 	{
@@ -247,4 +253,37 @@ bool UNSEnemyAttackComponent::CanUseDestructibleCoverAttack(
 
 	return AttackRow.AttackType == ENSEnemyAttackType::Projectile ||
 		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
+}
+
+bool UNSEnemyAttackComponent::IsAttackAllowedByMode(
+	const FNSEnemyAttackRow& AttackRow) const
+{
+	if (AttackRow.AllowedModeTags.IsEmpty())
+	{
+		return true;
+	}
+
+	const FGameplayTag CurrentModeTag = GetOwnerBossModeTag();
+
+	if (!CurrentModeTag.IsValid())
+	{
+		return true;
+	}
+
+	return CurrentModeTag.MatchesAny(AttackRow.AllowedModeTags);
+}
+
+FGameplayTag UNSEnemyAttackComponent::GetOwnerBossModeTag() const
+{
+	const AActor* OwnerActor = GetOwner();
+	if (!OwnerActor)
+	{
+		return FGameplayTag();
+	}
+
+	const UNSBossModeComponent* BossModeComponent = OwnerActor->FindComponentByClass<UNSBossModeComponent>();
+
+	return BossModeComponent
+		       ? BossModeComponent->GetCurrentModeTag()
+		       : FGameplayTag();
 }

@@ -9,6 +9,12 @@ namespace NSGameplayTags
 	// Enemy State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_Combat);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_HitReacting);
+	
+	// Enemy TitanWalker State
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_Mobile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_Siege);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_ExposedCore);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_DestroyedLeg);
 
 	// Enemy Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_BasicMelee);

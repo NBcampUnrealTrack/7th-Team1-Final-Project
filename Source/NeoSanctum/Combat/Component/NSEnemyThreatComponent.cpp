@@ -202,6 +202,44 @@ AActor* UNSEnemyThreatComponent::GetCurrentTarget() const
 	return CurrentTarget.Get();
 }
 
+void UNSEnemyThreatComponent::GetKnownTargets(
+	TArray<AActor*>& OutTargets,
+	bool bOnlyVisible) const
+{
+	OutTargets.Reset();
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const double CurrentTime = World->GetTimeSeconds();
+
+	for (const auto& Pair : ThreatRecords)
+	{
+		const FNSEnemyThreatRecord& Record = Pair.Value;
+		AActor* TargetActor = Record.TargetActor.Get();
+
+		if (!IsValidLivingTarget(TargetActor))
+		{
+			continue;
+		}
+
+		if (!IsThreatRecordRelevant(Record, CurrentTime))
+		{
+			continue;
+		}
+
+		if (bOnlyVisible && !Record.bCurrentlyVisible)
+		{
+			continue;
+		}
+
+		OutTargets.AddUnique(TargetActor);
+	}
+}
+
 void UNSEnemyThreatComponent::ClearCurrentTarget(bool bBlockReacquisition)
 {
 	AActor* PreviousTarget = CurrentTarget.Get();

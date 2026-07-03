@@ -4,8 +4,13 @@ namespace NSGameplayTags
 {
 	// Enemy State
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_Combat, "State.Enemy.Combat");
-
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_HitReacting, "State.Enemy.HitReacting");
+	
+	// Enemy TitanWalker State
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_Mobile, "State.Enemy.TitanWalker.Mobile");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_Siege, "State.Enemy.TitanWalker.Siege");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_ExposedCore, "State.Enemy.TitanWalker.ExposedCore");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_DestroyedLeg, "State.Enemy.TitanWalker.DestroyedLeg");
 
 	// Enemy Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_BasicMelee, "Ability.Enemy.BasicMelee");

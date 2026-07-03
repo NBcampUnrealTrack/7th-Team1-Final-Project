@@ -67,6 +67,15 @@ enum class ENSEnemyBrainType : uint8
 	StateTree UMETA(DisplayName = "State Tree")
 };
 
+UENUM(BlueprintType)
+enum class ENSBossTargetPolicy : uint8
+{
+	PrimaryOnly UMETA(DisplayName = "Primary Only"),
+	NearbyKnown UMETA(DisplayName = "Nearby Known"),
+	AllKnown UMETA(DisplayName = "All Known"),
+	RandomKnown UMETA(DisplayName = "Random Known")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -109,19 +118,15 @@ USTRUCT(BlueprintType)
 struct FNSEnemyAttackRow : public FTableRowBase
 {
 	GENERATED_BODY()
-	
 	// 이 공격 Row를 사용할 몬스터 ID
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
-	
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
-	
 	// 공격 실행 GA
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
-	
 	// 공격 분류
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
 	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
@@ -166,6 +171,10 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack")
 	ENSBossLaserMode LaserMode = ENSBossLaserMode::Straight;
 
+	// 이 공격을 사용할 수 있는 Boss Mode 목록. 비어 있으면 모든 Mode에서 사용할 수 있음
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta=(Categories="State.Enemy"))
+	FGameplayTagContainer AllowedModeTags;
+
 	// 공격 중 이동을 허용할지 여부
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack")
 	bool bMove = false;
@@ -189,6 +198,22 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 중 허용되는 상하 조준 제한 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float PitchLimit = 0.0f;
+	
+	// 타깃 지정 정책
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
+	ENSBossTargetPolicy TargetPolicy = ENSBossTargetPolicy::PrimaryOnly;
+
+	// 최대 타깃 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "1"))
+	int32 MaxTargets = 1;
+
+	// 타깃 탐색 거리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "0.0"))
+	float TargetSearchRadius = 6000.0f;
+
+	// 현재 타깃 포함 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
+	bool bIncludePrimaryTarget = true;
 };
 
 USTRUCT(BlueprintType)
@@ -209,9 +234,8 @@ USTRUCT(BlueprintType)
 struct FNSEnemyPhaseRow : public FTableRowBase
 {
 	GENERATED_BODY()
-	
 	// 이 Phase Row를 사용할 몬스터 ID
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
 
 	// 페이즈를 식별하는 ID
@@ -321,7 +345,7 @@ class NEOSANCTUM_API UNSEnemyData : public UPrimaryDataAsset
 
 public:
 	// 몬스터 고유 식별자
-	UPROPERTY(EditDefaultsOnly, Category = "Identity")
+	UPROPERTY(EditDefaultsOnly, Category = "Identity", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
 
 	// 몬스터 설명
@@ -423,14 +447,13 @@ public:
 
 	// 현재 EnemyId와 일치하는 공격 Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyAttackRow*>& GetAttackRows() const;
-	
 	// 현재 EnemyId와 일치하는 Phase Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyPhaseRow*>& GetPhaseRows() const;
-	
-	#if WITH_EDITOR
-		// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
-		virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
-	#endif
+
+#if WITH_EDITOR
+	// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 	// 현재 체력 비율에 맞는 Phase Row를 반환하는 함수. Phase Row가 없으면 nullptr를 반환
 	const FNSEnemyPhaseRow* FindPhaseRowByHealthRatio(float HealthRatio) const;
@@ -450,7 +473,6 @@ private:
 
 	// PhaseTable 캐시가 초기화되었는지 여부
 	mutable bool bPhaseRowsCached = false;
-	
 public:
 	// 현재 페이즈 기준으로 공격 Weight Override를 반영한 최종 Weight를 반환하는 함수
 	float GetPhaseAttackWeight(const FNSEnemyAttackRow& AttackRow, float HealthRatio) const;
