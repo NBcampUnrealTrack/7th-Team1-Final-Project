@@ -9,6 +9,7 @@
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -189,8 +190,12 @@ void UNSInteractionComponent::Client_OnInteractApproved_Implementation(AActor* T
 	ANSPlayerController* NSPC = Cast<ANSPlayerController>(PC);
 	if (NPC && NSPC)
 	{
-		NSPC->OpenInteractionWidget(NPC);
-		return;
+		if (NPC->GetInteractionWidgetClass())
+		{
+			NSPC->OpenInteractionWidget(NPC);
+			
+			return;
+		}
 	}
 
 	// 드롭 파츠 등 비-NPC 상호작용은 기존 흐름 유지
