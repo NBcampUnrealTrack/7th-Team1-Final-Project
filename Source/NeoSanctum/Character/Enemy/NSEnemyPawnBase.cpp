@@ -16,6 +16,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
 
 ANSEnemyPawnBase::ANSEnemyPawnBase()
 {
@@ -46,6 +47,7 @@ ANSEnemyPawnBase::ANSEnemyPawnBase()
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
 	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 }
 
 void ANSEnemyPawnBase::BeginPlay()
@@ -214,6 +216,11 @@ void ANSEnemyPawnBase::ApplyAliveState()
 	if (CollisionComponent)
 	{
 		CollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
+	}
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->ResetDissolve();
 	}
 }
 

@@ -11,13 +11,13 @@ UNSDissolveComponent::UNSDissolveComponent()
 
 void UNSDissolveComponent::StartDissolve(bool bDestroyAfterDissolve)
 {
-AActor* Owner = GetOwner();
+	AActor* Owner = GetOwner();
 	if (!Owner || !GetWorld()) return;
 
 	DynamicMaterials.Empty();
-	
+
 	TArray<UMeshComponent*> MeshComponents;
-	Owner->GetComponents<UMeshComponent>(MeshComponents);
+	CollectDissolveMeshes(MeshComponents);
 	
 	for (UMeshComponent* Mesh : MeshComponents)
 	{
@@ -88,5 +88,52 @@ void UNSDissolveComponent::UpdateDissolveAlpha()
 	{
 		GetWorld()->GetTimerManager().ClearTimer(DissolveTimerHandle);
 		OnDissolveComplete.ExecuteIfBound();
+	}
+}
+
+void UNSDissolveComponent::CollectDissolveMeshes(TArray<UMeshComponent*>& OutMeshes) const
+{
+	OutMeshes.Reset();
+
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return;
+	}
+
+	CollectMeshesFromActor(Owner, OutMeshes);
+
+	if (!bIncludeAttachedActors)
+	{
+		return;
+	}
+
+	TArray<AActor*> AttachedActors;
+	Owner->GetAttachedActors(AttachedActors);
+
+	for (AActor* AttachedActor : AttachedActors)
+	{
+		CollectMeshesFromActor(AttachedActor, OutMeshes);
+	}
+}
+
+void UNSDissolveComponent::CollectMeshesFromActor(
+	AActor* TargetActor,
+	TArray<UMeshComponent*>& OutMeshes) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return;
+	}
+
+	TArray<UMeshComponent*> MeshComponents;
+	TargetActor->GetComponents<UMeshComponent>(MeshComponents);
+
+	for (UMeshComponent* MeshComponent : MeshComponents)
+	{
+		if (IsValid(MeshComponent))
+		{
+			OutMeshes.AddUnique(MeshComponent);
+		}
 	}
 }
