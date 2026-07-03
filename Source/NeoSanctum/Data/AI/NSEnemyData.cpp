@@ -3,6 +3,10 @@
 
 #include "NSEnemyData.h"
 
+#include "Misc/DataValidation.h"
+
+
+
 void UNSEnemyData::CacheAttackRows() const
 {
 	if (bAttackRowsCached)
@@ -199,15 +203,6 @@ void UNSEnemyData::GetPartRowsByAttackId(
 	}
 }
 
-#if WITH_EDITOR
-void UNSEnemyData::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-{
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	InvalidateCachedRows();
-}
-#endif
-
 const FNSEnemyPhaseRow* UNSEnemyData::FindPhaseRowByHealthRatio(float HealthRatio) const
 {
 	const TArray<const FNSEnemyPhaseRow*>& PhaseRows = GetPhaseRows();
@@ -302,3 +297,311 @@ float UNSEnemyData::GetPhaseAttackOverrideValue(
 
 	return ClampedDefaultValue;
 }
+
+#if WITH_EDITOR
+void UNSEnemyData::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	InvalidateCachedRows();
+}
+
+EDataValidationResult FNSEnemyPartRow::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = FTableRowBase::IsDataValid(Context);
+
+	auto AddError = [&Context, &Result](const FString& Message)
+	{
+		Context.AddError(FText::FromString(Message));
+		Result = EDataValidationResult::Invalid;
+	};
+
+	auto AddWarning = [&Context](const FString& Message)
+	{
+		Context.AddWarning(FText::FromString(Message));
+	};
+
+	if (!EnemyId.IsValid())
+	{
+		AddError(TEXT("PartRow EnemyId가 비어 있음"));
+	}
+
+	if (PartId.IsNone())
+	{
+		AddError(TEXT("PartRow PartId가 비어 있음"));
+	}
+
+	TSet<FName> SeenAttackIds;
+	for (const FName AttackId : AttackIds)
+	{
+		if (AttackId.IsNone())
+		{
+			AddError(FString::Printf(TEXT("PartId=%s AttackIds에 None 값 포함"), *PartId.ToString()));
+			continue;
+		}
+
+		if (SeenAttackIds.Contains(AttackId))
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s AttackIds에 중복 값 포함: %s"),
+				*PartId.ToString(),
+				*AttackId.ToString()));
+		}
+
+		SeenAttackIds.Add(AttackId);
+	}
+
+	const bool bHasOnlyOneTracePairSocket =
+		TraceStartSocket.IsNone() != TraceEndSocket.IsNone();
+
+	if (bHasOnlyOneTracePairSocket)
+	{
+		AddError(FString::Printf(
+			TEXT("PartId=%s TraceStartSocket과 TraceEndSocket은 함께 입력 필요"),
+			*PartId.ToString()));
+	}
+
+	if (bUseLeftHandIKWhileEquipped && LeftHandIKSocket.IsNone())
+	{
+		AddError(FString::Printf(
+			TEXT("PartId=%s LeftHand IK 사용 시 LeftHandIKSocket 필요"),
+			*PartId.ToString()));
+	}
+
+	if ((YawLimit > 0.0f || PitchLimit > 0.0f) &&
+		AimBone.IsNone() &&
+		AimControl.IsNone())
+	{
+		AddWarning(FString::Printf(
+			TEXT("PartId=%s 회전 제한값이 있지만 AimBone/AimControl이 모두 비어 있음"),
+			*PartId.ToString()));
+	}
+
+	switch (PartType)
+	{
+	case ENSEnemyPartType::SpawnedWeapon:
+	case ENSEnemyPartType::SpawnedPart:
+		if (!ActorClass)
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s Spawned 타입은 ActorClass 필요"),
+				*PartId.ToString()));
+		}
+
+		if (AttachSocket.IsNone())
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s Spawned 타입은 AttachSocket 필요"),
+				*PartId.ToString()));
+		}
+		break;
+
+	case ENSEnemyPartType::IntegratedWeapon:
+		if (ActorClass)
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s IntegratedWeapon은 ActorClass를 사용하지 않음"),
+				*PartId.ToString()));
+		}
+		break;
+
+	case ENSEnemyPartType::VisualOnly:
+		if (ActorClass)
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s VisualOnly는 ActorClass를 스폰하지 않음. Actor가 필요하면 SpawnedPart 사용"),
+				*PartId.ToString()));
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return Result;
+}
+
+EDataValidationResult UNSEnemyData::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = Super::IsDataValid(Context);
+
+	auto AddError = [&Context, &Result](const FString& Message)
+	{
+		Context.AddError(FText::FromString(Message));
+		Result = EDataValidationResult::Invalid;
+	};
+
+	auto AddWarning = [&Context](const FString& Message)
+	{
+		Context.AddWarning(FText::FromString(Message));
+	};
+
+	if (!EnemyId.IsValid())
+	{
+		AddError(TEXT("EnemyData EnemyId가 비어 있음"));
+		return Result;
+	}
+
+	if (!PartsTable)
+	{
+		AddWarning(TEXT("PartsTable이 비어 있음. Part 기반 공격 위치를 사용하지 않는 Enemy라면 무시 가능"));
+		return Result;
+	}
+
+	if (PartsTable->GetRowStruct() != FNSEnemyPartRow::StaticStruct())
+	{
+		AddError(TEXT("PartsTable RowStruct가 FNSEnemyPartRow가 아님"));
+		return Result;
+	}
+
+	TArray<FNSEnemyPartRow*> PartRows;
+	PartsTable->GetAllRows<FNSEnemyPartRow>(TEXT("EnemyPartRowsValidation"), PartRows);
+
+	TMap<FName, const FNSEnemyPartRow*> PartById;
+	TMultiMap<FName, const FNSEnemyPartRow*> PartsByAttackId;
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (!PartRow || PartRow->EnemyId != EnemyId)
+		{
+			continue;
+		}
+
+		if (PartRow->PartId.IsNone())
+		{
+			continue;
+		}
+
+		if (PartById.Contains(PartRow->PartId))
+		{
+			AddError(FString::Printf(
+				TEXT("EnemyId=%s PartId 중복: %s"),
+				*EnemyId.ToString(),
+				*PartRow->PartId.ToString()));
+		}
+
+		PartById.Add(PartRow->PartId, PartRow);
+
+		for (const FName AttackId : PartRow->AttackIds)
+		{
+			if (!AttackId.IsNone())
+			{
+				PartsByAttackId.Add(AttackId, PartRow);
+			}
+		}
+	}
+
+	if (!AttackTable)
+	{
+		if (PartsByAttackId.Num() > 0)
+		{
+			AddWarning(TEXT("PartRow에 AttackIds가 있지만 AttackTable이 없어 교차 검증 불가"));
+		}
+
+		return Result;
+	}
+
+	if (AttackTable->GetRowStruct() != FNSEnemyAttackRow::StaticStruct())
+	{
+		AddError(TEXT("AttackTable RowStruct가 FNSEnemyAttackRow가 아님"));
+		return Result;
+	}
+
+	TArray<FNSEnemyAttackRow*> AttackRows;
+	AttackTable->GetAllRows<FNSEnemyAttackRow>(TEXT("EnemyAttackRowsValidation"), AttackRows);
+
+	TMap<FName, const FNSEnemyAttackRow*> AttackById;
+
+	for (const FNSEnemyAttackRow* AttackRow : AttackRows)
+	{
+		if (!AttackRow || AttackRow->EnemyId != EnemyId || AttackRow->AttackId.IsNone())
+		{
+			continue;
+		}
+
+		if (AttackById.Contains(AttackRow->AttackId))
+		{
+			AddError(FString::Printf(
+				TEXT("EnemyId=%s AttackId 중복: %s"),
+				*EnemyId.ToString(),
+				*AttackRow->AttackId.ToString()));
+		}
+
+		AttackById.Add(AttackRow->AttackId, AttackRow);
+	}
+
+	for (const TPair<FName, const FNSEnemyPartRow*>& Pair : PartsByAttackId)
+	{
+		if (!AttackById.Contains(Pair.Key))
+		{
+			AddError(FString::Printf(
+				TEXT("PartId=%s 존재하지 않는 AttackId 참조: %s"),
+				*Pair.Value->PartId.ToString(),
+				*Pair.Key.ToString()));
+		}
+	}
+
+	for (const TPair<FName, const FNSEnemyAttackRow*>& Pair : AttackById)
+	{
+		const FName AttackId = Pair.Key;
+		const FNSEnemyAttackRow* AttackRow = Pair.Value;
+
+		TArray<const FNSEnemyPartRow*> LinkedParts;
+		PartsByAttackId.MultiFind(AttackId, LinkedParts);
+
+		if (AttackRow->AttackType == ENSEnemyAttackType::Projectile ||
+			AttackRow->AttackType == ENSEnemyAttackType::Hitscan)
+		{
+			bool bHasMuzzleSocket = false;
+
+			for (const FNSEnemyPartRow* PartRow : LinkedParts)
+			{
+				if (PartRow && !PartRow->MuzzleSocket.IsNone())
+				{
+					bHasMuzzleSocket = true;
+					break;
+				}
+			}
+
+			if (!bHasMuzzleSocket)
+			{
+				AddError(FString::Printf(
+					TEXT("AttackId=%s Projectile/Hitscan 공격은 MuzzleSocket이 있는 PartRow 필요"),
+					*AttackId.ToString()));
+			}
+		}
+
+		if (AttackRow->AttackType == ENSEnemyAttackType::MeleeSweep)
+		{
+			bool bHasTraceSocket = false;
+
+			for (const FNSEnemyPartRow* PartRow : LinkedParts)
+			{
+				if (!PartRow)
+				{
+					continue;
+				}
+
+				const bool bHasTracePair =
+					!PartRow->TraceStartSocket.IsNone() &&
+					!PartRow->TraceEndSocket.IsNone();
+
+				if (bHasTracePair || !PartRow->TraceSocket.IsNone())
+				{
+					bHasTraceSocket = true;
+					break;
+				}
+			}
+
+			if (!LinkedParts.IsEmpty() && !bHasTraceSocket)
+			{
+				AddWarning(FString::Printf(
+					TEXT("AttackId=%s MeleeSweep 공격에 연결된 PartRow가 있지만 TraceSocket 정보가 없음. Actor Forward fallback 사용"),
+					*AttackId.ToString()));
+			}
+		}
+	}
+
+	return Result;
+}
+#endif

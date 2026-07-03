@@ -378,6 +378,11 @@ struct FNSEnemyPartRow : public FTableRowBase
 	// 조준 목표를 따라갈 때 사용하는 보간 속도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
 	float AimSpeed = 10.0f;
+	
+#if WITH_EDITOR
+	// Part Row의 타입별 필수 입력값을 검증하는 함수
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
 };
 
 USTRUCT(BlueprintType)
@@ -524,6 +529,9 @@ public:
 	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
 
 #if WITH_EDITOR
+	// EnemyData와 연결된 DataTable Row들의 입력 상태를 검증하는 함수
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+	
 	// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
