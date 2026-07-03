@@ -30,14 +30,11 @@ ANSBaseDroneAI::ANSBaseDroneAI()
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	
 	// 무브먼트 컴포넌트는 여전히 폰이 소유 (로코모션 컴포넌트는 참조만 함)
-	FloatingPawnMovementComponent = CreateDefaultSubobject<UFloatingPawnMovement>("FloatingPawnMovement");
-	FloatingPawnMovementComponent->MaxSpeed = 1000.f;
-	FloatingPawnMovementComponent->Acceleration = 4000.f;
-	FloatingPawnMovementComponent->Deceleration = 4000.f;
-	FloatingPawnMovementComponent->TurningBoost = 8.f;
-	
-	// 비행 로코모션 컴포넌트 생성 (회전/고도/스티어링 로직 통합)
-	LocomotionComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>("FlyingLocomotion");
+	FlyingMovementComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>("FloatingPawnMovement");
+	FlyingMovementComponent->MaxSpeed = 1000.f;
+	FlyingMovementComponent->Acceleration = 4000.f;
+	FlyingMovementComponent->Deceleration = 4000.f;
+	FlyingMovementComponent->TurningBoost = 8.f;
 	
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>("AbilitySystemComponent");
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -52,16 +49,6 @@ UAbilitySystemComponent* ANSBaseDroneAI::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
-void ANSBaseDroneAI::PostInitializeComponents()
-{
-	Super::PostInitializeComponents();
-	
-	// 로코모션 컴포넌트에 오너/무브먼트 참조 주입 (스폰 시 1회)
-	if (IsValid(LocomotionComponent))
-	{
-		LocomotionComponent->InitializeLocomotion(this, FloatingPawnMovementComponent);
-	}
-}
 
 void ANSBaseDroneAI::Tick(float DeltaSeconds)
 {
@@ -100,9 +87,9 @@ void ANSBaseDroneAI::BeginPlay()
 void ANSBaseDroneAI::MoveTowards(const FVector& TargetLocation)
 {
 	// 서버 권한 확인 및 로코모션 컴포넌트 유효성 확인 후 위임
-	if (!HasAuthority() || !IsValid(LocomotionComponent)) return;
+	if (!HasAuthority() || !IsValid(FlyingMovementComponent)) return;
 	
-	LocomotionComponent->RequestMoveTowards(TargetLocation);
+	FlyingMovementComponent->RequestMoveTowards(TargetLocation);
 }
 
 void ANSBaseDroneAI::SetCurrentEnemy(AActor* InEnemy)
@@ -111,9 +98,9 @@ void ANSBaseDroneAI::SetCurrentEnemy(AActor* InEnemy)
 	CurrentEnemy = InEnemy;
 	
 	// 로코모션 컴포넌트에 회전 타겟 전파 (nullptr 허용 - velocity 회전 복귀)
-	if (IsValid(LocomotionComponent))
+	if (IsValid(FlyingMovementComponent))
 	{
-		LocomotionComponent->SetRotationTarget(InEnemy);
+		FlyingMovementComponent->SetRotationTarget(InEnemy);
 	}
 }
 

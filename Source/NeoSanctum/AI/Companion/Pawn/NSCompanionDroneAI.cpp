@@ -1,14 +1,13 @@
 ﻿// Copyright 2026 One Team. All rights reserved.
 
-
 #include "NSCompanionDroneAI.h"
 
-#include "GameFramework/FloatingPawnMovement.h"
+#include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h" 
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
-#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 
 
 ANSCompanionDroneAI::ANSCompanionDroneAI()
@@ -20,6 +19,30 @@ ANSCompanionDroneAI::ANSCompanionDroneAI()
 	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
 }
 
+void ANSCompanionDroneAI::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	
+	// 서브 로직도 서버에서만 (Super가 조용히 실패해도 여기서 필터)
+	if (!HasAuthority()) return;
+	
+	// 오너 거리 체크 타이머 (0.25초 주기)
+	GetWorldTimerManager().SetTimer(
+		CheckDistanceToOwnerTimer,
+		this,
+		&ANSCompanionDroneAI::CheckDistanceToOwner,
+		0.25f,
+		true);
+	
+	// 재화 진공 타이머 (0.1초 주기)
+	GetWorldTimerManager().SetTimer(
+		CurrencyVacuumTimer,
+		this,
+		&ANSCompanionDroneAI::VacuumNearbyCurrency,
+		0.1f,
+		true);
+}
+
 void ANSCompanionDroneAI::InitializeFromData()
 {
 	Super::InitializeFromData();
@@ -27,24 +50,6 @@ void ANSCompanionDroneAI::InitializeFromData()
 	if (!CurrentDefinition) return;
 	
 	ApplyDroneDefinition(CurrentDefinition);
-}
-
-void ANSCompanionDroneAI::PossessedBy(AController* NewController)
-{
-	Super::PossessedBy(NewController);
-	
-	GetWorldTimerManager().SetTimer(
-	CheckDistanceToOwnerTimer,
-	this,
-	&ANSCompanionDroneAI::CheckDistanceToOwner,
-	0.25f,
-	true);
-	
-	GetWorldTimerManager().SetTimer(
-		CurrencyVacuumTimer, 
-		this,
-		&ANSCompanionDroneAI::VacuumNearbyCurrency,
-		0.1f, true);
 }
 
 void ANSCompanionDroneAI::SetCurrentState(ECompanionState NewState)
@@ -57,10 +62,11 @@ void ANSCompanionDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 	// 서버 체크
 	if (!HasAuthority() || !CurrentDefinition) return;
 	
-	// 현재 업그레이드 정보 받아오기 순회
+	// 컴패니언 전용 Definition으로 캐스팅 (베이스 정의에는 UpgradeNodes 없음)
 	const UNSCompanionDefinition* CompDef = Cast<UNSCompanionDefinition>(CurrentDefinition);
 	if (!CompDef) return;
 	
+	// 현재 업그레이드 정보 받아오기 순회
 	for (const FNSCompanionUpgradeNode& CurrentUpgradeNode : CompDef->UpgradeNodes)
 	{
 		// 업그레이드가 존재하는 노드 태그 찾기
@@ -68,7 +74,7 @@ void ANSCompanionDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 		
 		// 들어온 업그레이드 레벨 값 정상화 방어 코드
 		NewLevel = FMath::Clamp(NewLevel, 0, CurrentUpgradeNode.MaxLevel);
-		// 실제 적용 수치 
+		// 실제 적용 수치
 		float ApplyStat = NewLevel * CurrentUpgradeNode.MagnitudePerLevel;
 		
 		// 현재 적용중인 업그레이드 수치가 있는지 확인
@@ -84,25 +90,25 @@ void ANSCompanionDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)
 			break;
 		}
 		
-		// 새로운 contextHandle
+		// 새로운 ContextHandle
 		FGameplayEffectContextHandle ContextHandle =
-				AbilitySystemComponent->MakeEffectContext();
-			
+			AbilitySystemComponent->MakeEffectContext();
+		
 		// 새로운 SpecHandle
 		FGameplayEffectSpecHandle UpgradeSpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
-		CurrentUpgradeNode.UpgradeEffect,
-		NewLevel,
-		ContextHandle);
-			
+			CurrentUpgradeNode.UpgradeEffect,
+			NewLevel,
+			ContextHandle);
+		
 		// SpecHandle을 만드는데 성공했다면
 		if (UpgradeSpecHandle.IsValid())
 		{
-			// setsetbycaller로 값 저장 후 현재 업그레이드 Map에 추가
+			// SetByCaller로 값 저장 후 현재 업그레이드 Map에 추가
 			UpgradeSpecHandle.Data->SetSetByCallerMagnitude(CurrentUpgradeNode.SetByCallerTag, ApplyStat);
 			
 			StatUpgradeHandles.Add(
-			NodeTag,
-			AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*UpgradeSpecHandle.Data.Get())
+				NodeTag,
+				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*UpgradeSpecHandle.Data.Get())
 			);
 		}
 		
@@ -123,10 +129,9 @@ void ANSCompanionDroneAI::CheckDistanceToOwner()
 	
 	float DistSq = FVector::DistSquared(GetActorLocation(), OwnerPlayer->GetActorLocation());
 	
-	// 오너와 거리 계산
+	// 하드 리쉬 초과 → 즉시 텔포
 	if (DistSq > FMath::Square(HardLeashDistance))
 	{
-		// 오너 쪽 순간이동
 		// @TODO 민재 : 재화 탐색으로 인한 거리 멀어질시 텔포x
 		TeleportToOwner();
 		TimeBeyondLeash = 0.f;
@@ -148,6 +153,7 @@ void ANSCompanionDroneAI::CheckDistanceToOwner()
 		return;
 	}
 	
+	// 접근 중이면 스턱 아님, 아니면 스턱 시간 누적
 	if (PrevDistSqToOwner >= 0.f && DistSq < PrevDistSqToOwner)
 	{
 		TimeBeyondLeash = 0.f;
@@ -157,6 +163,7 @@ void ANSCompanionDroneAI::CheckDistanceToOwner()
 		TimeBeyondLeash += CheckInterval;
 	}
 	
+	// 스턱 시간 초과 → 텔포
 	if (TimeBeyondLeash >= StuckRecoverTime)
 	{
 		TeleportToOwner();
@@ -171,19 +178,17 @@ void ANSCompanionDroneAI::TeleportToOwner()
 	// 서버 및 오너 존재 체크
 	if (!HasAuthority() || !OwnerPlayer) return;
 	
-	// Owner도착 지점 값 가져오기
+	// 목표 지점
 	const FVector Target = OwnerPlayer->GetActorLocation();
-	
-	// 텔레포트전 이동속도 0 세팅
-	if (FloatingPawnMovementComponent)
-	{
-		FloatingPawnMovementComponent->Velocity = FVector::ZeroVector;
-	}
 	
 	// 텔레포트 적용
 	SetActorLocation(Target, false, nullptr, ETeleportType::TeleportPhysics);
 	
-	bHasValidGround = false;
+	// 로코모션 컴포넌트에 텔포 통지 (velocity 리셋 + 지형 재감지 유도)
+	if (IsValid(FlyingMovementComponent))
+	{
+		FlyingMovementComponent->ResetLocomotionState();
+	}
 }
 
 void ANSCompanionDroneAI::VacuumNearbyCurrency()
@@ -203,9 +208,8 @@ void ANSCompanionDroneAI::VacuumNearbyCurrency()
 	int32 OutDropId = INDEX_NONE;
 	FVector OutLocation = FVector::ZeroVector;
 	
-	if(DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionLocation, CurrencyVaccumRadius,OutDropId,OutLocation))
+	if (DropSubsystem->FindNearestTrackableDrop(OwnerPS, CompanionLocation, CurrencyVacuumRadius, OutDropId, OutLocation))
 	{
 		DropSubsystem->TryCollectByCompanion(OutDropId, OwnerPS, CompanionLocation);
 	}
 }
-

@@ -52,8 +52,6 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
-	// @민재 : 컴포넌트 초기화 연결 지점 (Sphere/Mesh/FloatingPawnMovement/Locomotion 모두 유효)
-	virtual void PostInitializeComponents() override;
 
 	// @민재 : 드론 움직임 함수 BT 연동. 실제 로직은 LocomotionComponent에 위임
 	UFUNCTION()
@@ -72,12 +70,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<USkeletalMeshComponent> SkeletalMeshComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UFloatingPawnMovement> FloatingPawnMovementComponent;
-
 	// @민재 : 비행 로코모션 (회전/고도/스티어링/회피 통합)
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Locomotion")
-	TObjectPtr<UNSFlyingLocomotionComponent> LocomotionComponent;
+	TObjectPtr<UNSFlyingLocomotionComponent> FlyingMovementComponent;
 
 #pragma region CachedData
 	// @민재 : 캐싱 데이터
