@@ -13,4 +13,10 @@ UCLASS()
 class NEOSANCTUM_API UGA_BossSpawnDrone : public UGA_EnemyAttackBase
 {
 	GENERATED_BODY()
+	
+public:
+	UGA_BossSpawnDrone();
+	
+protected:
+	virtual void HandleAttackEvent(const FGameplayEventData& Payload) override;
 };
