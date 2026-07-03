@@ -92,6 +92,20 @@ void UGEC_DamageExecution::Execute_Implementation(
 		SourceBaseDamage
 	);
 
+	// Turret처럼 Source ASC에 CritChance/CritDamage Attribute가 없어 캡처가 실패한 경우,
+	// 발사 시점에 소환자의 실제 값을 SetByCaller로 전달받아 덮어씀. 일반 플레이어 공격은 이 태그를 설정하지 않으므로 캡처값이 그대로 사용됨.
+	SourceCritChance = Spec.GetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritChanceOverride.GetTag(),
+		false,
+		SourceCritChance
+	);
+
+	SourceCritDamage = Spec.GetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritDamageOverride.GetTag(),
+		false,
+		SourceCritDamage
+	);
+
 	// 방어력 감소 배율: y = k / (k + Defense)
 	float DefenseMitigationConstant = 100.0f;
 	if (const UAbilitySystemComponent* TargetASC = ExecutionParams.GetTargetAbilitySystemComponent())

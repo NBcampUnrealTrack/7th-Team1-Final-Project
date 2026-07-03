@@ -78,4 +78,8 @@ namespace NSGameplayTags
 
 	// Damage SetByCaller
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_Base, "Effect.Damage.Base");
+	// 캡처된 Source CritChance/CritDamage Attribute를 덮어씀.
+	// Turret처럼 Source ASC에 해당 Attribute가 없는 경우, 발사 시점에 소환자의 실제 값을 대신 전달하기 위해 사용.
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_CritChanceOverride, "Effect.Damage.CritChanceOverride");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_CritDamageOverride, "Effect.Damage.CritDamageOverride");
 }
