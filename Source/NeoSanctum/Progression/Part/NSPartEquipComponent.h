@@ -15,7 +15,7 @@ class UGameplayEffect;
 class UNSPartDefinition;
 class ANSDroppedPart;
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, ENSPartSlot, const FNSPartData&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, FGameplayTag, const FNSPartData&);
 
 /**
  * PlayerState에 부착되는 파츠 컴포넌트
@@ -44,17 +44,17 @@ public:
 	// 이관된 런타임 파츠 유무 확인 (있으면 ApplyEquippedPart 대신 ReapplyAll)
 	bool HasAnyEquipped() const { return EquippedParts.Num() > 0; }
 
-	bool HasEquippedPart(ENSPartSlot Slot) const;
-	const FNSPartData* GetEquippedPart(ENSPartSlot Slot) const;
+	bool HasEquippedPart(FGameplayTag Slot) const;
+	const FNSPartData* GetEquippedPart(FGameplayTag Slot) const;
 
 	UFUNCTION(Server, Reliable)
 	void Server_RequestEquip(FNSPartData NewPart);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestReroll(ENSPartSlot Slot);
+	void Server_RequestReroll(FGameplayTag Slot);
 
 	UFUNCTION(Server, Reliable)
-	void Server_RequestUpgradeRarity(ENSPartSlot Slot);
+	void Server_RequestUpgradeRarity(FGameplayTag Slot);
 
 	// 클라 → 서버 줍기 요청 (상호작용 OnInteract에서 호출, 서버 TryPickup 경유)
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Part")
@@ -71,25 +71,25 @@ public:
 	TSubclassOf<ANSDroppedPart> DroppedPartClass;
 
 private:
-	FNSPartData* FindPart(ENSPartSlot Slot);
-	const FNSPartData* FindPart(ENSPartSlot Slot) const;
+	FNSPartData* FindPart(FGameplayTag Slot);
+	const FNSPartData* FindPart(FGameplayTag Slot) const;
 
-	void DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> LocationOverride);
+	void DropPartInSlot(FGameplayTag Slot, TOptional<FVector> LocationOverride);
 	void SpawnDroppedPart(const FNSPartData& Part, const FVector& Location);
-	void RemovePartEffects(ENSPartSlot Slot);
+	void RemovePartEffects(FGameplayTag Slot);
 
-	void RemoveGEForSlot(ENSPartSlot Slot);
-	void RemoveAbilitiesForSlot(ENSPartSlot Slot);
+	void RemoveGEForSlot(FGameplayTag Slot);
+	void RemoveAbilitiesForSlot(FGameplayTag Slot);
 
-	void ApplyPartEffect(ENSPartSlot Slot);
-	void Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGameplayEffect> GEClass);
-	void OnEffectLoaded(ENSPartSlot Slot);
+	void ApplyPartEffect(FGameplayTag Slot);
+	void Internal_ApplyGE(FGameplayTag Slot, TSubclassOf<UGameplayEffect> GEClass);
+	void OnEffectLoaded(FGameplayTag Slot);
 
-	void GrantAbilities(ENSPartSlot Slot);
-	void OnAbilitiesLoaded(ENSPartSlot Slot);
+	void GrantAbilities(FGameplayTag Slot);
+	void OnAbilitiesLoaded(FGameplayTag Slot);
 
-	void RerollStat(ENSPartSlot Slot);
-	void UpgradeRarity(ENSPartSlot Slot);
+	void RerollStat(FGameplayTag Slot);
+	void UpgradeRarity(FGameplayTag Slot);
 	float RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const;
 
 	UAbilitySystemComponent* GetOwnerASC() const;
@@ -102,8 +102,8 @@ private:
 	TArray<FNSPartData> EquippedParts;
 
 	// 런타임 핸들 (슬롯별)
-	TMap<ENSPartSlot, FActiveGameplayEffectHandle> ActiveGEHandles;
-	TMap<ENSPartSlot, TArray<FGameplayAbilitySpecHandle>> GrantedAbilityHandlesBySlot;
-	TMap<ENSPartSlot, TSharedPtr<FStreamableHandle>> EffectLoadHandles;
-	TMap<ENSPartSlot, TSharedPtr<FStreamableHandle>> AbilityLoadHandles;
+	TMap<FGameplayTag, FActiveGameplayEffectHandle> ActiveGEHandles;
+	TMap<FGameplayTag, TArray<FGameplayAbilitySpecHandle>> GrantedAbilityHandlesBySlot;
+	TMap<FGameplayTag, TSharedPtr<FStreamableHandle>> EffectLoadHandles;
+	TMap<FGameplayTag, TSharedPtr<FStreamableHandle>> AbilityLoadHandles;
 };

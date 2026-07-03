@@ -72,6 +72,10 @@ public:
 	UFUNCTION(Exec)
 	void Debug_LockNPC(FString NpcId);
 
+	// 테스트용 치트 (슬롯 언락/파츠 구매 테스트 — 영구 공통재화를 10000으로 설정)
+	UFUNCTION(Exec)
+	void Debug_SetCommonCurrency();
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };

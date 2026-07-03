@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "NSProgressionSubsystem.generated.h"
 
@@ -42,6 +43,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progression|Unlock")
 	void LockNPC(FName NPCId);
 	
+	// 슬롯 언락
+	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
+	bool UnlockSlot(FName CharacterId, FGameplayTag Slot);
+
+	UFUNCTION(BlueprintPure, Category = "Progression|Part")
+	bool IsSlotUnlocked(FName CharacterId, FGameplayTag Slot) const;
+
+	UFUNCTION(BlueprintPure, Category = "Progression|Part")
+	int64 GetSlotUnlockCost(FGameplayTag Slot) const;
+
 	// 장착: 소유 검증 후 캐릭터 장착 참조 설정
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	void SetEquippedPart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
@@ -75,6 +86,9 @@ public:
 	// 장착 파츠가 없으면 NAME_None 반환
 	UFUNCTION(BlueprintPure, Category = "Progression|Part")
 	FNSPartSaveData GetEquippedPart(FName CharacterId) const;
+
+	UFUNCTION(BlueprintPure, Category = "Progression|Query")
+	FName GetLastSelectedCharacterId() const;
 	
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	FGameplayTag GetSelectedCompanion() const;
@@ -82,9 +96,8 @@ public:
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
 	
-	// 구매: 미소유면 값 1회 롤해 인벤토리에 추가
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
-	bool PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost);
+	bool PurchasePart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	UFUNCTION(BlueprintPure, Category = "Progression|Part")
 	bool IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const;
 	const TArray<FNSPartSaveData>& GetOwnedParts() const;

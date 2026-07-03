@@ -3,17 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/DataTable.h"
+#include "GameplayTagContainer.h"
 #include "NSPartTypes.generated.h"
 
 class UNSPartDefinition;
-
-UENUM(BlueprintType)
-enum class ENSPartSlot : uint8
-{
-	Body        UMETA(DisplayName = "바디"),
-	Arm         UMETA(DisplayName = "암"),
-	Leg         UMETA(DisplayName = "레그"),
-};
 
 UENUM(BlueprintType)
 enum class ENSPartRarity : uint8
@@ -36,9 +30,62 @@ struct FNSPartValueRange
 	float Max = 0.f;
 };
 
-/** 
- * 파츠 런타임 상태 (레플리케이션/저장 대상) 
- * GE 핸들은 UNSPartEquipComponent가 관리 
+USTRUCT(BlueprintType)
+struct FNSPartDefinitionRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// DA 참조 -> 세이브/런타임 키와 일치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
+	TSoftObjectPtr<UNSPartDefinition> Definition;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part",
+		meta = (Categories = "Part.Slot"))
+	FGameplayTag PartSlot;
+
+	// 레그 파츠는 false (인런 밸런스상 리롤 불가)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
+	bool bCanReroll = true;
+
+	// 언락(구매) 영구재화 비용
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part",
+		meta = (ClampMin = "0"))
+	int64 UnlockCost = 0;
+
+	// 등급별 수치 범위 (장착/리롤/등급업 시 이 범위에서 결정)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
+	TMap<ENSPartRarity, FNSPartValueRange> ValueRange;
+
+	// false면 카탈로그에서 제외
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
+	bool bEnabled = true;
+};
+
+USTRUCT(BlueprintType)
+struct FNSPartSlotRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot",
+		meta = (Categories = "Part.Slot"))
+	FGameplayTag SlotTag;
+
+	// 슬롯 언락 비용 (CommonCurrency)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot", meta = (ClampMin = "0"))
+	int64 UnlockCost = 0;
+
+	// true면 시작부터 언락 (예: Body 슬롯)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot")
+	bool bUnlockedByDefault = false;
+
+	// false면 언락 대상에서 제외
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot")
+	bool bEnabled = true;
+};
+
+/**
+ * 파츠 런타임 상태 (레플리케이션/저장 대상)
+ * GE 핸들은 UNSPartEquipComponent가 관리
  */
 USTRUCT(BlueprintType)
 struct FNSPartData
@@ -50,7 +97,7 @@ struct FNSPartData
 
 	// 슬롯 식별용
 	UPROPERTY(BlueprintReadWrite)
-	ENSPartSlot Slot = ENSPartSlot::Body;
+	FGameplayTag Slot;
 
 	UPROPERTY(BlueprintReadWrite)
 	ENSPartRarity CurrentRarity = ENSPartRarity::Common;

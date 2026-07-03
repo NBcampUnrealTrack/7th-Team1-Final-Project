@@ -32,14 +32,14 @@ public:
 private:
 	// 슬롯별 USkeletalMeshComponent를 런타임 생성 후 리더포즈 연결 (1회)
 	void EnsureSlotComponents();
-	USkeletalMeshComponent* GetSlotMeshComp(ENSPartSlot Slot) const;
+	USkeletalMeshComponent* GetSlotMeshComp(FGameplayTag Slot) const;
 
 	// OnPartChanged 콜백 — 최신 데이터 보관 후 비주얼 갱신
-	void HandlePartChanged(ENSPartSlot Slot, const FNSPartData& Part);
+	void HandlePartChanged(FGameplayTag Slot, const FNSPartData& Part);
 
 	// PendingParts[Slot] 기준으로 메시 세팅. 미로드 시 비동기 로드 후 재진입 (NSDroppedPart와 동일 패턴)
-	void UpdateSlotVisual(ENSPartSlot Slot);
-	void ClearSlotVisual(ENSPartSlot Slot);
+	void UpdateSlotVisual(FGameplayTag Slot);
+	void ClearSlotVisual(FGameplayTag Slot);
 
 private:
 	UPROPERTY(Transient)
@@ -49,13 +49,13 @@ private:
 	TObjectPtr<UNSPartEquipComponent> BoundEquipComp;
 
 	UPROPERTY(Transient)
-	TMap<ENSPartSlot, TObjectPtr<USkeletalMeshComponent>> SlotMeshComps;
+	TMap<FGameplayTag, TObjectPtr<USkeletalMeshComponent>> SlotMeshComps;
 
 	// 비동기 로드 중 교체 대비 —> 슬롯별 최신 파츠 데이터
-	TMap<ENSPartSlot, FNSPartData> PendingParts;
+	TMap<FGameplayTag, FNSPartData> PendingParts;
 
 	// 진행 중인 메시(Definition/PartMesh) 비동기 로드 핸들 (슬롯별)
-	TMap<ENSPartSlot, TSharedPtr<FStreamableHandle>> MeshLoadHandles;
+	TMap<FGameplayTag, TSharedPtr<FStreamableHandle>> MeshLoadHandles;
 
 	FDelegateHandle PartChangedHandle;
 };

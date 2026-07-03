@@ -3,12 +3,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/StreamableManager.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSPartEquipWidget.generated.h"
 
 class UNSPartDefinition;
-class UNSPartEquipComponent;
+class UNSPartCatalogEntryWidget;
+class UNSPartDetailWidget;
+class UPanelWidget;
+class UButton;
+class UTextBlock;
+class ANSPartPreviewStage;
+class UNSPartSlotButton;
+
+UENUM()
+enum class ENSPartSelectionMode : uint8
+{
+	None,
+	Part,        // 카탈로그에서 파츠 선택 (SelectedRow 사용)
+	SlotUnlock,  // 잠긴 슬롯버튼 클릭 (SelectedSlotForUnlock 사용)
+	UnequipPart, // 해금된 슬롯버튼 클릭 + 그 슬롯에 파츠가 장착됨
+};
 
 UCLASS()
 class NEOSANCTUM_API UNSPartEquipWidget : public UNSNPCInteractionWidgetBase
@@ -17,11 +34,7 @@ class NEOSANCTUM_API UNSPartEquipWidget : public UNSNPCInteractionWidgetBase
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
 
-	// 목록에서 선택한 Common 파츠 장착
-	UFUNCTION(BlueprintCallable, Category = "Part")
-	void EquipSelectedPart(int32 SelectableIndex);
-
-	// 닫기 호출
+	// 닫기 호출 (변경 있으면 다이얼로그)
 	UFUNCTION(BlueprintCallable, Category = "Part")
 	void RequestClose();
 
@@ -29,23 +42,163 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Part")
 	virtual void CloseWidget() override;
 
-	// 현재 슬롯 장착 파츠 조회
+	// 슬롯 언락 요청 (활성 캐릭터 기준)
 	UFUNCTION(BlueprintCallable, Category = "Part")
-	bool GetEquippedDefinition(ENSPartSlot PartSlot, UNSPartDefinition*& OutDefinition) const;
+	bool RequestUnlockSlot(FGameplayTag PartSlot);
+
+	// 슬롯 언락 여부 (활성 캐릭터 기준)
+	UFUNCTION(BlueprintPure, Category = "Part")
+	bool IsSlotUnlocked(FGameplayTag PartSlot) const;
+
+	// 현재 장착된 파츠가 이 슬롯 소속인지 (슬롯버튼 활성 표시용)
+	UFUNCTION(BlueprintPure, Category = "Part")
+	bool IsSlotEquipped(FGameplayTag PartSlot) const;
+
+	// 슬롯 언락 비용
+	UFUNCTION(BlueprintPure, Category = "Part")
+	int64 GetSlotUnlockCost(FGameplayTag PartSlot) const;
+
+	// 전체 슬롯 row 목록
+	UFUNCTION(BlueprintPure, Category = "Part")
+	TArray<FNSPartSlotRow> GetAllSlotRows() const;
+
+	// 영구재화로 파츠 언락 (Common 등급)
+	UFUNCTION(BlueprintCallable, Category = "Part")
+	bool RequestUnlockPart(TSoftObjectPtr<UNSPartDefinition> Definition);
+
+	// 소유한 파츠를 장착 저장 (Common 등급)
+	UFUNCTION(BlueprintCallable, Category = "Part")
+	void RequestEquipPart(TSoftObjectPtr<UNSPartDefinition> Definition);
+
+	// 해당 파츠(Common 등급) 소유 여부
+	UFUNCTION(BlueprintPure, Category = "Part")
+	bool IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition) const;
+
+	// 현재 캐릭터의 장착 파츠 (미장착 시 Definition == null)
+	UFUNCTION(BlueprintPure, Category = "Part")
+	FNSPartSaveData GetEquippedPart() const;
+
+	// DT 전체 row 목록 (bEnabled 포함 전부 — 필터는 BP에서)
+	UFUNCTION(BlueprintPure, Category = "Part")
+	TArray<FNSPartDefinitionRow> GetAllPartRows() const;
+
+	// 현재 영구 재화량
+	UFUNCTION(BlueprintPure, Category = "Part")
+	int64 GetCommonCurrency() const;
+
+	// 카탈로그 항목 클릭 시 후보로 선택 (중앙 설명 패널 갱신). SourceEntry는 선택 표시(테두리 on/off)용
+	UFUNCTION(BlueprintCallable, Category = "Part")
+	void SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSPartCatalogEntryWidget* SourceEntry = nullptr);
 
 protected:
 	// 변경사항 있을 때 저장 확인 다이얼로그
 	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
 	void ShowSaveConfirmDialog();
 
-	// 선택 가능한 파츠 목록
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
-	TArray<TSoftObjectPtr<UNSPartDefinition>> SelectableParts;
+	// 바디 카탈로그 항목을 채울 컨테이너 (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> BodyListContainer;
+
+	// 암 카탈로그 항목을 채울 컨테이너 (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> ArmListContainer;
+
+	// 레그 카탈로그 항목을 채울 컨테이너 (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> LegListContainer;
+
+	// 왼쪽 "장착중" 3박스 클릭 버튼 (WBP에서 이름 일치 필요, 장착된 파츠 아이콘/이름/수치 표시 겸용)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UNSPartSlotButton> BodyEquippedButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UNSPartSlotButton> ArmEquippedButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UNSPartSlotButton> LegEquippedButton;
+
+	// 왼쪽 "장착중인 파츠 설명" (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UNSPartDetailWidget> EquippedDetailWidget;
+
+	// 중앙 "선택한 파츠 설명" (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UNSPartDetailWidget> SelectedDetailWidget;
+
+	// 중앙 "장착 버튼" (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UButton> EquipButton;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> EquipButtonText;
+
+	// 에디터 Class Defaults에서 WBP_PartCatalogEntry 지정
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	TSubclassOf<UNSPartCatalogEntryWidget> PartEntryTemplate;
+
+	// 에디터 Class Defaults에서 BP_PartPreviewStage 지정 (중앙 Detail 3D 프리뷰용)
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	TSubclassOf<ANSPartPreviewStage> PreviewStageClass;
+
+	// 카탈로그를 3분할할 때 사용하는 슬롯 태그 (에디터에서 Part.Slot.Body 등 지정)
+	UPROPERTY(EditDefaultsOnly, Category = "Part", meta = (Categories = "Part.Slot"))
+	FGameplayTag BodySlotTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Part", meta = (Categories = "Part.Slot"))
+	FGameplayTag ArmSlotTag;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Part", meta = (Categories = "Part.Slot"))
+	FGameplayTag LegSlotTag;
+
 private:
-	UNSPartEquipComponent* GetEquipComponent() const;
+	void BuildPartEntries();
+	UPanelWidget* GetCatalogContainerForSlot(FGameplayTag SlotTag) const;
+
+	UFUNCTION()
+	void OnEquipButtonClicked();
+
+	UFUNCTION()
+	void OnBodyEquippedClicked();
+
+	UFUNCTION()
+	void OnArmEquippedClicked();
+
+	UFUNCTION()
+	void OnLegEquippedClicked();
+
+	void OnSlotButtonClicked(FGameplayTag SlotTag);
+	void RefreshEquippedDisplay();
+	void RefreshEquippedSlotButton(UNSPartSlotButton* Button, FGameplayTag SlotTag, FGameplayTag EquippedSlot,
+		const FNSPartData& EquippedPartData, UNSPartDefinition* EquippedDef);
+	void RefreshEquipButton();
+	void RequestUnequipPart();
+
+	// 현재 SelectionMode에 맞춰 카탈로그 항목/슬롯버튼 3개의 선택 표시를 갱신
+	void RefreshSelectionHighlights();
 
 	UPROPERTY()
 	TWeakObjectPtr<APlayerController> OwningController;
 
 	bool bDirty = false;
+
+	// 현재 가운데 패널/버튼이 어떤 대상을 가리키는지
+	ENSPartSelectionMode SelectionMode = ENSPartSelectionMode::None;
+
+	// SelectionMode == Part일 때 사용
+	FNSPartDefinitionRow SelectedRow;
+
+	// SelectionMode == SlotUnlock일 때 사용
+	FNSPartSlotRow SelectedSlotForUnlock;
+
+	// SelectionMode == SlotUnlock 또는 UnequipPart일 때, 선택된 슬롯버튼을 가리키는 태그 (하이라이트용)
+	FGameplayTag SelectedSlotTag;
+
+	// SelectionMode == Part일 때, 선택 표시(테두리)를 켜둔 카탈로그 항목 위젯
+	UPROPERTY()
+	TWeakObjectPtr<UNSPartCatalogEntryWidget> SelectedCatalogEntryWidget;
+
+	UPROPERTY()
+	TObjectPtr<ANSPartPreviewStage> PreviewStage;
+
+	TSharedPtr<FStreamableHandle> PreviewMeshLoadHandle;
 };

@@ -2,12 +2,14 @@
 
 
 #include "NSRewardHandler.h"
+#include "Engine/AssetManager.h"
 
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
-#include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
@@ -434,7 +436,7 @@ void UNSRewardHandler::HandlePartDropResult(
 	
 	for (int32 SpawnIndex = 0; SpawnIndex < DropResult.Quantity; ++SpawnIndex)
 	{
-		FNSPartData PartData = MakePartDataFromDropResult(DropResult, RandomStream);
+		FNSPartData PartData = MakePartDataFromDropResult(World, DropResult, RandomStream);
 		
 		if (!PartData.IsValid())
 		{
@@ -482,37 +484,35 @@ void UNSRewardHandler::HandleAugmentDropResult(const FNSRewardDropResult& DropRe
 }
 
 FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
-	const FNSRewardDropResult& DropResult, FRandomStream& RandomStream)
+	UWorld* World, const FNSRewardDropResult& DropResult, FRandomStream& RandomStream)
 {
 	FNSPartData PartData;
-	
+
 	if (DropResult.PartDefinition.IsNull())
 	{
 		return PartData;
 	}
-	
-	// MVP: 드랍 시점에 수치 산출을 위해 Definition을 확인
-	// TODO: @원종 후속 작업에서 PartDefinition 선로딩이 보장되면 Get() 기반으로 변경
-	UNSPartDefinition* PartDefinition = DropResult.PartDefinition.LoadSynchronous();
-	
-	if (!PartDefinition)
+
+	const FPrimaryAssetId DefId =
+		UAssetManager::Get().GetPrimaryAssetIdForPath(DropResult.PartDefinition.ToSoftObjectPath());
+	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(World, DefId);
+	if (!Row)
 	{
 		return PartData;
 	}
-	
+
 	PartData.DefinitionPtr = DropResult.PartDefinition;
-	PartData.Slot = PartDefinition->PartSlot;
+	PartData.Slot = Row->PartSlot;
 	PartData.CurrentRarity = ENSPartRarity::Common;
 	PartData.RollCount = 0;
-	
-	const FNSPartValueRange* ValueRange = PartDefinition->ValueRange.Find(PartData.CurrentRarity);
-	
+
+	const FNSPartValueRange* ValueRange = Row->ValueRange.Find(PartData.CurrentRarity);
 	if (ValueRange)
 	{
 		const float MinValue = FMath::Min(ValueRange->Min, ValueRange->Max);
 		const float MaxValue = FMath::Max(ValueRange->Min, ValueRange->Max);
 		PartData.CurrentValue = RandomStream.FRandRange(MinValue, MaxValue);
 	}
-	
+
 	return PartData;
 }

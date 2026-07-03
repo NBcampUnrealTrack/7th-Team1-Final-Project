@@ -27,6 +27,10 @@ struct FNSCharacterSaveData
 	// 캐릭터별 스킬 (스킬종류, 레벨)
 	UPROPERTY(SaveGame, BlueprintReadOnly)
 	TMap<FName,int32> CharacterSkillLevels;
+
+	// 캐릭터별 언락된 슬롯
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	TSet<FGameplayTag> UnlockedSlots;
 };
 
 USTRUCT(BlueprintType)
@@ -64,12 +68,12 @@ public:
 	// 펫 업그레이드 정보(스킬종류, 레벨)
 	UPROPERTY(SaveGame)
 	TMap<FName,int32> PetUpgradeLevels;
+	// 계정 공유 파츠 인벤토리
+	UPROPERTY(SaveGame)
+	TArray<FNSPartSaveData> OwnedParts;
 	// 가장 최근에 플레이한 캐릭터 ID
 	UPROPERTY(SaveGame)
 	FName LastSelectedCharacterId;
-	// 소유 파츠 인벤토리 (계정 공유, 키 = 정의+등급)
-	UPROPERTY(SaveGame)
-	TArray<FNSPartSaveData> OwnedParts;
 	// 펫 관련 데이터
 	UPROPERTY(SaveGame)
 	FNSCompanionSaveData Companion;

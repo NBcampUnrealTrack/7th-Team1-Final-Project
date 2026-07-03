@@ -2,9 +2,13 @@
 
 
 #include "NSProgressionSubsystem.h"
+#include "Engine/AssetManager.h"
 #include "NeoSanctum/System/NSSaveGameSubsystem.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
 
@@ -166,21 +170,37 @@ FNSPartSaveData UNSProgressionSubsystem::GetEquippedPart(FName CharacterId) cons
 	{
 		return FNSPartSaveData();
 	}
-	const FNSCharacterSaveData* Slot = Save->Characters.Find(CharacterId);
-	if (!Slot || Slot->EquippedPartDefinition.IsNull())
+	const FNSCharacterSaveData* CharData = Save->Characters.Find(CharacterId);
+	if (!CharData || CharData->EquippedPartDefinition.IsNull())
 	{
-		
 		return FNSPartSaveData();
 	}
 
 	const FNSPartSaveData* Owned = Save->OwnedParts.FindByPredicate(
-		[Slot](const FNSPartSaveData& P)
+		[CharData](const FNSPartSaveData& P)
 		{
-			return P.Definition == 
-				Slot->EquippedPartDefinition && P.Rarity == Slot->EquippedPartRarity;
+			return P.Definition == CharData->EquippedPartDefinition
+				&& P.Rarity == CharData->EquippedPartRarity;
 		});
-	
 	return Owned ? *Owned : FNSPartSaveData();
+}
+
+FName UNSProgressionSubsystem::GetLastSelectedCharacterId() const
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save)
+	{
+		return NAME_None;
+	}
+
+	// 최초 플레이 등으로 아직 저장된 값이 없으면 Ranger로 초기화
+	if (Save->LastSelectedCharacterId.IsNone())
+	{
+		Save->LastSelectedCharacterId = TEXT("DA_Character_Ranger");
+		const_cast<UNSProgressionSubsystem*>(this)->SaveNow();
+	}
+
+	return Save->LastSelectedCharacterId;
 }
 
 FGameplayTag UNSProgressionSubsystem::GetSelectedCompanion() const
@@ -197,36 +217,133 @@ int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag NodeTag) const
 	return Save ? Save->Companion.NodeLevels.FindRef(NodeTag) : 0;
 }
 
-bool UNSProgressionSubsystem::PurchasePart(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity, int64 Cost)
+bool UNSProgressionSubsystem::UnlockSlot(FName CharacterId, FGameplayTag Slot)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
-	if (!Save || Definition.IsNull() || Cost < 0 || Save->CommonCurrency < Cost)
+	if (!Save || CharacterId.IsNone())
 	{
+		NS_LOG(LogNS, Warning, "[SlotUnlock] 실패: Save 없음 또는 CharacterId=None. CharacterId={CharacterId}",
+			("CharacterId", CharacterId.ToString()));
+		return false;
+	}
+	if (IsSlotUnlocked(CharacterId, Slot))
+	{
+		NS_LOG(LogNS, Warning, "[SlotUnlock] 실패: 이미 해금됨. Slot={Slot}", ("Slot", Slot.ToString()));
+		return false;
+	}
+
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetGameInstance());
+	if (!DataSS)
+	{
+		NS_LOG(LogNS, Warning, "[SlotUnlock] 실패: DataSubsystem 없음.");
+		return false;
+	}
+	const FNSPartSlotRow* Row = DataSS->GetSlotRow(Slot);
+	if (!Row || !Row->bEnabled)
+	{
+		NS_LOG(LogNS, Warning, "[SlotUnlock] 실패: GetSlotRow 실패 또는 비활성. Slot={Slot}, RowFound={RowFound}",
+			("Slot", Slot.ToString()), ("RowFound", Row != nullptr));
+		return false;
+	}
+	if (Save->CommonCurrency < Row->UnlockCost)
+	{
+		NS_LOG(LogNS, Warning, "[SlotUnlock] 실패: 재화 부족. 보유={Currency}, 필요={Cost}",
+			("Currency", Save->CommonCurrency), ("Cost", Row->UnlockCost));
+		return false;
+	}
+
+	Save->CommonCurrency -= Row->UnlockCost;
+	Save->Characters.FindOrAdd(CharacterId).UnlockedSlots.Add(Slot);
+	SaveNow();
+	NS_LOG(LogNS, Log, "[SlotUnlock] 성공: Slot={Slot}, 잔여재화={Currency}",
+		("Slot", Slot.ToString()), ("Currency", Save->CommonCurrency));
+	return true;
+}
+
+bool UNSProgressionSubsystem::IsSlotUnlocked(FName CharacterId, FGameplayTag Slot) const
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetGameInstance());
+	if (DataSS)
+	{
+		const FNSPartSlotRow* Row = DataSS->GetSlotRow(Slot);
+		if (Row && Row->bUnlockedByDefault)
+		{
+			return true;
+		}
+	}
+
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || CharacterId.IsNone())
+	{
+		return false;
+	}
+	const FNSCharacterSaveData* CharData = Save->Characters.Find(CharacterId);
+	return CharData && CharData->UnlockedSlots.Contains(Slot);
+}
+
+int64 UNSProgressionSubsystem::GetSlotUnlockCost(FGameplayTag Slot) const
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetGameInstance());
+	if (!DataSS)
+	{
+		return 0;
+	}
+	const FNSPartSlotRow* Row = DataSS->GetSlotRow(Slot);
+	return Row ? Row->UnlockCost : 0;
+}
+
+bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
+{
+	UNSPermanentSaveGame* Save = GetSaveData();
+	if (!Save || CharacterId.IsNone() || Definition.IsNull())
+	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: Save={HasSave}, CharacterId={CharId}, Definition={Definition}",
+			("HasSave", Save != nullptr), ("CharId", CharacterId.ToString()), ("Definition", Definition.ToString()));
 		return false;
 	}
 	if (IsPartOwned(Definition, Rarity))
 	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: 이미 소유중인 파츠입니다: {Definition}", ("Definition", Definition.ToString()));
 		return false;
 	}
 
-	UNSPartDefinition* Def = Definition.LoadSynchronous();
-	if (!Def)
+	const FPrimaryAssetId DefId =
+		UAssetManager::Get().GetPrimaryAssetIdForPath(Definition.ToSoftObjectPath());
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetGameInstance());
+	if (!DataSS)
 	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: DataSubsystem이 없습니다.");
 		return false;
 	}
-	const FNSPartValueRange* Range = Def->ValueRange.Find(Rarity);
+	const FNSPartDefinitionRow* Row = DataSS->GetPartRow(DefId);
+	if (!Row)
+	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: GetPartRow 실패. DefId={DefId}", ("DefId", DefId.ToString()));
+		return false;
+	}
+	if (!IsSlotUnlocked(CharacterId, Row->PartSlot))
+	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: 슬롯이 언락되지 않음. Slot={Slot}", ("Slot", Row->PartSlot.ToString()));
+		return false;
+	}
+	if (Save->CommonCurrency < Row->UnlockCost)
+	{
+		NS_LOG(LogNS, Warning, "[Purchase] 실패: 재화 부족. Currency={Currency}, Cost={Cost}",
+			("Currency", Save->CommonCurrency), ("Cost", Row->UnlockCost));
+		return false;
+	}
+
+	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
 
 	FNSPartSaveData New;
 	New.Definition = Definition;
 	New.Rarity = Rarity;
 	New.EnhanceLevel = 0;
-	// 값 1회 롤 후 고정
 	New.Value = Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
 
-	Save->CommonCurrency -= Cost;
+	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
 	SaveNow();
-	
 	return true;
 }
 
@@ -237,7 +354,7 @@ void UNSProgressionSubsystem::SetEquippedPart(FName CharacterId, TSoftObjectPtr<
 	{
 		return;
 	}
-	
+
 	// 해제(null)이거나, 소유한 파츠만 장착 가능
 	if (!Definition.IsNull() && !IsPartOwned(Definition, Rarity)) { return; }
 
@@ -314,7 +431,6 @@ bool UNSProgressionSubsystem::IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Defi
 	{
 		return false;
 	}
-	
 	return Save->OwnedParts.ContainsByPredicate(
 		[&Definition, Rarity](const FNSPartSaveData& P)
 		{
@@ -326,7 +442,6 @@ const TArray<FNSPartSaveData>& UNSProgressionSubsystem::GetOwnedParts() const
 {
 	static const TArray<FNSPartSaveData> Empty;
 	const UNSPermanentSaveGame* Save = GetSaveData();
-	
 	return Save ? Save->OwnedParts : Empty;
 }
 
