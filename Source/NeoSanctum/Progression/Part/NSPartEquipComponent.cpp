@@ -28,14 +28,14 @@ void UNSPartEquipComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 void UNSPartEquipComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// 진행 중 비동기 로드 콜백이 파괴 후 호출되지 않도록 취소
-	for (TPair<ENSPartSlot, TSharedPtr<FStreamableHandle>>& Pair : EffectLoadHandles)
+	for (TPair<FGameplayTag, TSharedPtr<FStreamableHandle>>& Pair : EffectLoadHandles)
 	{
 		if (Pair.Value.IsValid())
 		{
 			Pair.Value->CancelHandle();
 		}
 	}
-	for (TPair<ENSPartSlot, TSharedPtr<FStreamableHandle>>& Pair : AbilityLoadHandles)
+	for (TPair<FGameplayTag, TSharedPtr<FStreamableHandle>>& Pair : AbilityLoadHandles)
 	{
 		if (Pair.Value.IsValid())
 		{
@@ -68,7 +68,7 @@ void UNSPartEquipComponent::EquipPart(const FNSPartData& NewPart, TOptional<FVec
 		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] EquipPart: row 없음 (DefId=%s)"), *DefId.ToString());
 		return;
 	}
-	const ENSPartSlot Slot = Row->PartSlot;
+	const FGameplayTag Slot = Row->PartSlot;
 
 	DropPartInSlot(Slot, DropLocationOverride);
 
@@ -142,22 +142,22 @@ void UNSPartEquipComponent::ReapplyAll()
 	}
 }
 
-bool UNSPartEquipComponent::HasEquippedPart(ENSPartSlot Slot) const
+bool UNSPartEquipComponent::HasEquippedPart(FGameplayTag Slot) const
 {
 	return FindPart(Slot) != nullptr;
 }
 
-const FNSPartData* UNSPartEquipComponent::GetEquippedPart(ENSPartSlot Slot) const
+const FNSPartData* UNSPartEquipComponent::GetEquippedPart(FGameplayTag Slot) const
 {
 	return FindPart(Slot);
 }
 
-FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot)
+FNSPartData* UNSPartEquipComponent::FindPart(FGameplayTag Slot)
 {
 	return EquippedParts.FindByPredicate([Slot](const FNSPartData& P) { return P.Slot==Slot; });
 }
 
-const FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot) const
+const FNSPartData* UNSPartEquipComponent::FindPart(FGameplayTag Slot) const
 {
 	return EquippedParts.FindByPredicate([Slot](const FNSPartData& P) {return P.Slot == Slot;});
 }
@@ -166,7 +166,7 @@ const FNSPartData* UNSPartEquipComponent::FindPart(ENSPartSlot Slot) const
 // 드롭 / 효과 제거
 // ================================================================
 
-void UNSPartEquipComponent::DropPartInSlot(ENSPartSlot Slot, TOptional<FVector> LocationOverride)
+void UNSPartEquipComponent::DropPartInSlot(FGameplayTag Slot, TOptional<FVector> LocationOverride)
 {
 	FNSPartData* Existing = FindPart(Slot);
 	if (!Existing)
@@ -194,7 +194,7 @@ void UNSPartEquipComponent::SpawnDroppedPart(const FNSPartData& Part, const FVec
 	ANSDroppedPart::SpawnInWorld(GetWorld(), DroppedPartClass, Part, Location);
 }
 
-void UNSPartEquipComponent::RemovePartEffects(ENSPartSlot Slot)
+void UNSPartEquipComponent::RemovePartEffects(FGameplayTag Slot)
 {
 	RemoveGEForSlot(Slot);
 	RemoveAbilitiesForSlot(Slot);
@@ -217,7 +217,7 @@ void UNSPartEquipComponent::RemovePartEffects(ENSPartSlot Slot)
 	}
 }
 
-void UNSPartEquipComponent::RemoveGEForSlot(ENSPartSlot Slot)
+void UNSPartEquipComponent::RemoveGEForSlot(FGameplayTag Slot)
 {
 	FActiveGameplayEffectHandle* Handle = ActiveGEHandles.Find(Slot);
 	if (!Handle || !Handle->IsValid())
@@ -233,7 +233,7 @@ void UNSPartEquipComponent::RemoveGEForSlot(ENSPartSlot Slot)
 	ActiveGEHandles.Remove(Slot);
 }
 
-void UNSPartEquipComponent::RemoveAbilitiesForSlot(ENSPartSlot Slot)
+void UNSPartEquipComponent::RemoveAbilitiesForSlot(FGameplayTag Slot)
 {
 	TArray<FGameplayAbilitySpecHandle>* Handles = GrantedAbilityHandlesBySlot.Find(Slot);
 	if (!Handles || Handles->Num() == 0)
@@ -259,7 +259,7 @@ void UNSPartEquipComponent::RemoveAbilitiesForSlot(ENSPartSlot Slot)
 // GE 적용 및 로드
 // ================================================================
 
-void UNSPartEquipComponent::ApplyPartEffect(ENSPartSlot Slot)
+void UNSPartEquipComponent::ApplyPartEffect(FGameplayTag Slot)
 {
 	FNSPartData* Part = FindPart(Slot);
 	if (!Part)
@@ -285,7 +285,7 @@ void UNSPartEquipComponent::ApplyPartEffect(ENSPartSlot Slot)
 	EffectLoadHandles.Add(Slot, Handle);
 }
 
-void UNSPartEquipComponent::Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGameplayEffect> GEClass)
+void UNSPartEquipComponent::Internal_ApplyGE(FGameplayTag Slot, TSubclassOf<UGameplayEffect> GEClass)
 {
 	FNSPartData* Part = FindPart(Slot);
 	if (!Part)
@@ -312,7 +312,7 @@ void UNSPartEquipComponent::Internal_ApplyGE(ENSPartSlot Slot, TSubclassOf<UGame
 	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
 }
 
-void UNSPartEquipComponent::OnEffectLoaded(ENSPartSlot Slot)
+void UNSPartEquipComponent::OnEffectLoaded(FGameplayTag Slot)
 {
 	EffectLoadHandles.Remove(Slot);
 	
@@ -340,7 +340,7 @@ void UNSPartEquipComponent::OnEffectLoaded(ENSPartSlot Slot)
 // GA 부여 및 로드
 // ================================================================
 
-void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
+void UNSPartEquipComponent::GrantAbilities(FGameplayTag Slot)
 {
 	FNSPartData* Part = FindPart(Slot);
 	if (!Part)
@@ -390,7 +390,7 @@ void UNSPartEquipComponent::GrantAbilities(ENSPartSlot Slot)
 	AbilityLoadHandles.Add(Slot, Handle);
 }
 
-void UNSPartEquipComponent::OnAbilitiesLoaded(ENSPartSlot Slot)
+void UNSPartEquipComponent::OnAbilitiesLoaded(FGameplayTag Slot)
 {
 	AbilityLoadHandles.Remove(Slot);
 	
@@ -431,7 +431,7 @@ void UNSPartEquipComponent::OnAbilitiesLoaded(ENSPartSlot Slot)
 // 리롤 / 등급업
 // ================================================================
 
-void UNSPartEquipComponent::RerollStat(ENSPartSlot Slot)
+void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -460,7 +460,7 @@ void UNSPartEquipComponent::RerollStat(ENSPartSlot Slot)
 	OnPartChanged.Broadcast(Slot, *Part);
 }
 
-void UNSPartEquipComponent::UpgradeRarity(ENSPartSlot Slot)
+void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -558,12 +558,12 @@ void UNSPartEquipComponent::Server_RequestEquip_Implementation(FNSPartData NewPa
 	EquipPart(NewPart);
 }
 
-void UNSPartEquipComponent::Server_RequestReroll_Implementation(ENSPartSlot Slot)
+void UNSPartEquipComponent::Server_RequestReroll_Implementation(FGameplayTag Slot)
 {
 	RerollStat(Slot);
 }
 
-void UNSPartEquipComponent::Server_RequestUpgradeRarity_Implementation(ENSPartSlot Slot)
+void UNSPartEquipComponent::Server_RequestUpgradeRarity_Implementation(FGameplayTag Slot)
 {
 	UpgradeRarity(Slot);
 }
