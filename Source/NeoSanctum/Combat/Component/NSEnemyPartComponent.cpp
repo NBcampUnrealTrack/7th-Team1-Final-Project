@@ -4,8 +4,6 @@
 
 #include "Components/SkeletalMeshComponent.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
-#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "Net/UnrealNetwork.h"
 
@@ -18,18 +16,8 @@ UNSEnemyPartComponent::UNSEnemyPartComponent()
 void UNSEnemyPartComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	DOREPLIFETIME(UNSEnemyPartComponent, SpawnedParts);
-}
-
-void UNSEnemyPartComponent::BeginPlay()
-{
-	Super::BeginPlay();
-
-	if (UNSEnemyStateComponent* StateComponent = GetOwner()->FindComponentByClass<UNSEnemyStateComponent>())
-	{
-		StateComponent->OnDeathStarted.AddUObject(this, &ThisClass::HandleOwnerDeathStarted);
-	}
 }
 
 void UNSEnemyPartComponent::EquipParts()
@@ -308,17 +296,6 @@ void UNSEnemyPartComponent::GetSpawnedPartActorsByAttackId(
 	}
 }
 
-void UNSEnemyPartComponent::HandleOwnerDeathStarted()
-{
-	for (const FNSSpawnedEnemyPart& SpawnedPart : SpawnedParts)
-	{
-		if (ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(SpawnedPart.Actor))
-		{
-			Weapon->StartDissolve();
-		}
-	}
-}
-
 AActor* UNSEnemyPartComponent::SpawnPartActor(const FNSEnemyPartRow& PartRow)
 {
 	AActor* Owner = GetOwner();
@@ -396,26 +373,10 @@ bool UNSEnemyPartComponent::TryGetMuzzleTransformFromPartRow(
 
 	if (PartRow.MuzzleSocket.IsNone())
 	{
-		if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
-		{
-			if (const ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(SpawnedActor))
-			{
-				return Weapon->TryGetMuzzleTransform(OutTransform);
-			}
-		}
-
 		return false;
 	}
 
-	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
-	{
-		if (TryGetSocketTransformFromActor(SpawnedActor, PartRow.MuzzleSocket, OutTransform))
-		{
-			return true;
-		}
-	}
-
-	return TryGetSocketTransformFromOwnerMesh(PartRow.MuzzleSocket, OutTransform);
+	return TryGetSocketTransformFromPartRow(PartRow, PartRow.MuzzleSocket, OutTransform);
 }
 
 bool UNSEnemyPartComponent::TryGetSocketTransformFromActor(
@@ -523,15 +484,24 @@ bool UNSEnemyPartComponent::TryGetSocketTransformFromPartRow(
 		return false;
 	}
 
-	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+	switch (PartRow.PartType)
 	{
-		if (TryGetSocketTransformFromActor(SpawnedActor, SocketName, OutTransform))
+	case ENSEnemyPartType::SpawnedWeapon:
+	case ENSEnemyPartType::SpawnedPart:
+		if (TryGetSocketTransformFromSpawnedPart(PartRow, SocketName, OutTransform))
 		{
 			return true;
 		}
-	}
 
-	return TryGetSocketTransformFromOwnerMesh(SocketName, OutTransform);
+		return TryGetSocketTransformFromOwnerMesh(SocketName, OutTransform);
+
+	case ENSEnemyPartType::IntegratedWeapon:
+	case ENSEnemyPartType::VisualOnly:
+		return TryGetSocketTransformFromOwnerMesh(SocketName, OutTransform);
+
+	default:
+		return false;
+	}
 }
 
 bool UNSEnemyPartComponent::TryGetLeftHandIKTransformFromPartRow(
@@ -542,24 +512,24 @@ bool UNSEnemyPartComponent::TryGetLeftHandIKTransformFromPartRow(
 
 	if (PartRow.LeftHandIKSocket.IsNone())
 	{
-		if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
-		{
-			if (const ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(SpawnedActor))
-			{
-				return Weapon->TryGetLeftHandIKTransform(OutTransform);
-			}
-		}
-
 		return false;
 	}
 
-	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+	return TryGetSocketTransformFromPartRow(PartRow, PartRow.LeftHandIKSocket, OutTransform);
+}
+
+bool UNSEnemyPartComponent::TryGetSocketTransformFromSpawnedPart(
+	const FNSEnemyPartRow& PartRow,
+	FName SocketName,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId);
+	if (!IsValid(SpawnedActor))
 	{
-		if (TryGetSocketTransformFromActor(SpawnedActor, PartRow.LeftHandIKSocket, OutTransform))
-		{
-			return true;
-		}
+		return false;
 	}
 
-	return TryGetSocketTransformFromOwnerMesh(PartRow.LeftHandIKSocket, OutTransform);
+	return TryGetSocketTransformFromActor(SpawnedActor, SocketName, OutTransform);
 }

@@ -514,7 +514,7 @@ public:
 	// 현재 EnemyId와 일치하는 Part Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyPartRow*>& GetPartRows() const;
 
-	// 현재 EnemyData가 사용할 Part Row를 하나 이상 가지고 있는지 확인하는 함수. fallback 용도
+	// 현재 EnemyData가 사용할 Part Row를 하나 이상 가지고 있는지 확인하는 함수
 	bool HasPartRows() const;
 
 	// PartId와 일치하는 Part Row를 반환하는 함수

@@ -81,13 +81,7 @@ public:
 	// AttackId와 연결된 스폰 파츠 Actor 목록을 반환하는 함수
 	void GetSpawnedPartActorsByAttackId(FName AttackId, TArray<AActor*>& OutActors) const;
 
-protected:
-	virtual void BeginPlay() override;
-
 private:
-	// Owner가 사망했을 때 스폰된 무기 디졸브를 시작하는 함수
-	void HandleOwnerDeathStarted();
-
 	// DT_EnemyParts Row 하나를 기준으로 Actor를 스폰하는 함수
 	AActor* SpawnPartActor(const FNSEnemyPartRow& PartRow);
 
@@ -126,6 +120,12 @@ private:
 	// Part Row가 가리키는 LeftHand IK Transform을 반환하는 함수
 	bool TryGetLeftHandIKTransformFromPartRow(
 		const FNSEnemyPartRow& PartRow,
+		FTransform& OutTransform) const;
+
+	// Spawned Part Actor 내부에서 소켓 Transform을 찾는 함수
+	bool TryGetSocketTransformFromSpawnedPart(
+		const FNSEnemyPartRow& PartRow,
+		FName SocketName,
 		FTransform& OutTransform) const;
 
 private:
