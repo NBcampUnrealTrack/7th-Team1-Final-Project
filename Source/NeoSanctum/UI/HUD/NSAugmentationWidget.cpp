@@ -7,8 +7,10 @@
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/UI/HUD/NSAugmentDisplayBridgeSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "Engine/AssetManager.h"
+#include "Engine/GameInstance.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/SizeBox.h"
@@ -430,45 +432,70 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 void UNSAugmentationWidget::HandleOfferPresented(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
 {
 	CurrentOfferCards = Cards;
+	CurrentOfferViewData.Reset();
+	CurrentOfferViewData.SetNum(Cards.Num());
+
 	CreateChoiceCard(Cards.Num());
 
-	// 오퍼 3개의 아이콘 소프트포인터만 수집 (GE/GA는 서버 ApplyAugment에서 로드)
 	TArray<FSoftObjectPath> PathsToLoad;
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
-	if (Data && Data->IsRunReady())
+
+	UNSAugmentDisplayBridgeSubsystem* DisplayBridge =
+		GetGameInstance()
+			? GetGameInstance()->GetSubsystem<
+				UNSAugmentDisplayBridgeSubsystem>()
+			: nullptr;
+
+	UNSAugmentInventoryComponent* Inventory =
+		GetInventoryComponent();
+
+	if (DisplayBridge)
 	{
-		for (const FNSAugmentSelectionCard& CardData : Cards)
+		for (int32 Index = 0; Index < Cards.Num(); ++Index)
 		{
-			const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CardData.DefId);
-			if (!Def)
+			const FNSAugmentSelectionCard& CardData = Cards[Index];
+
+			const int32 CurrentStack =
+				Inventory
+					? Inventory->GetStackCount(CardData.DefId)
+					: 0;
+
+			FNSAugmentCardViewData& ViewData =
+				CurrentOfferViewData[Index];
+
+			if (!DisplayBridge->TryBuildCardViewData(
+				CardData.DefId,
+				CardData.Rarity,
+				CurrentStack,
+				ViewData))
 			{
 				continue;
 			}
-			if (!Def->Icon.IsNull())
+
+			if (!ViewData.Icon.IsNull())
 			{
-				PathsToLoad.Add(Def->Icon.ToSoftObjectPath());
+				PathsToLoad.AddUnique(
+					ViewData.Icon.ToSoftObjectPath());
 			}
 		}
 	}
 
-	// 이전 로드가 진행 중이면 취소 (리롤 시)
 	if (IconLoadHandle.IsValid())
 	{
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
 
-	if (PathsToLoad.Num() > 0)
+	if (!PathsToLoad.IsEmpty())
 	{
-		// 로드 완료 후 카드 채우고 표시
-		IconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
-			PathsToLoad,
-			FStreamableDelegate::CreateUObject(this, &UNSAugmentationWidget::OnIconsLoaded)
-		);
+		IconLoadHandle =
+			UAssetManager::GetStreamableManager().RequestAsyncLoad(
+				PathsToLoad,
+				FStreamableDelegate::CreateUObject(
+					this,
+					&UNSAugmentationWidget::OnIconsLoaded));
 	}
 	else
 	{
-		// 아이콘이 없는 경우
 		PopulateOfferCards();
 		ShowCardSection();
 	}
@@ -482,36 +509,28 @@ void UNSAugmentationWidget::OnIconsLoaded()
 
 void UNSAugmentationWidget::PopulateOfferCards()
 {
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
-	if (!Data)
+	for (int32 Index = 0;
+		Index < AugmentCardWidgets.Num();
+		++Index)
 	{
-		return;
-	}
-	if (!Data->IsRunReady())
-	{
-		return;
-	}
+		UNSAugmentCardWidget* Card =
+			AugmentCardWidgets[Index];
 
-	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
-	{
-		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
-		if (!Card || !CurrentOfferCards.IsValidIndex(Index))
+		if (!Card ||
+			!CurrentOfferViewData.IsValidIndex(Index))
 		{
 			continue;
 		}
 
-		const FNSAugmentSelectionCard& CardData = CurrentOfferCards[Index];
-		
-		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(CardData.DefId);
-		if (!Def)
+		const FNSAugmentCardViewData& ViewData =
+			CurrentOfferViewData[Index];
+
+		if (!ViewData.DefId.IsValid())
 		{
 			continue;
 		}
-		
-		Card->SetAugmentName(Def->DisplayName.ToString());
-		Card->SetAugmentDescription(Def->Description.ToString());
-		// 비동기 로드 완료 후 호출되므로 .Get()으로 바로 사용 가능
-		Card->SetAugmentIcon(Def->Icon.Get());
+
+		Card->ApplyViewData(ViewData);
 	}
 }
 

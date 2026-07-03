@@ -7,6 +7,7 @@
 #include "UObject/PrimaryAssetId.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Type/NSAugmentDisplayTypes.h"
 #include "NSAugmentationWidget.generated.h"
 
 class UCanvasPanel;
@@ -80,6 +81,9 @@ private:
 
 	//현재 오퍼의 증강 ID 목록
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
+	// Bridge가 생성한 현재 오퍼 카드 표시 데이터
+	UPROPERTY(Transient)
+	TArray<FNSAugmentCardViewData> CurrentOfferViewData;
 	//오퍼 카드 아이콘 비동기 로드 핸들 (리롤 시 이전 로드 취소용)
 	TSharedPtr<FStreamableHandle> IconLoadHandle;
 	//보유 아이콘 비동기 로드 핸들

@@ -36,16 +36,11 @@ void UNSAugmentCardWidget::SetHighLighted(bool bHighLighted)
 		return;
 	}
 	
-	if (bHighLighted)
-	{
-		//선택된 카드 강조 색상
-		CardBorder->SetBrushColor(FLinearColor(1.0f,0.8f,0.2f,1.0f));
-	}
-	else
-	{
-		//기본 카드 색상
-		CardBorder->SetBrushColor(FLinearColor(0.1f,0.1f,0.1f,1.0f));
-	}
+	const FLinearColor BorderColor = bHighLighted
+	? GetRarityHighlightColor()
+	: FLinearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	
+	CardBorder->SetBrushColor(BorderColor);
 }
 
 void UNSAugmentCardWidget::SetAugmentIcon(UTexture2D* NewIcon)
@@ -79,12 +74,49 @@ void UNSAugmentCardWidget::SetShortcutNumber(int32 NewShortcutNumber)
 	ShortcutNumberText->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
+void UNSAugmentCardWidget::ApplyViewData(const FNSAugmentCardViewData& ViewData)
+{
+	CurrentRarity = ViewData.Rarity;
+	SetHighLighted(true);
+	
+	if (AugmentNameText)
+	{
+		AugmentNameText->SetText(ViewData.DisplayName);
+	}
+
+	if (AugmentDescriptionText)
+	{
+		AugmentDescriptionText->SetText(ViewData.Description);
+	}
+
+	SetAugmentIcon(ViewData.Icon.Get());
+}
+
+FLinearColor UNSAugmentCardWidget::GetRarityHighlightColor() const
+{
+	switch (CurrentRarity)
+	{
+	case ENSAugmentRarity::Rare:
+		return RareHighlightColor;
+		
+	case ENSAugmentRarity::Epic:
+		return EpicHighlightColor;
+		
+	case ENSAugmentRarity::Legendary:
+		return LegendaryHighlightColor;
+		
+	case ENSAugmentRarity::Common:
+	default:
+		return CommonHighlightColor;
+	}
+}
+
 void UNSAugmentCardWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
 	
 	
-	//기본 상태는 하이라트 비활성화
+	//기본 상태는 하이라이트 비활성화
 	SetHighLighted(false);
 }
