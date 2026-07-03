@@ -24,10 +24,10 @@
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
-#include "NeoSanctum/Combat/Component/NSEnemyWeaponComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
@@ -49,7 +49,6 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	AttributeSet = CreateDefaultSubobject<UNSMonsterAttributeSet>(TEXT("AttributeSet"));
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
-	WeaponComponent = CreateDefaultSubobject<UNSEnemyWeaponComponent>(TEXT("WeaponComponent"));
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
 	PhaseComponent = CreateDefaultSubobject<UNSEnemyPhaseComponent>(TEXT("PhaseComponent"));
@@ -61,6 +60,7 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	MoveComponent = CreateDefaultSubobject<UNSEnemyMoveComponent>(TEXT("MoveComponent"));
 	CombatComponent = CreateDefaultSubobject<UNSEnemyCombatComponent>(TEXT("CombatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
+	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
 
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
 
@@ -119,7 +119,7 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
 {
-	return WeaponComponent ? WeaponComponent->GetCurrentWeapon() : nullptr;
+	return PartComponent ? PartComponent->GetCurrentWeapon() : nullptr;
 }
 
 void ANSEnemyCharacterBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
@@ -223,9 +223,9 @@ void ANSEnemyCharacterBase::InitializeFromData(bool bFullInit)
 	{
 		ApplyVisualData();
 
-		if (WeaponComponent)
+		if (PartComponent)
 		{
-			WeaponComponent->EquipWeapon();
+			PartComponent->EquipParts();
 		}
 	}
 }
@@ -409,9 +409,9 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		ASC->ClearAllAbilities();
 	}
 
-	if (WeaponComponent)
+	if (PartComponent)
 	{
-		WeaponComponent->UnEquipWeapon();
+		PartComponent->UnEquipParts();
 	}
 
 	if (DamageFlashComponent)

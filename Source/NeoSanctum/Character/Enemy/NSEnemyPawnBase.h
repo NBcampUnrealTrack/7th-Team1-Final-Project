@@ -22,6 +22,7 @@ class UNSEnemyAttackComponent;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
 class UNSEnemyStateComponent;
+class UNSEnemyPartComponent;
 class UNSEnemyData;
 
 /*
@@ -111,6 +112,9 @@ public:
 	// 사망, 비활성, 피격 경직 상태 컴포넌트를 반환하는 함수
 	UNSEnemyStateComponent* GetStateComponent() const { return StateComponent; }
 
+	// 파츠 스폰과 조회 컴포넌트를 반환하는 함수
+	UNSEnemyPartComponent* GetPartComponent() const { return PartComponent; }
+
 protected:
 	// EnemyData 기반으로 GAS와 외형 데이터를 초기화하는 함수
 	virtual void InitializeFromData(bool bFullInit);
@@ -166,6 +170,10 @@ protected:
 	// Enemy Pawn의 사망, 비활성, 피격 경직 상태를 관리하는 공통 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyStateComponent> StateComponent;
+
+	// Enemy Pawn의 장착형 무기와 파츠 스폰을 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
 
 	// Enemy Pawn의 Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

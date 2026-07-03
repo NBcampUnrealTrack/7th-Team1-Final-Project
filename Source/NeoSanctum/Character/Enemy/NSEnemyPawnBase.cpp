@@ -9,6 +9,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
@@ -44,6 +45,7 @@ ANSEnemyPawnBase::ANSEnemyPawnBase()
 	TargetComponent = CreateDefaultSubobject<UNSEnemyTargetComponent>(TEXT("TargetComponent"));
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
+	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
 }
 
 void ANSEnemyPawnBase::BeginPlay()
@@ -163,6 +165,11 @@ void ANSEnemyPawnBase::InitializeFromData(bool bFullInit)
 	if (bFullInit)
 	{
 		ApplyVisualData();
+
+		if (PartComponent)
+		{
+			PartComponent->EquipParts();
+		}
 	}
 }
 
