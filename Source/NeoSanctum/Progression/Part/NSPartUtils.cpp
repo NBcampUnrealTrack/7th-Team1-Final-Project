@@ -7,9 +7,9 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 
-UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const FNSPartData& Part)
+UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const TSoftObjectPtr<UNSPartDefinition>& DefinitionPtr)
 {
-	if (Part.DefinitionPtr.IsNull())
+	if (DefinitionPtr.IsNull())
 	{
 		return nullptr;
 	}
@@ -17,23 +17,28 @@ UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContex
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
 	if (!DataSS)
 	{
-		UNSPartDefinition* Fallback = Part.DefinitionPtr.Get();
+		UNSPartDefinition* Fallback = DefinitionPtr.Get();
 		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataSS 없음. SoftPtr.Get()=%s"), Fallback ? TEXT("유효") : TEXT("NULL"));
 		return Fallback;
 	}
 
-	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(Part.DefinitionPtr.ToSoftObjectPath());
+	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(DefinitionPtr.ToSoftObjectPath());
 	UNSPartDefinition* Cached = DataSS->GetData<UNSPartDefinition>(Id);
 
 	if (!Cached)
 	{
-		UNSPartDefinition* Fallback = Part.DefinitionPtr.Get();
+		UNSPartDefinition* Fallback = DefinitionPtr.Get();
 		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataCache 미스 (Id=%s). SoftPtr.Get()=%s"),
 			*Id.ToString(), Fallback ? TEXT("유효") : TEXT("NULL"));
 		return Fallback;
 	}
 
 	return Cached;
+}
+
+UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const FNSPartData& Part)
+{
+	return ResolvePartDefinition(WorldContextObject, Part.DefinitionPtr);
 }
 
 const FNSPartDefinitionRow* NSPartUtils::ResolvePartRow(
