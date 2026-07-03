@@ -12,6 +12,9 @@ class ANSWeaponBase;
 class UGameplayEffect;
 class UAnimInstance;
 
+/**
+ * 특정 상황 태그가 발생했을 때 캐릭터에게 적용할 반응형 Gameplay Effect를 정의.
+ */
 USTRUCT(BlueprintType)
 struct FNSReactiveGameplayEffectData
 {

@@ -258,6 +258,8 @@ private:
 	FTimerHandle SkillUIApplyRetryTimerHandle;
 	int32 SkillUIApplyRetryCount = 0;
 	
+	// 클라이언트는 PlayerState와 CommonData 준비 순서가 달라질 수 있으므로,
+	// 스킬 UI 적용을 즉시 시도한 뒤 짧은 시간 재시도합니다.
 	void StartSkillUIApplyRetry();
 	void RetryApplySkillUIFromCurrentCharacter();
 	bool TryApplySkillUIFromCurrentCharacter();

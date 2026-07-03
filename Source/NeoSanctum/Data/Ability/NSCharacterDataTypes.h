@@ -8,6 +8,9 @@
 
 class UGameplayAbility;
 
+/**
+ * 캐릭터가 기본으로 부여받는 Gameplay Ability와 입력 태그, 초기 레벨을 정의.
+ */
 USTRUCT(BlueprintType)
 struct FNSCharacterAbilityData
 {
