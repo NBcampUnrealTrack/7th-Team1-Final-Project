@@ -12,12 +12,21 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_ExposedCore, "State.Enemy.TitanWalker.ExposedCore");
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_TitanWalker_DestroyedLeg, "State.Enemy.TitanWalker.DestroyedLeg");
 
+	// Enemy MotherShip State
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Phase1, "State.Enemy.MotherShip.Phase1");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Phase2, "State.Enemy.MotherShip.Phase2");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Charge, "State.Enemy.MotherShip.Charge");
+	
+	// Enemy MotherShip Action
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_MotherShip_SpawnDrone, "Ability.Enemy.MotherShip.SpawnDrone");
+	
 	// Enemy Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_BasicMelee, "Ability.Enemy.BasicMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_DoubleMelee, "Ability.Enemy.DoubleMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TripleMelee, "Ability.Enemy.TripleMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_StrongMelee, "Ability.Enemy.StrongMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_RangerAttack, "Ability.Enemy.RangerAttack");
+	
 
 	// Enemy Action - Common
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_Attack, "Ability.Enemy.Attack");
