@@ -140,7 +140,7 @@ void UGA_VanguardBaseAttack::EndAbility(
 		RestoreAirSlamMovementMode();
 	}
 	
-	RemoveDashAttackGameplayCue();
+	RemoveAttackFlashGameplayCue();
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
@@ -250,7 +250,7 @@ void UGA_VanguardBaseAttack::OnDashAttackRecoverStarted(FGameplayEventData Paylo
 	}
 
 	// Recover 진입 시 대쉬공격 연출 Cue 종료
-	RemoveDashAttackGameplayCue();
+	RemoveAttackFlashGameplayCue();
 }
 
 ENSVanguardBaseAttackMode UGA_VanguardBaseAttack::SelectAttackMode(
@@ -659,7 +659,7 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 	bDashAttackMontageFinished = !bDashAttackMontageStarted;
 	if (bDashAttackMontageStarted)
 	{
-		AddDashAttackGameplayCue();
+		AddAttackFlashGameplayCue();
 	}
 
 	if (!bDashAttackMoveStarted && !bDashAttackMontageStarted)
@@ -775,21 +775,21 @@ void UGA_VanguardBaseAttack::StartDashAttackRecoverEventTask()
 	DashAttackRecoverEventTask->ReadyForActivation();
 }
 
-void UGA_VanguardBaseAttack::AddDashAttackGameplayCue()
+void UGA_VanguardBaseAttack::AddAttackFlashGameplayCue()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		// 대쉬공격 연출 Cue 시작
-		ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+		ASC->AddGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_Flash);
 	}
 }
 
-void UGA_VanguardBaseAttack::RemoveDashAttackGameplayCue()
+void UGA_VanguardBaseAttack::RemoveAttackFlashGameplayCue()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		// 대쉬공격 연출 Cue 종료
-		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_DashAttack);
+		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BaseAttack_Flash);
 	}
 }
 

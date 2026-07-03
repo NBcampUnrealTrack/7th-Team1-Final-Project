@@ -146,11 +146,11 @@ private:
 	// 대쉬공격 Recover 시작 이벤트 대기
 	void StartDashAttackRecoverEventTask();
 
-	// 대쉬공격 GameplayCue 시작
-	void AddDashAttackGameplayCue();
+	// 돌진 GameplayCue 시작 : 대쉬 공격 돌진 상황 + 공중 공격 루프 상황에서 재활용 예정
+	void AddAttackFlashGameplayCue();
 
-	// 대쉬공격 GameplayCue 종료
-	void RemoveDashAttackGameplayCue();
+	//  돌진 GameplayCue 종료 : 대쉬 공격 돌진 상황 + 공중 공격 루프 상황에서 재활용 예정
+	void RemoveAttackFlashGameplayCue();
 
 	// 화면 중앙 조준점 기준 대쉬공격 방향 계산
 	bool TryGetDashAttackDirection(FVector& OutDirection) const;
