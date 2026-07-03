@@ -31,6 +31,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Settings")
 	void ResetCrosshairColor();
 	
+	UFUNCTION(BlueprintPure, Category = "UI|Settings")
+	FString GetLanguageCode() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "UI|Settings")
+	bool SetLanguageCode(const FString& NewLanguageCode);
+	
 	FOnCrosshairColorChanged OnCrosshairColorChanged;
 	
 private:
@@ -39,4 +45,6 @@ private:
 	
 private:
 	FLinearColor CrosshairColor = FLinearColor::White;
+	
+	FString LanguageCode = TEXT("ko-KR");
 };
