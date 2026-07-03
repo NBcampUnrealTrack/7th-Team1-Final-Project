@@ -4,6 +4,30 @@
 
 namespace NSGameplayTags
 {
+	// 캐릭터 기본 스탯 초기화 SetByCaller (Instant Override)
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxHealth, "Effect.SetByCaller.Init.MaxHealth");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Health, "Effect.SetByCaller.Init.Health");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_BaseDamage, "Effect.SetByCaller.Init.BaseDamage");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Defense, "Effect.SetByCaller.Init.Defense");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MoveSpeed, "Effect.SetByCaller.Init.MoveSpeed");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_CritChance, "Effect.SetByCaller.Init.CritChance");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_CritDamage, "Effect.SetByCaller.Init.CritDamage");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxShield, "Effect.SetByCaller.Init.MaxShield");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Shield, "Effect.SetByCaller.Init.Shield");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_ShieldRechargeRate, "Effect.SetByCaller.Init.ShieldRechargeRate");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_ShieldRechargeCooldown, "Effect.SetByCaller.Init.ShieldRechargeCooldown");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxDashCount, "Effect.SetByCaller.Init.MaxDashCount");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_DashCount, "Effect.SetByCaller.Init.DashCount");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_DashRegenRate, "Effect.SetByCaller.Init.DashRegenRate");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxAmmo, "Effect.SetByCaller.Init.MaxAmmo");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Ammo, "Effect.SetByCaller.Init.Ammo");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxSkill1Count, "Effect.SetByCaller.Init.MaxSkill1Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Skill1Count, "Effect.SetByCaller.Init.Skill1Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxSkill2Count, "Effect.SetByCaller.Init.MaxSkill2Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Skill2Count, "Effect.SetByCaller.Init.Skill2Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxSkill3Count, "Effect.SetByCaller.Init.MaxSkill3Count");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Skill3Count, "Effect.SetByCaller.Init.Skill3Count");
+
 	// Turret SetByCaller
 	UE_DEFINE_GAMEPLAY_TAG(Effect_FireRate_Engineer_SpawnTurret, "Effect.FireRate.Engineer.SpawnTurret");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_AttackRange_Engineer_SpawnTurret, "Effect.AttackRange.Engineer.SpawnTurret");
