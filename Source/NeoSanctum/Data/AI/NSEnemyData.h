@@ -8,7 +8,6 @@
 #include "NSEnemyData.generated.h"
 
 class AActor;
-class ANSEnemyWeaponBase;
 class USkeletalMesh;
 class UAnimInstance;
 class UDataTable;
@@ -399,52 +398,6 @@ struct FNSEnemyMaterialDefinition
 	FLinearColor MonsterTint = FLinearColor::White;
 };
 
-USTRUCT(BlueprintType)
-struct FNSBossWeaponPoint
-{
-	GENERATED_BODY()
-
-	// 보스 메시의 식별된 무기 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName PointId = NAME_None;
-
-	// 보스 메시의 식별된 무기에서 사용할 공격 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AttackId = NAME_None;
-
-	// 투사체, 총구 이펙트가 시작되는 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName MuzzleSocket = NAME_None;
-
-	// GameplayCue 이펙트를 붙일 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName CueSocket = NAME_None;
-
-	// 레이저 판정의 시작점으로 사용할 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName TraceSocket = NAME_None;
-
-	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AimBone = NAME_None;
-
-	// Control Rig에서 사용할 조준 컨트롤 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AimControl = NAME_None;
-
-	// 식별된 무기가 좌우로 회전할 수 있는 최대 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float YawLimit = 0.0f;
-
-	// 식별된 무기가 위아래로 회전할 수 있는 최대 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float PitchLimit = 0.0f;
-
-	// 조준 목표를 따라갈 때 사용하는 보간 속도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float AimSpeed = 10.0f;
-};
-
 /**
  * Enemy 초기화 시 필요한 PrimaryDataAsset 입니다.
  */
@@ -485,11 +438,6 @@ public:
 	// 몬스터의 슬롯별 초기 머티리얼과 기본 외형 색상 설정
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TArray<FNSEnemyMaterialDefinition> MaterialDefinitions;
-
-	// 무기
-	UPROPERTY(EditDefaultsOnly, Category = "Equipment",
-		meta = (EditCondition = "EnemyRank != ENSEnemyRank::Boss", EditConditionHides))
-	TSubclassOf<ANSEnemyWeaponBase> DefaultWeaponClass;
 
 	// 파츠, 장착형 무기, 메시 일체형 무기 포인트 정보를 읽을 DataTable
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
@@ -543,11 +491,6 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Config|Melee EQS",
 		meta = (ClampMin = "0.0", EditCondition = "EnemyRank != ENSEnemyRank::Boss", EditConditionHides))
 	float MeleeEQSNeighborRadius = 1000.0f;
-
-	// 식별된 무기 정보 Struct. EnemyRank가 Boss일 때 사용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss",
-		meta = (EditCondition = "EnemyRank == ENSEnemyRank::Boss", EditConditionHides))
-	TArray<FNSBossWeaponPoint> BossWeapons;
 
 public:
 	// EnemyId와 일치하는 공격 Row를 AttackTable에서 미리 캐싱하는 함수

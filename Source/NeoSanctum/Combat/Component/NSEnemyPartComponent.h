@@ -6,7 +6,6 @@
 #include "Components/ActorComponent.h"
 #include "NSEnemyPartComponent.generated.h"
 
-class ANSEnemyWeaponBase;
 class UNSEnemyData;
 struct FNSEnemyPartRow;
 
@@ -29,8 +28,8 @@ struct FNSSpawnedEnemyPart
  * 
  * 파일 생성일 : 26.07.03
  * 
- * 클래스 개요 : EnemyData의 Part Row를 기반으로 Enemy의 장착형 무기와 부착 파츠를 스폰하고 관리하는 컴포넌트
- * DefaultWeaponClass fallback을 포함해 기존 일반 몬스터 무기 흐름과 DT_EnemyParts 기반 흐름을 연결
+ * 클래스 개요 : EnemyData의 Part Row를 기반으로 Enemy의 장착형 무기, 부착 파츠, 메시 일체형 파츠 정보를 관리하는 컴포넌트
+ * DT_EnemyParts 기반으로 파츠 Actor 스폰, 부착, PartId/AttackId 기반 소켓 조회를 담당
 */
 UCLASS(ClassGroup = (Combat), meta = (BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSEnemyPartComponent : public UActorComponent
@@ -49,9 +48,6 @@ public:
 	// 스폰된 파츠 Actor를 제거하고 내부 상태를 초기화하는 함수
 	UFUNCTION(BlueprintCallable, Category = "Enemy|Part")
 	void UnEquipParts();
-
-	// 기존 일반 몬스터 GA와 AnimInstance 호환을 위한 대표 무기 반환 함수
-	ANSEnemyWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 
 	// PartId와 일치하는 스폰 Actor를 반환하는 함수
 	AActor* FindSpawnedPartActor(FName PartId) const;
@@ -95,9 +91,6 @@ private:
 	// DT_EnemyParts Row 하나를 기준으로 Actor를 스폰하는 함수
 	AActor* SpawnPartActor(const FNSEnemyPartRow& PartRow);
 
-	// DefaultWeaponClass를 사용해 기존 방식의 대표 무기를 스폰하는 함수
-	void SpawnFallbackWeapon(UNSEnemyData* EnemyData);
-
 	// 스폰 Actor를 Enemy Mesh에 부착하는 함수
 	void AttachPartActor(AActor* PartActor, const FNSEnemyPartRow& PartRow);
 
@@ -136,10 +129,6 @@ private:
 		FTransform& OutTransform) const;
 
 private:
-	// 기존 일반 몬스터 코드와 호환되는 대표 무기 Actor
-	UPROPERTY(Transient, Replicated)
-	TObjectPtr<ANSEnemyWeaponBase> CurrentWeapon;
-
 	// PartId와 함께 보관하는 스폰 파츠 목록
 	UPROPERTY(Transient, Replicated)
 	TArray<FNSSpawnedEnemyPart> SpawnedParts;

@@ -18,8 +18,7 @@ UNSEnemyPartComponent::UNSEnemyPartComponent()
 void UNSEnemyPartComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME(UNSEnemyPartComponent, CurrentWeapon);
+	
 	DOREPLIFETIME(UNSEnemyPartComponent, SpawnedParts);
 }
 
@@ -59,7 +58,12 @@ void UNSEnemyPartComponent::EquipParts()
 
 	if (PartRows.IsEmpty())
 	{
-		SpawnFallbackWeapon(EnemyData);
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("EnemyPartComponent: No PartRows found. EnemyId=%s"),
+			*EnemyData->EnemyId.ToString());
+
 		return;
 	}
 
@@ -82,11 +86,6 @@ void UNSEnemyPartComponent::EquipParts()
 		SpawnedPart.PartId = PartRow->PartId;
 		SpawnedPart.Actor = SpawnedActor;
 		SpawnedParts.Add(SpawnedPart);
-
-		if (!CurrentWeapon)
-		{
-			CurrentWeapon = Cast<ANSEnemyWeaponBase>(SpawnedActor);
-		}
 	}
 }
 
@@ -101,7 +100,6 @@ void UNSEnemyPartComponent::UnEquipParts()
 	}
 
 	SpawnedParts.Reset();
-	CurrentWeapon = nullptr;
 }
 
 AActor* UNSEnemyPartComponent::FindSpawnedPartActor(FName PartId) const
@@ -160,12 +158,6 @@ bool UNSEnemyPartComponent::TryGetAnyMuzzleTransform(FTransform& OutTransform) c
 		}
 	}
 
-	// DT_EnemyParts가 없는 기존 데이터 보호용 fallback
-	if (IsValid(CurrentWeapon))
-	{
-		return CurrentWeapon->TryGetMuzzleTransform(OutTransform);
-	}
-
 	return false;
 }
 
@@ -189,12 +181,6 @@ bool UNSEnemyPartComponent::TryGetMuzzleTransformByAttackId(
 		{
 			return true;
 		}
-	}
-
-	// DT_EnemyParts가 없는 기존 데이터 보호용 fallback
-	if (IsValid(CurrentWeapon))
-	{
-		return CurrentWeapon->TryGetMuzzleTransform(OutTransform);
 	}
 
 	return false;
@@ -254,11 +240,6 @@ bool UNSEnemyPartComponent::TryGetLeftHandIKTransform(FTransform& OutTransform) 
 		}
 	}
 
-	if (IsValid(CurrentWeapon))
-	{
-		return CurrentWeapon->TryGetLeftHandIKTransform(OutTransform);
-	}
-
 	return false;
 }
 
@@ -279,7 +260,7 @@ bool UNSEnemyPartComponent::ShouldUseLeftHandIKWhileEquipped() const
 		}
 	}
 
-	return IsValid(CurrentWeapon) && CurrentWeapon->ShouldUseLeftHandIKWhileEquipped();
+	return false;
 }
 
 bool UNSEnemyPartComponent::TryGetAimMuzzleTransform(FTransform& OutTransform) const
@@ -356,52 +337,6 @@ AActor* UNSEnemyPartComponent::SpawnPartActor(const FNSEnemyPartRow& PartRow)
 		PartRow.ActorClass,
 		FTransform::Identity,
 		SpawnParams);
-}
-
-void UNSEnemyPartComponent::SpawnFallbackWeapon(UNSEnemyData* EnemyData)
-{
-	AActor* Owner = GetOwner();
-	UWorld* World = GetWorld();
-
-	if (!Owner || !World || !EnemyData || !EnemyData->DefaultWeaponClass)
-	{
-		return;
-	}
-
-	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(Owner);
-	USkeletalMeshComponent* MeshComponent = EnemyAgent ? EnemyAgent->GetEnemyMesh() : nullptr;
-	if (!MeshComponent)
-	{
-		return;
-	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = Owner;
-	SpawnParams.Instigator = Cast<APawn>(Owner);
-
-	CurrentWeapon = World->SpawnActor<ANSEnemyWeaponBase>(
-		EnemyData->DefaultWeaponClass,
-		FTransform::Identity,
-		SpawnParams);
-
-	if (!CurrentWeapon)
-	{
-		return;
-	}
-
-	const FWeaponConfig& Config = CurrentWeapon->GetWeaponConfig();
-
-	CurrentWeapon->AttachToComponent(
-		MeshComponent,
-		FAttachmentTransformRules::SnapToTargetIncludingScale,
-		Config.EquipSocketName);
-
-	CurrentWeapon->SetActorRelativeTransform(Config.RelativeTransform);
-
-	FNSSpawnedEnemyPart SpawnedPart;
-	SpawnedPart.PartId = TEXT("DefaultWeapon");
-	SpawnedPart.Actor = CurrentWeapon;
-	SpawnedParts.Add(SpawnedPart);
 }
 
 void UNSEnemyPartComponent::AttachPartActor(AActor* PartActor, const FNSEnemyPartRow& PartRow)
