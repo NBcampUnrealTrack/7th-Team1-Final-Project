@@ -6,6 +6,7 @@
 #include "Engine/DataAsset.h"
 #include "NSCommonDataConfig.generated.h"
 
+class UGameplayEffect;
 class UNSSoundData;
 class UDataTable;
 
@@ -27,6 +28,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Character", 
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> AbilityBaseStatTable;
+
+	// 캐릭터별 초기 Attribute 값. 하나의 Row = 하나의 캐릭터, RowName = CharacterTag.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Character",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> CharacterBaseStatTable;
+
+	// CharacterBaseStatTable 값을 SetByCaller로 주입하는 공용 초기화 GE.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Character",
+		meta = (AssetBundles = "CommonData"))
+	TSoftClassPtr<UGameplayEffect> CharacterBaseStatInitEffectClass;
 	
 	// 사운드 테이블과 카테고리 볼륨 기본값을 함께 관리하는 공용 사운드 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 

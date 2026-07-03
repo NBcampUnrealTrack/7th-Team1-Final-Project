@@ -27,6 +27,7 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -34,10 +35,13 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
+#include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
@@ -541,7 +545,6 @@ void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InC
 	InCharacterData->SkeletalMesh.LoadSynchronous();
 	InCharacterData->AnimClass.LoadSynchronous();
 	InCharacterData->UpperBodyAnimLayerClass.LoadSynchronous();
-	InCharacterData->InitialAttributeEffect.LoadSynchronous();
 	InCharacterData->DefaultWeaponClass.LoadSynchronous();
 	
 	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
@@ -667,9 +670,26 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	{
 		return;
 	}
-	
-	TSubclassOf<UGameplayEffect> LoadedEffectClass = CurrentCharacterData->InitialAttributeEffect.Get();
-	if (!LoadedEffectClass)
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	const FNSCharacterBaseStatRow* StatRow = DataSubsystem->FindCharacterBaseStatRow(CurrentCharacterData->CharacterTag);
+
+	if (!StatRow)
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning,
+			"캐릭터 기본 스탯 Row를 찾지 못했습니다. CharacterTag={Tag}",
+			("Tag", CurrentCharacterData->CharacterTag.ToString())
+		);
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> InitEffectClass = DataSubsystem->GetCharacterBaseStatInitEffectClass();
+	if (!InitEffectClass)
 	{
 		return;
 	}
@@ -678,16 +698,42 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	EffectContext.AddSourceObject(this);
 	
 	FGameplayEffectSpecHandle SpecHandle = 
-		NSAbilitySystemComponent->MakeOutgoingSpec(LoadedEffectClass, 1.0f, EffectContext);
+		NSAbilitySystemComponent->MakeOutgoingSpec(InitEffectClass, 1.0f, EffectContext);
 	
-	if (SpecHandle.IsValid())
+	if (!SpecHandle.IsValid())
 	{
-		const FActiveGameplayEffectHandle EffectHandle =
-			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		if (EffectHandle.IsValid())
-		{
-			CharacterDataEffectHandles.Add(EffectHandle);
-		}
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxHealth, StatRow->MaxHealth);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Health, StatRow->MaxHealth);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_BaseDamage, StatRow->BaseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Defense, StatRow->Defense);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MoveSpeed, StatRow->MoveSpeed);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_CritChance, StatRow->CritChance);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_CritDamage, StatRow->CritDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxShield, StatRow->MaxShield);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Shield, StatRow->MaxShield);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_ShieldRechargeRate, StatRow->ShieldRechargeRate);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_ShieldRechargeCooldown, StatRow->ShieldRechargeCooldown);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxDashCount, StatRow->MaxDashCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_DashCount, StatRow->MaxDashCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_DashRegenRate, StatRow->DashRegenRate);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxAmmo, StatRow->MaxAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Ammo, StatRow->MaxAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill1Count, StatRow->MaxSkill1Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill1Count, StatRow->MaxSkill1Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill2Count, StatRow->MaxSkill2Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill2Count, StatRow->MaxSkill2Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill3Count, StatRow->MaxSkill3Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill3Count, StatRow->MaxSkill3Count);
+
+	const FActiveGameplayEffectHandle EffectHandle =
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+
+	if (EffectHandle.IsValid())
+	{
+		CharacterDataEffectHandles.Add(EffectHandle);
 	}
 }
 

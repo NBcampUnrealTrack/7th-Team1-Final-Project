@@ -3,12 +3,14 @@
 
 #include "NSDataSubsystem.h"
 
+#include "GameplayEffect.h"
 #include "Engine/DataTable.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
+#include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSOutGameDataConfig.h"
@@ -112,6 +114,31 @@ UDataTable* UNSDataSubsystem::GetCommonAbilityBaseStatTable() const
 	}
 	
 	return CommonConfig->AbilityBaseStatTable.Get();
+}
+
+UDataTable* UNSDataSubsystem::GetCommonCharacterBaseStatTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->CharacterBaseStatTable.Get() : nullptr;
+}
+
+TSubclassOf<UGameplayEffect> UNSDataSubsystem::GetCharacterBaseStatInitEffectClass() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->CharacterBaseStatInitEffectClass.Get() : nullptr;
+}
+
+const FNSCharacterBaseStatRow* UNSDataSubsystem::FindCharacterBaseStatRow(const FGameplayTag& CharacterTag) const
+{
+	UDataTable* Table = GetCommonCharacterBaseStatTable();
+	if (!Table || !CharacterTag.IsValid())
+	{
+		return nullptr;
+	}
+
+	const FName RowName = CharacterTag.GetTagName();
+	const FString ContextString = TEXT("FindCharacterBaseStatRow");
+	return Table->FindRow<FNSCharacterBaseStatRow>(RowName, ContextString, false);
 }
 
 UNSSoundData* UNSDataSubsystem::GetCommonSoundData() const

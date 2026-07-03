@@ -54,7 +54,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DashRegenRate, Category = "GAS|Attribute")
 	FGameplayAttributeData DashRegenRate;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, DashRegenRate);
-	
+
+	// 치명타 발생 확률(%) / 20 = 20%
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CritChance, Category = "GAS|Attribute")
+	FGameplayAttributeData CritChance;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, CritChance);
+
+	// 치명타 발생 시 데미지 배율(%) / 150 = 150%
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CritDamage, Category = "GAS|Attribute")
+	FGameplayAttributeData CritDamage;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, CritDamage);
+
 	// 탄약
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Ammo, Category = "GAS|Attribute")
 	FGameplayAttributeData Ammo;
@@ -126,6 +136,12 @@ private:
 	
 	UFUNCTION()
 	void OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate);
+
+	UFUNCTION()
+	void OnRep_CritChance(const FGameplayAttributeData& OldCritChance);
+
+	UFUNCTION()
+	void OnRep_CritDamage(const FGameplayAttributeData& OldCritDamage);
 	
 	UFUNCTION()
 	void OnRep_Ammo(const FGameplayAttributeData& OldAmmo);

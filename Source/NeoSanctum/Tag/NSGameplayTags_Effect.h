@@ -6,6 +6,30 @@
 
 namespace NSGameplayTags
 {
+	// 캐릭터 기본 스탯 초기화 SetByCaller (Instant Override)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Health);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_BaseDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Defense);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MoveSpeed);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_CritChance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_CritDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Shield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_ShieldRechargeRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_ShieldRechargeCooldown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxDashCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_DashCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_DashRegenRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxAmmo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Ammo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxSkill1Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Skill1Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxSkill2Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Skill2Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxSkill3Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Skill3Count);
+
 	// Turret SetByCaller
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_FireRate_Engineer_SpawnTurret);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_AttackRange_Engineer_SpawnTurret);
