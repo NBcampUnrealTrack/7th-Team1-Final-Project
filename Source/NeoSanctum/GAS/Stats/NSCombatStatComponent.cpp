@@ -422,10 +422,9 @@ void UNSCombatStatComponent::RebuildAugmentSourceCache()
 			continue;
 		}
 		
-		if (!Row->AugmentTag.IsValid() 
+		if (!Row->AugmentTag.IsValid()
 			|| !Row->OwnerCharacterTag.IsValid()
 			|| Row->Definition.IsNull()
-			|| !Row->TargetAbilityTag.IsValid() 
 			|| !Row->StatTag.IsValid())
 		{
 			NS_OBJ_LOG(LogNSGAS, Warning,
@@ -433,6 +432,23 @@ void UNSCombatStatComponent::RebuildAugmentSourceCache()
 				("RowName", RowName.ToString()),
 				("AugmentTag", Row->AugmentTag.ToString())
 			);
+			continue;
+		}
+
+		if (!Row->TargetAbilityTag.IsValid())
+		{
+			if (!UNSAugmentInventoryComponent::IsAttributeStatTag(Row->StatTag))
+			{
+				// Attribute 대상이 아닌데 TargetAbilityTag가 비어 있으면 스킬 지정을 빠뜨린 데이터 오류일 가능성이 높음.
+				NS_OBJ_LOG(LogNSGAS, Warning,
+					"스킬 대상 증강 Row에 TargetAbilityTag가 비어 있습니다. RowName={RowName}, AugmentTag={AugmentTag}, StatTag={StatTag}",
+					("RowName", RowName.ToString()),
+					("AugmentTag", Row->AugmentTag.ToString()),
+					("StatTag", Row->StatTag.ToString())
+				);
+			}
+
+			// Attribute Row든 방금 경고한 잘못된 Row든, 이 캐시는 스킬별 Modifier 전용이라 대상이 아님
 			continue;
 		}
 		

@@ -79,6 +79,10 @@ struct FNSTurretConfig
 	// Attribute 초기화 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
+
+	// 발사 시점마다 CombatStat을 라이브로 조회할 때 사용할 Ability 태그.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
+	FGameplayTag SourceAbilityTag;
 };
 
 USTRUCT(BlueprintType)

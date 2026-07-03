@@ -14,9 +14,11 @@
 #include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
@@ -122,6 +124,12 @@ void ANSTurret::InitializeTurret(
 	// 초기 Attribute GE에 사용할 payload 저장
 	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 	RuntimeStatMagnitudes = InRuntimeStatMagnitudes;
+	SourceAbilityTag = InConfig.SourceAbilityTag;
+
+	if (const ANSPlayerState* NSPlayerState = InOwningPawn ? InOwningPawn->GetPlayerState<ANSPlayerState>() : nullptr)
+	{
+		OwningCombatStatComponent = NSPlayerState->GetCombatStatComponent();
+	}
 	
 	if (OwningPawn)
 	{
@@ -631,7 +639,7 @@ void ANSTurret::TryFire()
 		return;
 	}
 	
-	const float FireRate = AttributeSet->GetFireRate();
+	const float FireRate = GetCurrentFireRate();
 	if (FireRate <= 0.0f)
 	{
 		return;
@@ -664,7 +672,7 @@ bool ANSTurret::CanFireToCurrentTarget() const
 		return false;
 	}
 
-	const float FireRate = AttributeSet->GetFireRate();
+	const float FireRate = GetCurrentFireRate();
 	const float AttackRange = AttributeSet->GetAttackRange();
 	if (FireRate <= 0.0f || AttackRange <= 0.0f)
 	{
@@ -935,6 +943,21 @@ bool ANSTurret::TryGetRuntimeStatMagnitude(
 	}
 
 	return false;
+}
+
+float ANSTurret::GetCurrentFireRate() const
+{
+	float FireRate = 0.0f;
+
+	if (OwningCombatStatComponent && SourceAbilityTag.IsValid() &&
+		OwningCombatStatComponent->TryGetFinalAbilityStat(
+			SourceAbilityTag, NSGameplayTags::CombatStat_FireRate, FireRate))
+	{
+		return FMath::Max(FireRate, 0.0f);
+	}
+
+	// 소환자 정보가 없으면 소환 시점 스냅샷으로 대체
+	return AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
 }
 
 void ANSTurret::StartDeathPresentation()
