@@ -12,6 +12,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxHealth);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Shield);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MoveSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeCooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Defense);
@@ -44,5 +45,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSpawnableAngle);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Radius);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritChance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritDamage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
 }

@@ -10,6 +10,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxHealth,				"CombatStat.MaxHealth");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Shield,					"CombatStat.Shield");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxShield,				"CombatStat.MaxShield");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MoveSpeed,				"CombatStat.MoveSpeed");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ShieldRechargeRate,		"CombatStat.ShieldRechargeRate");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ShieldRechargeCooldown,	"CombatStat.ShieldRechargeCooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Defense,					"CombatStat.Defense");
@@ -42,4 +43,5 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSpawnableAngle,		"CombatStat.MaxSpawnableAngle");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Radius,					"CombatStat.Radius");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_CritChance,				"CombatStat.CritChance");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_CritDamage,				"CombatStat.CritDamage");
 }
