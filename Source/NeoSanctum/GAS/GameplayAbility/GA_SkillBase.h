@@ -74,6 +74,9 @@ protected:
 		const FGameplayTag& StatTag,
 		float DefaultValue
 	) const;
+
+	// SkillAbilityTag의 DamageCoefficient(%)와 플레이어 BaseDamage Attribute를 곱해 스킬 기본 데미지를 계산
+	bool TryGetFinalSkillDamage(const FGameplayTag& AbilityTag,	float& OutDamage) const;
 	
 	// AbilityTag에 연결된 소음 CombatStat을 조회해 서버에서 Avatar Pawn 기준 AI 청각 이벤트를 발생시킴.
 	bool TryReportAbilityNoise(
