@@ -85,13 +85,57 @@ void UNSEnemyData::CachePhaseRows() const
 		});
 }
 
+void UNSEnemyData::CachePartRows() const
+{
+	if (bPartRowsCached)
+	{
+		return;
+	}
+
+	bPartRowsCached = true;
+	CachedPartRows.Reset();
+
+	if (!PartsTable || !EnemyId.IsValid())
+	{
+		return;
+	}
+
+	if (PartsTable->GetRowStruct() != FNSEnemyPartRow::StaticStruct())
+	{
+		return;
+	}
+
+	TArray<FNSEnemyPartRow*> Rows;
+	PartsTable->GetAllRows<FNSEnemyPartRow>(TEXT("EnemyPartRows"), Rows);
+
+	TSet<FName> SeenPartIds;
+
+	for (const FNSEnemyPartRow* Row : Rows)
+	{
+		if (!Row || Row->EnemyId != EnemyId || Row->PartId.IsNone())
+		{
+			continue;
+		}
+
+		if (SeenPartIds.Contains(Row->PartId))
+		{
+			continue;
+		}
+
+		SeenPartIds.Add(Row->PartId);
+		CachedPartRows.Add(Row);
+	}
+}
+
 void UNSEnemyData::InvalidateCachedRows() const
 {
 	CachedAttackRows.Reset();
 	CachedPhaseRows.Reset();
+	CachedPartRows.Reset();
 
 	bAttackRowsCached = false;
 	bPhaseRowsCached = false;
+	bPartRowsCached = false;
 }
 
 const TArray<const FNSEnemyAttackRow*>& UNSEnemyData::GetAttackRows() const
@@ -104,6 +148,55 @@ const TArray<const FNSEnemyPhaseRow*>& UNSEnemyData::GetPhaseRows() const
 {
 	CachePhaseRows();
 	return CachedPhaseRows;
+}
+
+const TArray<const FNSEnemyPartRow*>& UNSEnemyData::GetPartRows() const
+{
+	CachePartRows();
+	return CachedPartRows;
+}
+
+bool UNSEnemyData::HasPartRows() const
+{
+	return !GetPartRows().IsEmpty();
+}
+
+const FNSEnemyPartRow* UNSEnemyData::FindPartRowById(FName PartId) const
+{
+	if (PartId.IsNone())
+	{
+		return nullptr;
+	}
+
+	for (const FNSEnemyPartRow* PartRow : GetPartRows())
+	{
+		if (PartRow && PartRow->PartId == PartId)
+		{
+			return PartRow;
+		}
+	}
+
+	return nullptr;
+}
+
+void UNSEnemyData::GetPartRowsByAttackId(
+	FName AttackId,
+	TArray<const FNSEnemyPartRow*>& OutPartRows) const
+{
+	OutPartRows.Reset();
+
+	if (AttackId.IsNone())
+	{
+		return;
+	}
+
+	for (const FNSEnemyPartRow* PartRow : GetPartRows())
+	{
+		if (PartRow && PartRow->AttackIds.Contains(AttackId))
+		{
+			OutPartRows.Add(PartRow);
+		}
+	}
 }
 
 #if WITH_EDITOR
@@ -209,4 +302,3 @@ float UNSEnemyData::GetPhaseAttackOverrideValue(
 
 	return ClampedDefaultValue;
 }
-

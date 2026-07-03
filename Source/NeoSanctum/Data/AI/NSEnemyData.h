@@ -138,15 +138,19 @@ USTRUCT(BlueprintType)
 struct FNSEnemyAttackRow : public FTableRowBase
 {
 	GENERATED_BODY()
+
 	// 이 공격 Row를 사용할 몬스터 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
+
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
+
 	// 공격 실행 GA
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
+
 	// 공격 분류
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
 	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
@@ -170,7 +174,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 선택 시 먼저 비교할 우선순위. 높은 값이 먼저 후보가 됨
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	int32 Priority = 0;
-	
+
 	// 공격 판정 전에 플레이어에게 보여줄 경고 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float WarnTime = 0.0f;
@@ -218,7 +222,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 중 허용되는 상하 조준 제한 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float PitchLimit = 0.0f;
-	
+
 	// 타깃 지정 정책
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
 	ENSBossTargetPolicy TargetPolicy = ENSBossTargetPolicy::PrimaryOnly;
@@ -471,6 +475,10 @@ public:
 		meta = (EditCondition = "EnemyRank != ENSEnemyRank::Boss", EditConditionHides))
 	TSubclassOf<ANSEnemyWeaponBase> DefaultWeaponClass;
 
+	// 파츠, 장착형 무기, 메시 일체형 무기 포인트 정보를 읽을 DataTable
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UDataTable> PartsTable;
+
 	// 초기 스탯
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TObjectPtr<UDataTable> AttributeInitData;
@@ -486,7 +494,7 @@ public:
 	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
-	
+
 	// 체력이 0에 도달했을 때 실행할 몬스터 전용 사망 Ability
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
@@ -502,7 +510,7 @@ public:
 	// 몬스터 AI 실행 방식
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	ENSEnemyBrainType BrainType = ENSEnemyBrainType::BehaviorTree;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config",
 		meta = (EditCondition = "BrainType == ENSEnemyBrainType::BehaviorTree", EditConditionHides))
 	TObjectPtr<UBehaviorTree> BehaviorTree;
@@ -524,7 +532,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss",
 		meta = (EditCondition = "EnemyRank == ENSEnemyRank::Boss", EditConditionHides))
 	TArray<FNSBossWeaponPoint> BossWeapons;
-	
+
 public:
 	// EnemyId와 일치하는 공격 Row를 AttackTable에서 미리 캐싱하는 함수
 	void CacheAttackRows() const;
@@ -532,13 +540,29 @@ public:
 	// EnemyId와 일치하는 Phase Row를 PhaseTable에서 미리 캐싱하는 함수
 	void CachePhaseRows() const;
 
-	// AttackTable과 PhaseTable에서 캐싱한 Row를 모두 초기화하는 함수
+	// EnemyId와 일치하는 Part Row를 PartsTable에서 미리 캐싱하는 함수
+	void CachePartRows() const;
+
+	// AttackTable, PhaseTable, PartsTable에서 캐싱한 Row를 모두 초기화하는 함수
 	void InvalidateCachedRows() const;
 
 	// 현재 EnemyId와 일치하는 공격 Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyAttackRow*>& GetAttackRows() const;
+
 	// 현재 EnemyId와 일치하는 Phase Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyPhaseRow*>& GetPhaseRows() const;
+
+	// 현재 EnemyId와 일치하는 Part Row 목록을 반환하는 함수
+	const TArray<const FNSEnemyPartRow*>& GetPartRows() const;
+
+	// 현재 EnemyData가 사용할 Part Row를 하나 이상 가지고 있는지 확인하는 함수. fallback 용도
+	bool HasPartRows() const;
+
+	// PartId와 일치하는 Part Row를 반환하는 함수
+	const FNSEnemyPartRow* FindPartRowById(FName PartId) const;
+
+	// AttackId를 사용하는 Part Row 목록을 반환하는 함수
+	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
 
 #if WITH_EDITOR
 	// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
@@ -557,12 +581,19 @@ private:
 
 	// PhaseTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
 	mutable TArray<const FNSEnemyPhaseRow*> CachedPhaseRows;
+	
+	// PartsTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
+	mutable TArray<const FNSEnemyPartRow*> CachedPartRows;
 
 	// AttackTable 캐시가 초기화되었는지 여부
 	mutable bool bAttackRowsCached = false;
 
 	// PhaseTable 캐시가 초기화되었는지 여부
 	mutable bool bPhaseRowsCached = false;
+	
+	// PartsTable 캐시가 초기화되었는지 여부
+	mutable bool bPartRowsCached = false;
+
 public:
 	// 현재 페이즈 기준으로 공격 Weight Override를 반영한 최종 Weight를 반환하는 함수
 	float GetPhaseAttackWeight(const FNSEnemyAttackRow& AttackRow, float HealthRatio) const;
