@@ -276,7 +276,6 @@ private:
 	void CacheCommonFeedbackRows();
 
 	void StartLoadOutGame();
-	void OnOutGamePrimaryAssetsLoaded();
 	// OutGame PrimaryAsset 로드 후, DT_CharacterList Row 내부 SoftObject까지 추가로 로드.
 	// 캐릭터 선택 UI가 CharacterData/PreviewTexture를 동기 로드하지 않도록 OutGameReady 전에 끝냄.
 	void StartLoadOutGameReferenceAssets();

@@ -606,26 +606,19 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 	if (Ids.IsEmpty())
 	{
-		OnOutGamePrimaryAssetsLoaded();
+		OnOutGameAssetsLoaded();
 		return;
 	}
 
 	OutGameHandle = UAssetManager::Get().LoadPrimaryAssets(
 		Ids,
 		OutGameBundles,
-		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGamePrimaryAssetsLoaded));
-}
-
-void UNSDataSubsystem::OnOutGamePrimaryAssetsLoaded()
-{
-	CacheLoaded({ HubAssetType, PartAssetType });
-	OnOutGameAssetsLoaded();
+		FStreamableDelegate::CreateUObject(this, &UNSDataSubsystem::OnOutGameAssetsLoaded));
 }
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
 {
-	// 파츠샵을 열기 전에 모든 파츠 메시를 미리 로드해 첫 프리뷰부터 풀 밉 텍스처가 나오게 한다
-	// (허브 진입마다 실행 — 웜업 스테이지는 레벨과 함께 파괴되므로 복귀 시 재웜업 필요)
+	// 파츠샵을 열기 전에 모든 파츠 메시를 미리 로드해 3D프리뷰가 잘 나오게끔
 	ANSPartPreviewStage::WarmupAllPartMeshes(GetGameInstance());
 
 	CacheLoaded(
