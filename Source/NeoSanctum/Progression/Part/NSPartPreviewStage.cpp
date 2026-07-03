@@ -154,7 +154,7 @@ void ANSPartPreviewStage::WarmupAllPartMeshes(UObject* WorldContextObject)
 	}
 
 	// 파괴하지 않고 레벨 수명 동안 유지 — 핸들/상주 컴포넌트가 살아있어야 밉이 계속 유지된다
-	const FTransform SpawnTransform(FVector(0.f, 0.f, -200000.f));
+	const FTransform SpawnTransform(FVector(0.f, 0.f, -1000.f));
 	ANSPartPreviewStage* WarmupStage = World->SpawnActor<ANSPartPreviewStage>(ANSPartPreviewStage::StaticClass(), SpawnTransform);
 	if (!WarmupStage)
 	{

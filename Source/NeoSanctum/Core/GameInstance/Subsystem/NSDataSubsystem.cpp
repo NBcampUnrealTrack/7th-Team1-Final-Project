@@ -618,9 +618,6 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
 {
-	// 파츠샵을 열기 전에 모든 파츠 메시를 미리 로드해 3D프리뷰가 잘 나오게끔
-	ANSPartPreviewStage::WarmupAllPartMeshes(GetGameInstance());
-
 	CacheLoaded(
 	{
 		OutGameDataConfigAssetType,
@@ -661,7 +658,10 @@ void UNSDataSubsystem::OnOutGameReferenceAssetsLoaded()
 	CacheCharacterSelectRows();
 
 	CacheLoaded({ HubAssetType, PartAssetType });
-	BuildPartRowCache();
+
+	// 파츠샵을 열기 전에 모든 파츠 메시를 미리 로드해 3D프리뷰가 잘 나오게
+	ANSPartPreviewStage::WarmupAllPartMeshes(GetGameInstance());
+
 	SetPhase(ENSDataLoadPhase::OutGameReady);
 	NS_NET_LOG(this, LogNS, Warning, "OutGameData 로딩 완료");
 	OnOutGameDataReady.Broadcast();
