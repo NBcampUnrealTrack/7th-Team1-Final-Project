@@ -7,6 +7,7 @@
 #include "Engine/DataAsset.h"
 #include "NSEnemyData.generated.h"
 
+class AActor;
 class ANSEnemyWeaponBase;
 class USkeletalMesh;
 class UAnimInstance;
@@ -17,6 +18,7 @@ class UBehaviorTree;
 class UStateTree;
 class UEnvQuery;
 class UMaterialInterface;
+
 
 UENUM(BlueprintType)
 enum class ENSEnemyMovementType : uint8
@@ -74,6 +76,24 @@ enum class ENSBossTargetPolicy : uint8
 	NearbyKnown UMETA(DisplayName = "Nearby Known"),
 	AllKnown UMETA(DisplayName = "All Known"),
 	RandomKnown UMETA(DisplayName = "Random Known")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyPartType : uint8
+{
+	SpawnedWeapon UMETA(DisplayName = "Spawned Weapon"),
+	SpawnedPart UMETA(DisplayName = "Spawned Part"),
+	IntegratedWeapon UMETA(DisplayName = "Integrated Weapon"),
+	VisualOnly UMETA(DisplayName = "Visual Only")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyPartAttachRule : uint8
+{
+	KeepRelativeTransform UMETA(DisplayName = "KeepRelativeTransform"),
+	KeepWorldTransform UMETA(DisplayName = "KeepWorldTransform"),
+	SnapToTargetNotIncludingScale UMETA(DisplayName = "SnapToTargetNotIncludingScale"),
+	SnapToTargetIncludingScale UMETA(DisplayName = "SnapToTargetIncludingScale")
 };
 
 USTRUCT(BlueprintType)
@@ -269,6 +289,76 @@ struct FNSEnemyPhaseRow : public FTableRowBase
 	// 이 페이즈에서 특정 공격의 Cooldown을 덮어쓸 목록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Phase")
 	TArray<FNSEnemyAttackValue> CooldownOverrides;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyPartRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// 이 파츠 Row를 사용할 몬스터 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part", meta = (Categories = "Character.Enemy"))
+	FGameplayTag EnemyId;
+
+	// 같은 몬스터 안에서 파츠를 식별하는 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FName PartId = NAME_None;
+
+	// 파츠의 사용 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	ENSEnemyPartType PartType = ENSEnemyPartType::IntegratedWeapon;
+
+	// SpawnedWeapon 또는 SpawnedPart 타입에서 스폰할 Actor 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	TSubclassOf<AActor> ActorClass;
+
+	// 스폰한 Actor를 부착하거나 IntegratedWeapon 기준으로 사용할 메시 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FName AttachSocket = NAME_None;
+
+	// 파츠 부착 시 사용할 Transform 적용 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	ENSEnemyPartAttachRule AttachRule = ENSEnemyPartAttachRule::KeepRelativeTransform;
+
+	// AttachSocket 기준으로 적용할 상대 Transform
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FTransform RelativeTransform = FTransform::Identity;
+
+	// 이 파츠를 사용할 공격 ID 목록
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Attack")
+	TArray<FName> AttackIds;
+
+	// 투사체, 총구 이펙트가 시작되는 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName MuzzleSocket = NAME_None;
+
+	// GameplayCue 이펙트를 붙일 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName CueSocket = NAME_None;
+
+	// Hitscan, Laser 판정의 시작점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceSocket = NAME_None;
+
+	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
+	FName AimBone = NAME_None;
+
+	// Control Rig에서 사용할 조준 컨트롤 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
+	FName AimControl = NAME_None;
+
+	// 파츠가 좌우로 회전할 수 있는 최대 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float YawLimit = 0.0f;
+
+	// 파츠가 위아래로 회전할 수 있는 최대 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float PitchLimit = 0.0f;
+
+	// 조준 목표를 따라갈 때 사용하는 보간 속도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float AimSpeed = 10.0f;
 };
 
 USTRUCT(BlueprintType)
