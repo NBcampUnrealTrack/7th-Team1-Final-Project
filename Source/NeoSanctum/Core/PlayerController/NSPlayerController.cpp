@@ -637,11 +637,6 @@ void ANSPlayerController::UpdateHUDCurrency()
 	UIManager->UpdateRunOutGoods(
 		static_cast<int32>(CurrencyComponent->GetPermanent(
 			NSGameplayTags::Currency_Common)));
-
-	//이번 런에서 얻은 스킬 재화
-	UIManager->UpdateRunSkillGoods(
-		static_cast<int32>(CurrencyComponent->GetPermanent(
-			NSGameplayTags::Currency_Skill)));
 }
 
 void ANSPlayerController::OnTempCurrencyChanged(int64 Amount)
@@ -674,13 +669,6 @@ void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Am
 	{
 		UIManager->UpdateRunOutGoods(static_cast<int32>(Amount));
 		UIManager->UpdateRunResultCommonGoods(static_cast<int32>(Amount));
-		return;
-	}
-
-	if (Type == NSGameplayTags::Currency_Skill)
-	{
-		UIManager->UpdateRunSkillGoods(static_cast<int32>(Amount));
-		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
 		return;
 	}
 }

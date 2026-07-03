@@ -7,8 +7,8 @@
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
-#include "UObject/ConstructorHelpers.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
 #include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
@@ -22,6 +22,37 @@ UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 	}
 
 	return GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+}
+
+void UNSUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+}
+
+void UNSUIManagerSubsystem::Deinitialize()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+
+	WidgetClassCache.Reset();
+	UIWidgetDataTable = nullptr;
+
+	Super::Deinitialize();
 }
 
 float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
@@ -56,11 +87,6 @@ void UNSUIManagerSubsystem::CacheRunResultTime()
 void UNSUIManagerSubsystem::UpdateRunResultCommonGoods(int32 NewAmount)
 {
 	RunResultCommonGoods = FMath::Max(NewAmount, 0);
-}
-
-void UNSUIManagerSubsystem::UpdateRunResultSkillGoods(int32 NewAmount)
-{
-	RunResultSkillGoods = FMath::Max(NewAmount, 0);
 }
 
 void UNSUIManagerSubsystem::ApplyCharacterSkillUISet(FName CharacterId)
@@ -161,47 +187,85 @@ void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameStat
 		RunGameState->bIsClear,
 		ResultData.EarnedGoods,
 		ResultData.CommonGoods,
-		ResultData.SkillGoods,
 		ResultData.RunTimeSeconds,
 		ResultData.KillCount);
 }
 
-UNSUIManagerSubsystem::UNSUIManagerSubsystem()
+void UNSUIManagerSubsystem::HandleCommonDataReady()
 {
-	static ConstructorHelpers::FObjectFinder<UDataTable>
-	UIWidgetTableFinder(
-		TEXT("/Game/NeoSanctum/Data/UI/DT_UIWidget.DT_UIWidget"));
-	if (UIWidgetTableFinder.Succeeded())
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		UIWidgetDataTable = UIWidgetTableFinder.Object;
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		UIWidgetDataTable = DataSubsystem->GetCommonUIWidgetDataTable();
+	}
+
+	RebuildWidgetClassCache();
+	RetryPendingTitleCreation();
+}
+
+void UNSUIManagerSubsystem::RetryPendingTitleCreation()
+{
+	if (!bPendingTitleCreation)
+	{
+		return;
+	}
+
+	bPendingTitleCreation = false;
+
+	APlayerController* OwningPlayer = PendingTitleOwningPlayer.Get();
+	PendingTitleOwningPlayer.Reset();
+
+	if (!OwningPlayer || TitleWidget)
+	{
+		return;
+	}
+
+	CreateTitle(OwningPlayer);
+	ShowTitle();
+}
+
+void UNSUIManagerSubsystem::RebuildWidgetClassCache()
+{
+	WidgetClassCache.Reset();
+
+	if (!UIWidgetDataTable || UIWidgetDataTable->GetRowStruct() != FNSUIWidgetData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("RebuildWidgetClassCache");
+	for (const FName& RowName : UIWidgetDataTable->GetRowNames())
+	{
+		const FNSUIWidgetData* WidgetData =
+			UIWidgetDataTable->FindRow<FNSUIWidgetData>(RowName, ContextString, false);
+
+		if (!WidgetData || WidgetData->WidgetClass.IsNull())
+		{
+			continue;
+		}
+
+		// NSDataSubsystem에서 CommonDataReady 전에 선로드하므로 여기서는 동기 로드하지 않음.
+		UClass* LoadedWidgetClass = WidgetData->WidgetClass.Get();
+		if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UUserWidget::StaticClass()))
+		{
+			WidgetClassCache.Add(RowName, LoadedWidgetClass);
+		}
 	}
 }
-TSubclassOf<UUserWidget>
-UNSUIManagerSubsystem::GetWidgetClassFromTable(
-	FName RowName) const
+
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetWidgetClassFromTable(FName RowName) const
 {
-	if (!UIWidgetDataTable)
+	if (RowName.IsNone())
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] DT_UIWidget을 찾지 못했습니다."));
 		return nullptr;
 	}
-	const FNSUIWidgetData* WidgetData =
-		UIWidgetDataTable->FindRow<FNSUIWidgetData>(
-			RowName,
-			TEXT("GetWidgetClassFromTable"));
-	if (!WidgetData)
+
+	if (const TSubclassOf<UUserWidget>* CacheWidgetClass = WidgetClassCache.Find(RowName))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] Row를 찾지 못했습니다: %s"),
-			*RowName.ToString());
-		return nullptr;
+		return *CacheWidgetClass;
 	}
-	return WidgetData->WidgetClass.LoadSynchronous();
+
+	return nullptr;
 }
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
@@ -435,41 +499,60 @@ UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 {
-		if (!OwningPlayer)
-		{
-			return;
-		}
+	// @원종: pending 초기화.
+	bPendingTitleCreation = false;
+	PendingTitleOwningPlayer.Reset();
 
-		if (TitleWidget)
-		{
-			return;
-		}
+	if (!OwningPlayer)
+	{
+		return;
+	}
+
+	if (TitleWidget)
+	{
+		return;
+	}
 	
-		//데이터테이블에 없을경우 기존 Title위젯으로
-		TSubclassOf<UUserWidget> WidgetClassToUse =
-			GetWidgetClassFromTable(TEXT("Title"));
+	//데이터테이블에 없을경우 기존 Title위젯으로
+	TSubclassOf<UUserWidget> WidgetClassToUse =
+		GetWidgetClassFromTable(TEXT("Title"));
 
-		//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴 
-		if (!WidgetClassToUse)
+	//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴
+	if (!WidgetClassToUse)
+	{
+		WidgetClassToUse = TitleWidgetClass;
+	}
+
+	//데이터테이블과 fallback 이 모두 없으면 종료
+	if (!WidgetClassToUse)
+	{
+		// @원종: 위젯 클래스가 없으면 pending처리로 넘김
+		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
-			WidgetClassToUse = TitleWidgetClass;
+			if (!DataSubsystem->IsCommonReady())
+			{
+				// DT_UIWidget 로딩이 끝나기 전에 Title 생성이 요청된 경우, CommonDataReady 이후 다시 CreateTitle을 호출.
+				PendingTitleOwningPlayer = OwningPlayer;
+				bPendingTitleCreation = true;
+
+				DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+				DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+				return;
+			}
 		}
 
-		//데이터테이블과 fallback 이 모두 없으면 종료
-		if (!WidgetClassToUse)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
-			return;
-		}
+		UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
+		return;
+	}
 
-		TitleWidget = CreateWidget<UUserWidget>(
-			OwningPlayer,
-			WidgetClassToUse);
+	TitleWidget = CreateWidget<UUserWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
 
-		if (TitleWidget)
-		{
-			TitleWidget->AddToViewport();
-		}	
+	if (TitleWidget)
+	{
+		TitleWidget->AddToViewport();
+	}
 	/*
 	TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, TitleWidgetClass);
 	if (TitleWidget)
@@ -820,7 +903,6 @@ void UNSUIManagerSubsystem::ResetRunResultStats()
 	RunResultKillCount = 0;
 	
 	RunResultCommonGoods = 0;
-	RunResultSkillGoods = 0;
 
 	CachedRunResultTimeSeconds = 0.0f;
 	bRunResultTimeCached = false;
@@ -847,7 +929,6 @@ void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
 		bCleared,
 		RunResultGoods,
 		RunResultCommonGoods,
-		RunResultSkillGoods,
 		GetRunResultTimeSeconds(),
 		RunResultKillCount);
 }
@@ -882,16 +963,6 @@ void UNSUIManagerSubsystem::SetReloading(bool bReloading)
 	}
 
 	HUDWidget->SetReloading(bReloading);
-}
-
-void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
-{
-	if (!IsValid(HUDWidget))
-	{
-		return;
-	}
-
-	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
 }
 
 void UNSUIManagerSubsystem::ShowInRunGoods()

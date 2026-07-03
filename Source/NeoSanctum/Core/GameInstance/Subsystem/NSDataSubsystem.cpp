@@ -11,10 +11,15 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
+#include "NeoSanctum/Data/Config/NSOutGameDataConfig.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+#include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+#include "NeoSanctum/Data/UI/NSSkillUIData.h"
+#include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
@@ -26,7 +31,7 @@ const FPrimaryAssetType UNSDataSubsystem::HubAssetType						= FPrimaryAssetType(
 const FPrimaryAssetType UNSDataSubsystem::PartAssetType						= FPrimaryAssetType(TEXT("NSPartData"));
 
 // OutGame
-
+const FPrimaryAssetType UNSDataSubsystem::OutGameDataConfigAssetType		= FPrimaryAssetType(TEXT("NSOutGameDataConfig"));
 
 // InRun
 const FPrimaryAssetType UNSDataSubsystem::RunConfigAssetType				= FPrimaryAssetType(TEXT("NSRunConfig"));
@@ -131,6 +136,65 @@ UDataTable* UNSDataSubsystem::GetCommonPlayerAttackFeedbackDataTable() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
 	return CommonConfig ? CommonConfig->PlayerAttackFeedbackDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonUIWidgetDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->UIWidgetDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonCharacterSkillUISetTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->CharacterSkillUISetTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonSkillUIDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->SkillUIDataTable.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetCommonGoodsUIDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->GoodsUIDataTable.Get() : nullptr;
+}
+
+const FNSGoodsUIData* UNSDataSubsystem::FindCommonGoodsUIDataByTag(const FGameplayTag& GoodsTag) const
+{
+	const UDataTable* GoodsTable = GetCommonGoodsUIDataTable();
+	if (!IsValid(GoodsTable) || GoodsTable->GetRowStruct() != FNSGoodsUIData::StaticStruct())
+	{
+		return nullptr;
+	}
+
+	TArray<FNSGoodsUIData*> Rows;
+	GoodsTable->GetAllRows(TEXT("FindCommonGoodsUIDataByTag"), Rows);
+
+	for (const FNSGoodsUIData* Row :Rows)
+	{
+		if (Row && Row->GoodsTag.MatchesTagExact(GoodsTag))
+		{
+			return Row;
+		}
+	}
+
+	return nullptr;
+}
+
+const UNSOutGameDataConfig* UNSDataSubsystem::GetOutGameDataConfig() const
+{
+	const TArray<UNSOutGameDataConfig*> OutGameDataConfigs =
+		GetAllDataOfType<UNSOutGameDataConfig>(OutGameDataConfigAssetType);
+
+	if (OutGameDataConfigs.IsEmpty())
+	{
+		return nullptr;
+	}
+
+	return OutGameDataConfigs[0];
 }
 
 UDataTable* UNSDataSubsystem::GetCurrentAugmentDefinitionTable() const
@@ -319,6 +383,15 @@ void UNSDataSubsystem::StartLoadCommonReferenceAssets()
 	
 	// VFX DT Row 안의 NiagaraSystem은 DataAsset 번들로만으로는 보장되지 않으므로 별도 선로드.
 	CollectVFXSystemPathsFromTable(GetCommonVFXDataTable(), AssetsToLoad);
+	// UIManager가 생성하는 위젯 클래스는 Row 안의 SoftClass라서 DataTable과 별도로 선로드.
+	CollectUIWidgetClassPathsFromTable(GetCommonUIWidgetDataTable(), AssetsToLoad);
+	// HUD/Goods/Skill가 필요한 아이콘 SoftObject를 미리 선로드.
+	CollectCommonUIIconPaths(
+		GetCommonCharacterSkillUISetTable(),
+		GetCommonSkillUIDataTable(),
+		GetCommonGoodsUIDataTable(),
+		AssetsToLoad
+	);
 	
 	if (AssetsToLoad.IsEmpty())
 	{
@@ -356,6 +429,94 @@ void UNSDataSubsystem::CollectVFXSystemPathsFromTable(
 		if (Row && !Row->NiagaraSystem.IsNull())
 		{
 			OutPaths.AddUnique(Row->NiagaraSystem.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CollectUIWidgetClassPathsFromTable(
+	const UDataTable* UIWidgetTable, TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (!IsValid(UIWidgetTable) || UIWidgetTable->GetRowStruct() != FNSUIWidgetData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("CollectUIWidgetClassPathsFromTable");
+	for (const FName& RowName : UIWidgetTable->GetRowNames())
+	{
+		const FNSUIWidgetData* Row = UIWidgetTable->FindRow<FNSUIWidgetData>(RowName, ContextString, false);
+
+		if (Row && !Row->WidgetClass.IsNull())
+		{
+			OutPaths.AddUnique(Row->WidgetClass.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CollectCommonUIIconPaths(
+	const UDataTable* CharacterSkillUISetTable,
+	const UDataTable* SkillUIDataTable,
+	const UDataTable* GoodsUIDataTable,
+	TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (IsValid(CharacterSkillUISetTable) &&
+		CharacterSkillUISetTable->GetRowStruct() == FNSCharacterSkillUISet::StaticStruct())
+	{
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_CharacterSkillUISet");
+		for (const FName& RowName : CharacterSkillUISetTable->GetRowNames())
+		{
+			const FNSCharacterSkillUISet* Row =
+				CharacterSkillUISetTable->FindRow<FNSCharacterSkillUISet>(RowName, ContextString, false);
+
+			if (!Row)
+			{
+				continue;
+			}
+
+			if (!Row->Skill1InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill1InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+
+			if (!Row->Skill2InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill2InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+
+			if (!Row->Skill3InputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->Skill3InputDisplay.InputIcon.ToSoftObjectPath());
+			}
+		}
+	}
+
+	if (IsValid(SkillUIDataTable) && SkillUIDataTable->GetRowStruct() == FNSSkillUIData::StaticStruct())
+	{
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_SkillUI");
+		for (const FName& RowName : SkillUIDataTable->GetRowNames())
+		{
+			const FNSSkillUIData* Row =
+				SkillUIDataTable->FindRow<FNSSkillUIData>(RowName, ContextString, false);
+
+			if (Row && !Row->SkillIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->SkillIcon.ToSoftObjectPath());
+			}
+		}
+	}
+
+	if (IsValid(GoodsUIDataTable) && GoodsUIDataTable->GetRowStruct() == FNSGoodsUIData::StaticStruct())
+	{
+		const FString ContextString = TEXT("CollectCommonUIIconPaths_GoodsUI");
+		for (const FName& RowName : GoodsUIDataTable->GetRowNames())
+		{
+			const FNSGoodsUIData* Row =
+				GoodsUIDataTable->FindRow<FNSGoodsUIData>(RowName, ContextString, false);
+
+			if (Row && !Row->GoodsIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->GoodsIcon.ToSoftObjectPath());
+			}
 		}
 	}
 }
@@ -400,7 +561,12 @@ void UNSDataSubsystem::StartLoadOutGame()
 {
 	SetPhase(ENSDataLoadPhase::LoadingOutGame);
 
-	const TArray<FPrimaryAssetType> Types = { HubAssetType, PartAssetType };
+	const TArray<FPrimaryAssetType> Types =
+	{
+		OutGameDataConfigAssetType,
+		HubAssetType,
+		PartAssetType
+	};
 
 	TArray<FPrimaryAssetId> Ids;
 	GatherAssetIds(Types, Ids);
@@ -419,9 +585,102 @@ void UNSDataSubsystem::StartLoadOutGame()
 
 void UNSDataSubsystem::OnOutGameAssetsLoaded()
 {
-	CacheLoaded({ HubAssetType, PartAssetType });
+	CacheLoaded(
+	{
+		OutGameDataConfigAssetType,
+		HubAssetType,
+		PartAssetType
+	});
+
+	StartLoadOutGameReferenceAssets();
+}
+
+void UNSDataSubsystem::StartLoadOutGameReferenceAssets()
+{
+	TArray<FSoftObjectPath> AssetsToLoad;
+
+	if (const UNSOutGameDataConfig* OutGameConfig = GetOutGameDataConfig())
+	{
+		CollectCharacterSelectPathsFromTable(
+			OutGameConfig->CharacterSelectDataTable.Get(),
+			AssetsToLoad
+		);
+	}
+
+	if (AssetsToLoad.IsEmpty())
+	{
+		OnOutGameReferenceAssetsLoaded();
+		return;
+	}
+
+	FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+	OutGameReferencedAssetHandle = StreamableManager.RequestAsyncLoad(
+		AssetsToLoad,
+		FStreamableDelegate::CreateUObject(this, &ThisClass::OnOutGameReferenceAssetsLoaded)
+	);
+}
+
+void UNSDataSubsystem::OnOutGameReferenceAssetsLoaded()
+{
+	CacheCharacterSelectRows();
+
 	SetPhase(ENSDataLoadPhase::OutGameReady);
 	OnOutGameDataReady.Broadcast();
+}
+
+void UNSDataSubsystem::CollectCharacterSelectPathsFromTable(
+	const UDataTable* CharacterSelectTable, TArray<FSoftObjectPath>& OutPaths) const
+{
+	if (!IsValid(CharacterSelectTable) || CharacterSelectTable->GetRowStruct() != FNSCharacterSelectData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("CollectCharacterSelectPathsFromTable");
+	for (const FName& RowName : CharacterSelectTable->GetRowNames())
+	{
+		const FNSCharacterSelectData* Row =
+			CharacterSelectTable->FindRow<FNSCharacterSelectData>(RowName, ContextString, false);
+
+		if (!Row)
+		{
+			continue;
+		}
+
+		if (!Row->CharacterData.IsNull())
+		{
+			OutPaths.AddUnique(Row->CharacterData.ToSoftObjectPath());
+		}
+
+		if (!Row->PreviewTexture.IsNull())
+		{
+			OutPaths.AddUnique(Row->PreviewTexture.ToSoftObjectPath());
+		}
+	}
+}
+
+void UNSDataSubsystem::CacheCharacterSelectRows()
+{
+	CachedCharacterSelectRows.Reset();
+
+	const UNSOutGameDataConfig* OutGameConfig = GetOutGameDataConfig();
+	const UDataTable* CharacterSelectTable = OutGameConfig ? OutGameConfig->CharacterSelectDataTable.Get() : nullptr;
+
+	if (!IsValid(CharacterSelectTable) || CharacterSelectTable->GetRowStruct() != FNSCharacterSelectData::StaticStruct())
+	{
+		return;
+	}
+
+	TArray<FNSCharacterSelectData*> Rows;
+	CharacterSelectTable->GetAllRows(TEXT("CachedCharacterSelectRows"), Rows);
+
+	for (const FNSCharacterSelectData* Row : Rows)
+	{
+		if (Row)
+		{
+			CachedCharacterSelectRows.Add(*Row);
+		}
+	}
 }
 
 // ================================================================
@@ -619,7 +878,16 @@ void UNSDataSubsystem::UnloadOutGame()
 		OutGameHandle->ReleaseHandle();
 		OutGameHandle.Reset();
 	}
-	UnloadByTypes({ HubAssetType, PartAssetType });
+
+	if (OutGameReferencedAssetHandle.IsValid())
+	{
+		OutGameReferencedAssetHandle->ReleaseHandle();
+		OutGameReferencedAssetHandle.Reset();
+	}
+
+	CachedCharacterSelectRows.Reset();
+
+	UnloadByTypes({OutGameDataConfigAssetType, HubAssetType, PartAssetType });
 }
 
 void UNSDataSubsystem::UnloadStage()

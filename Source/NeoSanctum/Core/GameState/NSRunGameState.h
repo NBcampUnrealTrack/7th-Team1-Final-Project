@@ -31,8 +31,6 @@ struct FNSRunResultData
 	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
 	int32 CommonGoods = 0;
 	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
-	int32 SkillGoods = 0;
-	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
 	float RunTimeSeconds =0.0f;
 	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
 	int32 KillCount = 0;

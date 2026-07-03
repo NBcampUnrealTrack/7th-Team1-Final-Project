@@ -128,7 +128,7 @@ void UNSSkillSlotWidget::SetInputDisplayData(const FNSInputDisplayData& NewInput
 		}
 
 		UTexture2D* LoadedIcon =
-			NewInputDisplayData.InputIcon.LoadSynchronous();
+			NewInputDisplayData.InputIcon.Get();
 
 		if (!LoadedIcon)
 		{
@@ -208,7 +208,7 @@ void UNSSkillSlotWidget::ApplySkillUIData()
 		return;
 	}
 
-	UTexture2D* LoadedSkillIcon = SkillUIData->SkillIcon.LoadSynchronous();
+	UTexture2D* LoadedSkillIcon = SkillUIData->SkillIcon.Get();
 	if (!LoadedSkillIcon)
 	{
 		return;

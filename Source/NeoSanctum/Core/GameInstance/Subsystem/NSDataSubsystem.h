@@ -9,8 +9,11 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
+#include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSDataSubsystem.generated.h"
 
+struct FNSGoodsUIData;
+class UNSOutGameDataConfig;
 class UNSSoundData;
 class UNSAugmentRarityRuleSet;
 class UNSCommonDataConfig;
@@ -125,6 +128,23 @@ public:
 	UDataTable* GetCommonVFXDataTable() const;
 	UDataTable* GetCommonHitReactionDataTable() const;
 	UDataTable* GetCommonPlayerAttackFeedbackDataTable() const;
+
+	UDataTable* GetCommonUIWidgetDataTable() const;
+	// 캐릭터별 스킬 슬롯 구성을 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonCharacterSkillUISetTable() const;
+	// 개별 스킬 아이콘/태그 표시 정보를 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonSkillUIDataTable() const;
+	// 인런/아웃런 재화 아이콘 표시 정보를 정의하는 공용 UI 테이블.
+	UDataTable* GetCommonGoodsUIDataTable() const;
+	// 공통 UI 재화 테이블에서 태그에 해당하는 재화 표시 데이터를 찾음.
+	const FNSGoodsUIData* FindCommonGoodsUIDataByTag(const FGameplayTag& GoodsTag) const;
+
+	// 현재 프로젝트는 OutGameDataConfig를 하나만 운용.
+	// 여러 개가 등록되면 첫 번째 로드 에셋을 사용하므로 Asset Manager 등록/에셋 수를 1개로 유지해야 함.
+	const UNSOutGameDataConfig* GetOutGameDataConfig() const;
+
+	// 거점 캐릭터 선택 UI에서 사용할 캐릭터 목록 Row 캐시. LoadOutGameData() 완료 이후 유효.
+	const TArray<FNSCharacterSelectData>& GetCachedCharacterSelectRows() const { return CachedCharacterSelectRows; }
 	
 	const TArray<FNSHitReactionData>& GetCachedHitReactionRows() const { return CachedHitReactionRows; }
 	const TArray<FNSPlayerAttackFeedbackData>& GetCachedPlayerAttackFeedbackRows() const { return CachedPlayerAttackFeedbackRows; }
@@ -188,6 +208,7 @@ public:
 	static const FPrimaryAssetType CharacterAssetType;
 
 	// OutRun
+	static const FPrimaryAssetType OutGameDataConfigAssetType;
 	static const FPrimaryAssetType HubAssetType;
 	static const FPrimaryAssetType PartAssetType;
 
@@ -215,16 +236,47 @@ private:
 	// CommonDataConfig와 CharacterData PrimaryAsset 로드 후,
 	// Row 내부 SoftObject까지 필요한 공용 참조 에셋을 추가로 로드.
 	void StartLoadCommonReferenceAssets();
+
 	// 공용 참조 에셋 로드가 끝난 뒤 런타임 조회용 캐시를 만들고 CommonReady를 알림.
 	void OnCommonReferenceAssetsLoaded();
+
 	// VFX DataTable Row가 가진 NiagaraSystem SoftObject를 수집.
 	// VFX 재생 시 동기 로드를 피하기 위해 CommonDataReady 전에 선로드.
 	void CollectVFXSystemPathsFromTable(const UDataTable* VFXTable, TArray<FSoftObjectPath>& OutPaths) const;
+
+	// UIWidget DataTable Row가 가진 위젯 클래스 SoftClass를 수집.
+	// CommonDataReady 이후 UIManager가 동기 로드 없이 캐시를 만들 수 있게 미리 로드.
+	void CollectUIWidgetClassPathsFromTable(const UDataTable* UIWidgetTable, TArray<FSoftObjectPath>& OutPaths) const;
+
+	// HUD UI DataTable Row 내부의 아이콘 SoftObject를 수집.
+	// CommonDataReady 이후 HUD/Goods/Skill 위젯이 동기 로드 없이 아이콘을 사용할 수 있게 미리 로드.
+	void CollectCommonUIIconPaths(
+		const UDataTable* CharacterSkillUISetTable,
+		const UDataTable* SkillUIDataTable,
+		const UDataTable* GoodsUIDataTable,
+		TArray<FSoftObjectPath>& OutPaths
+	) const;
+
 	// HitReaction/PlayerAttackFeedback 테이블을 매번 순회하지 않도록 CommonData 로드 시 1회 캐싱.
 	void CacheCommonFeedbackRows();
 
 	void StartLoadOutGame();
+	// OutGame PrimaryAsset 로드 후, DT_CharacterList Row 내부 SoftObject까지 추가로 로드.
+	// 캐릭터 선택 UI가 CharacterData/PreviewTexture를 동기 로드하지 않도록 OutGameReady 전에 끝냄.
+	void StartLoadOutGameReferenceAssets();
+
+	// OutGame 참조 에셋 로드가 끝난 뒤 캐릭터 선택 Row 캐시를 만들고 OutGameReady를 알림.
+	void OnOutGameReferenceAssetsLoaded();
 	void OnOutGameAssetsLoaded();
+
+	// DT_CharacterList Row 내부 SoftReference를 수집.
+	// 캐릭터 선택 UI에서 동기 로드가 발생하지 않도록 OutGameReady 전에 선로드.
+	void CollectCharacterSelectPathsFromTable(
+		const UDataTable* CharacterSelectTable,
+		TArray<FSoftObjectPath>& OutPaths) const;
+
+	// 캐릭터 선택 테이블을 매번 순회하지 않도록 OutGameData 로드 시 1회 캐싱.
+	void CacheCharacterSelectRows();
 
 	// RunConfig를 먼저 로드해 런 전체 유지 데이터를 준비한 뒤, 현재 스테이지 LevelConfig를 로드. 
 	void StartLoadRunConfig();
@@ -277,8 +329,8 @@ private:
 	
 	TArray<FNSHitReactionData> CachedHitReactionRows;
 	TArray<FNSPlayerAttackFeedbackData> CachedPlayerAttackFeedbackRows;
-	
-	TSharedPtr<FStreamableHandle> CommonReferencedAssetsHandle;
+
+	TArray<FNSCharacterSelectData> CachedCharacterSelectRows;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UNSRewardDataRegistry> RewardDataRegistry;
@@ -313,7 +365,9 @@ private:
 	
 	// 비동기 로드 핸들 관리
 	TSharedPtr<FStreamableHandle> CommonHandle;
+	TSharedPtr<FStreamableHandle> CommonReferencedAssetsHandle;
 	TSharedPtr<FStreamableHandle> OutGameHandle;
+	TSharedPtr<FStreamableHandle> OutGameReferencedAssetHandle;
 	TSharedPtr<FStreamableHandle> RunConfigHandle;
 	TSharedPtr<FStreamableHandle> RunHandle;
 	TSharedPtr<FStreamableHandle> StageLevelConfigHandle;

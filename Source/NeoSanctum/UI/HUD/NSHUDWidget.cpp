@@ -6,6 +6,7 @@
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 #include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
@@ -204,16 +205,6 @@ void UNSHUDWidget::SetReloading(bool bReloading)
 	AmmoWidget->SetReloading(bReloading);
 }
 
-void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
-{
-	if (!GoodsWidget)
-	{
-		return;
-	}
-
-	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
-}
-
 void UNSHUDWidget::ShowInRunGoods()
 {
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowInRunGoods"));
@@ -245,6 +236,10 @@ void UNSHUDWidget::ShowOutRunGoods()
 
 void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 {
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* CharacterSkillUISetTable =
+		DataSubsystem ? DataSubsystem->GetCommonCharacterSkillUISetTable() : nullptr;
+
 	if (!CharacterSkillUISetTable)
 	{
 		return;

@@ -26,6 +26,11 @@ class NEOSANCTUM_API UNSUIManagerSubsystem : public UGameInstanceSubsystem
 public:
 	static UNSUIManagerSubsystem* Get(const UObject* WorldContext);
 
+	// @원종
+	void Initialize(FSubsystemCollectionBase& Collection) override;
+	// @원종
+	void Deinitialize() override;
+
 	//HUD 위젯 생성
 	void CreateHUD(APlayerController* OwningPlayer);
 	//HUD 화면 표시
@@ -129,7 +134,6 @@ public:
 	//런 종료 투표 수를 결과창 위젯에 전달
 	void UpdateRunEndVotes(int32 NextVotes, int32 HubVotes);
 
-	int32 GetRunResultGoods() const { return RunResultGoods; }
 	int32 GetRunResultKillCount() const { return RunResultKillCount; }
 	float GetRunResultTimeSeconds() const;
 	
@@ -141,10 +145,7 @@ public:
 	
 	//리로드 상태 UI 갱신
 	void SetReloading(bool bReloading);
-	
-	//인런 스킬 재화 UI 갱신
-	void UpdateRunSkillGoods(int32 NewGoodsAmount);
-	
+
 	//인런 재화 UI 표시
 	void ShowInRunGoods();
 
@@ -154,14 +155,10 @@ public:
 	void RefreshOutRunGoods();
 
 	int32 GetRunResultCommonGoods() const { return RunResultCommonGoods; }
-	int32 GetRunResultSkillGoods() const { return RunResultSkillGoods; }
 	
 	//런 결과창에 표시할 영구재화 획득량 갱신
 	void UpdateRunResultCommonGoods(int32 NewAmount);
 
-	//런 결과창에 표시할 스킬재화 획득량 갱신
-	void UpdateRunResultSkillGoods(int32 NewAmount);
-	
 	//캐릭터별 스킬 슬롯 UI 적용
 	void ApplyCharacterSkillUISet(FName CharacterId);
 	
@@ -178,8 +175,18 @@ public:
 	void ClearSpectator();
 	
 	void UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState);
-	
-	UNSUIManagerSubsystem();
+
+	// @원종 추가
+private:
+	UFUNCTION()
+	void HandleCommonDataReady();
+
+	// CommonData에서 받은 DT_UIWidget을 RowName -> WidgetClass 캐시로 변환.
+	void RebuildWidgetClassCache();
+
+	// CommonDataReady 전에 실패했던 Title 생성을 UI 위젯 캐시 구축 후 재시도.
+	void RetryPendingTitleCreation();
+
 private:
 	//생성된 HUD 보관
 	UPROPERTY()
@@ -189,6 +196,11 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleWidget;
+
+
+	// @원종: CommonDataReady 전에 Title 생성이 요청되면 로딩 완료 후 같은 PlayerController로 재시도하기 위해 보관.
+	TWeakObjectPtr<APlayerController> PendingTitleOwningPlayer;
+	bool bPendingTitleCreation = false;
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
@@ -211,9 +223,13 @@ private:
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
+
 	//UI 위젯 정보 테이블
 	UPROPERTY()
 	TObjectPtr<UDataTable> UIWidgetDataTable;
+
+	UPROPERTY()
+	TMap<FName, TSubclassOf<UUserWidget>> WidgetClassCache;
 	
 	bool bPartPanelOpen = false;
 	
@@ -237,9 +253,6 @@ private:
 	//런 결과창에 표시할 공통 영구재화 획득량
 	int32 RunResultCommonGoods = 0;
 
-	//런 결과창에 표시할 스킬재화 획득량
-	int32 RunResultSkillGoods = 0;
-	
 	//관전자 상태 UI위젯
 	UPROPERTY()
 	TObjectPtr<UNSSpectatorWidget> SpectatorWidget;

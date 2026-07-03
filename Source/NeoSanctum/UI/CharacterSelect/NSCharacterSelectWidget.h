@@ -15,6 +15,12 @@ class UTextBlock;
 class UNSCharacterSlotWidget;
 class UImage;
 
+/**
+ * 거점에서 플레이어 캐릭터를 선택하는 UI 위젯.
+ *
+ * 캐릭터 목록은 위젯이 DataTable을 직접 들고 있지 않고,
+ * NSDataSubsystem의 OutGame 캐시에서 받아 사용.
+ */
 UCLASS()
 class NEOSANCTUM_API UNSCharacterSelectWidget : public UCommonActivatableWidget
 {
@@ -44,10 +50,6 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UImage> PreviewImage;	
 
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect")
-	TObjectPtr<UDataTable> CharacterDataTable;
-
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void SelectNext();
 
@@ -66,7 +68,7 @@ private:
 	FTimerHandle FadeTimerHandle;
 	int32 CurrentIndex = 0;
 
-	TArray<FNSCharacterSelectData*> CachedCharacters;
+	TArray<FNSCharacterSelectData> CachedCharacters;
 
 	void ApplyPreviewImage(const FNSCharacterSelectData& Data);
 	

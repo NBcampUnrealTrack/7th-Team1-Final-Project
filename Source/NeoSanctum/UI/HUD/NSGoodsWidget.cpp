@@ -4,8 +4,9 @@
 #include "NSGoodsWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
-#include "CommonTextBlock.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+
 
 void UNSGoodsWidget::SetRunInGoodsAmount(int32 NewGoodsAmount)
 {
@@ -71,28 +72,33 @@ void UNSGoodsWidget::ResetRunInGoodsAmount()
 
 void UNSGoodsWidget::ApplyGoodsUIData()
 {
-	const FNSGoodsUIData* RunInGoodsData =
-		RunInGoodsUIDataRow.GetRow<FNSGoodsUIData>(
-			TEXT("ApplyGoodsUIData_RunIn"));
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	const FGameplayTag RunInTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunIn")));
+	const FNSGoodsUIData* RunInGoodsData = DataSubsystem->FindCommonGoodsUIDataByTag(RunInTag);
 	
 	if (RunInGoodsData && RunInGoodsIcon)
 	{
 		UTexture2D* LoadedIcon =
-			RunInGoodsData->GoodsIcon.LoadSynchronous();
+			RunInGoodsData->GoodsIcon.Get();
 		
 		if (LoadedIcon)
 		{
 			RunInGoodsIcon->SetBrushFromTexture(LoadedIcon);
 		}
 	}
-	const FNSGoodsUIData* RunOutGoodsData =
-		RunOutGoodsUIDataRow.GetRow<FNSGoodsUIData>(
-			TEXT("ApplyGoodsUIData_RunOut"));
+
+	const FGameplayTag RunOutTag = FGameplayTag::RequestGameplayTag(FName(TEXT("UI.Goods.RunOut")));
+	const FNSGoodsUIData* RunOutGoodsData =	DataSubsystem->FindCommonGoodsUIDataByTag(RunOutTag);
 	
 	if (RunOutGoodsData && RunOutGoodsIcon)
 	{
 		UTexture2D* LoadedIcon =
-			RunOutGoodsData->GoodsIcon.LoadSynchronous();
+			RunOutGoodsData->GoodsIcon.Get();
 		if (LoadedIcon)
 		{
 			RunOutGoodsIcon->SetBrushFromTexture(LoadedIcon);
@@ -109,15 +115,4 @@ void UNSGoodsWidget::NativeConstruct()
 	//실제 값이 들어오기 전 기본 상태
 	SetRunInGoodsAmount(0);
 	SetRunOutGoodsAmount(0);
-	SetRunSkillGoodsAmount(0);
-}
-void UNSGoodsWidget::SetRunSkillGoodsAmount(int32 NewGoodsAmount)
-{
-	if (!RunSkillGoodsText)
-	{
-		return;
-	}
-
-	RunSkillGoodsText->SetText(
-		FText::AsNumber(FMath::Max(NewGoodsAmount, 0)));
 }
