@@ -153,6 +153,13 @@ private:
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
 	
 private:
+	// OutGame 월드에 들어온 로컬 클라이언트가 거점 전용 데이터를 미리 로드하도록 보장.
+	void EnsureOutGameDataLoaded();
+
+	// CommonData가 늦게 끝난 경우, 이어서 OutGameData 로드를 시작.
+	UFUNCTION()
+	void HandleOutGamePreloadCommonDataReady();
+
 	// 클라이언트 인런 데이터 로드가 끝난 뒤 HUD와 인런 UI를 표시.
 	UFUNCTION()
 	void HandleClientRunDataReady();
