@@ -22,7 +22,8 @@ struct FNSReactiveGameplayEffectData
 	FGameplayTag TriggerTag;
 
 	// 상황 태그가 발생했을 때 적용할 GE
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayEffect> EffectClass;
 };
 
@@ -42,25 +43,30 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character")
 	FGameplayTag CharacterTag;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual",
+		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UAnimInstance> AnimClass;
 
 	// 캐릭터별 상체 Anim Layer
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Animation")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Animation",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UAnimInstance> UpperBodyAnimLayerClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
 	TArray<FNSCharacterAbilityData> DefaultAbilities;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS",
+		meta = (AssetBundles = "CommonData"))
 	TArray<TSoftClassPtr<UGameplayEffect>> DefaultGameplayEffects;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|GAS")
 	TArray<FNSReactiveGameplayEffectData> ReactiveGameplayEffects;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<ANSWeaponBase> DefaultWeaponClass;
 };

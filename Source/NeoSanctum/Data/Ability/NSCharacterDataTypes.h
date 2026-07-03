@@ -14,7 +14,8 @@ struct FNSCharacterAbilityData
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayAbility> AbilityClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")
