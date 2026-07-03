@@ -352,6 +352,14 @@ struct FNSEnemyPartRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
 	FName TraceEndSocket = NAME_None;
 
+	// LeftHand IK 위치로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|IK")
+	FName LeftHandIKSocket = NAME_None;
+
+	// 장착 상태에서도 LeftHand IK를 사용할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|IK")
+	bool bUseLeftHandIKWhileEquipped = false;
+
 	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	FName AimBone = NAME_None;

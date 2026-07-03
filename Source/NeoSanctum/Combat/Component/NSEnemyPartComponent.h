@@ -61,7 +61,7 @@ public:
 
 	// 사용 가능한 첫 번째 Muzzle Transform을 반환하는 함수
 	bool TryGetAnyMuzzleTransform(FTransform& OutTransform) const;
-	
+
 	// AttackId와 연결된 첫 번째 사용 가능 Muzzle Transform을 반환하는 함수
 	bool TryGetMuzzleTransformByAttackId(FName AttackId, FTransform& OutTransform) const;
 
@@ -72,6 +72,15 @@ public:
 		const FVector& FallbackDirection,
 		FVector& OutStart,
 		FVector& OutEnd) const;
+
+	// LeftHand IK에 사용할 Transform을 반환하는 함수
+	bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
+
+	// 장착 상태에서도 LeftHand IK를 사용할 파츠가 있는지 반환하는 함수
+	bool ShouldUseLeftHandIKWhileEquipped() const;
+
+	// 현재 공격 Row 기준 Muzzle Transform을 반환하고, 없으면 첫 Muzzle을 반환하는 함수
+	bool TryGetAimMuzzleTransform(FTransform& OutTransform) const;
 
 	// AttackId와 연결된 스폰 파츠 Actor 목록을 반환하는 함수
 	void GetSpawnedPartActorsByAttackId(FName AttackId, TArray<AActor*>& OutActors) const;
@@ -119,6 +128,11 @@ private:
 	bool TryGetSocketTransformFromPartRow(
 		const FNSEnemyPartRow& PartRow,
 		FName SocketName,
+		FTransform& OutTransform) const;
+
+	// Part Row가 가리키는 LeftHand IK Transform을 반환하는 함수
+	bool TryGetLeftHandIKTransformFromPartRow(
+		const FNSEnemyPartRow& PartRow,
 		FTransform& OutTransform) const;
 
 private:

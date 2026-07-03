@@ -235,6 +235,70 @@ bool UNSEnemyPartComponent::TryGetTraceSegmentByAttackId(
 	return false;
 }
 
+bool UNSEnemyPartComponent::TryGetLeftHandIKTransform(FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	const AActor* Owner = GetOwner();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(Owner);
+	const UNSEnemyData* EnemyData = EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+
+	if (EnemyData)
+	{
+		for (const FNSEnemyPartRow* PartRow : EnemyData->GetPartRows())
+		{
+			if (PartRow && TryGetLeftHandIKTransformFromPartRow(*PartRow, OutTransform))
+			{
+				return true;
+			}
+		}
+	}
+
+	if (IsValid(CurrentWeapon))
+	{
+		return CurrentWeapon->TryGetLeftHandIKTransform(OutTransform);
+	}
+
+	return false;
+}
+
+bool UNSEnemyPartComponent::ShouldUseLeftHandIKWhileEquipped() const
+{
+	const AActor* Owner = GetOwner();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(Owner);
+	const UNSEnemyData* EnemyData = EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+
+	if (EnemyData)
+	{
+		for (const FNSEnemyPartRow* PartRow : EnemyData->GetPartRows())
+		{
+			if (PartRow && PartRow->bUseLeftHandIKWhileEquipped)
+			{
+				return true;
+			}
+		}
+	}
+
+	return IsValid(CurrentWeapon) && CurrentWeapon->ShouldUseLeftHandIKWhileEquipped();
+}
+
+bool UNSEnemyPartComponent::TryGetAimMuzzleTransform(FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(GetOwner());
+	const FNSEnemyAttackRow* CurrentAttackRow =
+		EnemyAgent ? EnemyAgent->GetCurrentAttackRow() : nullptr;
+
+	if (CurrentAttackRow &&
+		TryGetMuzzleTransformByAttackId(CurrentAttackRow->AttackId, OutTransform))
+	{
+		return true;
+	}
+
+	return TryGetAnyMuzzleTransform(OutTransform);
+}
+
 void UNSEnemyPartComponent::GetSpawnedPartActorsByAttackId(
 	FName AttackId,
 	TArray<AActor*>& OutActors) const
@@ -533,4 +597,34 @@ bool UNSEnemyPartComponent::TryGetSocketTransformFromPartRow(
 	}
 
 	return TryGetSocketTransformFromOwnerMesh(SocketName, OutTransform);
+}
+
+bool UNSEnemyPartComponent::TryGetLeftHandIKTransformFromPartRow(
+	const FNSEnemyPartRow& PartRow,
+	FTransform& OutTransform) const
+{
+	OutTransform = FTransform::Identity;
+
+	if (PartRow.LeftHandIKSocket.IsNone())
+	{
+		if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+		{
+			if (const ANSEnemyWeaponBase* Weapon = Cast<ANSEnemyWeaponBase>(SpawnedActor))
+			{
+				return Weapon->TryGetLeftHandIKTransform(OutTransform);
+			}
+		}
+
+		return false;
+	}
+
+	if (AActor* SpawnedActor = FindSpawnedPartActor(PartRow.PartId))
+	{
+		if (TryGetSocketTransformFromActor(SpawnedActor, PartRow.LeftHandIKSocket, OutTransform))
+		{
+			return true;
+		}
+	}
+
+	return TryGetSocketTransformFromOwnerMesh(PartRow.LeftHandIKSocket, OutTransform);
 }
