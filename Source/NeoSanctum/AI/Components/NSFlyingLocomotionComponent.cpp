@@ -2,6 +2,7 @@
 
 
 #include "NSFlyingLocomotionComponent.h"
+#include "GameFramework/Pawn.h"
 
 
 UNSFlyingLocomotionComponent::UNSFlyingLocomotionComponent()
@@ -52,16 +53,16 @@ void UNSFlyingLocomotionComponent::ResetLocomotionState()
 bool UNSFlyingLocomotionComponent::HasAuthorityChecked() const
 {
 	// PawnMovementComponent가 제공하는 오너 접근자 사용
-	const APawn* PawnOwner = GetPawnOwner();
-	return IsValid(PawnOwner) && PawnOwner->HasAuthority();
+	const APawn* OwnerPawn = GetPawnOwner();
+	return IsValid(OwnerPawn) && OwnerPawn->HasAuthority();
 }
 
 #pragma region Rotation
 void UNSFlyingLocomotionComponent::UpdateRotation(float DeltaSeconds)
 {
 	// 오너 폰 확보
-	APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return;
+	APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return;
 
 	// 회전 타겟 유무에 따라 desired yaw 결정
 	const bool bHasTarget = RotationTarget.IsValid();
@@ -71,7 +72,7 @@ void UNSFlyingLocomotionComponent::UpdateRotation(float DeltaSeconds)
 	if (bHasTarget)
 	{
 		// 타겟 방향 벡터 (XY 평면)
-		FVector ToTarget = RotationTarget->GetActorLocation() - PawnOwner->GetActorLocation();
+		FVector ToTarget = RotationTarget->GetActorLocation() - OwnerPawn->GetActorLocation();
 		ToTarget.Z = 0.f;
 
 		// 타겟이 너무 가까우면 회전 스킵
@@ -93,8 +94,8 @@ void UNSFlyingLocomotionComponent::UpdateRotation(float DeltaSeconds)
 
 	// InterpSpeed 선택 후 회전 보간 적용
 	const float InterpSpeed = bHasTarget ? CombatYawInterpSpeed : YawInterpSpeed;
-	const FRotator NewRot = FMath::RInterpTo(PawnOwner->GetActorRotation(), Desired, DeltaSeconds, InterpSpeed);
-	PawnOwner->SetActorRotation(NewRot);
+	const FRotator NewRot = FMath::RInterpTo(OwnerPawn->GetActorRotation(), Desired, DeltaSeconds, InterpSpeed);
+	OwnerPawn->SetActorRotation(NewRot);
 }
 #pragma endregion
 
@@ -104,11 +105,11 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 	// 서버 권한 확인
 	if (!HasAuthorityChecked()) return;
 
-	APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return;
+	APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return;
 
 	// 목표까지의 XY 벡터
-	FVector TargetPosition = TargetLocation - PawnOwner->GetActorLocation();
+	FVector TargetPosition = TargetLocation - OwnerPawn->GetActorLocation();
 	TargetPosition.Z = 0.f;
 
 	// 도착 반경 안이면 이동 입력 없음
@@ -155,7 +156,7 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 	if (!SteeringDirection.IsNearlyZero())
 	{
 		const float SlopeScale = ComputeSlopeSpeedScale();
-		PawnOwner->AddMovementInput(SteeringDirection, InputScale * SlopeScale);
+		OwnerPawn->AddMovementInput(SteeringDirection, InputScale * SlopeScale);
 	}
 }
 
@@ -166,11 +167,11 @@ void UNSFlyingLocomotionComponent::SetRotationTarget(AActor* InTarget)
 
 bool UNSFlyingLocomotionComponent::HasReachedLocation(const FVector& TargetLocation) const
 {
-	const APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return false;
+	const APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return false;
 
 	// XY 평면 거리로만 도착 판정
-	const float DistSqXY = FVector::DistSquaredXY(PawnOwner->GetActorLocation(), TargetLocation);
+	const float DistSqXY = FVector::DistSquaredXY(OwnerPawn->GetActorLocation(), TargetLocation);
 	return DistSqXY < FMath::Square(ArrivalRadius);
 }
 #pragma endregion
@@ -181,8 +182,8 @@ void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 	// 서버 권한 및 오너 확보
 	if (!HasAuthorityChecked()) return;
 
-	APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return;
+	APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return;
 
 	// 지형 샘플링 실패 시 조기 종료
 	float OutZ;
@@ -207,19 +208,19 @@ void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 	}
 
 	// 데드존 안이면 미세 조정 스킵 (떨림 방지)
-	const float DesiredMoveDis = SmoothedTargetHeight - PawnOwner->GetActorLocation().Z;
+	const float DesiredMoveDis = SmoothedTargetHeight - OwnerPawn->GetActorLocation().Z;
 	if (FMath::Abs(DesiredMoveDis) > AltitudeDeadZone)
 	{
 		// 입력강도를 -1 ~ 1로 정규화 후 Z 방향 입력
 		const float InputZ = FMath::Clamp(DesiredMoveDis / AltitudeCorrectionRange, -1.f, 1.f);
-		PawnOwner->AddMovementInput(FVector::UpVector, InputZ);
+		OwnerPawn->AddMovementInput(FVector::UpVector, InputZ);
 	}
 }
 
 bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& OutZ) const
 {
-	const APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return false;
+	const APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return false;
 
 	// 시작/종료 위치 (아래 방향 라인 트레이스)
 	const FVector StartWorldLocation = WorldXY;
@@ -228,7 +229,7 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	// 트레이스 파라미터 설정 (오너 폰 무시)
 	FHitResult Hit;
 	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(PawnOwner);
+	CollisionParams.AddIgnoredActor(OwnerPawn);
 
 	if (GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, GroundChannel, CollisionParams))
 	{
@@ -240,22 +241,22 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 
 bool UNSFlyingLocomotionComponent::SampleHighestGround(float& OutGroundZ) const
 {
-	const APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return false;
+	const APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return false;
 
 	// 샘플 포인트 배열 준비 (현재 위치 + 이동 방향 예측 + 원형 샘플)
 	TArray<FVector> SamplePoints;
 	// 지형 샘플 갯수 + 드론 현재 위치 1 + 이동 방향 예측 위치 1 만큼 공간 확보
 	SamplePoints.Reset(GroundSampleCount + 2);
 
-	const FVector DroneLocation = PawnOwner->GetActorLocation();
+	const FVector DroneLocation = OwnerPawn->GetActorLocation();
 	SamplePoints.Add(DroneLocation);
 
 	// 이동 예측 지점 - 자기 Velocity 방향, 정지 상태면 폰 forward 사용
 	FVector ForwardXY = Velocity.GetSafeNormal2D();
 	if (ForwardXY.IsNearlyZero())
 	{
-		ForwardXY = PawnOwner->GetActorForwardVector().GetSafeNormal2D();
+		ForwardXY = OwnerPawn->GetActorForwardVector().GetSafeNormal2D();
 	}
 
 	const FVector LookAheadPoint = DroneLocation + ForwardXY * GroundLookAheadDistance;
@@ -320,8 +321,8 @@ void UNSFlyingLocomotionComponent::BuildInterestMap(const FVector& DesiredDirect
 
 void UNSFlyingLocomotionComponent::BuildDangerMap()
 {
-	const APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return;
+	const APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return;
 
 	// 스무딩 맵 크기 동기화 (스티어링 방향 갯수와 맞춤)
 	if (SmoothedDangerMap.Num() != SteeringDirections.Num())
@@ -337,12 +338,12 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 	for (int32 i = 0; i < SteeringDirections.Num(); ++i)
 	{
 		const FVector& Direction = SteeringDirections[i];
-		const FVector Start = PawnOwner->GetActorLocation();
+		const FVector Start = OwnerPawn->GetActorLocation();
 		const FVector End = Start + Direction * AvoidanceTraceDistance;
 
 		FHitResult Hit;
 		FCollisionQueryParams CollisionParams;
-		CollisionParams.AddIgnoredActor(PawnOwner);
+		CollisionParams.AddIgnoredActor(OwnerPawn);
 		CollisionParams.bTraceComplex = false;
 
 		// 이번 프레임 raw Danger 계산
@@ -400,24 +401,24 @@ float UNSFlyingLocomotionComponent::ComputeSlopeSpeedScale() const
 	// 앞쪽 지형 예측이 없으면 감속 없음
 	if (!bHasValidGround) return 1.f;
 
-	const APawn* PawnOwner = GetPawnOwner();
-	if (!IsValid(PawnOwner)) return 1.f;
+	const APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return 1.f;
 
 	// 이동 방향 - 자기 Velocity 우선, 정지 상태면 폰 forward
 	FVector ForwardXY = Velocity.GetSafeNormal2D();
 	if (ForwardXY.IsNearlyZero())
 	{
-		ForwardXY = PawnOwner->GetActorForwardVector().GetSafeNormal2D();
+		ForwardXY = OwnerPawn->GetActorForwardVector().GetSafeNormal2D();
 	}
 
-	const FVector LookAheadPoint = PawnOwner->GetActorLocation() + ForwardXY * GroundLookAheadDistance;
+	const FVector LookAheadPoint = OwnerPawn->GetActorLocation() + ForwardXY * GroundLookAheadDistance;
 
 	float LookAheadZ;
 	if (!TraceGroundAt(LookAheadPoint, LookAheadZ)) return 1.f;
 
 	// 이상적 고도 대비 현재 고도의 갭 계산
 	const float IdealHeightAtLookAhead = LookAheadZ + Altitude;
-	const float CurrentZ = PawnOwner->GetActorLocation().Z;
+	const float CurrentZ = OwnerPawn->GetActorLocation().Z;
 	const float HeightGap = IdealHeightAtLookAhead - CurrentZ;
 
 	// 내리막이거나 이미 충분히 높으면 감속 불필요
