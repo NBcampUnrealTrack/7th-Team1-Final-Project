@@ -142,6 +142,9 @@ private:
 
 	// 거점 귀환 시 모든 플레이어의 인런 파츠 Clear (세이브의 단일 파츠 A만 복원되도록)
 	void ClearAllParts();
+
+	// 거점 귀환 시 아직 소비되지 않은 증강 선택 큐 초기화.
+	void ResetAugmentSelectionQueues();
 	
 	// 몬스터 사망시 보상 처리
 	void HandleEnemyReward(ACharacter* DeadEnemy);

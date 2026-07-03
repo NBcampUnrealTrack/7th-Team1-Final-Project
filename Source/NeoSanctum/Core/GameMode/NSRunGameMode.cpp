@@ -25,6 +25,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
+#include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -624,6 +625,26 @@ void ANSRunGameMode::ClearAllParts()
 	}
 }
 
+void ANSRunGameMode::ResetAugmentSelectionQueues()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
+		{
+			if (UNSAugmentSelectionComponent* SelectionComponent =
+				PC->FindComponentByClass<UNSAugmentSelectionComponent>())
+			{
+				SelectionComponent->Reset();
+			}
+		}
+	}
+}
+
 UNSProjectileManagerComponent* ANSRunGameMode::GetProjectileManager() const
 {
 	const ANSRunGameState* RunGameState =
@@ -928,6 +949,7 @@ void ANSRunGameMode::OnResultDisplayFinished()
 			CommitAndClearAllWallets(Multiplier);
 			ClearAllAugments();
 			ClearAllParts();
+			ResetAugmentSelectionQueues();
 			SaveAllPlayersProgress();
 			NSGameFlow->ReturnToHub();
 		}
