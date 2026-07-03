@@ -117,11 +117,6 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
 }
 
-ANSEnemyWeaponBase* ANSEnemyCharacterBase::GetCurrentWeapon() const
-{
-	return PartComponent ? PartComponent->GetCurrentWeapon() : nullptr;
-}
-
 void ANSEnemyCharacterBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
 {
 	if (CombatComponent)

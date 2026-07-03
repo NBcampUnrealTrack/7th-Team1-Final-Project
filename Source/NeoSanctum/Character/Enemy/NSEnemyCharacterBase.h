@@ -19,7 +19,6 @@ DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
 class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
-class ANSEnemyWeaponBase;
 class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
@@ -75,8 +74,6 @@ public:
 
 	// Enemy 공통 Interface에서 공격, 조준, Trace 기준으로 사용할 위치를 반환하는 함수
 	virtual FVector GetAimLocation() const override;
-
-	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
 
