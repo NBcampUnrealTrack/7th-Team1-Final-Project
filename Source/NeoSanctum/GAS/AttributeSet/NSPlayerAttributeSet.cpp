@@ -68,7 +68,7 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 	}
 	else if (Attribute == GetCritChanceAttribute())
 	{
-		NewValue = FMath::Max(NewValue, 100.0f);
+		NewValue = FMath::Clamp(NewValue, 0.0f, 100.0f);
 	}
 	else if (Attribute == GetCritDamageAttribute())
 	{
