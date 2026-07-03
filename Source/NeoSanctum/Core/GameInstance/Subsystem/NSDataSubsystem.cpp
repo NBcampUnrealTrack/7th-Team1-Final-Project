@@ -23,6 +23,7 @@
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 
@@ -438,6 +439,7 @@ void UNSDataSubsystem::OnCommonReferenceAssetsLoaded()
 	CacheCommonFeedbackRows();
 	
 	SetPhase(ENSDataLoadPhase::CommonReady);
+	NS_NET_LOG(this, LogNS, Warning, "CommonData 로딩 완료");
 	OnCommonDataReady.Broadcast();
 }
 
@@ -652,6 +654,7 @@ void UNSDataSubsystem::OnOutGameReferenceAssetsLoaded()
 	CacheCharacterSelectRows();
 
 	SetPhase(ENSDataLoadPhase::OutGameReady);
+	NS_NET_LOG(this, LogNS, Warning, "OutGameData 로딩 완료");
 	OnOutGameDataReady.Broadcast();
 }
 
@@ -812,6 +815,11 @@ void UNSDataSubsystem::OnStageConfigLoaded()
 	CacheLoadedByIds(PendingStageAssetIds);
 	
 	SetPhase(ENSDataLoadPhase::RunReady);
+	NS_NET_LOG(this, LogNS, Warning,
+		"RunData 로딩 완료. RunConfig={RunConfig}, LevelConfig={LevelConfig}",
+		("RunConfig", CurrentRunConfig ? CurrentRunConfig->GetName() : FString(TEXT("None"))),
+		("LevelConfig", CurrentRunLevelConfig ? CurrentRunLevelConfig->GetName() : FString(TEXT("None")))
+	);
 	OnRunGameDataReady.Broadcast();
 }
 
@@ -853,7 +861,12 @@ void UNSDataSubsystem::OnStageSpawnerTableLoaded()
 	CurrentMeleeSpawnerTable = CurrentRunLevelConfig ? CurrentRunLevelConfig->MeleeSpawnerTable.Get() : nullptr;
 	CurrentRangeSpawnerTable = CurrentRunLevelConfig ? CurrentRunLevelConfig->RangeSpawnerTable.Get() : nullptr;
 	bStageSpawnerTablesLoaded = true;
-	
+
+	NS_NET_LOG(this, LogNS, Warning,
+		"StageSpawnerTable 로딩 완료. Melee={Melee}, Range={Range}",
+		("Melee", CurrentMeleeSpawnerTable ? CurrentMeleeSpawnerTable->GetName() : FString(TEXT("None"))),
+		("Range", CurrentRangeSpawnerTable ? CurrentRangeSpawnerTable->GetName() : FString(TEXT("None")))
+	);
 	OnStageSpawnerTablesReady.Broadcast();
 }
 
