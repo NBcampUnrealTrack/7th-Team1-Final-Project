@@ -23,7 +23,7 @@ class NEOSANCTUM_API UNSCommonDataConfig : public UPrimaryDataAsset
 	
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
-	
+
 	// 캐릭터 기본 스탯 또는 Ability 초기 스탯처럼 거점/인런 양쪽에서 필요한 공용 스탯 테이블.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Character", 
 		meta = (AssetBundles = "CommonData"))
@@ -38,21 +38,26 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Character",
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayEffect> CharacterBaseStatInitEffectClass;
-	
+
+	// GEC에서 사용하는 방어력 감소 배율 공식(y = k / (k + Defense))에 사용하는 상수 k.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Combat")
+	float DefenseMitigationConstant = 100.0f;
+
 	// 파츠
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts", 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsBaseStatTable;
-	
+
 	// 파츠 슬롯
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts", 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsSlotBaseStatTable;
-	
+
 	// @원종 TODO: 추후 영구 스킬 트리 데이터가 생기면 여기에 추가.
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
 	// 	meta = (AssetBundles = "CommonData"))
 	// TSoftObjectPtr<UDataTable> PermanentSkillTreeTable;
+
 	// 사운드 테이블과 카테고리 볼륨 기본값을 함께 관리하는 공용 사운드 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 
 		meta = (AssetBundles = "CommonData"))
