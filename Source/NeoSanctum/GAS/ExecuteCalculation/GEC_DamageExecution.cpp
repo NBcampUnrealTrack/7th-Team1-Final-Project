@@ -3,7 +3,9 @@
 
 #include "GEC_DamageExecution.h"
 
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 namespace
@@ -12,11 +14,15 @@ namespace
 	{
 		DECLARE_ATTRIBUTE_CAPTUREDEF(BaseDamage);
 		DECLARE_ATTRIBUTE_CAPTUREDEF(Defense);
+		DECLARE_ATTRIBUTE_CAPTUREDEF(CritChance);
+		DECLARE_ATTRIBUTE_CAPTUREDEF(CritDamage);
 		
 		FNSDamageStatics()
 		{
 			DEFINE_ATTRIBUTE_CAPTUREDEF(UNSBaseAttributeSet, BaseDamage, Source, false);
 			DEFINE_ATTRIBUTE_CAPTUREDEF(UNSBaseAttributeSet, Defense, Target, false);
+			DEFINE_ATTRIBUTE_CAPTUREDEF(UNSPlayerAttributeSet, CritChance, Source, false);
+			DEFINE_ATTRIBUTE_CAPTUREDEF(UNSPlayerAttributeSet, CritDamage, Source, false);
 		}
 	};
 	
@@ -31,6 +37,8 @@ UGEC_DamageExecution::UGEC_DamageExecution()
 {
 	RelevantAttributesToCapture.Add(GetDamageStatics().BaseDamageDef);
 	RelevantAttributesToCapture.Add(GetDamageStatics().DefenseDef);
+	RelevantAttributesToCapture.Add(GetDamageStatics().CritChanceDef);
+	RelevantAttributesToCapture.Add(GetDamageStatics().CritDamageDef);
 }
 
 void UGEC_DamageExecution::Execute_Implementation(
@@ -56,7 +64,23 @@ void UGEC_DamageExecution::Execute_Implementation(
 		EvaluateParameters,
 		TargetDefense
 	);
-	
+
+	// Source가 NSPlayerAttributeSet이 없는 대상(몬스터/터렛 등)이면 캡처가 실패하므로,
+	// 크리티컬이 발생하지 않는 기본값(확률 0%, 배율 100%)을 미리 채워둠.
+	float SourceCritChance = 0.0f;
+	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(
+		GetDamageStatics().CritChanceDef,
+		EvaluateParameters,
+		SourceCritChance
+	);
+
+	float SourceCritDamage = 100.0f;
+	ExecutionParams.AttemptCalculateCapturedAttributeMagnitude(
+		GetDamageStatics().CritDamageDef,
+		EvaluateParameters,
+		SourceCritDamage
+	);
+
 	SourceBaseDamage = FMath::Max(SourceBaseDamage, 0.0f);
 	TargetDefense = FMath::Max(TargetDefense, 0.0f);
 	
@@ -67,9 +91,25 @@ void UGEC_DamageExecution::Execute_Implementation(
 		false,
 		SourceBaseDamage
 	);
-	
-	const float FinalDamage = FMath::Max(AppliedBaseDamage - TargetDefense, 0.0f);
-	
+
+	// 방어력 감소 배율: y = k / (k + Defense)
+	float DefenseMitigationConstant = 100.0f;
+	if (const UAbilitySystemComponent* TargetASC = ExecutionParams.GetTargetAbilitySystemComponent())
+	{
+		if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(TargetASC))
+		{
+			DefenseMitigationConstant = DataSubsystem->GetDefenseMitigationConstant();
+		}
+	}
+
+	const float MitigationMultiplier = DefenseMitigationConstant / (DefenseMitigationConstant + TargetDefense);
+
+	// 크리티컬 판정 및 배율. 방어력 배율과 곱셈 순서가 상관 없음.
+	const bool bIsCritical = FMath::FRandRange(0.0f, 100.0f) < SourceCritChance;
+	const float CritMultiplier = bIsCritical ? (SourceCritDamage / 100.0f) : 1.0f;
+
+	const float FinalDamage = FMath::Max(AppliedBaseDamage * MitigationMultiplier * CritMultiplier, 0.0f);
+
 	if (FinalDamage <= 0.0f)
 	{
 		return;
