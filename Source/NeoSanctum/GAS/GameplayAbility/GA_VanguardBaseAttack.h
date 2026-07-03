@@ -7,6 +7,7 @@
 #include "GA_VanguardBaseAttack.generated.h"
 
 class UAbilityTask_ApplyRootMotionConstantForce;
+class UAbilityTask_ApplyRootMotionMoveToForce;
 class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 
@@ -82,6 +83,12 @@ private:
 	UFUNCTION()
 	void OnDashAttackMoveFinished();
 
+	UFUNCTION()
+	void OnAirSlamHoverFinished();
+
+	UFUNCTION()
+	void OnAirSlamDiveFinished();
+
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
 	ENSVanguardBaseAttackMode SelectAttackMode(const FGameplayAbilityActorInfo* ActorInfo) const;
 
@@ -99,6 +106,24 @@ private:
 
 	// 공중 내려찍기 공격 시작
 	void StartAirSlam();
+
+	// 공중 내려찍기 Hover Section 시작
+	void StartAirSlamHover();
+
+	// 공중 내려찍기 Dive Section 시작
+	void StartAirSlamDive();
+
+	// 공중 내려찍기 Impact Section 시작
+	void StartAirSlamImpact();
+
+	// 공중 내려찍기 몽타주 Section 이동
+	bool JumpToAirSlamSection(FName SectionName) const;
+
+	// 공중 내려찍기 착지 목표 위치 계산
+	bool TryGetAirSlamTargetLocation(FVector& OutTargetLocation) const;
+
+	// 공중 내려찍기 이동 모드 복구
+	void RestoreAirSlamMovementMode() const;
 
 	// 대쉬공격 차지 시작 및 입력 해제 대기
 	void StartDashCharge();
@@ -176,6 +201,34 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
 	FName DashAttackSectionName = TEXT("Attack");
 
+	// 공중 내려찍기 체공 섹션 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
+	FName AirSlamHoverSectionName = TEXT("Hover");
+
+	// 공중 내려찍기 낙하 루프 섹션 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
+	FName AirSlamDiveSectionName = TEXT("Dive");
+
+	// 공중 내려찍기 착지 섹션 이름
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
+	FName AirSlamImpactSectionName = TEXT("Impact");
+
+	// 공중 내려찍기 체공 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|AirSlam", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float AirSlamHoverDuration = 0.25f;
+
+	// 공중 내려찍기 낙하 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|AirSlam", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
+	float AirSlamDiveSpeed = 3000.0f;
+
+	// 공중 내려찍기 지면 탐색 거리
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|AirSlam", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float AirSlamGroundTraceDistance = 5000.0f;
+
+	// 공중 내려찍기 착지 위치 보정 높이
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|AirSlam", meta = (AllowPrivateAccess = "true"))
+	float AirSlamImpactGroundOffset = 5.0f;
+
 	// 대쉬공격 최대 충전 도달 시간
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashCharge", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float MaxDashChargeTime = 1.0f;
@@ -218,6 +271,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashAttackMoveTask;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_ApplyRootMotionMoveToForce> AirSlamHoverTask;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_ApplyRootMotionMoveToForce> AirSlamDiveTask;
 
 	// 현재 재생 중인 지상 콤보 단계
 	int32 CurrentGroundComboIndex = INDEX_NONE;
