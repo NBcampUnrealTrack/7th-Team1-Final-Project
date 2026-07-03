@@ -740,6 +740,12 @@ bool ANSPlayerController::TryApplySkillUIFromCurrentCharacter()
 	{
 		return false;
 	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady() || !DataSubsystem->GetCommonCharacterSkillUISetTable())
+	{
+		return false;
+	}
 	
 	UNSUIManagerSubsystem* UIManagerSubsystem =
 		UNSUIManagerSubsystem::Get(this);
@@ -916,7 +922,7 @@ void ANSPlayerController::BeginPlay()
 	BindRunDataConfig();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 }
 
 void ANSPlayerController::ShowTravelLoadingScreen()
@@ -2122,7 +2128,7 @@ void ANSPlayerController::RebindHUDRuntimeState()
 	UpdateHUDHealthAndShield();
 	UpdateHUDAmmo();
 	UpdateHUDCurrency();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 
 	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
