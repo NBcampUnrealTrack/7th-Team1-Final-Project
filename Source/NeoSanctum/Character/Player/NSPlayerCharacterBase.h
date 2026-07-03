@@ -92,7 +92,6 @@ protected:
 	
 	void InitializeFromCharacterData(const UNSCharacterData* InCharacterData);
 	void ApplyCurrentCharacterData();
-	void LoadCharacterDataAssets(const UNSCharacterData* InCharacterData);
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();

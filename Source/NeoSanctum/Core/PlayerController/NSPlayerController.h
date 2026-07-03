@@ -153,6 +153,13 @@ private:
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
 	
 private:
+	// OutGame 월드에 들어온 로컬 클라이언트가 거점 전용 데이터를 미리 로드하도록 보장.
+	void EnsureOutGameDataLoaded();
+
+	// CommonData가 늦게 끝난 경우, 이어서 OutGameData 로드를 시작.
+	UFUNCTION()
+	void HandleOutGamePreloadCommonDataReady();
+
 	// 클라이언트 인런 데이터 로드가 끝난 뒤 HUD와 인런 UI를 표시.
 	UFUNCTION()
 	void HandleClientRunDataReady();
@@ -251,6 +258,8 @@ private:
 	FTimerHandle SkillUIApplyRetryTimerHandle;
 	int32 SkillUIApplyRetryCount = 0;
 	
+	// 클라이언트는 PlayerState와 CommonData 준비 순서가 달라질 수 있으므로,
+	// 스킬 UI 적용을 즉시 시도한 뒤 짧은 시간 재시도합니다.
 	void StartSkillUIApplyRetry();
 	void RetryApplySkillUIFromCurrentCharacter();
 	bool TryApplySkillUIFromCurrentCharacter();

@@ -272,8 +272,9 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	}
 	
 	CurrentCharacterData = InCharacterData;
-	LoadCharacterDataAssets(CurrentCharacterData);
-	
+
+	// CommonData 로딩 단계에서 CharacterData의 Soft Reference까지 선로딩되므로,
+	// 여기서 동기 로딩을 강제하지 않음.
 	ApplyCharacterVisual();
 	
 	// 서버에서 처리할 것들
@@ -533,39 +534,8 @@ void ANSPlayerCharacterBase::HandleCompanionDataReady()
 
 #pragma endregion
 
-void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InCharacterData)
-{
-	if (!InCharacterData)
-	{
-		return;
-	}
-	
-	// LoadSynchronous는 임시로 강제로 로딩하기 위함이고, 추후에 비동기로딩 흐름으로 바꿀 예정
-	
-	InCharacterData->SkeletalMesh.LoadSynchronous();
-	InCharacterData->AnimClass.LoadSynchronous();
-	InCharacterData->UpperBodyAnimLayerClass.LoadSynchronous();
-	InCharacterData->DefaultWeaponClass.LoadSynchronous();
-	
-	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
-	{
-		AbilityData.AbilityClass.LoadSynchronous();
-	}
-	
-	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : InCharacterData->DefaultGameplayEffects)
-	{
-		DefaultEffect.LoadSynchronous();
-	}
-
-	for (const FNSReactiveGameplayEffectData& ReactiveEffect : InCharacterData->ReactiveGameplayEffects)
-	{
-		ReactiveEffect.EffectClass.LoadSynchronous();
-	}
-}
-
 void ANSPlayerCharacterBase::OnRep_CurrentCharacterData()
 {
-	LoadCharacterDataAssets(CurrentCharacterData);
 	ApplyCharacterVisual();
 }
 

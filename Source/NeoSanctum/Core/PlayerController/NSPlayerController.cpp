@@ -740,6 +740,12 @@ bool ANSPlayerController::TryApplySkillUIFromCurrentCharacter()
 	{
 		return false;
 	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady() || !DataSubsystem->GetCommonCharacterSkillUISetTable())
+	{
+		return false;
+	}
 	
 	UNSUIManagerSubsystem* UIManagerSubsystem =
 		UNSUIManagerSubsystem::Get(this);
@@ -874,6 +880,7 @@ void ANSPlayerController::BeginPlay()
 		UIManager->HideTitle();
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
+
 		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
 			if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
@@ -883,6 +890,9 @@ void ANSPlayerController::BeginPlay()
 			}
 		}
 		UIManager->ShowOutRunGoods();
+
+		// 클라이언트가 거점에 도착하면 거점용 OutGameData를 미리 준비
+		EnsureOutGameDataLoaded();
 			
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
@@ -912,7 +922,7 @@ void ANSPlayerController::BeginPlay()
 	BindRunDataConfig();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 }
 
 void ANSPlayerController::ShowTravelLoadingScreen()
@@ -1042,6 +1052,9 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		// 거점에서는 아웃런 재화 UI 표시
 		UIManager->ShowOutRunGoods();
 
+		// Seamless Travel 이후 로컬 클라이언트의 OutGameData 캐시가 비어있을 수 있으므로 미리 로드.
+		EnsureOutGameDataLoaded();
+
 		// PlayerState 초기화가 한 프레임 늦는 경우를 대비해서 다음 틱에 한 번 더 적용한다.
 		GetWorldTimerManager().SetTimerForNextTick(
 			FTimerDelegate::CreateWeakLambda(this, [this]()
@@ -1168,6 +1181,46 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation(
 	}
 	
 	HandleClientRunDataReady();
+}
+
+void ANSPlayerController::EnsureOutGameDataLoaded()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	if (DataSubsystem->IsOutGameReady())
+	{
+		return;
+	}
+
+	if (!DataSubsystem->IsCommonReady())
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+
+		DataSubsystem->LoadCommonData();
+		return;
+	}
+
+	DataSubsystem->LoadOutGameData();
+}
+
+void ANSPlayerController::HandleOutGamePreloadCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+
+		DataSubsystem->LoadOutGameData();
+	}
 }
 
 void ANSPlayerController::HandleClientRunDataReady()
@@ -2075,7 +2128,7 @@ void ANSPlayerController::RebindHUDRuntimeState()
 	UpdateHUDHealthAndShield();
 	UpdateHUDAmmo();
 	UpdateHUDCurrency();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 
 	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
