@@ -7,7 +7,7 @@
 #include "Engine/DataAsset.h"
 #include "NSEnemyData.generated.h"
 
-class ANSEnemyWeaponBase;
+class AActor;
 class USkeletalMesh;
 class UAnimInstance;
 class UDataTable;
@@ -17,6 +17,7 @@ class UBehaviorTree;
 class UStateTree;
 class UEnvQuery;
 class UMaterialInterface;
+
 
 UENUM(BlueprintType)
 enum class ENSEnemyMovementType : uint8
@@ -76,6 +77,24 @@ enum class ENSBossTargetPolicy : uint8
 	RandomKnown UMETA(DisplayName = "Random Known")
 };
 
+UENUM(BlueprintType)
+enum class ENSEnemyPartType : uint8
+{
+	SpawnedWeapon UMETA(DisplayName = "Spawned Weapon"),
+	SpawnedPart UMETA(DisplayName = "Spawned Part"),
+	IntegratedWeapon UMETA(DisplayName = "Integrated Weapon"),
+	VisualOnly UMETA(DisplayName = "Visual Only")
+};
+
+UENUM(BlueprintType)
+enum class ENSEnemyPartAttachRule : uint8
+{
+	KeepRelativeTransform UMETA(DisplayName = "KeepRelativeTransform"),
+	KeepWorldTransform UMETA(DisplayName = "KeepWorldTransform"),
+	SnapToTargetNotIncludingScale UMETA(DisplayName = "SnapToTargetNotIncludingScale"),
+	SnapToTargetIncludingScale UMETA(DisplayName = "SnapToTargetIncludingScale")
+};
+
 USTRUCT(BlueprintType)
 struct FNSMonsterAttributeRow : public FTableRowBase
 {
@@ -118,15 +137,19 @@ USTRUCT(BlueprintType)
 struct FNSEnemyAttackRow : public FTableRowBase
 {
 	GENERATED_BODY()
+
 	// 이 공격 Row를 사용할 몬스터 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
+
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
+
 	// 공격 실행 GA
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
+
 	// 공격 분류
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack")
 	ENSEnemyAttackType AttackType = ENSEnemyAttackType::MeleeSweep;
@@ -150,7 +173,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 선택 시 먼저 비교할 우선순위. 높은 값이 먼저 후보가 됨
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	int32 Priority = 0;
-	
+
 	// 공격 판정 전에 플레이어에게 보여줄 경고 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float WarnTime = 0.0f;
@@ -198,7 +221,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 중 허용되는 상하 조준 제한 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
 	float PitchLimit = 0.0f;
-	
+
 	// 타깃 지정 정책
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
 	ENSBossTargetPolicy TargetPolicy = ENSBossTargetPolicy::PrimaryOnly;
@@ -272,6 +295,97 @@ struct FNSEnemyPhaseRow : public FTableRowBase
 };
 
 USTRUCT(BlueprintType)
+struct FNSEnemyPartRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// 이 파츠 Row를 사용할 몬스터 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part", meta = (Categories = "Character.Enemy"))
+	FGameplayTag EnemyId;
+
+	// 같은 몬스터 안에서 파츠를 식별하는 ID
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FName PartId = NAME_None;
+
+	// 파츠의 사용 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	ENSEnemyPartType PartType = ENSEnemyPartType::IntegratedWeapon;
+
+	// SpawnedWeapon 또는 SpawnedPart 타입에서 스폰할 Actor 클래스
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	TSubclassOf<AActor> ActorClass;
+
+	// 스폰한 Actor를 부착하거나 IntegratedWeapon 기준으로 사용할 메시 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FName AttachSocket = NAME_None;
+
+	// 파츠 부착 시 사용할 Transform 적용 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	ENSEnemyPartAttachRule AttachRule = ENSEnemyPartAttachRule::KeepRelativeTransform;
+
+	// AttachSocket 기준으로 적용할 상대 Transform
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
+	FTransform RelativeTransform = FTransform::Identity;
+
+	// 이 파츠를 사용할 공격 ID 목록
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Attack")
+	TArray<FName> AttackIds;
+
+	// 투사체, 총구 이펙트가 시작되는 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName MuzzleSocket = NAME_None;
+
+	// GameplayCue 이펙트를 붙일 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName CueSocket = NAME_None;
+
+	// Hitscan, Laser 판정의 시작점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceSocket = NAME_None;
+
+	// Melee Sweep 판정의 시작점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceStartSocket = NAME_None;
+
+	// Melee Sweep 판정의 끝점으로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Socket")
+	FName TraceEndSocket = NAME_None;
+
+	// LeftHand IK 위치로 사용할 소켓 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|IK")
+	FName LeftHandIKSocket = NAME_None;
+
+	// 장착 상태에서도 LeftHand IK를 사용할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|IK")
+	bool bUseLeftHandIKWhileEquipped = false;
+
+	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
+	FName AimBone = NAME_None;
+
+	// Control Rig에서 사용할 조준 컨트롤 이름
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
+	FName AimControl = NAME_None;
+
+	// 파츠가 좌우로 회전할 수 있는 최대 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float YawLimit = 0.0f;
+
+	// 파츠가 위아래로 회전할 수 있는 최대 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float PitchLimit = 0.0f;
+
+	// 조준 목표를 따라갈 때 사용하는 보간 속도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
+	float AimSpeed = 10.0f;
+	
+#if WITH_EDITOR
+	// Part Row의 타입별 필수 입력값을 검증하는 함수
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+};
+
+USTRUCT(BlueprintType)
 struct FNSEnemyMaterialDefinition
 {
 	GENERATED_BODY()
@@ -287,52 +401,6 @@ struct FNSEnemyMaterialDefinition
 	// 해당 몬스터 종류의 기본 외형 색상
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	FLinearColor MonsterTint = FLinearColor::White;
-};
-
-USTRUCT(BlueprintType)
-struct FNSBossWeaponPoint
-{
-	GENERATED_BODY()
-
-	// 보스 메시의 식별된 무기 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName PointId = NAME_None;
-
-	// 보스 메시의 식별된 무기에서 사용할 공격 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AttackId = NAME_None;
-
-	// 투사체, 총구 이펙트가 시작되는 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName MuzzleSocket = NAME_None;
-
-	// GameplayCue 이펙트를 붙일 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName CueSocket = NAME_None;
-
-	// 레이저 판정의 시작점으로 사용할 소켓 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName TraceSocket = NAME_None;
-
-	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AimBone = NAME_None;
-
-	// Control Rig에서 사용할 조준 컨트롤 이름
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon")
-	FName AimControl = NAME_None;
-
-	// 식별된 무기가 좌우로 회전할 수 있는 최대 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float YawLimit = 0.0f;
-
-	// 식별된 무기가 위아래로 회전할 수 있는 최대 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float PitchLimit = 0.0f;
-
-	// 조준 목표를 따라갈 때 사용하는 보간 속도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Weapon", meta = (ClampMin = "0.0"))
-	float AimSpeed = 10.0f;
 };
 
 /**
@@ -376,10 +444,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Visual")
 	TArray<FNSEnemyMaterialDefinition> MaterialDefinitions;
 
-	// 무기
-	UPROPERTY(EditDefaultsOnly, Category = "Equipment",
-		meta = (EditCondition = "EnemyRank != ENSEnemyRank::Boss", EditConditionHides))
-	TSubclassOf<ANSEnemyWeaponBase> DefaultWeaponClass;
+	// 파츠, 장착형 무기, 메시 일체형 무기 포인트 정보를 읽을 DataTable
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equipment")
+	TObjectPtr<UDataTable> PartsTable;
 
 	// 초기 스탯
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
@@ -396,7 +463,7 @@ public:
 	// 피격 게이지 최대치 도달 시 실행할 몬스터 전용 경직 Ability
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> HitReactionAbilityClass;
-	
+
 	// 체력이 0에 도달했을 때 실행할 몬스터 전용 사망 Ability
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayAbility> DeathAbilityClass;
@@ -412,7 +479,7 @@ public:
 	// 몬스터 AI 실행 방식
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config")
 	ENSEnemyBrainType BrainType = ENSEnemyBrainType::BehaviorTree;
-	
+
 	UPROPERTY(EditDefaultsOnly, Category = "AI Config",
 		meta = (EditCondition = "BrainType == ENSEnemyBrainType::BehaviorTree", EditConditionHides))
 	TObjectPtr<UBehaviorTree> BehaviorTree;
@@ -430,11 +497,6 @@ public:
 		meta = (ClampMin = "0.0", EditCondition = "EnemyRank != ENSEnemyRank::Boss", EditConditionHides))
 	float MeleeEQSNeighborRadius = 1000.0f;
 
-	// 식별된 무기 정보 Struct. EnemyRank가 Boss일 때 사용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss",
-		meta = (EditCondition = "EnemyRank == ENSEnemyRank::Boss", EditConditionHides))
-	TArray<FNSBossWeaponPoint> BossWeapons;
-	
 public:
 	// EnemyId와 일치하는 공격 Row를 AttackTable에서 미리 캐싱하는 함수
 	void CacheAttackRows() const;
@@ -442,15 +504,34 @@ public:
 	// EnemyId와 일치하는 Phase Row를 PhaseTable에서 미리 캐싱하는 함수
 	void CachePhaseRows() const;
 
-	// AttackTable과 PhaseTable에서 캐싱한 Row를 모두 초기화하는 함수
+	// EnemyId와 일치하는 Part Row를 PartsTable에서 미리 캐싱하는 함수
+	void CachePartRows() const;
+
+	// AttackTable, PhaseTable, PartsTable에서 캐싱한 Row를 모두 초기화하는 함수
 	void InvalidateCachedRows() const;
 
 	// 현재 EnemyId와 일치하는 공격 Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyAttackRow*>& GetAttackRows() const;
+
 	// 현재 EnemyId와 일치하는 Phase Row 목록을 반환하는 함수
 	const TArray<const FNSEnemyPhaseRow*>& GetPhaseRows() const;
 
+	// 현재 EnemyId와 일치하는 Part Row 목록을 반환하는 함수
+	const TArray<const FNSEnemyPartRow*>& GetPartRows() const;
+
+	// 현재 EnemyData가 사용할 Part Row를 하나 이상 가지고 있는지 확인하는 함수
+	bool HasPartRows() const;
+
+	// PartId와 일치하는 Part Row를 반환하는 함수
+	const FNSEnemyPartRow* FindPartRowById(FName PartId) const;
+
+	// AttackId를 사용하는 Part Row 목록을 반환하는 함수
+	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
+
 #if WITH_EDITOR
+	// EnemyData와 연결된 DataTable Row들의 입력 상태를 검증하는 함수
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+	
 	// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
@@ -468,11 +549,18 @@ private:
 	// PhaseTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
 	mutable TArray<const FNSEnemyPhaseRow*> CachedPhaseRows;
 
+	// PartsTable에서 현재 EnemyId와 일치하는 Row만 모아둔 캐시
+	mutable TArray<const FNSEnemyPartRow*> CachedPartRows;
+
 	// AttackTable 캐시가 초기화되었는지 여부
 	mutable bool bAttackRowsCached = false;
 
 	// PhaseTable 캐시가 초기화되었는지 여부
 	mutable bool bPhaseRowsCached = false;
+
+	// PartsTable 캐시가 초기화되었는지 여부
+	mutable bool bPartRowsCached = false;
+
 public:
 	// 현재 페이즈 기준으로 공격 Weight Override를 반영한 최종 Weight를 반환하는 함수
 	float GetPhaseAttackWeight(const FNSEnemyAttackRow& AttackRow, float HealthRatio) const;

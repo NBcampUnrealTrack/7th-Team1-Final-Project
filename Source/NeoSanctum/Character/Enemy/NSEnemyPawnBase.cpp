@@ -9,12 +9,14 @@
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCoreComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
 
 ANSEnemyPawnBase::ANSEnemyPawnBase()
 {
@@ -44,6 +46,8 @@ ANSEnemyPawnBase::ANSEnemyPawnBase()
 	TargetComponent = CreateDefaultSubobject<UNSEnemyTargetComponent>(TEXT("TargetComponent"));
 	ThreatComponent = CreateDefaultSubobject<UNSEnemyThreatComponent>(TEXT("ThreatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
+	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
+	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
 }
 
 void ANSEnemyPawnBase::BeginPlay()
@@ -163,6 +167,11 @@ void ANSEnemyPawnBase::InitializeFromData(bool bFullInit)
 	if (bFullInit)
 	{
 		ApplyVisualData();
+
+		if (PartComponent)
+		{
+			PartComponent->EquipParts();
+		}
 	}
 }
 
@@ -207,6 +216,11 @@ void ANSEnemyPawnBase::ApplyAliveState()
 	if (CollisionComponent)
 	{
 		CollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
+	}
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->ResetDissolve();
 	}
 }
 

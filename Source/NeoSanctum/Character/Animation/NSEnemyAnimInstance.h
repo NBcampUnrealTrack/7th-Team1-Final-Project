@@ -8,6 +8,7 @@
 
 class ANSEnemyCharacterBase;
 class UCharacterMovementComponent;
+class UNSEnemyPartComponent;
 
 UCLASS()
 class NEOSANCTUM_API UNSEnemyAnimInstance : public UAnimInstance
@@ -31,7 +32,7 @@ protected:
 	// 이동 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsMoving = false;
-	
+
 	// 체공 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsInAir = false;
@@ -39,7 +40,7 @@ protected:
 	// 상승/낙하 구분을 위한 Z축 속도
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float VerticalVelocity = 0.0f;
-	
+
 	// 후퇴 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsRetreating = false;
@@ -87,16 +88,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float MuzzleYawErrorDeadZone = 0.75f;
-	
+
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	FRotator AimBoneRotation = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawScale = 1.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimPitchScale = -1.0f;
-	
+
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	FRotator Spine01AimRotation;
 
@@ -118,4 +119,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UCharacterMovementComponent> MovementComponent;
+
+	UPROPERTY()
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
 };

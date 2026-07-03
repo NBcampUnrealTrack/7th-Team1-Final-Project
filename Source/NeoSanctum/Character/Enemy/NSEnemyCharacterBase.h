@@ -19,7 +19,6 @@ DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
 class UNSEnemyData;
 class UGameplayAbility;
 class UNSMonsterAttributeSet;
-class ANSEnemyWeaponBase;
 class UMaterialInstanceDynamic;
 class UNSDamageFlashComponent;
 class UNSHitReactionComponent;
@@ -30,6 +29,7 @@ class UNSEnemyThreatComponent;
 class UNSEnemyMeleeComponent;
 class UNSEnemyMoveComponent;
 class UNSEnemyStateComponent;
+class UNSEnemyPartComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter,
@@ -74,8 +74,6 @@ public:
 
 	// Enemy 공통 Interface에서 공격, 조준, Trace 기준으로 사용할 위치를 반환하는 함수
 	virtual FVector GetAimLocation() const override;
-
-	ANSEnemyWeaponBase* GetCurrentWeapon() const;
 
 	FOnEnemyDead OnEnemyDead;
 
@@ -137,13 +135,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSEnemyStateComponent> StateComponent;
 
+	// Enemy의 장착형 무기와 파츠 스폰을 관리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
+
 	// 디졸브 효과 컴포넌트
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
-
-	// 무기 장착 컴포넌트
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<class UNSEnemyWeaponComponent> WeaponComponent;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
