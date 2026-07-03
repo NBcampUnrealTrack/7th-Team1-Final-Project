@@ -22,6 +22,8 @@ void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxDashCount, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, DashRegenRate, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, CritChance, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, CritDamage, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, Ammo, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxAmmo, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxSkill1Count, COND_None, REPNOTIFY_Always);
@@ -61,6 +63,14 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 	else if (Attribute == GetDashRegenRateAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetCritChanceAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, 500.0f);
+	}
+	else if (Attribute == GetCritDamageAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
 	}
@@ -355,6 +365,16 @@ void UNSPlayerAttributeSet::OnRep_MaxDashCount(const FGameplayAttributeData& Old
 void UNSPlayerAttributeSet::OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, DashRegenRate, OldDashRegenRate);
+}
+
+void UNSPlayerAttributeSet::OnRep_CritChance(const FGameplayAttributeData& OldCritChance)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, CritChance, OldCritChance);
+}
+
+void UNSPlayerAttributeSet::OnRep_CritDamage(const FGameplayAttributeData& OldCritDamage)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, CritDamage, OldCritDamage);
 }
 
 void UNSPlayerAttributeSet::OnRep_Ammo(const FGameplayAttributeData& OldAmmo)
