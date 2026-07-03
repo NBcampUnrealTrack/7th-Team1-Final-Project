@@ -590,7 +590,14 @@ void UGA_ThrowProjectile::RebuildSetByCallerMagnitudes(const FGameplayTag& Abili
 		}
 
 		float Magnitude = 0.0f;
-		if (!TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude))
+
+		// DamageCoefficient는 일반 CombatStat 조회가 아니라 PlayerBaseDamage x 계수로 계산
+		const bool bIsDamageCoefficient = Mapping.CombatStatTag == NSGameplayTags::CombatStat_DamageCoefficient;
+		const bool bMagnitudeResolved = bIsDamageCoefficient
+			? TryGetFinalSkillDamage(AbilityTag, Magnitude)
+			: TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude);
+
+		if (!bMagnitudeResolved)
 		{
 			continue;
 		}
