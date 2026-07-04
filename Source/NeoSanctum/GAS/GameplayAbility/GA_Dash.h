@@ -7,6 +7,7 @@
 #include "GA_Dash.generated.h"
 
 class UAbilityTask_ApplyRootMotionConstantForce;
+class UAbilitySystemComponent;
 
 /**
  * 캐릭터 대시 어빌리티
@@ -78,4 +79,7 @@ private:
 
 	// 대쉬공격 입력 가능 창 자동 종료 타이머
 	FTimerHandle DashAttackWindowTimerHandle;
+
+	// Ability 종료 이후 타이머에서도 대쉬공격 입력 창 태그를 제거하기 위한 ASC 참조
+	TWeakObjectPtr<UAbilitySystemComponent> DashAttackWindowASC;
 };

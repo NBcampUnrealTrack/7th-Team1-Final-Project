@@ -203,6 +203,7 @@ void UGA_Dash::AddDashAttackWindow()
 	}
 
 	// 연속 대쉬로 태그 카운트가 누적되지 않도록 1로 고정
+	DashAttackWindowASC = ASC;
 	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 1);
 
 	World->GetTimerManager().ClearTimer(DashAttackWindowTimerHandle);
@@ -216,9 +217,11 @@ void UGA_Dash::AddDashAttackWindow()
 
 void UGA_Dash::RemoveDashAttackWindow()
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	if (UAbilitySystemComponent* ASC = DashAttackWindowASC.Get())
 	{
 		// 후속 공격 창 종료 시 태그 카운트 초기화
 		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
 	}
+
+	DashAttackWindowASC.Reset();
 }
