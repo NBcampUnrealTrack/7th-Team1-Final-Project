@@ -11,6 +11,7 @@
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
@@ -155,14 +156,16 @@ bool UNSPartEquipWidget::RequestUnlockPart(TSoftObjectPtr<UNSPartDefinition> Def
 void UNSPartEquipWidget::RequestEquipPart(TSoftObjectPtr<UNSPartDefinition> Definition)
 {
 	UNSProgressionSubsystem* SS = GetProgressionSS(this);
-	if (!SS)
+	ANSPlayerController* PC = Cast<ANSPlayerController>(OwningController.Get());
+	if (!SS || !PC)
 	{
-		NS_LOG(LogNS, Warning, "[Equip] RequestEquipPart 실패: ProgressionSubsystem이 없습니다.");
+		NS_LOG(LogNS, Warning, "[Equip] RequestEquipPart 실패: ProgressionSubsystem 또는 PlayerController가 없습니다.");
 		return;
 	}
 	const FName CharId = SS->GetLastSelectedCharacterId();
-	SS->SetEquippedPart(CharId, Definition, ENSPartRarity::Common);
-	NS_LOG(LogNS, Log, "[Equip] SetEquippedPart 호출: CharId={CharId}, {Definition}",
+	// 로컬 저장 + 서버 업로드 + 현재 폰 즉시 적용까지 한 번에 처리
+	PC->EquipPartLive(CharId, Definition, ENSPartRarity::Common);
+	NS_LOG(LogNS, Log, "[Equip] EquipPartLive 호출: CharId={CharId}, {Definition}",
 		("CharId", CharId.ToString()), ("Definition", Definition.ToString()));
 	bDirty = true;
 }
@@ -482,9 +485,19 @@ void UNSPartEquipWidget::RefreshEquipButton()
 		EquipButton->SetIsEnabled(true);
 		if (IsValid(EquipButtonText))
 		{
-			EquipButtonText->SetText(IsPartOwned(SelectedRow.Definition)
-				? NSLOCTEXT("PartEquip", "Equip", "장착")
-				: NSLOCTEXT("PartEquip", "Buy", "구매"));
+			if (!IsPartOwned(SelectedRow.Definition))
+			{
+				EquipButtonText->SetText(NSLOCTEXT("PartEquip", "Buy", "구매"));
+			}
+			else if (GetEquippedPart().Definition == SelectedRow.Definition)
+			{
+				// 선택한 카탈로그 파츠가 현재 장착중인 파츠면 해제로 동작
+				EquipButtonText->SetText(NSLOCTEXT("PartEquip", "Unequip", "해제"));
+			}
+			else
+			{
+				EquipButtonText->SetText(NSLOCTEXT("PartEquip", "Equip", "장착"));
+			}
 		}
 		return;
 	}
@@ -493,14 +506,16 @@ void UNSPartEquipWidget::RefreshEquipButton()
 void UNSPartEquipWidget::RequestUnequipPart()
 {
 	UNSProgressionSubsystem* SS = GetProgressionSS(this);
-	if (!SS)
+	ANSPlayerController* PC = Cast<ANSPlayerController>(OwningController.Get());
+	if (!SS || !PC)
 	{
-		NS_LOG(LogNS, Warning, "[Equip] RequestUnequipPart 실패: ProgressionSubsystem이 없습니다.");
+		NS_LOG(LogNS, Warning, "[Equip] RequestUnequipPart 실패: ProgressionSubsystem 또는 PlayerController가 없습니다.");
 		return;
 	}
 	const FName CharId = SS->GetLastSelectedCharacterId();
-	SS->SetEquippedPart(CharId, TSoftObjectPtr<UNSPartDefinition>(), ENSPartRarity::Common);
-	NS_LOG(LogNS, Log, "[Equip] SetEquippedPart 호출(해제): CharId={CharId}", ("CharId", CharId.ToString()));
+	// 로컬 저장 + 서버 업로드 + 현재 폰 즉시 적용까지 한 번에 처리
+	PC->EquipPartLive(CharId, TSoftObjectPtr<UNSPartDefinition>(), ENSPartRarity::Common);
+	NS_LOG(LogNS, Log, "[Equip] EquipPartLive 호출(해제): CharId={CharId}", ("CharId", CharId.ToString()));
 	bDirty = true;
 }
 
@@ -534,7 +549,15 @@ void UNSPartEquipWidget::OnEquipButtonClicked()
 	case ENSPartSelectionMode::Part:
 		if (IsPartOwned(SelectedRow.Definition))
 		{
-			RequestEquipPart(SelectedRow.Definition);
+			// 이미 장착중인 파츠를 다시 누르면 해제
+			if (GetEquippedPart().Definition == SelectedRow.Definition)
+			{
+				RequestUnequipPart();
+			}
+			else
+			{
+				RequestEquipPart(SelectedRow.Definition);
+			}
 			RefreshEquippedDisplay();
 		}
 		else
