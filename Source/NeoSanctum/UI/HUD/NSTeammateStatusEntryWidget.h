@@ -50,12 +50,6 @@ private:
 	//현재 쉴드 비율
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> ShieldBar;
-	// 현재 경험치 진행도
-	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UProgressBar> ExperienceBar;
-	// 현재 경험치 수치 표시
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> ExperienceValueText;
 	//사망 상태 표시, WBP에 없으면 사용하지 않음
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> DeadOverlay;

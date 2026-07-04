@@ -52,14 +52,6 @@ struct FNSPlayerStatusViewData
 	UPROPERTY(BlueprintReadOnly)
 	float MaxShield = 0.0f;
 	
-	//현재 경험치, AttributeSet 구현 전까지 기본값 0
-	UPROPERTY(BlueprintReadOnly)
-	float CurrentExperience = 0.0f;
-	
-	// 다음 단계에 필요한 경험치 AttributeSet 구현 전까지 기본값 0
-	UPROPERTY(BlueprintReadOnly)
-	float RequiredExperience = 0.0f;
-	
 	//UI는 AttributeSet을 직접 참조하지않고 GMS데이터만 사용
 
 	//플레이어 사망 여부

@@ -26,7 +26,6 @@ struct FNSPlayerStatusBinding
 	FDelegateHandle MaxHealthChangedHandle;
 	FDelegateHandle ShieldChangedHandle;
 	FDelegateHandle MaxShieldChangedHandle;
-	//TODO: 경험치 Attribute 변경 델리게이트 핸들 추가
 };
 
 /**
@@ -71,14 +70,7 @@ private:
 	
 	//특정 팀원의 최신 상태를 GMS로 전달
 	void BroadcastPlayerChanged(int32 PlayerId);
-	
-	// TODO: Experience/RequiredExperience Attribute 실제 값 조회
-	//경험치 AttributeSet 구현 전후를 분리하기위한 조회 함수
-	void ReadExperienceAttributes(
-		const UAbilitySystemComponent* AbilitySystem,
-		float& OutCurrentExperience,
-		float& OutRequiredExperience) const;
-	
+
 private:
 	//팀원 상태 조회 요청 리스너
 	FGameplayMessageListenerHandle QueryListenerHandle;

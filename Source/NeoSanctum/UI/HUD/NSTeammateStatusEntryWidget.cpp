@@ -62,29 +62,6 @@ void UNSTeammateStatusEntryWidget::ApplyStatusData(const FNSPlayerStatusViewData
 					FMath::RoundToInt(
 						StatusData.MaxShield))));
 	}
-	if (ExperienceBar)
-	{
-		ExperienceBar->SetPercent(
-			GetSafePercent(
-				StatusData.CurrentExperience,
-				StatusData.RequiredExperience));
-	}
-
-	if (ExperienceValueText)
-	{
-		ExperienceValueText->SetText(
-			FText::Format(
-				NSLOCTEXT(
-					"TeammateStatus",
-					"ExperienceFormat",
-					"EXP {0}/{1}"),
-				FText::AsNumber(
-					FMath::RoundToInt(
-						StatusData.CurrentExperience)),
-				FText::AsNumber(
-					FMath::RoundToInt(
-						StatusData.RequiredExperience))));
-	}
 	
 	if (DeadOverlay)
 	{

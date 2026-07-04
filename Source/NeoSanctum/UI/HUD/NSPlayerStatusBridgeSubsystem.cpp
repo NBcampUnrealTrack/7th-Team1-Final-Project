@@ -252,7 +252,6 @@ void UNSPlayerStatusBridgeSubsystem::AddTrackedPlayer(ANSPlayerState* PlayerStat
 			&ThisClass::HandleAttributeChanged,
 			PlayerId);
 
-	// TODO: Experience/RequiredExperience 변경 델리게이트 등록
 	TrackedPlayers.Add(
 		PlayerId,
 		MoveTemp(Binding));
@@ -307,7 +306,6 @@ void UNSPlayerStatusBridgeSubsystem::RemoveTrackedPlayer(int32 PlayerId, bool bB
 			.Remove(Binding->MaxShieldChangedHandle);
 		}
 	}
-	// TODO: Experience/RequiredExperience 변경 델리게이트 해제
 	TrackedPlayers.Remove(PlayerId);
 
 	if (!bBroadcastRemoval)
@@ -378,11 +376,6 @@ bool UNSPlayerStatusBridgeSubsystem::BuildViewData(const ANSPlayerState* PlayerS
 		AbilitySystem->GetNumericAttribute(
 			UNSPlayerAttributeSet::GetMaxShieldAttribute());
 	
-	ReadExperienceAttributes(
-	AbilitySystem,
-	OutData.CurrentExperience,
-	OutData.RequiredExperience);
-	
 	OutData.bIsDead = PlayerState->IsDead();
 
 	return OutData.PlayerId != INDEX_NONE;
@@ -414,29 +407,4 @@ void UNSPlayerStatusBridgeSubsystem::BroadcastPlayerChanged(int32 PlayerId)
 		ChangedMessage);
 }
 
-void UNSPlayerStatusBridgeSubsystem::ReadExperienceAttributes(const UAbilitySystemComponent* AbilitySystem,
-	float& OutCurrentExperience, float& OutRequiredExperience) const
-{
-	// TODO: 경험치 Attribute 구현 후 GetNumericAttribute로 실제 값 조회
-	OutCurrentExperience = 0.0f;
-	OutRequiredExperience = 0.0f;
 
-	if (!IsValid(AbilitySystem))
-	{
-		return;
-	}
-
-	/*
-	경험치 Attribute 구현 후 사용할 코드 예시:
-
-	OutCurrentExperience =
-		AbilitySystem->GetNumericAttribute(
-			UNSPlayerAttributeSet::
-				GetExperienceAttribute());
-
-	OutRequiredExperience =
-		AbilitySystem->GetNumericAttribute(
-			UNSPlayerAttributeSet::
-				GetRequiredExperienceAttribute());
-	*/
-}
