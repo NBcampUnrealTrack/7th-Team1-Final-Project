@@ -8,6 +8,7 @@
 #include "NSEnemyPhaseComponent.generated.h"
 
 class UAbilitySystemComponent;
+class UNSEnemyStateComponent;
 class UGameplayAbility;
 struct FAbilityEndedData;
 struct FNSEnemyPhaseRow;
@@ -57,6 +58,15 @@ private:
 
 	// Phase Transition GA 종료 시 PatternLock을 해제하는 함수
 	void OnTransitionAbilityEnded(const FAbilityEndedData& AbilityEndedData);
+	
+	// 현재 Phase에서 Desired Phase까지 한 단계만 진행할 다음 Phase Row를 계산하는 함수
+	const FNSEnemyPhaseRow* ResolveNextPhaseRow(const FNSEnemyPhaseRow* DesiredPhaseRow) const;
+
+	// Owner의 StateComponent를 반환하는 함수
+	UNSEnemyStateComponent* GetOwnerStateComponent() const;
+
+	// Phase 전환 시 Owner의 HitGauge를 초기화하는 함수
+	void ResetOwnerHitGauge() const;
 
 private:
 	// 현재 적용된 Phase Row
