@@ -39,10 +39,6 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayEffect> CharacterBaseStatInitEffectClass;
 
-	// GEC에서 사용하는 방어력 감소 배율 공식(y = k / (k + Defense))에 사용하는 상수 k.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Combat")
-	float DefenseMitigationConstant = 100.0f;
-
 	// 파츠
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))
