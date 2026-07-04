@@ -244,22 +244,32 @@ void UNSBossTargetComponent::CollectNearbyKnownTargets(
 	TArray<AActor*>& OutCandidates) const
 {
 	const APawn* OwnerPawn = GetOwnerPawn();
-	const FVector OwnerLocation = OwnerPawn
-		                              ? OwnerPawn->GetActorLocation()
-		                              : FVector::ZeroVector;
+
+	const FVector ReferenceLocation =
+		IsValid(PrimaryTarget)
+			? PrimaryTarget->GetActorLocation()
+			: OwnerPawn
+			? OwnerPawn->GetActorLocation()
+			: FVector::ZeroVector;
 
 	auto TryAddCandidate =
-		[this, &OutCandidates, OwnerPawn, OwnerLocation, SearchRadius = AttackRow.TargetSearchRadius](AActor* Candidate)
+		[this, &OutCandidates, PrimaryTarget, ReferenceLocation, SearchRadius = AttackRow.TargetSearchRadius,
+			bIncludePrimaryTarget = AttackRow.bIncludePrimaryTarget](AActor* Candidate)
 	{
 		if (!IsValidLivingTarget(Candidate))
 		{
 			return;
 		}
 
-		if (OwnerPawn && SearchRadius > 0.0f)
+		if (Candidate == PrimaryTarget && !bIncludePrimaryTarget)
+		{
+			return;
+		}
+
+		if (SearchRadius > 0.0f)
 		{
 			const float DistanceSq =
-				FVector::DistSquared(OwnerLocation, Candidate->GetActorLocation());
+				FVector::DistSquared(ReferenceLocation, Candidate->GetActorLocation());
 
 			if (DistanceSq > FMath::Square(SearchRadius))
 			{
@@ -304,6 +314,11 @@ void UNSBossTargetComponent::CollectAllKnownTargets(
 
 		for (AActor* KnownTarget : KnownTargets)
 		{
+			if (KnownTarget == PrimaryTarget && !AttackRow.bIncludePrimaryTarget)
+			{
+				continue;
+			}
+
 			if (IsValidLivingTarget(KnownTarget))
 			{
 				OutCandidates.AddUnique(KnownTarget);

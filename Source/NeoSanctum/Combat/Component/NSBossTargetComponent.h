@@ -51,19 +51,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Boss|Target")
 	int32 GetAttackTargetCount() const;
 
-protected:
-	// 기본 공격 타깃 최대 개수
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "1"))
-	int32 DefaultMaxTargets = 4;
-
-	// 기본 공격 타깃 탐색 반경. 0 이하이면 거리 제한 없이 Threat 후보를 사용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Target", meta = (ClampMin = "0.0"))
-	float DefaultSearchRadius = 6000.0f;
-
-	// 기본 타깃 목록 구성 시 PrimaryTarget을 포함할지 여부
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Target")
-	bool bDefaultIncludePrimary = true;
-
 private:
 	// AttackRow의 TargetPolicy에 따라 후보 타깃을 수집하는 함수
 	void CollectCandidatesByPolicy(
