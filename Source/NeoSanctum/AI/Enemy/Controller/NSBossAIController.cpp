@@ -252,8 +252,7 @@ void ANSBossAIController::UpdateTargetSelection()
 
 	AActor* CurrentTarget = ThreatComponent->GetCurrentTarget();
 
-	const bool bIsAttacking =
-		CachedBBComp && CachedBBComp->GetValueAsBool(IsAttackingKey);
+	const bool bIsAttacking = IsAttackingBB();
 
 	const bool bCanMaintainCurrentTarget =
 		CurrentTarget && CanMaintainCurrentTarget(CurrentTarget);
@@ -496,7 +495,14 @@ void ANSBossAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 		AttackComponent->RecordAttackUsed(AttackRow);
 	}
 
-	SetIsAttackingBB(true);
+	NotifyAttackStarted();
+}
+
+void ANSBossAIController::NotifyAttackFinished()
+{
+	Super::NotifyAttackFinished();
+
+	ClearAttackState();
 }
 
 AActor* ANSBossAIController::GetCurrentTargetActor() const
@@ -556,14 +562,6 @@ void ANSBossAIController::SetCanAttackBB(bool bCanAttack)
 	if (CachedBBComp)
 	{
 		CachedBBComp->SetValueAsBool(CanAttackKey, bCanAttack);
-	}
-}
-
-void ANSBossAIController::SetIsAttackingBB(bool bIsAttacking)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsAttackingKey, bIsAttacking);
 	}
 }
 

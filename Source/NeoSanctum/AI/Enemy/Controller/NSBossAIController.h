@@ -53,6 +53,9 @@ public:
 
 	// 공격이 실제로 실행됐을 때 쿨다운과 Threat 상태를 기록하는 함수
 	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
+	
+	// 공격 Ability 종료, 실패, 취소 이후 Boss 전용 공격 상태를 정리하는 함수
+	virtual void NotifyAttackFinished() override;
 
 	// ThreatComponent가 선택한 대표 전투 타깃을 반환하는 함수
 	AActor* GetCurrentTargetActor() const;
@@ -108,9 +111,6 @@ private:
 	// 공격 가능 여부를 Blackboard에 반영하는 함수
 	void SetCanAttackBB(bool bCanAttack);
 
-	// 공격 진행 상태를 Blackboard에 반영하는 함수
-	void SetIsAttackingBB(bool bIsAttacking);
-
 	// 공격 관련 런타임 상태와 Blackboard 값을 초기화하는 함수
 	void ClearAttackState();
 
@@ -161,9 +161,6 @@ private:
 
 	// 현재 공격 가능한 상태인지 저장할 Blackboard 키 이름
 	FName CanAttackKey = TEXT("bCanAttack");
-
-	// 현재 공격 실행 중인지 저장할 Blackboard 키 이름
-	FName IsAttackingKey = TEXT("bIsAttacking");
 
 	// 현재 Boss ModeTag 이름을 저장할 Blackboard 키 이름
 	FName CurrentModeTagKey = TEXT("CurrentModeTag");

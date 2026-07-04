@@ -446,10 +446,19 @@ void ANSEnemyAIController::UpdateRetreatState(AActor* TargetActor)
 
 void ANSEnemyAIController::NotifyAttackStarted()
 {
+	Super::NotifyAttackStarted();
+
 	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
 		ThreatComponent->NotifyAttackStarted();
 	}
+}
+
+void ANSEnemyAIController::NotifyAttackFinished()
+{
+	Super::NotifyAttackFinished();
+
+	ClearAttackBB();
 }
 
 void ANSEnemyAIController::UpdateTargetSelection()
@@ -462,8 +471,7 @@ void ANSEnemyAIController::UpdateTargetSelection()
 
 	AActor* CurrentTarget = ThreatComponent->GetCurrentTarget();
 
-	const bool bIsAttacking =
-		CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+	const bool bIsAttacking = IsAttackingBB();
 
 	const bool bCanMaintainCurrentTarget =
 		CurrentTarget && CanMaintainCoverAttackTarget(CurrentTarget);
@@ -807,8 +815,7 @@ void ANSEnemyAIController::UpdateFacingMode(AActor* TargetActor)
 		return;
 	}
 
-	const bool bIsAttacking =
-		CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+	const bool bIsAttacking = IsAttackingBB();
 
 	const bool bShouldRetreat =
 		CachedBBComp && CachedBBComp->GetValueAsBool(ShouldRetreatKey);
@@ -887,7 +894,7 @@ void ANSEnemyAIController::ClearAttackBB()
 	}
 
 	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
+	SetIsAttackingBB(false);
 	SetAttackActorBlackboard(nullptr);
 }
 

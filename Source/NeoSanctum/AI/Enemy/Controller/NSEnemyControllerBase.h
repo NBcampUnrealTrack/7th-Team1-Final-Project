@@ -25,6 +25,12 @@ class NEOSANCTUM_API ANSEnemyControllerBase : public AAIController
 
 public:
 	ANSEnemyControllerBase();
+	
+	// 공격 Ability가 실제로 시작됐을 때 Enemy Controller 공통 공격 상태를 기록하는 함수
+	virtual void NotifyAttackStarted();
+
+	// 공격 Ability 종료, 실패, 취소 이후 Enemy Controller 공통 공격 상태를 정리하는 함수
+	virtual void NotifyAttackFinished();
 
 protected:
 	// EnemyData의 BrainType에 맞는 AI Brain을 시작하는 함수
@@ -59,6 +65,15 @@ protected:
 
 	// Phase Component 상태를 Blackboard에 반영하는 함수
 	void SyncPhaseBlackboard(const UNSEnemyPhaseComponent* PhaseComponent);
+	
+	// 현재 Possess 중인 Enemy의 CurrentAttackRow를 초기화하는 함수
+	void ClearControlledAttackRow();
+
+	// bIsAttacking Blackboard 값을 변경하는 함수
+	void SetIsAttackingBB(bool bIsAttacking);
+
+	// bIsAttacking Blackboard 값을 반환하는 함수
+	bool IsAttackingBB() const;
 
 protected:
 	// StateTree 방식 Enemy가 사용할 AI Brain Component
@@ -83,4 +98,7 @@ protected:
 	void SyncFlyingRotationTarget(AActor* Target);
 	// ---
 	
+	
+	// 현재 공격 실행 중인지 저장할 Blackboard 키 이름
+	FName IsAttackingKey = TEXT("bIsAttacking");
 };

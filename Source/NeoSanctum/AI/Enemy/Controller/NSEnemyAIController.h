@@ -104,7 +104,10 @@ public:
 	/* 함수 */
 
 	// 현재 타깃을 향한 공격이 시작됐음을 기록하고 추적 제한 시간을 갱신하는 함수
-	void NotifyAttackStarted();
+	virtual void NotifyAttackStarted() override;
+
+	// 공격 Ability 종료, 실패, 취소 이후 Enemy 공격 상태를 정리하는 함수
+	virtual void NotifyAttackFinished() override;
 
 private:
 	// 현재 Threat 정보를 평가해 타깃 선택·유지·전환·해제를 처리하는 함수

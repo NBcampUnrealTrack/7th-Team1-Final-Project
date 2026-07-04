@@ -72,7 +72,8 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 			bUsesMeleeReservation = false;
 		}
 
-		EnemyAgent->ClearCurrentAttackRow();
+		AIController->NotifyAttackFinished();
+
 		ASC->OnAbilityEnded.RemoveAll(this);
 		CachedAttackAbilityClass = nullptr;
 		return EBTNodeResult::Failed;
@@ -84,11 +85,6 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	}
 
 	AIController->RecordAttackUsed(*SelectedAttack);
-
-	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
-	{
-		BBComp->SetValueAsBool(TEXT("bIsAttacking"), true);
-	}
 
 	return EBTNodeResult::InProgress;
 }
@@ -116,11 +112,6 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeCompon
 		}
 	}
 
-	if (INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(EnemyPawn))
-	{
-		EnemyAgent->ClearCurrentAttackRow();
-	}
-	
 	const bool bPreserveMeleeReservation = ShouldPreserveMeleeReservation(Controller);
 
 	if (Controller && bUsesMeleeReservation && !bPreserveMeleeReservation)
@@ -128,9 +119,9 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeCompon
 		Controller->ReleaseMeleeAttackReservation(true);
 	}
 
-	if (UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent())
+	if (Controller)
 	{
-		Blackboard->SetValueAsBool(TEXT("bIsAttacking"), false);
+		Controller->NotifyAttackFinished();
 	}
 
 	bUsesMeleeReservation = false;
@@ -151,21 +142,11 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 		return;
 	}
 	
-	if (UBlackboardComponent* BBComp = CachedOwnerComp->GetBlackboardComponent())
-	{
-		BBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-	}
-
 	ANSEnemyAIController* AIController = Cast<ANSEnemyAIController>(CachedOwnerComp->GetAIOwner());
 	if (AIController)
 	{
 		if (APawn* TargetPawn = AIController->GetPawn())
 		{
-			if (INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(TargetPawn))
-			{
-				EnemyAgent->ClearCurrentAttackRow();
-			}
-			
 			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn))
 			{
 				ASC->OnAbilityEnded.RemoveAll(this);
@@ -178,6 +159,8 @@ void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData
 		{
 			AIController->ReleaseMeleeAttackReservation(true);
 		}
+
+		AIController->NotifyAttackFinished();
 
 		bUsesMeleeReservation = false;
 	}

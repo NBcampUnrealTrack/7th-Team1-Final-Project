@@ -19,6 +19,17 @@ ANSEnemyControllerBase::ANSEnemyControllerBase()
 	StateTreeComponent->SetStartLogicAutomatically(false);
 }
 
+void ANSEnemyControllerBase::NotifyAttackStarted()
+{
+	SetIsAttackingBB(true);
+}
+
+void ANSEnemyControllerBase::NotifyAttackFinished()
+{
+	ClearControlledAttackRow();
+	SetIsAttackingBB(false);
+}
+
 void ANSEnemyControllerBase::StartEnemyBrain(const UNSEnemyData* EnemyData)
 {
 	if (!EnemyData)
@@ -172,4 +183,29 @@ void ANSEnemyControllerBase::SyncFlyingRotationTarget(AActor* Target)
 	if (!FlyMovementComponent) return;
 	
 	FlyMovementComponent->SetRotationTarget(Target);
+}
+
+
+void ANSEnemyControllerBase::ClearControlledAttackRow()
+{
+	INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(GetPawn());
+	if (!EnemyAgent)
+	{
+		return;
+	}
+
+	EnemyAgent->ClearCurrentAttackRow();
+}
+
+void ANSEnemyControllerBase::SetIsAttackingBB(bool bIsAttacking)
+{
+	if (CachedBBComp)
+	{
+		CachedBBComp->SetValueAsBool(IsAttackingKey, bIsAttacking);
+	}
+}
+
+bool ANSEnemyControllerBase::IsAttackingBB() const
+{
+	return CachedBBComp && CachedBBComp->GetValueAsBool(IsAttackingKey);
 }
