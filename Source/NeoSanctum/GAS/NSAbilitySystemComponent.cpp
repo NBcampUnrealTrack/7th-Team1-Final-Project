@@ -225,6 +225,7 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 
 	if (IsSkillRechargeActive(SkillSlotTag))
 	{
+		BroadcastSkillCooldownUIData(SkillSlotTag);
 		return;
 	}
 
