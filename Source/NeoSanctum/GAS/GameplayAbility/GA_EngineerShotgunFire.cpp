@@ -270,23 +270,16 @@ void UGA_EngineerShotgunFire::FinishFireCycle()
 
 bool UGA_EngineerShotgunFire::TryGetFinalDamage(float& OutDamage)
 {
-	float FinalDamage = 0.0f;
-
-	if (!TryGetFinalAbilityStat(
-		NSGameplayTags::Ability_Engineer_ShotgunFire,
-		NSGameplayTags::CombatStat_Damage,
-		FinalDamage))
+	if (!TryGetFinalSkillDamage(NSGameplayTags::Ability_Engineer_ShotgunFire, OutDamage))
 	{
 		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
-			"EngineerShotgunFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
-			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
-			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+			"ShotgunFire 스킬 데미지 계산 실패. AbilityTag={AbilityTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString())
 		);
 
 		return false;
 	}
 
-	OutDamage = FMath::Max(FinalDamage, 0.0f);
 	return true;
 }
 

@@ -5,6 +5,7 @@
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -128,6 +129,30 @@ float UGA_SkillBase::GetBaseAbilityStatOrDefault(
 	TryGetBaseAbilityStat(AbilityTag, StatTag, Value);
 	
 	return Value;
+}
+
+bool UGA_SkillBase::TryGetFinalSkillDamage(const FGameplayTag& AbilityTag, float& OutDamage) const
+{
+	float CoefficientPercent = 0.0f;
+
+	if (!TryGetFinalAbilityStat(AbilityTag, NSGameplayTags::CombatStat_DamageCoefficient, CoefficientPercent))
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (!ASC)
+	{
+		return false;
+	}
+
+	const float PlayerBaseDamage = ASC->GetNumericAttribute(UNSBaseAttributeSet::GetBaseDamageAttribute());
+
+	// 계수는 % 단위 (30 = 30%)로 입력받으므로 0.01을 곱해 배율로 변환
+	OutDamage = FMath::Max(PlayerBaseDamage * CoefficientPercent * 0.01f, 0.0f);
+
+	return true;
 }
 
 bool UGA_SkillBase::TryReportAbilityNoise(

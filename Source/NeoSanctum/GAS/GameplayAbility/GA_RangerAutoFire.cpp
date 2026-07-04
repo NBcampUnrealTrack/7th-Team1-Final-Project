@@ -544,24 +544,16 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
 
 bool UGA_RangerAutoFire::TryGetFinalDamage(float& OutDamage)
 {
-	float FinalDamage = 0.0f;
-	
-	if (!TryGetFinalAbilityStat(
-		NSGameplayTags::Ability_Ranger_AutoFire,
-		NSGameplayTags::CombatStat_Damage,
-		FinalDamage))
+	if (!TryGetFinalSkillDamage(NSGameplayTags::Ability_Ranger_AutoFire, OutDamage))
 	{
 		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
-			"AutoFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
-			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
-			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+			"AutoFire 스킬 데미지 계산 실패. AbilityTag={AbilityTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString())
 		);
-		
+
 		return false;
 	}
-	
-	OutDamage = FMath::Max(FinalDamage, 0.0f);
-	
+
 	return true;
 }
 

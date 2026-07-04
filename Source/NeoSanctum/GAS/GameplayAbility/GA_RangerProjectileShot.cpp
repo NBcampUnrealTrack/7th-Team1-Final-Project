@@ -446,11 +446,9 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
-		const float SplashDamage = GetFinalAbilityStatOrDefault(
-			SkillAbilityTag,
-			NSGameplayTags::CombatStat_Damage,
-			DefaultSplashDamage
-		);
+		float SplashDamage = DefaultSplashDamage;
+		// 실패 시 DefaultSplashDamage를 그대로 사용하는 폴백 설계
+		TryGetFinalSkillDamage(SkillAbilityTag, SplashDamage);
 		
 		const float ExplosionRadius = GetFinalAbilityStatOrDefault(
 			SkillAbilityTag,

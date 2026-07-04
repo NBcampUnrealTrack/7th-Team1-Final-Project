@@ -18,11 +18,11 @@ struct FNSAbilityBaseStatRow : public FTableRowBase
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (ToolTip = "이 스탯이 적용될 Ability 태그입니다. 예: Ability.Ranger.ProjectileShot"))
+		meta = (Categories = "Ability", ToolTip = "이 스탯이 적용될 Ability 태그입니다. 예: Ability.Ranger.ProjectileShot"))
 	FGameplayTag AbilityTag;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (ToolTip = "조회할 CombatStat 태그입니다. 예: CombatStat.ExplosionRadius"))
+		meta = (Categories = "CombatStat", ToolTip = "조회할 CombatStat 태그입니다. 예: CombatStat.ExplosionRadius"))
 	FGameplayTag StatTag;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CombatStat",
