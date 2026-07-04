@@ -16,7 +16,6 @@ struct FNSPlayerStatusViewData;
 /**
  * 팀원 상태 Snapshot과 변경메시지를 구독하고 팀원 Entry목록을 관리
  */
-
 UCLASS()
 class NEOSANCTUM_API UNSTeammateStatusListWidget : public UCommonUserWidget
 {

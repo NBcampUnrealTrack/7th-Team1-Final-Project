@@ -8,7 +8,6 @@
 /**
  * 팀원 상태가 UI현재 팀원 목록을 요청할때 사용하는 메시지
  */
-
 USTRUCT(BlueprintType)
 struct FNSPlayerStatusQueryMessage
 {
@@ -22,7 +21,6 @@ struct FNSPlayerStatusQueryMessage
 /**
  * 팀원 한명의 상태를 UI에 표시
  */
-
 USTRUCT(BlueprintType)
 struct FNSPlayerStatusViewData
 {
