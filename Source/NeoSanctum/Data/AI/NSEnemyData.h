@@ -116,6 +116,10 @@ struct FNSMonsterAttributeRow : public FTableRowBase
 	// 유효한 피격 한 번에 증가하는 게이지 수치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
 	float HitGaugeGainPerHit = 15.0f;
+
+	// 처치시 모든 플레이어에게 지급하는 기본 경험치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float ExperienceReward = 10.0f;
 };
 
 USTRUCT(BlueprintType)

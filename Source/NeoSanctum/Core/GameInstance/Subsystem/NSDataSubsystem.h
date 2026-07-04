@@ -130,8 +130,6 @@ public:
 	TSubclassOf<UGameplayEffect> GetCharacterBaseStatInitEffectClass() const;
 	const FNSCharacterBaseStatRow* FindCharacterBaseStatRow(const FGameplayTag& CharacterTag) const;
 
-	float GetDefenseMitigationConstant() const;
-	
 	UNSSoundData* GetCommonSoundData() const;
 	UDataTable* GetCommonVFXDataTable() const;
 	UDataTable* GetCommonHitReactionDataTable() const;
@@ -164,6 +162,12 @@ public:
 	// 현재 런에서 사용하는 증강 희귀도/가중치 규칙.
 	// EnterRun() 완료 이후 유효.
 	const UNSAugmentRarityRuleSet* GetCurrentAugmentRarityRuleSet() const;
+
+	// 방어력 계수를 반환.
+	float GetDefenseMitigationConstant() const;
+
+	// 최대 경험치를 반환.
+	float GetMaxExperience() const;
 	
 	const UNSLevelConfig* GetCurrentRunLevelConfig() const { return CurrentRunLevelConfig.Get(); }
 	
