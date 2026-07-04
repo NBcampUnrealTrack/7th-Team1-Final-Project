@@ -185,7 +185,7 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 	OpenRunEndVote(true);
 }
 
-void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
+void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 {
 	if (!HasAuthority() || !DeadEnemy)
 	{
@@ -205,10 +205,14 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 	HandleEnemyReward(DeadEnemy);
 }
 
-void ANSRunGameMode::HandleEnemyReward(ACharacter* DeadEnemy)
+void ANSRunGameMode::HandleEnemyReward(AActor* DeadEnemy)
 {
+	if (!IsValid(DeadEnemy))
+	{
+		return;
+	}
+
 	FGameplayTag TriggerTag;
-	
 	if (!TryGetRewardTriggerTagFromEnemy(DeadEnemy, TriggerTag))
 	{
 		return;
@@ -246,17 +250,18 @@ void ANSRunGameMode::HandleEnemyReward(ACharacter* DeadEnemy)
 }
 
 bool ANSRunGameMode::TryGetRewardTriggerTagFromEnemy(
-	const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const
+	const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const
 {
 	OutTriggerTag = FGameplayTag();
-	
-	const ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(DeadEnemy);
-	if (!IsValid(EnemyCharacter))
+
+	const UNSEnemyCoreComponent* CoreComponent =
+		DeadEnemy ? DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>() : nullptr;
+	if (!IsValid(CoreComponent))
 	{
 		return false;
 	}
-	
-	const UNSEnemyData* EnemyData = EnemyCharacter->GetEnemyData();
+
+	const UNSEnemyData* EnemyData = CoreComponent->GetEnemyData();
 	if (!EnemyData)
 	{
 		NS_LOG(LogNS, Warning,

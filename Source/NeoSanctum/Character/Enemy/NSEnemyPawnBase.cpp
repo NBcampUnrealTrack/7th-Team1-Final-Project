@@ -5,6 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
@@ -14,6 +15,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
@@ -65,6 +67,9 @@ void ANSEnemyPawnBase::BeginPlay()
 		StateComponent->OnDeadStateChanged.AddUObject(
 			this,
 			&ThisClass::HandleDeadStateChanged);
+		StateComponent->OnDeathStarted.AddUObject(
+			this,
+			&ThisClass::HandleDeathStarted);
 	}
 
 	InitializeFromData(true);
@@ -234,4 +239,20 @@ void ANSEnemyPawnBase::HandleDeadStateChanged(bool bDead)
 	{
 		ApplyAliveState();
 	}
+}
+
+void ANSEnemyPawnBase::HandleDeathStarted()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (!GameMode || !GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		return;
+	}
+
+	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
 }
