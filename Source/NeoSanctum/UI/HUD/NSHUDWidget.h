@@ -15,7 +15,6 @@ class UNSPartPanelWidget;
 class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
-class UDataTable;
 
 
 /**
@@ -80,10 +79,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetReloading(bool bReloading);
 	
-	//인런 스킬 재화 UI 갱신
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void UpdateRunSkillGoods(int32 NewGoodsAmount);
-	
 	//인런 재화 UI 표시
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowInRunGoods();
@@ -95,10 +90,6 @@ public:
 	//캐릭터별 스킬 UI 세트 적용
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ApplyCharacterSkillUISet(FName CharacterId);
-	
-	//캐릭터별 스킬 UI 세트 테이블
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Skill")
-	TObjectPtr<UDataTable> CharacterSkillUISetTable;
 	
 	//본인 경험치 UI 갱신
 	void UpdateExperience(
