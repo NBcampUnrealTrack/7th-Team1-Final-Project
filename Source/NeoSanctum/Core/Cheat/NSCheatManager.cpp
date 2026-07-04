@@ -238,6 +238,39 @@ void UNSCheatManager::Debug_SetCommonCurrency()
 	PermanentSave->CommonCurrency = 10000;
 }
 
+void UNSCheatManager::Debug_UpgradeCommonNode(FString NodeId)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC || NodeId.IsEmpty())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!ProgressionSubsystem)
+	{
+		return;
+	}
+
+	const FName Node(*NodeId);
+	const int32 NewLevel = ProgressionSubsystem->GetCommonSkillLevel(Node) + 1;
+	const int64 Cost = ProgressionSubsystem->GetCommonUpgradeCost(Node, NewLevel);
+	const bool bSuccess = ProgressionSubsystem->UpgradeCommonSkill(Node, NewLevel, Cost);
+
+	NS_LOG(LogNS, Warning,
+		"NodeId={NodeId}, NewLevel={NewLevel}, Cost={Cost}, Success={Success}",
+		("NodeId", NodeId),
+		("NewLevel", NewLevel),
+		("Cost", Cost),
+		("Success", bSuccess)
+	);
+
+	// 로컬 세이브 변경분을 서버 ProgressComponent에 반영
+	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
+}
+
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
 {
 	APlayerController* OwningPlayerController = GetOuterAPlayerController();
