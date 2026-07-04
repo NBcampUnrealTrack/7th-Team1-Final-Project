@@ -15,9 +15,13 @@ class UNSEnemyPhaseComponent;
 class INSEnemyAgent;
 struct FNSEnemyAttackRow;
 
-/**
- * 일반 몬스터, 보스, 드론 Controller가 공유하는 Enemy AI 기반 Controller입니다.
- */
+/*
+ * 작성자 : 최준혁
+ * 
+ * 파일 생성일 : 26.07.01
+ * 
+ * 클래스 개요 : 일반 몬스터, 보스, 드론 Controller가 공유하는 Enemy AI 기반 Controller입니다.
+*/
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyControllerBase : public AAIController
 {
@@ -25,7 +29,9 @@ class NEOSANCTUM_API ANSEnemyControllerBase : public AAIController
 
 public:
 	ANSEnemyControllerBase();
-	
+
+	virtual void Tick(float DeltaTime) override;
+
 	// 공격 Ability가 실제로 시작됐을 때 Enemy Controller 공통 공격 상태를 기록하는 함수
 	virtual void NotifyAttackStarted();
 
@@ -65,15 +71,51 @@ protected:
 
 	// Phase Component 상태를 Blackboard에 반영하는 함수
 	void SyncPhaseBlackboard(const UNSEnemyPhaseComponent* PhaseComponent);
-	
+
+	// 공통 Blackboard 기본값을 초기화하는 함수
+	void InitCommonBlackboardState();
+
+	// 공통 Blackboard 상태를 현재 Enemy 상태와 동기화하는 함수
+	void SyncCommonStateBlackboard();
+
 	// 현재 Possess 중인 Enemy의 CurrentAttackRow를 초기화하는 함수
 	void ClearControlledAttackRow();
+
+	// bCanAttack Blackboard 값을 변경하는 함수
+	void SetCanAttackBB(bool bCanAttack);
 
 	// bIsAttacking Blackboard 값을 변경하는 함수
 	void SetIsAttackingBB(bool bIsAttacking);
 
+	// bIsHitReacting Blackboard 값을 변경하는 함수
+	void SetHitReactingBB(bool bHitReacting);
+
 	// bIsAttacking Blackboard 값을 반환하는 함수
 	bool IsAttackingBB() const;
+
+	// bIsHitReacting Blackboard 값을 반환하는 함수
+	bool IsHitReactingBB() const;
+
+	// TargetActor Blackboard 값을 변경하는 함수
+	void SetTargetActorBB(AActor* TargetActor);
+
+	// AttackActor Blackboard 값을 변경하는 함수
+	void SetAttackActorBB(AActor* AttackActor);
+
+	// TargetActor Blackboard 값을 반환하는 함수
+	AActor* GetTargetActorBB() const;
+
+	// AttackActor Blackboard 값을 반환하는 함수
+	AActor* GetAttackActorBB() const;
+
+	// TargetLastKnownLocation Blackboard 값을 변경하는 함수
+	void SetTargetLastKnownLocationBB(const FVector& LastKnownLocation);
+
+	// bHasTargetLineOfSight Blackboard 값을 변경하는 함수
+	void SetHasTargetLineOfSightBB(bool bHasLineOfSight);
+
+	// 공통 타깃 관련 Blackboard 값을 초기화하는 함수
+	void ClearCommonTargetBB(bool bClearCanAttack);
 
 protected:
 	// StateTree 방식 Enemy가 사용할 AI Brain Component

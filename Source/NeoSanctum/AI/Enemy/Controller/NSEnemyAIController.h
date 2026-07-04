@@ -40,17 +40,17 @@ public:
 
 	// Blackboard에 저장된 현재 공격 대상을 반환
 	AActor* GetCurrentTargetActor() const;
-	
+
 private:
 	// 현재 Possess 중인 Enemy의 Target Component를 반환하는 함수
 	UNSEnemyTargetComponent* GetEnemyTargetComponent() const;
-	
+
 	// 현재 Possess 중인 Enemy의 Threat Component를 반환하는 함수
 	UNSEnemyThreatComponent* GetEnemyThreatComponent() const;
-	
+
 	// 현재 Possess 중인 Enemy의 Melee Component를 반환하는 함수
 	UNSEnemyMeleeComponent* GetEnemyMeleeComponent() const;
-	
+
 	// 현재 Possess 중인 Enemy의 Move Component를 반환하는 함수
 	UNSEnemyMoveComponent* GetEnemyMoveComponent() const;
 
@@ -86,17 +86,11 @@ protected:
 	float AttackFacingAngleDegrees = 2.0f;
 
 private:
-	/* 타겟 액터 키 이름 */
-	FName TargetActorKey = TEXT("TargetActor");
-	
 	// 현재 Possess 중인 Enemy의 Attack Component를 반환하는 함수
 	UNSEnemyAttackComponent* GetEnemyAttackComponent() const;
 
 private:
 	void UpdateRetreatState(AActor* TargetActor);
-
-	FName ShouldRetreatKey = TEXT("bShouldRetreat");
-	FName RetreatLocationKey = TEXT("RetreatLocation");
 
 #pragma region 몬스터 어그로 관리
 
@@ -106,7 +100,7 @@ public:
 	// 현재 타깃을 향한 공격이 시작됐음을 기록하고 추적 제한 시간을 갱신하는 함수
 	virtual void NotifyAttackStarted() override;
 
-	// 공격 Ability 종료, 실패, 취소 이후 Enemy 공격 상태를 정리하는 함수
+	// 공격 Ability 종료, 실패, 취소 이후 일반 Enemy 공격 상태를 정리하는 함수
 	virtual void NotifyAttackFinished() override;
 
 private:
@@ -125,21 +119,12 @@ private:
 	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
 	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;
 
-private:
-	/* 런타임 변수 */
-
-	/* 마지막으로 확인한 타깃 위치를 저장할 Blackboard 키 이름 */
-	FName TargetLastKnownLocationKey = TEXT("TargetLastKnownLocation");
-
-	/* 현재 타깃이 시야에 보이는지 저장할 Blackboard 키 이름 */
-	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
-
 #pragma endregion
 #pragma region 근접 공격 예약
 
 public:
 	/* 함수 */
-	
+
 	/* 현재 전투 타깃에 근접 공격 예약을 요청하고 요청 처리 가능 여부를 반환하는 함수 */
 	bool RequestMeleeAttackReservation();
 
@@ -176,15 +161,6 @@ private:
 		bool bHasReservation,
 		bool bCanApproach);
 
-protected:
-	/* 런타임 변수 */
-
-	/* 근접 공격 예약 보유 상태를 저장하는 블랙보드 키 이름 */
-	FName HasMeleeAttackReservationKey = TEXT("bHasMeleeAttackReservation");
-
-	/* 현재 근접 타깃에게 접근할 수 있는지를 저장하는 블랙보드 키 이름 */
-	FName CanApproachMeleeTargetKey = TEXT("bCanApproachMeleeTarget");
-
 #pragma endregion
 #pragma region 근접 EQS
 
@@ -195,15 +171,6 @@ private:
 	// 현재 타깃이 변경됐을 때 이전 결과를 제거하고 재탐색을 요청하는 함수
 	void ResetMeleeEQSForCurrentTarget();
 
-	// EnemyData의 근접 EQS Query를 저장하는 Blackboard 키 이름
-	FName MeleeEQSQueryKey = TEXT("MeleeEQSQuery");
-
-	// EQS가 선택한 접근 위치를 저장하는 Blackboard 키 이름
-	FName MeleeApproachLocationKey = TEXT("MeleeApproachLocation");
-
-	// 근접 EQS를 다시 실행해야 하는지 저장하는 Blackboard 키 이름
-	FName MeleeEQSNeedsRefreshKey = TEXT("bMeleeEQSNeedsRefresh");
-
 #pragma endregion
 #pragma region 피격 경직
 
@@ -213,10 +180,6 @@ public:
 
 	// 피격 경직이 끝나면 Blackboard와 근접 예약 상태를 갱신하는 함수
 	void HandleHitReactionFinished();
-
-private:
-	// 피격 경직 여부를 저장하는 Blackboard 키 이름
-	FName IsHitReactingKey = TEXT("bIsHitReacting");
 
 #pragma endregion
 #pragma region 추적 방향
@@ -238,20 +201,11 @@ private:
 	// Blackboard의 AttackActor 키를 갱신하는 함수
 	void SetAttackActorBlackboard(AActor* AttackActor);
 
-	// 실제 발사 대상을 저장할 Blackboard 키 이름
-	FName AttackActorKey = TEXT("AttackActor");
-
 #pragma endregion
 #pragma region 블랙보드 상태
 
 	// Possess 시 기본 Blackboard 상태를 초기화하는 함수
 	void InitBBState();
-
-	// 공격 가능 여부를 Blackboard에 기록하는 함수
-	void SetCanAttackBB(bool bCanAttack);
-
-	// 피격 경직 상태를 Blackboard에 기록하는 함수
-	void SetHitReactBB(bool bHitReacting);
 
 	// 공격 진행 상태를 초기화하는 함수
 	void ClearAttackBB();

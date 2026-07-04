@@ -14,6 +14,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/Type/NSBBTypes.h"
 
 ANSBossAIController::ANSBossAIController()
 {
@@ -319,7 +320,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 		return;
 	}
 
-	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+	SetTargetActorBB(TargetActor);
 
 	FVector LastKnownLocation = TargetActor->GetActorLocation();
 
@@ -328,7 +329,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 		ThreatComponent->TryGetLastKnownLocation(TargetActor, LastKnownLocation);
 	}
 
-	CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, LastKnownLocation);
+	SetTargetLastKnownLocationBB(LastKnownLocation);
 
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = nullptr;
@@ -341,7 +342,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 	}
 
 	SetAttackActorState(AttackActor);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
 }
 
 void ANSBossAIController::SyncModeBlackboard()
@@ -354,7 +355,7 @@ void ANSBossAIController::SyncModeBlackboard()
 	const UNSBossModeComponent* BossModeComponent = GetBossModeComponent();
 	if (!BossModeComponent)
 	{
-		CachedBBComp->ClearValue(CurrentModeTagKey);
+		CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 		return;
 	}
 
@@ -362,11 +363,13 @@ void ANSBossAIController::SyncModeBlackboard()
 
 	if (CurrentModeTag.IsValid())
 	{
-		CachedBBComp->SetValueAsName(CurrentModeTagKey, CurrentModeTag.GetTagName());
+		CachedBBComp->SetValueAsName(
+			NSBB::Boss::CurrentModeTag,
+			CurrentModeTag.GetTagName());
 	}
 	else
 	{
-		CachedBBComp->ClearValue(CurrentModeTagKey);
+		CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 	}
 }
 
@@ -459,11 +462,7 @@ const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowByDistance(bool bSele
 	}
 
 	SetAttackActorState(AttackActor);
-
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
-	}
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
 
 	return SelectedAttack;
 }
@@ -542,27 +541,7 @@ void ANSBossAIController::SetAttackActorState(AActor* AttackActor)
 		CurrentAttackActor.Reset();
 	}
 
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	if (IsValid(AttackActor))
-	{
-		CachedBBComp->SetValueAsObject(AttackActorKey, AttackActor);
-	}
-	else
-	{
-		CachedBBComp->ClearValue(AttackActorKey);
-	}
-}
-
-void ANSBossAIController::SetCanAttackBB(bool bCanAttack)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(CanAttackKey, bCanAttack);
-	}
+	SetAttackActorBB(AttackActor);
 }
 
 void ANSBossAIController::ClearAttackState()
@@ -580,22 +559,9 @@ void ANSBossAIController::ClearAttackState()
 
 void ANSBossAIController::ClearTargetBB(bool bClearCanAttack)
 {
-	SetAttackActorState(nullptr);
+	CurrentAttackActor.Reset();
 
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	CachedBBComp->ClearValue(TargetActorKey);
-	CachedBBComp->ClearValue(AttackActorKey);
-	CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-
-	if (bClearCanAttack)
-	{
-		SetCanAttackBB(false);
-	}
+	ClearCommonTargetBB(bClearCanAttack);
 }
 
 void ANSBossAIController::InitBBState()
@@ -608,9 +574,9 @@ void ANSBossAIController::InitBBState()
 	ClearAttackState();
 	ClearTargetBB(false);
 
-	CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
-	CachedBBComp->SetValueAsName(CurrentPhaseIdKey, NAME_None);
-	CachedBBComp->ClearValue(CurrentModeTagKey);
+	CachedBBComp->SetValueAsBool(NSBB::Phase::PhasePatternLocked, false);
+	CachedBBComp->SetValueAsName(NSBB::Phase::CurrentPhaseId, NAME_None);
+	CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 }
 
 UNSEnemyAttackComponent* ANSBossAIController::GetEnemyAttackComponent() const

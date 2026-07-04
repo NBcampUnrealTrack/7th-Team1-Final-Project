@@ -19,6 +19,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyMoveComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "NeoSanctum/Type/NSBBTypes.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
@@ -93,8 +94,8 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 		if (CachedBBComp)
 		{
-			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-			CachedBBComp->ClearValue(RetreatLocationKey);
+			CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+			CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
 		}
 	}
 
@@ -329,12 +330,12 @@ const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSel
 		return nullptr;
 	}
 
-	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	AActor* TargetActor = GetTargetActorBB();
 
 	APawn* AIPawn = GetPawn();
 	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
-		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
+		SetTargetActorBB(nullptr);
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
@@ -416,14 +417,19 @@ void ANSEnemyAIController::UpdateRetreatState(AActor* TargetActor)
 			MoveComponent->ClearRetreat();
 		}
 
-		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		CachedBBComp->ClearValue(RetreatLocationKey);
+		CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+		CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
 		return;
 	}
 
-	const bool bWasRetreating = CachedBBComp->GetValueAsBool(ShouldRetreatKey);
-	const bool bHasRetreatLocation = CachedBBComp->IsVectorValueSet(RetreatLocationKey);
-	const FVector CurrentRetreatLocation = CachedBBComp->GetValueAsVector(RetreatLocationKey);
+	const bool bWasRetreating =
+		CachedBBComp->GetValueAsBool(NSBB::Movement::ShouldRetreat);
+
+	const bool bHasRetreatLocation =
+		CachedBBComp->IsVectorValueSet(NSBB::Movement::RetreatLocation);
+
+	const FVector CurrentRetreatLocation =
+		CachedBBComp->GetValueAsVector(NSBB::Movement::RetreatLocation);
 
 	const FNSRetreatResult Result = MoveComponent->UpdateRetreat(
 		TargetActor,
@@ -432,15 +438,15 @@ void ANSEnemyAIController::UpdateRetreatState(AActor* TargetActor)
 		CurrentRetreatLocation
 	);
 
-	CachedBBComp->SetValueAsBool(ShouldRetreatKey, Result.bShouldRetreat);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, Result.bShouldRetreat);
 
 	if (Result.bShouldRetreat && Result.bHasLocation)
 	{
-		CachedBBComp->SetValueAsVector(RetreatLocationKey, Result.Location);
+		CachedBBComp->SetValueAsVector(NSBB::Movement::RetreatLocation, Result.Location);
 	}
 	else
 	{
-		CachedBBComp->ClearValue(RetreatLocationKey);
+		CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
 	}
 }
 
@@ -533,7 +539,7 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		return;
 	}
 
-	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+	SetTargetActorBB(TargetActor);
 
 	FVector LastKnownLocation = TargetActor->GetActorLocation();
 
@@ -542,13 +548,13 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		ThreatComponent->TryGetLastKnownLocation(TargetActor, LastKnownLocation);
 	}
 
-	CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, LastKnownLocation);
+	SetTargetLastKnownLocationBB(LastKnownLocation);
 
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
 	SetAttackActorBlackboard(AttackActor);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
 }
 
 bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
@@ -728,8 +734,8 @@ void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, b
 		return;
 	}
 
-	CachedBBComp->SetValueAsBool(HasMeleeAttackReservationKey, bHasReservation);
-	CachedBBComp->SetValueAsBool(CanApproachMeleeTargetKey, bCanApproach);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::HasAttackReservation, bHasReservation);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::CanApproachTarget, bCanApproach);
 }
 
 void ANSEnemyAIController::InitializeMeleeEQSBlackboard(const UNSEnemyData* EnemyData)
@@ -739,17 +745,16 @@ void ANSEnemyAIController::InitializeMeleeEQSBlackboard(const UNSEnemyData* Enem
 		return;
 	}
 
-	CachedBBComp->ClearValue(MeleeApproachLocationKey);
-
-	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, false);
+	CachedBBComp->ClearValue(NSBB::Melee::ApproachLocation);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::EQSNeedsRefresh, false);
 
 	if (EnemyData && EnemyData->EQSQuery)
 	{
-		CachedBBComp->SetValueAsObject(MeleeEQSQueryKey, EnemyData->EQSQuery);
+		CachedBBComp->SetValueAsObject(NSBB::Melee::EQSQuery, EnemyData->EQSQuery);
 	}
 	else
 	{
-		CachedBBComp->ClearValue(MeleeEQSQueryKey);
+		CachedBBComp->ClearValue(NSBB::Melee::EQSQuery);
 	}
 }
 
@@ -760,16 +765,16 @@ void ANSEnemyAIController::ResetMeleeEQSForCurrentTarget()
 		return;
 	}
 
-	CachedBBComp->ClearValue(MeleeApproachLocationKey);
+	CachedBBComp->ClearValue(NSBB::Melee::ApproachLocation);
 
-	UObject* QueryTemplate = CachedBBComp->GetValueAsObject(MeleeEQSQueryKey);
+	UObject* QueryTemplate = CachedBBComp->GetValueAsObject(NSBB::Melee::EQSQuery);
 
 	const bool bCanRunMeleeEQS =
 		IsValid(GetCurrentTargetActor()) &&
 		UsesMeleeAttackReservation() &&
 		IsValid(QueryTemplate);
 
-	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, bCanRunMeleeEQS);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::EQSNeedsRefresh, bCanRunMeleeEQS);
 }
 
 void ANSEnemyAIController::HandleHitReactionStarted()
@@ -788,14 +793,14 @@ void ANSEnemyAIController::HandleHitReactionStarted()
 		MeleeComponent->MarkAttackInterrupted();
 	}
 
-	SetHitReactBB(true);
+	SetHitReactingBB(true);
 	ClearAttackBB();
 	ClearRetreatBB();
 }
 
 void ANSEnemyAIController::HandleHitReactionFinished()
 {
-	SetHitReactBB(false);
+	SetHitReactingBB(false);
 	SetCanAttackBB(false);
 
 	UpdateMeleeReservationState();
@@ -818,7 +823,7 @@ void ANSEnemyAIController::UpdateFacingMode(AActor* TargetActor)
 	const bool bIsAttacking = IsAttackingBB();
 
 	const bool bShouldRetreat =
-		CachedBBComp && CachedBBComp->GetValueAsBool(ShouldRetreatKey);
+		CachedBBComp && CachedBBComp->GetValueAsBool(NSBB::Movement::ShouldRetreat);
 
 	const bool bPreparingAttack =
 		MoveComponent->IsWithinAttackRange(TargetActor);
@@ -837,21 +842,12 @@ void ANSEnemyAIController::UpdateFacingMode(AActor* TargetActor)
 
 AActor* ANSEnemyAIController::GetCurrentAttackActor() const
 {
-	return CachedBBComp ? Cast<AActor>(CachedBBComp->GetValueAsObject(AttackActorKey)) : nullptr;
+	return GetAttackActorBB();
 }
 
 void ANSEnemyAIController::SetAttackActorBlackboard(AActor* AttackActor)
 {
-	if (!CachedBBComp) return;
-
-	if (IsValid(AttackActor))
-	{
-		CachedBBComp->SetValueAsObject(AttackActorKey, AttackActor);
-	}
-	else
-	{
-		CachedBBComp->ClearValue(AttackActorKey);
-	}
+	SetAttackActorBB(AttackActor);
 }
 
 void ANSEnemyAIController::InitBBState()
@@ -861,29 +857,14 @@ void ANSEnemyAIController::InitBBState()
 		return;
 	}
 
-	SetHitReactBB(false);
+	SetHitReactingBB(false);
 	ClearAttackBB();
 	ClearRetreatBB();
 	ClearTargetBB(false);
 	SetMeleeReservationBlackboard(false, false);
 
-	CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
-}
-
-void ANSEnemyAIController::SetCanAttackBB(bool bCanAttack)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), bCanAttack);
-	}
-}
-
-void ANSEnemyAIController::SetHitReactBB(bool bHitReacting)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, bHitReacting);
-	}
+	CachedBBComp->SetValueAsBool(NSBB::Phase::PhasePatternLocked, false);
+	CachedBBComp->SetValueAsName(NSBB::Phase::CurrentPhaseId, NAME_None);
 }
 
 void ANSEnemyAIController::ClearAttackBB()
@@ -893,27 +874,14 @@ void ANSEnemyAIController::ClearAttackBB()
 		return;
 	}
 
-	CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
+	SetCanAttackBB(false);
 	SetIsAttackingBB(false);
 	SetAttackActorBlackboard(nullptr);
 }
 
 void ANSEnemyAIController::ClearTargetBB(bool bClearCanAttack)
 {
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	CachedBBComp->ClearValue(TargetActorKey);
-	CachedBBComp->ClearValue(AttackActorKey);
-	CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-
-	if (bClearCanAttack)
-	{
-		SetCanAttackBB(false);
-	}
+	ClearCommonTargetBB(bClearCanAttack);
 }
 
 void ANSEnemyAIController::ClearRetreatBB()
@@ -923,8 +891,8 @@ void ANSEnemyAIController::ClearRetreatBB()
 		return;
 	}
 
-	CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-	CachedBBComp->ClearValue(RetreatLocationKey);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+	CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
 }
 
 AActor* ANSEnemyAIController::ResolveAttackActor(
