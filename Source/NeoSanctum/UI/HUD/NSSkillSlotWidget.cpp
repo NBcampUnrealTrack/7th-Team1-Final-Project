@@ -168,8 +168,7 @@ void UNSSkillSlotWidget::SetSkillUIData(
 	RemainingCooldown = 0.0f;
 	bCooldownTickActive = false;
 	
-	ResetCooldown();
-	UpdateChargeDisplay(0, 0);
+	UpdateSkillCooldownFromASC();
 }
 
 void UNSSkillSlotWidget::HandleCooldownMessage(
@@ -385,6 +384,8 @@ void UNSSkillSlotWidget::NativeConstruct()
 			NSGameplayTags::Message_UI_SkillCooldown_Changed,
 			this,
 			&ThisClass::HandleCooldownMessage);
+	
+	UpdateSkillCooldownFromASC();
 }
 
 void UNSSkillSlotWidget::NativeDestruct()
