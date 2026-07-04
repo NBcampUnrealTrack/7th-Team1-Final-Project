@@ -49,10 +49,10 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsSlotBaseStatTable;
 
-	// @원종 TODO: 추후 영구 스킬 트리 데이터가 생기면 여기에 추가.
-	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
-	// 	meta = (AssetBundles = "CommonData"))
-	// TSoftObjectPtr<UDataTable> PermanentSkillTreeTable;
+	// 영구 강화 DT.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> CommonUpgradeNodeTable;
 
 	// 사운드 테이블과 카테고리 볼륨 기본값을 함께 관리하는 공용 사운드 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 
