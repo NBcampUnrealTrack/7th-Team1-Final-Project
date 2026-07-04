@@ -7,6 +7,7 @@
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
@@ -103,6 +104,30 @@ int64 UNSProgressionSubsystem::GetCommonCurrency() const
 	const UNSPermanentSaveGame* Save = GetSaveData();
 	
 	return Save ? Save->CommonCurrency : 0;
+}
+
+int64 UNSProgressionSubsystem::GetCommonUpgradeCost(FName NodeId, int32 TargetLevel) const
+{
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(GetGameInstance());
+	const FNSCommonUpgradeNodeRow* Row = DataSubsystem ? DataSubsystem->GetCommonUpgradeNodeRow(NodeId) : nullptr;
+	if (!Row || TargetLevel < 1)
+	{
+		return 0;
+	}
+
+	const float PercentMultiplier =
+		FMath::Pow(1.0f + Row->CostGrowthPercent * 0.01f, static_cast<float>(TargetLevel - 1));
+	const float FlatGrowth = static_cast<float>(Row->CostGrowthFlat) * static_cast<float>(TargetLevel - 1);
+
+	return FMath::CeilToInt64(Row->BaseCost * PercentMultiplier + FlatGrowth);
+}
+
+int32 UNSProgressionSubsystem::GetCommonUpgradeMaxLevel(FName NodeId) const
+{
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(GetGameInstance());
+	const FNSCommonUpgradeNodeRow* Row = DataSubsystem ? DataSubsystem->GetCommonUpgradeNodeRow(NodeId) : nullptr;
+
+	return Row ? Row->MaxLevel : 0;
 }
 
 int64 UNSProgressionSubsystem::GetJobCurrency(FName CharacterId) const
