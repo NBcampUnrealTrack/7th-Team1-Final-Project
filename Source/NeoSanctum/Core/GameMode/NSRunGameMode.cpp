@@ -185,7 +185,7 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 	OpenRunEndVote(true);
 }
 
-void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
+void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 {
 	if (!HasAuthority() || !DeadEnemy)
 	{
@@ -203,12 +203,17 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy)
 	}
 	
 	HandleEnemyReward(DeadEnemy);
+	HandleEnemyExperience(DeadEnemy);
 }
 
-void ANSRunGameMode::HandleEnemyReward(ACharacter* DeadEnemy)
+void ANSRunGameMode::HandleEnemyReward(AActor* DeadEnemy)
 {
+	if (!IsValid(DeadEnemy))
+	{
+		return;
+	}
+
 	FGameplayTag TriggerTag;
-	
 	if (!TryGetRewardTriggerTagFromEnemy(DeadEnemy, TriggerTag))
 	{
 		return;
@@ -246,17 +251,18 @@ void ANSRunGameMode::HandleEnemyReward(ACharacter* DeadEnemy)
 }
 
 bool ANSRunGameMode::TryGetRewardTriggerTagFromEnemy(
-	const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const
+	const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const
 {
 	OutTriggerTag = FGameplayTag();
-	
-	const ANSEnemyCharacterBase* EnemyCharacter = Cast<ANSEnemyCharacterBase>(DeadEnemy);
-	if (!IsValid(EnemyCharacter))
+
+	const UNSEnemyCoreComponent* CoreComponent =
+		DeadEnemy ? DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>() : nullptr;
+	if (!IsValid(CoreComponent))
 	{
 		return false;
 	}
-	
-	const UNSEnemyData* EnemyData = EnemyCharacter->GetEnemyData();
+
+	const UNSEnemyData* EnemyData = CoreComponent->GetEnemyData();
 	if (!EnemyData)
 	{
 		NS_LOG(LogNS, Warning,
@@ -288,6 +294,34 @@ bool ANSRunGameMode::TryGetRewardTriggerTagFromEnemy(
 		);
 		return false;
 	}
+}
+
+void ANSRunGameMode::HandleEnemyExperience(AActor* DeadEnemy)
+{
+	if (!IsValid(DeadEnemy))
+	{
+		return;
+	}
+
+	const UNSEnemyCoreComponent* CoreComponent = DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
+	if (!IsValid(CoreComponent))
+	{
+		NS_LOG(LogNS, Warning,
+			"EnemyCoreComponent를 찾을 수 없어 경험치를 지급하지 못했습니다. Enemy={Enemy}",
+			("Enemy", GetNameSafe(DeadEnemy))
+		);
+		return;
+	}
+
+	const float ExperienceReward = CoreComponent->GetExperienceReward();
+
+	NS_LOG(LogNS, Log,
+		"Enemy 처치로 경험치 지급을 요청합니다. Enemy={Enemy}, ExperienceReward={ExperienceReward}",
+		("Enemy", GetNameSafe(DeadEnemy)),
+		("ExperienceReward", ExperienceReward)
+	);
+
+	UNSRewardHandler::HandleExperienceRewardEntry(GetWorld(), ExperienceReward);
 }
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()

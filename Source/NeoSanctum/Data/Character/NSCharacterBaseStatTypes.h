@@ -17,53 +17,53 @@ struct FNSCharacterBaseStatRow : public FTableRowBase
 	GENERATED_BODY()
 
 	// UNSCharacterData::CharacterTag와 동일해야 함
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character", meta = (Categories = "Character"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character", meta = (Categories = "Character"))
 	FGameplayTag CharacterTag;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxHealth = 100.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float BaseDamage = 20.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float Defense = 10.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MoveSpeed = 600.0f;
 
 	// 치명타 확률(%) / 20 = 20%
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float CritChance = 20.0f;
 
 	// 치명타 피해 배율(%) / 150 = 기본 데미지의 150%
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float CritDamage = 150.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxShield = 50.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float ShieldRechargeRate = 10.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float ShieldRechargeCooldown = 4.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxDashCount = 2.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float DashRegenRate = 0.5f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxAmmo = 5.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxSkill1Count = 1.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxSkill2Count = 1.0f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Character|Attribute")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxSkill3Count = 1.0f;
 };

@@ -144,14 +144,6 @@ const FNSCharacterBaseStatRow* UNSDataSubsystem::FindCharacterBaseStatRow(const 
 	return Table->FindRow<FNSCharacterBaseStatRow>(RowName, ContextString, false);
 }
 
-float UNSDataSubsystem::GetDefenseMitigationConstant() const
-{
-	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
-	// k가 0 이하이면 y = k/(k+Defense)가 항상 0이 되어 데미지가 전부 0으로 사라지므로 최소값 보정.
-	const float RowConstant = CommonConfig ? CommonConfig->DefenseMitigationConstant : 100.0f;
-	return FMath::Max(RowConstant, 1.0f);
-}
-
 UNSSoundData* UNSDataSubsystem::GetCommonSoundData() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
@@ -253,6 +245,22 @@ const UNSAugmentRarityRuleSet* UNSDataSubsystem::GetCurrentAugmentRarityRuleSet(
 	}
 	
 	return CurrentRunConfig->AugmentRarityRuleSet.Get();
+}
+
+float UNSDataSubsystem::GetDefenseMitigationConstant() const
+{
+	const UNSRunConfig* RunConfig = GetCurrentRunConfig();
+	// k가 0 이하이면 y = k/(k+Defense)가 항상 0이 되어 데미지가 전부 0으로 사라지므로 최소값 보정.
+	const float RowConstant = RunConfig ? RunConfig->DefenseMitigationConstant : 100.0f;
+	return FMath::Max(RowConstant, 1.0f);
+}
+
+float UNSDataSubsystem::GetMaxExperience() const
+{
+	const UNSRunConfig* RunConfig = GetCurrentRunConfig();
+	// 0 이하이면 AddExperience의 while이 무한 루프가 되므로 최소값 보정.
+	const float RawMax = RunConfig ? RunConfig->MaxExperience : 100.0f;
+	return FMath::Max(RawMax, 1.0f);
 }
 
 void UNSDataSubsystem::LoadCurrentStageSpawnerTables()

@@ -36,6 +36,9 @@ public:
 	// 현재 EnemyData를 반환하는 함수
 	UNSEnemyData* GetEnemyData() const { return EnemyData; }
 
+	// 몬스터별로 플레이어에게 주어질 경험치를 반환.
+	float GetExperienceReward() const { return CachedExperienceReward; }
+
 	// 난이도 배율을 설정하는 함수
 	void SetDifficultyScale(const FNSDifficultyScale& InScale) { DifficultyScale = InScale; }
 
@@ -67,4 +70,6 @@ private:
 	// 현재 난이도 배율
 	UPROPERTY(Transient)
 	FNSDifficultyScale DifficultyScale;
+
+	float CachedExperienceReward = 0.0f;
 };

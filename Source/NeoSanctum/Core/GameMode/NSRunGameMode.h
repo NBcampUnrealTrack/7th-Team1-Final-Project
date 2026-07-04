@@ -34,7 +34,7 @@ public:
 	// 인터페이스 구현부 오버라이드
 	virtual void NotifyStageCleared_Implementation() override;
 	virtual void NotifyPlayerDied_Implementation(AController* DeadPlayer) override;
-	virtual void NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy) override;
+	virtual void NotifyEnemyKilled_Implementation(AActor* DeadEnemy) override;
 	virtual void RequestReturnToHub_Implementation() override;
 	virtual void RequestMoveToNextStage_Implementation() override;
 	virtual void ReturnMonsterToPool_Implementation(ACharacter* Monster) override;
@@ -145,8 +145,9 @@ private:
 	void ResetAugmentSelectionQueues();
 	
 	// 몬스터 사망시 보상 처리
-	void HandleEnemyReward(ACharacter* DeadEnemy);
-	bool TryGetRewardTriggerTagFromEnemy(const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	void HandleEnemyReward(AActor* DeadEnemy);
+	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	void HandleEnemyExperience(AActor* DeadEnemy);
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;

@@ -43,4 +43,12 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Difficulty",
 		meta = (AssetBundles = "InRunData"))
 	TSoftObjectPtr<UNSDifficultyConfig> DifficultyConfig;
+
+	// GEC에서 사용하는 방어력 감소 배율 공식(y = k / (k + Defense))에 사용하는 상수 k.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Combat")
+	float DefenseMitigationConstant = 100.0f;
+
+	// 레벨업(증강 지급)에 필요한 경험치 통 크기.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Combat")
+	float MaxExperience = 100.0f;
 };

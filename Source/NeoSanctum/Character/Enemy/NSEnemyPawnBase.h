@@ -138,6 +138,9 @@ protected:
 	// 사망 상태 변경 시 Alive/Dead 상태 적용 함수를 호출하는 함수
 	virtual void HandleDeadStateChanged(bool bDead);
 
+	// 사망이 시작된 시점에 GameMode에 처치 알림을 보내는 함수
+	virtual void HandleDeathStarted();
+
 protected:
 	// Enemy Pawn의 루트 충돌 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
