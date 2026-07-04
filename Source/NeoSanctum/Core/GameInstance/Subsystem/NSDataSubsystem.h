@@ -131,6 +131,8 @@ public:
 	TSubclassOf<UGameplayEffect> GetCharacterBaseStatInitEffectClass() const;
 	const FNSCharacterBaseStatRow* FindCharacterBaseStatRow(const FGameplayTag& CharacterTag) const;
 
+	TSubclassOf<UGameplayEffect> GetCommonUpgradeInitEffectClass() const;
+
 	UNSSoundData* GetCommonSoundData() const;
 	UDataTable* GetCommonVFXDataTable() const;
 	UDataTable* GetCommonHitReactionDataTable() const;

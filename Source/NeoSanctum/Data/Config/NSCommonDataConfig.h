@@ -39,6 +39,11 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayEffect> CharacterBaseStatInitEffectClass;
 
+	// 공통 업그레이드 노드 레벨을 SetByCaller로 주입하는 초기화 GE.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
+		meta = (AssetBundles = "CommonData"))
+	TSoftClassPtr<UGameplayEffect> CommonUpgradeInitEffectClass;
+
 	// 파츠
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))

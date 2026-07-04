@@ -144,6 +144,12 @@ const FNSCharacterBaseStatRow* UNSDataSubsystem::FindCharacterBaseStatRow(const 
 	return Table->FindRow<FNSCharacterBaseStatRow>(RowName, ContextString, false);
 }
 
+TSubclassOf<UGameplayEffect> UNSDataSubsystem::GetCommonUpgradeInitEffectClass() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->CommonUpgradeInitEffectClass.Get() : nullptr;
+}
+
 UNSSoundData* UNSDataSubsystem::GetCommonSoundData() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
