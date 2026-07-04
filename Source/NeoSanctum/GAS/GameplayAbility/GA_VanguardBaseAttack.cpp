@@ -2,7 +2,9 @@
 
 #include "GA_VanguardBaseAttack.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
@@ -14,11 +16,14 @@
 #include "GameFramework/RootMotionSource.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
+#include "NeoSanctum/Combat/Weapon/NSMeleeWeapon.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
@@ -63,6 +68,7 @@ void UGA_VanguardBaseAttack::ActivateAbility(
 	}
 
 	AddVanguardStateTags();
+	StartMeleeHitEventTask();
 
 	switch (ActiveAttackMode)
 	{
@@ -145,7 +151,11 @@ void UGA_VanguardBaseAttack::EndAbility(
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
+	PreviousMeleeTraceSocketLocations.Reset();
+	bHasPreviousMeleeTraceSocketLocations = false;
+	CurrentMeleeTraceWindowId = 0;
 	ComboWindowEventTask = nullptr;
+	MeleeHitEventTask = nullptr;
 	DashAttackRecoverEventTask = nullptr;
 	CurrentGroundComboIndex = INDEX_NONE;
 	bComboInputBuffered = false;
@@ -224,6 +234,11 @@ void UGA_VanguardBaseAttack::OnAirSlamDiveFinished()
 	
 	RestoreAirSlamMovementMode();
 	StartAirSlamImpact();
+}
+
+void UGA_VanguardBaseAttack::OnMeleeHitEventReceived(FGameplayEventData Payload)
+{
+	HandleMeleeHitEvent(Payload);
 }
 
 void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
@@ -348,6 +363,304 @@ void UGA_VanguardBaseAttack::StartComboWindowEventTask()
 
 	ComboWindowEventTask->EventReceived.AddDynamic(this, &ThisClass::OnComboWindowOpened);
 	ComboWindowEventTask->ReadyForActivation();
+}
+
+void UGA_VanguardBaseAttack::StartMeleeHitEventTask()
+{
+	// AnimNotifyState에서 보낼 Vanguard Hit 이벤트 대기
+	MeleeHitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		NSGameplayTags::Event_Vanguard_Hit,
+		nullptr,
+		false,
+		true);
+
+	if (!MeleeHitEventTask)
+	{
+		return;
+	}
+
+	MeleeHitEventTask->EventReceived.AddDynamic(this, &ThisClass::OnMeleeHitEventReceived);
+	MeleeHitEventTask->ReadyForActivation();
+}
+
+void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Payload)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	// NotifyState 인스턴스가 바뀌면 새로운 공격 판정 구간으로 보고 이전 소켓 위치를 초기화
+	const UObject* TraceWindow = Payload.OptionalObject.Get();
+	const uint32 TraceWindowId = IsValid(TraceWindow) ? TraceWindow->GetUniqueID() : 0;
+	if (TraceWindowId != 0 && TraceWindowId != CurrentMeleeTraceWindowId)
+	{
+		PreviousMeleeTraceSocketLocations.Reset();
+		bHasPreviousMeleeTraceSocketLocations = false;
+		CurrentMeleeTraceWindowId = TraceWindowId;
+	}
+
+	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
+	if (!MeleeWeapon)
+	{
+		return;
+	}
+
+	PerformMeleeSocketSweeps(*MeleeWeapon);
+}
+
+ANSMeleeWeapon* UGA_VanguardBaseAttack::GetCurrentMeleeWeapon() const
+{
+	const ANSPlayerCharacterBase* PlayerCharacter =
+		Cast<ANSPlayerCharacterBase>(GetAvatarActorFromActorInfo());
+	if (!PlayerCharacter)
+	{
+		return nullptr;
+	}
+	
+	// Current Weapon 반환형이 WeaponBase라 캐스팅
+	return Cast<ANSMeleeWeapon>(PlayerCharacter->GetCurrentWeapon());
+}
+
+void UGA_VanguardBaseAttack::PerformMeleeSocketSweeps(ANSMeleeWeapon& MeleeWeapon)
+{
+	TArray<FTransform> SocketTransforms;
+	if (!MeleeWeapon.TryGetMeleeTraceSocketTransforms(SocketTransforms))
+	{
+		return;
+	}
+
+	if (SocketTransforms.IsEmpty())
+	{
+		return;
+	}
+
+	const bool bCanUsePreviousLocations =
+		bHasPreviousMeleeTraceSocketLocations &&
+		PreviousMeleeTraceSocketLocations.Num() == SocketTransforms.Num();
+
+	// 직전 Tick 위치부터 현재 Tick 위치까지 Sweep해서 공격 궤적이 이어지도록 함
+	for (int32 SocketIndex = 0; SocketIndex < SocketTransforms.Num(); ++SocketIndex)
+	{
+		const FVector CurrentLocation = SocketTransforms[SocketIndex].GetLocation();
+		const FVector TraceStart = bCanUsePreviousLocations
+			? PreviousMeleeTraceSocketLocations[SocketIndex]
+			: CurrentLocation;
+
+		SweepMeleeTrace(TraceStart, CurrentLocation);
+	}
+
+	PreviousMeleeTraceSocketLocations.Reset(SocketTransforms.Num());
+	for (const FTransform& SocketTransform : SocketTransforms)
+	{
+		PreviousMeleeTraceSocketLocations.Add(SocketTransform.GetLocation());
+	}
+
+	bHasPreviousMeleeTraceSocketLocations = true;
+}
+
+void UGA_VanguardBaseAttack::SweepMeleeTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	if (!AvatarActor || !World || MeleeTraceRadius <= 0.0f)
+	{
+		return;
+	}
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSVanguardMeleeTrace), false, AvatarActor);
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor))
+	{
+		if (ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon())
+		{
+			QueryParams.AddIgnoredActor(CurrentWeapon);
+		}
+	}
+
+	const FVector SweepEnd = TraceStart.Equals(TraceEnd)
+		? TraceEnd + FVector::UpVector * 0.1f
+		: TraceEnd;
+
+	// 무기 소켓 궤적을 구체 Sweep으로 검사.
+	TArray<FHitResult> HitResults;
+	const bool bHit = World->SweepMultiByChannel(
+		HitResults,
+		TraceStart,
+		SweepEnd,
+		FQuat::Identity,
+		NSCollisionChannels::PlayerWeaponTrace,
+		FCollisionShape::MakeSphere(MeleeTraceRadius),
+		QueryParams);
+
+	if (bDrawMeleeTraceDebug)
+	{
+		const FHitResult DebugHitResult = bHit && HitResults.Num() > 0 ? HitResults[0] : FHitResult();
+		DrawMeleeTraceDebug(TraceStart, SweepEnd, bHit, DebugHitResult);
+	}
+
+	if (!bHit)
+	{
+		return;
+	}
+
+	for (const FHitResult& HitResult : HitResults)
+	{
+		ApplyDamageToActor(HitResult);
+	}
+}
+
+void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
+{
+	AActor* TargetActor = HitResult.GetActor();
+	if (!TargetActor || !DamageEffectClass)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+
+	if (!SourceASC || !TargetASC)
+	{
+		return;
+	}
+
+	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
+	{
+		return;
+	}
+
+	float FinalDamage = 0.0f;
+	if (!TryGetFinalDamage(FinalDamage))
+	{
+		return;
+	}
+
+	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달
+	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용
+	FGameplayEffectSpecHandle DamageSpecHandle =
+		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
+
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
+	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
+
+	// 데미지 스펙에서 데미지를 주는 Actor를 명시적으로 지정
+	AssignDamageInstigator(DamageSpecHandle);
+
+	// GE_InstantDamage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
+	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+}
+
+bool UGA_VanguardBaseAttack::TryGetFinalDamage(float& OutDamage) const
+{
+	if (!TryGetFinalSkillDamage(NSGameplayTags::Ability_Vanguard_BaseAttack, OutDamage))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"VanguardBaseAttack 데미지 계산 실패. AbilityTag={AbilityTag}",
+			("AbilityTag", NSGameplayTags::Ability_Vanguard_BaseAttack.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	return true;
+}
+
+void UGA_VanguardBaseAttack::ApplyDamageSetByCaller(
+	FGameplayEffectSpecHandle& InSpecHandle,
+	float InDamage) const
+{
+	if (!InSpecHandle.IsValid() || !InSpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	const float ClampedDamage = FMath::Max(InDamage, 0.0f);
+	InSpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_Damage_Base, ClampedDamage);
+}
+
+void UGA_VanguardBaseAttack::AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle)
+{
+	if (!InSpecHandle.IsValid())
+	{
+		return;
+	}
+
+	if (AActor* AvatarActor = GetAvatarActorFromActorInfo())
+	{
+		InSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+	}
+}
+
+void UGA_VanguardBaseAttack::DrawMeleeTraceDebug(
+	const FVector& TraceStart,
+	const FVector& TraceEnd,
+	bool bHit,
+	const FHitResult& HitResult) const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	// 디버그 : 히트되면 빨간색
+	const FColor TraceColor = bHit ? FColor::Red : FColor::Green;
+	
+	const FVector TraceDelta = TraceEnd - TraceStart;
+	const float TraceLength = TraceDelta.Size();
+	
+	if (TraceLength <= KINDA_SMALL_NUMBER)
+	{
+		DrawDebugSphere(
+			World,
+			TraceEnd,
+			MeleeTraceRadius,
+			12,
+			TraceColor,
+			false,
+			MeleeTraceDebugDuration);
+	}
+	else
+	{
+		// 구체 Sweep이 지나간 부피를 캡슐 형태로 표시
+		const FVector CapsuleCenter = (TraceStart + TraceEnd) * 0.5f;
+		const float CapsuleHalfHeight = TraceLength * 0.5f + MeleeTraceRadius;
+		const FQuat CapsuleRotation = FRotationMatrix::MakeFromZ(TraceDelta).ToQuat();
+
+		DrawDebugCapsule(
+			World,
+			CapsuleCenter,
+			CapsuleHalfHeight,
+			MeleeTraceRadius,
+			CapsuleRotation,
+			TraceColor,
+			false,
+			MeleeTraceDebugDuration);
+	}
+
+	if (bHit)
+	{
+		DrawDebugPoint(
+			World,
+			HitResult.ImpactPoint,
+			12.0f,
+			FColor::Yellow,
+			false,
+			MeleeTraceDebugDuration);
+	}
 }
 
 bool UGA_VanguardBaseAttack::TryAdvanceGroundCombo()

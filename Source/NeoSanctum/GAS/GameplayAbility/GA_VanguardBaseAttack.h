@@ -10,6 +10,8 @@ class UAbilityTask_ApplyRootMotionConstantForce;
 class UAbilityTask_ApplyRootMotionMoveToForce;
 class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
+class UGameplayEffect;
+class ANSMeleeWeapon;
 
 UENUM(BlueprintType)
 enum class ENSVanguardBaseAttackMode : uint8
@@ -89,6 +91,9 @@ private:
 	UFUNCTION()
 	void OnAirSlamDiveFinished();
 
+	UFUNCTION()
+	void OnMeleeHitEventReceived(FGameplayEventData Payload);
+
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
 	ENSVanguardBaseAttackMode SelectAttackMode(const FGameplayAbilityActorInfo* ActorInfo) const;
 
@@ -100,6 +105,36 @@ private:
 
 	// Combo Window Open 이벤트 대기
 	void StartComboWindowEventTask();
+
+	// Trace 이벤트 대기
+	void StartMeleeHitEventTask();
+
+	// 근접 공격 명중 이벤트 처리
+	void HandleMeleeHitEvent(const FGameplayEventData& Payload);
+
+	// 현재 장착 중인 근접 무기 조회
+	ANSMeleeWeapon* GetCurrentMeleeWeapon() const;
+
+	// 근접 무기 소켓 위치 기반 Sweep 판정 수행
+	void PerformMeleeSocketSweeps(ANSMeleeWeapon& MeleeWeapon);
+
+	// 단일 소켓 궤적 구간 Sweep 수행
+	void SweepMeleeTrace(const FVector& TraceStart, const FVector& TraceEnd);
+
+	// 근접 공격 데미지 적용
+	void ApplyDamageToActor(const FHitResult& HitResult);
+
+	// CombatStat.Damage 기준 최종 데미지 조회
+	bool TryGetFinalDamage(float& OutDamage) const;
+
+	// 데미지 SetByCaller 적용
+	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
+
+	// 데미지 감지 가해자 지정
+	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
+
+	// 근접 공격 Sweep 디버그 표시
+	void DrawMeleeTraceDebug(const FVector& TraceStart, const FVector& TraceEnd, bool bHit, const FHitResult& HitResult) const;
 
 	// 다음 콤보 섹션으로 이동
 	bool TryAdvanceGroundCombo();
@@ -266,6 +301,22 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true"))
 	bool bEnableGravityDuringDashAttack = true;
 
+	// 근접 공격 명중 시 적용할 데미지 GameplayEffect
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	// 근접 무기 소켓 궤적을 따라 Sweep할 구체 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float MeleeTraceRadius = 18.0f;
+
+	// 근접 공격 Sweep 디버그 표시 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug", meta = (AllowPrivateAccess = "true"))
+	bool bDrawMeleeTraceDebug = false;
+
+	// 근접 공격 Sweep 디버그 표시 지속 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float MeleeTraceDebugDuration = 1.0f;
+
 	// 기본공격 모드 선택과 차지 결과 로그 출력 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug", meta = (AllowPrivateAccess = "true"))
 	bool bLogVanguardAttackMode = true;
@@ -276,8 +327,20 @@ private:
 	// 차지 비율 계산용 대쉬 차지 시작 시각
 	double DashChargeStartTime = 0.0;
 
+	// 직전 근접 공격 판정 소켓 위치
+	TArray<FVector> PreviousMeleeTraceSocketLocations;
+
+	// 직전 근접 공격 판정 소켓 위치가 유효한지 여부
+	bool bHasPreviousMeleeTraceSocketLocations = false;
+
+	// 현재 근접 공격 판정 윈도우 식별자
+	uint32 CurrentMeleeTraceWindowId = 0;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAbilityTask_WaitGameplayEvent> MeleeHitEventTask;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> DashAttackRecoverEventTask;
