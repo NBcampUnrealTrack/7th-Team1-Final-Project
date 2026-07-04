@@ -10,6 +10,7 @@
 #include "UObject/PrimaryAssetId.h"
 #include "NSPlayerState.generated.h"
 
+class UNSExperienceComponent;
 class UNSCompanionDefinition;
 class UNSCompanionProgressionComponent;
 class UNSCombatStatComponent;
@@ -52,6 +53,7 @@ public:
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 	UNSCurrencyComponent* GetCurrencyComponent() const { return CurrencyComponent; }
 	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
+	UNSExperienceComponent* GetExperienceComponent() const { return ExperienceComponent; }
 
 	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
 
@@ -114,6 +116,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Currency")
 	TObjectPtr<UNSCurrencyComponent> CurrencyComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNSExperienceComponent> ExperienceComponent;
 	
 	// @민재 : Companion업그레이드 관련 Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")

@@ -9,12 +9,14 @@
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardDropResolver.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -95,6 +97,43 @@ void UNSRewardHandler::HandleRewardTrigger(
 		DroppedPartClass,
 		CurrencyDropDuration
 	);
+}
+
+void UNSRewardHandler::HandleExperienceRewardEntry(UWorld* World, float BaseExpAmount)
+{
+	if (!World || BaseExpAmount <= 0.0f)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PlayerController = Iterator->Get();
+		ANSPlayerState* NSPlayerState = PlayerController ? PlayerController->GetPlayerState<ANSPlayerState>() : nullptr;
+
+		UNSExperienceComponent* ExperienceComponent = NSPlayerState ? NSPlayerState->GetExperienceComponent() : nullptr;
+
+		if (!ExperienceComponent)
+		{
+			continue;
+		}
+
+		const int32 LevelUpCount = ExperienceComponent->AddExperience(BaseExpAmount);
+
+		UNSAugmentSelectionComponent* AugmentSelectionComponent =
+			PlayerController->FindComponentByClass<UNSAugmentSelectionComponent>();
+
+		if (!AugmentSelectionComponent)
+		{
+			continue;
+		}
+
+		// 배율 차이로 플레이어마다 레벨업 시점이 달라지므로 개인별로 적재
+		for (int32 Index = 0; Index < LevelUpCount; ++Index)
+		{
+			AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Reward_Trigger_LevelUp);
+		}
+	}
 }
 
 void UNSRewardHandler::HandleRewardEntries(

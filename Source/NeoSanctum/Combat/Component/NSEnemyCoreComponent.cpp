@@ -108,6 +108,9 @@ void UNSEnemyCoreComponent::InitializeAttributes(UNSMonsterAttributeSet* Attribu
 	AttributeSet->SetMaxHitGauge(FMath::Max(StatRow->MaxHitGauge, 1.0f));
 	AttributeSet->SetHitGaugeGainPerHit(FMath::Max(StatRow->HitGaugeGainPerHit, 0.0f));
 	AttributeSet->ResetHitGauge();
+
+	// 처치 보상 시점에 DT 재조회 없이 쓰도록 스폰 시점에 캐싱. 난이도 확장 시 여기서 스케일 적용.
+	CachedExperienceReward = FMath::Max(StatRow->ExperienceReward, 0.0f);
 }
 
 void UNSEnemyCoreComponent::GrantStartupAbilities()

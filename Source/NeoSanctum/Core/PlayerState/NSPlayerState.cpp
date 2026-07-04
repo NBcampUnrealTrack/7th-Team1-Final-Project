@@ -20,6 +20,7 @@
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/Core/GameState/NSOutGameState.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
+#include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -47,6 +48,7 @@ ANSPlayerState::ANSPlayerState()
 	// 인런 증강 보유 컴포넌트 (인런 종료 시 RunGameMode가 Clear)
 	AugmentInventory = CreateDefaultSubobject<UNSAugmentInventoryComponent>(TEXT("AugmentInventory"));
 	CurrencyComponent = CreateDefaultSubobject<UNSCurrencyComponent>(TEXT("CurrencyComponent"));
+	ExperienceComponent = CreateDefaultSubobject<UNSExperienceComponent>(TEXT("ExperienceComponent"));
 	
 	bIsReady = false;
 	bIsDead = false;

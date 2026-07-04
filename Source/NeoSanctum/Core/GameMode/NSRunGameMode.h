@@ -147,6 +147,7 @@ private:
 	// 몬스터 사망시 보상 처리
 	void HandleEnemyReward(AActor* DeadEnemy);
 	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	void HandleEnemyExperience(AActor* DeadEnemy);
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;

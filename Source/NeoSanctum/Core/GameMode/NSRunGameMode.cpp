@@ -203,6 +203,7 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 	}
 	
 	HandleEnemyReward(DeadEnemy);
+	HandleEnemyExperience(DeadEnemy);
 }
 
 void ANSRunGameMode::HandleEnemyReward(AActor* DeadEnemy)
@@ -293,6 +294,22 @@ bool ANSRunGameMode::TryGetRewardTriggerTagFromEnemy(
 		);
 		return false;
 	}
+}
+
+void ANSRunGameMode::HandleEnemyExperience(AActor* DeadEnemy)
+{
+	if (!IsValid(DeadEnemy))
+	{
+		return;
+	}
+
+	const UNSEnemyCoreComponent* CoreComponent = DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
+	if (!IsValid(CoreComponent))
+	{
+		return;
+	}
+
+	UNSRewardHandler::HandleExperienceRewardEntry(GetWorld(), CoreComponent->GetExperienceReward());
 }
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
