@@ -31,6 +31,9 @@ namespace
 		static const TArray<FNSAugmentAttributeEffectMapping> Mappings =
 		{
 			{NSGameplayTags::CombatStat_Damage, NSGameplayTags::Effect_SetByCaller_BaseDamage_Add, NSGameplayTags::Effect_SetByCaller_BaseDamage_Multiply},
+			{ NSGameplayTags::CombatStat_CritChance, NSGameplayTags::Effect_SetByCaller_CritChance_Add, NSGameplayTags::Effect_SetByCaller_CritChance_Multiply },
+			{NSGameplayTags::CombatStat_CritDamage, NSGameplayTags::Effect_SetByCaller_CritDamage_Add, NSGameplayTags::Effect_SetByCaller_CritDamage_Multiply},
+			{NSGameplayTags::CombatStat_MoveSpeed, NSGameplayTags::Effect_SetByCaller_MoveSpeed_Add, NSGameplayTags::Effect_SetByCaller_MoveSpeed_Multiply},
 			{ NSGameplayTags::CombatStat_MaxHealth, NSGameplayTags::Effect_SetByCaller_MaxHealth_Add, NSGameplayTags::Effect_SetByCaller_MaxHealth_Multiply },
 			{ NSGameplayTags::CombatStat_MaxShield, NSGameplayTags::Effect_SetByCaller_MaxShield_Add, NSGameplayTags::Effect_SetByCaller_MaxShield_Multiply },
 			{ NSGameplayTags::CombatStat_Defense, NSGameplayTags::Effect_SetByCaller_Defense_Add, NSGameplayTags::Effect_SetByCaller_Defense_Multiply },

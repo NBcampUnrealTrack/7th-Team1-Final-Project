@@ -45,6 +45,12 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxShield_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Defense_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Defense_Multiply);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MoveSpeed_Add);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MoveSpeed_Multiply);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_CritChance_Add);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_CritChance_Multiply);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_CritDamage_Add);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_CritDamage_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_ShieldRechargeRate_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_ShieldRechargeRate_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_ShieldRechargeCooldown_Add);
@@ -74,4 +80,8 @@ namespace NSGameplayTags
 
 	// Damage SetByCaller
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_Base);
+	// 캡처된 Source CritChance/CritDamage Attribute를 덮어씀.
+	// Turret처럼 Source ASC에 해당 Attribute가 없는 경우, 발사 시점에 소환자의 실제 값을 대신 전달하기 위해 사용.
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_CritChanceOverride);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_CritDamageOverride);
 }

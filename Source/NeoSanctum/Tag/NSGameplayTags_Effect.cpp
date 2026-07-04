@@ -43,6 +43,12 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxShield_Multiply, "Effect.SetByCaller.MaxShield.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Add, "Effect.SetByCaller.Defense.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Defense_Multiply, "Effect.SetByCaller.Defense.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MoveSpeed_Add, "Effect.SetByCaller.MoveSpeed.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MoveSpeed_Multiply, "Effect.SetByCaller.MoveSpeed.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritChance_Add, "Effect.SetByCaller.CritChance.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritChance_Multiply, "Effect.SetByCaller.CritChance.Multiply");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritDamage_Add, "Effect.SetByCaller.CritDamage.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_CritDamage_Multiply, "Effect.SetByCaller.CritDamage.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Add, "Effect.SetByCaller.ShieldRechargeRate.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeRate_Multiply, "Effect.SetByCaller.ShieldRechargeRate.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Add, "Effect.SetByCaller.ShieldRechargeCooldown.Add");
@@ -72,4 +78,8 @@ namespace NSGameplayTags
 
 	// Damage SetByCaller
 	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_Base, "Effect.Damage.Base");
+	// 캡처된 Source CritChance/CritDamage Attribute를 덮어씀.
+	// Turret처럼 Source ASC에 해당 Attribute가 없는 경우, 발사 시점에 소환자의 실제 값을 대신 전달하기 위해 사용.
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_CritChanceOverride, "Effect.Damage.CritChanceOverride");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_Damage_CritDamageOverride, "Effect.Damage.CritDamageOverride");
 }
