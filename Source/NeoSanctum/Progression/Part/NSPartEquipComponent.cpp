@@ -8,6 +8,7 @@
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
@@ -96,11 +97,20 @@ void UNSPartEquipComponent::ClearAll()
 	{
 		return;
 	}
+
+	TArray<FGameplayTag> ClearedSlots;
 	for (const FNSPartData& Part : EquippedParts)
 	{
 		RemovePartEffects(Part.Slot);
+		ClearedSlots.Add(Part.Slot);
 	}
 	EquippedParts.Empty();
+
+	// 비주얼 등 구독자가 슬롯 비움을 반영하도록 빈 파츠로 알림
+	for (const FGameplayTag& Slot : ClearedSlots)
+	{
+		OnPartChanged.Broadcast(Slot, FNSPartData());
+	}
 }
 
 void UNSPartEquipComponent::CopyRunStateFrom(const UNSPartEquipComponent* Source)
@@ -543,6 +553,19 @@ UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 void UNSPartEquipComponent::OnRep_EquippedParts()
 {
 	UE_LOG(LogTemp, Warning, TEXT("[EquipComp] OnRep_EquippedParts: 배열 크기=%d"), EquippedParts.Num());
+
+	// 배열에서 빠진 슬롯(해제)도 구독자가 반영하도록 빈 파츠로 알림
+	if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner()))
+	{
+		for (const auto& Pair : DataSS->GetAllSlotRows())
+		{
+			if (!FindPart(Pair.Key))
+			{
+				OnPartChanged.Broadcast(Pair.Key, FNSPartData());
+			}
+		}
+	}
+
 	for (const FNSPartData& Part : EquippedParts)
 	{
 		OnPartChanged.Broadcast(Part.Slot, Part);
