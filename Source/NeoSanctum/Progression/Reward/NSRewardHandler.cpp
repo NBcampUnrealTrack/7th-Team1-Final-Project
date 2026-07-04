@@ -125,7 +125,25 @@ void UNSRewardHandler::HandleExperienceRewardEntry(UWorld* World, float BaseExpA
 
 		if (!AugmentSelectionComponent)
 		{
+			if (LevelUpCount > 0)
+			{
+				NS_LOG(LogNS, Warning,
+					"AugmentSelectionComponent를 찾을 수 없어 레벨업 보상을 지급하지 못했습니다. Player={Player}, LevelUpCount={LevelUpCount}",
+					("Player", GetNameSafe(NSPlayerState)),
+					("LevelUpCount", LevelUpCount)
+				);
+			}
 			continue;
+		}
+
+		if (LevelUpCount > 0)
+		{
+			NS_LOG(LogNS, Log,
+				"레벨업 보상을 적재합니다. Player={Player}, BaseExpAmount={BaseExpAmount}, LevelUpCount={LevelUpCount}",
+				("Player", GetNameSafe(NSPlayerState)),
+				("BaseExpAmount", BaseExpAmount),
+				("LevelUpCount", LevelUpCount)
+			);
 		}
 
 		// 배율 차이로 플레이어마다 레벨업 시점이 달라지므로 개인별로 적재

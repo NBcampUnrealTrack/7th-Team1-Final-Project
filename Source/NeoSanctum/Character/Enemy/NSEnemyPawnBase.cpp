@@ -17,6 +17,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
 
@@ -251,8 +252,14 @@ void ANSEnemyPawnBase::HandleDeathStarted()
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 	if (!GameMode || !GameMode->Implements<UNSRunGameModeInterface>())
 	{
+		NS_ACTOR_LOG(this, LogNS, Warning,
+			"GameMode가 NSRunGameModeInterface를 구현하지 않아 사망 알림을 보내지 못했습니다. GameMode={GameMode}",
+			("GameMode", GetNameSafe(GameMode))
+		);
 		return;
 	}
+
+	NS_ACTOR_LOG(this, LogNS, Log, "GameMode에 Pawn 사망을 알립니다.");
 
 	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
 }

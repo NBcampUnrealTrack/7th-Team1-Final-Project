@@ -306,10 +306,22 @@ void ANSRunGameMode::HandleEnemyExperience(AActor* DeadEnemy)
 	const UNSEnemyCoreComponent* CoreComponent = DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
 	if (!IsValid(CoreComponent))
 	{
+		NS_LOG(LogNS, Warning,
+			"EnemyCoreComponent를 찾을 수 없어 경험치를 지급하지 못했습니다. Enemy={Enemy}",
+			("Enemy", GetNameSafe(DeadEnemy))
+		);
 		return;
 	}
 
-	UNSRewardHandler::HandleExperienceRewardEntry(GetWorld(), CoreComponent->GetExperienceReward());
+	const float ExperienceReward = CoreComponent->GetExperienceReward();
+
+	NS_LOG(LogNS, Log,
+		"Enemy 처치로 경험치 지급을 요청합니다. Enemy={Enemy}, ExperienceReward={ExperienceReward}",
+		("Enemy", GetNameSafe(DeadEnemy)),
+		("ExperienceReward", ExperienceReward)
+	);
+
+	UNSRewardHandler::HandleExperienceRewardEntry(GetWorld(), ExperienceReward);
 }
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
