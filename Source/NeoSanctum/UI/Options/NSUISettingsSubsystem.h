@@ -37,11 +37,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI|Settings")
 	bool SetLanguageCode(const FString& NewLanguageCode);
 	
+	UFUNCTION(BlueprintPure, Category = "UI|Settings")
+	float GetMouseSensitivity() const;
+	
+	UFUNCTION(BlueprintCallable, Category = "UI|Settings")
+	void SetMouseSensitivity(float NewMouseSensitivity);
+	
 	FOnCrosshairColorChanged OnCrosshairColorChanged;
 	
 private:
 	void LoadSettings();
 	void SaveSettings() const;
+	
+	float MouseSensitivity = 1.0f;
 	
 private:
 	FLinearColor CrosshairColor = FLinearColor::White;

@@ -7,11 +7,15 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
+#include "CommonInputSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -235,8 +239,42 @@ void UNSInputBinderComponent::Input_Look(const FInputActionValue& Value)
 
 	const FVector2D LookValue = Value.Get<FVector2D>();
 
-	PlayerController->AddYawInput(LookValue.X);
-	PlayerController->AddPitchInput(LookValue.Y);
+	float LookScale = 1.0f;
+
+	ULocalPlayer* LocalPlayer =
+		PlayerController->GetLocalPlayer();
+
+	const UCommonInputSubsystem* CommonInputSubsystem =
+		LocalPlayer
+			? ULocalPlayer::GetSubsystem<UCommonInputSubsystem>(
+				LocalPlayer)
+			: nullptr;
+
+	if (CommonInputSubsystem &&
+		CommonInputSubsystem->GetCurrentInputType() ==
+			ECommonInputType::MouseAndKeyboard)
+	{
+		const UGameInstance* GameInstance =
+			PlayerController->GetGameInstance();
+
+		const UNSUISettingsSubsystem* Settings =
+			GameInstance
+				? GameInstance->GetSubsystem<
+					UNSUISettingsSubsystem>()
+				: nullptr;
+
+		if (Settings)
+		{
+			LookScale =
+				Settings->GetMouseSensitivity();
+		}
+	}
+
+	PlayerController->AddYawInput(
+		LookValue.X * LookScale);
+
+	PlayerController->AddPitchInput(
+		LookValue.Y * LookScale);
 }
 
 void UNSInputBinderComponent::Input_Jump()

@@ -103,6 +103,35 @@ void UNSGameplaySettingWidget::NativeConstruct()
 			this,
 			&ThisClass::OnApplyCustomColorClicked);
 	}
+	
+	if (UNSUISettingsSubsystem* Settings =
+		GetUISettingSubsystem())
+	{
+		PendingMouseSensitivity =
+			Settings->GetMouseSensitivity();
+		
+		if (MouseSensitivitySlider)
+		{
+			MouseSensitivitySlider->SetValue(
+				PendingMouseSensitivity);
+		}
+	}
+	
+	if (MouseSensitivitySlider)
+	{
+		MouseSensitivitySlider->OnValueChanged.AddDynamic(
+			this,
+			&ThisClass::OnMouseSensitivityChanged);
+		
+		MouseSensitivitySlider->OnMouseCaptureEnd.AddDynamic(
+			this,
+			&ThisClass::OnMouseSensitivityCaptureEnd);
+		
+		MouseSensitivitySlider->OnControllerCaptureEnd.AddDynamic(
+			this,
+			&ThisClass::OnMouseSensitivityCaptureEnd);
+	}
+	UpdateMouseSensitivityText();
 	UpdateApplyButtonState();
 	InitializeLanguageOptions();
 }
@@ -132,6 +161,13 @@ void UNSGameplaySettingWidget::NativeDestruct()
 	if (LanguageComboBox)
 	{
 		LanguageComboBox->OnSelectionChanged.RemoveAll(this);
+	}
+	
+	if (MouseSensitivitySlider)
+	{
+		MouseSensitivitySlider->OnValueChanged.RemoveAll(this);
+		MouseSensitivitySlider->OnMouseCaptureEnd.RemoveAll(this);
+		MouseSensitivitySlider->OnControllerCaptureEnd.RemoveAll(this);
 	}
 	Super::NativeDestruct();
 }
@@ -196,6 +232,37 @@ void UNSGameplaySettingWidget::OnLanguageSelectionChanged(FString SelectionItem,
 			: TEXT("ko-KR");
 	
 	Settings->SetLanguageCode(CultureCode);
+}
+
+void UNSGameplaySettingWidget::OnMouseSensitivityChanged(float Value)
+{
+	PendingMouseSensitivity = 
+		FMath::Clamp(Value, 0.1f, 2.0f);
+	
+	UpdateMouseSensitivityText();
+}
+
+void UNSGameplaySettingWidget::OnMouseSensitivityCaptureEnd()
+{
+	UNSUISettingsSubsystem* Settings =
+		GetUISettingSubsystem();
+	
+	if (!Settings)
+	{
+		return;
+	}
+	Settings->SetMouseSensitivity(PendingMouseSensitivity);
+}
+
+void UNSGameplaySettingWidget::UpdateMouseSensitivityText()
+{
+	if (!MouseSensitivityValueText)
+	{
+		return;
+	}
+	
+	MouseSensitivityValueText->SetText(
+		FText::AsPercent(PendingMouseSensitivity));
 }
 
 void UNSGameplaySettingWidget::SynchronizeSliders(

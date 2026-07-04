@@ -98,6 +98,28 @@ bool UNSUISettingsSubsystem::SetLanguageCode(const FString& NewLanguageCode)
 	return true;
 }
 
+float UNSUISettingsSubsystem::GetMouseSensitivity() const
+{
+	return MouseSensitivity;
+}
+
+void UNSUISettingsSubsystem::SetMouseSensitivity(
+	float NewMouseSensitivity) 
+{
+	const float ClampedSensitivity =
+		FMath::Clamp(NewMouseSensitivity, 0.1f, 2.0f);
+
+	if (FMath::IsNearlyEqual(
+		MouseSensitivity,
+		ClampedSensitivity))
+	{
+		return;
+	}
+
+	MouseSensitivity = ClampedSensitivity;
+	SaveSettings();
+}
+
 void UNSUISettingsSubsystem::LoadSettings()
 {
 	if (!GConfig)
@@ -132,6 +154,15 @@ void UNSUISettingsSubsystem::LoadSettings()
 		GGameUserSettingsIni);
 	
 	SetLanguageCode(LanguageCode);
+	
+	GConfig->GetFloat(
+		NSUISettings::ConfigSection,
+		TEXT("MouseSensitivity"),
+		MouseSensitivity,
+		GGameUserSettingsIni);
+	
+	MouseSensitivity =
+		FMath::Clamp(MouseSensitivity, 0.1f, 2.0f);
 }
 
 void UNSUISettingsSubsystem::SaveSettings() const
@@ -163,6 +194,12 @@ void UNSUISettingsSubsystem::SaveSettings() const
 		NSUISettings::ConfigSection,
 		TEXT("LanguageCode"),
 		*LanguageCode,
+		GGameUserSettingsIni);
+	
+	GConfig->SetFloat(
+		NSUISettings::ConfigSection,
+		TEXT("MouseSensitivity"),
+		MouseSensitivity,
 		GGameUserSettingsIni);
 	
 	GConfig->Flush(false, GGameUserSettingsIni);

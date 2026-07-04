@@ -48,6 +48,14 @@ private:
 	UFUNCTION()
 	void OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType);
 	
+	UFUNCTION()
+	void OnMouseSensitivityChanged(float Value);
+	
+	UFUNCTION()
+	void OnMouseSensitivityCaptureEnd();
+	
+	void UpdateMouseSensitivityText();
+	
     void SynchronizeSliders(const FLinearColor& Color);
 	
 	void UpdateRGBValueTexts();
@@ -55,6 +63,7 @@ private:
 	void UpdateApplyButtonState();
 	
 	void InitializeLanguageOptions();
+
 	
 private:
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -86,6 +95,14 @@ private:
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> LanguageComboBox;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<USlider> MouseSensitivitySlider;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MouseSensitivityValueText;
+
+	float PendingMouseSensitivity = 1.0f;
 
 	FLinearColor PendingCrosshairColor =
 		FLinearColor::White;
