@@ -148,6 +148,17 @@ void UNSHUDWidget::CloseRunBuildPanel()
 	ClosePartPanel();
 }
 
+void UNSHUDWidget::UpdateExperience(float CurrentExperience, float RequiredExperience)
+{
+	if (!HPShieldWidget)
+	{
+		return;
+	}
+	HPShieldWidget->SetExperience(
+		CurrentExperience,
+		RequiredExperience);
+}
+
 void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
 {
 

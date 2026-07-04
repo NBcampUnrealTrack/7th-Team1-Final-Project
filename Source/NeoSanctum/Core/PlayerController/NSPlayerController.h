@@ -23,6 +23,7 @@ class ANSRunGameState;
 class UNSCurrencyComponent;
 class ANSInteractableNPCBase;
 class UNSNPCInteractionWidgetBase;
+class UNSExperienceComponent;
 struct FNSSkillCooldownMessage;
 
 UCLASS()
@@ -186,8 +187,17 @@ private:
 	//최대 실드 변경시 갱신
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
 	
+	void BindExperienceToHUD();
+	
+	void UpdateHUDExperience();
+	
 	//HUD Attribute Delegate 중복 바인딩 방지
 	bool bHUDAttributeBound = false;
+	
+	UFUNCTION()
+	void OnExperienceChanged(
+		float CurrentExperience,
+		float RequiredExperience);
 	
 	// 캐릭터 선택 위젯 닫기
 	UFUNCTION(BlueprintCallable, Category = "UI")
@@ -266,6 +276,8 @@ private:
 	void HandleSkillUIApplyRetry();
 	
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
+	
+	TWeakObjectPtr<UNSExperienceComponent> CachedHUDExperienceComponent;
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")

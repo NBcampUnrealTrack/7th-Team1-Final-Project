@@ -78,7 +78,7 @@ public:
 	//리로드 상태 UI 갱신
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetReloading(bool bReloading);
-
+	
 	//인런 재화 UI 표시
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowInRunGoods();
@@ -90,6 +90,11 @@ public:
 	//캐릭터별 스킬 UI 세트 적용
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ApplyCharacterSkillUISet(FName CharacterId);
+	
+	//본인 경험치 UI 갱신
+	void UpdateExperience(
+		float CurrentExperience,
+		float RequiredExperience);
 	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 

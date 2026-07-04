@@ -33,6 +33,9 @@ public:
 	//체략 실드 초기화
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ResetHealthAndShield();
+	//현재 경험치와 다음 단계 요구 경험치를 표시
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetExperience(float CurrentExperience, float RequiredExperience);
 	
 private:
 	//0 나누기 방지 후 ProgressBar 비율 계산
@@ -50,6 +53,12 @@ private:
 	//쉴드 수치 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> ShieldText;
+	// 본인 경험치 진행도
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> PlayerExperienceBar;
+	// 본인 경험치 수치
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> PlayerExperienceValueText;
 	
 protected:
 	virtual void NativeConstruct()override;

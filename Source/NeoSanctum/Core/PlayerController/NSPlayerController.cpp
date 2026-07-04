@@ -20,6 +20,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
+#include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 #include "EngineUtils.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
@@ -196,7 +197,6 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
-	
 	ASC->GetGameplayAttributeValueChangeDelegate(
 	UNSPlayerAttributeSet::GetAmmoAttribute()
 ).AddUObject(this, &ANSPlayerController::OnAmmoChanged);
@@ -213,6 +213,7 @@ void ANSPlayerController::BindAttributeToHUD()
 	bHUDAttributeBound = true;
 	
 	UpdateHUDHealthAndShield();
+	BindExperienceToHUD();
 	UpdateHUDAmmo();
 }
 
@@ -279,6 +280,61 @@ void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 	UpdateHUDHealthAndShield();
 }
 
+void ANSPlayerController::BindExperienceToHUD()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerState* NSPlayerState =
+		GetPlayerState<ANSPlayerState>();
+	
+	UNSExperienceComponent* ExperienceComponent =
+		NSPlayerState
+	? NSPlayerState->GetExperienceComponent()
+	: nullptr;
+	
+	if (!ExperienceComponent)
+	{
+		return;
+	}
+	
+	if (UNSExperienceComponent* CachedComponent =
+		CachedHUDExperienceComponent.Get())
+	{
+		CachedComponent->OnExpChanged.RemoveDynamic(
+			this,
+			&ThisClass::OnExperienceChanged);
+	}
+	ExperienceComponent->OnExpChanged.AddUniqueDynamic(
+		this,
+		&ThisClass::OnExperienceChanged);
+	
+	CachedHUDExperienceComponent =
+		ExperienceComponent;
+	
+	UpdateHUDExperience();
+}
+
+void ANSPlayerController::UpdateHUDExperience()
+{
+	const UNSExperienceComponent* ExperienceComponent =
+		CachedHUDExperienceComponent.Get();
+	
+	const UNSDataSubsystem* DataSubsystem =
+		UNSDataSubsystem::Get(this);
+	
+	if (!ExperienceComponent || !DataSubsystem)
+	{
+		return;
+	}
+	
+	OnExperienceChanged(
+		ExperienceComponent->GetCurrentExp(),
+		DataSubsystem->GetMaxExperience());
+}
+
 void ANSPlayerController::ShowCharacterSelectWidget()
 {
 	if (!IsLocalController())
@@ -328,6 +384,17 @@ void ANSPlayerController::ShowCharacterSelectWidget()
 	InputMode.SetWidgetToFocus(CharacterSelectWidget->TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	SetInputMode(InputMode);
+}
+
+void ANSPlayerController::OnExperienceChanged(float CurrentExperience, float RequiredExperience)
+{
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->UpdateExperience(
+			CurrentExperience,
+			RequiredExperience);
+	}
 }
 
 void ANSPlayerController::HideCharacterSelectWidget()
@@ -2108,7 +2175,15 @@ void ANSPlayerController::UnbindAttributeFromHUD()
 			NSGameplayTags::State_Reloading,
 			EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
 	}
+	if (UNSExperienceComponent* ExperienceComponent =
+		CachedHUDExperienceComponent.Get())
+	{
+		ExperienceComponent->OnExpChanged.RemoveDynamic(
+			this,
+			&ThisClass::OnExperienceChanged);
+	}
 
+	CachedHUDExperienceComponent.Reset();
 	CachedHUDASC.Reset();
 	bHUDAttributeBound = false;
 }
