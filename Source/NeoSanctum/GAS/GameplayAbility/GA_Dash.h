@@ -7,7 +7,6 @@
 #include "GA_Dash.generated.h"
 
 class UAbilityTask_ApplyRootMotionConstantForce;
-class UAbilitySystemComponent;
 
 /**
  * 캐릭터 대시 어빌리티
@@ -49,9 +48,6 @@ protected:
 	// 대쉬 정상 종료 직후 Vanguard 대쉬공격 입력 창 열기
 	void AddDashAttackWindow();
 
-	// 대쉬공격 입력 가능 창 종료 및 상태태그 제거
-	void RemoveDashAttackWindow();
-
 protected:
 	// 대쉬 거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Dash", meta = (ClampMin = "0.0"))
@@ -79,7 +75,4 @@ private:
 
 	// 대쉬공격 입력 가능 창 자동 종료 타이머
 	FTimerHandle DashAttackWindowTimerHandle;
-
-	// Ability 종료 이후 타이머에서도 대쉬공격 입력 창 태그를 제거하기 위한 ASC 참조
-	TWeakObjectPtr<UAbilitySystemComponent> DashAttackWindowASC;
 };
