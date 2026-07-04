@@ -151,6 +151,7 @@ void UGA_VanguardBaseAttack::EndAbility(
 	RemoveVanguardStateTags();
 	ActiveAttackMode = ENSVanguardBaseAttackMode::None;
 	DashChargeStartTime = 0.0;
+	CurrentDashAttackChargeRatio = 0.0f;
 	PreviousMeleeTraceSocketLocations.Reset();
 	bHasPreviousMeleeTraceSocketLocations = false;
 	CurrentMeleeTraceWindowId = 0;
@@ -575,7 +576,28 @@ bool UGA_VanguardBaseAttack::TryGetFinalDamage(float& OutDamage) const
 		return false;
 	}
 
+	OutDamage = FMath::Max(OutDamage * GetCurrentAttackDamageMultiplier(), 0.0f);
 	return true;
+}
+
+float UGA_VanguardBaseAttack::GetCurrentAttackDamageMultiplier() const
+{
+	switch (ActiveAttackMode)
+	{
+	case ENSVanguardBaseAttackMode::GroundCombo:
+		return GroundComboDamageMultipliers.IsValidIndex(CurrentGroundComboIndex)
+			? GroundComboDamageMultipliers[CurrentGroundComboIndex]
+			: 1.0f;
+	case ENSVanguardBaseAttackMode::AirSlam:
+		return AirSlamDamageMultiplier;
+	case ENSVanguardBaseAttackMode::DashAttack:
+		return FMath::Lerp(
+			DashAttackMinDamageMultiplier,
+			DashAttackMaxDamageMultiplier,
+			FMath::Clamp(CurrentDashAttackChargeRatio, 0.0f, 1.0f));
+	default:
+		return 1.0f;
+	}
 }
 
 void UGA_VanguardBaseAttack::ApplyDamageSetByCaller(
@@ -952,6 +974,7 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 {
 	// 대쉬공격 실행 상태로 전환
 	ActiveAttackMode = ENSVanguardBaseAttackMode::DashAttack;
+	CurrentDashAttackChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
 	bDashAttackMoveStarted = false;
 	bDashAttackMoveFinished = false;
 	bDashAttackMontageStarted = false;

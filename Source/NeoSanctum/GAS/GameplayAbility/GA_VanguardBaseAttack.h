@@ -127,6 +127,9 @@ private:
 	// CombatStat.Damage 기준 최종 데미지 조회
 	bool TryGetFinalDamage(float& OutDamage) const;
 
+	// 현재 공격 파생 모드에 맞는 데미지 배율 계산
+	float GetCurrentAttackDamageMultiplier() const;
+
 	// 데미지 SetByCaller 적용
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 
@@ -305,6 +308,22 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
 
+	// 지상 콤보 단계별 데미지 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Damage", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	TArray<float> GroundComboDamageMultipliers = { 1.0f, 1.1f, 1.25f };
+
+	// 공중 내려찍기 데미지 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Damage", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float AirSlamDamageMultiplier = 1.2f;
+
+	// 대쉬공격 최소 차징 데미지 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Damage", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackMinDamageMultiplier = 1.0f;
+
+	// 대쉬공격 최대 차징 데미지 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Damage", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackMaxDamageMultiplier = 1.5f;
+
 	// 근접 무기 소켓 궤적을 따라 Sweep할 구체 반경
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float MeleeTraceRadius = 18.0f;
@@ -326,6 +345,9 @@ private:
 
 	// 차지 비율 계산용 대쉬 차지 시작 시각
 	double DashChargeStartTime = 0.0;
+
+	// 현재 대쉬공격 데미지 계산에 사용할 차지 비율
+	float CurrentDashAttackChargeRatio = 0.0f;
 
 	// 직전 근접 공격 판정 소켓 위치
 	TArray<FVector> PreviousMeleeTraceSocketLocations;
