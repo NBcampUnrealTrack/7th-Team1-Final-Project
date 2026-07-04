@@ -15,6 +15,7 @@
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSOutGameDataConfig.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Data/Reward/NSRewardDataRegistry.h"
 #include "NeoSanctum/Data/Reward/NSRewardTriggerData.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -25,7 +26,6 @@
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
-#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 // Project Settings > Asset Manager 등록 이름과 반드시 일치
 
@@ -422,6 +422,7 @@ void UNSDataSubsystem::OnCommonAssetsLoaded()
 	);
 	BuildPartRowCache();
 	BuildSlotRowCache();
+	CacheCommonUpgradeNodeRows();
 	StartLoadCommonReferenceAssets();
 }
 
@@ -1224,4 +1225,43 @@ const FNSPartSlotRow* UNSDataSubsystem::GetSlotRow(FGameplayTag Slot) const
 const TMap<FGameplayTag, FNSPartSlotRow>& UNSDataSubsystem::GetAllSlotRows() const
 {
 	return CachedSlotRowsBySlot;
+}
+
+// ================================================================
+// CommonUpgrade row 캐시
+// ================================================================
+void UNSDataSubsystem::CacheCommonUpgradeNodeRows()
+{
+	CachedCommonUpgradeNodeRows.Reset();
+
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	UDataTable* DT = CommonConfig ? CommonConfig->CommonUpgradeNodeTable.Get() : nullptr;
+	if (!DT)
+	{
+		NS_NET_LOG(this, LogNS, Warning, "CommonUpgradeNodeTable이 설정되지 않았습니다.");
+		return;
+	}
+
+	for (const FName& RowName : DT->GetRowNames())
+	{
+		const FString ContextString = TEXT("CacheCommonUpgradeNodeRows");
+		const FNSCommonUpgradeNodeRow* Row =
+			DT->FindRow<FNSCommonUpgradeNodeRow>(RowName, ContextString, false);
+		if (!Row)
+		{
+			continue;
+		}
+
+		CachedCommonUpgradeNodeRows.Add(RowName, *Row);
+	}
+}
+
+const FNSCommonUpgradeNodeRow* UNSDataSubsystem::GetCommonUpgradeNodeRow(FName NodeId) const
+{
+	return CachedCommonUpgradeNodeRows.Find(NodeId);
+}
+
+const TMap<FName, FNSCommonUpgradeNodeRow>& UNSDataSubsystem::GetAllCommonUpgradeNodeRows() const
+{
+	return CachedCommonUpgradeNodeRows;
 }

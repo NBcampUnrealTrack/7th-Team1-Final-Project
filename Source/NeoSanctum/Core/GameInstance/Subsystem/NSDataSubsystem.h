@@ -10,6 +10,7 @@
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Data/Combat/NSHitReactionData.h"
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSDataSubsystem.generated.h"
 
@@ -187,6 +188,11 @@ public:
 	// 필터 없이 전체 캐시 반환 (UI 목록 구성용)
 	const TMap<FPrimaryAssetId, FNSPartDefinitionRow>& GetAllPartRows() const;
 
+	// NodeId -> 공통 업그레이드 노드 Row 조회.
+	const FNSCommonUpgradeNodeRow* GetCommonUpgradeNodeRow(FName NodeId) const;
+	// 필터 없이 전체 캐시 반환 (업그레이드 콘솔 UI 노드 목록 구성용)
+	const TMap<FName, FNSCommonUpgradeNodeRow>& GetAllCommonUpgradeNodeRows() const;
+
 	const FNSPartSlotRow* GetSlotRow(FGameplayTag Slot) const;
 	const TMap<FGameplayTag, FNSPartSlotRow>& GetAllSlotRows() const;
 
@@ -345,11 +351,16 @@ private:
 	// DefId → row 캐시 (OnOutGameAssetsLoaded 시 빌드)
 	TMap<FPrimaryAssetId, FNSPartDefinitionRow> CachedPartRowsByDefId;
 
+	// NodeId -> row 캐시 (OnCommonAssetsLoaded 시 캐시 생성)
+	TMap<FName, FNSCommonUpgradeNodeRow> CachedCommonUpgradeNodeRows;
+
 	// Slot → row 캐시
 	TMap<FGameplayTag, FNSPartSlotRow> CachedSlotRowsBySlot;
 
 	void BuildPartRowCache();
 	void BuildSlotRowCache();
+
+	void CacheCommonUpgradeNodeRows();
 
 	// ================================================================
 	// 상태
