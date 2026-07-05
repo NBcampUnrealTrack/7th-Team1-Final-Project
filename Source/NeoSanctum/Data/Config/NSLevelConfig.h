@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "NeoSanctum/Core/GameFlow/NSStageObjectiveType.h"
 #include "NSLevelConfig.generated.h"
 
 class UNSAugmentRarityRuleSet;
@@ -39,4 +40,8 @@ public:
 	// 실제 사용 시점은 인런 월드 진입 후 스포너 초기화 단계.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Spawner")
 	TSoftObjectPtr<UDataTable> RangeSpawnerTable;
+	
+	// 스테이지의 목표
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Objective")
+	TArray<FNSStageObjective> ObjectivePool;
 };
