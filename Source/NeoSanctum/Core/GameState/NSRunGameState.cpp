@@ -19,6 +19,8 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, RunResultData);
 	DOREPLIFETIME(ANSRunGameState, CurrentRunConfig);
 	DOREPLIFETIME(ANSRunGameState, CurrentLevelConfig);
+	DOREPLIFETIME(ANSRunGameState, StagePhase);
+	DOREPLIFETIME(ANSRunGameState, ObjectiveState);
 }
 
 void ANSRunGameState::SetRunDataConfig(
@@ -107,6 +109,42 @@ void ANSRunGameState::SetRunEndPhase(ENSRunEndPhase NewPhase)
 void ANSRunGameState::NotifyRunVoteChanged()
 {
 	OnRunEndVoteChanged.Broadcast();
+}
+
+void ANSRunGameState::OnRep_ObjectiveState()
+{
+	OnStageObjectiveChanged.Broadcast();
+}
+
+void ANSRunGameState::SetObjectiveState(const FNSStageObjectiveState& NewState)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ObjectiveState = NewState;
+	ForceNetUpdate();
+	
+	// 호스트 수동 작동
+	OnRep_ObjectiveState();   
+}
+
+void ANSRunGameState::OnRep_StagePhase()
+{
+	OnStagePhaseChanged.Broadcast();
+}
+
+void ANSRunGameState::SetStagePhase(ENSStagePhase NewPhase)
+{
+	StagePhase = NewPhase;
+	ForceNetUpdate();
+
+	// 호스트는 OnRep이 안 불리므로 수동 실행
+	if (HasAuthority())
+	{
+		OnRep_StagePhase();
+	}
 }
 
 void ANSRunGameState::OnRep_RunResultData()

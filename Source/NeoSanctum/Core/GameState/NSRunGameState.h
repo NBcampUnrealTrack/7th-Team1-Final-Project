@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
+#include "NeoSanctum/Core/GameFlow/NSStageObjectiveType.h"
 #include "NSRunGameState.generated.h"
 
 class UNSLevelConfig;
@@ -15,6 +16,9 @@ class UNSProjectileManagerComponent;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndPhaseChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndVoteChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunDataConfigChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStagePhaseChanged);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStageObjectiveChanged);
+
 
 /**
  *
@@ -34,6 +38,19 @@ struct FNSRunResultData
 	float RunTimeSeconds =0.0f;
 	UPROPERTY(BlueprintReadOnly, Category = "RunEnd|Result")
 	int32 KillCount = 0;
+};
+
+// 복제용 압축 스냅샷
+USTRUCT(BlueprintType)
+struct FNSStageObjectiveState
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	ENSStageObjectiveType Type = ENSStageObjectiveType::KillCount;
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	int32 Current = 0;
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	int32 Target  = 0;
 };
 
 UCLASS()
@@ -81,7 +98,7 @@ public:
 
 	// true면 선택지 1개(귀환만), false면 2개
 	UPROPERTY(Replicated, BlueprintReadOnly, Category="RunEnd")
-	bool bIsClear = false;                               
+	bool bIsClear = false;           
 
 	// 현재 페이즈 종료 서버시각
 	UPROPERTY(ReplicatedUsing=OnRep_PhaseEndServerTime, BlueprintReadOnly, Category="RunEnd")
@@ -120,6 +137,30 @@ public:
 	
 	UPROPERTY(ReplicatedUsing = OnRep_RunResultData, BlueprintReadOnly, Category = "RunEnd|Result")
 	FNSRunResultData RunResultData;
+	
+	// UI(목표/보스게이트 표시) 바인딩용
+	UPROPERTY(BlueprintAssignable, Category = "Stage")
+	FNSOnStagePhaseChanged OnStagePhaseChanged;
+
+	UPROPERTY(ReplicatedUsing = OnRep_StagePhase, BlueprintReadOnly, Category = "Stage")
+	ENSStagePhase StagePhase = ENSStagePhase::Objective;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Stage")
+	FNSOnStageObjectiveChanged OnStageObjectiveChanged;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ObjectiveState, BlueprintReadOnly, Category = "Stage")
+	FNSStageObjectiveState ObjectiveState;
+
+	UFUNCTION()
+	void OnRep_ObjectiveState();
+	
+	void SetObjectiveState(const FNSStageObjectiveState& NewState);
+
+	UFUNCTION()
+	void OnRep_StagePhase();
+
+	// 서버 전용: 페이즈 전환 (호스트 OnRep 수동 호출 포함)
+	void SetStagePhase(ENSStagePhase NewPhase);
 	
 	UFUNCTION()
 	void OnRep_RunResultData();
