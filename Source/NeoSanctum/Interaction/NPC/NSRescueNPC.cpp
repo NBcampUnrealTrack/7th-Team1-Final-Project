@@ -31,15 +31,6 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 		return false;
 	}
 	
-	// 스테이즈 목표 달성 충족, 최초 구출 시에만 작동됨
-	if (AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
-	{
-		if (GameMode->Implements<UNSRunGameModeInterface>())
-		{
-			INSRunGameModeInterface::Execute_NotifyNPCRescued(GameMode, NPCId);
-		}
-	}
-	
 	// 이미 처리된 NPC면 상호작용은 받되 해금/보상은 다시 안 함
 	if (bRescued)
 	{
@@ -85,6 +76,15 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 		{
 			// 최초 구출하면 즉시 해금
 			ProgressComponent->UnlockNPC(NPCId);
+		}
+	}
+	
+	// 스테이즈 목표 달성 충족, 최초 구출 시에만 작동됨
+	if (AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
+	{
+		if (GameMode->Implements<UNSRunGameModeInterface>())
+		{
+			INSRunGameModeInterface::Execute_NotifyNPCRescued(GameMode, NPCId);
 		}
 	}
 	
