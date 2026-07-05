@@ -32,6 +32,9 @@ private:
 	UFUNCTION()
 	void OnApplyClicked();
 	
+	UFUNCTION()
+	void OnResetClicked();
+	
 	UGameUserSettings* GetGameUserSettings() const;
 	
 private:
@@ -42,9 +45,14 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> FrameRateComboBox;
 	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UComboBoxString> OverallQualityComboBox;
+	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCheckBox> VSyncCheckBox;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> ApplyButton;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> ResetButton;
+	
 	TArray<FIntPoint> SupportedResolutions;
 	TArray<float> FrameRateLimits;
 	

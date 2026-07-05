@@ -15,15 +15,22 @@ void UNSGraphicSettingWidget::NativeConstruct()
 	InitializeResolutionOptions();
 	InitializeWindowModeOptions();
 	InitializeFrameRateOptions();
+	InitializeQualityOptions();
 	SynchronizeSettings();
 	
 	ApplyButton->OnClicked.AddDynamic(
 		this,
 		&ThisClass::OnApplyClicked);
 	
+	ResetButton->OnClicked.AddDynamic(
+		this,
+		&ThisClass::OnResetClicked);
+}
+
 void UNSGraphicSettingWidget::NativeDestruct()
 {
 	ApplyButton->OnClicked.RemoveAll(this);
+	ResetButton->OnClicked.RemoveAll(this);
 	
 	Super::NativeDestruct();
 }
@@ -225,6 +232,24 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 	Settings->ApplySettings(false);
 	SynchronizeSettings();
 }
+
+void UNSGraphicSettingWidget::OnResetClicked()
+{
+	UGameUserSettings* Settings =
+		GetGameUserSettings();
+	
+	if (!Settings)
+	{
+		return;
+	}
+	
+	Settings->SetScreenResolution(
+		Settings->GetDesktopResolution());
+	Settings->SetFullscreenMode(
+		EWindowMode::WindowedFullscreen);
+	Settings->SetFrameRateLimit(0.0f);
+	Settings->SetOverallScalabilityLevel(3);
+	Settings->SetVSyncEnabled(false);
 
 	Settings->ApplySettings(false);
 	
