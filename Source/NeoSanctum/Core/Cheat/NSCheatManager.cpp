@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -269,6 +270,27 @@ void UNSCheatManager::Debug_UpgradeCommonNode(FString NodeId)
 
 	// 로컬 세이브 변경분을 서버 ProgressComponent에 반영
 	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
+}
+
+// 테스트용 치트 (인런 파츠 상점 테스트 — 임시재화 10000 즉시 지급, 드랍/줍기 없음)
+void UNSCheatManager::Debug_AddTempCurrency()
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
+	UNSCurrencyComponent* Currency = PS ? PS->GetCurrencyComponent() : nullptr;
+	if (!Currency)
+	{
+		return;
+	}
+
+	// 리슨서버/스탠드얼론 전용: CurrencyComponent는 서버 권한 API라 데디케이티드 서버의
+	// 원격 클라에서 입력하면 반영되지 않음 (PlayerState는 클라에 존재하지만 권위는 서버뿐)
+	Currency->AddTemp(0, 10000);
 }
 
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
