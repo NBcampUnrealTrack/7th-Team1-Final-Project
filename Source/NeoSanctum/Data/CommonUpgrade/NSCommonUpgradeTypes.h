@@ -62,11 +62,11 @@ struct FNSCommonUpgradeNodeRow : public FTableRowBase
 	float CostGrowthPercent = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CommonUpgrade|Display")
-	TSoftObjectPtr<UTexture2D> Icon;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CommonUpgrade|Display")
 	FText DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CommonUpgrade|Display", meta = (MultiLine = true))
 	FText Description;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|CommonUpgrade|Display")
+	TSoftObjectPtr<UTexture2D> Icon;
 };
