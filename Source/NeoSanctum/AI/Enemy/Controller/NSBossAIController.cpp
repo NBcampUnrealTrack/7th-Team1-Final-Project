@@ -4,6 +4,7 @@
 
 #include "BehaviorTree/BlackboardComponent.h"
 #include "GameFramework/Pawn.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "NeoSanctum/Combat/Component/NSBossModeComponent.h"
 #include "NeoSanctum/Combat/Component/NSBossTargetComponent.h"
@@ -96,10 +97,11 @@ void ANSBossAIController::Tick(float DeltaTime)
 
 	UpdateEnemyPhase();
 	SyncModeBlackboard();
-
+	
 	if (IsBossAIBlocked())
 	{
 		StopMovement();
+		SyncFlyingRotationTarget(nullptr); // @민재 추가 : 공중이동 관련 추적 회전 정지(현재 방향 유지)
 		ClearAttackState();
 		return;
 	}
@@ -114,6 +116,12 @@ void ANSBossAIController::Tick(float DeltaTime)
 	}
 
 	UpdateCurrentTargetBlackboard();
+	
+	// @민재 : 공중이동 관련 폰이 "지금 주시할까?"를 판정 → MotherShip은 페이즈2부터 true, 그 전엔 false(고정 포탑)
+	const ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(GetPawn());
+	const bool bFaceTarget = EnemyPawn && EnemyPawn->ShouldFaceCombatTarget();
+	SyncFlyingRotationTarget(bFaceTarget ? GetCurrentTargetActor() : nullptr);
+	
 	CanUseAnyAttackByDistance();
 }
 
