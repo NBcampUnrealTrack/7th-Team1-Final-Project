@@ -597,12 +597,23 @@ void UNSSessionSubsystem::JoinResolvedSession(const FOnlineSessionSearchResult& 
 		
 		return;
 	}
+	
 	if (bIsCreatingSession||
 		bIsDestroyingSession ||
 		bHostStartQueued || 
 		bSwitchingToHost)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Host 작업 중이므로 Join 거부"));
+		
+		return;
+	}
+	
+	if (SessionInterface->GetNamedSession(NAME_GameSession))
+	{
+		UE_LOG(LogTemp, Log, TEXT("기존 세션이 있으므로 Destroy 후 조인"));
+		PendingInviteResult = MakeShared<FOnlineSessionSearchResult>(SearchResult);
+		bJoinInviteAfterDestroy = true;
+		DestroySession();
 		
 		return;
 	}
