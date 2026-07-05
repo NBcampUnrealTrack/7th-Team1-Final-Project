@@ -19,13 +19,17 @@ void UNSStageManager::AddEnemyCount(int32 Count)
 	UE_LOG(LogTemp, Log, TEXT("적 수 추가: %d, 총: %d"), Count, RemainingEnemyCount);
 }
 
-void UNSStageManager::InitializeObjective(const FNSStageObjective& InObjective)
+void UNSStageManager::InitializeObjective(const FNSStageObjective& InObjective, int32 PlayerCount)
 {
 	CurrentObjective     = InObjective;
 	ObjectiveProgress    = 0;
 	bObjectiveComplete   = false;
 	bObjectiveInitialized = true;
 
+	// 킬 목표는 항상 인원수를 곱해 확정
+	const int32 SafeCount = FMath::Max(1, PlayerCount);
+	ResolvedTargetKillCount = InObjective.TargetKillCount * SafeCount;
+	
 	UE_LOG(LogTemp, Log, TEXT("목표 초기화 Type=%d, Target=%d"),
 		static_cast<int32>(CurrentObjective.Type), GetObjectiveTarget());
 }
@@ -57,7 +61,7 @@ int32 UNSStageManager::GetObjectiveTarget() const
 {
 	switch (CurrentObjective.Type)
 	{
-	case ENSStageObjectiveType::KillCount: return CurrentObjective.TargetKillCount;
+	case ENSStageObjectiveType::KillCount: return ResolvedTargetKillCount;
 	case ENSStageObjectiveType::RescueNPC: return 1;
 	default: 
 		UE_LOG(LogTemp, Warning, TEXT("목표가 들어오지 않음 ObjectiveType=%d"),
@@ -76,6 +80,7 @@ void UNSStageManager::CheckObjectiveComplete()
 	if (ObjectiveProgress >= GetObjectiveTarget())
 	{
 		bObjectiveComplete = true;
+		UE_LOG(LogTemp, Log, TEXT("[Objective] 목표 달성"));
 		OnObjectiveComplete.ExecuteIfBound();
 	}
 }

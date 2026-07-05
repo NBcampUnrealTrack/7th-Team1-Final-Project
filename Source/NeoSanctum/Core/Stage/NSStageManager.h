@@ -20,7 +20,7 @@ public:
 	void SetEnemyCount(int32 Count);
 	void AddEnemyCount(int32 Count);
 	
-	void InitializeObjective(const FNSStageObjective& InObjective);
+	void InitializeObjective(const FNSStageObjective& InObjective, int32 PlayerCount);
     void NotifyNPCRescued(FName RescuedNPCId);
 
 	// 적 처치 시 GameMode에서 호출
@@ -37,6 +37,9 @@ private:
 	
 	// 스테이지 남은 적 카운팅용
 	int32 RemainingEnemyCount = 0;
+	
+	// 확정된 목표치 저장용
+	int32 ResolvedTargetKillCount = 0;
 	
 	void CheckObjectiveComplete();
     
