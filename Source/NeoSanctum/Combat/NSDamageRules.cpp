@@ -80,8 +80,10 @@ bool NSDamageRules::CanApplyDamage(const AActor* SourceActor, const AActor* Targ
 bool NSDamageRules::IsAliveDamageableTarget(const UAbilitySystemComponent* TargetASC)
 {
 	// Dead 태그가 이미 있으면 Health 값과 무관하게 추가적인 데미지를 입힐 수 없도록 false
+	// @민재 : 무적 태그 있는 몬스터 데미지 입힐 수 없도록 추가 State_Invincible
 	if (!IsValid(TargetASC) ||
-		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
+		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead) ||
+		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Invincible))
 	{
 		return false;
 	}
