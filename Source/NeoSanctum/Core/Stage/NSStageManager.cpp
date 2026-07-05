@@ -19,28 +19,83 @@ void UNSStageManager::AddEnemyCount(int32 Count)
 	UE_LOG(LogTemp, Log, TEXT("적 수 추가: %d, 총: %d"), Count, RemainingEnemyCount);
 }
 
+void UNSStageManager::InitializeObjective(const FNSStageObjective& InObjective)
+{
+	CurrentObjective     = InObjective;
+	ObjectiveProgress    = 0;
+	bObjectiveComplete   = false;
+	bObjectiveInitialized = true;
+
+	UE_LOG(LogTemp, Log, TEXT("목표 초기화 Type=%d, Target=%d"),
+		static_cast<int32>(CurrentObjective.Type), GetObjectiveTarget());
+}
+
+void UNSStageManager::NotifyNPCRescued(FName RescuedNPCId)
+{
+	if (!bObjectiveInitialized || bObjectiveComplete)
+	{
+		return;
+	}
+	
+	if (CurrentObjective.Type != ENSStageObjectiveType::RescueNPC)
+	{
+		return;
+	}
+
+	// 지정 대상이 있으면 일치할 때만 인정
+	if (!CurrentObjective.TargetNPCId.IsNone()
+		&& CurrentObjective.TargetNPCId != RescuedNPCId)
+	{
+		return;
+	}
+
+	ObjectiveProgress = 1;
+	CheckObjectiveComplete();
+}
+
+int32 UNSStageManager::GetObjectiveTarget() const
+{
+	switch (CurrentObjective.Type)
+	{
+	case ENSStageObjectiveType::KillCount: return CurrentObjective.TargetKillCount;
+	case ENSStageObjectiveType::RescueNPC: return 1;
+	default:                               return 0;
+	}
+}
+
+void UNSStageManager::CheckObjectiveComplete()
+{
+	if (bObjectiveComplete)
+	{
+		return;
+	}
+	
+	if (ObjectiveProgress >= GetObjectiveTarget())
+	{
+		bObjectiveComplete = true;
+		OnObjectiveComplete.ExecuteIfBound();
+	}
+}
+
 void UNSStageManager::HandleEnemyKilled()
 {
 	RemainingEnemyCount = FMath::Max(0, RemainingEnemyCount - 1);
-	UE_LOG(LogTemp, Log, TEXT("남은 적: %d"), RemainingEnemyCount);
-	
-	// [임시] 누적 처치 수로 클리어 판정 (보스 구현 후 아래 원래 로직으로 복귀)
-	++CurrentKillCount;
-	UE_LOG(LogTemp, Log, TEXT("처치 수: %d / %d"), CurrentKillCount, KillsToClear);
-	if (CurrentKillCount >= KillsToClear)
+
+	if (!bObjectiveInitialized || bObjectiveComplete)
 	{
-		CheckStageClearCondition();
+		return;
+	}
+	
+	if (CurrentObjective.Type != ENSStageObjectiveType::KillCount)
+	{
+		return;
 	}
 
-	//if (RemainingEnemyCount <= 0)
-	//{
-	//	CheckStageClearCondition();
-	//}
-}
-
-void UNSStageManager::CheckStageClearCondition()
-{
-	OnStageCleared.ExecuteIfBound();
+	++ObjectiveProgress;
+	UE_LOG(LogTemp, Log, TEXT("[Objective] 처치 %d / %d"),
+		ObjectiveProgress, GetObjectiveTarget());
+	
+	CheckObjectiveComplete();
 }
 
 
