@@ -28,6 +28,7 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 
 	const bool bMaxLevel = CurrentLevel >= Row.MaxLevel;
 
+	// 레벨 0(아직 안 산 노드)이면 "현재 등급" 영역은 보여줄 내용이 없으므로 숨김.
 	if (IsValid(CurrentGradeContainer))
 	{
 		CurrentGradeContainer->SetVisibility(
@@ -44,6 +45,7 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 		);
 	}
 
+	// 최대 레벨이면 더 살 수 있는 다음 등급/구매 안내가 없으므로 숨김.
 	if (IsValid(NextGradeContainer))
 	{
 		NextGradeContainer->SetVisibility(

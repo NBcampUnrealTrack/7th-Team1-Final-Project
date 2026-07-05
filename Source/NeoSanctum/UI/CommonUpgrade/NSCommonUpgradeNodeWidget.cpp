@@ -19,6 +19,8 @@ void UNSCommonUpgradeNodeWidget::SetupEntry(FName InNodeId, const FNSCommonUpgra
 		}
 		else if (!Row.Icon.IsNull())
 		{
+			// DT_CommonUpgradeNode의 아이콘은 UNSDataSubsystem의 선로드 대상에 포함되지 않아
+			// 위젯이 직접 비동기 로드해 동기 로드 히치를 피함.
 			TWeakObjectPtr<UNSCommonUpgradeNodeWidget> WeakThis(this);
 			TSoftObjectPtr<UTexture2D> SoftIcon = Row.Icon;
 			IconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
