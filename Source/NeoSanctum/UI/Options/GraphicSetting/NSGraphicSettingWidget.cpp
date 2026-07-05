@@ -155,6 +155,11 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 		QualityLevel >= 0 && QualityLevel <= 3
 			? QualityLevel
 			: 3);
+	
+	VSyncCheckBox->SetIsChecked(
+		Settings->IsVSyncEnabled());
+}
+
 void UNSGraphicSettingWidget::OnApplyClicked()
 {
 	UGameUserSettings* Settings =
@@ -213,6 +218,10 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 		Settings->SetOverallScalabilityLevel(
 			QualityLevel);
 	}
+
+	Settings->SetVSyncEnabled(
+		VSyncCheckBox->IsChecked());
+
 	Settings->ApplySettings(false);
 	SynchronizeSettings();
 }

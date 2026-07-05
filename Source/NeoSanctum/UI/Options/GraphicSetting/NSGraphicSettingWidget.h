@@ -41,6 +41,9 @@ private:
 	TObjectPtr<UComboBoxString> WindowModeComboBox;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> FrameRateComboBox;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCheckBox> VSyncCheckBox;
+	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> ApplyButton;
 	TArray<FIntPoint> SupportedResolutions;
 	TArray<float> FrameRateLimits;
