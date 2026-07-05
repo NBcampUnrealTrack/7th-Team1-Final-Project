@@ -39,6 +39,11 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayEffect> CharacterBaseStatInitEffectClass;
 
+	// 공통 업그레이드 노드 레벨을 SetByCaller로 주입하는 초기화 GE.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
+		meta = (AssetBundles = "CommonData"))
+	TSoftClassPtr<UGameplayEffect> CommonUpgradeInitEffectClass;
+
 	// 파츠
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))
@@ -49,10 +54,10 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsSlotBaseStatTable;
 
-	// @원종 TODO: 추후 영구 스킬 트리 데이터가 생기면 여기에 추가.
-	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
-	// 	meta = (AssetBundles = "CommonData"))
-	// TSoftObjectPtr<UDataTable> PermanentSkillTreeTable;
+	// 영구 강화 DT.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> CommonUpgradeNodeTable;
 
 	// 사운드 테이블과 카테고리 볼륨 기본값을 함께 관리하는 공용 사운드 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 

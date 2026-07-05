@@ -71,6 +71,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Progression|Query")
 	int64 GetCommonCurrency() const;
 
+	// 공통 업그레이드 노드를 TargetLevel까지 올리는데 필요한 비용.
+	UFUNCTION(BlueprintPure, Category = "Progression|Query")
+	int64 GetCommonUpgradeCost(FName NodeId, int32 TargetLevel) const;
+
+	// 공통 업그레이드 노드의 최대 레벨.
+	UFUNCTION(BlueprintPure, Category = "Progression|Query")
+	int32 GetCommonUpgradeMaxLevel(FName NodeId) const;
+
 	UFUNCTION(BlueprintPure, Category = "Progression|Query")
 	int64 GetJobCurrency(FName CharacterId) const;
 

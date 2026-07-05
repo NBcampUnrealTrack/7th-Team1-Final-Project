@@ -13,7 +13,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
@@ -37,9 +36,11 @@
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -281,6 +282,7 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	if (HasAuthority())
 	{
 		ApplyInitialAttributeEffect();
+		ApplyCommonUpgradeAttributeEffect();
 		ApplyDefaultGameplayEffects();
 		GiveCharacterDataAbilities();
 		SpawnDefaultWeapon();
@@ -704,6 +706,124 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	if (EffectHandle.IsValid())
 	{
 		CharacterDataEffectHandles.Add(EffectHandle);
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
+{
+	if (!HasAuthority() || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	UNSPlayerProgressComponent* ProgressComponent = NSPlayerState ? NSPlayerState->GetProgressComponent() : nullptr;
+
+	if (!ProgressComponent)
+	{
+		return;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> UpgradeEffectClass = DataSubsystem->GetCommonUpgradeInitEffectClass();
+	if (!UpgradeEffectClass)
+	{
+		return;
+	}
+
+	// NodeId별 레벨을 Attribute 태그 기준으로 합산 (Add는 그대로, Multiply는 %로 누적)
+	TMap<FGameplayTag, float> AddSums;
+	TMap<FGameplayTag, float> MultiplyPercentSums;
+
+	for (const TPair<FName, int32>& Pair : ProgressComponent->GetCommonSkillLevels())
+	{
+		const FNSCommonUpgradeNodeRow* Row = DataSubsystem->GetCommonUpgradeNodeRow(Pair.Key);
+		if (!Row || Pair.Value <= 0)
+		{
+			continue;
+		}
+
+		const float Contribution = Row->ValuePerLevel * static_cast<float>(Pair.Value);
+
+		if (Row->Operation == ENSCombatStatModifierOperation::Add)
+		{
+			AddSums.FindOrAdd(Row->AttributeTag) += Contribution;
+		}
+		else
+		{
+			MultiplyPercentSums.FindOrAdd(Row->AttributeTag) += Contribution;
+		}
+	}
+
+	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		NSAbilitySystemComponent->MakeOutgoingSpec(UpgradeEffectClass, 1.0f, EffectContext);
+
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+
+	NSCombatStatAttribute::InitializeNeutralSetByCallers(SpecHandle);
+
+	for (const TPair<FGameplayTag, float>& Pair : AddSums)
+	{
+		const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Pair.Key);
+		if (Mapping && Mapping->AddSetByCallerTag.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(Mapping->AddSetByCallerTag, Pair.Value);
+		}
+	}
+
+	for (const TPair<FGameplayTag, float>& Pair : MultiplyPercentSums)
+	{
+		const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Pair.Key);
+		if (Mapping && Mapping->MultiplySetByCallerTag.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(Mapping->MultiplySetByCallerTag, 1.0f + Pair.Value * 0.01f);
+		}
+	}
+
+	// MaxHealth/MaxShield가 늘어난 만큼 Current도 같이 올리기 위한 사전 스냅샷
+	const float OldMaxHealth =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
+	const float OldMaxShield =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+	const FActiveGameplayEffectHandle EffectHandle =
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+
+	if (EffectHandle.IsValid())
+	{
+		CharacterDataEffectHandles.Add(EffectHandle);
+	}
+
+	const float NewMaxHealth =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
+	const float NewMaxShield =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+	if (NewMaxHealth > OldMaxHealth)
+	{
+		const float CurrentHealth =
+			NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
+		NSAbilitySystemComponent->SetNumericAttributeBase(
+			UNSBaseAttributeSet::GetHealthAttribute(), CurrentHealth + (NewMaxHealth - OldMaxHealth));
+	}
+
+	if (NewMaxShield > OldMaxShield)
+	{
+		const float CurrentShield =
+			NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
+		NSAbilitySystemComponent->SetNumericAttributeBase(
+			UNSPlayerAttributeSet::GetShieldAttribute(), CurrentShield + (NewMaxShield - OldMaxShield));
 	}
 }
 

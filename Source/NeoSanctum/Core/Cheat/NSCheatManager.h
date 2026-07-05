@@ -76,6 +76,10 @@ public:
 	UFUNCTION(Exec)
 	void Debug_SetCommonCurrency();
 
+	// TODO(원종): 테스트용 임시 코드 (공용 업그레이드 테스트 - UI 연결 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_UpgradeCommonNode(FString NodeId);
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };

@@ -11,81 +11,16 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 
 namespace
 {
-	struct FNSAugmentAttributeEffectMapping
-	{
-		FGameplayTag StatTag;
-		FGameplayTag AddSetByCallerTag;
-		FGameplayTag MultiplySetByCallerTag;
-	};
-
-	// DT Row의 StatTag / Operation을 공용 Attribute GE의 SetByCaller 태그로 변환하는 테이블.
-	// Count 계열처럼 Multiply를 허용하지 않는 Stat은 MultiplySetByCallerTag를 비워 둠.
-	const TArray<FNSAugmentAttributeEffectMapping>& GetAttributeEffectMappings()
-	{
-		static const TArray<FNSAugmentAttributeEffectMapping> Mappings =
-		{
-			{NSGameplayTags::CombatStat_Damage, NSGameplayTags::Effect_SetByCaller_BaseDamage_Add, NSGameplayTags::Effect_SetByCaller_BaseDamage_Multiply},
-			{ NSGameplayTags::CombatStat_CritChance, NSGameplayTags::Effect_SetByCaller_CritChance_Add, NSGameplayTags::Effect_SetByCaller_CritChance_Multiply },
-			{NSGameplayTags::CombatStat_CritDamage, NSGameplayTags::Effect_SetByCaller_CritDamage_Add, NSGameplayTags::Effect_SetByCaller_CritDamage_Multiply},
-			{NSGameplayTags::CombatStat_MoveSpeed, NSGameplayTags::Effect_SetByCaller_MoveSpeed_Add, NSGameplayTags::Effect_SetByCaller_MoveSpeed_Multiply},
-			{ NSGameplayTags::CombatStat_MaxHealth, NSGameplayTags::Effect_SetByCaller_MaxHealth_Add, NSGameplayTags::Effect_SetByCaller_MaxHealth_Multiply },
-			{ NSGameplayTags::CombatStat_MaxShield, NSGameplayTags::Effect_SetByCaller_MaxShield_Add, NSGameplayTags::Effect_SetByCaller_MaxShield_Multiply },
-			{ NSGameplayTags::CombatStat_Defense, NSGameplayTags::Effect_SetByCaller_Defense_Add, NSGameplayTags::Effect_SetByCaller_Defense_Multiply },
-			{ NSGameplayTags::CombatStat_MaxAmmo, NSGameplayTags::Effect_SetByCaller_MaxAmmo_Add, NSGameplayTags::Effect_SetByCaller_MaxAmmo_Multiply },
-			{ NSGameplayTags::CombatStat_ShieldRechargeRate, NSGameplayTags::Effect_SetByCaller_ShieldRechargeRate_Add, NSGameplayTags::Effect_SetByCaller_ShieldRechargeRate_Multiply },
-			{ NSGameplayTags::CombatStat_ShieldRechargeCooldown, NSGameplayTags::Effect_SetByCaller_ShieldRechargeCooldown_Add, NSGameplayTags::Effect_SetByCaller_ShieldRechargeCooldown_Multiply },
-			{ NSGameplayTags::CombatStat_MaxDashCount, NSGameplayTags::Effect_SetByCaller_MaxDashCount_Add, FGameplayTag() },
-			{ NSGameplayTags::CombatStat_DashRegenRate, NSGameplayTags::Effect_SetByCaller_DashRegenRate_Add, NSGameplayTags::Effect_SetByCaller_DashRegenRate_Multiply },
-			{ NSGameplayTags::CombatStat_MaxSkill1Count, NSGameplayTags::Effect_SetByCaller_MaxSkill1Count_Add, FGameplayTag() },
-			{ NSGameplayTags::CombatStat_MaxSkill2Count, NSGameplayTags::Effect_SetByCaller_MaxSkill2Count_Add, FGameplayTag() },
-			{ NSGameplayTags::CombatStat_MaxSkill3Count, NSGameplayTags::Effect_SetByCaller_MaxSkill3Count_Add, FGameplayTag() },
-		};
-
-		return Mappings;
-	}
-
-	const FNSAugmentAttributeEffectMapping* FindAttributeEffectMapping(FGameplayTag StatTag)
-	{
-		return GetAttributeEffectMappings().FindByPredicate(
-			[StatTag](const FNSAugmentAttributeEffectMapping& Mapping)
-			{
-				return Mapping.StatTag == StatTag;
-			}
-		);
-	}
-
-	// 공용 GE에는 여러 Attribute Modifier가 항상 들어 있으므로 모든 SetByCaller에 중립값을 먼저 채움.
-	// Add는 0, Multiply는 1을 기본값으로 넣어 Row가 없는 Modifier가 실제 수치에 영향을 주지 않게 함.
-	void InitializeNeutralAttributeSetByCallers(FGameplayEffectSpecHandle& SpecHandle)
-	{
-		if (!SpecHandle.IsValid())
-		{
-			return;
-		}
-
-		for (const FNSAugmentAttributeEffectMapping& Mapping : GetAttributeEffectMappings())
-		{
-			if (Mapping.AddSetByCallerTag.IsValid())
-			{
-				SpecHandle.Data->SetSetByCallerMagnitude(Mapping.AddSetByCallerTag, 0.0f);
-			}
-
-			if (Mapping.MultiplySetByCallerTag.IsValid())
-			{
-				SpecHandle.Data->SetSetByCallerMagnitude(Mapping.MultiplySetByCallerTag, 1.0f);
-			}
-		}
-	}
-
 	bool TryGetAttributeSetByCallerTag(const FNSAugmentDefinitionRow& Row, FGameplayTag& OutSetByCallerTag)
 	{
-		const FNSAugmentAttributeEffectMapping* Mapping = FindAttributeEffectMapping(Row.StatTag);
+		const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Row.StatTag);
 		if (!Mapping)
 		{
 			return false;
@@ -328,7 +263,7 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	const bool bHasAttributeEffectRow = DefinitionRows.ContainsByPredicate(
 		[](const FNSAugmentDefinitionRow& Row)
 		{
-			return FindAttributeEffectMapping(Row.StatTag) != nullptr;
+			return NSCombatStatAttribute::FindMapping(Row.StatTag) != nullptr;
 		}
 	);
 
@@ -401,13 +336,13 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 		return;
 	}
 
-	InitializeNeutralAttributeSetByCallers(SpecHandle);
+	NSCombatStatAttribute::InitializeNeutralSetByCallers(SpecHandle);
 	
 	bool bAppliedAnyPayload = false;
 
 	for (const FNSAugmentDefinitionRow& Row : DefinitionRows)
 	{
-		const bool bHasAttributeMapping = FindAttributeEffectMapping(Row.StatTag) != nullptr;
+		const bool bHasAttributeMapping = NSCombatStatAttribute::FindMapping(Row.StatTag) != nullptr;
 
 		FGameplayTag SetByCallerTag;
 		if (!TryGetAttributeSetByCallerTag(Row, SetByCallerTag))
@@ -614,7 +549,7 @@ UAbilitySystemComponent* UNSAugmentInventoryComponent::GetOwnerASC() const
 
 bool UNSAugmentInventoryComponent::IsAttributeStatTag(const FGameplayTag& StatTag)
 {
-	return FindAttributeEffectMapping(StatTag) != nullptr;
+	return NSCombatStatAttribute::FindMapping(StatTag) != nullptr;
 }
 
 int32 UNSAugmentInventoryComponent::GetLegendaryCount() const

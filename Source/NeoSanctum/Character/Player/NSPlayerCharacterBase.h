@@ -95,6 +95,7 @@ protected:
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();
+	void ApplyCommonUpgradeAttributeEffect();
 	void ApplyDefaultGameplayEffects();
 	
 	void GiveCharacterDataAbilities();
