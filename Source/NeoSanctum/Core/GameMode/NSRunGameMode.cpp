@@ -746,12 +746,27 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 
 void ANSRunGameMode::InitializeStage()
 {
-	if (!HasAuthority() || !NSStageManager)
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this); 
+	// 플레이어 스폰 + RunConfig/LevelConfig를 GameState에 복제
+	RespawnAllPlayers();
+
+	// 목표 풀에서 랜덤 1개 선택 + 목표,페이즈 초기화
+	InitializeObjectiveInternal();
+}
+
+void ANSRunGameMode::InitializeObjectiveInternal()
+{
+	if (!NSStageManager)
+	{
+		return;
+	}
+
+	// 이미 로드된 현재 스테이지 LevelConfig에서 목표 풀 읽기
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
 	const UNSLevelConfig* LevelConfig = Data ? Data->GetCurrentRunLevelConfig() : nullptr;
 	if (!LevelConfig || LevelConfig->ObjectivePool.Num() == 0)
 	{
@@ -760,14 +775,19 @@ void ANSRunGameMode::InitializeStage()
 		return;
 	}
 
-	const int32 Index = FMath::RandRange(0, LevelConfig->ObjectivePool.Num() - 1);
+	// 풀에서 랜덤 1개 선택
+	const int32 Index = FMath::RandRange(
+		0, 
+		LevelConfig->ObjectivePool.Num() - 1);
 	NSStageManager->InitializeObjective(LevelConfig->ObjectivePool[Index]);
 
+	// 스테이지 진입 페이즈 명시
 	if (ANSRunGameState* RunGS = GetGameState<ANSRunGameState>())
 	{
-		RunGS->SetStagePhase(ENSStagePhase::Objective); 
+		RunGS->SetStagePhase(ENSStagePhase::Objective);
 	}
-	
+
+	// 초기 목표 상태를 UI용으로 복제
 	PushObjectiveStateToGameState();
 }
 

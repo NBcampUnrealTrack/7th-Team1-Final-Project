@@ -52,7 +52,7 @@ public:
 	virtual void SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice) override;
 	virtual void CancelRunChoice_Implementation(APlayerController* PlayerController) override;
 	
-	// 룸 생성 완료시 호출
+	// InitializeStage에서 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void RespawnAllPlayers();
 	
@@ -103,7 +103,11 @@ private:
 	// 인런 월드가 열린 뒤, GameFlow가 보관환 데이터 구성을 RunGameState에 복제.
 	void SyncRunDataConfigToGameState();
 	
+	// 현재 목표 진행 상태를 GameState에 복제(UI 표시용)
 	void PushObjectiveStateToGameState();
+	
+	// 목표 풀에서 랜덤 선택 후 StageManager/GameState 초기화
+	void InitializeObjectiveInternal();
 	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
