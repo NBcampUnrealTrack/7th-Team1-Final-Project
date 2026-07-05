@@ -5,31 +5,14 @@
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/System/Minimap/NSMinimapTypes.h"
 #include "NSMinimapCaptureActor.generated.h"
 
 class USceneCaptureComponent2D;
+class UDataTable;
 class UTexture2D;
 class ULevelStreamingDynamic;
 class UTextureRenderTarget2D;
-
-//미니맵 캡처 층 설정
-USTRUCT(BlueprintType)
-struct FNSMinimapCaptureLayerConfig
-{
-	GENERATED_BODY()
-
-	//층 식별 번호
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minimap")
-	int32 LayerIndex = 0;
-
-	//층 하단 높이
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minimap")
-	float FloorZ = 0.0f;
-
-	//층 상단 높이
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Minimap")
-	float CeilingZ = 3000.0f;
-};
 
 UCLASS()
 class NEOSANCTUM_API ANSMinimapCaptureActor : public AActor
@@ -70,6 +53,9 @@ private:
 
 	// DungeonGenerator 자동 탐색
 	void TryAutoBindDungeonGenerator();
+
+	// DataTable 기반 층 설정 적용
+	void ApplyLayerConfig();
 
 	// 던전 룸 로딩 대기 시작
 	void BeginWaitingForDungeonRooms();
@@ -152,6 +138,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true"))
 	bool bAutoFindDungeonGenerator = true;
 
+	// 스테이지별 층 설정 테이블
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Config", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UDataTable> LayerConfigTable;
+
+	// 적용할 층 설정 RowName
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Config", meta = (AllowPrivateAccess = "true"))
+	FName LayerConfigRowName;
+
 	// 미니맵 텍스처 해상도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true", ClampMin = "128", ClampMax = "4096"))
 	int32 RenderTargetSize = 1024;
@@ -183,10 +177,6 @@ private:
 	// NavMesh 외곽선 두께 픽셀
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|NavMesh", meta = (AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "32"))
 	int32 NavMeshOutlineThicknessPixels = 3;
-
-	// 캡처할 층 목록
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Layers", meta = (AllowPrivateAccess = "true"))
-	TArray<FNSMinimapCaptureLayerConfig> CaptureLayers;
 
 	// 던전 경계 여유 범위
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
@@ -283,6 +273,10 @@ private:
 	// NavMesh 기반 생성 텍스처 목록
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> NavMeshLayerTextures;
+
+	// DataTable에서 적용된 캡처 층 목록
+	UPROPERTY(Transient)
+	TArray<FNSMinimapCaptureLayerConfig> ActiveCaptureLayers;
 
 	// 로드 이벤트를 구독한 룸 인스턴스 목록
 	UPROPERTY(Transient)

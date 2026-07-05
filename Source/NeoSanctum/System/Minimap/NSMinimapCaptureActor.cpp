@@ -6,6 +6,7 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "DungeonGeneratorBase.h"
 #include "DungeonGraph.h"
+#include "Engine/DataTable.h"
 #include "Engine/Level.h"
 #include "Engine/LevelStreamingDynamic.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -46,6 +47,8 @@ ANSMinimapCaptureActor::ANSMinimapCaptureActor()
 void ANSMinimapCaptureActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ApplyLayerConfig();
 
 	//던전 생성기 바인딩 준비
 	if (bAutoFindDungeonGenerator && !DungeonGeneratorActor)
@@ -138,6 +141,8 @@ void ANSMinimapCaptureActor::CaptureFromCurrentActorTransform(float ManualOrthoW
 
 void ANSMinimapCaptureActor::CaptureDungeonMinimap()
 {
+	ApplyLayerConfig();
+
 	FBox DungeonBounds(ForceInit);
 	if (!BuildDungeonWorldBounds(DungeonBounds))
 	{
@@ -254,15 +259,25 @@ void ANSMinimapCaptureActor::ExecutePreparedCapture()
 	}
 
 	//설정에 따른 캡처 방식 선택
-	if (bUseLayeredCapture && !CaptureLayers.IsEmpty())
+	if (bUseLayeredCapture)
 	{
-		if (bUseNavMeshTextureCapture)
+		if (ActiveCaptureLayers.IsEmpty())
 		{
-			CapturePreparedNavMeshLayers();
+			UE_LOG(LogNS, Warning, TEXT("미니맵 다층 캡처 건너뜀: 적용된 층 설정이 없음. 캡처=%s 테이블=%s Row=%s"),
+				*GetNameSafe(this),
+				*GetNameSafe(LayerConfigTable),
+				*LayerConfigRowName.ToString());
 		}
 		else
 		{
-			CapturePreparedLayers();
+			if (bUseNavMeshTextureCapture)
+			{
+				CapturePreparedNavMeshLayers();
+			}
+			else
+			{
+				CapturePreparedLayers();
+			}
 		}
 	}
 	else
@@ -435,6 +450,39 @@ void ANSMinimapCaptureActor::TryAutoBindDungeonGenerator()
 	}
 
 	UE_LOG(LogNS, Warning, TEXT("미니맵 캡처 실패: 현재 월드에서 DungeonGenerator를 찾지 못함. 캡처=%s"), *GetNameSafe(this));
+}
+
+void ANSMinimapCaptureActor::ApplyLayerConfig()
+{
+	ActiveCaptureLayers.Reset();
+
+	if (!LayerConfigTable || LayerConfigRowName.IsNone())
+	{
+		return;
+	}
+
+	if (LayerConfigTable->GetRowStruct() != FNSMinimapLayerConfigRow::StaticStruct())
+	{
+		UE_LOG(LogNS, Warning, TEXT("미니맵 층 설정 테이블의 Row Struct가 올바르지 않음. 캡처=%s 테이블=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(LayerConfigTable));
+		return;
+	}
+
+	const FNSMinimapLayerConfigRow* ConfigRow = LayerConfigTable->FindRow<FNSMinimapLayerConfigRow>(
+		LayerConfigRowName,
+		TEXT("MinimapLayerConfig"),
+		false);
+	if (!ConfigRow)
+	{
+		UE_LOG(LogNS, Warning, TEXT("미니맵 층 설정 Row를 찾지 못함. 캡처=%s 테이블=%s Row=%s"),
+			*GetNameSafe(this),
+			*GetNameSafe(LayerConfigTable),
+			*LayerConfigRowName.ToString());
+		return;
+	}
+
+	ActiveCaptureLayers = ConfigRow->CaptureLayers;
 }
 
 void ANSMinimapCaptureActor::BeginWaitingForDungeonRooms()
@@ -784,9 +832,9 @@ void ANSMinimapCaptureActor::EnsureLayerRenderTargets()
 	}
 
 	const int32 ClampedRenderTargetSize = FMath::Clamp(RenderTargetSize, 128, 4096);
-	LayerRenderTargets.SetNum(CaptureLayers.Num());
+	LayerRenderTargets.SetNum(ActiveCaptureLayers.Num());
 
-	for (int32 LayerArrayIndex = 0; LayerArrayIndex < CaptureLayers.Num(); ++LayerArrayIndex)
+	for (int32 LayerArrayIndex = 0; LayerArrayIndex < ActiveCaptureLayers.Num(); ++LayerArrayIndex)
 	{
 		UTextureRenderTarget2D* ExistingRenderTarget = LayerRenderTargets[LayerArrayIndex];
 		if (ExistingRenderTarget && ExistingRenderTarget->SizeX == ClampedRenderTargetSize && ExistingRenderTarget->SizeY == ClampedRenderTargetSize)
@@ -795,7 +843,7 @@ void ANSMinimapCaptureActor::EnsureLayerRenderTargets()
 		}
 
 		//층별 캡처 렌더 타겟 생성
-		const FName RenderTargetName = *FString::Printf(TEXT("MinimapLayer_%d"), CaptureLayers[LayerArrayIndex].LayerIndex);
+		const FName RenderTargetName = *FString::Printf(TEXT("MinimapLayer_%d"), ActiveCaptureLayers[LayerArrayIndex].LayerIndex);
 		UTextureRenderTarget2D* NewRenderTarget = NewObject<UTextureRenderTarget2D>(this, RenderTargetName);
 		NewRenderTarget->ClearColor = ClearColor;
 		NewRenderTarget->InitCustomFormat(ClampedRenderTargetSize, ClampedRenderTargetSize, PF_B8G8R8A8, false);
@@ -924,7 +972,7 @@ void ANSMinimapCaptureActor::CapturePreparedLayers()
 {
 	//렌더 타겟 기반 층별 캡처 준비
 	EnsureLayerRenderTargets();
-	if (!SceneCaptureComponent || LayerRenderTargets.Num() != CaptureLayers.Num())
+	if (!SceneCaptureComponent || LayerRenderTargets.Num() != ActiveCaptureLayers.Num())
 	{
 		return;
 	}
@@ -932,13 +980,13 @@ void ANSMinimapCaptureActor::CapturePreparedLayers()
 	RestoreRoomActorVisibilityAfterCapture();
 
 	TArray<FNSMinimapLayer> CapturedLayers;
-	CapturedLayers.Reserve(CaptureLayers.Num());
+	CapturedLayers.Reserve(ActiveCaptureLayers.Num());
 
 	const FVector CaptureCenter = PendingCaptureBounds.GetCenter();
 	//층 설정 순회 캡처
-	for (int32 LayerArrayIndex = 0; LayerArrayIndex < CaptureLayers.Num(); ++LayerArrayIndex)
+	for (int32 LayerArrayIndex = 0; LayerArrayIndex < ActiveCaptureLayers.Num(); ++LayerArrayIndex)
 	{
-		const FNSMinimapCaptureLayerConfig& LayerConfig = CaptureLayers[LayerArrayIndex];
+		const FNSMinimapCaptureLayerConfig& LayerConfig = ActiveCaptureLayers[LayerArrayIndex];
 		UTextureRenderTarget2D* LayerRenderTarget = LayerRenderTargets[LayerArrayIndex];
 		if (!LayerRenderTarget)
 		{
@@ -982,13 +1030,13 @@ void ANSMinimapCaptureActor::CapturePreparedLayers()
 void ANSMinimapCaptureActor::CapturePreparedNavMeshLayers()
 {
 	TArray<FNSMinimapLayer> CapturedLayers;
-	CapturedLayers.Reserve(CaptureLayers.Num());
-	NavMeshLayerTextures.SetNum(CaptureLayers.Num());
+	CapturedLayers.Reserve(ActiveCaptureLayers.Num());
+	NavMeshLayerTextures.SetNum(ActiveCaptureLayers.Num());
 
 	//NavMesh 텍스처 층별 생성
-	for (int32 LayerArrayIndex = 0; LayerArrayIndex < CaptureLayers.Num(); ++LayerArrayIndex)
+	for (int32 LayerArrayIndex = 0; LayerArrayIndex < ActiveCaptureLayers.Num(); ++LayerArrayIndex)
 	{
-		const FNSMinimapCaptureLayerConfig& LayerConfig = CaptureLayers[LayerArrayIndex];
+		const FNSMinimapCaptureLayerConfig& LayerConfig = ActiveCaptureLayers[LayerArrayIndex];
 		UTexture2D* LayerTexture = BuildNavMeshTextureForLayer(LayerConfig, PendingCaptureBounds);
 		if (!LayerTexture)
 		{
