@@ -59,7 +59,10 @@ int32 UNSStageManager::GetObjectiveTarget() const
 	{
 	case ENSStageObjectiveType::KillCount: return CurrentObjective.TargetKillCount;
 	case ENSStageObjectiveType::RescueNPC: return 1;
-	default:                               return 0;
+	default: 
+		UE_LOG(LogTemp, Warning, TEXT("목표가 들어오지 않음 ObjectiveType=%d"),
+	   static_cast<int32>(CurrentObjective.Type));
+		return 0;
 	}
 }
 
