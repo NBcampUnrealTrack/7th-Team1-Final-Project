@@ -450,9 +450,9 @@ void ANSBossMotherShip::DrainAllPlayerShields(float RemoveRatio)
 	if (!HasAuthority()) return;
 	ANSRunGameState* RunGameState = Cast<ANSRunGameState>(GetWorld()->GetGameState());
 	if (!RunGameState) return;
-	for (const TObjectPtr<APlayerState>& PlayerState : RunGameState->PlayerArray)
+	for (const TObjectPtr<APlayerState>& CurrentPlayerState : RunGameState->PlayerArray)
 	{
-		ANSPlayerState* NSPS = Cast<ANSPlayerState>(PlayerState);
+		ANSPlayerState* NSPS = Cast<ANSPlayerState>(CurrentPlayerState);
 		if (!NSPS) continue;
 		
 		UNSPlayerAttributeSet* PlayerAttributeSet = NSPS->GetPlayerAttributeSet();
