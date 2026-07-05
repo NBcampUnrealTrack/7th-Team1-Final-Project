@@ -1,25 +1,25 @@
 ﻿// Copyright 2026 One Team. All rights reserved.
 
 
-#include "NSBossaControlDevice.h"
+#include "NSBossControlDevice.h"
 
 
 // Sets default values
-ANSBossaControlDevice::ANSBossaControlDevice()
+ANSBossControlDevice::ANSBossControlDevice()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
 
 // Called when the game starts or when spawned
-void ANSBossaControlDevice::BeginPlay()
+void ANSBossControlDevice::BeginPlay()
 {
 	Super::BeginPlay();
 	
 }
 
 // Called every frame
-void ANSBossaControlDevice::Tick(float DeltaTime)
+void ANSBossControlDevice::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 }

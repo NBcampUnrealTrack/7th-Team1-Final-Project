@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "NSDestructibleObjectBase.h"
-#include "NSBossaControlDevice.generated.h"
+#include "NSBossControlDevice.generated.h"
 
 UCLASS()
-class NEOSANCTUM_API ANSBossaControlDevice : public ANSDestructibleObjectBase
+class NEOSANCTUM_API ANSBossControlDevice : public ANSDestructibleObjectBase
 {
 	GENERATED_BODY()
 
 public:
 	// Sets default values for this actor's properties
-	ANSBossaControlDevice();
+	ANSBossControlDevice();
 
 protected:
 	// Called when the game starts or when spawned
