@@ -21,11 +21,11 @@ struct FNSSTTask_ExecuteBossAbilityInstanceData
 	GENERATED_BODY()
 
 	// 지정 공격만 실행할 때 사용하는 AttackId. None이면 조건 기반 자동 선택 사용
-	UPROPERTY(EditAnywhere, Category = "Input")
+	UPROPERTY(EditAnywhere, Category = "Config")
 	FName FixedAttackId = NAME_None;
 
 	// StateTree 상태가 중간에 종료될 때 실행 중인 Ability를 취소할지 여부
-	UPROPERTY(EditAnywhere, Category = "Input")
+	UPROPERTY(EditAnywhere, Category = "Config")
 	bool bCancelAbilityOnExit = true;
 
 	// 이번 Task가 요청한 ExecutorComponent
