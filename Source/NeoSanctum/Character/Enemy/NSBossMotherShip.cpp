@@ -8,9 +8,12 @@
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h"
 #include "NeoSanctum/AI/Manager/NSDronePoolManager.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
+#include "NeoSanctum/Interaction/Prop/NSBossControlDevice.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 ANSBossMotherShip::ANSBossMotherShip()
 {
@@ -27,24 +30,7 @@ void ANSBossMotherShip::BeginPlay()
 	DronePool = NewObject<UNSDronePoolManager>(this);
 	StartDronePattern();
 	// TODO : 이상적으로는 '전투 진입' 콜백에서 호출. 전투 트리거가 생기면 그쪽으로 옮길 것.
-	// === 임시 진단 (테스트 후 제거) ===
-	if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
-	{
-		const FGameplayAbilitySpec* Spec = MotherShipASC->FindAbilitySpecFromClass(SpawnDroneAbilityClass);
-		if (!Spec)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[Summon] 어빌리티 미부여! EnemyData의 DefaultAbilities/AttackTable 확인"));
-		}
-		else
-		{
-			FGameplayTagContainer FailTags;
-			const bool bCan = Spec->Ability->CanActivateAbility(
-				Spec->Handle, MotherShipASC->AbilityActorInfo.Get(), nullptr, nullptr, &FailTags);
-			UE_LOG(LogTemp, Warning, TEXT("[Summon] Granted / CanActivate=%d / Fail=[%s]"),
-				bCan, *FailTags.ToStringSimple());
-		}
-	}
-	// === 임시 끝 ===
+	InitControlDevices();
 }
 
 #pragma region SpawnDronePattern
@@ -275,8 +261,6 @@ void ANSBossMotherShip::ReturnDroneAfterDelay(TWeakObjectPtr<ANSEnemyDrone> Dron
 	}
 }
 
-#pragma endregion
-
 int32 ANSBossMotherShip::GetCurrentMaxDrones() const
 {
 	if (GetPhaseComponent())
@@ -350,4 +334,92 @@ ANSEnemyDrone* ANSBossMotherShip::AcquireDroneFromPool(const FTransform& SpawnTr
 	return DronePool->GetPooledDrone(DroneClass, DroneEnemyData, SpawnTransform.GetLocation(), SpawnTransform.Rotator(), Scale);
 }
 
+#pragma endregion
 
+#pragma region ControlDevice
+
+void ANSBossMotherShip::InitControlDevices()
+{
+	if (!HasAuthority()) return;
+	
+	UNSEnemyPartComponent* MotherShipPartComponent = GetPartComponent();
+	if (!MotherShipPartComponent) return;
+	
+	ControlDevices.Reset();
+	AliveControlDeviceCount = 0;
+	bControlDevicesCleared = false;
+	
+	for (const FName& PartId : ControlDevicePartIds)
+	{
+		AActor* PartActor = MotherShipPartComponent->FindSpawnedPartActor(PartId);
+		if (!PartActor)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ControlDevice] PartId=%s 스폰 액터 없음 (DT_EnemyParts 확인)"), *PartId.ToString());
+			continue;
+		}
+		
+		ANSBossControlDevice* ControlDevice = Cast<ANSBossControlDevice>(PartActor);
+		if (!ControlDevice)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ControlDevice] PartId=%s 가 ANSBossControlDevice 아님 (BP 부모/ActorClass 확인)"), *PartId.ToString());
+			continue;
+		}
+		
+		if (ControlDevices.Contains(ControlDevice)) continue;
+		
+		ControlDevices.Add(ControlDevice);
+		AliveControlDeviceCount++;
+		
+		ControlDevice->OnControlDeviceDestroyed.RemoveAll(this);
+		ControlDevice->OnControlDeviceDestroyed.AddUObject(this, &ThisClass::HandleControlDeviceDestroyed);
+		
+		ControlDevice->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	}
+	
+	if (AliveControlDeviceCount > 0)
+	{
+		ApplyBossInvincibility();
+	}
+}
+
+void ANSBossMotherShip::HandleControlDeviceDestroyed(ANSBossControlDevice* DestroyedDevice)
+{
+	if (!HasAuthority()) return;
+	
+	if (bControlDevicesCleared) return;
+	
+	AliveControlDeviceCount = FMath::Max(0, AliveControlDeviceCount - 1);
+	if (DestroyedDevice)
+	{
+		DestroyedDevice->OnControlDeviceDestroyed.RemoveAll(this);
+	}
+	
+	if (AliveControlDeviceCount == 0)
+	{
+		bControlDevicesCleared = true;
+		ClearBossInvincibility();
+	}
+}
+
+void ANSBossMotherShip::ApplyBossInvincibility()
+{
+	UAbilitySystemComponent* MotherShipAbilitySystemComponent = GetAbilitySystemComponent();
+	if (!MotherShipAbilitySystemComponent) return;
+	
+	if (MotherShipAbilitySystemComponent->HasMatchingGameplayTag(NSGameplayTags::State_Invincible))
+	{
+		return;
+	}
+	
+	MotherShipAbilitySystemComponent->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+}
+
+void ANSBossMotherShip::ClearBossInvincibility()
+{
+	UAbilitySystemComponent* MotherShipAbilitySystemComponent = GetAbilitySystemComponent();
+	if (!MotherShipAbilitySystemComponent) return;
+	
+	MotherShipAbilitySystemComponent->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+}
+
+#pragma endregion

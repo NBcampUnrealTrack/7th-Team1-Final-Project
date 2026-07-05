@@ -13,6 +13,7 @@ class UNSDronePoolManager;
 class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
 class UGameplayAbility;
+class ANSBossControlDevice;
 
 UCLASS()
 class NEOSANCTUM_API ANSBossMotherShip : public ANSBossPawnBase
@@ -145,6 +146,42 @@ private:
 	FTimerHandle DroneSpawnTimerHandle;
 #pragma endregion
 
+#pragma region ControlDevice
+public:
+	// 모든 제어장치 파괴 완료(보스 피격 가능) 여부. AI/연출 조회용
+	bool AreControlDevicesCleared() const { return bControlDevicesCleared; }
+
+private:
+	// EquipParts로 스폰된 제어장치를 PartId로 조회·등록하고 초기 무적을 적용
+	void InitControlDevices();
+
+	// 제어장치 1기 파괴 콜백. 생존 수 감소, 0이면 보스 무적 해제
+	void HandleControlDeviceDestroyed(ANSBossControlDevice* DestroyedDevice);
+
+	// 보스 ASC에 State.Invincible LooseTag 부여(데미지 차단)
+	void ApplyBossInvincibility();
+
+	// 보스 ASC에서 State.Invincible LooseTag 제거(데미지 허용)
+	void ClearBossInvincibility();
+
+private:
+	// ---- Config ----
+	// DT_EnemyParts에서 제어장치로 쓸 PartId 목록 (예: ControlDevice_01~04)
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	TArray<FName> ControlDevicePartIds;
+
+	// ---- Runtime ----
+	// 등록된 제어장치들 (파괴 후 자동 무효화되도록 WeakPtr)
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<ANSBossControlDevice>> ControlDevices;
+
+	// 현재 살아있는 제어장치 수
+	int32 AliveControlDeviceCount = 0;
+
+	// 모든 제어장치가 파괴돼 보스가 피격 가능해졌는지
+	bool bControlDevicesCleared = false;
+#pragma endregion
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess))
 	TObjectPtr<UNSFlyingLocomotionComponent> FlyingLocomotionComponent;
