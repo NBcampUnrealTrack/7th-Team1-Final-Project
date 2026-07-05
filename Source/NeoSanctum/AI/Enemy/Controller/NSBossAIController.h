@@ -53,6 +53,12 @@ public:
 
 	// 현재 조건에서 사용 가능한 공격 Row가 하나라도 있는지 확인하는 함수
 	bool CanUseAnyAttackByDistance();
+	
+	// 지정 AttackId가 현재 조건에서 사용 가능한지 부작용 없이 확인하는 함수
+	virtual bool CanUseAttackById(FName AttackId);
+
+	// Boss가 현재 공격 실행 중인지 확인하는 함수
+	virtual bool IsBossAttackInProgress() const;
 
 	// 공격이 실제로 실행됐을 때 쿨다운과 Threat 상태를 기록하는 함수
 	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
@@ -79,6 +85,9 @@ protected:
 	// PerceptionComponent가 감지 정보를 갱신했을 때 Threat 기록을 갱신하는 함수
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+	// Boss가 현재 공격 후보를 갱신할 수 있는지 확인하는 함수
+	virtual bool CanUpdateAttackAvailability() const;
 
 private:
 	// Boss AI가 현재 판단과 공격을 멈춰야 하는 상태인지 확인하는 함수
@@ -89,6 +98,9 @@ private:
 
 	// 현재 타깃을 유지할 수 있는지 확인하는 함수
 	bool CanMaintainCurrentTarget(AActor* TargetActor) const;
+	
+	// 지정 AttackId 기준으로 현재 조건에서 공격 가능 여부만 검사하는 함수
+	bool CanUseAttackRowById(FName AttackId) const;
 
 	// 현재 조건에서 공격 Row를 찾고 공격 대상 상태를 갱신하는 함수
 	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);

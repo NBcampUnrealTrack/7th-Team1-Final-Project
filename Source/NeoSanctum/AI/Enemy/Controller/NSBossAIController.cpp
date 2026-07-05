@@ -123,6 +123,13 @@ void ANSBossAIController::Tick(float DeltaTime)
 	const bool bFaceTarget = EnemyPawn && EnemyPawn->ShouldFaceCombatTarget();
 	SyncFlyingRotationTarget(bFaceTarget ? GetCurrentTargetActor() : nullptr);
 	
+	
+	if (!CanUpdateAttackAvailability())
+	{
+		SetCanAttackBB(false);
+		return;
+	}
+
 	CanUseAnyAttackByDistance();
 }
 
@@ -189,6 +196,11 @@ void ANSBossAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus S
 
 	ThreatComponent->UpdateThreatFromStimulus(Actor, Stimulus);
 	UpdateTargetSelection();
+}
+
+bool ANSBossAIController::CanUpdateAttackAvailability() const
+{
+	return !IsBossAIBlocked() && !IsBossAttackInProgress();
 }
 
 bool ANSBossAIController::IsBossAIBlocked() const
@@ -377,7 +389,7 @@ bool ANSBossAIController::CanUseAnyAttackByDistance()
 {
 	UpdateEnemyPhase();
 
-	if (IsBossAIBlocked())
+	if (!CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
 		return false;
@@ -390,11 +402,28 @@ bool ANSBossAIController::CanUseAnyAttackByDistance()
 	return UsableAttack != nullptr;
 }
 
+bool ANSBossAIController::CanUseAttackById(FName AttackId)
+{
+	UpdateEnemyPhase();
+
+	if (AttackId.IsNone() || !CanUpdateAttackAvailability())
+	{
+		return false;
+	}
+
+	return CanUseAttackRowById(AttackId);
+}
+
+bool ANSBossAIController::IsBossAttackInProgress() const
+{
+	return IsAttackingBB();
+}
+
 const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowByDistance()
 {
 	UpdateEnemyPhase();
 
-	if (IsBossAIBlocked())
+	if (!CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
 		return nullptr;
@@ -411,7 +440,7 @@ const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowById(FName AttackId)
 {
 	UpdateEnemyPhase();
 
-	if (AttackId.IsNone() || IsBossAIBlocked())
+	if (AttackId.IsNone() || !CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
 		return nullptr;
