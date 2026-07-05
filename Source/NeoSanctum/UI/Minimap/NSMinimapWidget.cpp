@@ -2,10 +2,13 @@
 
 #include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
 
+#include "Engine/DataTable.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Data/Minimap/NSMinimapConfigDataAsset.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapSubsystem.h"
+#include "NeoSanctum/System/Minimap/NSMinimapTypes.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/SlateBrush.h"
 
@@ -124,6 +127,17 @@ int32 UNSMinimapWidget::NativePaint(
 				DrawLayerId,
 				MinimapConfig->LowerLayerTint,
 				ESlateDrawEffect::None) + 1;
+
+			DrawLayerId = DrawMinimapIcons(
+				*LowerLayer,
+				PlayerLocation,
+				MapRotationDegrees,
+				MapPosition,
+				MapSize,
+				false,
+				AllottedGeometry,
+				OutDrawElements,
+				DrawLayerId);
 		}
 
 		//현재 플레이어 높이에 맞는 층을 그림
@@ -142,6 +156,17 @@ int32 UNSMinimapWidget::NativePaint(
 				DrawLayerId,
 				MinimapConfig->MinimapTint,
 				ESlateDrawEffect::None) + 1;
+
+			DrawLayerId = DrawMinimapIcons(
+				*CurrentLayer,
+				PlayerLocation,
+				MapRotationDegrees,
+				MapPosition,
+				MapSize,
+				true,
+				AllottedGeometry,
+				OutDrawElements,
+				DrawLayerId);
 		}
 
 		//위층을 반투명 레이어로 위에 그림
@@ -160,6 +185,17 @@ int32 UNSMinimapWidget::NativePaint(
 				DrawLayerId,
 				MinimapConfig->UpperLayerTint,
 				ESlateDrawEffect::None) + 1;
+
+			DrawLayerId = DrawMinimapIcons(
+				*UpperLayer,
+				PlayerLocation,
+				MapRotationDegrees,
+				MapPosition,
+				MapSize,
+				false,
+				AllottedGeometry,
+				OutDrawElements,
+				DrawLayerId);
 		}
 
 		MaxLayerId = FMath::Max(MaxLayerId, DrawLayerId);
@@ -336,4 +372,138 @@ int32 UNSMinimapWidget::DrawMinimapLayer(
 		LayerTint);
 
 	return LayerId;
+}
+
+int32 UNSMinimapWidget::DrawMinimapIcons(
+	const FNSMinimapLayer& CurrentLayer,
+	const FVector& PlayerLocation,
+	float MapRotationDegrees,
+	const FVector2D& MapPosition,
+	float MapSize,
+	bool bDrawAllLayerIcons,
+	const FGeometry& AllottedGeometry,
+	FSlateWindowElementList& OutDrawElements,
+	int32 LayerId) const
+{
+	if (!MinimapConfig || !MinimapConfig->IconDataTable || MinimapConfig->IconDataTable->GetRowStruct() != FNSMinimapIconRow::StaticStruct())
+	{
+		return LayerId;
+	}
+
+	const UWorld* World = GetWorld();
+	const UNSMinimapSubsystem* MinimapSubsystem = World ? World->GetSubsystem<UNSMinimapSubsystem>() : nullptr;
+	if (!MinimapSubsystem)
+	{
+		return LayerId;
+	}
+
+	const FVector BoundsSize = CurrentLayer.WorldBoundsMax - CurrentLayer.WorldBoundsMin;
+	const float WorldMapWidth = FMath::Max(BoundsSize.X, BoundsSize.Y);
+	const float SafeVisibleWorldWidth = FMath::Max(MinimapConfig->VisibleWorldWidth, 500.0f);
+	if (WorldMapWidth <= KINDA_SMALL_NUMBER)
+	{
+		return LayerId;
+	}
+
+	const float DrawScale = WorldMapWidth / SafeVisibleWorldWidth;
+	const FVector2D LayerDrawSize(MapSize * DrawScale, MapSize * DrawScale);
+	const float PlayerU = FMath::Clamp((PlayerLocation.X - CurrentLayer.WorldBoundsMin.X) / BoundsSize.X, 0.0f, 1.0f);
+	const float PlayerV = FMath::Clamp(1.0f - (PlayerLocation.Y - CurrentLayer.WorldBoundsMin.Y) / BoundsSize.Y, 0.0f, 1.0f);
+	const FVector2D MapCenter = MapPosition + FVector2D(MapSize * 0.5f, MapSize * 0.5f);
+	const FVector2D LayerDrawPosition = MapCenter - FVector2D(PlayerU * LayerDrawSize.X, PlayerV * LayerDrawSize.Y);
+	FSlateRenderTransform LayerRenderTransform(FQuat2D(FMath::DegreesToRadians(MapRotationDegrees)));
+	if (MinimapConfig->bMirrorMapHorizontally)
+	{
+		LayerRenderTransform = Concatenate(
+			LayerRenderTransform,
+			FSlateRenderTransform(FScale2D(FVector2D(-1.0f, 1.0f))));
+	}
+
+	struct FIconDrawData
+	{
+		const UNSMinimapIconComponent* Component = nullptr;
+		const FNSMinimapIconRow* IconRow = nullptr;
+		FVector WorldLocation = FVector::ZeroVector;
+	};
+
+	TArray<FIconDrawData> IconsToDraw;
+	for (const TWeakObjectPtr<UNSMinimapIconComponent>& IconComponentPtr : MinimapSubsystem->GetIconComponents())
+	{
+		const UNSMinimapIconComponent* IconComponent = IconComponentPtr.Get();
+		if (!IconComponent || !IconComponent->ShouldShowOnMinimap())
+		{
+			continue;
+		}
+
+		const FNSMinimapIconRow* IconRow = MinimapConfig->IconDataTable->FindRow<FNSMinimapIconRow>(
+			IconComponent->GetIconRowName(),
+			TEXT("MinimapIcon"),
+			false);
+		if (!IconRow)
+		{
+			continue;
+		}
+
+		const FVector IconWorldLocation = IconComponent->GetIconWorldLocation();
+		if (IconRow->bShowOnAllLayers)
+		{
+			if (!bDrawAllLayerIcons)
+			{
+				continue;
+			}
+		}
+		else if (!CurrentLayer.ContainsZ(IconWorldLocation.Z))
+		{
+			continue;
+		}
+
+		FIconDrawData DrawData;
+		DrawData.Component = IconComponent;
+		DrawData.IconRow = IconRow;
+		DrawData.WorldLocation = IconWorldLocation;
+		IconsToDraw.Add(DrawData);
+	}
+
+	IconsToDraw.Sort([](const FIconDrawData& A, const FIconDrawData& B)
+	{
+		return A.IconRow->DrawPriority < B.IconRow->DrawPriority;
+	});
+
+	int32 MaxLayerId = LayerId;
+	for (const FIconDrawData& IconData : IconsToDraw)
+	{
+		const FVector IconWorldLocation = IconData.WorldLocation;
+		const float IconU = FMath::Clamp((IconWorldLocation.X - CurrentLayer.WorldBoundsMin.X) / BoundsSize.X, 0.0f, 1.0f);
+		const float IconV = FMath::Clamp(1.0f - (IconWorldLocation.Y - CurrentLayer.WorldBoundsMin.Y) / BoundsSize.Y, 0.0f, 1.0f);
+		const float IconDiameter = FMath::Max(IconData.IconRow->Diameter, 1.0f);
+		const FVector2D IconSize(IconDiameter, IconDiameter);
+		const FVector2D IconCenter = LayerDrawPosition + FVector2D(IconU * LayerDrawSize.X, IconV * LayerDrawSize.Y);
+		const FVector2D IconPosition = IconCenter - IconSize * 0.5f;
+
+		FSlateBrush IconBrush;
+		IconBrush.ImageSize = IconSize;
+		IconBrush.DrawAs = ESlateBrushDrawType::RoundedBox;
+		IconBrush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
+		IconBrush.OutlineSettings.CornerRadii = FVector4(
+			IconDiameter * 0.5f,
+			IconDiameter * 0.5f,
+			IconDiameter * 0.5f,
+			IconDiameter * 0.5f);
+
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			MaxLayerId,
+			AllottedGeometry.ToPaintGeometry(
+				IconSize,
+				FSlateLayoutTransform(IconPosition),
+				LayerRenderTransform,
+				(MapCenter - IconPosition) / IconSize),
+			&IconBrush,
+			ESlateDrawEffect::None,
+			IconData.IconRow->Color);
+
+		++MaxLayerId;
+	}
+
+	return MaxLayerId;
 }

@@ -48,6 +48,18 @@ private:
 		const FLinearColor& LayerTint,
 		ESlateDrawEffect DrawEffect) const;
 
+	//미니맵 아이콘 그리기
+	int32 DrawMinimapIcons(
+		const struct FNSMinimapLayer& CurrentLayer,
+		const FVector& PlayerLocation,
+		float MapRotationDegrees,
+		const FVector2D& MapPosition,
+		float MapSize,
+		bool bDrawAllLayerIcons,
+		const FGeometry& AllottedGeometry,
+		FSlateWindowElementList& OutDrawElements,
+		int32 LayerId) const;
+
 	//가장 가까운 아래층 조회
 	const struct FNSMinimapLayer* FindNearestLowerLayer(const TArray<struct FNSMinimapLayer>& Layers, int32 CurrentLayerIndex) const;
 
