@@ -4,6 +4,7 @@
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Pawn.h"
+#include "NeoSanctum/Data/Minimap/NSMinimapConfigDataAsset.h"
 #include "NeoSanctum/System/Minimap/NSMinimapSubsystem.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/SlateBrush.h"
@@ -40,6 +41,8 @@ void UNSMinimapWidget::NativeDestruct()
 void UNSMinimapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	
+	// 이 위젯의 레이아웃이나 렌더 상태가 바뀔 수 있으니 다시 계산/다시 그리도록 하는 함수
 	InvalidateLayoutAndVolatility();
 }
 
@@ -61,7 +64,7 @@ int32 UNSMinimapWidget::NativePaint(
 
 	const UWorld* World = GetWorld();
 	const UNSMinimapSubsystem* MinimapSubsystem = World ? World->GetSubsystem<UNSMinimapSubsystem>() : nullptr;
-	if (!MinimapSubsystem || !MinimapSubsystem->HasMinimap())
+	if (!MinimapConfig || !MinimapSubsystem || !MinimapSubsystem->HasMinimap())
 	{
 		return MaxLayerId;
 	}
@@ -93,11 +96,11 @@ int32 UNSMinimapWidget::NativePaint(
 		AllottedGeometry.ToPaintGeometry(MapDrawSize, FSlateLayoutTransform(MapPosition)),
 		&BackgroundBrush,
 		ESlateDrawEffect::None,
-		BackgroundColor);
+		MinimapConfig->BackgroundColor);
 
 	const FVector PlayerLocation = OwningPawn->GetActorLocation();
-	const float MapRotationDegrees = bRotateMapWithPlayerForward
-		? OwningPawn->GetActorRotation().Yaw - 90.0f + PlayerForwardUpRotationOffsetDegrees
+	const float MapRotationDegrees = MinimapConfig->bRotateMapWithPlayerForward
+		? OwningPawn->GetActorRotation().Yaw - 90.0f + MinimapConfig->PlayerForwardUpRotationOffsetDegrees
 		: 0.0f;
 	const TArray<FNSMinimapLayer>& Layers = MinimapSubsystem->GetLayers();
 	if (!Layers.IsEmpty())
@@ -114,11 +117,13 @@ int32 UNSMinimapWidget::NativePaint(
 				MapRotationDegrees,
 				MapPosition,
 				MapSize,
+				MinimapConfig->VisibleWorldWidth,
+				MinimapConfig->bMirrorMapHorizontally,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId,
-				LowerLayerTint,
-					ESlateDrawEffect::None) + 1;
+				MinimapConfig->LowerLayerTint,
+				ESlateDrawEffect::None) + 1;
 		}
 
 		//현재 플레이어 높이에 맞는 층을 그림
@@ -130,10 +135,12 @@ int32 UNSMinimapWidget::NativePaint(
 				MapRotationDegrees,
 				MapPosition,
 				MapSize,
+				MinimapConfig->VisibleWorldWidth,
+				MinimapConfig->bMirrorMapHorizontally,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId,
-				MinimapTint,
+				MinimapConfig->MinimapTint,
 				ESlateDrawEffect::None) + 1;
 		}
 
@@ -146,10 +153,12 @@ int32 UNSMinimapWidget::NativePaint(
 				MapRotationDegrees,
 				MapPosition,
 				MapSize,
+				MinimapConfig->VisibleWorldWidth,
+				MinimapConfig->bMirrorMapHorizontally,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId,
-				UpperLayerTint,
+				MinimapConfig->UpperLayerTint,
 				ESlateDrawEffect::None) + 1;
 		}
 
@@ -168,7 +177,7 @@ int32 UNSMinimapWidget::NativePaint(
 			AllottedGeometry.ToPaintGeometry(MapDrawSize, FSlateLayoutTransform(MapPosition)),
 			&MinimapBrush,
 			ESlateDrawEffect::NoBlending,
-			MinimapTint);
+			MinimapConfig->MinimapTint);
 		MaxLayerId = FMath::Max(MaxLayerId, LayerId + 1);
 	}
 
@@ -264,6 +273,8 @@ int32 UNSMinimapWidget::DrawMinimapLayer(
 	float MapRotationDegrees,
 	const FVector2D& MapPosition,
 	float MapSize,
+	float InVisibleWorldWidth,
+	bool bMirrorHorizontally,
 	const FGeometry& AllottedGeometry,
 	FSlateWindowElementList& OutDrawElements,
 	int32 LayerId,
@@ -277,7 +288,7 @@ int32 UNSMinimapWidget::DrawMinimapLayer(
 
 	const FVector BoundsSize = Layer.WorldBoundsMax - Layer.WorldBoundsMin;
 	const float WorldMapWidth = FMath::Max(BoundsSize.X, BoundsSize.Y);
-	const float SafeVisibleWorldWidth = FMath::Max(VisibleWorldWidth, 500.0f);
+	const float SafeVisibleWorldWidth = FMath::Max(InVisibleWorldWidth, 500.0f);
 	if (WorldMapWidth <= KINDA_SMALL_NUMBER)
 	{
 		return LayerId;
@@ -303,6 +314,14 @@ int32 UNSMinimapWidget::DrawMinimapLayer(
 		? ESlateDrawEffect::NoBlending
 		: DrawEffect;
 
+	FSlateRenderTransform LayerRenderTransform(FQuat2D(FMath::DegreesToRadians(MapRotationDegrees)));
+	if (bMirrorHorizontally)
+	{
+		LayerRenderTransform = Concatenate(
+			LayerRenderTransform,
+			FSlateRenderTransform(FScale2D(FVector2D(-1.0f, 1.0f))));
+	}
+
 	//미니맵 중앙을 기준으로 지도 회전
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
@@ -310,7 +329,7 @@ int32 UNSMinimapWidget::DrawMinimapLayer(
 		AllottedGeometry.ToPaintGeometry(
 			LayerDrawSize,
 			FSlateLayoutTransform(LayerDrawPosition),
-			FSlateRenderTransform(FQuat2D(FMath::DegreesToRadians(MapRotationDegrees))),
+			LayerRenderTransform,
 			(MapPosition + FVector2D(MapSize * 0.5f, MapSize * 0.5f) - LayerDrawPosition) / LayerDrawSize),
 		&LayerBrush,
 		EffectiveDrawEffect,

@@ -6,6 +6,8 @@
 #include "CommonUserWidget.h"
 #include "NSMinimapWidget.generated.h"
 
+class UNSMinimapConfigDataAsset;
+
 UCLASS()
 class NEOSANCTUM_API UNSMinimapWidget : public UCommonUserWidget
 {
@@ -38,6 +40,8 @@ private:
 		float MapRotationDegrees,
 		const FVector2D& MapPosition,
 		float MapSize,
+		float InVisibleWorldWidth,
+		bool bMirrorHorizontally,
 		const FGeometry& AllottedGeometry,
 		FSlateWindowElementList& OutDrawElements,
 		int32 LayerId,
@@ -50,31 +54,7 @@ private:
 	//가장 가까운 위층 조회
 	const struct FNSMinimapLayer* FindNearestUpperLayer(const TArray<struct FNSMinimapLayer>& Layers, int32 CurrentLayerIndex) const;
 
-	//미니맵 배경 색상
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true"))
-	FLinearColor BackgroundColor = FLinearColor(0.01f, 0.01f, 0.01f, 0.85f);
-
-	//현재층 표시 색상
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true"))
-	FLinearColor MinimapTint = FLinearColor::White;
-
-	//화면에 표시할 월드 폭
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true", ClampMin = "500.0"))
-	float VisibleWorldWidth = 10000.0f;
-
-	//플레이어 전방 기준 지도 회전 여부
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation", meta = (AllowPrivateAccess = "true"))
-	bool bRotateMapWithPlayerForward = true;
-
-	//플레이어 전방 기준 회전 보정값
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation", meta = (AllowPrivateAccess = "true", EditCondition = "bRotateMapWithPlayerForward"))
-	float PlayerForwardUpRotationOffsetDegrees = 0.0f;
-
-	//아래층 표시 색상
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Layers", meta = (AllowPrivateAccess = "true"))
-	FLinearColor LowerLayerTint = FLinearColor(0.08f, 0.08f, 0.09f, 0.72f);
-
-	//위층 표시 색상
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Layers", meta = (AllowPrivateAccess = "true"))
-	FLinearColor UpperLayerTint = FLinearColor(0.62f, 0.66f, 0.70f, 0.48f);
+	//미니맵 UI 표시 설정
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Config", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNSMinimapConfigDataAsset> MinimapConfig;
 };
