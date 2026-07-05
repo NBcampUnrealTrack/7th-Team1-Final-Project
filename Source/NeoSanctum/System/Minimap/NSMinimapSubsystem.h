@@ -8,6 +8,7 @@
 
 class UTexture;
 class UTextureRenderTarget2D;
+class UNSMinimapIconComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSMinimapUpdated);
 
@@ -64,6 +65,12 @@ public:
 	//미니맵 데이터 초기화
 	void ClearMinimap();
 
+	//미니맵 아이콘 컴포넌트 등록
+	void RegisterIconComponent(UNSMinimapIconComponent* IconComponent);
+
+	//미니맵 아이콘 컴포넌트 등록 해제
+	void UnregisterIconComponent(UNSMinimapIconComponent* IconComponent);
+
 	UFUNCTION(BlueprintPure, Category = "Minimap")
 	UTextureRenderTarget2D* GetRenderTarget() const { return RenderTarget.Get(); }
 
@@ -91,6 +98,9 @@ public:
 	//월드 높이에 맞는 층 번호 조회
 	int32 GetLayerIndexForWorldZ(float WorldZ) const;
 
+	//등록된 미니맵 아이콘 컴포넌트 조회
+	const TArray<TWeakObjectPtr<UNSMinimapIconComponent>>& GetIconComponents() const { return IconComponents; }
+
 private:
 	//단일 캡처용 렌더 타겟
 	UPROPERTY(Transient)
@@ -111,4 +121,8 @@ private:
 	//다층 미니맵 데이터 보관
 	UPROPERTY(Transient)
 	TArray<FNSMinimapLayer> Layers;
+
+	//미니맵에 표시할 액터 아이콘 컴포넌트 목록
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<UNSMinimapIconComponent>> IconComponents;
 };

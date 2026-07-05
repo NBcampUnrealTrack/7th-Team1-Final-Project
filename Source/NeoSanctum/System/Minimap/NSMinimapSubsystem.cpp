@@ -3,6 +3,7 @@
 #include "NeoSanctum/System/Minimap/NSMinimapSubsystem.h"
 
 #include "Engine/TextureRenderTarget2D.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 
 void UNSMinimapSubsystem::SetMinimap(UTextureRenderTarget2D* NewRenderTarget, const FBox& NewWorldBounds)
 {
@@ -51,6 +52,32 @@ void UNSMinimapSubsystem::ClearMinimap()
 	Layers.Reset();
 
 	OnMinimapUpdated.Broadcast();
+}
+
+void UNSMinimapSubsystem::RegisterIconComponent(UNSMinimapIconComponent* IconComponent)
+{
+	if (!IconComponent)
+	{
+		return;
+	}
+	
+	// WeakPtr은 대상 UObject가 Destroy되거나 GC되면 자동으로 invalid 상태가 되지만 
+	// 배열 안의 “칸” 자체는 자동으로 사라지지 않기 때문에
+	// 유효하지 않은 TWeakObjectPtr<UNSMinimapIconComponent> 타입이 있다면 정리하는게 맞다고 함
+	IconComponents.RemoveAllSwap([](const TWeakObjectPtr<UNSMinimapIconComponent>& ExistingComponent)
+	{
+		return !ExistingComponent.IsValid();
+	});
+
+	IconComponents.AddUnique(IconComponent);
+}
+
+void UNSMinimapSubsystem::UnregisterIconComponent(UNSMinimapIconComponent* IconComponent)
+{
+	IconComponents.RemoveAllSwap([IconComponent](const TWeakObjectPtr<UNSMinimapIconComponent>& ExistingComponent)
+	{
+		return !ExistingComponent.IsValid() || ExistingComponent.Get() == IconComponent;
+	});
 }
 
 bool UNSMinimapSubsystem::ProjectWorldToMinimapUV(const FVector& WorldLocation, FVector2D& OutUV) const
