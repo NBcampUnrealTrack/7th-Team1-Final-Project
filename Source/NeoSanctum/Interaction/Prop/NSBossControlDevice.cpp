@@ -11,16 +11,11 @@ ANSBossControlDevice::ANSBossControlDevice()
 	PrimaryActorTick.bCanEverTick = true;
 }
 
-// Called when the game starts or when spawned
-void ANSBossControlDevice::BeginPlay()
+void ANSBossControlDevice::OnServerDestroyed(const FVector& Origin)
 {
-	Super::BeginPlay();
+	Super::OnServerDestroyed(Origin);
 	
+	OnControlDeviceDestroyed.Broadcast(this);
 }
 
-// Called every frame
-void ANSBossControlDevice::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
 
