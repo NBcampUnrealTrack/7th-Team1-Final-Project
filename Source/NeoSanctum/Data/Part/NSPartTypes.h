@@ -83,6 +83,53 @@ struct FNSPartSlotRow : public FTableRowBase
 	bool bEnabled = true;
 };
 
+UENUM(BlueprintType)
+enum class ENSPartUpgradeResult : uint8
+{
+	RerollDone,
+	UpgradeSuccess,
+	UpgradeFail,
+	NotEnoughCurrency,
+	PurchaseDone,
+	SoldOut,
+};
+
+
+// 등급별 리롤/등급업 비용, 확률 + 인런 상점 가중치, 가격
+USTRUCT(BlueprintType)
+struct FNSPartUpgradeRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// 이 row가 적용되는 현재 등급
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
+	ENSPartRarity Rarity = ENSPartRarity::Common;
+
+	// 리롤 기본 비용 (임시 재화)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))
+	int64 RerollBaseCost = 0;
+
+	// 리롤 1회당 비용 증가치 → 비용 = Base + Increment × RollCount
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))
+	int64 RerollCostIncrement = 0;
+
+	// 다음 등급 업그레이드 비용 (임시 재화)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))
+	int64 UpgradeCost = 0;
+
+	// 등급업 성공 확률 (0~1)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float UpgradeSuccessChance = 0.5f;
+
+	// 상점 재고 등급 추첨 가중치 (기본 Common 50 / Rare 30 / Epic 15 / Legendary 5)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0.0"))
+	float ShopWeight = 0.f;
+
+	// 이 등급 파츠의 상점 구매 가격 (임시 재화)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))
+	int64 ShopPrice = 0;
+};
+
 /**
  * 파츠 런타임 상태 (레플리케이션/저장 대상)
  * GE 핸들은 UNSPartEquipComponent가 관리

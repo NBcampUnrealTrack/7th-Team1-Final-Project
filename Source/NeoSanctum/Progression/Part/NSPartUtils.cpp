@@ -60,3 +60,13 @@ const FNSPartDefinitionRow* NSPartUtils::ResolvePartRow(
 
 	return DataSS->GetPartRow(DefId);
 }
+
+const FNSPartUpgradeRow* NSPartUtils::ResolvePartUpgradeRow(const UObject* WorldContextObject, ENSPartRarity Rarity)
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
+	if (!DataSS)
+	{
+		return nullptr;
+	}
+	return DataSS->GetPartUpgradeRow(Rarity);
+}

@@ -428,6 +428,7 @@ void UNSDataSubsystem::OnCommonAssetsLoaded()
 	);
 	BuildPartRowCache();
 	BuildSlotRowCache();
+	BuildPartUpgradeRowCache();
 	CacheCommonUpgradeNodeRows();
 	StartLoadCommonReferenceAssets();
 }
@@ -1270,4 +1271,41 @@ const FNSCommonUpgradeNodeRow* UNSDataSubsystem::GetCommonUpgradeNodeRow(FName N
 const TMap<FName, FNSCommonUpgradeNodeRow>& UNSDataSubsystem::GetAllCommonUpgradeNodeRows() const
 {
 	return CachedCommonUpgradeNodeRows;
+}
+
+// ================================================================
+// 파츠 업그레이드 row 캐시
+// ================================================================
+
+void UNSDataSubsystem::BuildPartUpgradeRowCache()
+{
+	CachedUpgradeRowsByRarity.Empty();
+
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	UDataTable* DT = CommonConfig ? CommonConfig->PartsUpgradeTable.Get() : nullptr;
+	if (!DT)
+	{
+		return;
+	}
+
+	for (const FName& RowName : DT->GetRowNames())
+	{
+		const FNSPartUpgradeRow* Row =
+			DT->FindRow<FNSPartUpgradeRow>(RowName, TEXT("BuildPartUpgradeRowCache"), false);
+		if (!Row)
+		{
+			continue;
+		}
+		CachedUpgradeRowsByRarity.Add(Row->Rarity, *Row);
+	}
+}
+
+const FNSPartUpgradeRow* UNSDataSubsystem::GetPartUpgradeRow(ENSPartRarity Rarity) const
+{
+	return CachedUpgradeRowsByRarity.Find(Rarity);
+}
+
+const TMap<ENSPartRarity, FNSPartUpgradeRow>& UNSDataSubsystem::GetAllPartUpgradeRows() const
+{
+	return CachedUpgradeRowsByRarity;
 }

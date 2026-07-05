@@ -58,6 +58,15 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> CommonUpgradeNodeTable;
+	// 파츠 업그레이드/상점 (등급별 비용, 확률, 가중치)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> PartsUpgradeTable;
+
+	// @원종 TODO: 추후 영구 스킬 트리 데이터가 생기면 여기에 추가.
+	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
+	// 	meta = (AssetBundles = "CommonData"))
+	// TSoftObjectPtr<UDataTable> PermanentSkillTreeTable;
 
 	// 사운드 테이블과 카테고리 볼륨 기본값을 함께 관리하는 공용 사운드 데이터.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Feedback", 
