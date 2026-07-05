@@ -124,6 +124,7 @@ void ANSBossAIController::Tick(float DeltaTime)
 	SyncFlyingRotationTarget(bFaceTarget ? GetCurrentTargetActor() : nullptr);
 	
 	
+
 	if (!CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
@@ -253,6 +254,66 @@ bool ANSBossAIController::CanMaintainCurrentTarget(AActor* TargetActor) const
 		bHasDirectLineOfSight);
 
 	return IsValid(AttackActor);
+}
+
+bool ANSBossAIController::CanUseAttackRowById(FName AttackId) const
+{
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || AttackId.IsNone() || !IsValidLivingTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		return false;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow || AttackRow->AttackId != AttackId)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (AttackComponent->CanUseAttack(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void ANSBossAIController::UpdateTargetSelection()
