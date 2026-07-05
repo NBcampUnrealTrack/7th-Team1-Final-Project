@@ -14,6 +14,7 @@ void UNSGraphicSettingWidget::NativeConstruct()
 	
 	InitializeResolutionOptions();
 	InitializeWindowModeOptions();
+	InitializeFrameRateOptions();
 	SynchronizeSettings();
 	
 	ApplyButton->OnClicked.AddDynamic(
@@ -50,6 +51,26 @@ void UNSGraphicSettingWidget::InitializeWindowModeOptions()
 	WindowModeComboBox->AddOption(TEXT("전체화면"));
 	WindowModeComboBox->AddOption(TEXT("테두리 없음"));
 	WindowModeComboBox->AddOption(TEXT("창화면"));
+}
+
+void UNSGraphicSettingWidget::InitializeFrameRateOptions()
+{
+	FrameRateComboBox->ClearOptions();
+	
+	FrameRateLimits =
+	{
+		30.0f,
+		60.0f,
+		120.0f,
+		144.0f,
+		0.0f
+	};
+	
+	FrameRateComboBox->AddOption(TEXT("30"));
+	FrameRateComboBox->AddOption(TEXT("60"));
+	FrameRateComboBox->AddOption(TEXT("120"));
+	FrameRateComboBox->AddOption(TEXT("144"));
+	FrameRateComboBox->AddOption(TEXT("제한 없음"));
 }
 void UNSGraphicSettingWidget::SynchronizeSettings()
 {
@@ -92,6 +113,30 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 		break;
 	}
 	
+	const float CurrentFrameRate =
+		Settings->GetFrameRateLimit();
+	
+	int32 FrameRateIndex =
+		FrameRateLimits.IndexOfByPredicate(
+			[CurrentFrameRate](float FrameRate)
+			{
+				return FMath::IsNearlyEqual(
+					FrameRate,
+					CurrentFrameRate);
+			});
+	
+	if (FrameRateIndex == INDEX_NONE)
+	{
+		FrameRateIndex =
+			FrameRateLimits.Add(CurrentFrameRate);
+		
+		FrameRateComboBox->AddOption(
+			FString::FromInt(
+				FMath::RoundToInt(
+					CurrentFrameRate)));
+	}
+	
+	FrameRateComboBox->SetSelectedIndex(FrameRateIndex);
 void UNSGraphicSettingWidget::OnApplyClicked()
 {
 	UGameUserSettings* Settings =
@@ -131,6 +176,15 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 		break;
 	}
 
+	const int32 FrameRateIndex =
+		FrameRateComboBox->GetSelectedIndex();
+
+	if (FrameRateLimits.IsValidIndex(
+		FrameRateIndex))
+	{
+		Settings->SetFrameRateLimit(
+			FrameRateLimits[FrameRateIndex]);
+	}
 	Settings->ApplySettings(false);
 	SynchronizeSettings();
 }

@@ -25,6 +25,7 @@ private:
 	
 	void InitializeResolutionOptions();
 	void InitializeWindowModeOptions();
+	void InitializeFrameRateOptions();
 	void SynchronizeSettings();
 	
 	UFUNCTION()
@@ -38,5 +39,9 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> WindowModeComboBox;
 	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UComboBoxString> FrameRateComboBox;
 	TObjectPtr<UButton> ApplyButton;
 	TArray<FIntPoint> SupportedResolutions;
+	TArray<float> FrameRateLimits;
+	
+};
