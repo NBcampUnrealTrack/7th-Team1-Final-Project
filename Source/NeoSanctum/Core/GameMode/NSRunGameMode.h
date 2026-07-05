@@ -43,6 +43,7 @@ public:
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
 		const FRotator& Rotation) override;
+	virtual void NotifyNPCRescued_Implementation(FName RescuedNPCId) override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
@@ -58,6 +59,10 @@ public:
 	// 맵 로딩이 완료되고 블루프린트에서 호출될 함수
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void SetEnemyCount(int32 Count);
+	
+	// 스테이지 진입할 때 호출될 함수: 목표 랜덤 선택, 초기화
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void InitializeStage();
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
 
@@ -87,6 +92,9 @@ protected:
 	// 인런 진행도 저장용 함수
 	void SaveAllPlayersProgress();
 	
+	// 목표 달성 시 호출용, 보스 진입 페이즈로 전환
+	void HandleObjectiveComplete();
+	
 	// 인런 보상 재화용 변수
 	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
 	int64 StageClearCommonReward = 0;
@@ -94,6 +102,8 @@ protected:
 private:
 	// 인런 월드가 열린 뒤, GameFlow가 보관환 데이터 구성을 RunGameState에 복제.
 	void SyncRunDataConfigToGameState();
+	
+	void PushObjectiveStateToGameState();
 	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;

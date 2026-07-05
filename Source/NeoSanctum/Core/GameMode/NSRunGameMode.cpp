@@ -21,6 +21,7 @@
 #include "NeoSanctum/Combat/Projectile/NSProjectileReplicationProxy.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -52,9 +53,9 @@ void ANSRunGameMode::BeginPlay()
 	{
 		NSStageManager = NewObject<UNSStageManager>(this);
 		// 클리어 판정 알림용 바인딩
-		NSStageManager->OnStageCleared.BindUObject(
+		NSStageManager->OnObjectiveComplete.BindUObject(
 			this,
-			&ANSRunGameMode::NotifyStageCleared_Implementation
+			&ANSRunGameMode::HandleObjectiveComplete
 		);
 		
 		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
@@ -192,18 +193,23 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 		return;
 	}
 
-	if (NSStageManager)
+	// 킬 집계,보상은 페이즈 무관하게 항상 진행
+	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (RunGS)
 	{
-		NSStageManager->HandleEnemyKilled();
-	}
-
-	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
-	{
-		NSGameState->AddRunResultKillCount();
+		RunGS->AddRunResultKillCount();
 	}
 	
 	HandleEnemyReward(DeadEnemy);
 	HandleEnemyExperience(DeadEnemy);
+
+	// 목표 진행은 Objective 페이즈에서만
+	if (RunGS && RunGS->StagePhase ==
+		ENSStagePhase::Objective && NSStageManager)
+	{
+		NSStageManager->HandleEnemyKilled();
+		PushObjectiveStateToGameState();
+	}
 }
 
 void ANSRunGameMode::HandleEnemyReward(AActor* DeadEnemy)
@@ -415,6 +421,24 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	}
 
 	return Enemy;
+}
+
+void ANSRunGameMode::NotifyNPCRescued_Implementation(FName RescuedNPCId)
+{
+	if (!HasAuthority() || !NSStageManager)
+	{
+		return;
+	}
+
+	const ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (!RunGS || RunGS->StagePhase != ENSStagePhase::Objective)
+	{
+		return;
+	}
+
+	NSStageManager->NotifyNPCRescued(RescuedNPCId);
+	
+	PushObjectiveStateToGameState();
 }
 
 void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
@@ -720,6 +744,33 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 	}
 }
 
+void ANSRunGameMode::InitializeStage()
+{
+	if (!HasAuthority() || !NSStageManager)
+	{
+		return;
+	}
+
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this); 
+	const UNSLevelConfig* LevelConfig = Data ? Data->GetCurrentRunLevelConfig() : nullptr;
+	if (!LevelConfig || LevelConfig->ObjectivePool.Num() == 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ObjectivePool 비어있음 — 목표 초기화 실패"));
+		
+		return;
+	}
+
+	const int32 Index = FMath::RandRange(0, LevelConfig->ObjectivePool.Num() - 1);
+	NSStageManager->InitializeObjective(LevelConfig->ObjectivePool[Index]);
+
+	if (ANSRunGameState* RunGS = GetGameState<ANSRunGameState>())
+	{
+		RunGS->SetStagePhase(ENSStagePhase::Objective); 
+	}
+	
+	PushObjectiveStateToGameState();
+}
+
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
 	// 플레이어의 고정 슬롯 인덱스 결정(PlayerArray 내 위치)
@@ -1016,6 +1067,20 @@ void ANSRunGameMode::SaveAllPlayersProgress()
 	}
 }
 
+void ANSRunGameMode::HandleObjectiveComplete()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
+	{
+		NSGameState->SetStagePhase(ENSStagePhase::BossReady);
+	}
+	
+}
+
 void ANSRunGameMode::SyncRunDataConfigToGameState()
 {
 	UNSGameFlowSubsystem* GameFlow = 
@@ -1029,6 +1094,21 @@ void ANSRunGameMode::SyncRunDataConfigToGameState()
 	}
 	
 	RunGameState->SetRunDataConfig(GameFlow->GetSelectedRunConfig(), GameFlow->GetSelectedRunLevelConfig());
+}
+
+void ANSRunGameMode::PushObjectiveStateToGameState()
+{
+	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (!RunGS || !NSStageManager)
+	{
+		return;
+	}
+
+	FNSStageObjectiveState ObjectiveState;
+	ObjectiveState.Type    = NSStageManager->GetObjectiveType();
+	ObjectiveState.Current = NSStageManager->GetObjectiveCurrent();
+	ObjectiveState.Target  = NSStageManager->GetObjectiveTarget();
+	RunGS->SetObjectiveState(ObjectiveState);
 }
 
 void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice)
