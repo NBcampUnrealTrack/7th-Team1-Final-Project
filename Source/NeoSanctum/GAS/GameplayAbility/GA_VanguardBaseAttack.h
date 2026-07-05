@@ -220,6 +220,9 @@ private:
 	// DashCharge 최대 차징 시간을 CombatStat.ChargingTime 기준으로 조회
 	float GetFinalDashChargeTime() const;
 
+	// 지상 콤보 공격속도를 CombatStat.AttackSpeed 기준으로 조회
+	float GetFinalGroundComboPlayRate() const;
+
 	// DashAttack 이동 수치를 CombatStat.MinSkillRange / SkillRange / Duration 기준으로 조회
 	bool TryResolveDashAttackMovementStats(
 		float& OutMinDistance,
@@ -243,6 +246,14 @@ private:
 	// Vanguard 기본공격 몽타주 재생 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
 	float AttackMontagePlayRate = 1.0f;
+
+	// 지상 콤보 공격속도 최소 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Combo", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
+	float MinGroundComboPlayRate = 0.5f;
+
+	// 지상 콤보 공격속도 최대 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Combo", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
+	float MaxGroundComboPlayRate = 1.5f;
 
 	// 지상 기본 콤보 섹션 이름
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))

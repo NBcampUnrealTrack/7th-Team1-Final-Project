@@ -20,6 +20,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Cooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Duration);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ChargingTime);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_AttackSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_BuffRadius);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_SkillRange);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MinSkillRange);

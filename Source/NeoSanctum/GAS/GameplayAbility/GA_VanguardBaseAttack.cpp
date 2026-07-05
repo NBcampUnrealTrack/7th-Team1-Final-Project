@@ -313,7 +313,7 @@ void UGA_VanguardBaseAttack::StartGroundCombo()
 			"뱅가드 콤보어택 모드 선택");
 	}
 
-	if (!PlayAttackMontageAndWait(GroundComboMontage, AttackMontagePlayRate))
+	if (!PlayAttackMontageAndWait(GroundComboMontage, GetFinalGroundComboPlayRate()))
 	{
 		FinishInstantMode();
 	}
@@ -1335,6 +1335,18 @@ float UGA_VanguardBaseAttack::GetFinalDashChargeTime() const
 		MaxDashChargeTime);
 
 	return FMath::Max(FinalChargingTime, 0.01f);
+}
+
+float UGA_VanguardBaseAttack::GetFinalGroundComboPlayRate() const
+{
+	const float FinalAttackSpeed = GetVanguardFinalStatOrDefault(
+		NSGameplayTags::CombatStat_AttackSpeed,
+		AttackMontagePlayRate);
+
+	const float MinPlayRate = FMath::Max(MinGroundComboPlayRate, 0.01f);
+	const float MaxPlayRate = FMath::Max(MaxGroundComboPlayRate, MinPlayRate);
+
+	return FMath::Clamp(FinalAttackSpeed, MinPlayRate, MaxPlayRate);
 }
 
 bool UGA_VanguardBaseAttack::TryResolveDashAttackMovementStats(
