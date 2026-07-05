@@ -20,14 +20,6 @@ struct FNSSTTask_ExecuteBossAbilityInstanceData
 {
 	GENERATED_BODY()
 
-	// 지정 공격만 실행할 때 사용하는 AttackId. None이면 조건 기반 자동 선택 사용
-	UPROPERTY(EditAnywhere, Category = "Config")
-	FName FixedAttackId = NAME_None;
-
-	// StateTree 상태가 중간에 종료될 때 실행 중인 Ability를 취소할지 여부
-	UPROPERTY(EditAnywhere, Category = "Config")
-	bool bCancelAbilityOnExit = true;
-
 	// 이번 Task가 요청한 ExecutorComponent
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UNSBossAbilityExecutorComponent> CachedExecutor;
@@ -56,6 +48,15 @@ struct NEOSANCTUM_API FNSSTTask_ExecuteBossAbility : public FStateTreeTaskCommon
 	virtual void ExitState(
 		FStateTreeExecutionContext& Context,
 		const FStateTreeTransitionResult& Transition) const override;
+
+
+	// 지정 공격만 실행할 때 사용하는 AttackId. None이면 조건 기반 자동 선택 사용
+	UPROPERTY(EditAnywhere, Category = "Config")
+	FName FixedAttackId = NAME_None;
+
+	// StateTree 상태가 중간에 종료될 때 실행 중인 Ability를 취소할지 여부
+	UPROPERTY(EditAnywhere, Category = "Config")
+	bool bCancelAbilityOnExit = true;
 
 private:
 	// StateTree Context에서 BossAbilityExecutorComponent를 찾는 함수

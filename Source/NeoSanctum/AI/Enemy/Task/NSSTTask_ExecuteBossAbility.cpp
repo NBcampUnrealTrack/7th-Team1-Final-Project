@@ -20,14 +20,14 @@ EStateTreeRunStatus FNSSTTask_ExecuteBossAbility::EnterState(
 		return EStateTreeRunStatus::Failed;
 	}
 
-	const bool bRequested = Executor->RequestAttack(InstanceData.FixedAttackId);
+	const bool bRequested = Executor->RequestAttack(FixedAttackId);
 	if (!bRequested)
 	{
 		UE_LOG(
 			LogTemp,
 			Verbose,
 			TEXT("NSSTTask_ExecuteBossAbility: 공격 실행 요청 실패. FixedAttackId=%s"),
-			*InstanceData.FixedAttackId.ToString());
+			*FixedAttackId.ToString());
 
 		return EStateTreeRunStatus::Failed;
 	}
@@ -74,7 +74,7 @@ void FNSSTTask_ExecuteBossAbility::ExitState(
 		return;
 	}
 
-	if (InstanceData.bCancelAbilityOnExit && Executor->IsExecuting())
+	if (bCancelAbilityOnExit && Executor->IsExecuting())
 	{
 		Executor->CancelCurrentAttack();
 	}
