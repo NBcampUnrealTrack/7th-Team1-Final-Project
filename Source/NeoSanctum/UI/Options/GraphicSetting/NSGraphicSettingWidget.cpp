@@ -101,13 +101,30 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 	
 	Settings->LoadSettings(false);
 	
-	const FIntPoint CurrentResolution =
+	FIntPoint SelectedResolution =
 		Settings->GetScreenResolution();
 	
-	const int32 ResolutionIndex =
+	int32 ResolutionIndex =
 		SupportedResolutions.IndexOfByKey(
-			CurrentResolution);
+			SelectedResolution);
 	
+	if (ResolutionIndex == INDEX_NONE)
+	{
+		SelectedResolution =
+			Settings->GetLastConfirmedScreenResolution();
+
+		ResolutionIndex =
+			SupportedResolutions.IndexOfByKey(
+				SelectedResolution);
+	}
+
+	if (ResolutionIndex == INDEX_NONE)
+	{
+		ResolutionIndex =
+			SupportedResolutions.IndexOfByKey(
+				Settings->GetDesktopResolution());
+	}
+
 	if (ResolutionIndex != INDEX_NONE)
 	{
 		ResolutionComboBox->SetSelectedIndex(
@@ -230,6 +247,8 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 		VSyncCheckBox->IsChecked());
 
 	Settings->ApplySettings(false);
+	Settings->ConfirmVideoMode();
+	Settings->SaveSettings();
 	SynchronizeSettings();
 }
 
@@ -252,6 +271,8 @@ void UNSGraphicSettingWidget::OnResetClicked()
 	Settings->SetVSyncEnabled(false);
 
 	Settings->ApplySettings(false);
+	Settings->ConfirmVideoMode();
+	Settings->SaveSettings();
 	
 	SynchronizeSettings();
 }
