@@ -16,6 +16,7 @@ class UNSEnemyStateComponent;
 class UNSBossModeComponent;
 class UNSBossTargetComponent;
 struct FNSEnemyAttackRow;
+struct FGameplayTag;
 
 /*
  * 작성자 : 최준혁
@@ -47,22 +48,25 @@ public:
 
 	// 현재 조건에서 사용할 공격 Row를 선택하는 함수
 	const FNSEnemyAttackRow* GetAttackRowByDistance();
-	
+
 	// 지정 AttackId와 현재 조건이 일치할 때 사용할 공격 Row를 선택하는 함수
 	const FNSEnemyAttackRow* GetAttackRowById(FName AttackId);
 
 	// 현재 조건에서 사용 가능한 공격 Row가 하나라도 있는지 확인하는 함수
 	bool CanUseAnyAttackByDistance();
-	
+
 	// 지정 AttackId가 현재 조건에서 사용 가능한지 부작용 없이 확인하는 함수
 	virtual bool CanUseAttackById(FName AttackId);
+
+	// 지정 Boss ModeTag에서 현재 조건으로 사용할 수 있는 공격 Row가 하나라도 있는지 확인하는 함수
+	virtual bool CanUseAnyAttackInMode(FGameplayTag ModeTag);
 
 	// Boss가 현재 공격 실행 중인지 확인하는 함수
 	virtual bool IsBossAttackInProgress() const;
 
 	// 공격이 실제로 실행됐을 때 쿨다운과 Threat 상태를 기록하는 함수
 	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
-	
+
 	// 공격 Ability 활성화 성공 후 쿨다운과 Threat 시작 시간을 기록하는 함수
 	void RecordAttackCommitted(const FNSEnemyAttackRow& AttackRow);
 
@@ -85,7 +89,7 @@ protected:
 	// PerceptionComponent가 감지 정보를 갱신했을 때 Threat 기록을 갱신하는 함수
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
-	
+
 	// Boss가 현재 공격 후보를 갱신할 수 있는지 확인하는 함수
 	virtual bool CanUpdateAttackAvailability() const;
 
@@ -98,13 +102,13 @@ private:
 
 	// 현재 타깃을 유지할 수 있는지 확인하는 함수
 	bool CanMaintainCurrentTarget(AActor* TargetActor) const;
-	
+
 	// 지정 AttackId 기준으로 현재 조건에서 공격 가능 여부만 검사하는 함수
 	bool CanUseAttackRowById(FName AttackId) const;
 
 	// 현재 조건에서 공격 Row를 찾고 공격 대상 상태를 갱신하는 함수
 	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);
-	
+
 	// 지정 AttackId 기준으로 현재 조건에서 사용할 공격 Row를 찾는 함수
 	const FNSEnemyAttackRow* FindAttackRowById(FName AttackId);
 

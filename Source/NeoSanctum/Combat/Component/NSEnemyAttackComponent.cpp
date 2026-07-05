@@ -129,60 +129,32 @@ bool UNSEnemyAttackComponent::CanUseAttack(
 	float Distance,
 	bool bHasDirectLineOfSight) const
 {
-	const UNSEnemyData* EnemyData = GetEnemyData();
-	if (!EnemyData ||
-		AttackRow.AttackId.IsNone() ||
-		!AttackRow.AbilityClass ||
-		!IsValidLivingTarget(TargetActor) ||
-		!IsValid(AttackActor))
-	{
-		return false;
-	}
+	return CanUseAttackInternal(
+		AttackRow,
+		GetOwnerBossModeTag(),
+		true,
+		TargetActor,
+		AttackActor,
+		Distance,
+		bHasDirectLineOfSight);
+}
 
-	if (!IsAttackAllowedByMode(AttackRow))
-	{
-		return false;
-	}
-
-	if (Distance < AttackRow.Condition.MinRange ||
-		Distance > AttackRow.Condition.MaxRange)
-	{
-		return false;
-	}
-
-	if (AttackRow.Condition.bRequireLineOfSight &&
-		!bHasDirectLineOfSight &&
-		!CanUseDestructibleCoverAttack(
-			AttackRow,
-			TargetActor,
-			AttackActor,
-			bHasDirectLineOfSight))
-	{
-		return false;
-	}
-
-	const float Cooldown =
-		EnemyData->GetPhaseAttackCooldown(AttackRow, GetOwnerHealthRatio());
-
-	if (Cooldown > 0.0f)
-	{
-		const float* LastAttackTime = LastAttackTimeById.Find(AttackRow.AttackId);
-		if (LastAttackTime)
-		{
-			const UWorld* World = GetWorld();
-			if (!World)
-			{
-				return false;
-			}
-
-			if (World->GetTimeSeconds() - *LastAttackTime < Cooldown)
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
+bool UNSEnemyAttackComponent::CanUseAttackInMode(
+	const FNSEnemyAttackRow& AttackRow,
+	FGameplayTag ModeTag,
+	const AActor* TargetActor,
+	const AActor* AttackActor,
+	float Distance,
+	bool bHasDirectLineOfSight) const
+{
+	return CanUseAttackInternal(
+		AttackRow,
+		ModeTag,
+		false,
+		TargetActor,
+		AttackActor,
+		Distance,
+		bHasDirectLineOfSight);
 }
 
 const UNSEnemyData* UNSEnemyAttackComponent::GetEnemyData() const
@@ -255,22 +227,96 @@ bool UNSEnemyAttackComponent::CanUseDestructibleCoverAttack(
 		AttackRow.AttackType == ENSEnemyAttackType::Hitscan;
 }
 
-bool UNSEnemyAttackComponent::IsAttackAllowedByMode(
-	const FNSEnemyAttackRow& AttackRow) const
+bool UNSEnemyAttackComponent::CanUseAttackInternal(
+	const FNSEnemyAttackRow& AttackRow,
+	FGameplayTag ModeTag,
+	bool bAllowInvalidModeTag,
+	const AActor* TargetActor,
+	const AActor* AttackActor,
+	float Distance,
+	bool bHasDirectLineOfSight) const
+{
+	const UNSEnemyData* EnemyData = GetEnemyData();
+	if (!EnemyData ||
+		AttackRow.AttackId.IsNone() ||
+		!AttackRow.AbilityClass ||
+		!IsValidLivingTarget(TargetActor) ||
+		!IsValid(AttackActor))
+	{
+		return false;
+	}
+
+	if (!IsAttackAllowedByModeTag(AttackRow, ModeTag, bAllowInvalidModeTag))
+	{
+		return false;
+	}
+
+	if (Distance < AttackRow.Condition.MinRange ||
+		Distance > AttackRow.Condition.MaxRange)
+	{
+		return false;
+	}
+
+	if (AttackRow.Condition.bRequireLineOfSight &&
+		!bHasDirectLineOfSight &&
+		!CanUseDestructibleCoverAttack(
+			AttackRow,
+			TargetActor,
+			AttackActor,
+			bHasDirectLineOfSight))
+	{
+		return false;
+	}
+
+	const float Cooldown =
+		EnemyData->GetPhaseAttackCooldown(AttackRow, GetOwnerHealthRatio());
+
+	if (Cooldown > 0.0f)
+	{
+		const float* LastAttackTime = LastAttackTimeById.Find(AttackRow.AttackId);
+		if (LastAttackTime)
+		{
+			const UWorld* World = GetWorld();
+			if (!World)
+			{
+				return false;
+			}
+
+			if (World->GetTimeSeconds() - *LastAttackTime < Cooldown)
+			{
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool UNSEnemyAttackComponent::IsAttackAllowedByModeTag(
+	const FNSEnemyAttackRow& AttackRow,
+	FGameplayTag ModeTag,
+	bool bAllowInvalidModeTag) const
 {
 	if (AttackRow.AllowedModeTags.IsEmpty())
 	{
 		return true;
 	}
 
-	const FGameplayTag CurrentModeTag = GetOwnerBossModeTag();
-
-	if (!CurrentModeTag.IsValid())
+	if (!ModeTag.IsValid())
 	{
-		return true;
+		return bAllowInvalidModeTag;
 	}
 
-	return CurrentModeTag.MatchesAny(AttackRow.AllowedModeTags);
+	return ModeTag.MatchesAny(AttackRow.AllowedModeTags);
+}
+
+bool UNSEnemyAttackComponent::IsAttackAllowedByMode(
+	const FNSEnemyAttackRow& AttackRow) const
+{
+	return IsAttackAllowedByModeTag(
+		AttackRow,
+		GetOwnerBossModeTag(),
+		true);
 }
 
 FGameplayTag UNSEnemyAttackComponent::GetOwnerBossModeTag() const

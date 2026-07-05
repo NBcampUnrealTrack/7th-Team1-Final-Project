@@ -475,6 +475,74 @@ bool ANSBossAIController::CanUseAttackById(FName AttackId)
 	return CanUseAttackRowById(AttackId);
 }
 
+bool ANSBossAIController::CanUseAnyAttackInMode(FGameplayTag ModeTag)
+{
+	UpdateEnemyPhase();
+
+	if (!ModeTag.IsValid() || !CanUpdateAttackAvailability())
+	{
+		return false;
+	}
+
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || !IsValidLivingTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		return false;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (AttackComponent->CanUseAttackInMode(
+			*AttackRow,
+			ModeTag,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool ANSBossAIController::IsBossAttackInProgress() const
 {
 	return IsAttackingBB();
