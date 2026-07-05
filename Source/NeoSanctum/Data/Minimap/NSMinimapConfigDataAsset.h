@@ -6,6 +6,8 @@
 #include "Engine/DataAsset.h"
 #include "NSMinimapConfigDataAsset.generated.h"
 
+class UDataTable;
+
 //미니맵 UI 표시 설정
 UCLASS(BlueprintType)
 class NEOSANCTUM_API UNSMinimapConfigDataAsset : public UDataAsset
@@ -37,4 +39,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Layers")
 	FLinearColor UpperLayerTint = FLinearColor(0.62f, 0.66f, 0.70f, 0.48f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icons")
+	TObjectPtr<UDataTable> IconDataTable;
 };

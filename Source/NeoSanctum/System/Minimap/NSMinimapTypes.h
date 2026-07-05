@@ -34,3 +34,22 @@ struct FNSMinimapLayerConfigRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Layers")
 	TArray<FNSMinimapCaptureLayerConfig> CaptureLayers;
 };
+
+//미니맵 아이콘 표시 설정
+USTRUCT(BlueprintType)
+struct FNSMinimapIconRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icon")
+	FLinearColor Color = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icon", meta = (ClampMin = "1.0"))
+	float Diameter = 8.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icon")
+	int32 DrawPriority = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icon")
+	bool bShowOnAllLayers = false;
+};
