@@ -27,7 +27,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
+	virtual UNSFlyingLocomotionComponent* GetFlyingLocomotion() const override;
+	
 #pragma region SpawnDrone
 public:
 	// 전투 진입 시 패턴 개시 (초기 웨이브 + 유지 타이머). 기존 StartDroneSpawnLoop 대체
@@ -192,7 +193,7 @@ public:
 
 	// 보스 직접 이동 허용 여부 (AIController가 이동 게이트로 사용 예정)
 	bool IsBossMovementUnlocked() const { return bBossMovementUnlocked; }
-
+	
 private:
 	// 필드의 모든 플레이어 쉴드를 RemoveRatio(0~1)만큼 제거
 	void DrainAllPlayerShields(float RemoveRatio);

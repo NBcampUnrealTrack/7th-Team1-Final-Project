@@ -37,6 +37,11 @@ void ANSBossMotherShip::BeginPlay()
 	InitControlDevices();
 }
 
+UNSFlyingLocomotionComponent* ANSBossMotherShip::GetFlyingLocomotion() const
+{
+	return FlyingLocomotionComponent;
+}
+
 #pragma region SpawnDronePattern
 
 void ANSBossMotherShip::StartDronePattern()

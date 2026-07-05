@@ -20,6 +20,11 @@ void ANSEnemyDrone::BeginPlay()
 	
 }
 
+UNSFlyingLocomotionComponent* ANSEnemyDrone::GetFlyingLocomotion() const
+{
+	return FlyingLocomotionComponent;
+}
+
 bool ANSEnemyDrone::IsInPool() const
 {
 	const UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent();
