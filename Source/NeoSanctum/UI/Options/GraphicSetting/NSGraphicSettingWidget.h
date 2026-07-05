@@ -26,6 +26,7 @@ private:
 	void InitializeResolutionOptions();
 	void InitializeWindowModeOptions();
 	void InitializeFrameRateOptions();
+	void InitializeQualityOptions();
 	void SynchronizeSettings();
 	
 	UFUNCTION()

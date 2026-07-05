@@ -72,6 +72,16 @@ void UNSGraphicSettingWidget::InitializeFrameRateOptions()
 	FrameRateComboBox->AddOption(TEXT("144"));
 	FrameRateComboBox->AddOption(TEXT("제한 없음"));
 }
+
+void UNSGraphicSettingWidget::InitializeQualityOptions()
+{
+	OverallQualityComboBox->ClearOptions();
+	OverallQualityComboBox->AddOption(TEXT("낮음"));
+	OverallQualityComboBox->AddOption(TEXT("중간"));
+	OverallQualityComboBox->AddOption(TEXT("높음"));
+	OverallQualityComboBox->AddOption(TEXT("최상"));
+}
+
 void UNSGraphicSettingWidget::SynchronizeSettings()
 {
 	UGameUserSettings* Settings =
@@ -137,6 +147,14 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 	}
 	
 	FrameRateComboBox->SetSelectedIndex(FrameRateIndex);
+	
+	const int32 QualityLevel =
+		Settings->GetOverallScalabilityLevel();
+	
+	OverallQualityComboBox->SetSelectedIndex(
+		QualityLevel >= 0 && QualityLevel <= 3
+			? QualityLevel
+			: 3);
 void UNSGraphicSettingWidget::OnApplyClicked()
 {
 	UGameUserSettings* Settings =
@@ -184,6 +202,16 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 	{
 		Settings->SetFrameRateLimit(
 			FrameRateLimits[FrameRateIndex]);
+	}
+
+	const int32 QualityLevel =
+		OverallQualityComboBox->GetSelectedIndex();
+
+	if (QualityLevel >= 0 &&
+		QualityLevel <= 3)
+	{
+		Settings->SetOverallScalabilityLevel(
+			QualityLevel);
 	}
 	Settings->ApplySettings(false);
 	SynchronizeSettings();
