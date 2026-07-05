@@ -10,6 +10,7 @@
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
@@ -24,6 +25,7 @@ void UNSPartEquipComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(UNSPartEquipComponent, EquippedParts);
+	DOREPLIFETIME_CONDITION(UNSPartEquipComponent, ShopStock, COND_OwnerOnly);
 }
 
 void UNSPartEquipComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -461,13 +463,21 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 	{
 		return;
 	}
-	
+
+	UNSCurrencyComponent* Currency = GetCurrencyComponent();
+	const int64 Cost = GetRerollCost(Slot);
+	if (!Currency || Cost < 0 || !Currency->TrySpendTemp(Cost))
+	{
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		return;
+	}
+
 	Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
-	// TODO : 추후에 카운트에 따라 비용 증가시 사용
 	Part->RollCount++;
-	
+
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
+	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::RerollDone);
 }
 
 void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
@@ -486,20 +496,36 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 	{
 		return;
 	}
-	if (FMath::FRand() > UpgradeSuccessChance)
+
+	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	if (!UpgradeRow)
 	{
 		return;
 	}
-	
+
+	UNSCurrencyComponent* Currency = GetCurrencyComponent();
+	if (!Currency || !Currency->TrySpendTemp(UpgradeRow->UpgradeCost))
+	{
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		return;
+	}
+
+	if (FMath::FRand() > UpgradeRow->UpgradeSuccessChance)
+	{
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeFail);
+		return;
+	}
+
 	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
-	
+
 	if (UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part))
 	{
 		Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
 	}
-	
+
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
+	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess);
 }
 
 float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const
@@ -518,6 +544,156 @@ float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, EN
 
 	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
 	return Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
+}
+
+int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
+{
+	const FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return -1;
+	}
+
+	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	if (!Row)
+	{
+		return -1;
+	}
+	return Row->RerollBaseCost + Row->RerollCostIncrement * Part->RollCount;
+}
+
+int64 UNSPartEquipComponent::GetUpgradeCost(FGameplayTag Slot) const
+{
+	const FNSPartData* Part = FindPart(Slot);
+	if (!Part || Part->CurrentRarity == ENSPartRarity::Legendary)
+	{
+		return -1;
+	}
+
+	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	if (!Row)
+	{
+		return -1;
+	}
+	return Row->UpgradeCost;
+}
+
+float UNSPartEquipComponent::GetUpgradeChance(FGameplayTag Slot) const
+{
+	const FNSPartData* Part = FindPart(Slot);
+	if (!Part || Part->CurrentRarity == ENSPartRarity::Legendary)
+	{
+		return -1.f;
+	}
+
+	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	if (!Row)
+	{
+		return -1.f;
+	}
+	return Row->UpgradeSuccessChance;
+}
+
+void UNSPartEquipComponent::Client_NotifyUpgradeResult_Implementation(FGameplayTag Slot, ENSPartUpgradeResult Result)
+{
+	OnUpgradeResult.Broadcast(Slot, Result);
+}
+
+// ================================================================
+// 인런 상점
+// ================================================================
+
+void UNSPartEquipComponent::GenerateShopStock()
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner());
+	if (!DataSS)
+	{
+		return;
+	}
+
+	ShopStock.Reset();
+
+	for (const TPair<FGameplayTag, FNSPartSlotRow>& SlotPair : DataSS->GetAllSlotRows())
+	{
+		// 이 부위의 등장 후보 (카탈로그 캐시는 bEnabled 필터 완료 상태)
+		TArray<const FNSPartDefinitionRow*> Candidates;
+		for (const TPair<FPrimaryAssetId, FNSPartDefinitionRow>& PartPair : DataSS->GetAllPartRows())
+		{
+			if (PartPair.Value.PartSlot == SlotPair.Key)
+			{
+				Candidates.Add(&PartPair.Value);
+			}
+		}
+		if (Candidates.Num() == 0)
+		{
+			continue;
+		}
+
+		for (int32 Index = 0; Index < StockCountPerSlot; ++Index)
+		{
+			// 중복 허용 랜덤 선택
+			const FNSPartDefinitionRow* Pick = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
+
+			FNSPartData Item;
+			Item.DefinitionPtr = Pick->Definition;
+			Item.Slot = SlotPair.Key;
+			Item.CurrentRarity = RollShopRarity();
+
+			const FNSPartValueRange* Range = Pick->ValueRange.Find(Item.CurrentRarity);
+			Item.CurrentValue = Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
+
+			ShopStock.Add(Item);
+		}
+	}
+
+	bShopStockGenerated = true;
+	
+	OnShopStockChanged.Broadcast();
+}
+
+ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner());
+	if (!DataSS)
+	{
+		return ENSPartRarity::Common;
+	}
+
+	float TotalWeight = 0.f;
+	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	{
+		TotalWeight += FMath::Max(Pair.Value.ShopWeight, 0.f);
+	}
+	if (TotalWeight <= 0.f)
+	{
+		return ENSPartRarity::Common;
+	}
+
+	float Roll = FMath::FRandRange(0.f, TotalWeight);
+	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	{
+		Roll -= FMath::Max(Pair.Value.ShopWeight, 0.f);
+		if (Roll <= 0.f)
+		{
+			return Pair.Key;
+		}
+	}
+	return ENSPartRarity::Common;
+}
+
+int64 UNSPartEquipComponent::GetShopPrice(ENSPartRarity Rarity) const
+{
+	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
+	if (!Row)
+	{
+		return -1;
+	}
+	return Row->ShopPrice;
+}
+
+void UNSPartEquipComponent::OnRep_ShopStock()
+{
+	OnShopStockChanged.Broadcast();
 }
 
 // ================================================================
@@ -544,6 +720,16 @@ UAbilitySystemComponent* UNSPartEquipComponent::GetOwnerASC() const
 		return nullptr;
 	}
 	return ASI->GetAbilitySystemComponent();
+}
+
+UNSCurrencyComponent* UNSPartEquipComponent::GetCurrencyComponent() const
+{
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return nullptr;
+	}
+	return Owner->FindComponentByClass<UNSCurrencyComponent>();
 }
 
 // ================================================================
@@ -606,4 +792,44 @@ void UNSPartEquipComponent::Server_RequestPickup_Implementation(ANSDroppedPart* 
 	}
 
 	TargetPart->TryPickup(Pawn);
+}
+
+void UNSPartEquipComponent::Server_RequestGenerateStock_Implementation()
+{
+	if (bShopStockGenerated)
+	{
+		return;
+	}
+	GenerateShopStock();
+}
+
+void UNSPartEquipComponent::Server_RequestPurchase_Implementation(int32 StockIndex)
+{
+	if (!ShopStock.IsValidIndex(StockIndex))
+	{
+		Client_NotifyUpgradeResult(FGameplayTag(), ENSPartUpgradeResult::SoldOut);
+		return;
+	}
+
+	const FNSPartData Item = ShopStock[StockIndex];
+
+	if (!IsValid(NSPartUtils::ResolvePartDefinition(this, Item)))
+	{
+		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::SoldOut);
+		return;
+	}
+
+	const int64 Price = GetShopPrice(Item.CurrentRarity);
+	UNSCurrencyComponent* Currency = GetCurrencyComponent();
+	if (!Currency || Price < 0 || !Currency->TrySpendTemp(Price))
+	{
+		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		return;
+	}
+
+	ShopStock.RemoveAt(StockIndex);
+	EquipPart(Item);
+
+	Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::PurchaseDone);
+	OnShopStockChanged.Broadcast();
 }
