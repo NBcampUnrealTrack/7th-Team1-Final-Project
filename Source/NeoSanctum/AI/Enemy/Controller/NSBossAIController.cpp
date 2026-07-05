@@ -407,6 +407,23 @@ const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowByDistance()
 	return SelectedAttack;
 }
 
+const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowById(FName AttackId)
+{
+	UpdateEnemyPhase();
+
+	if (AttackId.IsNone() || IsBossAIBlocked())
+	{
+		SetCanAttackBB(false);
+		return nullptr;
+	}
+
+	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowById(AttackId);
+
+	SetCanAttackBB(SelectedAttack != nullptr);
+
+	return SelectedAttack;
+}
+
 const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowByDistance(bool bSelectWeightedAttack)
 {
 	APawn* BossPawn = GetPawn();
@@ -467,6 +484,81 @@ const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowByDistance(bool bSele
 	return SelectedAttack;
 }
 
+const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowById(FName AttackId)
+{
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || AttackId.IsNone() || !IsValidLivingTarget(TargetActor))
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow || AttackRow->AttackId != AttackId)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (!AttackComponent->CanUseAttack(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			continue;
+		}
+
+		if (!BuildAttackTargetsForRow(*AttackRow))
+		{
+			ClearAttackState();
+			return nullptr;
+		}
+
+		SetAttackActorState(AttackActor);
+		SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
+
+		return AttackRow;
+	}
+
+	ClearAttackState();
+	return nullptr;
+}
+
 bool ANSBossAIController::BuildAttackTargetsForRow(const FNSEnemyAttackRow& AttackRow)
 {
 	UNSBossTargetComponent* BossTargetComponent = GetBossTargetComponent();
@@ -484,6 +576,12 @@ bool ANSBossAIController::BuildAttackTargetsForRow(const FNSEnemyAttackRow& Atta
 
 void ANSBossAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 {
+	RecordAttackCommitted(AttackRow);
+	NotifyAttackStarted();
+}
+
+void ANSBossAIController::RecordAttackCommitted(const FNSEnemyAttackRow& AttackRow)
+{
 	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
 		ThreatComponent->NotifyAttackStarted();
@@ -493,8 +591,6 @@ void ANSBossAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 	{
 		AttackComponent->RecordAttackUsed(AttackRow);
 	}
-
-	NotifyAttackStarted();
 }
 
 void ANSBossAIController::NotifyAttackFinished()

@@ -47,12 +47,18 @@ public:
 
 	// 현재 조건에서 사용할 공격 Row를 선택하는 함수
 	const FNSEnemyAttackRow* GetAttackRowByDistance();
+	
+	// 지정 AttackId와 현재 조건이 일치할 때 사용할 공격 Row를 선택하는 함수
+	const FNSEnemyAttackRow* GetAttackRowById(FName AttackId);
 
 	// 현재 조건에서 사용 가능한 공격 Row가 하나라도 있는지 확인하는 함수
 	bool CanUseAnyAttackByDistance();
 
 	// 공격이 실제로 실행됐을 때 쿨다운과 Threat 상태를 기록하는 함수
 	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
+	
+	// 공격 Ability 활성화 성공 후 쿨다운과 Threat 시작 시간을 기록하는 함수
+	void RecordAttackCommitted(const FNSEnemyAttackRow& AttackRow);
 
 	// 공격 Ability 종료, 실패, 취소 이후 Boss 전용 공격 상태를 정리하는 함수
 	virtual void NotifyAttackFinished() override;
@@ -86,6 +92,9 @@ private:
 
 	// 현재 조건에서 공격 Row를 찾고 공격 대상 상태를 갱신하는 함수
 	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);
+	
+	// 지정 AttackId 기준으로 현재 조건에서 사용할 공격 Row를 찾는 함수
+	const FNSEnemyAttackRow* FindAttackRowById(FName AttackId);
 
 	// 선택된 AttackRow의 TargetPolicy 기준으로 공격 타깃 목록을 구성하는 함수
 	bool BuildAttackTargetsForRow(const FNSEnemyAttackRow& AttackRow);

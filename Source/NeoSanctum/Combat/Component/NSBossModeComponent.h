@@ -62,7 +62,7 @@ public:
 
 protected:
 	// Boss가 처음 시작할 때 사용할 기본 ModeTag
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Mode")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Mode", meta=(Categories="State.Enemy"))
 	FGameplayTag DefaultModeTag;
 
 	// 현재 Boss ModeTag. 서버에서 관리하고 클라이언트에 복제.
