@@ -12,6 +12,10 @@
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Interaction/Prop/NSBossControlDevice.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -420,6 +424,51 @@ void ANSBossMotherShip::ClearBossInvincibility()
 	if (!MotherShipAbilitySystemComponent) return;
 	
 	MotherShipAbilitySystemComponent->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+}
+
+#pragma endregion
+
+#pragma region PhaseTransition
+
+void ANSBossMotherShip::BeginPhase2Transition()
+{
+	if (!HasAuthority()) return;
+	ApplyBossInvincibility();
+}
+
+void ANSBossMotherShip::CompletePhase2Transition()
+{
+	if (!HasAuthority()) return;
+	DrainAllPlayerShields(PlayerShieldDrainRatio);
+	GrantBossShield();
+	ClearBossInvincibility();
+	bBossMovementUnlocked = true;
+}
+
+void ANSBossMotherShip::DrainAllPlayerShields(float RemoveRatio)
+{
+	if (!HasAuthority()) return;
+	ANSRunGameState* RunGameState = Cast<ANSRunGameState>(GetWorld()->GetGameState());
+	if (!RunGameState) return;
+	for (const TObjectPtr<APlayerState>& PlayerState : RunGameState->PlayerArray)
+	{
+		ANSPlayerState* NSPS = Cast<ANSPlayerState>(PlayerState);
+		if (!NSPS) continue;
+		
+		UNSPlayerAttributeSet* PlayerAttributeSet = NSPS->GetPlayerAttributeSet();
+		if (!PlayerAttributeSet) continue;
+		
+		const float RemainingShield = PlayerAttributeSet->GetShield() * (1.0f - RemoveRatio);
+		PlayerAttributeSet->SetShield(RemainingShield);
+	}
+}
+
+void ANSBossMotherShip::GrantBossShield()
+{
+	if (!HasAuthority()) return;
+	if (!AttributeSet) return;
+	AttributeSet->SetMaxShield(Phase2ShieldAmount);
+	AttributeSet->SetShield(Phase2ShieldAmount);
 }
 
 #pragma endregion

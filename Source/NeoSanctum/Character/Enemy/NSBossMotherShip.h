@@ -182,6 +182,39 @@ private:
 	bool bControlDevicesCleared = false;
 #pragma endregion
 	
+#pragma region PhaseTransition
+public:
+	// [TransitionGA 연출 시작 시] 무적 진입 + (추후)이동 정지
+	void BeginPhase2Transition();
+
+	// [TransitionGA 연출 종료 시] 쉴드 드레인 / 보스 쉴드 / 무적 해제 / 이동 허용
+	void CompletePhase2Transition();
+
+	// 보스 직접 이동 허용 여부 (AIController가 이동 게이트로 사용 예정)
+	bool IsBossMovementUnlocked() const { return bBossMovementUnlocked; }
+
+private:
+	// 필드의 모든 플레이어 쉴드를 RemoveRatio(0~1)만큼 제거
+	void DrainAllPlayerShields(float RemoveRatio);
+
+	// 보스에게 Phase2 방어막 부여
+	void GrantBossShield();
+
+private:
+	// ---- Config ----
+	// Phase2 진입 시 보스가 얻는 방어막 총량
+	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0"))
+	float Phase2ShieldAmount = 5000.f;
+
+	// 연출 종료 시 각 플레이어에게서 제거할 쉴드 비율 (0.7 = 70%)
+	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float PlayerShieldDrainRatio = 0.7f;
+
+	// ---- Runtime ----
+	// 보스 이동 허용 플래그(연출 종료 후 true). 실제 이동 로직은 AIController에서 게이트
+	bool bBossMovementUnlocked = false;
+#pragma endregion
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess))
 	TObjectPtr<UNSFlyingLocomotionComponent> FlyingLocomotionComponent;
