@@ -18,6 +18,8 @@ void UNSMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGauge, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MaxHitGauge, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGaugeGainPerHit, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, Shield, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MaxShield, COND_None, REPNOTIFY_Always);
 }
 
 void UNSMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -35,7 +37,16 @@ void UNSMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attrib
 	else if (Attribute == GetHitGaugeGainPerHitAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
+	}// ---@ 민재 : 아래 쉴드 옵션 추가---
+	else if (Attribute == GetShieldAttribute())
+	{
+		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxShield());
 	}
+	else if (Attribute == GetMaxShieldAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	// --- 
 }
 
 void UNSMonsterAttributeSet::ResetHitGauge()
@@ -222,4 +233,32 @@ UNSEnemyStateComponent* UNSMonsterAttributeSet::GetTargetEnemyState(
 {
 	AActor* AvatarActor = Data.Target.GetAvatarActor();
 	return AvatarActor ? AvatarActor->FindComponentByClass<UNSEnemyStateComponent>() : nullptr;
+}
+
+// @민재 : 쉴드관련 함수 추가
+float UNSMonsterAttributeSet::HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data)
+{
+	const float CurrentShield = GetShield();
+	if (CurrentShield <= 0)
+	{
+		return DamageAmount;
+	}
+	
+	const float AbsorbedDamage = FMath::Min(CurrentShield, DamageAmount);
+	
+	SetShield(CurrentShield - AbsorbedDamage);
+	
+	NotifyHitReaction(Data, ENSHitReactionDamageLayer::Shield, AbsorbedDamage, false);
+	
+	return DamageAmount - AbsorbedDamage;
+}
+
+void UNSMonsterAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSMonsterAttributeSet, Shield, OldShield);
+}
+
+void UNSMonsterAttributeSet::OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSMonsterAttributeSet, MaxShield, OldMaxShield);
 }
