@@ -44,6 +44,8 @@ public:
 		const FVector& Location,
 		const FRotator& Rotation) override;
 	virtual void NotifyNPCRescued_Implementation(FName RescuedNPCId) override;
+	// 보스 게이트 도달 처리
+	virtual void NotifyBossGateReached_Implementation() override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
@@ -109,6 +111,10 @@ private:
 	// 목표 풀에서 랜덤 선택 후 StageManager/GameState 초기화
 	void InitializeObjectiveInternal();
 	
+	// 인런 데이터 준비 완료 후 목표를 초기화하기 위한 콜백
+	UFUNCTION()
+	void HandleRunDataReadyForObjective();
+	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
 	
@@ -162,6 +168,13 @@ private:
 	void HandleEnemyReward(AActor* DeadEnemy);
 	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
 	void HandleEnemyExperience(AActor* DeadEnemy);
+	
+	// PlayerArray 내 위치로 이 플레이어의 고정 슬롯 인덱스 결정해주는 헬퍼 함수
+	int32 GetPlayerSlotIndex(AController* Player) const;
+	// 전원을 PlayerBossStart%d로 이동
+	void TeleportAllPlayersToBossRoom();  
+	// 목표방 잔존 적 풀 반환
+	void ReturnStrayEnemiesToPool();          
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;
