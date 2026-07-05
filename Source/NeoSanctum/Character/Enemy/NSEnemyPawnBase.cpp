@@ -20,6 +20,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 
 ANSEnemyPawnBase::ANSEnemyPawnBase()
 {
@@ -51,6 +52,8 @@ ANSEnemyPawnBase::ANSEnemyPawnBase()
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
 	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+	MinimapIconComponent->SetHideWhenOwnerHealthZero(true);
 }
 
 void ANSEnemyPawnBase::BeginPlay()
