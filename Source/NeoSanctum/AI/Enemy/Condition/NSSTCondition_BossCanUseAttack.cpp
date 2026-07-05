@@ -10,7 +10,9 @@
 bool FNSSTCondition_BossCanUseAttack::TestCondition(
 	FStateTreeExecutionContext& Context) const
 {
-	if (AttackId.IsNone())
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	if (InstanceData.AttackId.IsNone())
 	{
 		return false;
 	}
@@ -21,7 +23,7 @@ bool FNSSTCondition_BossCanUseAttack::TestCondition(
 		return false;
 	}
 
-	return BossController->CanUseAttackById(AttackId);
+	return BossController->CanUseAttackById(InstanceData.AttackId);
 }
 
 ANSBossAIController* FNSSTCondition_BossCanUseAttack::ResolveBossController(

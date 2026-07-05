@@ -8,6 +8,16 @@
 
 class ANSBossAIController;
 
+USTRUCT()
+struct FNSSTCondition_BossCanUseAttackInstanceData
+{
+	GENERATED_BODY()
+
+	// 사용 가능 여부를 검사할 AttackId
+	UPROPERTY(EditAnywhere, Category = "Config")
+	FName AttackId = NAME_None;
+};
+
 /*
  * 작성자 : 최준혁
  * 
@@ -20,9 +30,12 @@ struct NEOSANCTUM_API FNSSTCondition_BossCanUseAttack : public FStateTreeConditi
 {
 	GENERATED_BODY()
 
-	// 사용 가능 여부를 검사할 AttackId
-	UPROPERTY(EditAnywhere, Category = "Config")
-	FName AttackId = NAME_None;
+	using FInstanceDataType = FNSSTCondition_BossCanUseAttackInstanceData;
+
+	virtual const UStruct* GetInstanceDataType() const override
+	{
+		return FInstanceDataType::StaticStruct();
+	}
 
 	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
 

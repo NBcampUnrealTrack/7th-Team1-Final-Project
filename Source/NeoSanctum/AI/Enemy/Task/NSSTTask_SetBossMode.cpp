@@ -16,6 +16,8 @@ EStateTreeRunStatus FNSSTTask_SetBossMode::EnterState(
 	FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition) const
 {
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
 	UNSBossModeComponent* ModeComponent = ResolveModeComponent(Context);
 	if (!ModeComponent)
 	{
@@ -23,13 +25,13 @@ EStateTreeRunStatus FNSSTTask_SetBossMode::EnterState(
 		return EStateTreeRunStatus::Failed;
 	}
 
-	if (!ModeTag.IsValid())
+	if (!InstanceData.ModeTag.IsValid())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("NSSTTask_SetBossMode: ModeTag가 비어 있음"));
 		return EStateTreeRunStatus::Failed;
 	}
 
-	const bool bChanged = ModeComponent->SetMode(ModeTag);
+	const bool bChanged = ModeComponent->SetMode(InstanceData.ModeTag);
 
 	return bChanged
 		       ? EStateTreeRunStatus::Running
@@ -40,7 +42,9 @@ void FNSSTTask_SetBossMode::ExitState(
 	FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition) const
 {
-	if (!bClearModeOnExit || !ModeTag.IsValid())
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	if (!InstanceData.bClearModeOnExit || !InstanceData.ModeTag.IsValid())
 	{
 		return;
 	}
@@ -51,7 +55,7 @@ void FNSSTTask_SetBossMode::ExitState(
 		return;
 	}
 
-	if (ModeComponent->GetCurrentModeTag() == ModeTag)
+	if (ModeComponent->GetCurrentModeTag() == InstanceData.ModeTag)
 	{
 		ModeComponent->ClearMode();
 	}
