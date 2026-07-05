@@ -2,7 +2,7 @@
 
 
 #include "NSCommonUpgradeConsoleNPC.h"
-#include "NeoSanctum/UI/Interaction/NSCommonUpgradeWidget.h"
+#include "NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.h"
 
 bool ANSCommonUpgradeConsoleNPC::CanInteract_Implementation(APlayerController* Interactor) const
 {

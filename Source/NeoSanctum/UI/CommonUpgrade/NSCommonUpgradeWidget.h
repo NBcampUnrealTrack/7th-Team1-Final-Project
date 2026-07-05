@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "NSNPCInteractionWidgetBase.h"
+#include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NSCommonUpgradeWidget.generated.h"
 
 class UCommonButtonBase;
