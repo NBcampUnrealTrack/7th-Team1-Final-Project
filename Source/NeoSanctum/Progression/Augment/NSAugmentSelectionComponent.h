@@ -130,8 +130,24 @@ private:
 	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
 	static int64 ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count);
 
+	// 두 DefId Set이 원소까지 완전히 같은지 판정(순서 무관).
+	static bool AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B);
+
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
+
+	/**
+ 	 * 직전 오퍼(PreviousDefIds)와 DefId 구성이 다른 완전한 N장 오퍼를 생성.
+ 	 *
+ 	 * 기존 카드 일부 재등장은 허용하되, N장 집합 전체가 직전과 동일한 재출현은 허용하지 않는다.
+ 	 * 다른 구성이 실제로 존재하지 않을 때만 bOutDifferentPossible=false와 빈 배열을 반환한다.
+ 	 */
+	TArray<FNSAugmentSelectionCard> RollCardsExcludingComposition(
+		const FNSAugmentRarityRule& RarityRule,
+		int32 N,
+		const TSet<FPrimaryAssetId>& PreviousDefIds,
+		bool& bOutDifferentPossible
+	) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,

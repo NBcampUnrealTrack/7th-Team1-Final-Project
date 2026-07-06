@@ -2,6 +2,7 @@
 
 
 #include "NSAugmentSelectionComponent.h"
+
 #include "NSAugmentInventoryComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -632,6 +633,182 @@ int64 UNSAugmentSelectionComponent::ComputeRerollCost(const FNSAugmentRerollRule
 	return static_cast<int64>(FMath::CeilToDouble(Raw));
 }
 
+TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCardsExcludingComposition(
+	const FNSAugmentRarityRule& RarityRule,
+	int32 N,
+	const TSet<FPrimaryAssetId>& PreviousDefIds,
+	bool& bOutDifferentPossible) const
+{
+	bOutDifferentPossible = false;
+
+	// 직전 오퍼가 완전한 N장이 아니면(부분 오퍼) 리롤 대상이 아니다.
+	if (N <= 0 || PreviousDefIds.Num() != N)
+	{
+		return {};
+	}
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsRunReady())
+	{
+		return {};
+	}
+
+	bool bLegendaryFull = false;
+	TSet<FPrimaryAssetId> OwnedLegendarySlotIds;
+	TSet<FPrimaryAssetId> StackFullIds;
+	CollectInventoryFilter(bLegendaryFull, OwnedLegendarySlotIds, StackFullIds);
+
+	// 기존 카드 일부 재등장은 허용하므로 PreviousDefIds를 후보 풀에서 제외하지 않음.
+	const TSet<FPrimaryAssetId> EmptyExcluded;
+
+	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
+	BuildRarityBuckets(DataSubsystem, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
+
+	// 후보 풀을 DefId 집합 + 메타 맵으로 평탄화. 이 트리거에서 가중치가 0(또는 미설정)인 희귀도는 제외.
+	TSet<FPrimaryAssetId> CandidateDefIds;
+	TMap<FPrimaryAssetId, FNSAugmentCandidate> CandidatesByDefId;
+	for (const TPair<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& RarityBucket : ByRarity)
+	{
+		const int32* Weight = RarityRule.RarityWeights.Find(RarityBucket.Key);
+		if (!Weight || *Weight <= 0)
+		{
+			continue;
+		}
+
+		for (const FNSAugmentCandidate& Candidate : RarityBucket.Value)
+		{
+			CandidateDefIds.Add(Candidate.DefId);
+			CandidatesByDefId.Add(Candidate.DefId, Candidate);
+		}
+	}
+
+	// 후보 수가 N 이하이면 직전과 다른 N장 구성이 존재할 수 없다.
+	if (CandidateDefIds.Num() <= N)
+	{
+		return {};
+	}
+
+	// 자연스러운 기존 확률 분포를 최대한 유지하기 위해 정상 추첨을 K회 시도.
+	constexpr int32 K = 8;
+	TArray<FNSAugmentSelectionCard> LastFullOffer;
+
+	for (int32 Attempt = 0; Attempt < K; ++Attempt)
+	{
+		TArray<FNSAugmentSelectionCard> Candidate = DrawCards(RarityRule, ByRarity, N);
+		if (Candidate.Num() != N)
+		{
+			continue;
+		}
+
+		LastFullOffer = Candidate;
+
+		TSet<FPrimaryAssetId> CandidateSet;
+		for (const FNSAugmentSelectionCard& Card : Candidate)
+		{
+			CandidateSet.Add(Card.DefId);
+		}
+
+		if (!AreDefIdSetsEqual(CandidateSet, PreviousDefIds))
+		{
+			bOutDifferentPossible = true;
+			return Candidate;
+		}
+	}
+
+	// 여기까지 왔다는 건 K번을 뽑아도 계속 직전과 같은 조합만 나왔다는 뜻.
+	// 마지막으로 뽑은 오퍼에서 카드 한 장만 강제로 바꿔서 다른 조합을 만듬.
+	if (LastFullOffer.Num() != N)
+	{
+		return {};
+	}
+
+	TArray<FPrimaryAssetId> OutsideCandidates;
+	for (const FPrimaryAssetId& Id : CandidateDefIds)
+	{
+		if (!PreviousDefIds.Contains(Id))
+		{
+			OutsideCandidates.Add(Id);
+		}
+	}
+
+	if (OutsideCandidates.IsEmpty())
+	{
+		return {};
+	}
+
+	// OutsideCandidates 중에서 SelectionWeight 비율대로 하나를 무작위로 뽑아 치환 후보로 사용.
+	int32 TotalOutsideWeight = 0;
+	for (const FPrimaryAssetId& Id : OutsideCandidates)
+	{
+		if (const FNSAugmentCandidate* Candidate = CandidatesByDefId.Find(Id))
+		{
+			TotalOutsideWeight += FMath::Max(0, Candidate->SelectionWeight);
+		}
+	}
+
+	if (TotalOutsideWeight <= 0)
+	{
+		return {};
+	}
+
+	const int32 RollValue = FMath::RandRange(1, TotalOutsideWeight);
+	int32 Accumulated = 0;
+	FPrimaryAssetId ChosenDefId;
+	for (const FPrimaryAssetId& Id : OutsideCandidates)
+	{
+		const FNSAugmentCandidate* Candidate = CandidatesByDefId.Find(Id);
+		if (!Candidate)
+		{
+			continue;
+		}
+		Accumulated += FMath::Max(0, Candidate->SelectionWeight);
+		if (RollValue <= Accumulated)
+		{
+			ChosenDefId = Id;
+			break;
+		}
+	}
+
+	const FNSAugmentCandidate* ChosenCandidate = ChosenDefId.IsValid() ? CandidatesByDefId.Find(ChosenDefId) : nullptr;
+	if (!ChosenCandidate)
+	{
+		return {};
+	}
+
+	// 동일 희귀도 슬롯이 있으면 그 슬롯을 우선 교체해 자연 추첨 결과의 희귀도 구성을 최대한 보존.
+	// 없으면 0번 슬롯을 교체.
+	int32 ReplaceIndex = 0;
+	for (int32 Index = 0; Index < LastFullOffer.Num(); ++Index)
+	{
+		if (LastFullOffer[Index].Rarity == ChosenCandidate->Rarity)
+		{
+			ReplaceIndex = Index;
+			break;
+		}
+	}
+
+	TArray<FNSAugmentSelectionCard> NewOffer = LastFullOffer;
+	NewOffer[ReplaceIndex].DefId = ChosenCandidate->DefId;
+	NewOffer[ReplaceIndex].Rarity = ChosenCandidate->Rarity;
+
+	// 방금 한 장을 강제로 바꿔치기했으니, 결과가 여전히 N장인지 / 직전과 다른 구성인지 / 카드가 중복되지 않는지 마지막으로 다시 확인.
+	TSet<FPrimaryAssetId> NewOfferDefIds;
+	for (const FNSAugmentSelectionCard& Card : NewOffer)
+	{
+		NewOfferDefIds.Add(Card.DefId);
+	}
+
+	if (NewOffer.Num() != N
+		|| AreDefIdSetsEqual(NewOfferDefIds, PreviousDefIds)
+		|| NewOfferDefIds.Num() != NewOffer.Num())
+	{
+		return {};
+	}
+
+	bOutDifferentPossible = true;
+	return NewOffer;
+}
+
 TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(
 	const FNSAugmentRarityRule& RarityRule, int32 N) const
 {
@@ -657,6 +834,24 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(
 	BuildRarityBuckets(Data, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
 
 	return DrawCards(RarityRule, ByRarity, N);
+}
+
+bool UNSAugmentSelectionComponent::AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B)
+{
+	if (A.Num() != B.Num())
+	{
+		return false;
+	}
+
+	for (const FPrimaryAssetId& Id : A)
+	{
+		if (!B.Contains(Id))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 // Definition SoftPtr를 직접 로드하지 않고 DataSubsystem 캐시에서 해석.
