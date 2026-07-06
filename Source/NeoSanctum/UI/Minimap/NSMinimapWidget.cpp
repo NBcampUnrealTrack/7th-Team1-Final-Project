@@ -5,6 +5,7 @@
 #include "Engine/DataTable.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Data/Minimap/NSMinimapConfigDataAsset.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapSubsystem.h"
@@ -72,7 +73,7 @@ int32 UNSMinimapWidget::NativePaint(
 		return MaxLayerId;
 	}
 
-	const APawn* OwningPawn = GetOwningPlayerPawn();
+	const APawn* OwningPawn = GetMinimapOwningPawn();
 	if (!OwningPawn)
 	{
 		return MaxLayerId;
@@ -218,6 +219,28 @@ int32 UNSMinimapWidget::NativePaint(
 	}
 
 	return MaxLayerId;
+}
+
+const APawn* UNSMinimapWidget::GetMinimapOwningPawn() const
+{
+	if (const APawn* OwningPawn = GetOwningPlayerPawn())
+	{
+		return OwningPawn;
+	}
+
+	if (const APlayerController* OwningPlayer = GetOwningPlayer())
+	{
+		return OwningPlayer->GetPawn();
+	}
+
+	const UWorld* World = GetWorld();
+	const APlayerController* LocalPlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	if (LocalPlayerController && LocalPlayerController->IsLocalController())
+	{
+		return LocalPlayerController->GetPawn();
+	}
+
+	return nullptr;
 }
 
 FVector2D UNSMinimapWidget::GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const

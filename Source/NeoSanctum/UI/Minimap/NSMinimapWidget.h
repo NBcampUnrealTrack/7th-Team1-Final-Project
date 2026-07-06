@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NSMinimapWidget.generated.h"
 
+class APawn;
 class UNSMinimapConfigDataAsset;
 
 UCLASS()
@@ -29,6 +30,9 @@ protected:
 private:
 	UFUNCTION()
 	void HandleMinimapUpdated();
+
+	// 미니맵 기준으로 사용할 로컬 플레이어 Pawn 조회
+	const APawn* GetMinimapOwningPawn() const;
 
 	//미니맵 표시 위치 계산
 	FVector2D GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const;
