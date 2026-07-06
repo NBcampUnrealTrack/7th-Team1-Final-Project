@@ -59,4 +59,10 @@ public:
 	// 투표 취소 입력 함수 요청
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="GameFlow")
 	void CancelRunChoice(APlayerController* Voter);
+	// 스테이지에 있는 npc 구출했을 때 알릴 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyNPCRescued(FName RescuedNPCId);
+	// 보스 진입 볼륨 타이머 시간 완료 시 호출: 전원 텔레포트 + 보스 페이즈 진입
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyBossGateReached();
 };

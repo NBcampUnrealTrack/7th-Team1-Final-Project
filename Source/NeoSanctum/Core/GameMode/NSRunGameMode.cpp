@@ -21,8 +21,11 @@
 #include "NeoSanctum/Combat/Projectile/NSProjectileReplicationProxy.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyReplicationProxy.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "NeoSanctum/AI/Enemy/Spawner/NSSpawner.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/Stage/NSBossEntryVolume.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
@@ -52,9 +55,9 @@ void ANSRunGameMode::BeginPlay()
 	{
 		NSStageManager = NewObject<UNSStageManager>(this);
 		// 클리어 판정 알림용 바인딩
-		NSStageManager->OnStageCleared.BindUObject(
+		NSStageManager->OnObjectiveComplete.BindUObject(
 			this,
-			&ANSRunGameMode::NotifyStageCleared_Implementation
+			&ANSRunGameMode::HandleObjectiveComplete
 		);
 		
 		NSMonsterPoolManager = NewObject<UNSMonsterPoolManager>(this);
@@ -82,37 +85,6 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	if (!HasAuthority())
 	{
 		return;
-	}
-	
-	// 맵 생성 중 적 카운팅 잘못되었을수도 있어서 검증용 추가 로직
-	/*
-	int32 ActualAliveEnemies = 0;
-	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
-	{
-		ANSEnemyCharacterBase* Enemy = *It;
-		if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
-		{
-			ActualAliveEnemies++;
-		}
-	}
-
-	if (ActualAliveEnemies > 0)
-	{
-		// 카운팅 불일치 스테이지 매니저에서 보정
-		if (NSStageManager)
-		{
-			NSStageManager->SetEnemyCount(ActualAliveEnemies);
-		}
-		UE_LOG(LogTemp, Warning, TEXT("적 카운팅 불일치 현재 남은 적: %d"), ActualAliveEnemies);
-		return;
-	}
-	*/
-	
-	// [임시] 클리어 시 남은 적을 풀로 반환 (보스 구현 후 정리)
-	// 보스룸 진입 시 타이머 정지 (보스 구현되면 보스룸 Enter로 이전)
-	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
-	{
-		Flow->PauseDifficultyTimer(); 
 	}
 	
 	if (NSMonsterPoolManager)
@@ -192,18 +164,28 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 		return;
 	}
 
-	if (NSStageManager)
+	// 킬 집계,보상은 페이즈 무관하게 항상 진행
+	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (RunGS)
 	{
-		NSStageManager->HandleEnemyKilled();
-	}
-
-	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
-	{
-		NSGameState->AddRunResultKillCount();
+		RunGS->AddRunResultKillCount();
 	}
 	
 	HandleEnemyReward(DeadEnemy);
 	HandleEnemyExperience(DeadEnemy);
+
+	// 목표 진행은 Objective 페이즈에서만
+	if (RunGS && RunGS->StagePhase ==
+		ENSStagePhase::Objective && NSStageManager)
+	{
+		NSStageManager->HandleEnemyKilled();
+		PushObjectiveStateToGameState();
+	}
+	// BossFight 페이즈에서 보스 랭크 사망 시 스테이지 클리어
+	else if (RunGS && RunGS->StagePhase == ENSStagePhase::BossFight && IsBossEnemy(DeadEnemy))
+	{
+		NotifyStageCleared_Implementation();
+	}
 }
 
 void ANSRunGameMode::HandleEnemyReward(AActor* DeadEnemy)
@@ -324,6 +306,91 @@ void ANSRunGameMode::HandleEnemyExperience(AActor* DeadEnemy)
 	UNSRewardHandler::HandleExperienceRewardEntry(GetWorld(), ExperienceReward);
 }
 
+int32 ANSRunGameMode::GetPlayerSlotIndex(AController* Player) const
+{
+	if (GameState && Player && Player->PlayerState)
+	{
+		const int32 FoundIndex =
+			GameState->PlayerArray.IndexOfByKey(Player->PlayerState);
+		return (FoundIndex != INDEX_NONE) ? FoundIndex : 0;
+	}
+	
+	return 0;
+}
+
+void ANSRunGameMode::TeleportAllPlayersToBossRoom()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	AGameStateBase* GS = GetGameState<AGameStateBase>();
+	if (!GS)
+	{
+		return;
+	}
+
+	for (APlayerState* PS : GS->PlayerArray)
+	{
+		APlayerController* PC = 
+			PS ? Cast<APlayerController>(PS->GetPlayerController()) : nullptr;
+		APawn* Pawn = PC ? PC->GetPawn() : nullptr;
+		// 사망/관전 중이면 스킵
+		if (!Pawn) 
+		{
+			continue;
+		}
+
+		const int32 SlotIndex = GetPlayerSlotIndex(PC);
+		const FName DesiredTag = *FString::Printf(TEXT("PlayerBossStart%d"), SlotIndex);
+
+		// 해당 슬롯의 보스 스타트만 탐색
+		AActor* Target = nullptr;
+		for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
+		{
+			if (*It && (*It)->PlayerStartTag == DesiredTag)
+			{
+				Target = *It;
+				break;
+			}
+		}
+		
+		if (!Target)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[BossEntry] %s 태그 PlayerStart를 찾지 못함"), *DesiredTag.ToString());
+			
+			continue;
+		}
+
+		Pawn->TeleportTo(Target->GetActorLocation(), Target->GetActorRotation());
+	}
+}
+
+void ANSRunGameMode::ReturnStrayEnemiesToPool()
+{
+	if (!HasAuthority() || !NSMonsterPoolManager)
+	{
+		return;
+	}
+	
+	// 순회 중 반환은 위험하므로 먼저 수집 후 별도 루프
+	TArray<ANSEnemyCharacterBase*> AliveEnemies;
+	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
+	{
+		ANSEnemyCharacterBase* Enemy = *It;
+		if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
+		{
+			AliveEnemies.Add(Enemy);
+		}
+	}
+	
+	for (ANSEnemyCharacterBase* Enemy : AliveEnemies)
+	{
+		NSMonsterPoolManager->ReturnMonsterToPool(Enemy);
+	}
+	
+}
+
 void ANSRunGameMode::RequestReturnToHub_Implementation()
 {
 	if (!HasAuthority())
@@ -415,6 +482,53 @@ ANSEnemyCharacterBase* ANSRunGameMode::RequestSpawnMonster_Implementation(
 	}
 
 	return Enemy;
+}
+
+void ANSRunGameMode::NotifyNPCRescued_Implementation(FName RescuedNPCId)
+{
+	if (!HasAuthority() || !NSStageManager)
+	{
+		return;
+	}
+
+	const ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (!RunGS || RunGS->StagePhase != ENSStagePhase::Objective)
+	{
+		return;
+	}
+
+	NSStageManager->NotifyNPCRescued(RescuedNPCId);
+	
+	PushObjectiveStateToGameState();
+}
+
+void ANSRunGameMode::NotifyBossGateReached_Implementation()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	// BossReady 상태에서만 1회 처리 (이중 트리거 방지)
+	if (!RunGS || RunGS->StagePhase != ENSStagePhase::BossReady)
+	{
+		return;
+	}
+
+	ReturnStrayEnemiesToPool();
+
+	// 보스 진입 시점에 난이도 타이머 정지 (보스 스케일 고정)
+	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		Flow->PauseDifficultyTimer();
+	}
+
+	TeleportAllPlayersToBossRoom();
+	// 페이즈 BossFight로 전환
+	RunGS->SetStagePhase(ENSStagePhase::BossFight);
+	// 보스 스포너 활성화
+	ActivateBossSpawners();
 }
 
 void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
@@ -720,17 +834,126 @@ void ANSRunGameMode::SetEnemyCount(int32 Count)
 	}
 }
 
+void ANSRunGameMode::InitializeStage()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 플레이어 스폰 + RunConfig/LevelConfig를 GameState에 복제
+	RespawnAllPlayers();
+
+	// 2) 목표 초기화: 인런 데이터가 준비됐으면 즉시 아니면 준비 완료 콜백에서 초기화
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+
+	if (Data->IsRunReady())
+	{
+		InitializeObjectiveInternal();
+	}
+	else
+	{
+		// 중복 바인딩 방지 후 준비 완료 대기
+		Data->OnRunGameDataReady.RemoveDynamic(
+			this,
+			&ANSRunGameMode::HandleRunDataReadyForObjective);
+		Data->OnRunGameDataReady.AddDynamic(
+			this,
+			&ANSRunGameMode::HandleRunDataReadyForObjective);
+	}
+}
+
+
+
+void ANSRunGameMode::InitializeObjectiveInternal()
+{
+	if (!NSStageManager)
+	{
+		return;
+	}
+
+	// 이미 로드된 현재 스테이지 LevelConfig에서 목표 풀 읽기
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	const UNSLevelConfig* LevelConfig = Data ? Data->GetCurrentRunLevelConfig() : nullptr;
+	if (!LevelConfig || LevelConfig->ObjectivePool.Num() == 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ObjectivePool 비어있음 — 목표 초기화 실패"));
+		
+		return;
+	}
+
+	// 풀에서 랜덤 1개 선택
+	const int32 Index = FMath::RandRange(
+		0, 
+		LevelConfig->ObjectivePool.Num() - 1);
+	const int32 PlayerCount =
+		GameState ? GameState->PlayerArray.Num() : 1;
+	NSStageManager->InitializeObjective(
+		LevelConfig->ObjectivePool[Index]
+		, PlayerCount);
+
+	// 스테이지 진입 페이즈 명시
+	if (ANSRunGameState* RunGS = GetGameState<ANSRunGameState>())
+	{
+		RunGS->SetStagePhase(ENSStagePhase::Objective);
+	}
+
+	// 초기 목표 상태를 UI용으로 복제
+	PushObjectiveStateToGameState();
+}
+
+void ANSRunGameMode::HandleRunDataReadyForObjective()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnRunGameDataReady.RemoveDynamic(
+			this, 
+			&ANSRunGameMode::HandleRunDataReadyForObjective);
+	}
+	
+	InitializeObjectiveInternal();
+}
+
+void ANSRunGameMode::ActivateBossSpawners()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	// 월드의 보스 전용 스포너를 활성화
+	for (TActorIterator<ANSSpawner> It(GetWorld()); It; ++It)
+	{
+		ANSSpawner* Spawner = *It;
+		if (Spawner && Spawner->IsBossSpawner())
+		{
+			Spawner->ActivateSpawner();
+			break;
+		}
+	}
+}
+
+bool ANSRunGameMode::IsBossEnemy(const AActor* DeadEnemy) const
+{
+	const UNSEnemyCoreComponent* CoreComponent =
+		DeadEnemy ? DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>() : nullptr;
+	if (!IsValid(CoreComponent))
+	{
+		return false;
+	}
+	
+	const UNSEnemyData* EnemyData = CoreComponent->GetEnemyData();
+	
+	return EnemyData && EnemyData->EnemyRank == ENSEnemyRank::Boss;
+}
+
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
 	// 플레이어의 고정 슬롯 인덱스 결정(PlayerArray 내 위치)
-	int32 SlotIndex = 0;
-	if (GameState && Player && Player->PlayerState)
-	{
-		const int32 FoundIndex = 
-			GameState->PlayerArray.IndexOfByKey(Player->PlayerState);
-		SlotIndex = (FoundIndex != INDEX_NONE) ? FoundIndex : 0;
-	}
-
+	const int32 SlotIndex = GetPlayerSlotIndex(Player);
 	const FName DesiredTag =
 		*FString::Printf(TEXT("PlayerSpawn%d"), SlotIndex);
 
@@ -925,12 +1148,13 @@ void ANSRunGameMode::ResolveVote()
 	for (APlayerState* PlayerState : NSGameState->PlayerArray)
 	{
 		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
-		const bool bNext = NSPlayerState && NSPlayerState->bVoteConfirmed
-						   && NSPlayerState->RunChoice == ENSRunChoice::NextStage;
-		bNext ? ++Next : ++Hub;
+		// 거점 귀환을 선택한 사람만 Hub, 나머지(미투표)는 Next
+		const bool bHub = NSPlayerState && NSPlayerState->bVoteConfirmed
+						  && NSPlayerState->RunChoice == ENSRunChoice::ReturnToHub;
+		bHub ? ++Hub : ++Next;
 	}
 	
-	const bool bGoNext = NSGameState->bIsClear && (Next > Hub);
+	const bool bGoNext = NSGameState->bIsClear && (Next >= Hub);
 
 	NSGameState->NextVotes = Next;
 	NSGameState->HubVotes = Hub;
@@ -1016,6 +1240,27 @@ void ANSRunGameMode::SaveAllPlayersProgress()
 	}
 }
 
+void ANSRunGameMode::HandleObjectiveComplete()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
+	{
+		NSGameState->SetStagePhase(ENSStagePhase::BossReady);
+		UE_LOG(LogTemp, Log, TEXT("[Stage] 페이즈 전환 → BossReady"));
+	}
+	
+	// 배치된 모든 보스 진입 볼륨 활성화
+	for (TActorIterator<ANSBossEntryVolume> It(GetWorld()); It; ++It)
+	{
+		It->Activate();
+		break; 
+	}
+}
+
 void ANSRunGameMode::SyncRunDataConfigToGameState()
 {
 	UNSGameFlowSubsystem* GameFlow = 
@@ -1029,6 +1274,21 @@ void ANSRunGameMode::SyncRunDataConfigToGameState()
 	}
 	
 	RunGameState->SetRunDataConfig(GameFlow->GetSelectedRunConfig(), GameFlow->GetSelectedRunLevelConfig());
+}
+
+void ANSRunGameMode::PushObjectiveStateToGameState()
+{
+	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
+	if (!RunGS || !NSStageManager)
+	{
+		return;
+	}
+
+	FNSStageObjectiveState ObjectiveState;
+	ObjectiveState.Type    = NSStageManager->GetObjectiveType();
+	ObjectiveState.Current = NSStageManager->GetObjectiveCurrent();
+	ObjectiveState.Target  = NSStageManager->GetObjectiveTarget();
+	RunGS->SetObjectiveState(ObjectiveState);
 }
 
 void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice)

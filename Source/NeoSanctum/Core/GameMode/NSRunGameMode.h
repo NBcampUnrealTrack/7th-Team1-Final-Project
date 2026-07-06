@@ -43,6 +43,9 @@ public:
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
 		const FRotator& Rotation) override;
+	virtual void NotifyNPCRescued_Implementation(FName RescuedNPCId) override;
+	// 보스 게이트 도달 처리
+	virtual void NotifyBossGateReached_Implementation() override;
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
@@ -51,13 +54,17 @@ public:
 	virtual void SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice) override;
 	virtual void CancelRunChoice_Implementation(APlayerController* PlayerController) override;
 	
-	// 룸 생성 완료시 호출
+	// InitializeStage에서 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void RespawnAllPlayers();
 	
 	// 맵 로딩이 완료되고 블루프린트에서 호출될 함수
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void SetEnemyCount(int32 Count);
+	
+	// 스테이지 진입할 때 호출될 함수: 목표 랜덤 선택, 초기화
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void InitializeStage();
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
 
@@ -87,6 +94,9 @@ protected:
 	// 인런 진행도 저장용 함수
 	void SaveAllPlayersProgress();
 	
+	// 목표 달성 시 호출용, 보스 진입 페이즈로 전환
+	void HandleObjectiveComplete();
+	
 	// 인런 보상 재화용 변수
 	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
 	int64 StageClearCommonReward = 0;
@@ -94,6 +104,22 @@ protected:
 private:
 	// 인런 월드가 열린 뒤, GameFlow가 보관환 데이터 구성을 RunGameState에 복제.
 	void SyncRunDataConfigToGameState();
+	
+	// 현재 목표 진행 상태를 GameState에 복제(UI 표시용)
+	void PushObjectiveStateToGameState();
+	
+	// 목표 풀에서 랜덤 선택 후 StageManager/GameState 초기화
+	void InitializeObjectiveInternal();
+	
+	// 인런 데이터 준비 완료 후 목표를 초기화하기 위한 콜백
+	UFUNCTION()
+	void HandleRunDataReadyForObjective();
+	
+	// 보스룸의 보스 전용 스포너를 활성화
+	void ActivateBossSpawners();
+	
+	// 죽은 적이 보스 랭크인지 판정
+	bool IsBossEnemy(const AActor* DeadEnemy) const;
 	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
@@ -148,6 +174,13 @@ private:
 	void HandleEnemyReward(AActor* DeadEnemy);
 	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
 	void HandleEnemyExperience(AActor* DeadEnemy);
+	
+	// PlayerArray 내 위치로 이 플레이어의 고정 슬롯 인덱스 결정해주는 헬퍼 함수
+	int32 GetPlayerSlotIndex(AController* Player) const;
+	// 전원을 PlayerBossStart%d로 이동
+	void TeleportAllPlayersToBossRoom();  
+	// 목표방 잔존 적 풀 반환
+	void ReturnStrayEnemiesToPool();          
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;

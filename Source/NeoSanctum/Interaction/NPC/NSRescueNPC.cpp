@@ -8,6 +8,8 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
+#include "GameFramework/GameModeBase.h"
+#include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 
 void ANSRescueNPC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -74,6 +76,15 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 		{
 			// 최초 구출하면 즉시 해금
 			ProgressComponent->UnlockNPC(NPCId);
+		}
+	}
+	
+	// 스테이즈 목표 달성 충족, 최초 구출 시에만 작동됨
+	if (AGameModeBase* GameMode = GetWorld()->GetAuthGameMode())
+	{
+		if (GameMode->Implements<UNSRunGameModeInterface>())
+		{
+			INSRunGameModeInterface::Execute_NotifyNPCRescued(GameMode, NPCId);
 		}
 	}
 	
