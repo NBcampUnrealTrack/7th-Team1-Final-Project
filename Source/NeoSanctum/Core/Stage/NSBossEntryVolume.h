@@ -52,6 +52,9 @@ protected:
 	// StagePhase 변화 구독 콜백
 	UFUNCTION()
 	void HandleStagePhaseChanged();
+	
+	// 무효, 사망한 폰을 볼륨 위 폰 집합에서 제거하고 인원 변화에 따른 타이머 상태 변경 함수
+	void RevalidateOccupants();
 
 private:
 	// RunGameState 구독 시도용 함수, 클라에서 아직 미복제면 다음 틱 재시도.
@@ -90,6 +93,9 @@ private:
 
 	// 볼륨 체류  카운트다운 타이머 핸들
 	FTimerHandle DwellTimerHandle;
+	
+	// dwell 진행 중 주기적으로 집합을 청소하는 타이머
+	FTimerHandle RevalidateTimerHandle;
 
 	// 목표 달성으로 활성화됐는지 확인용 (중복 트리거 방지)
 	bool bActivated = false;

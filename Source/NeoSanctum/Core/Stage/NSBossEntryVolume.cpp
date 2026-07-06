@@ -8,6 +8,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 
 
 ANSBossEntryVolume::ANSBossEntryVolume()
@@ -52,6 +53,14 @@ void ANSBossEntryVolume::Activate()
 	bActivated = true;
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	UE_LOG(LogTemp, Warning, TEXT("[BossVolume] Activate 호출됨, 콜리전 QueryOnly로 전환"));
+	
+	// 볼륨 오버랩 타이머 활성화 중 플레이어 사망에 따른 집합 정리
+	GetWorldTimerManager().SetTimer(
+		RevalidateTimerHandle,
+		this,
+		&ANSBossEntryVolume::RevalidateOccupants,
+		0.5f,
+		true);
 
 	// 활성화 순간 이미 볼륨 안에 서 있는 플레이어는 BeginOverlap이 안 오므로 직접 수집
 	TArray<AActor*> Already;
@@ -87,6 +96,7 @@ void ANSBossEntryVolume::Deactivate()
 	bActivated = false;
 	bAllPresentScheduled = false;
 	GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+	GetWorldTimerManager().ClearTimer(RevalidateTimerHandle);
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OverlappingPlayers.Empty();
 }
@@ -166,6 +176,15 @@ void ANSBossEntryVolume::OnDwellCompleted()
 	}
 	UE_LOG(LogTemp, Warning, TEXT("[BossVolume] Dwell 완료 → NotifyBossGateReached 호출"));
 	
+	// 완료 직전 최종 검증
+	RevalidateOccupants();
+
+	// 재검사 후 아무도 안 남았으면 통지 취소
+	if (OverlappingPlayers.Num() == 0)
+	{
+		return; 
+	}
+	
 	// 중복 트리거 방지
 	Deactivate(); 
 
@@ -209,6 +228,71 @@ void ANSBossEntryVolume::HandleStagePhaseChanged()
 	}
 }
 
+void ANSBossEntryVolume::RevalidateOccupants()
+{
+	if (!HasAuthority() || !bActivated)
+	{
+		return;
+	}
+
+	// 무효(파괴)되거나 사망한 폰 정리
+	bool bChanged = false;
+	for (auto It = OverlappingPlayers.CreateIterator(); It; ++It)
+	{
+		const AActor* Actor = It->Get();
+		bool bValid = IsValid(Actor) && IsPlayerPawn(Actor);
+
+		// 사망 판정
+		if (bValid)
+		{
+			const APawn* Pawn = Cast<APawn>(Actor);
+			const ANSPlayerState* NSPS = Pawn ? Pawn->GetPlayerState<ANSPlayerState>() : nullptr;
+			if (NSPS && NSPS->IsDead())
+			{
+				bValid = false;
+			}
+		}
+
+		if (!bValid)
+		{
+			It.RemoveCurrent();
+			bChanged = true;
+		}
+	}
+
+	if (!bChanged)
+	{
+		return;
+	}
+
+	// 인원 변화 반영
+	if (OverlappingPlayers.Num() == 0)
+	{
+		// 볼륨위에 아무도 없으면 초기회
+		bAllPresentScheduled = false;
+		GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+	}
+	else if (bAllPresentScheduled && !AreAllPlayersPresent())
+	{
+		// 누군가 남아있으면 기존 타이머 시작
+		bAllPresentScheduled = false;
+		GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+		StartDwellTimer();
+	}
+	else if (!bAllPresentScheduled && AreAllPlayersPresent())
+	{
+		// 볼륨밖에서 누가 죽어서 전원 볼륨 위 판정이 되면 단축 타이머 실행
+		bAllPresentScheduled = true;
+		GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+		GetWorldTimerManager().SetTimer(
+			DwellTimerHandle,
+			this,
+			&ANSBossEntryVolume::OnDwellCompleted,
+			AllPresentDelay,
+			false);
+	}
+}
+
 void ANSBossEntryVolume::BindToRunGameState()
 {
 	ANSRunGameState* RunGS = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
@@ -236,8 +320,8 @@ bool ANSBossEntryVolume::IsPlayerPawn(const AActor* OtherActor) const
 
 void ANSBossEntryVolume::StartDwellTimer()
 {
-	// 이미 돌면 유지
-	if (DwellTimerHandle.IsValid()) 
+	// 이미 카운트다운 중이면 유지
+	if (GetWorldTimerManager().IsTimerActive(DwellTimerHandle))
 	{
 		return;
 	}
