@@ -69,11 +69,6 @@ public:
 
 	// AttackId와 연결된 Part Row 목록을 반환하는 함수
 	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
-	
-	// AttackId와 연결된 모든 Muzzle Transform을 반환하는 함수
-	void GetMuzzleTransformsByAttackId(
-		FName AttackId,
-		TArray<FTransform>& OutTransforms) const;
 
 	// AttackId와 연결된 모든 Trace 구간을 반환하는 함수
 	void GetTraceSegmentsByAttackId(

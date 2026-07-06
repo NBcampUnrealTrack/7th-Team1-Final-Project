@@ -325,28 +325,6 @@ bool UNSEnemyPartComponent::TryGetMuzzleTransformByAttackId(
 	return false;
 }
 
-void UNSEnemyPartComponent::GetMuzzleTransformsByAttackId(FName AttackId, TArray<FTransform>& OutTransforms) const
-{
-	OutTransforms.Reset();
-
-	if (AttackId.IsNone())
-	{
-		return;
-	}
-
-	TArray<const FNSEnemyPartRow*> PartRows;
-	GetPartRowsByAttackId(AttackId, PartRows);
-
-	for (const FNSEnemyPartRow* PartRow : PartRows)
-	{
-		FTransform MuzzleTransform;
-		if (PartRow && TryGetMuzzleTransformFromPartRow(*PartRow, MuzzleTransform))
-		{
-			OutTransforms.Add(MuzzleTransform);
-		}
-	}
-}
-
 bool UNSEnemyPartComponent::TryGetTraceSegmentByAttackId(
 	FName AttackId,
 	float FallbackDistance,
