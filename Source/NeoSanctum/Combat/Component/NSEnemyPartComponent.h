@@ -61,6 +61,9 @@ public:
 	// AttackId와 연결된 첫 번째 사용 가능 Muzzle Transform을 반환하는 함수
 	bool TryGetMuzzleTransformByAttackId(FName AttackId, FTransform& OutTransform) const;
 
+	// @민재 : AttackId와 연결된 모든 사용 가능 Muzzle Transform을 반환하는 함수
+	void GetMuzzleTransformsByAttackId(FName AttackId, TArray<FTransform>& OutTransforms) const;
+	
 	// AttackId와 연결된 첫 번째 사용 가능 Trace 구간을 반환하는 함수
 	bool TryGetTraceSegmentByAttackId(
 		FName AttackId,
