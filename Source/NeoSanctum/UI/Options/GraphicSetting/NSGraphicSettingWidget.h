@@ -29,6 +29,8 @@ private:
 	void InitializeQualityOptions();
 	void SynchronizeSettings();
 	
+	void HandleTextRevisionChanged();
+	
 	UFUNCTION()
 	void OnApplyClicked();
 	

@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-07-03 11:25\n"
-"PO-Revision-Date: 2026-07-03 11:25\n"
+"POT-Creation-Date: 2026-07-06 00:43\n"
+"PO-Revision-Date: 2026-07-06 00:43\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -741,6 +741,90 @@ msgctxt ",0F8C6E804778FBC3D69C5E924E676F07"
 msgid "테스트용"
 msgstr "Test"
 
+#. Key:	136EA8C649AEF8975380A39428B15E4E
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_01.DA_Arm_01.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_01.DA_Arm_01.PartName
+msgctxt ",136EA8C649AEF8975380A39428B15E4E"
+msgid "ArmParts1"
+msgstr ""
+
+#. Key:	913A174F48D709AA6B938C8096AD6164
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_02.DA_Arm_02.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_02.DA_Arm_02.PartName
+msgctxt ",913A174F48D709AA6B938C8096AD6164"
+msgid "ArmParts2"
+msgstr ""
+
+#. Key:	C2669E1A48AF7CDBC1975AB45036EEC8
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_03.DA_Arm_03.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_03.DA_Arm_03.PartName
+msgctxt ",C2669E1A48AF7CDBC1975AB45036EEC8"
+msgid "ArmParts3"
+msgstr ""
+
+#. Key:	AFB21F8E447ADDF2AD3400814FE88707
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_04.DA_Arm_04.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_04.DA_Arm_04.PartName
+msgctxt ",AFB21F8E447ADDF2AD3400814FE88707"
+msgid "ArmParts4"
+msgstr ""
+
+#. Key:	FB5C872D43233FFC6D4BFF94170494CF
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_05.DA_Arm_05.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_05.DA_Arm_05.PartName
+msgctxt ",FB5C872D43233FFC6D4BFF94170494CF"
+msgid "ArmParts5"
+msgstr ""
+
+#. Key:	BCC22EA0496E4A22CF1D36B4C964E77E
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_06.DA_Arm_06.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_06.DA_Arm_06.PartName
+msgctxt ",BCC22EA0496E4A22CF1D36B4C964E77E"
+msgid "ArmParts6"
+msgstr ""
+
+#. Key:	D624FEFE4DC24B3C07A11385057A2AFD
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_07.DA_Arm_07.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Arm_07.DA_Arm_07.PartName
+msgctxt ",D624FEFE4DC24B3C07A11385057A2AFD"
+msgid "ArmParts7"
+msgstr ""
+
+#. Key:	519321AB4CF73FE1A3CEA28B84FDD2C4
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Body_01.DA_Body_01.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Body_01.DA_Body_01.PartName
+msgctxt ",519321AB4CF73FE1A3CEA28B84FDD2C4"
+msgid "BodyParts1"
+msgstr ""
+
+#. Key:	910EE4D84E2E01CC03DAAB8B2F409762
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Body_02.DA_Body_02.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Body_02.DA_Body_02.PartName
+msgctxt ",910EE4D84E2E01CC03DAAB8B2F409762"
+msgid "BodyParts2"
+msgstr ""
+
+#. Key:	A8274410433D63160A3494B9057D96BC
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_01.DA_Leg_01.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_01.DA_Leg_01.PartName
+msgctxt ",A8274410433D63160A3494B9057D96BC"
+msgid "각반"
+msgstr ""
+
+#. Key:	F1C4726D4C4552E152EE3196D780365C
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_02.DA_Leg_02.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_02.DA_Leg_02.PartName
+msgctxt ",F1C4726D4C4552E152EE3196D780365C"
+msgid "LegArmor_1"
+msgstr ""
+
+#. Key:	10059C6D4A09F925BEB826B9222C1C25
+#. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_03.DA_Leg_03.PartName
+#: /Game/NeoSanctum/Data/Reward/Part/DataAsset/DA_Leg_03.DA_Leg_03.PartName
+msgctxt ",10059C6D4A09F925BEB826B9222C1C25"
+msgid "LegsArmor_2"
+msgstr ""
+
 #. Key:	98221C7148679DA3C5ACCBAC16A72FAC
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterDescription
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterDescription
@@ -753,7 +837,7 @@ msgstr "Ranged Character"
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterName
 msgctxt ",54A91232428FABE69E03F4BE04402703"
 msgid "Ranger"
-msgstr ""
+msgstr "Ranger"
 
 #. Key:	C0C9F7E24FFB36B7AB6FE492E62A092E
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterDescription
@@ -767,35 +851,35 @@ msgstr "Engineer"
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterName
 msgctxt ",1FC30E364EBB3EC1D546E5A5C5B01A52"
 msgid "Engineer"
-msgstr ""
+msgstr "Engineer"
 
 #. Key:	F5F04BBD4F6287D2078F75BFF9AC2AED
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.Skill2InputDisplay.InputText
 #: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.Skill2InputDisplay.InputText
 msgctxt ",F5F04BBD4F6287D2078F75BFF9AC2AED"
 msgid "Q"
-msgstr ""
+msgstr "Q"
 
 #. Key:	CAF656FF4C04040BCEA7D78FDDBFDC94
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.Skill3InputDisplay.InputText
 #: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.Skill3InputDisplay.InputText
 msgctxt ",CAF656FF4C04040BCEA7D78FDDBFDC94"
 msgid "E"
-msgstr ""
+msgstr "E"
 
 #. Key:	6BCF0A8B47038A670B0C06A804F9C378
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill2InputDisplay.InputText
 #: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill2InputDisplay.InputText
 msgctxt ",6BCF0A8B47038A670B0C06A804F9C378"
 msgid "Q"
-msgstr ""
+msgstr "Q"
 
 #. Key:	DDF4382A4E67DD7AEA2E3AB5ED956E0F
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill3InputDisplay.InputText
 #: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill3InputDisplay.InputText
 msgctxt ",DDF4382A4E67DD7AEA2E3AB5ED956E0F"
 msgid "E"
-msgstr ""
+msgstr "E"
 
 #. Key:	3ABCAC9C4AD1C6B7190FDD87D4529A5C
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_GoodsUI.DT_GoodsUI.RunIn.DisplayName
@@ -921,7 +1005,7 @@ msgstr "Enter"
 #: /Game/NeoSanctum/UI/Common/RunEnd/WBP_NextStageButton.WBP_NextStageButton_C:WidgetTree.TextBlock_37.Text
 msgctxt ",C59ADC53438CCEDDB73ADF8025F97248"
 msgid "Next Stage"
-msgstr ""
+msgstr "Next Stage"
 
 #. Key:	054821D74DE4154138305BBAA91A7957
 #. SourceLocation:	/Game/NeoSanctum/UI/Common/RunEnd/WBP_ReturnToHubButton.WBP_ReturnToHubButton_C:WidgetTree.TextBlock_40.Text
@@ -930,40 +1014,61 @@ msgctxt ",054821D74DE4154138305BBAA91A7957"
 msgid "거점 복귀"
 msgstr "Return to Hub"
 
+#. Key:	76E21AE644F295162FF0DFA26500831A
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/TeamHP_Shield/WBP_TeammateStatusEntry.WBP_TeammateStatusEntry_C:WidgetTree.TextBlock_100.Text
+#: /Game/NeoSanctum/UI/HUD/TeamHP_Shield/WBP_TeammateStatusEntry.WBP_TeammateStatusEntry_C:WidgetTree.TextBlock_100.Text
+msgctxt ",76E21AE644F295162FF0DFA26500831A"
+msgid "Dead"
+msgstr ""
+
 #. Key:	0F9D43FE4248CD76D11F26B7C6DE1B95
 #. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_SkillSlot.WBP_SkillSlot_C:WidgetTree.ChargeText.Text
 #: /Game/NeoSanctum/UI/HUD/WBP_SkillSlot.WBP_SkillSlot_C:WidgetTree.ChargeText.Text
 msgctxt ",0F9D43FE4248CD76D11F26B7C6DE1B95"
 msgid "1"
-msgstr ""
+msgstr "1"
 
 #. Key:	EBDAEB6445D7AAD1380BCCAC3554D5E2
 #. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_SkillSlot.WBP_SkillSlot_C:WidgetTree.CooldownText.Text
 #: /Game/NeoSanctum/UI/HUD/WBP_SkillSlot.WBP_SkillSlot_C:WidgetTree.CooldownText.Text
 msgctxt ",EBDAEB6445D7AAD1380BCCAC3554D5E2"
 msgid "5"
+msgstr "5"
+
+#. Key:	72AA6CC04A7C4FC75AD51DAD792429F4
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.EquipButtonText.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.EquipButtonText.Text
+msgctxt ",72AA6CC04A7C4FC75AD51DAD792429F4"
+msgid "장착"
 msgstr ""
 
-#. Key:	5C7A809546673DFDAF9F5A9AC2D8B921
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.Button_215.ToolTipText
-#: /Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.Button_215.ToolTipText
-msgctxt ",5C7A809546673DFDAF9F5A9AC2D8B921"
-msgid "닫기"
-msgstr "Close"
+#. Key:	E015CD37465982F72109F79DD9493AEF
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_353.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_353.Text
+msgctxt ",E015CD37465982F72109F79DD9493AEF"
+msgid "바디"
+msgstr ""
 
-#. Key:	9165289148F39CCAC60CE19B58A4D337
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_25.Text
-#: /Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_25.Text
-msgctxt ",9165289148F39CCAC60CE19B58A4D337"
-msgid "파츠UI구현 필요"
-msgstr "Parts UI Implementation Required"
+#. Key:	8EEE5A9C4235A2DD76358B8505D96CC9
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_472.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_472.Text
+msgctxt ",8EEE5A9C4235A2DD76358B8505D96CC9"
+msgid "암"
+msgstr ""
 
-#. Key:	F4774BAC49E549496B819EB5C73FCD19
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_77.Text
-#: /Game/NeoSanctum/UI/Interaction/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_77.Text
-msgctxt ",F4774BAC49E549496B819EB5C73FCD19"
-msgid "닫기"
-msgstr "Close"
+#. Key:	ABA9CE79441D128322F710B4F5483712
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_548.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_548.Text
+msgctxt ",ABA9CE79441D128322F710B4F5483712"
+msgid "레그"
+msgstr ""
+
+#. Key:	050B4CC24A1B64DF8FD5FBA5C11A4710
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_79.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_79.Text
+msgctxt ",050B4CC24A1B64DF8FD5FBA5C11A4710"
+msgid "장착중"
+msgstr ""
 
 #. Key:	5C19DE20495F148CD5C45998E89F0E0F
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.ActionText.Text
@@ -977,7 +1082,7 @@ msgstr "Interact"
 #: /Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.KeyText.Text
 msgctxt ",FB21A01C456185B702F8FB9339913921"
 msgid "F"
-msgstr ""
+msgstr "F"
 
 #. Key:	7B3D53EE4ECFB925A8057AB51B1D8F98
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.Button_154.ToolTipText
@@ -998,27 +1103,34 @@ msgstr "Close"
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GamePlayButton.WBP_GamePlayButton_C:WidgetTree.CommonTextBlock_28.Text
 msgctxt ",8A95AD8845B2C6A7E3B2D6837ECC7A7C"
 msgid "Gameplay"
-msgstr ""
+msgstr "Gameplay"
 
 #. Key:	5EAE45B8466D4F7C94033FB2B7BE4F7C
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.ApplyCustomColorText.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.ApplyCustomColorText.Text
 msgctxt ",5EAE45B8466D4F7C94033FB2B7BE4F7C"
 msgid "ApplyCustomColorText"
-msgstr ""
+msgstr "ApplyCustomColorText"
 
 #. Key:	6998E79942C0DDA9649ECB9B1F1FCFB9
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock.Text
 msgctxt ",6998E79942C0DDA9649ECB9B1F1FCFB9"
 msgid "B"
-msgstr ""
+msgstr "B"
 
 #. Key:	F6618C2A41563F7845035BB96F128222
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_1.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_1.Text
 msgctxt ",F6618C2A41563F7845035BB96F128222"
 msgid "G"
+msgstr "G"
+
+#. Key:	B773A26142DCBB1E0877F08E1A064DE3
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_142.Text
+#: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_142.Text
+msgctxt ",B773A26142DCBB1E0877F08E1A064DE3"
+msgid "마우스 감도"
 msgstr ""
 
 #. Key:	FC4A52614CB4A6FCD20D96AD5846BE3C
@@ -1033,126 +1145,189 @@ msgstr "Language"
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_343.Text
 msgctxt ",C0A95C87414E4A00BCBA23B364BE29CE"
 msgid "Gameplay"
-msgstr ""
+msgstr "Gameplay"
 
 #. Key:	518242044599FB6A430A53B73B5E42B3
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_389.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_389.Text
 msgctxt ",518242044599FB6A430A53B73B5E42B3"
 msgid "Crosshair Color"
-msgstr ""
+msgstr "Crosshair Color"
 
 #. Key:	C8C78E7D4471E5170A0C219113651E37
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_472.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_472.Text
 msgctxt ",C8C78E7D4471E5170A0C219113651E37"
 msgid "ColorChange"
-msgstr ""
+msgstr "ColorChange"
 
 #. Key:	D4F9EB4B4A0A743B20CC288B7A725DC3
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_574.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_574.Text
 msgctxt ",D4F9EB4B4A0A743B20CC288B7A725DC3"
 msgid "ResetColor"
-msgstr ""
+msgstr "ResetColor"
 
 #. Key:	99D029EC4C40DEA6F21FFB8E22F1A20E
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_657.Text
 #: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock_657.Text
 msgctxt ",99D029EC4C40DEA6F21FFB8E22F1A20E"
 msgid "R"
-msgstr ""
+msgstr "R"
 
 #. Key:	E758DCF047A0D9E8B82853981C32CF3B
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicButton.WBP_GraphicButton_C:WidgetTree.CommonTextBlock_47.Text
 #: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicButton.WBP_GraphicButton_C:WidgetTree.CommonTextBlock_47.Text
 msgctxt ",E758DCF047A0D9E8B82853981C32CF3B"
 msgid "Graphic"
+msgstr "Graphic"
+
+#. Key:	2E8682344F1A80073BDD64A5AC6BFCED
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1031.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1031.Text
+msgctxt ",2E8682344F1A80073BDD64A5AC6BFCED"
+msgid "그래픽 품질"
 msgstr ""
 
-#. Key:	1E6CAD6C4EBA2DB71D74E691758C70A9
-#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_Test_GraphicSettingWidget.WBP_Test_GraphicSettingWidget_C:WidgetTree.준비중.Text
-#: /Game/NeoSanctum/UI/Options/Graphic/WBP_Test_GraphicSettingWidget.WBP_Test_GraphicSettingWidget_C:WidgetTree.준비중.Text
-msgctxt ",1E6CAD6C4EBA2DB71D74E691758C70A9"
-msgid "준비 중"
-msgstr "Preparing"
+#. Key:	48D5F06547219200CD46DF873CAFFEC6
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_108.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_108.Text
+msgctxt ",48D5F06547219200CD46DF873CAFFEC6"
+msgid "그래픽"
+msgstr ""
+
+#. Key:	7505EDD5473ACC306153D28A21ECC525
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1170.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1170.Text
+msgctxt ",7505EDD5473ACC306153D28A21ECC525"
+msgid "전체 품질"
+msgstr ""
+
+#. Key:	3AEA4AC84D369D8F4A227FAD5856B903
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1352.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1352.Text
+msgctxt ",3AEA4AC84D369D8F4A227FAD5856B903"
+msgid "적용"
+msgstr ""
+
+#. Key:	EDC82A9E4CF409C1DE28FBBB2E5E1C82
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1415.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_1415.Text
+msgctxt ",EDC82A9E4CF409C1DE28FBBB2E5E1C82"
+msgid "초기화"
+msgstr ""
+
+#. Key:	4E6D5D1D47C5559B883902A5B378389E
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_210.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_210.Text
+msgctxt ",4E6D5D1D47C5559B883902A5B378389E"
+msgid "화면 설정"
+msgstr ""
+
+#. Key:	789BE36241ECDD90BCCCB4852F3BE7FD
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_335.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_335.Text
+msgctxt ",789BE36241ECDD90BCCCB4852F3BE7FD"
+msgid "화면 모드"
+msgstr ""
+
+#. Key:	ED41EDC7435988C22A8BA8B2AF5A171B
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_561.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_561.Text
+msgctxt ",ED41EDC7435988C22A8BA8B2AF5A171B"
+msgid "해상도"
+msgstr ""
+
+#. Key:	D232D13A404584FB236A7B99EB81323C
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_716.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_716.Text
+msgctxt ",D232D13A404584FB236A7B99EB81323C"
+msgid "최대 FPS"
+msgstr ""
+
+#. Key:	9E7F11974D58562B81D256A6B56E2A6C
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_928.Text
+#: /Game/NeoSanctum/UI/Options/Graphic/WBP_GraphicSettingWidget.WBP_GraphicSettingWidget_C:WidgetTree.TextBlock_928.Text
+msgctxt ",9E7F11974D58562B81D256A6B56E2A6C"
+msgid "수직 동기화"
+msgstr ""
 
 #. Key:	3A63B42E41300B9E7FEC99B8B75879DB
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundButton.WBP_SoundButton_C:WidgetTree.CommonTextBlock_47.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundButton.WBP_SoundButton_C:WidgetTree.CommonTextBlock_47.Text
 msgctxt ",3A63B42E41300B9E7FEC99B8B75879DB"
 msgid "Sound"
-msgstr ""
+msgstr "Sound"
 
 #. Key:	406E3B644C34F052105BB2993A1C9B0D
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.BGMVolumeText.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.BGMVolumeText.Text
 msgctxt ",406E3B644C34F052105BB2993A1C9B0D"
 msgid "100"
-msgstr ""
+msgstr "100"
 
 #. Key:	6D21B98C426B18CC98D9BD84B1ABDB64
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_638.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_638.Text
 msgctxt ",6D21B98C426B18CC98D9BD84B1ABDB64"
 msgid "Master"
-msgstr ""
+msgstr "Master"
 
 #. Key:	4A48B4B14EE920B278026FAC02E501B7
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_724.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_724.Text
 msgctxt ",4A48B4B14EE920B278026FAC02E501B7"
 msgid "BGM"
-msgstr ""
+msgstr "BGM"
 
 #. Key:	5691E4D645E248DC7E267BA9B6A7379B
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_846.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_846.Text
 msgctxt ",5691E4D645E248DC7E267BA9B6A7379B"
 msgid "SFX"
-msgstr ""
+msgstr "SFX"
 
 #. Key:	7B9B8FE74F359C4F4CB642ACBCDA1A2F
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_950.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.CommonTextBlock_950.Text
 msgctxt ",7B9B8FE74F359C4F4CB642ACBCDA1A2F"
 msgid "UI"
-msgstr ""
+msgstr "UI"
 
 #. Key:	BC91729749BA718BA5681DA9AF577015
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.MasterVolumeText.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.MasterVolumeText.Text
 msgctxt ",BC91729749BA718BA5681DA9AF577015"
 msgid "100"
-msgstr ""
+msgstr "100"
 
 #. Key:	42C9546B4A47C1EB543CAF9EE614BE91
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.SFXVolumeText.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.SFXVolumeText.Text
 msgctxt ",42C9546B4A47C1EB543CAF9EE614BE91"
 msgid "100"
-msgstr ""
+msgstr "100"
 
 #. Key:	731B99054827A22B8C746C9DA58777B7
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.UIVolumeText.Text
 #: /Game/NeoSanctum/UI/Options/Sound/WBP_SoundSettingWidget.WBP_SoundSettingWidget_C:WidgetTree.UIVolumeText.Text
 msgctxt ",731B99054827A22B8C746C9DA58777B7"
 msgid "100"
-msgstr ""
+msgstr "100"
 
 #. Key:	EB89E40E454B90643DA4D6AEBC344E6C
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/WBP_CloseButton.WBP_CloseButton_C:WidgetTree.Close.Text
 #: /Game/NeoSanctum/UI/Options/WBP_CloseButton.WBP_CloseButton_C:WidgetTree.Close.Text
 msgctxt ",EB89E40E454B90643DA4D6AEBC344E6C"
 msgid "Close"
-msgstr ""
+msgstr "Close"
 
 #. Key:	C817DFD64F17BA86EFF662BA2B176B6A
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/WBP_NSOptionWidget.WBP_NSOptionWidget_C:WidgetTree.CommonTextBlock_255.Text
 #: /Game/NeoSanctum/UI/Options/WBP_NSOptionWidget.WBP_NSOptionWidget_C:WidgetTree.CommonTextBlock_255.Text
 msgctxt ",C817DFD64F17BA86EFF662BA2B176B6A"
 msgid "Option"
-msgstr ""
+msgstr "Option"
 
 #. Key:	A355004C48C2CC22FDC1039F03A3B33A
 #. SourceLocation:	/Game/NeoSanctum/UI/PauseMenu/Buttons/WBP_MainMenuButton.WBP_MainMenuButton_C:WidgetTree.TextBlock_213.Text
@@ -1194,21 +1369,21 @@ msgstr "Ready"
 #: /Game/NeoSanctum/UI/WBP_TestReady.WBP_TestReady_C:WidgetTree.TextBlock_132.Text
 msgctxt ",20CC77394661225CB1612CBA32FFA443"
 msgid "Start"
-msgstr ""
+msgstr "Start"
 
 #. Key:	322455FD4FC1491C3F662990269B0070
 #. SourceLocation:	/Game/NeoSanctum/UI/WBP_TestReady.WBP_TestReady_C:WidgetTree.TextBlock_63.Text
 #: /Game/NeoSanctum/UI/WBP_TestReady.WBP_TestReady_C:WidgetTree.TextBlock_63.Text
 msgctxt ",322455FD4FC1491C3F662990269B0070"
 msgid "Ready"
-msgstr ""
+msgstr "Ready"
 
 #. Key:	44D457B6439C0A25B840B1A6B6944029
 #. SourceLocation:	/Game/NeoSanctum/UI/WBP_TestRunEnd.WBP_TestRunEnd_C:WidgetTree.TextBlock_119.Text
 #: /Game/NeoSanctum/UI/WBP_TestRunEnd.WBP_TestRunEnd_C:WidgetTree.TextBlock_119.Text
 msgctxt ",44D457B6439C0A25B840B1A6B6944029"
 msgid "Next Stage"
-msgstr ""
+msgstr "Next Stage"
 
 #. Key:	D85D203042DCD1BB4279C8A1FCA3A20A
 #. SourceLocation:	/Game/NeoSanctum/UI/WBP_TestRunEnd.WBP_TestRunEnd_C:WidgetTree.TextBlock_169.Text
@@ -1232,8 +1407,8 @@ msgid "확인"
 msgstr "Confirm"
 
 #. Key:	ReplacePart
-#. SourceLocation:	Source/NeoSanctum/Interaction/Component/NSInteractionComponent.cpp(271)
-#: Source/NeoSanctum/Interaction/Component/NSInteractionComponent.cpp(271)
+#. SourceLocation:	Source/NeoSanctum/Interaction/Component/NSInteractionComponent.cpp(272)
+#: Source/NeoSanctum/Interaction/Component/NSInteractionComponent.cpp(272)
 msgctxt "Interaction,ReplacePart"
 msgid "교체"
 msgstr "Replace"
@@ -1243,34 +1418,90 @@ msgstr "Replace"
 #: Source/NeoSanctum/Interaction/Prop/NSReadyStartActor.h(53)
 msgctxt "ReadyStartActor,PromptText"
 msgid "Ready / Start"
-msgstr ""
+msgstr "Ready / Start"
 
 #. Key:	AmmoFormat
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSAmmoWidget.cpp(15)
 #: Source/NeoSanctum/UI/HUD/NSAmmoWidget.cpp(15)
 msgctxt "AmmoWidget,AmmoFormat"
 msgid "{0} / {1}"
-msgstr ""
+msgstr "{0} / {1}"
 
 #. Key:	ReloadingText
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSAmmoWidget.cpp(36)
 #: Source/NeoSanctum/UI/HUD/NSAmmoWidget.cpp(36)
 msgctxt "AmmoWidget,ReloadingText"
 msgid "Reload"
-msgstr ""
+msgstr "Reload"
 
 #. Key:	OwnedAugmentCount
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSAugmentationWidget.cpp(303)
 #: Source/NeoSanctum/UI/HUD/NSAugmentationWidget.cpp(303)
 msgctxt "AugmentationWidget,OwnedAugmentCount"
 msgid "{0}"
+msgstr "{0}"
+
+#. Key:	ExperienceFormat
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(85)
+#: Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(85)
+msgctxt "PlayerStatus,ExperienceFormat"
+msgid "EXP {0}/{1}"
 msgstr ""
 
 #. Key:	ChargeFormat
-#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSSkillSlotWidget.cpp(290)
-#: Source/NeoSanctum/UI/HUD/NSSkillSlotWidget.cpp(290)
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSSkillSlotWidget.cpp(289)
+#: Source/NeoSanctum/UI/HUD/NSSkillSlotWidget.cpp(289)
 msgctxt "SkillSlotWidget,ChargeFormat"
 msgid "{0}/{1}"
+msgstr "{0}/{1}"
+
+#. Key:	HealthFormat
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSTeammateStatusEntryWidget.cpp(38)
+#: Source/NeoSanctum/UI/HUD/NSTeammateStatusEntryWidget.cpp(38)
+msgctxt "TeammateStatus,HealthFormat"
+msgid "{0}/{1}"
+msgstr ""
+
+#. Key:	ShieldFormat
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSTeammateStatusEntryWidget.cpp(54)
+#: Source/NeoSanctum/UI/HUD/NSTeammateStatusEntryWidget.cpp(54)
+msgctxt "TeammateStatus,ShieldFormat"
+msgid "{0}/{1}"
+msgstr ""
+
+#. Key:	UnlockSlot
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(462)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(462)
+msgctxt "PartEquip,UnlockSlot"
+msgid "슬롯 해금"
+msgstr ""
+
+#. Key:	Unequip
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(470)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(470)
+msgctxt "PartEquip,Unequip"
+msgid "해제"
+msgstr ""
+
+#. Key:	SlotUnlockRequired
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(480)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(480)
+msgctxt "PartEquip,SlotUnlockRequired"
+msgid "슬롯 해금 필요"
+msgstr ""
+
+#. Key:	Buy
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(490)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(490)
+msgctxt "PartEquip,Buy"
+msgid "구매"
+msgstr ""
+
+#. Key:	Equip
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(499)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(499)
+msgctxt "PartEquip,Equip"
+msgid "장착"
 msgstr ""
 
 #. Key:	CancelReady
@@ -1295,52 +1526,199 @@ msgid "시작"
 msgstr "Start"
 
 #. Key:	ApplyCrosshairColor
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(276)
-#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(276)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(343)
+#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(343)
 msgctxt "GameplaySettings,ApplyCrosshairColor"
 msgid "적용"
 msgstr "Apply"
 
 #. Key:	AppliedCrosshairColor
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(280)
-#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(280)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(347)
+#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(347)
 msgctxt "GameplaySettings,AppliedCrosshairColor"
 msgid "적용됨"
 msgstr "Applied"
 
+#. Key:	QualityLow
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(107)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(107)
+msgctxt "GraphicSettings,QualityLow"
+msgid "낮음"
+msgstr ""
+
+#. Key:	QualityMedium
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(113)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(113)
+msgctxt "GraphicSettings,QualityMedium"
+msgid "중간"
+msgstr ""
+
+#. Key:	QualityHigh
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(119)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(119)
+msgctxt "GraphicSettings,QualityHigh"
+msgid "높음"
+msgstr ""
+
+#. Key:	QualityEpic
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(125)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(125)
+msgctxt "GraphicSettings,QualityEpic"
+msgid "최상"
+msgstr ""
+
+#. Key:	Fullscreen
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(60)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(60)
+msgctxt "GraphicSettings,Fullscreen"
+msgid "전체 화면"
+msgstr ""
+
+#. Key:	BorderlessFullscreen
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(66)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(66)
+msgctxt "GraphicSettings,BorderlessFullscreen"
+msgid "테두리 없는 전체 화면"
+msgstr ""
+
+#. Key:	Windowed
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(72)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(72)
+msgctxt "GraphicSettings,Windowed"
+msgid "창 모드"
+msgstr ""
+
+#. Key:	UnlimitedFrameRate
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(96)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(96)
+msgctxt "GraphicSettings,UnlimitedFrameRate"
+msgid "제한 없음"
+msgstr ""
+
 #. Key:	CommonRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(138)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(138)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(146)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(146)
 msgctxt "PartSlotButton,CommonRarity"
 msgid "Common"
-msgstr ""
+msgstr "Common"
 
 #. Key:	RareRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(140)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(140)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(148)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(148)
 msgctxt "PartSlotButton,RareRarity"
 msgid "Rare"
-msgstr ""
+msgstr "Rare"
 
 #. Key:	EpicRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(142)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(142)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(150)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(150)
 msgctxt "PartSlotButton,EpicRarity"
 msgid "Epic"
-msgstr ""
+msgstr "Epic"
 
 #. Key:	LegendaryRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(144)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(144)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(152)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(152)
 msgctxt "PartSlotButton,LegendaryRarity"
 msgid "Legendary"
-msgstr ""
+msgstr "Legendary"
 
 #. Key:	PartValueFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(71)
 #: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(71)
 msgctxt "PartSlotButton,PartValueFormat"
 msgid "{0} {1}"
+msgstr "{0} {1}"
+
+#. Key:	RarityLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(121)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(121)
+msgctxt "PartDetail,RarityLabel"
+msgid "등급 : {0}"
+msgstr ""
+
+#. Key:	EffectLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(127)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(127)
+msgctxt "PartDetail,EffectLabel"
+msgid "효과 : {0}"
+msgstr ""
+
+#. Key:	SlotLockNameLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(138)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(138)
+msgctxt "PartDetail,SlotLockNameLabel"
+msgid "슬롯 : {0}"
+msgstr ""
+
+#. Key:	UnlockCostLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(149)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(149)
+msgctxt "PartDetail,UnlockCostLabel"
+msgid "해금 비용 : {0}"
+msgstr ""
+
+#. Key:	CommonRarity
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(17)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(17)
+msgctxt "PartDetail,CommonRarity"
+msgid "Common"
+msgstr ""
+
+#. Key:	RareRarity
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
+msgctxt "PartDetail,RareRarity"
+msgid "Rare"
+msgstr ""
+
+#. Key:	EpicRarity
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
+msgctxt "PartDetail,EpicRarity"
+msgid "Epic"
+msgstr ""
+
+#. Key:	LegendaryRarity
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
+msgctxt "PartDetail,LegendaryRarity"
+msgid "Legendary"
+msgstr ""
+
+#. Key:	NameLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(63)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(63)
+msgctxt "PartDetail,NameLabel"
+msgid "이름 : {0}"
+msgstr ""
+
+#. Key:	SlotLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(68)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(68)
+msgctxt "PartDetail,SlotLabel"
+msgid "슬롯 : {0}"
+msgstr ""
+
+#. Key:	CostLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(74)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(74)
+msgctxt "PartDetail,CostLabel"
+msgid "비용 : {0}"
+msgstr ""
+
+#. Key:	CanReroll
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(81)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(81)
+msgctxt "PartDetail,CanReroll"
+msgid "리롤 : 가능"
+msgstr ""
+
+#. Key:	NoReroll
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(82)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(82)
+msgctxt "PartDetail,NoReroll"
+msgid "리롤 : 불가"
 msgstr ""
 
 #. Key:	NodeLevelFormat
@@ -1348,14 +1726,14 @@ msgstr ""
 #: Source/NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.cpp(21)
 msgctxt "PetUpgrade,NodeLevelFormat"
 msgid "{0}/{1}"
-msgstr ""
+msgstr "{0}/{1}"
 
 #. Key:	HubVotesFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(106)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(106)
 msgctxt "RunResult,HubVotesFormat"
 msgid "Hub : {0}"
-msgstr ""
+msgstr "Hub : {0}"
 
 #. Key:	CancelVote
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(233)
@@ -1376,56 +1754,56 @@ msgstr "Confirm"
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(27)
 msgctxt "RunResult,ClearTitle"
 msgid "Clear"
-msgstr ""
+msgstr "Clear"
 
 #. Key:	FailedTitle
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(28)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(28)
 msgctxt "RunResult,FailedTitle"
 msgid "FAILED"
-msgstr ""
+msgstr "FAILED"
 
 #. Key:	TimerFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(282)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(282)
 msgctxt "RunResult,TimerFormat"
 msgid "{0}"
-msgstr ""
+msgstr "{0}"
 
 #. Key:	EarnedGoodsFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(34)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(34)
 msgctxt "RunResult,EarnedGoodsFormat"
 msgid "Goods : {0}"
-msgstr ""
+msgstr "Goods : {0}"
 
 #. Key:	RunTimeFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(41)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(41)
 msgctxt "RunResult,RunTimeFormat"
 msgid "Time: {0}"
-msgstr ""
+msgstr "Time: {0}"
 
 #. Key:	KillCountFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(48)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(48)
 msgctxt "RunResult,KillCountFormat"
 msgid "Kills: {0}"
-msgstr ""
+msgstr "Kills: {0}"
 
 #. Key:	CommonGoodsFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(55)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(55)
 msgctxt "RunResult,CommonGoodsFormat"
 msgid "Common : {0}"
-msgstr ""
+msgstr "Common : {0}"
 
 #. Key:	NextVotesFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(99)
 #: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(99)
 msgctxt "RunResult,NextVotesFormat"
 msgid "Next : {0}"
-msgstr ""
+msgstr "Next : {0}"
 
 #. Key:	SpectatingNameFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Spectator/NSSpectatorWidget.cpp(15)
