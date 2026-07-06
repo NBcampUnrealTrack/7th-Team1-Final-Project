@@ -81,11 +81,6 @@ void UNSTitanWalkerMoveComponent::TickMove(float DeltaSeconds)
 
 	const FVector DirectionToTarget = ToTarget / DistanceToTarget;
 
-	if (CanTurnBody())
-	{
-		UpdateBodyRotation(DirectionToTarget, DeltaSeconds);
-	}
-
 	if (!CanMoveBody())
 	{
 		ClearMoveVelocity();
@@ -155,10 +150,30 @@ bool UNSTitanWalkerMoveComponent::CanMoveBody() const
 	return !AttackRow || AttackRow->bMove;
 }
 
-bool UNSTitanWalkerMoveComponent::CanTurnBody() const
+bool UNSTitanWalkerMoveComponent::CanTurnActorForMove(
+	float DistanceToTarget,
+	const FVector& MoveVelocity) const
 {
-	const FNSEnemyAttackRow* AttackRow = GetCurrentAttackRow();
-	return !AttackRow || AttackRow->bTurnBody;
+	if (MoveVelocity.IsNearlyZero())
+	{
+		return false;
+	}
+
+	// 공격 실행 중에는 타깃 조준을 Control Rig의 Body Bone이 담당하므로 Actor Root를 회전하지 않음
+	if (GetCurrentAttackRow())
+	{
+		return false;
+	}
+
+	const float MaxDistance = DesiredDistance + DistanceTolerance;
+
+	// 타깃에게 접근하는 이동일 때만 Actor Root 회전을 허용함
+	if (DistanceToTarget <= MaxDistance)
+	{
+		return false;
+	}
+
+	return TurnSpeed > 0.0f;
 }
 
 const FNSEnemyAttackRow* UNSTitanWalkerMoveComponent::GetCurrentAttackRow() const
@@ -167,21 +182,24 @@ const FNSEnemyAttackRow* UNSTitanWalkerMoveComponent::GetCurrentAttackRow() cons
 	return EnemyAgent ? EnemyAgent->GetCurrentAttackRow() : nullptr;
 }
 
-void UNSTitanWalkerMoveComponent::UpdateBodyRotation(
-	const FVector& DirectionToTarget,
+void UNSTitanWalkerMoveComponent::UpdateActorRotation(
+	const FVector& MoveDirection,
 	float DeltaSeconds)
 {
-	if (!UpdatedComponent || DirectionToTarget.IsNearlyZero())
+	if (!UpdatedComponent || MoveDirection.IsNearlyZero())
 	{
 		return;
 	}
 
 	const FRotator CurrentRotation = UpdatedComponent->GetComponentRotation();
-	const FRotator TargetRotation(0.0f, DirectionToTarget.Rotation().Yaw, 0.0f);
+	const FRotator TargetRotation(0.0f, MoveDirection.Rotation().Yaw, 0.0f);
 
 	const FRotator NewRotation = TurnSpeed > 0.0f
-		                             ? FMath::RInterpConstantTo(CurrentRotation, TargetRotation, DeltaSeconds,
-		                                                        TurnSpeed)
+		                             ? FMath::RInterpConstantTo(
+			                             CurrentRotation,
+			                             TargetRotation,
+			                             DeltaSeconds,
+			                             TurnSpeed)
 		                             : TargetRotation;
 
 	MoveUpdatedComponent(

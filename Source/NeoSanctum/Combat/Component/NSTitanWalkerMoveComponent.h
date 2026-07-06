@@ -51,14 +51,14 @@ protected:
 	// 현재 공격 Row 기준으로 몸체 이동이 가능한지 확인하는 함수
 	bool CanMoveBody() const;
 
-	// 현재 공격 Row 기준으로 몸체 회전이 가능한지 확인하는 함수
-	bool CanTurnBody() const;
+	// 현재 이동 상태에서 Actor Root 회전을 허용할지 확인하는 함수
+	bool CanTurnActorForMove(float DistanceToTarget, const FVector& MoveVelocity) const;
 
 	// 현재 공격 Row를 반환하는 함수
 	const FNSEnemyAttackRow* GetCurrentAttackRow() const;
 
-	// 타깃 방향으로 몸체 회전을 갱신하는 함수
-	void UpdateBodyRotation(const FVector& DirectionToTarget, float DeltaSeconds);
+	// 이동 방향 기준으로 Actor Root 회전을 갱신하는 함수
+	void UpdateActorRotation(const FVector& DirectionToTarget, float DeltaSeconds);
 
 	// 타깃과의 거리 기준으로 이동 속도를 계산하는 함수
 	FVector CalculateMoveVelocity(const FVector& DirectionToTarget, float DistanceToTarget) const;
