@@ -7,6 +7,7 @@
 #include "Components/ComboBoxString.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Internationalization/TextLocalizationManager.h"
 
 void UNSGraphicSettingWidget::NativeConstruct()
 {
@@ -25,10 +26,22 @@ void UNSGraphicSettingWidget::NativeConstruct()
 	ResetButton->OnClicked.AddDynamic(
 		this,
 		&ThisClass::OnResetClicked);
+	
+	FTextLocalizationManager::Get()
+	.OnTextRevisionChangedEvent.RemoveAll(this);
+
+	FTextLocalizationManager::Get()
+		.OnTextRevisionChangedEvent.AddUObject(
+			this,
+			&ThisClass::HandleTextRevisionChanged);
 }
 
 void UNSGraphicSettingWidget::NativeDestruct()
 {
+	
+	FTextLocalizationManager::Get()
+	.OnTextRevisionChangedEvent.RemoveAll(this);
+	
 	ApplyButton->OnClicked.RemoveAll(this);
 	ResetButton->OnClicked.RemoveAll(this);
 	
@@ -55,9 +68,24 @@ void UNSGraphicSettingWidget::InitializeResolutionOptions()
 void UNSGraphicSettingWidget::InitializeWindowModeOptions()
 {
 	WindowModeComboBox->ClearOptions();
-	WindowModeComboBox->AddOption(TEXT("전체화면"));
-	WindowModeComboBox->AddOption(TEXT("테두리 없음"));
-	WindowModeComboBox->AddOption(TEXT("창화면"));
+
+	WindowModeComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"Fullscreen",
+			"전체 화면").ToString());
+
+	WindowModeComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"BorderlessFullscreen",
+			"테두리 없는 전체 화면").ToString());
+
+	WindowModeComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"Windowed",
+			"창 모드").ToString());
 }
 
 void UNSGraphicSettingWidget::InitializeFrameRateOptions()
@@ -77,16 +105,40 @@ void UNSGraphicSettingWidget::InitializeFrameRateOptions()
 	FrameRateComboBox->AddOption(TEXT("60"));
 	FrameRateComboBox->AddOption(TEXT("120"));
 	FrameRateComboBox->AddOption(TEXT("144"));
-	FrameRateComboBox->AddOption(TEXT("제한 없음"));
+	FrameRateComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"UnlimitedFrameRate",
+			"제한 없음").ToString());
 }
 
 void UNSGraphicSettingWidget::InitializeQualityOptions()
 {
 	OverallQualityComboBox->ClearOptions();
-	OverallQualityComboBox->AddOption(TEXT("낮음"));
-	OverallQualityComboBox->AddOption(TEXT("중간"));
-	OverallQualityComboBox->AddOption(TEXT("높음"));
-	OverallQualityComboBox->AddOption(TEXT("최상"));
+
+	OverallQualityComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"QualityLow",
+			"낮음").ToString());
+
+	OverallQualityComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"QualityMedium",
+			"중간").ToString());
+
+	OverallQualityComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"QualityHigh",
+			"높음").ToString());
+
+	OverallQualityComboBox->AddOption(
+		NSLOCTEXT(
+			"GraphicSettings",
+			"QualityEpic",
+			"최상").ToString());
 }
 
 void UNSGraphicSettingWidget::SynchronizeSettings()
@@ -182,6 +234,14 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 	
 	VSyncCheckBox->SetIsChecked(
 		Settings->IsVSyncEnabled());
+}
+
+void UNSGraphicSettingWidget::HandleTextRevisionChanged()
+{
+	InitializeWindowModeOptions();
+	InitializeFrameRateOptions();
+	InitializeQualityOptions();
+	SynchronizeSettings();
 }
 
 void UNSGraphicSettingWidget::OnApplyClicked()
