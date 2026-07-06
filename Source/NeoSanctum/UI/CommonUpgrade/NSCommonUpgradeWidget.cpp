@@ -152,6 +152,7 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 		Entry->SetupEntry(Pair.Key, Pair.Value, CurrentLevel);
 		Entry->OnNodeHovered.AddUniqueDynamic(this, &ThisClass::HandleNodeHovered);
 		Entry->OnNodeUnhovered.AddUniqueDynamic(this, &ThisClass::HandleNodeUnhovered);
+		Entry->OnUpgradeRequested.AddUniqueDynamic(this, &ThisClass::HandleNodeUpgradeRequested);
 
 		Container->AddChild(Entry);
 	}
@@ -210,6 +211,71 @@ void UNSCommonUpgradeWidget::MoveDetailWidgetToCategoryPosition(ENSCommonUpgrade
 
 	default:
 		break;
+	}
+}
+
+void UNSCommonUpgradeWidget::HandleNodeUpgradeRequested(FName NodeId)
+{
+	TryPurchase(NodeId);
+}
+
+void UNSCommonUpgradeWidget::TryPurchase(FName NodeId)
+{
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	UNSProgressionSubsystem* ProgressionSubsystem = GetProgressionSubsystem(this);
+	if (!DataSubsystem || !ProgressionSubsystem)
+	{
+		return;
+	}
+
+	// 1. 무효 Row 차단
+	const FNSCommonUpgradeNodeRow* Row = DataSubsystem->GetCommonUpgradeNodeRow(NodeId);
+	if (!Row)
+	{
+		NS_LOG(LogNS, Warning, "[CommonUpgrade] 구매 실패: 유효하지 않은 NodeId={NodeId}", ("NodeId", NodeId.ToString()));
+		OnPurchaseFailed(NSLOCTEXT("CommonUpgrade", "InvalidNode", "존재하지 않는 노드입니다."));
+		return;
+	}
+
+	// 2. 최대 레벨 초과 차단
+	const int32 CurrentLevel = ProgressionSubsystem->GetCommonSkillLevel(NodeId);
+	const int32 MaxLevel = ProgressionSubsystem->GetCommonUpgradeMaxLevel(NodeId);
+	if (CurrentLevel >= MaxLevel)
+	{
+		OnPurchaseFailed(NSLOCTEXT("CommonUpgrade", "MaxLevelReached", "이미 최대 레벨입니다."));
+		return;
+	}
+
+	// NewLevel/Cost는 이 위젯이 독점 계산(연속성 보장, 표시-호출 값 일치 보장).
+	const int32 NewLevel = CurrentLevel + 1;
+	const int64 Cost = ProgressionSubsystem->GetCommonUpgradeCost(NodeId, NewLevel);
+
+	// 3. 재화 부족 차단
+	if (ProgressionSubsystem->GetCommonCurrency() < Cost)
+	{
+		OnPurchaseFailed(NSLOCTEXT("CommonUpgrade", "NotEnoughCurrency", "재화가 부족합니다."));
+		return;
+	}
+
+	const bool bSuccess = ProgressionSubsystem->UpgradeCommonSkill(NodeId, NewLevel, Cost);
+	NS_LOG(LogNS, Log, "[CommonUpgrade] 구매 결과: NodeId={NodeId}, NewLevel={NewLevel}, Cost={Cost}, Success={Success}",
+		("NodeId", NodeId.ToString()),
+		("NewLevel", NewLevel),
+		("Cost", Cost),
+		("Success", bSuccess)
+	);
+
+	if (!bSuccess)
+	{
+		OnPurchaseFailed(NSLOCTEXT("CommonUpgrade", "UpgradeFailed", "구매에 실패했습니다."));
+		return;
+	}
+
+	BuildNodeCatalog();
+
+	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
+	{
+		NSPC->UploadLocalProgress(NSPC->GetActiveCharacterIdForUpload());
 	}
 }
 

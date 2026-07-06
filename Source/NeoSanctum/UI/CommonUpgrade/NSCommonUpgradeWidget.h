@@ -33,6 +33,10 @@ protected:
 	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
+	// 구매 실패 사유를 Blueprint 쪽 UI(토스트/라벨 등)에 표시하도록 위임
+	UFUNCTION(BlueprintImplementableEvent, Category = "CommonUpgrade")
+	void OnPurchaseFailed(const FText& Reason);
+
 	// 닫기 버튼 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UCommonButtonBase> CloseButton;
@@ -78,6 +82,7 @@ private:
 	void RefreshCommonCurrencyDisplay();
 	UPanelWidget* GetContainerForCategory(ENSCommonUpgradeCategory Category) const;
 	void MoveDetailWidgetToCategoryPosition(ENSCommonUpgradeCategory Category);
+	void TryPurchase(FName NodeId);
 
 	UFUNCTION()
 	void HandleCloseButtonClicked();
@@ -87,6 +92,9 @@ private:
 
 	UFUNCTION()
 	void HandleNodeUnhovered(FName NodeId);
+
+	UFUNCTION()
+	void HandleNodeUpgradeRequested(FName NodeId);
 
 	UPROPERTY()
 	TWeakObjectPtr<APlayerController> OwningController;
