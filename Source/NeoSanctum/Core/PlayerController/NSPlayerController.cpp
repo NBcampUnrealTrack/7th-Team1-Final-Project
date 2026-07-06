@@ -35,6 +35,7 @@
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "NeoSanctum/Core/GameMode/NSRunGameMode.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
@@ -2402,3 +2403,24 @@ void ANSPlayerController::RestoreGameplayInputMode()
 	SetInputMode(InputMode);
 	bShowMouseCursor = false;
 }
+
+void ANSPlayerController::Server_DebugForceBossFight_Implementation()
+{
+	ANSRunGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ANSRunGameMode>() : nullptr;
+	ANSRunGameState* RunGameState = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
+	if (!GameMode || !RunGameState)
+	{
+		return;
+	}
+
+	// NotifyBossGateReached는 BossReady 상태에서만 처리되므로, Objective 단계면 먼저 넘겨준다
+	if (RunGameState->StagePhase == ENSStagePhase::Objective)
+	{
+		RunGameState->SetStagePhase(ENSStagePhase::BossReady);
+	}
+
+	INSRunGameModeInterface::Execute_NotifyBossGateReached(GameMode);
+
+	UE_LOG(LogTemp, Log, TEXT("[BossFight Debug] 강제 보스전 진입 요청"));
+}
+

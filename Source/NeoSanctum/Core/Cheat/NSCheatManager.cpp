@@ -400,3 +400,16 @@ void UNSCheatManager::Debug_AddTempCurrency()
 	// 서버 권한 RPC 경유: 원격 클라가 입력해도 서버의 CurrencyComponent에 반영되도록 함
 	OwningPC->Server_DebugAddTempCurrency();
 }
+
+// 테스트용 치트 (보스전 강제 진입 — 텔레포트/보스 스포너 활성화까지 즉시 처리)
+void UNSCheatManager::Debug_ForceBossFight()
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+
+	// 서버 권한 RPC 경유: 원격 클라가 입력해도 서버에서 GameMode/GameState를 직접 조작하도록 함
+	OwningPC->Server_DebugForceBossFight();
+}

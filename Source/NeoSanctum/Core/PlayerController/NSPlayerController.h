@@ -241,7 +241,7 @@ private:
 	//클라이언트 입력으로 호출된 클리어 테스트를 서버에서 처리한다
 	UFUNCTION(Server, Reliable)
 	void Server_DebugForceRunClear();
-
+	
 	//현재 탄약 값을 읽어 HUD에 반영
 	void UpdateHUDAmmo();
 
@@ -368,4 +368,9 @@ public:
 	// PauseMenu 사용 용도 → 세션 정리 후 타이틀
 	void RequestLeaveToMainMenu();
 	void RestoreGameplayInputMode();
+
+public:
+	//보스전 강제 진입 치트용 임시 함수
+	UFUNCTION(Server, Reliable)
+	void Server_DebugForceBossFight();
 };

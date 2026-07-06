@@ -92,6 +92,10 @@ public:
 	UFUNCTION(Exec)
 	void Debug_AddTempCurrency();
 
+	// 테스트용 치트 (보스전 강제 진입 — 텔레포트/보스 스포너 활성화까지 즉시 처리)
+	UFUNCTION(Exec)
+	void Debug_ForceBossFight();
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };
