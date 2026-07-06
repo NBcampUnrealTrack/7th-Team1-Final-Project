@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "Engine/OverlapResult.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_Flicker.generated.h"
@@ -44,25 +45,32 @@ private:
 
 	// 크로스헤어 기준 최적 타겟 탐색
 	bool TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const;
+	// Primary Target 기준 체인 타겟 구성
+	bool TryBuildTargetChain(AActor* PrimaryTarget, const FVector& PrimaryTargetLocation);
+	// CombatStat.TargetCount 기준 최대 타겟 수 조회
+	bool TryGetMaxTargetCount(int32& OutMaxTargetCount) const;
+
 	// 로컬 조준선 또는 서버 AimRotation 기반 조준선 계산
 	bool TryBuildAimRay(FVector& OutRayStart, FVector& OutRayDirection) const;
 	// 타겟까지의 시야 확보 여부 확인
 	bool HasSightToTarget(const FVector& SightStart, AActor* TargetActor, const FVector& TargetLocation) const;
 	// 타겟 앞 공격 위치 계산
 	bool TryBuildAttackLocation(AActor* TargetActor, const FVector& TargetLocation, FVector& OutAttackLocation) const;
-	
+
+	// 현재 체인 타겟 돌진 시작
+	bool StartCurrentTargetMove();
+	// 다음 체인 타겟 처리
+	void AdvanceToNextTarget();
 	// 공격 위치로 이동 시작
 	bool StartFlickerMove(const FVector& AttackLocation);
 	// 이동 전 MovementMode 복구
 	void RestoreMovementMode() const;
-	
-private:	
+
 	// 현재 타겟에게 데미지 적용
 	void ApplyDamageToTarget();
 	// DamageCoefficient 기반 최종 데미지 계산
 	bool TryGetFinalDamage(float& OutDamage) const;
-	
-private:
+
 	// Dashing 상태 태그 부여
 	void AddDashingState();
 	// Dashing 상태 태그 제거
@@ -85,6 +93,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker", meta = (ClampMin = "0.0"))
 	float AttackDistance = 150.0f;
 
+	// Primary Target 주변 추가 타겟 탐색 반경
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker", meta = (ClampMin = "0.0"))
+	float ChainRadius = 700.0f;
+
 	// 타겟 시야 확인 Trace 채널
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker")
 	TEnumAsByte<ECollisionChannel> TargetTraceChannel = NSCollisionChannels::CombatSight;
@@ -103,4 +115,10 @@ private:
 	FVector CurrentTargetLocation = FVector::ZeroVector;
 	// 이동 전 MovementMode
 	TOptional<TEnumAsByte<EMovementMode>> PreviousMovementMode;
+	// 이번 발동에서 공격할 타겟 목록
+	TArray<TWeakObjectPtr<AActor>> SelectedTargets;
+	// 이번 발동에서 공격할 타겟 위치 목록
+	TArray<FVector> SelectedTargetLocations;
+	// 현재 처리 중인 체인 타겟 인덱스
+	int32 CurrentTargetIndex = INDEX_NONE;
 };

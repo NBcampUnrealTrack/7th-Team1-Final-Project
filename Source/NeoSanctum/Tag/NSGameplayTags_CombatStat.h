@@ -38,6 +38,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill2Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill3Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_TargetCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DetectionRange);

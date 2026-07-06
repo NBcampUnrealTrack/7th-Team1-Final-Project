@@ -5,7 +5,6 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
-#include "Engine/OverlapResult.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -48,6 +47,13 @@ void UGA_Flicker::ActivateAbility(
 		return;
 	}
 
+	// Primary Target 기준 체인 타겟 확정
+	if (!TryBuildTargetChain(TargetActor, TargetLocation))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	// 타겟이 확정된 뒤 Cost/Cooldown Commit
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
@@ -55,24 +61,13 @@ void UGA_Flicker::ActivateAbility(
 		return;
 	}
 
-	// 타겟과 겹치지 않는 공격 위치 계산
-	FVector AttackLocation = FVector::ZeroVector;
-	if (!TryBuildAttackLocation(TargetActor, TargetLocation, AttackLocation))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
-	CurrentTarget = TargetActor;
-	CurrentTargetLocation = TargetLocation;
-
 	AddDashingState();
 
-	// 이동 시작 실패 시 즉시 공격 처리
-	if (!StartFlickerMove(AttackLocation))
+	// 첫 번째 체인 타겟 처리 시작
+	CurrentTargetIndex = 0;
+	if (!StartCurrentTargetMove())
 	{
-		ApplyDamageToTarget();
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		AdvanceToNextTarget();
 	}
 }
 
@@ -94,6 +89,10 @@ void UGA_Flicker::EndAbility(
 
 	CurrentTarget.Reset();
 	CurrentTargetLocation = FVector::ZeroVector;
+	// 다음 발동을 위한 체인 타겟 상태 초기화
+	SelectedTargets.Reset();
+	SelectedTargetLocations.Reset();
+	CurrentTargetIndex = INDEX_NONE;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -102,13 +101,8 @@ void UGA_Flicker::OnFlickerMoveFinished()
 {
 	MoveTask = nullptr;
 	ApplyDamageToTarget();
-
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		false);
+	// 현재 타겟 공격 후 다음 타겟으로 진행
+	AdvanceToNextTarget();
 }
 
 bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const
@@ -231,6 +225,146 @@ bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetL
 	return IsValid(OutTargetActor);
 }
 
+bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& PrimaryTargetLocation)
+{
+	// 이전 발동의 타겟 목록 초기화
+	SelectedTargets.Reset();
+	SelectedTargetLocations.Reset();
+
+	if (!IsValid(PrimaryTarget))
+	{
+		return false;
+	}
+
+	int32 MaxTargetCount = 0;
+	if (!TryGetMaxTargetCount(MaxTargetCount))
+	{
+		return false;
+	}
+
+	MaxTargetCount = FMath::Max(MaxTargetCount, 1);
+	// Primary Target은 항상 첫 번째 공격 대상
+	SelectedTargets.Add(PrimaryTarget);
+	SelectedTargetLocations.Add(PrimaryTargetLocation);
+
+	if (MaxTargetCount <= 1 || ChainRadius <= 0.0f)
+	{
+		return true;
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	if (!IsValid(AvatarActor) || !World)
+	{
+		return true;
+	}
+
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(FlickerChainOverlap), false, AvatarActor);
+
+	// Primary Target 주변 추가 후보 수집
+	World->OverlapMultiByObjectType(
+		OverlapResults,
+		PrimaryTargetLocation,
+		FQuat::Identity,
+		ObjectQueryParams,
+		FCollisionShape::MakeSphere(ChainRadius),
+		QueryParams);
+
+	// 체인 후보 정렬용 임시 데이터
+	struct FFlickerChainCandidate
+	{
+		TWeakObjectPtr<AActor> Actor;
+		FVector Location = FVector::ZeroVector;
+		float DistanceSq = 0.0f;
+	};
+
+	TArray<FFlickerChainCandidate> Candidates;
+	for (const FOverlapResult& OverlapResult : OverlapResults)
+	{
+		AActor* CandidateActor = OverlapResult.GetActor();
+		if (!IsValid(CandidateActor) ||
+			CandidateActor == AvatarActor ||
+			CandidateActor == PrimaryTarget)
+		{
+			continue;
+		}
+
+		if (!NSDamageRules::CanApplyDamage(AvatarActor, CandidateActor))
+		{
+			continue;
+		}
+
+		FVector CandidateOrigin = CandidateActor->GetActorLocation();
+		FVector CandidateExtent = FVector::ZeroVector;
+		CandidateActor->GetActorBounds(false, CandidateOrigin, CandidateExtent);
+
+		const float DistanceSq = FVector::DistSquared(PrimaryTargetLocation, CandidateOrigin);
+		if (DistanceSq > FMath::Square(ChainRadius))
+		{
+			continue;
+		}
+
+		if (!HasSightToTarget(AvatarActor->GetActorLocation(), CandidateActor, CandidateOrigin))
+		{
+			continue;
+		}
+
+		FFlickerChainCandidate& Candidate = Candidates.AddDefaulted_GetRef();
+		Candidate.Actor = CandidateActor;
+		Candidate.Location = CandidateOrigin;
+		Candidate.DistanceSq = DistanceSq;
+	}
+
+	// Primary Target에 가까운 순서로 체인 대상 정렬
+	Candidates.Sort([](const FFlickerChainCandidate& Lhs, const FFlickerChainCandidate& Rhs)
+	{
+		return Lhs.DistanceSq < Rhs.DistanceSq;
+	});
+
+	// CombatStat.TargetCount가 허용하는 수만큼 체인 대상 추가
+	for (const FFlickerChainCandidate& Candidate : Candidates)
+	{
+		if (SelectedTargets.Num() >= MaxTargetCount)
+		{
+			break;
+		}
+
+		if (!Candidate.Actor.IsValid())
+		{
+			continue;
+		}
+
+		SelectedTargets.Add(Candidate.Actor);
+		SelectedTargetLocations.Add(Candidate.Location);
+	}
+
+	return !SelectedTargets.IsEmpty();
+}
+
+bool UGA_Flicker::TryGetMaxTargetCount(int32& OutMaxTargetCount) const
+{
+	OutMaxTargetCount = 0;
+
+	if (!SkillAbilityTag.IsValid())
+	{
+		return false;
+	}
+
+	float TargetCount = 0.0f;
+	// 전체 공격 대상 수 조회
+	if (!TryGetFinalAbilityStat(SkillAbilityTag, NSGameplayTags::CombatStat_TargetCount, TargetCount))
+	{
+		return false;
+	}
+
+	OutMaxTargetCount = FMath::Max(FMath::FloorToInt(TargetCount), 1);
+	return true;
+}
+
 bool UGA_Flicker::TryBuildAimRay(FVector& OutRayStart, FVector& OutRayDirection) const
 {
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -341,6 +475,58 @@ bool UGA_Flicker::TryBuildAttackLocation(
 
 	OutAttackLocation = TargetLocation + DirectionFromTargetToAvatar.GetSafeNormal() * FMath::Max(AttackDistance, 0.0f);
 	return true;
+}
+
+bool UGA_Flicker::StartCurrentTargetMove()
+{
+	// 현재 인덱스에 해당하는 체인 타겟 확인
+	if (!SelectedTargets.IsValidIndex(CurrentTargetIndex) ||
+		!SelectedTargetLocations.IsValidIndex(CurrentTargetIndex))
+	{
+		return false;
+	}
+
+	AActor* TargetActor = SelectedTargets[CurrentTargetIndex].Get();
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	CurrentTarget = TargetActor;
+	CurrentTargetLocation = SelectedTargetLocations[CurrentTargetIndex];
+
+	// 타겟과 겹치지 않는 공격 위치 계산
+	FVector AttackLocation = FVector::ZeroVector;
+	if (!TryBuildAttackLocation(TargetActor, CurrentTargetLocation, AttackLocation))
+	{
+		return false;
+	}
+
+	return StartFlickerMove(AttackLocation);
+}
+
+void UGA_Flicker::AdvanceToNextTarget()
+{
+	++CurrentTargetIndex;
+
+	// 유효하지 않은 중간 타겟은 건너뛰고 다음 체인 타겟 시도
+	while (SelectedTargets.IsValidIndex(CurrentTargetIndex))
+	{
+		if (StartCurrentTargetMove())
+		{
+			return;
+		}
+
+		++CurrentTargetIndex;
+	}
+
+	// 더 이상 처리할 타겟이 없으면 Ability 종료
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		false);
 }
 
 bool UGA_Flicker::StartFlickerMove(const FVector& AttackLocation)
