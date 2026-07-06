@@ -40,6 +40,15 @@ public:
 		float Distance,
 		bool bHasDirectLineOfSight) const;
 
+	// 지정 Boss ModeTag 기준으로 특정 공격 Row가 사용 가능한지 확인하는 함수
+	bool CanUseAttackInMode(
+		const FNSEnemyAttackRow& AttackRow,
+		FGameplayTag ModeTag,
+		const AActor* TargetActor,
+		const AActor* AttackActor,
+		float Distance,
+		bool bHasDirectLineOfSight) const;
+
 private:
 	const UNSEnemyData* GetEnemyData() const;
 	float GetOwnerHealthRatio() const;
@@ -49,7 +58,23 @@ private:
 		const AActor* TargetActor,
 		const AActor* AttackActor,
 		bool bHasDirectLineOfSight) const;
-	
+
+	// 공격 Row의 공통 사용 가능 조건을 검사하는 함수
+	bool CanUseAttackInternal(
+		const FNSEnemyAttackRow& AttackRow,
+		FGameplayTag ModeTag,
+		bool bAllowInvalidModeTag,
+		const AActor* TargetActor,
+		const AActor* AttackActor,
+		float Distance,
+		bool bHasDirectLineOfSight) const;
+
+	// 지정 ModeTag와 AttackRow의 AllowedModeTags가 일치하는지 확인하는 함수
+	bool IsAttackAllowedByModeTag(
+		const FNSEnemyAttackRow& AttackRow,
+		FGameplayTag ModeTag,
+		bool bAllowInvalidModeTag) const;
+
 	// Boss Mode 기준으로 공격 Row가 현재 Mode에서 사용 가능한지 확인하는 함수
 	bool IsAttackAllowedByMode(const FNSEnemyAttackRow& AttackRow) const;
 

@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "NSEnemyPartComponent.generated.h"
 
+enum class ENSEnemyPartAimRole : uint8;
 class UNSEnemyData;
 struct FNSEnemyPartRow;
 
@@ -21,6 +22,20 @@ struct FNSSpawnedEnemyPart
 	// PartId에 의해 스폰된 Actor
 	UPROPERTY()
 	TObjectPtr<AActor> Actor;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyPartTraceSegment
+{
+	GENERATED_BODY()
+
+	// Trace 시작 위치
+	UPROPERTY(BlueprintReadOnly)
+	FVector Start = FVector::ZeroVector;
+
+	// Trace 끝 위치
+	UPROPERTY(BlueprintReadOnly)
+	FVector End = FVector::ZeroVector;
 };
 
 /*
@@ -54,6 +69,27 @@ public:
 
 	// AttackId와 연결된 Part Row 목록을 반환하는 함수
 	void GetPartRowsByAttackId(FName AttackId, TArray<const FNSEnemyPartRow*>& OutPartRows) const;
+
+	// AttackId와 연결된 모든 Trace 구간을 반환하는 함수
+	void GetTraceSegmentsByAttackId(
+		FName AttackId,
+		float FallbackDistance,
+		const FVector& FallbackDirection,
+		TArray<FNSEnemyPartTraceSegment>& OutSegments) const;
+
+	// AttackId와 AimRole이 일치하는 Part Row 목록을 반환하는 함수
+	void GetPartRowsByAttackIdAndAimRole(
+		FName AttackId,
+		ENSEnemyPartAimRole AimRole,
+		TArray<const FNSEnemyPartRow*>& OutPartRows) const;
+
+	// AttackId와 AimRole 기준으로 사용할 조준 제한값을 반환하는 함수
+	bool TryGetAimLimitsByAttackId(
+		FName AttackId,
+		ENSEnemyPartAimRole AimRole,
+		float& OutYawLimit,
+		float& OutPitchLimit,
+		float& OutAimSpeed) const;
 
 	// 사용 가능한 첫 번째 Muzzle Transform을 반환하는 함수
 	bool TryGetAnyMuzzleTransform(FTransform& OutTransform) const;

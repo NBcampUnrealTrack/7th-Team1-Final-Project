@@ -16,6 +16,7 @@ class UNSEnemyStateComponent;
 class UNSBossModeComponent;
 class UNSBossTargetComponent;
 struct FNSEnemyAttackRow;
+struct FGameplayTag;
 
 /*
  * 작성자 : 최준혁
@@ -48,11 +49,29 @@ public:
 	// 현재 조건에서 사용할 공격 Row를 선택하는 함수
 	const FNSEnemyAttackRow* GetAttackRowByDistance();
 
+	// 지정 AttackId와 현재 조건이 일치할 때 사용할 공격 Row를 선택하는 함수
+	const FNSEnemyAttackRow* GetAttackRowById(FName AttackId);
+
 	// 현재 조건에서 사용 가능한 공격 Row가 하나라도 있는지 확인하는 함수
 	bool CanUseAnyAttackByDistance();
 
+	// 지정 AttackId가 현재 조건에서 사용 가능한지 부작용 없이 확인하는 함수
+	virtual bool CanUseAttackById(FName AttackId);
+
+	// 지정 Boss ModeTag에서 현재 조건으로 사용할 수 있는 공격 Row가 하나라도 있는지 확인하는 함수
+	virtual bool CanUseAnyAttackInMode(FGameplayTag ModeTag);
+
+	// Boss가 현재 공격 실행 중인지 확인하는 함수
+	virtual bool IsBossAttackInProgress() const;
+
 	// 공격이 실제로 실행됐을 때 쿨다운과 Threat 상태를 기록하는 함수
 	void RecordAttackUsed(const FNSEnemyAttackRow& AttackRow);
+
+	// 공격 Ability 활성화 성공 후 쿨다운과 Threat 시작 시간을 기록하는 함수
+	void RecordAttackCommitted(const FNSEnemyAttackRow& AttackRow);
+
+	// 공격 Ability 종료, 실패, 취소 이후 Boss 전용 공격 상태를 정리하는 함수
+	virtual void NotifyAttackFinished() override;
 
 	// ThreatComponent가 선택한 대표 전투 타깃을 반환하는 함수
 	AActor* GetCurrentTargetActor() const;
@@ -71,6 +90,9 @@ protected:
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 
+	// Boss가 현재 공격 후보를 갱신할 수 있는지 확인하는 함수
+	virtual bool CanUpdateAttackAvailability() const;
+
 private:
 	// Boss AI가 현재 판단과 공격을 멈춰야 하는 상태인지 확인하는 함수
 	bool IsBossAIBlocked() const;
@@ -81,8 +103,14 @@ private:
 	// 현재 타깃을 유지할 수 있는지 확인하는 함수
 	bool CanMaintainCurrentTarget(AActor* TargetActor) const;
 
+	// 지정 AttackId 기준으로 현재 조건에서 공격 가능 여부만 검사하는 함수
+	bool CanUseAttackRowById(FName AttackId) const;
+
 	// 현재 조건에서 공격 Row를 찾고 공격 대상 상태를 갱신하는 함수
 	const FNSEnemyAttackRow* FindAttackRowByDistance(bool bSelectWeightedAttack);
+
+	// 지정 AttackId 기준으로 현재 조건에서 사용할 공격 Row를 찾는 함수
+	const FNSEnemyAttackRow* FindAttackRowById(FName AttackId);
 
 	// 선택된 AttackRow의 TargetPolicy 기준으로 공격 타깃 목록을 구성하는 함수
 	bool BuildAttackTargetsForRow(const FNSEnemyAttackRow& AttackRow);
@@ -104,12 +132,6 @@ private:
 
 	// 공격 대상 Actor를 런타임 변수와 Blackboard에 반영하는 함수
 	void SetAttackActorState(AActor* AttackActor);
-
-	// 공격 가능 여부를 Blackboard에 반영하는 함수
-	void SetCanAttackBB(bool bCanAttack);
-
-	// 공격 진행 상태를 Blackboard에 반영하는 함수
-	void SetIsAttackingBB(bool bIsAttacking);
 
 	// 공격 관련 런타임 상태와 Blackboard 값을 초기화하는 함수
 	void ClearAttackState();
@@ -146,25 +168,4 @@ private:
 	// Blackboard가 없는 StateTree에서도 현재 공격 대상 Actor를 보관하는 변수
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> CurrentAttackActor;
-
-	// 현재 대표 전투 타깃을 저장할 Blackboard 키 이름
-	FName TargetActorKey = TEXT("TargetActor");
-
-	// 현재 실제 공격 대상을 저장할 Blackboard 키 이름
-	FName AttackActorKey = TEXT("AttackActor");
-
-	// 현재 타깃의 마지막 감지 위치를 저장할 Blackboard 키 이름
-	FName TargetLastKnownLocationKey = TEXT("TargetLastKnownLocation");
-
-	// 현재 타깃에게 직접 시야가 닿는지 저장할 Blackboard 키 이름
-	FName HasTargetLineOfSightKey = TEXT("bHasTargetLineOfSight");
-
-	// 현재 공격 가능한 상태인지 저장할 Blackboard 키 이름
-	FName CanAttackKey = TEXT("bCanAttack");
-
-	// 현재 공격 실행 중인지 저장할 Blackboard 키 이름
-	FName IsAttackingKey = TEXT("bIsAttacking");
-
-	// 현재 Boss ModeTag 이름을 저장할 Blackboard 키 이름
-	FName CurrentModeTagKey = TEXT("CurrentModeTag");
 };

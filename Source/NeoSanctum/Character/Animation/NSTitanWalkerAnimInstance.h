@@ -7,6 +7,7 @@
 #include "NSTitanWalkerAnimInstance.generated.h"
 
 class UNSEnemyThreatComponent;
+class UNSEnemyPartComponent;
 
 /**
  * Stage1 TitanWalker 전용 AnimInstance입니다.
@@ -31,8 +32,8 @@ protected:
 	// Actor Yaw 변화량을 기준으로 회전 애니메이션 값을 갱신하는 함수
 	void UpdateTurn(float DeltaSeconds);
 
-	// 현재 공격 Row와 현재 타깃을 기준으로 상체 조준 값을 갱신하는 함수
-	void UpdateUpperAim(float DeltaSeconds);
+	// 현재 공격 Row와 현재 타깃을 기준으로 상체/무기 조준 값을 갱신하는 함수
+	void UpdateAim(float DeltaSeconds);
 
 	// 타깃 Actor의 Bounds 기준 조준 위치를 반환하는 함수
 	FVector GetTargetAimLocation(const AActor* TargetActor) const;
@@ -57,6 +58,26 @@ protected:
 	// TitanWalker 상체가 타깃을 향해 상하로 조준해야 하는 각도
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
 	float UpperAimPitch = 0.0f;
+	
+	// TitanWalker 무기 파츠가 타깃을 향해 좌우로 조준해야 하는 각도
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	float WeaponAimYaw = 0.0f;
+
+	// TitanWalker 무기 파츠가 타깃을 향해 상하로 조준해야 하는 각도
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	float WeaponAimPitch = 0.0f;
+
+	// 현재 상체 조준을 Control Rig에 적용할지 판단하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	bool bUseUpperAim = false;
+
+	// 현재 무기 조준을 Control Rig에 적용할지 판단하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	bool bUseWeaponAim = false;
+
+	// 현재 AnimBP/Control Rig가 처리 중인 공격 ID
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	FName CurrentAttackId = NAME_None;
 
 	// 이 속도보다 빠르면 이동 중으로 판단
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
@@ -69,6 +90,10 @@ protected:
 	// 상체 조준값 보간 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float UpperAimInterpSpeed = 10.0f;
+	
+	// 무기 조준값 보간 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float WeaponAimInterpSpeed = 12.0f;
 
 	// AttackRow에 YawLimit이 없을 때 사용할 기본 상체 좌우 제한 각도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
@@ -86,6 +111,10 @@ private:
 	// 현재 전투 타깃을 읽기 위한 컴포넌트
 	UPROPERTY()
 	TObjectPtr<UNSEnemyThreatComponent> ThreatComponent;
+	
+	// 현재 공격의 상체 조준 제한값을 읽기 위한 파츠 컴포넌트
+	UPROPERTY()
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
 
 	// TurnYaw 계산을 위해 이전 프레임의 Actor Yaw
 	float LastActorYaw = 0.0f;

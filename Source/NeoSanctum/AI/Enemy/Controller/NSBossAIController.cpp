@@ -14,6 +14,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/Type/NSBBTypes.h"
 
 ANSBossAIController::ANSBossAIController()
 {
@@ -122,6 +123,14 @@ void ANSBossAIController::Tick(float DeltaTime)
 	const bool bFaceTarget = EnemyPawn && EnemyPawn->ShouldFaceCombatTarget();
 	SyncFlyingRotationTarget(bFaceTarget ? GetCurrentTargetActor() : nullptr);
 	
+	
+
+	if (!CanUpdateAttackAvailability())
+	{
+		SetCanAttackBB(false);
+		return;
+	}
+
 	CanUseAnyAttackByDistance();
 }
 
@@ -190,6 +199,11 @@ void ANSBossAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus S
 	UpdateTargetSelection();
 }
 
+bool ANSBossAIController::CanUpdateAttackAvailability() const
+{
+	return !IsBossAIBlocked() && !IsBossAttackInProgress();
+}
+
 bool ANSBossAIController::IsBossAIBlocked() const
 {
 	const UNSEnemyStateComponent* StateComponent = GetEnemyStateComponent();
@@ -242,6 +256,66 @@ bool ANSBossAIController::CanMaintainCurrentTarget(AActor* TargetActor) const
 	return IsValid(AttackActor);
 }
 
+bool ANSBossAIController::CanUseAttackRowById(FName AttackId) const
+{
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || AttackId.IsNone() || !IsValidLivingTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		return false;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow || AttackRow->AttackId != AttackId)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (AttackComponent->CanUseAttack(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void ANSBossAIController::UpdateTargetSelection()
 {
 	UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent();
@@ -252,8 +326,7 @@ void ANSBossAIController::UpdateTargetSelection()
 
 	AActor* CurrentTarget = ThreatComponent->GetCurrentTarget();
 
-	const bool bIsAttacking =
-		CachedBBComp && CachedBBComp->GetValueAsBool(IsAttackingKey);
+	const bool bIsAttacking = IsAttackingBB();
 
 	const bool bCanMaintainCurrentTarget =
 		CurrentTarget && CanMaintainCurrentTarget(CurrentTarget);
@@ -320,7 +393,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 		return;
 	}
 
-	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+	SetTargetActorBB(TargetActor);
 
 	FVector LastKnownLocation = TargetActor->GetActorLocation();
 
@@ -329,7 +402,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 		ThreatComponent->TryGetLastKnownLocation(TargetActor, LastKnownLocation);
 	}
 
-	CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, LastKnownLocation);
+	SetTargetLastKnownLocationBB(LastKnownLocation);
 
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = nullptr;
@@ -342,7 +415,7 @@ void ANSBossAIController::UpdateCurrentTargetBlackboard()
 	}
 
 	SetAttackActorState(AttackActor);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
 }
 
 void ANSBossAIController::SyncModeBlackboard()
@@ -355,7 +428,7 @@ void ANSBossAIController::SyncModeBlackboard()
 	const UNSBossModeComponent* BossModeComponent = GetBossModeComponent();
 	if (!BossModeComponent)
 	{
-		CachedBBComp->ClearValue(CurrentModeTagKey);
+		CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 		return;
 	}
 
@@ -363,11 +436,13 @@ void ANSBossAIController::SyncModeBlackboard()
 
 	if (CurrentModeTag.IsValid())
 	{
-		CachedBBComp->SetValueAsName(CurrentModeTagKey, CurrentModeTag.GetTagName());
+		CachedBBComp->SetValueAsName(
+			NSBB::Boss::CurrentModeTag,
+			CurrentModeTag.GetTagName());
 	}
 	else
 	{
-		CachedBBComp->ClearValue(CurrentModeTagKey);
+		CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 	}
 }
 
@@ -375,7 +450,7 @@ bool ANSBossAIController::CanUseAnyAttackByDistance()
 {
 	UpdateEnemyPhase();
 
-	if (IsBossAIBlocked())
+	if (!CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
 		return false;
@@ -388,17 +463,119 @@ bool ANSBossAIController::CanUseAnyAttackByDistance()
 	return UsableAttack != nullptr;
 }
 
+bool ANSBossAIController::CanUseAttackById(FName AttackId)
+{
+	UpdateEnemyPhase();
+
+	if (AttackId.IsNone() || !CanUpdateAttackAvailability())
+	{
+		return false;
+	}
+
+	return CanUseAttackRowById(AttackId);
+}
+
+bool ANSBossAIController::CanUseAnyAttackInMode(FGameplayTag ModeTag)
+{
+	UpdateEnemyPhase();
+
+	if (!ModeTag.IsValid() || !CanUpdateAttackAvailability())
+	{
+		return false;
+	}
+
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || !IsValidLivingTarget(TargetActor))
+	{
+		return false;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		return false;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (AttackComponent->CanUseAttackInMode(
+			*AttackRow,
+			ModeTag,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ANSBossAIController::IsBossAttackInProgress() const
+{
+	return IsAttackingBB();
+}
+
 const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowByDistance()
 {
 	UpdateEnemyPhase();
 
-	if (IsBossAIBlocked())
+	if (!CanUpdateAttackAvailability())
 	{
 		SetCanAttackBB(false);
 		return nullptr;
 	}
 
 	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowByDistance(true);
+
+	SetCanAttackBB(SelectedAttack != nullptr);
+
+	return SelectedAttack;
+}
+
+const FNSEnemyAttackRow* ANSBossAIController::GetAttackRowById(FName AttackId)
+{
+	UpdateEnemyPhase();
+
+	if (AttackId.IsNone() || !CanUpdateAttackAvailability())
+	{
+		SetCanAttackBB(false);
+		return nullptr;
+	}
+
+	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowById(AttackId);
 
 	SetCanAttackBB(SelectedAttack != nullptr);
 
@@ -460,13 +637,84 @@ const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowByDistance(bool bSele
 	}
 
 	SetAttackActorState(AttackActor);
-
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
-	}
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
 
 	return SelectedAttack;
+}
+
+const FNSEnemyAttackRow* ANSBossAIController::FindAttackRowById(FName AttackId)
+{
+	APawn* BossPawn = GetPawn();
+	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (!BossPawn || AttackId.IsNone() || !IsValidLivingTarget(TargetActor))
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
+	UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+
+	if (!EnemyData || !TargetComponent || !AttackComponent)
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	bool bHasDirectLineOfSight = false;
+	AActor* AttackActor = TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bHasDirectLineOfSight);
+
+	if (!IsValid(AttackActor))
+	{
+		ClearAttackState();
+		return nullptr;
+	}
+
+	const float Distance =
+		FVector::Dist(BossPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	const float HealthRatio = GetControlledEnemyHealthRatio();
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow || AttackRow->AttackId != AttackId)
+		{
+			continue;
+		}
+
+		if (!EnemyData->IsAttackAllowedByPhase(AttackRow->AttackId, HealthRatio))
+		{
+			continue;
+		}
+
+		if (!AttackComponent->CanUseAttack(
+			*AttackRow,
+			TargetActor,
+			AttackActor,
+			Distance,
+			bHasDirectLineOfSight))
+		{
+			continue;
+		}
+
+		if (!BuildAttackTargetsForRow(*AttackRow))
+		{
+			ClearAttackState();
+			return nullptr;
+		}
+
+		SetAttackActorState(AttackActor);
+		SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
+
+		return AttackRow;
+	}
+
+	ClearAttackState();
+	return nullptr;
 }
 
 bool ANSBossAIController::BuildAttackTargetsForRow(const FNSEnemyAttackRow& AttackRow)
@@ -486,6 +734,12 @@ bool ANSBossAIController::BuildAttackTargetsForRow(const FNSEnemyAttackRow& Atta
 
 void ANSBossAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 {
+	RecordAttackCommitted(AttackRow);
+	NotifyAttackStarted();
+}
+
+void ANSBossAIController::RecordAttackCommitted(const FNSEnemyAttackRow& AttackRow)
+{
 	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
 		ThreatComponent->NotifyAttackStarted();
@@ -495,8 +749,13 @@ void ANSBossAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 	{
 		AttackComponent->RecordAttackUsed(AttackRow);
 	}
+}
 
-	SetIsAttackingBB(true);
+void ANSBossAIController::NotifyAttackFinished()
+{
+	Super::NotifyAttackFinished();
+
+	ClearAttackState();
 }
 
 AActor* ANSBossAIController::GetCurrentTargetActor() const
@@ -536,35 +795,7 @@ void ANSBossAIController::SetAttackActorState(AActor* AttackActor)
 		CurrentAttackActor.Reset();
 	}
 
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	if (IsValid(AttackActor))
-	{
-		CachedBBComp->SetValueAsObject(AttackActorKey, AttackActor);
-	}
-	else
-	{
-		CachedBBComp->ClearValue(AttackActorKey);
-	}
-}
-
-void ANSBossAIController::SetCanAttackBB(bool bCanAttack)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(CanAttackKey, bCanAttack);
-	}
-}
-
-void ANSBossAIController::SetIsAttackingBB(bool bIsAttacking)
-{
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsAttackingKey, bIsAttacking);
-	}
+	SetAttackActorBB(AttackActor);
 }
 
 void ANSBossAIController::ClearAttackState()
@@ -582,22 +813,9 @@ void ANSBossAIController::ClearAttackState()
 
 void ANSBossAIController::ClearTargetBB(bool bClearCanAttack)
 {
-	SetAttackActorState(nullptr);
+	CurrentAttackActor.Reset();
 
-	if (!CachedBBComp)
-	{
-		return;
-	}
-
-	CachedBBComp->ClearValue(TargetActorKey);
-	CachedBBComp->ClearValue(AttackActorKey);
-	CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-
-	if (bClearCanAttack)
-	{
-		SetCanAttackBB(false);
-	}
+	ClearCommonTargetBB(bClearCanAttack);
 }
 
 void ANSBossAIController::InitBBState()
@@ -610,9 +828,9 @@ void ANSBossAIController::InitBBState()
 	ClearAttackState();
 	ClearTargetBB(false);
 
-	CachedBBComp->SetValueAsBool(PhasePatternLockedKey, false);
-	CachedBBComp->SetValueAsName(CurrentPhaseIdKey, NAME_None);
-	CachedBBComp->ClearValue(CurrentModeTagKey);
+	CachedBBComp->SetValueAsBool(NSBB::Phase::PhasePatternLocked, false);
+	CachedBBComp->SetValueAsName(NSBB::Phase::CurrentPhaseId, NAME_None);
+	CachedBBComp->ClearValue(NSBB::Boss::CurrentModeTag);
 }
 
 UNSEnemyAttackComponent* ANSBossAIController::GetEnemyAttackComponent() const

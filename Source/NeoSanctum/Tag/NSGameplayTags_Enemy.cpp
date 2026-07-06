@@ -27,6 +27,12 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_StrongMelee, "Ability.Enemy.StrongMelee");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_RangerAttack, "Ability.Enemy.RangerAttack");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_FlyingBurstAttack, "Ability.Enemy.FlyingBurstAttack");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TitanWalker_MachineGun, "Ability.Enemy.TitanWalker.MachineGun");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TitanWalker_Flame, "Ability.Enemy.TitanWalker.Flame");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TitanWalker_Bombard, "Ability.Enemy.TitanWalker.Bombard");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_TitanWalker_Laser, "Ability.Enemy.TitanWalker.Laser");
+
 
 	// Enemy Action - Common
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_Attack, "Ability.Enemy.Attack");

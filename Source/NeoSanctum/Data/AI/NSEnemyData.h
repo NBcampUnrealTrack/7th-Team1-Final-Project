@@ -87,6 +87,14 @@ enum class ENSEnemyPartType : uint8
 };
 
 UENUM(BlueprintType)
+enum class ENSEnemyPartAimRole : uint8
+{
+	None UMETA(DisplayName = "None"),
+	UpperBody UMETA(DisplayName = "Upper Body"),
+	Weapon UMETA(DisplayName = "Weapon")
+};
+
+UENUM(BlueprintType)
 enum class ENSEnemyPartAttachRule : uint8
 {
 	KeepRelativeTransform UMETA(DisplayName = "KeepRelativeTransform"),
@@ -138,6 +146,108 @@ struct FNSEnemyAttackCondition
 };
 
 USTRUCT(BlueprintType)
+struct FNSEnemyProjectileAttackData
+{
+	GENERATED_BODY()
+
+	// 한 번의 공격 Ability에서 발사할 투사체 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "1"))
+	int32 FireCount = 1;
+
+	// 반복 발사 시 발사 사이 간격
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "0.0"))
+	float FireInterval = 0.1f;
+
+	// 투사체 초당 이동 거리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "1.0"))
+	float Speed = 1200.0f;
+
+	// 투사체 최대 수명
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "0.01"))
+	float LifeTime = 5.0f;
+
+	// 투사체 충돌 반경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "0.1"))
+	float Radius = 10.0f;
+
+	// 발사 방향에 적용할 랜덤 퍼짐 각도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (ClampMin = "0.0"))
+	float SpreadAngle = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemySustainedAttackData
+{
+	GENERATED_BODY()
+
+	// 지속형 공격의 총 지속 시간
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sustain", meta = (ClampMin = "0.0"))
+	float Duration = 1.0f;
+
+	// 지속형 공격의 판정 반복 간격
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Sustain", meta = (ClampMin = "0.01"))
+	float TickInterval = 0.2f;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyAreaAttackData
+{
+	GENERATED_BODY()
+
+	// 전방 또는 직선 공격의 최대 거리
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area", meta = (ClampMin = "0.0"))
+	float Range = 1000.0f;
+
+	// Sphere/Capsule/Line 판정에 사용할 반경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area", meta = (ClampMin = "0.0"))
+	float Radius = 100.0f;
+
+	// Flame 같은 Cone 판정에 사용할 반각
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Area", meta = (ClampMin = "0.0", ClampMax = "180.0"))
+	float ConeHalfAngle = 30.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyBombardAttackData
+{
+	GENERATED_BODY()
+
+	// 한 번의 포격 패턴에서 생성할 착탄 지점 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bombard", meta = (ClampMin = "1"))
+	int32 ShotCount = 1;
+
+	// 착탄 지점 생성 간격
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bombard", meta = (ClampMin = "0.0"))
+	float ShotInterval = 0.2f;
+
+	// 경고 표시 후 실제 피해가 들어가기까지의 시간
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bombard", meta = (ClampMin = "0.0"))
+	float ImpactDelay = 1.0f;
+
+	// 착탄 피해 반경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bombard", meta = (ClampMin = "0.0"))
+	float ImpactRadius = 300.0f;
+
+	// 타깃 주변에 착탄 지점을 흩뿌릴 반경
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Bombard", meta = (ClampMin = "0.0"))
+	float SpreadRadius = 800.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FNSEnemyDebugAttackData
+{
+	GENERATED_BODY()
+
+	// 공격 판정을 Debug Line/Sphere로 표시할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Debug")
+	bool bDrawDebug = true;
+
+	// Debug 표시 유지 시간
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Debug", meta = (ClampMin = "0.0"))
+	float DrawTime = 1.0f;
+};
+
+USTRUCT(BlueprintType)
 struct FNSEnemyAttackRow : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -145,11 +255,15 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 이 공격 Row를 사용할 몬스터 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
+	
+	// 공격의 전역 의미를 식별하는 GameplayTag. 후반 리팩토링에서 AttackId 대체 후보
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (Categories = "Ability.Enemy"))
+	FGameplayTag AttackTag;
 
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
-
+	
 	// 공격 실행 GA
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
@@ -218,14 +332,6 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack")
 	bool bTurnWeapon = false;
 
-	// 공격 중 허용되는 좌우 조준 제한 각도
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
-	float YawLimit = 0.0f;
-
-	// 공격 중 허용되는 상하 조준 제한 각도
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Attack", meta = (ClampMin = "0.0"))
-	float PitchLimit = 0.0f;
-
 	// 타깃 지정 정책
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
 	ENSBossTargetPolicy TargetPolicy = ENSBossTargetPolicy::PrimaryOnly;
@@ -241,6 +347,35 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 현재 타깃 포함 여부
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
 	bool bIncludePrimaryTarget = true;
+	
+	// Projectile 기반 공격 튜닝 데이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Projectile",
+		meta = (EditCondition = "AttackType == ENSEnemyAttackType::Projectile", EditConditionHides))
+	FNSEnemyProjectileAttackData ProjectileData;
+
+	// 지속형 공격 튜닝 데이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Sustain",
+		meta = (EditCondition = "AttackType == ENSEnemyAttackType::Area", EditConditionHides))
+	FNSEnemySustainedAttackData SustainData;
+
+	// 범위형 공격 튜닝 데이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Area",
+		meta = (EditCondition = "AttackType == ENSEnemyAttackType::Area", EditConditionHides))
+	FNSEnemyAreaAttackData AreaData;
+
+	// 포격 공격 튜닝 데이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Bombard",
+		meta = (EditCondition = "AttackType == ENSEnemyAttackType::Area", EditConditionHides))
+	FNSEnemyBombardAttackData BombardData;
+
+	// 공격 Debug 표시 데이터
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Debug")
+	FNSEnemyDebugAttackData DebugData;
+	
+#if WITH_EDITOR
+	// Attack Row의 패턴별 필수 입력값을 검증하는 함수
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
 };
 
 USTRUCT(BlueprintType)
@@ -363,6 +498,10 @@ struct FNSEnemyPartRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|IK")
 	bool bUseLeftHandIKWhileEquipped = false;
 
+	// 이 파츠가 조준에서 담당하는 역할
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
+	ENSEnemyPartAimRole AimRole = ENSEnemyPartAimRole::None;
+	
 	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	FName AimBone = NAME_None;
@@ -371,15 +510,15 @@ struct FNSEnemyPartRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	FName AimControl = NAME_None;
 
-	// 파츠가 좌우로 회전할 수 있는 최대 각도
+	// 이 파츠가 좌우로 회전할 수 있는 물리적 최대 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
 	float YawLimit = 0.0f;
 
-	// 파츠가 위아래로 회전할 수 있는 최대 각도
+	// 이 파츠가 위아래로 회전할 수 있는 물리적 최대 각도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
 	float PitchLimit = 0.0f;
 
-	// 조준 목표를 따라갈 때 사용하는 보간 속도
+	// 이 파츠가 조준 목표를 따라갈 때 사용하는 보간 속도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
 	float AimSpeed = 10.0f;
 	

@@ -5,7 +5,6 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -18,13 +17,21 @@ UNSBTTask_ExecuteEnemyAbility::UNSBTTask_ExecuteEnemyAbility()
 	bCreateNodeInstance = true;
 }
 
-EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory)
 {
 	ANSEnemyAIController* AIController = Cast<ANSEnemyAIController>(OwnerComp.GetAIOwner());
-	if (!AIController) return EBTNodeResult::Failed;
+	if (!AIController)
+	{
+		return EBTNodeResult::Failed;
+	}
 
 	APawn* TargetPawn = AIController->GetPawn();
-	if (!TargetPawn) return EBTNodeResult::Failed;
+	if (!TargetPawn)
+	{
+		return EBTNodeResult::Failed;
+	}
 
 	INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(TargetPawn);
 	if (!EnemyAgent)
@@ -32,8 +39,13 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 		return EBTNodeResult::Failed;
 	}
 
-	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn);
-	if (!ASC) return EBTNodeResult::Failed;
+	UAbilitySystemComponent* ASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn);
+
+	if (!ASC)
+	{
+		return EBTNodeResult::Failed;
+	}
 
 	const FNSEnemyAttackRow* SelectedAttack = AIController->GetAttackRowByDistance();
 	if (!SelectedAttack)
@@ -61,9 +73,11 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 	CachedOwnerComp = &OwnerComp;
 	CachedAttackAbilityClass = AttackAbilityClass;
 
-	ASC->OnAbilityEnded.AddUObject(this, &UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
+	ASC->OnAbilityEnded.AddUObject(
+		this,
+		&UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded);
 
-	bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
+	const bool bActivated = ASC->TryActivateAbilityByClass(AttackAbilityClass);
 	if (!bActivated)
 	{
 		if (bUsesMeleeReservation)
@@ -72,9 +86,12 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 			bUsesMeleeReservation = false;
 		}
 
-		EnemyAgent->ClearCurrentAttackRow();
+		AIController->NotifyAttackFinished();
+
 		ASC->OnAbilityEnded.RemoveAll(this);
 		CachedAttackAbilityClass = nullptr;
+		CachedOwnerComp = nullptr;
+
 		return EBTNodeResult::Failed;
 	}
 
@@ -85,23 +102,20 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::ExecuteTask(UBehaviorTreeComp
 
 	AIController->RecordAttackUsed(*SelectedAttack);
 
-	if (UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent())
-	{
-		BBComp->SetValueAsBool(TEXT("bIsAttacking"), true);
-	}
-
 	return EBTNodeResult::InProgress;
 }
 
-EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(
+	UBehaviorTreeComponent& OwnerComp,
+	uint8* NodeMemory)
 {
 	ANSEnemyAIController* Controller = Cast<ANSEnemyAIController>(OwnerComp.GetAIOwner());
 
 	APawn* EnemyPawn = Controller ? Controller->GetPawn() : nullptr;
 
 	UAbilitySystemComponent* ASC = EnemyPawn
-			? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EnemyPawn)
-			: nullptr;
+		                               ? UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(EnemyPawn)
+		                               : nullptr;
 
 	if (ASC)
 	{
@@ -109,28 +123,25 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeCompon
 
 		if (CachedAttackAbilityClass)
 		{
-			if (const FGameplayAbilitySpec* Spec = ASC->FindAbilitySpecFromClass(CachedAttackAbilityClass))
+			if (const FGameplayAbilitySpec* Spec =
+				ASC->FindAbilitySpecFromClass(CachedAttackAbilityClass))
 			{
 				ASC->CancelAbilityHandle(Spec->Handle);
 			}
 		}
 	}
 
-	if (INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(EnemyPawn))
-	{
-		EnemyAgent->ClearCurrentAttackRow();
-	}
-	
-	const bool bPreserveMeleeReservation = ShouldPreserveMeleeReservation(Controller);
+	const bool bPreserveMeleeReservation =
+		ShouldPreserveMeleeReservation(Controller);
 
 	if (Controller && bUsesMeleeReservation && !bPreserveMeleeReservation)
 	{
 		Controller->ReleaseMeleeAttackReservation(true);
 	}
 
-	if (UBlackboardComponent* Blackboard = OwnerComp.GetBlackboardComponent())
+	if (Controller)
 	{
-		Blackboard->SetValueAsBool(TEXT("bIsAttacking"), false);
+		Controller->NotifyAttackFinished();
 	}
 
 	bUsesMeleeReservation = false;
@@ -140,52 +151,53 @@ EBTNodeResult::Type UNSBTTask_ExecuteEnemyAbility::AbortTask(UBehaviorTreeCompon
 	return EBTNodeResult::Aborted;
 }
 
-void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData)
+void UNSBTTask_ExecuteEnemyAbility::OnAttackAbilityEnded(
+	const FAbilityEndedData& AbilityEndedData)
 {
-	if (!CachedOwnerComp) return;
-	
+	if (!CachedOwnerComp)
+	{
+		return;
+	}
+
 	if (CachedAttackAbilityClass &&
 		AbilityEndedData.AbilityThatEnded &&
 		!AbilityEndedData.AbilityThatEnded->IsA(CachedAttackAbilityClass))
 	{
 		return;
 	}
-	
-	if (UBlackboardComponent* BBComp = CachedOwnerComp->GetBlackboardComponent())
-	{
-		BBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-	}
 
-	ANSEnemyAIController* AIController = Cast<ANSEnemyAIController>(CachedOwnerComp->GetAIOwner());
+	UBehaviorTreeComponent* OwnerComp = CachedOwnerComp;
+
+	ANSEnemyAIController* AIController =
+		Cast<ANSEnemyAIController>(OwnerComp->GetAIOwner());
+
 	if (AIController)
 	{
 		if (APawn* TargetPawn = AIController->GetPawn())
 		{
-			if (INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(TargetPawn))
-			{
-				EnemyAgent->ClearCurrentAttackRow();
-			}
-			
-			if (UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn))
+			if (UAbilitySystemComponent* ASC =
+				UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetPawn))
 			{
 				ASC->OnAbilityEnded.RemoveAll(this);
 			}
 		}
 
-		const bool bPreserveMeleeReservation = ShouldPreserveMeleeReservation(AIController);
+		const bool bPreserveMeleeReservation =
+			ShouldPreserveMeleeReservation(AIController);
 
 		if (bUsesMeleeReservation && !bPreserveMeleeReservation)
 		{
 			AIController->ReleaseMeleeAttackReservation(true);
 		}
 
-		bUsesMeleeReservation = false;
+		AIController->NotifyAttackFinished();
 	}
-	
-	CachedAttackAbilityClass = nullptr;
 
-	// 애니메이션 종료
-	FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
+	bUsesMeleeReservation = false;
+	CachedAttackAbilityClass = nullptr;
+	CachedOwnerComp = nullptr;
+
+	FinishLatentTask(*OwnerComp, EBTNodeResult::Succeeded);
 }
 
 bool UNSBTTask_ExecuteEnemyAbility::ShouldPreserveMeleeReservation(const ANSEnemyAIController* AIController) const

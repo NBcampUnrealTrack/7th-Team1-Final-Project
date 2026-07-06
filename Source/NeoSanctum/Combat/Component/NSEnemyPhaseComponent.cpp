@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
 UNSEnemyPhaseComponent::UNSEnemyPhaseComponent()
@@ -29,9 +30,15 @@ const FNSEnemyPhaseRow* UNSEnemyPhaseComponent::UpdatePhase(float HealthRatio)
 		return nullptr;
 	}
 
-	const FNSEnemyPhaseRow* PhaseRow = EnemyData->FindPhaseRowByHealthRatio(HealthRatio);
+	if (bPatternLocked)
+	{
+		return CurrentPhaseRow;
+	}
 
-	if (!PhaseRow)
+	const FNSEnemyPhaseRow* DesiredPhaseRow =
+		EnemyData->FindPhaseRowByHealthRatio(HealthRatio);
+
+	if (!DesiredPhaseRow)
 	{
 		return nullptr;
 	}
@@ -39,13 +46,16 @@ const FNSEnemyPhaseRow* UNSEnemyPhaseComponent::UpdatePhase(float HealthRatio)
 	if (!bPhaseInitialized)
 	{
 		bPhaseInitialized = true;
-		EnterPhase(*PhaseRow, false);
+		EnterPhase(*DesiredPhaseRow, false);
 		return CurrentPhaseRow;
 	}
 
-	if (CurrentPhaseId != PhaseRow->PhaseId)
+	const FNSEnemyPhaseRow* NextPhaseRow =
+		ResolveNextPhaseRow(DesiredPhaseRow);
+
+	if (NextPhaseRow && CurrentPhaseId != NextPhaseRow->PhaseId)
 	{
-		EnterPhase(*PhaseRow, true);
+		EnterPhase(*NextPhaseRow, true);
 	}
 
 	return CurrentPhaseRow;
@@ -94,6 +104,10 @@ void UNSEnemyPhaseComponent::EnterPhase(
 		return;
 	}
 
+	const bool bPhaseChanged =
+		CurrentPhaseRow != nullptr &&
+		CurrentPhaseId != NewPhaseRow.PhaseId;
+
 	ASC->OnAbilityEnded.RemoveAll(this);
 
 	if (CurrentPhaseTag.IsValid())
@@ -110,6 +124,11 @@ void UNSEnemyPhaseComponent::EnterPhase(
 	if (CurrentPhaseTag.IsValid())
 	{
 		ASC->AddLooseGameplayTag(CurrentPhaseTag);
+	}
+
+	if (bPhaseChanged)
+	{
+		ResetOwnerHitGauge();
 	}
 
 	if (!bPlayTransition || !NewPhaseRow.TransitionGA)
@@ -150,4 +169,78 @@ void UNSEnemyPhaseComponent::OnTransitionAbilityEnded(
 
 	bPatternLocked = false;
 	CurrentTransitionGA = nullptr;
+}
+
+const FNSEnemyPhaseRow* UNSEnemyPhaseComponent::ResolveNextPhaseRow(
+	const FNSEnemyPhaseRow* DesiredPhaseRow) const
+{
+	if (!DesiredPhaseRow || !CurrentPhaseRow)
+	{
+		return DesiredPhaseRow;
+	}
+
+	if (CurrentPhaseId == DesiredPhaseRow->PhaseId)
+	{
+		return CurrentPhaseRow;
+	}
+
+	const UNSEnemyData* EnemyData = GetEnemyData();
+	if (!EnemyData)
+	{
+		return DesiredPhaseRow;
+	}
+
+	const TArray<const FNSEnemyPhaseRow*>& PhaseRows = EnemyData->GetPhaseRows();
+
+	int32 CurrentIndex = INDEX_NONE;
+	int32 DesiredIndex = INDEX_NONE;
+
+	for (int32 Index = 0; Index < PhaseRows.Num(); ++Index)
+	{
+		const FNSEnemyPhaseRow* PhaseRow = PhaseRows[Index];
+		if (!PhaseRow)
+		{
+			continue;
+		}
+
+		if (PhaseRow->PhaseId == CurrentPhaseId)
+		{
+			CurrentIndex = Index;
+		}
+
+		if (PhaseRow->PhaseId == DesiredPhaseRow->PhaseId)
+		{
+			DesiredIndex = Index;
+		}
+	}
+
+	if (CurrentIndex == INDEX_NONE || DesiredIndex == INDEX_NONE)
+	{
+		return DesiredPhaseRow;
+	}
+
+	if (DesiredIndex < CurrentIndex)
+	{
+		const int32 NextIndex = FMath::Max(CurrentIndex - 1, 0);
+		return PhaseRows.IsValidIndex(NextIndex) ? PhaseRows[NextIndex] : CurrentPhaseRow;
+	}
+
+	return CurrentPhaseRow;
+}
+
+UNSEnemyStateComponent* UNSEnemyPhaseComponent::GetOwnerStateComponent() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	return OwnerActor
+		       ? OwnerActor->FindComponentByClass<UNSEnemyStateComponent>()
+		       : nullptr;
+}
+
+void UNSEnemyPhaseComponent::ResetOwnerHitGauge() const
+{
+	if (UNSEnemyStateComponent* StateComponent = GetOwnerStateComponent())
+	{
+		StateComponent->ResetHitGauge();
+	}
 }
