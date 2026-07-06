@@ -468,7 +468,7 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 	const int64 Cost = GetRerollCost(Slot);
 	if (!Currency || Cost < 0 || !Currency->TrySpendTemp(Cost))
 	{
-		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency, Currency ? Currency->GetTemp() : 0);
 		return;
 	}
 
@@ -477,7 +477,7 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
-	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::RerollDone);
+	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::RerollDone, Currency->GetTemp());
 }
 
 void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
@@ -506,13 +506,13 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 	UNSCurrencyComponent* Currency = GetCurrencyComponent();
 	if (!Currency || !Currency->TrySpendTemp(UpgradeRow->UpgradeCost))
 	{
-		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::NotEnoughCurrency, Currency ? Currency->GetTemp() : 0);
 		return;
 	}
 
 	if (FMath::FRand() > UpgradeRow->UpgradeSuccessChance)
 	{
-		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeFail);
+		Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeFail, Currency->GetTemp());
 		return;
 	}
 
@@ -523,7 +523,7 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
-	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess);
+	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess, Currency->GetTemp());
 }
 
 float UNSPartEquipComponent::RollValueForRarity(ENSPartRarity Rarity) const
@@ -585,9 +585,9 @@ float UNSPartEquipComponent::GetUpgradeChance(FGameplayTag Slot) const
 	return Row->UpgradeSuccessChance;
 }
 
-void UNSPartEquipComponent::Client_NotifyUpgradeResult_Implementation(FGameplayTag Slot, ENSPartUpgradeResult Result)
+void UNSPartEquipComponent::Client_NotifyUpgradeResult_Implementation(FGameplayTag Slot, ENSPartUpgradeResult Result, int64 NewTempBalance)
 {
-	OnUpgradeResult.Broadcast(Slot, Result);
+	OnUpgradeResult.Broadcast(Slot, Result, NewTempBalance);
 }
 
 // ================================================================
@@ -795,9 +795,12 @@ void UNSPartEquipComponent::Server_RequestGenerateStock_Implementation()
 
 void UNSPartEquipComponent::Server_RequestPurchase_Implementation(int32 StockIndex)
 {
+	UNSCurrencyComponent* Currency = GetCurrencyComponent();
+	const int64 CurrentBalance = Currency ? Currency->GetTemp() : 0;
+
 	if (!ShopStock.IsValidIndex(StockIndex))
 	{
-		Client_NotifyUpgradeResult(FGameplayTag(), ENSPartUpgradeResult::SoldOut);
+		Client_NotifyUpgradeResult(FGameplayTag(), ENSPartUpgradeResult::SoldOut, CurrentBalance);
 		return;
 	}
 
@@ -805,21 +808,20 @@ void UNSPartEquipComponent::Server_RequestPurchase_Implementation(int32 StockInd
 
 	if (!IsValid(NSPartUtils::ResolvePartDefinition(this, Item)))
 	{
-		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::SoldOut);
+		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::SoldOut, CurrentBalance);
 		return;
 	}
 
 	const int64 Price = GetShopPrice(Item.CurrentRarity);
-	UNSCurrencyComponent* Currency = GetCurrencyComponent();
 	if (!Currency || Price < 0 || !Currency->TrySpendTemp(Price))
 	{
-		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::NotEnoughCurrency);
+		Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::NotEnoughCurrency, CurrentBalance);
 		return;
 	}
 
 	ShopStock.RemoveAt(StockIndex);
 	EquipPart(Item);
 
-	Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::PurchaseDone);
+	Client_NotifyUpgradeResult(Item.Slot, ENSPartUpgradeResult::PurchaseDone, Currency->GetTemp());
 	OnShopStockChanged.Broadcast();
 }
