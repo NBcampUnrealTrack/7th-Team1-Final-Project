@@ -202,6 +202,23 @@ void UGA_VanguardBaseAttack::OnDashAttackMoveFinished()
 {
 	DashAttackMoveTask = nullptr;
 	bDashAttackMoveFinished = true;
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack)
+	{
+		bDashAttackMontageStarted = JumpToDashAttackSection();
+		bDashAttackMontageFinished = !bDashAttackMontageStarted;
+		if (!bDashAttackMontageStarted)
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				false);
+			return;
+		}
+	}
+
 	TryEndDashAttack();
 }
 
@@ -1002,15 +1019,13 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 
 	StartDashAttackRecoverEventTask();
 
-	// 몽타주의 공격 Section으로 이동
-	bDashAttackMontageStarted = JumpToDashAttackSection();
-	bDashAttackMontageFinished = !bDashAttackMontageStarted;
-	if (bDashAttackMontageStarted)
+	// 대쉬공격 이동 연출 Cue 시작
+	if (bDashAttackMoveStarted)
 	{
 		AddAttackFlashGameplayCue();
 	}
 
-	if (!bDashAttackMoveStarted && !bDashAttackMontageStarted)
+	if (!bDashAttackMoveStarted)
 	{
 		EndAbility(
 			GetCurrentAbilitySpecHandle(),
