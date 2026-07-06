@@ -75,8 +75,8 @@ private:
 	bool TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const;
 	// Primary Target 기준 체인 타겟 구성
 	bool TryBuildTargetChain(AActor* PrimaryTarget, const FVector& PrimaryTargetLocation);
-	// CombatStat.TargetCount 기준 최대 타겟 수 조회
-	bool TryGetMaxTargetCount(int32& OutMaxTargetCount) const;
+	// CombatStat.HitCount 기준 타격 수 조회
+	bool TryGetHitCount(int32& OutHitCount) const;
 
 	// 로컬 조준선 또는 서버 AimRotation 기반 조준선 계산
 	bool TryBuildAimRay(FVector& OutRayStart, FVector& OutRayDirection) const;

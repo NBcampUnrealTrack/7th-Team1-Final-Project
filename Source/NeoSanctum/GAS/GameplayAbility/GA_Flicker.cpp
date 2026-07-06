@@ -433,18 +433,40 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 		return false;
 	}
 
-	int32 MaxTargetCount = 0;
-	if (!TryGetMaxTargetCount(MaxTargetCount))
+	int32 HitCount = 0;
+	if (!TryGetHitCount(HitCount))
 	{
 		return false;
 	}
 
-	MaxTargetCount = FMath::Max(MaxTargetCount, 1);
+	HitCount = FMath::Max(HitCount, 1);
 	// Primary Target은 항상 첫 번째 공격 대상
 	SelectedTargets.Add(PrimaryTarget);
 	SelectedTargetLocations.Add(PrimaryTargetLocation);
+	TSet<AActor*> AddedTargetActors;
+	AddedTargetActors.Add(PrimaryTarget);
 
-	if (MaxTargetCount <= 1 || ChainRadius <= 0.0f)
+	const auto RebuildHitChainFromUniqueTargets = [this, HitCount]()
+	{
+		const TArray<TWeakObjectPtr<AActor>> UniqueTargets = SelectedTargets;
+		const TArray<FVector> UniqueTargetLocations = SelectedTargetLocations;
+		SelectedTargets.Reset();
+		SelectedTargetLocations.Reset();
+
+		if (UniqueTargets.IsEmpty())
+		{
+			return;
+		}
+
+		for (int32 HitIndex = 0; HitIndex < HitCount; ++HitIndex)
+		{
+			const int32 TargetIndex = HitIndex % UniqueTargets.Num();
+			SelectedTargets.Add(UniqueTargets[TargetIndex]);
+			SelectedTargetLocations.Add(UniqueTargetLocations[TargetIndex]);
+		}
+	};
+
+	if (HitCount <= 1)
 	{
 		return true;
 	}
@@ -453,7 +475,8 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 	UWorld* World = GetWorld();
 	if (!IsValid(AvatarActor) || !World)
 	{
-		return true;
+		RebuildHitChainFromUniqueTargets();
+		return !SelectedTargets.IsEmpty();
 	}
 
 	TArray<FOverlapResult> OverlapResults;
@@ -485,7 +508,7 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 		AActor* CandidateActor = OverlapResult.GetActor();
 		if (!IsValid(CandidateActor) ||
 			CandidateActor == AvatarActor ||
-			CandidateActor == PrimaryTarget)
+			AddedTargetActors.Contains(CandidateActor))
 		{
 			continue;
 		}
@@ -514,6 +537,7 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 		Candidate.Actor = CandidateActor;
 		Candidate.Location = CandidateOrigin;
 		Candidate.DistanceSq = DistanceSq;
+		AddedTargetActors.Add(CandidateActor);
 	}
 
 	// Primary Target에 가까운 순서로 체인 대상 정렬
@@ -522,10 +546,10 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 		return Lhs.DistanceSq < Rhs.DistanceSq;
 	});
 
-	// CombatStat.TargetCount가 허용하는 수만큼 체인 대상 추가
+	// CombatStat.HitCount가 허용하는 수만큼 고유 타격 대상 추가
 	for (const FFlickerChainCandidate& Candidate : Candidates)
 	{
-		if (SelectedTargets.Num() >= MaxTargetCount)
+		if (SelectedTargets.Num() >= HitCount)
 		{
 			break;
 		}
@@ -539,26 +563,28 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 		SelectedTargetLocations.Add(Candidate.Location);
 	}
 
+	RebuildHitChainFromUniqueTargets();
+
 	return !SelectedTargets.IsEmpty();
 }
 
-bool UGA_Flicker::TryGetMaxTargetCount(int32& OutMaxTargetCount) const
+bool UGA_Flicker::TryGetHitCount(int32& OutHitCount) const
 {
-	OutMaxTargetCount = 0;
+	OutHitCount = 0;
 
 	if (!SkillAbilityTag.IsValid())
 	{
 		return false;
 	}
 
-	float TargetCount = 0.0f;
+	float HitCount = 0.0f;
 	// 전체 공격 대상 수 조회
-	if (!TryGetFinalAbilityStat(SkillAbilityTag, NSGameplayTags::CombatStat_TargetCount, TargetCount))
+	if (!TryGetFinalAbilityStat(SkillAbilityTag, NSGameplayTags::CombatStat_HitCount, HitCount))
 	{
 		return false;
 	}
 
-	OutMaxTargetCount = FMath::Max(FMath::FloorToInt(TargetCount), 1);
+	OutHitCount = FMath::Max(FMath::FloorToInt(HitCount), 1);
 	return true;
 }
 
