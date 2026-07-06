@@ -156,6 +156,10 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 
 		Container->AddChild(Entry);
 	}
+
+	// 노드 클릭 시 포커스가 해당 버튼으로 옮겨가는데, 재빌드로 버튼이 파괴되면 포커스가 사라져
+	// ESC가 이 위젯에 도달하지 않음. 재빌드할 때마다 포커스를 되찾도록 함.
+	SetFocus();
 }
 
 void UNSCommonUpgradeWidget::RefreshCommonCurrencyDisplay()
