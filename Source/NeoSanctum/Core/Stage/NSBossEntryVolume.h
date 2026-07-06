@@ -9,6 +9,8 @@
 class UBoxComponent;
 class USceneComponent;
 class ANSRunGameState;
+class UStaticMeshComponent;
+class UMaterialInstanceDynamic;
 
 // 보스룸에 배치되는 진입 트리거
 // 목표 달성 후 활성화되며 플레이어가 일정 시간 연속 체류하면 GameMode에 전원 텔레포트를 요청한다.
@@ -24,6 +26,9 @@ public:
 	void Activate();
 	// 트리거 소진(텔레포트 완료 등): 오버랩 감지 OFF + 타이머 정리
 	void Deactivate();
+	
+	// 메시와 오버랩 반경 크기 맞출 헬퍼
+	virtual void OnConstruction(const FTransform& Transform) override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -70,6 +75,13 @@ private:
 	void PushBossGateStateToGameState(float DurationFromNow);
 	// dwell 비활성 상태를 GameState에 통지
 	void ClearBossGateState();
+	
+	// GameState 상태에 맞춰 메시 표시/색 갱신
+	void UpdateVisual();
+
+	// bBossGateAllPresent 변화 구독 콜백
+	UFUNCTION()
+	void HandleBossGateChanged();
 
 	// 진입 감지용 트리거 박스 (크기는 레벨에서 조정)
 	UPROPERTY(VisibleAnywhere, Category = "BossEntry")
@@ -78,6 +90,22 @@ private:
 	// 활성화 시 표시할 연출 루트 (에디터에서 메시/이펙트/데칼을 이 아래에 부착)
 	UPROPERTY(VisibleAnywhere, Category = "BossEntry")
 	TObjectPtr<USceneComponent> VisualRoot;
+	
+	// 외곽선 표시용 박스 메시
+	UPROPERTY(VisibleAnywhere, Category = "BossEntry|Visual")
+	TObjectPtr<UStaticMeshComponent> OutlineMesh;
+
+	// 대기 상태 색(파랑)
+	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
+	FLinearColor WaitingColor = FLinearColor(0.f, 0.4f, 1.f);
+
+	// 전원 집결 색(노랑)
+	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
+	FLinearColor AllPresentColor = FLinearColor(1.f, 0.85f, 0.f);
+
+	// 머티리얼의 색 파라미터 이름
+	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
+	FName ColorParameterName = TEXT("Color");
 
 	// 전원 텔레포트까지 필요한 연속 체류 시간(초)
 	UPROPERTY(EditAnywhere, Category = "BossEntry", meta = (ClampMin = "1"))
@@ -94,6 +122,10 @@ private:
 	// 구독한 RunGameState 캐시 (전원 판정/페이즈 조회용)
 	UPROPERTY(Transient)
 	TObjectPtr<ANSRunGameState> CachedRunGameState;
+	
+	// 런타임 색 제어용 동적 머티리얼
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> OutlineMID;
 
 	// 볼륨 체류  카운트다운 타이머 핸들
 	FTimerHandle DwellTimerHandle;

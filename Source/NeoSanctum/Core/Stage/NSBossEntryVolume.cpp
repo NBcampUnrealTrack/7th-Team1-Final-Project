@@ -31,6 +31,22 @@ ANSBossEntryVolume::ANSBossEntryVolume()
 	VisualRoot->SetupAttachment(TriggerBox);
 	// 자식까지 숨김, 비활성 기본
 	VisualRoot->SetVisibility(false, true);
+	OutlineMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OutlineMesh"));
+	OutlineMesh->SetupAttachment(VisualRoot);
+	// 시각 전용
+	OutlineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	OutlineMesh->SetCollisionProfileName(TEXT("NoCollision"));
+	OutlineMesh->SetGenerateOverlapEvents(false);
+	// 그림자 렌더 비용 제거
+	OutlineMesh->SetCastShadow(false);
+
+	// 엔진 기본 큐브 메시 지정 (BP에서 교체 가능)
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(
+		TEXT("/Engine/BasicShapes/Cube.Cube"));
+	if (CubeMesh.Succeeded())
+	{
+		OutlineMesh->SetStaticMesh(CubeMesh.Object);
+	}
 }
 
 void ANSBossEntryVolume::BeginPlay()
@@ -39,6 +55,12 @@ void ANSBossEntryVolume::BeginPlay()
 	// 콜리전이 꺼져 있어도 바인딩은 해둬야함 (활성화 시 바로 동작)
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ANSBossEntryVolume::OnBeginOverlap);
 	TriggerBox->OnComponentEndOverlap.AddDynamic(this, &ANSBossEntryVolume::OnEndOverlap);
+	
+	if (OutlineMesh && TriggerBox)
+	{
+		OutlineMesh->SetWorldScale3D(
+			TriggerBox->GetUnscaledBoxExtent() / 50.0f);
+	}
 	
 	BindToRunGameState();
 }
@@ -103,6 +125,18 @@ void ANSBossEntryVolume::Deactivate()
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OverlappingPlayers.Empty();
 	ClearBossGateState();
+}
+
+void ANSBossEntryVolume::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+
+	// 큐브를 TriggerBox 반경에 맞춰 외곽선과 오버랩 범위 일치
+	if (OutlineMesh && TriggerBox)
+	{
+		OutlineMesh->SetWorldScale3D(
+			TriggerBox->GetUnscaledBoxExtent() / 50.0f);
+	}
 }
 
 void ANSBossEntryVolume::OnBeginOverlap(
@@ -222,9 +256,9 @@ void ANSBossEntryVolume::HandleStagePhaseChanged()
 	
 	UE_LOG(LogTemp, Warning, TEXT("[BossVolume] StagePhase 변화 감지, bBossReady=%d, HasAuthority=%d"),
 	bBossReady ? 1 : 0, HasAuthority() ? 1 : 0);
-
-	// 연출 토글은 모든 머신에서
-	VisualRoot->SetVisibility(bBossReady, true);
+	
+	// 연출 갱신 (표시/색)
+	UpdateVisual();
 
 	// 감지/판정은 서버만
 	if (!HasAuthority())
@@ -324,6 +358,9 @@ void ANSBossEntryVolume::BindToRunGameState()
 	RunGS->OnStagePhaseChanged.AddDynamic(
 		this, 
 		&ANSBossEntryVolume::HandleStagePhaseChanged);
+	RunGS->OnBossGateChanged.AddDynamic(
+		this,
+		&ANSBossEntryVolume::HandleBossGateChanged);
 	// 바인딩이 BossReady 이후에 이뤄진 경우 대비 초기 1회 동기화
 	HandleStagePhaseChanged();
 }
@@ -380,6 +417,41 @@ void ANSBossEntryVolume::ClearBossGateState()
 	CachedRunGameState->SetBossGateState(
 		0.0f,
 		false);
+}
+
+void ANSBossEntryVolume::UpdateVisual()
+{
+	if (!CachedRunGameState || !OutlineMesh)
+	{
+		return;
+	}
+	
+	const bool bBossReady =
+		(CachedRunGameState->StagePhase == ENSStagePhase::BossReady);
+	// 표시/숨김
+	VisualRoot->SetVisibility(bBossReady, true);
+	if (!bBossReady)
+	{
+		return;
+	}
+
+	// 동적 머티리얼 최초 1회 생성
+	if (!OutlineMID)
+	{
+		OutlineMID = OutlineMesh->CreateDynamicMaterialInstance(0);
+	}
+	if (OutlineMID)
+	{
+		// 전원 집결이면 노랑, 아니면 파랑
+		const FLinearColor Color =
+			CachedRunGameState->bBossGateAllPresent ? AllPresentColor : WaitingColor;
+		OutlineMID->SetVectorParameterValue(ColorParameterName, Color);
+	}
+}
+
+void ANSBossEntryVolume::HandleBossGateChanged()
+{
+	UpdateVisual();
 }
 
 bool ANSBossEntryVolume::AreAllPlayersPresent() const
