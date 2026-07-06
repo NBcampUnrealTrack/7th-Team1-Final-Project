@@ -13,6 +13,7 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Player.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
@@ -557,6 +558,52 @@ bool UNSAugmentSelectionComponent::TryFindRarityRule(
 		("RewardTriggerTag", RewardTriggerTag.ToString())
 	);
 	
+	return false;
+}
+
+bool UNSAugmentSelectionComponent::TryFindRerollRule(
+	const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const
+{
+	OutRule = FNSAugmentRerollRule();
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UNSRunConfig* RunConfig = DataSubsystem ? DataSubsystem->GetCurrentRunConfig() : nullptr;
+	if (!RunConfig || !RewardTriggerTag.IsValid())
+	{
+		return false;
+	}
+
+	static const FGameplayTag RewardTriggerRoot =
+		FGameplayTag::RequestGameplayTag(FName(TEXT("Reward.Trigger")), false);
+
+	for (const FNSAugmentRerollRule& Rule : RunConfig->AugmentRerollRules)
+	{
+		if (Rule.RewardTriggerTag != RewardTriggerTag)
+		{
+			continue;
+		}
+
+		const bool bHierarchyValid =
+			!RewardTriggerRoot.IsValid() || Rule.RewardTriggerTag.MatchesTag(RewardTriggerRoot);
+
+		if (!bHierarchyValid || Rule.InitialCost < 1
+			|| !FMath::IsFinite(Rule.CostMultiplier) || Rule.CostMultiplier < 1.0f)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 리롤 규칙 필드가 유효하지 않습니다. RewardTriggerTag={RewardTriggerTag}",
+				("RewardTriggerTag", RewardTriggerTag.ToString())
+			);
+			return false;
+		}
+
+		OutRule = Rule;
+		return true;
+	}
+
+	NS_OBJ_LOG(LogNS, Warning,
+		"증강 리롤 규칙을 찾지 못했습니다(리롤 불가 트리거). RewardTriggerTag={RewardTriggerTag}",
+		("RewardTriggerTag", RewardTriggerTag.ToString())
+	);
 	return false;
 }
 

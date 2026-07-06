@@ -9,6 +9,7 @@
 #include "NSAugmentSelectionComponent.generated.h"
 
 struct FNSAugmentRarityRule;
+struct FNSAugmentRerollRule;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 
@@ -121,6 +122,10 @@ private:
 		const FGameplayTag& RewardTriggerTag, 
 		FNSAugmentRarityRule& OutRule
 	) const;
+
+	// 실패 시 "규칙 없음(설정 오류)"로 취급 -> Server_RerollCard가 InvalidRequest로 통보.
+	bool TryFindRerollRule(
+		const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const;
 
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
