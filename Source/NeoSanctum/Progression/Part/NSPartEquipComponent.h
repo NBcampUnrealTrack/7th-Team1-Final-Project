@@ -17,7 +17,7 @@ class ANSDroppedPart;
 class UNSCurrencyComponent;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, FGameplayTag, const FNSPartData&);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnUpgradeResult, FGameplayTag, ENSPartUpgradeResult);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FNSOnUpgradeResult, FGameplayTag, ENSPartUpgradeResult, int64 /* NewTempBalance */);
 DECLARE_MULTICAST_DELEGATE(FNSOnShopStockChanged);
 
 /**
@@ -74,10 +74,12 @@ public:
 	// 등급업 성공 확률 (0~1)
 	UFUNCTION(BlueprintPure, Category = "Part")
 	float GetUpgradeChance(FGameplayTag Slot) const;
-
-	// 리롤/등급업/구매 결과 연출용, 수치 갱신은 OnRep_EquippedParts가 담당
+	/**
+	 * 리롤/등급업/구매 결과 연출용, 파츠 수치 갱신은 OnRep_EquippedParts가 담당
+	 * 임시재화 잔액은 Wallet 프로퍼티 복제 타이밍에 의존하지 않도록 결과와 함께 즉시 전달
+	 */
 	UFUNCTION(Client, Reliable)
-	void Client_NotifyUpgradeResult(FGameplayTag Slot, ENSPartUpgradeResult Result);
+	void Client_NotifyUpgradeResult(FGameplayTag Slot, ENSPartUpgradeResult Result, int64 NewTempBalance);
 
 	// 인런 상점 재고 생성 요청
 	UFUNCTION(Server, Reliable)

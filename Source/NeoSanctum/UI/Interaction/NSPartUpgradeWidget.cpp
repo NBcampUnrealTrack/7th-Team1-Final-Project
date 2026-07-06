@@ -248,12 +248,16 @@ void UNSPartUpgradeWidget::UnbindComponentDelegates()
 
 void UNSPartUpgradeWidget::RefreshBalance()
 {
+	const UNSCurrencyComponent* Currency = GetCurrencyComponent();
+	SetBalanceText(Currency ? Currency->GetTemp() : 0);
+}
+
+void UNSPartUpgradeWidget::SetBalanceText(int64 Balance)
+{
 	if (!IsValid(TempBalanceText))
 	{
 		return;
 	}
-	const UNSCurrencyComponent* Currency = GetCurrencyComponent();
-	const int64 Balance = Currency ? Currency->GetTemp() : 0;
 	TempBalanceText->SetText(FText::AsNumber(Balance));
 }
 
@@ -651,8 +655,13 @@ void UNSPartUpgradeWidget::HandleTempChanged(int64 NewAmount)
 	RefreshUpgradePanels();
 }
 
-void UNSPartUpgradeWidget::HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpgradeResult Result)
+void UNSPartUpgradeWidget::HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpgradeResult Result, int64 NewTempBalance)
 {
+	// Wallet 프로퍼티 복제를 기다리지 않고 결과와 함께 온 잔액으로 즉시 갱신
+	SetBalanceText(NewTempBalance);
+	RefreshBuyBox();
+	RefreshUpgradePanels();
+
 	OnUpgradeResultReceived(PartSlot, Result);
 }
 

@@ -202,7 +202,10 @@ private:
 	// 컴포넌트 델리게이트 핸들러
 	void HandlePartChanged(FGameplayTag PartSlot, const FNSPartData& Part);
 	void HandleTempChanged(int64 NewAmount);
-	void HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpgradeResult Result);
+	void HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpgradeResult Result, int64 NewTempBalance);
+
+	// Wallet 프로퍼티 복제 도착을 기다리지 않고, 서버가 결과와 함께 보낸 잔액으로 즉시 표시
+	void SetBalanceText(int64 Balance);
 	void HandleShopStockChanged();
 
 	// 재고 엔트리 클릭 (Index 페이로드)
