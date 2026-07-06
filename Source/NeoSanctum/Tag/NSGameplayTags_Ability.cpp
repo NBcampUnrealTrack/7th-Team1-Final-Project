@@ -9,6 +9,7 @@ namespace NSGameplayTags
 
 	// Vanguard Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_BaseAttack, "Ability.Vanguard.BaseAttack");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Guard, "Ability.Vanguard.Guard");
 	
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
@@ -35,6 +36,7 @@ namespace NSGameplayTags
 
 	// Vanguard Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Hit, "Event.Vanguard.Hit");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Guard, "Event.Vanguard.Guard");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ComboWindowOpened, "Event.Vanguard.ComboWindowOpened");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_DashAttackRecoverStarted, "Event.Vanguard.DashAttackRecoverStarted");
 	
