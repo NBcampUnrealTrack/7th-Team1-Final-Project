@@ -48,6 +48,22 @@ static FText FormatEffectValue(float Value)
 	return FText::AsNumber(Value, &Options);
 }
 
+
+/**
+ * 텍스트가 비어있으면 줄 자체를 접어서(Collapsed) 빈 줄이 남지 않게 하는 하뭇
+ * 안 쓰는 필드를 텍스트만 비우면 레이아웃에 빈 줄이 그대로 남음
+ * Fill말고 Auto로 지정하고 함수 사용하면 깔끔하게 빈줄 제거
+ */
+static void SetOptionalText(UTextBlock* TextBlock, const FText& Text)
+{
+	if (!IsValid(TextBlock))
+	{
+		return;
+	}
+	TextBlock->SetText(Text);
+	TextBlock->SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+}
+
 void UNSPartDetailWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -57,148 +73,86 @@ void UNSPartDetailWidget::NativeConstruct()
 
 void UNSPartDetailWidget::SetupFromDefinition(const FNSPartDefinitionRow& Row, const UNSPartDefinition* Def)
 {
-	if (IsValid(PartNameText))
-	{
-		const FText Name = Def ? Def->PartName : FText::GetEmpty();
-		PartNameText->SetText(FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
-	}
+	const FText Name = Def ? Def->PartName : FText::GetEmpty();
+	SetOptionalText(PartNameText, FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
 
-	if (IsValid(SlotText))
-	{
-		SlotText->SetText(FText::Format(NSLOCTEXT("PartDetail", "SlotLabel", "슬롯 : {0}"),
-			FText::FromString(GetSlotLeafName(Row.PartSlot))));
-	}
+	SetOptionalText(SlotText, FText::Format(NSLOCTEXT("PartDetail", "SlotLabel", "슬롯 : {0}"),
+		FText::FromString(GetSlotLeafName(Row.PartSlot))));
 
-	if (IsValid(CostText))
-	{
-		CostText->SetText(FText::Format(NSLOCTEXT("PartDetail", "CostLabel", "비용 : {0}"),
-			FText::AsNumber(Row.UnlockCost)));
-	}
+	SetOptionalText(CostText, FText::Format(NSLOCTEXT("PartDetail", "CostLabel", "비용 : {0}"),
+		FText::AsNumber(Row.UnlockCost)));
 
-	if (IsValid(CanRerollText))
-	{
-		CanRerollText->SetText(Row.bCanReroll
-			? NSLOCTEXT("PartDetail", "CanReroll", "리롤 : 가능")
-			: NSLOCTEXT("PartDetail", "NoReroll", "리롤 : 불가"));
-	}
+	SetOptionalText(CanRerollText, Row.bCanReroll
+		? NSLOCTEXT("PartDetail", "CanReroll", "리롤 : 가능")
+		: NSLOCTEXT("PartDetail", "NoReroll", "리롤 : 불가"));
 
-	if (IsValid(RarityText))
-	{
-		RarityText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(ValueText))
-	{
-		ValueText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(RarityText, FText::GetEmpty());
+	SetOptionalText(ValueText, FText::GetEmpty());
 }
 
 void UNSPartDetailWidget::SetupFromEquipped(const FNSPartSaveData& SaveData, const UNSPartDefinition* Def)
 {
-	if (IsValid(PartNameText))
-	{
-		const FText Name = Def ? Def->PartName : FText::GetEmpty();
-		PartNameText->SetText(FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
-	}
+	const FText Name = Def ? Def->PartName : FText::GetEmpty();
+	SetOptionalText(PartNameText, FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
 
-	if (IsValid(SlotText))
-	{
-		SlotText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(SlotText, FText::GetEmpty());
+	SetOptionalText(CostText, FText::GetEmpty());
+	SetOptionalText(CanRerollText, FText::GetEmpty());
 
-	if (IsValid(CostText))
-	{
-		CostText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
+		GetPartRarityText(SaveData.Rarity)));
 
-	if (IsValid(CanRerollText))
-	{
-		CanRerollText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(ValueText, FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"),
+		FormatEffectValue(SaveData.Value)));
 
-	if (IsValid(RarityText))
-	{
-		RarityText->SetText(FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
-			GetPartRarityText(SaveData.Rarity)));
-	}
+	ClearPreview();
+}
 
-	if (IsValid(ValueText))
-	{
-		ValueText->SetText(FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"),
-			FormatEffectValue(SaveData.Value)));
-	}
+void UNSPartDetailWidget::SetupFromInstance(const FNSPartData& Part, const UNSPartDefinition* Def)
+{
+	const FText Name = Def ? Def->PartName : FText::GetEmpty();
+	SetOptionalText(PartNameText, FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
+
+	SetOptionalText(SlotText, FText::Format(NSLOCTEXT("PartDetail", "SlotLabel", "슬롯 : {0}"),
+		FText::FromString(GetSlotLeafName(Part.Slot))));
+
+	SetOptionalText(CostText, FText::GetEmpty());
+	SetOptionalText(CanRerollText, FText::GetEmpty());
+
+	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
+		GetPartRarityText(Part.CurrentRarity)));
+
+	SetOptionalText(ValueText, FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"),
+		FormatEffectValue(Part.CurrentValue)));
 
 	ClearPreview();
 }
 
 void UNSPartDetailWidget::SetupFromSlotLock(const FNSPartSlotRow& SlotRow)
 {
-	if (IsValid(PartNameText))
-	{
-		PartNameText->SetText(FText::Format(NSLOCTEXT("PartDetail", "SlotLockNameLabel", "슬롯 : {0}"),
-			FText::FromString(GetSlotLeafName(SlotRow.SlotTag))));
-	}
+	SetOptionalText(PartNameText, FText::Format(NSLOCTEXT("PartDetail", "SlotLockNameLabel", "슬롯 : {0}"),
+		FText::FromString(GetSlotLeafName(SlotRow.SlotTag))));
 
-	if (IsValid(SlotText))
-	{
-		SlotText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(SlotText, FText::GetEmpty());
 
-	if (IsValid(CostText))
-	{
-		CostText->SetText(FText::Format(NSLOCTEXT("PartDetail", "UnlockCostLabel", "해금 비용 : {0}"),
-			FText::AsNumber(SlotRow.UnlockCost)));
-	}
+	SetOptionalText(CostText, FText::Format(NSLOCTEXT("PartDetail", "UnlockCostLabel", "해금 비용 : {0}"),
+		FText::AsNumber(SlotRow.UnlockCost)));
 
-	if (IsValid(CanRerollText))
-	{
-		CanRerollText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(RarityText))
-	{
-		RarityText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(ValueText))
-	{
-		ValueText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(CanRerollText, FText::GetEmpty());
+	SetOptionalText(RarityText, FText::GetEmpty());
+	SetOptionalText(ValueText, FText::GetEmpty());
 
 	ClearPreview();
 }
 
 void UNSPartDetailWidget::ClearDetail()
 {
-	if (IsValid(PartNameText))
-	{
-		PartNameText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(SlotText))
-	{
-		SlotText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(CostText))
-	{
-		CostText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(CanRerollText))
-	{
-		CanRerollText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(RarityText))
-	{
-		RarityText->SetText(FText::GetEmpty());
-	}
-
-	if (IsValid(ValueText))
-	{
-		ValueText->SetText(FText::GetEmpty());
-	}
+	SetOptionalText(PartNameText, FText::GetEmpty());
+	SetOptionalText(SlotText, FText::GetEmpty());
+	SetOptionalText(CostText, FText::GetEmpty());
+	SetOptionalText(CanRerollText, FText::GetEmpty());
+	SetOptionalText(RarityText, FText::GetEmpty());
+	SetOptionalText(ValueText, FText::GetEmpty());
 
 	ClearPreview();
 }

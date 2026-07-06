@@ -14,8 +14,11 @@ class UAbilitySystemComponent;
 class UGameplayEffect;
 class UNSPartDefinition;
 class ANSDroppedPart;
+class UNSCurrencyComponent;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPartChanged, FGameplayTag, const FNSPartData&);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnUpgradeResult, FGameplayTag, ENSPartUpgradeResult);
+DECLARE_MULTICAST_DELEGATE(FNSOnShopStockChanged);
 
 /**
  * PlayerState에 부착되는 파츠 컴포넌트
@@ -60,15 +63,49 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "Part")
 	void Server_RequestPickup(ANSDroppedPart* TargetPart);
 
+	// 리롤 비용
+	UFUNCTION(BlueprintPure, Category = "Part")
+	int64 GetRerollCost(FGameplayTag Slot) const;
+
+	// 현재 등급 → 다음 등급 업그레이드 비용
+	UFUNCTION(BlueprintPure, Category = "Part")
+	int64 GetUpgradeCost(FGameplayTag Slot) const;
+
+	// 등급업 성공 확률 (0~1)
+	UFUNCTION(BlueprintPure, Category = "Part")
+	float GetUpgradeChance(FGameplayTag Slot) const;
+
+	// 리롤/등급업/구매 결과 연출용, 수치 갱신은 OnRep_EquippedParts가 담당
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyUpgradeResult(FGameplayTag Slot, ENSPartUpgradeResult Result);
+
+	// 인런 상점 재고 생성 요청
+	UFUNCTION(Server, Reliable)
+	void Server_RequestGenerateStock();
+
+	// 재고 구매 요청, 성공 시 즉시 장착
+	UFUNCTION(Server, Reliable)
+	void Server_RequestPurchase(int32 StockIndex);
+
+	const TArray<FNSPartData>& GetShopStock() const { return ShopStock; }
+
+	// 등급별 상점 구매 가격
+	UFUNCTION(BlueprintPure, Category = "Part")
+	int64 GetShopPrice(ENSPartRarity Rarity) const;
+
+	FNSOnShopStockChanged OnShopStockChanged;
+
 public:
 	FNSOnPartChanged OnPartChanged;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Part", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-	float UpgradeSuccessChance = 0.5f;
+	FNSOnUpgradeResult OnUpgradeResult;
 
 	// 교체 시 바닥에 스폰할 드랍 액터 클래스
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	TSubclassOf<ANSDroppedPart> DroppedPartClass;
+
+	// 상점 재고 -> 부위당 생성 개수, 에디터 수정가능
+	UPROPERTY(EditDefaultsOnly, Category = "Part|Shop", meta = (ClampMin = "1"))
+	int32 StockCountPerSlot = 3;
 
 private:
 	FNSPartData* FindPart(FGameplayTag Slot);
@@ -90,16 +127,30 @@ private:
 
 	void RerollStat(FGameplayTag Slot);
 	void UpgradeRarity(FGameplayTag Slot);
-	float RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const;
+	float RollValueForRarity(ENSPartRarity Rarity) const;
+
+	void GenerateShopStock();
+	ENSPartRarity RollShopRarity() const;
 
 	UAbilitySystemComponent* GetOwnerASC() const;
+	UNSCurrencyComponent* GetCurrencyComponent() const;
 
 	UFUNCTION()
 	void OnRep_EquippedParts();
 
+	UFUNCTION()
+	void OnRep_ShopStock();
+
 private:
 	UPROPERTY(ReplicatedUsing=OnRep_EquippedParts)
 	TArray<FNSPartData> EquippedParts;
+
+	// 인런 개인 상점 재고. 스테이지 내 고정, Seamless Travel 시 이관하지 않음(다음 스테이지에서 재생성)
+	UPROPERTY(ReplicatedUsing=OnRep_ShopStock)
+	TArray<FNSPartData> ShopStock;
+
+	// 서버 전용. 스테이지 내 재고 1회 생성 보장 — 매진과 미생성 구분용
+	bool bShopStockGenerated = false;
 
 	// 런타임 핸들 (슬롯별)
 	TMap<FGameplayTag, FActiveGameplayEffectHandle> ActiveGEHandles;

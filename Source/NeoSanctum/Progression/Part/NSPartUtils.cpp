@@ -17,19 +17,27 @@ UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContex
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
 	if (!DataSS)
 	{
+		// GC 대상(언리처블)으로 표시된 소프트 포인터는 반환하지 않음 — 호출부가 nullptr로 보고 재로드하도록 함
 		UNSPartDefinition* Fallback = DefinitionPtr.Get();
-		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataSS 없음. SoftPtr.Get()=%s"), Fallback ? TEXT("유효") : TEXT("NULL"));
+		if (!IsValid(Fallback))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataSS 없음. SoftPtr.Get()=NULL"));
+			return nullptr;
+		}
 		return Fallback;
 	}
 
 	const FPrimaryAssetId Id = UAssetManager::Get().GetPrimaryAssetIdForPath(DefinitionPtr.ToSoftObjectPath());
 	UNSPartDefinition* Cached = DataSS->GetData<UNSPartDefinition>(Id);
 
-	if (!Cached)
+	if (!IsValid(Cached))
 	{
 		UNSPartDefinition* Fallback = DefinitionPtr.Get();
-		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataCache 미스 (Id=%s). SoftPtr.Get()=%s"),
-			*Id.ToString(), Fallback ? TEXT("유효") : TEXT("NULL"));
+		if (!IsValid(Fallback))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[PartUtils] DataCache 미스 (Id=%s). SoftPtr.Get()=NULL"), *Id.ToString());
+			return nullptr;
+		}
 		return Fallback;
 	}
 
@@ -59,4 +67,14 @@ const FNSPartDefinitionRow* NSPartUtils::ResolvePartRow(
 	}
 
 	return DataSS->GetPartRow(DefId);
+}
+
+const FNSPartUpgradeRow* NSPartUtils::ResolvePartUpgradeRow(const UObject* WorldContextObject, ENSPartRarity Rarity)
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
+	if (!DataSS)
+	{
+		return nullptr;
+	}
+	return DataSS->GetPartUpgradeRow(Rarity);
 }

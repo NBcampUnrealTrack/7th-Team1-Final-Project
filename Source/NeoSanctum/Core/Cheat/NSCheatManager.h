@@ -80,6 +80,10 @@ public:
 	UFUNCTION(Exec)
 	void Debug_UpgradeCommonNode(FString NodeId);
 
+	// 테스트용 치트 (인런 파츠 상점 테스트 — 임시재화 10000 즉시 지급, 드랍/줍기 없음)
+	UFUNCTION(Exec)
+	void Debug_AddTempCurrency();
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };

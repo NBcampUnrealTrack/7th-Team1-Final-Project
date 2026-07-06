@@ -10,18 +10,17 @@
 
 void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, UNSPartEquipWidget* OwnerWidget)
 {
+	// 재-Setup 시 이전 델리게이트 경로가 남아 클릭을 가로채지 않도록 초기화
+	ClickHandler.Unbind();
+
 	StoredRow = Row;
 	OwnerRef = OwnerWidget;
 
 	if (IsValid(SelectButton))
 	{
-		SelectButton->OnClicked.AddDynamic(this, &UNSPartCatalogEntryWidget::OnSelectButtonClicked);
+		SelectButton->OnClicked.AddUniqueDynamic(this, &UNSPartCatalogEntryWidget::OnSelectButtonClicked);
 	}
-	else
-	{
-		NS_LOG(LogNS, Warning, "[Catalog] SelectButton 바인딩이 유효하지 않습니다. WBP에서 SelectButton 이름/타입을 확인하세요.");
-	}
-
+	
 	UNSPartDefinition* Def = Row.Definition.Get();
 	if (Def)
 	{
@@ -48,6 +47,13 @@ void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, UNSP
 				WeakThis->LoadHandle.Reset();
 			}
 		});
+}
+
+void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, FNSOnCatalogEntryClicked InClickHandler)
+{
+	// 공용 Setup이 ClickHandler를 초기화하므로 호출 후에 바인딩
+	SetupEntry(Row, static_cast<UNSPartEquipWidget*>(nullptr));
+	ClickHandler = InClickHandler;
 }
 
 void UNSPartCatalogEntryWidget::NativeDestruct()
@@ -116,6 +122,12 @@ void UNSPartCatalogEntryWidget::OnDefinitionLoaded()
 void UNSPartCatalogEntryWidget::OnSelectButtonClicked()
 {
 	NS_LOG(LogNS, Log, "[Catalog] SelectButton 클릭됨");
+
+	if (ClickHandler.IsBound())
+	{
+		ClickHandler.Execute(StoredRow, this);
+		return;
+	}
 
 	UNSPartEquipWidget* Owner = OwnerRef.Get();
 	if (!IsValid(Owner))

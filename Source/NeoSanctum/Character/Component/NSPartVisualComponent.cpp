@@ -143,7 +143,7 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 
 	
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	if (!Def)
+	if (!IsValid(Def))
 	{
 		const FSoftObjectPath DefPath = Part->DefinitionPtr.ToSoftObjectPath();
 		if (DefPath.IsNull())

@@ -563,11 +563,11 @@ FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
 	PartData.CurrentRarity = ENSPartRarity::Common;
 	PartData.RollCount = 0;
 
-	const FNSPartValueRange* ValueRange = Row->ValueRange.Find(PartData.CurrentRarity);
-	if (ValueRange)
+	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(World, PartData.CurrentRarity);
+	if (UpgradeRow)
 	{
-		const float MinValue = FMath::Min(ValueRange->Min, ValueRange->Max);
-		const float MaxValue = FMath::Max(ValueRange->Min, ValueRange->Max);
+		const float MinValue = FMath::Min(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
+		const float MaxValue = FMath::Max(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
 		PartData.CurrentValue = RandomStream.FRandRange(MinValue, MaxValue);
 	}
 

@@ -43,6 +43,16 @@ struct FNSCurrencyWallet : public FFastArraySerializer
 	}
 };
 
+// 이게 없으면 NetDeltaSerialize가 호출되지 않아 PostReplicatedAdd/Change 콜백이 클라에서 발동하지 않음
+template<>
+struct TStructOpsTypeTraits<FNSCurrencyWallet> : public TStructOpsTypeTraitsBase2<FNSCurrencyWallet>
+{
+	enum
+	{
+		WithNetDeltaSerialize = true,
+	};
+};
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnTempChanged, int64 /* Amount */ );
 DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPermanentChanged, FGameplayTag /* Type */, int64 /* Amount */);
 

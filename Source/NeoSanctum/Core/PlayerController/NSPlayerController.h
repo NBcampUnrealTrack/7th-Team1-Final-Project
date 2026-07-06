@@ -47,6 +47,10 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugCommitPermanent();
 
+	// 테스트용 임시 코드 (인런 파츠 상점 테스트 — 드롭/줍기 없이 서버 권한에서 임시재화 즉시 지급)
+	UFUNCTION(Server, Reliable)
+	void Server_DebugAddTempCurrency();
+
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
 	void RequestReady(); 

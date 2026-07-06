@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
 
 class UNSPartDefinition;
 struct FNSPartData;
@@ -20,4 +21,7 @@ namespace NSPartUtils
 	NEOSANCTUM_API const FNSPartDefinitionRow* ResolvePartRow(
 		const UObject* WorldContextObject,
 		const FPrimaryAssetId& DefId);
+
+	// 등급별 업그레이드/상점 row를 NSDataSubsystem 캐시에서 조회. 캐시 미스 시 nullptr
+	NEOSANCTUM_API const FNSPartUpgradeRow* ResolvePartUpgradeRow(const UObject* WorldContextObject, ENSPartRarity Rarity);
 }

@@ -198,6 +198,10 @@ public:
 	const FNSPartSlotRow* GetSlotRow(FGameplayTag Slot) const;
 	const TMap<FGameplayTag, FNSPartSlotRow>& GetAllSlotRows() const;
 
+	// 등급별 파츠 업그레이드/상점 row 조회
+	const FNSPartUpgradeRow* GetPartUpgradeRow(ENSPartRarity Rarity) const;
+	const TMap<ENSPartRarity, FNSPartUpgradeRow>& GetAllPartUpgradeRows() const;
+
 	//맵 이동 중 유지할 플레이어 진행 데이터 저장
 	void SetCachedProgressPayload(const FNSProgressPayload& Payload);
 
@@ -359,8 +363,12 @@ private:
 	// Slot → row 캐시
 	TMap<FGameplayTag, FNSPartSlotRow> CachedSlotRowsBySlot;
 
+	// Rarity → row 캐시
+	TMap<ENSPartRarity, FNSPartUpgradeRow> CachedUpgradeRowsByRarity;
+
 	void BuildPartRowCache();
 	void BuildSlotRowCache();
+	void BuildPartUpgradeRowCache();
 
 	void CacheCommonUpgradeNodeRows();
 

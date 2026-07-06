@@ -12,6 +12,8 @@ class UButton;
 class UImage;
 class UNSPartEquipWidget;
 
+DECLARE_DELEGATE_TwoParams(FNSOnCatalogEntryClicked, const FNSPartDefinitionRow&, UNSPartCatalogEntryWidget*);
+
 UCLASS(Abstract, BlueprintType, Blueprintable)
 class NEOSANCTUM_API UNSPartCatalogEntryWidget : public UUserWidget
 {
@@ -19,6 +21,9 @@ class NEOSANCTUM_API UNSPartCatalogEntryWidget : public UUserWidget
 
 public:
 	void SetupEntry(const FNSPartDefinitionRow& Row, UNSPartEquipWidget* OwnerWidget);
+
+	// 소유 위젯 타입에 묶이지 않는 범용 진입점 (인런 상점 등에서 사용)
+	void SetupEntry(const FNSPartDefinitionRow& Row, FNSOnCatalogEntryClicked InClickHandler);
 
 	// 이 항목이 현재 선택된 상태인지 표시 (SelectedIndicator 보임/숨김)
 	UFUNCTION(BlueprintCallable, Category = "UI|Part")
@@ -47,4 +52,5 @@ private:
 	FNSPartDefinitionRow StoredRow;
 	TWeakObjectPtr<UNSPartEquipWidget> OwnerRef;
 	TSharedPtr<FStreamableHandle> LoadHandle;
+	FNSOnCatalogEntryClicked ClickHandler;
 };
