@@ -39,7 +39,8 @@ ANSPartPreviewStage::ANSPartPreviewStage()
 	CaptureComponent->CaptureSource = ESceneCaptureSource::SCS_FinalColorLDR;
 	CaptureComponent->bCaptureEveryFrame = false;
 	CaptureComponent->bCaptureOnMovement = false;
-	CaptureComponent->ShowOnlyActors.Add(this);
+	
+	CaptureComponent->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
 
 	KeyLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("KeyLight"));
 	KeyLight->SetupAttachment(StageRoot);
@@ -74,6 +75,10 @@ ANSPartPreviewStage::ANSPartPreviewStage()
 void ANSPartPreviewStage::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// 인스턴스 확정 후 등록해야 자기 자신이 목록에 남는다
+	CaptureComponent->ShowOnlyActors.Reset();
+	CaptureComponent->ShowOnlyActors.Add(this);
 
 	RenderTarget = UKismetRenderingLibrary::CreateRenderTarget2D(
 		this, RenderTargetSize, RenderTargetSize, ETextureRenderTargetFormat::RTF_RGBA8);
