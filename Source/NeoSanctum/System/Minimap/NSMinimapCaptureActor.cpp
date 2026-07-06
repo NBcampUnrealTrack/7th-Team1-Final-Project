@@ -26,6 +26,9 @@
 ANSMinimapCaptureActor::ANSMinimapCaptureActor()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = false;
+	bNetLoadOnClient = true;
+	SetReplicatingMovement(false);
 
 	SceneCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("SceneCaptureComponent"));
 	SetRootComponent(SceneCaptureComponent);
@@ -48,6 +51,11 @@ void ANSMinimapCaptureActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	ApplyLayerConfig();
 
 	//던전 생성기 바인딩 준비
@@ -58,6 +66,10 @@ void ANSMinimapCaptureActor::BeginPlay()
 	else if (DungeonGeneratorActor)
 	{
 		BindToDungeonGenerator(DungeonGeneratorActor);
+	}
+	else if (bUseWorldActorBoundsFallback)
+	{
+		ScheduleStaticWorldCapture();
 	}
 }
 
@@ -86,6 +98,11 @@ void ANSMinimapCaptureActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void ANSMinimapCaptureActor::BindToDungeonGenerator(AActor* NewDungeonGeneratorActor)
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	// 기존 Dungeon Generator 이벤트 해제
 	if (ADungeonGeneratorBase* PreviousDungeonGenerator = Cast<ADungeonGeneratorBase>(DungeonGeneratorActor))
 	{
@@ -104,10 +121,17 @@ void ANSMinimapCaptureActor::BindToDungeonGenerator(AActor* NewDungeonGeneratorA
 	//던전 생성 완료 이벤트 구독
 	DungeonGenerator->OnPostGenerationEvent.RemoveDynamic(this, &ThisClass::HandleDungeonPostGeneration);
 	DungeonGenerator->OnPostGenerationEvent.AddDynamic(this, &ThisClass::HandleDungeonPostGeneration);
+
+	BeginWaitingForDungeonRooms();
 }
 
 void ANSMinimapCaptureActor::CaptureFromCurrentActorTransform(float ManualOrthoWidth)
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	EnsureRenderTarget();
 	EnsureLayerRenderTargets();
 	if (!RenderTarget || !SceneCaptureComponent)
@@ -139,14 +163,29 @@ void ANSMinimapCaptureActor::CaptureFromCurrentActorTransform(float ManualOrthoW
 
 }
 
+void ANSMinimapCaptureActor::CaptureMinimap()
+{
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
+	CaptureDungeonMinimap();
+}
+
 void ANSMinimapCaptureActor::CaptureDungeonMinimap()
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	ApplyLayerConfig();
 
 	FBox DungeonBounds(ForceInit);
-	if (!BuildDungeonWorldBounds(DungeonBounds))
+	if (!BuildCaptureWorldBounds(DungeonBounds))
 	{
-		UE_LOG(LogNS, Warning, TEXT("미니맵 캡처 건너뜀: 던전 경계가 유효하지 않음. 캡처=%s 생성기=%s"),
+		UE_LOG(LogNS, Warning, TEXT("미니맵 캡처 건너뜀: 캡처 경계가 유효하지 않음. 캡처=%s 생성기=%s"),
 			*GetNameSafe(this),
 			*GetNameSafe(DungeonGeneratorActor));
 		return;
@@ -437,6 +476,11 @@ void ANSMinimapCaptureActor::HandleDungeonPostGeneration()
 
 void ANSMinimapCaptureActor::TryAutoBindDungeonGenerator()
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -449,7 +493,49 @@ void ANSMinimapCaptureActor::TryAutoBindDungeonGenerator()
 		return;
 	}
 
-	UE_LOG(LogNS, Warning, TEXT("미니맵 캡처 실패: 현재 월드에서 DungeonGenerator를 찾지 못함. 캡처=%s"), *GetNameSafe(this));
+	if (bUseWorldActorBoundsFallback)
+	{
+		UE_LOG(LogNS, Log, TEXT("미니맵 캡처: 현재 월드에서 DungeonGenerator를 찾지 못해 월드 액터 bounds fallback을 사용합니다. 캡처=%s"), *GetNameSafe(this));
+		ScheduleStaticWorldCapture();
+	}
+	else
+	{
+		UE_LOG(LogNS, Warning, TEXT("미니맵 캡처 실패: 현재 월드에서 DungeonGenerator를 찾지 못함. 캡처=%s"), *GetNameSafe(this));
+	}
+}
+
+bool ANSMinimapCaptureActor::ShouldRunMinimapCapture() const
+{
+	const UWorld* World = GetWorld();
+	return World != nullptr;
+}
+
+void ANSMinimapCaptureActor::ScheduleStaticWorldCapture()
+{
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(CaptureTimerHandle);
+	if (CaptureDelay <= 0.0f)
+	{
+		CaptureMinimap();
+		return;
+	}
+
+	World->GetTimerManager().SetTimer(
+		CaptureTimerHandle,
+		this,
+		&ThisClass::ExecuteScheduledCapture,
+		CaptureDelay,
+		false);
 }
 
 void ANSMinimapCaptureActor::ApplyLayerConfig()
@@ -487,6 +573,11 @@ void ANSMinimapCaptureActor::ApplyLayerConfig()
 
 void ANSMinimapCaptureActor::BeginWaitingForDungeonRooms()
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -515,6 +606,11 @@ void ANSMinimapCaptureActor::BeginWaitingForDungeonRooms()
 
 void ANSMinimapCaptureActor::CheckDungeonRoomsReady()
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -526,13 +622,16 @@ void ANSMinimapCaptureActor::CheckDungeonRoomsReady()
 	int32 ReadyRoomCount = 0;
 	int32 TotalRoomCount = 0;
 	const bool bRoomsReady = AreDungeonRoomsReady(ReadyRoomCount, TotalRoomCount);
-	const int32 RenderablePrimitiveCount = CountRenderableRoomPrimitiveComponents();
+	const bool bHasDungeonGenerator = Cast<ADungeonGeneratorBase>(DungeonGeneratorActor) != nullptr;
+	const int32 RenderablePrimitiveCount = bHasDungeonGenerator
+		? CountRenderableRoomPrimitiveComponents()
+		: CountRenderableWorldPrimitiveComponents();
 	const bool bRenderableReady = RenderablePrimitiveCount > 0;
 	FBox DungeonBounds(ForceInit);
-	const bool bHasDungeonBounds = BuildDungeonWorldBounds(DungeonBounds);
+	const bool bHasDungeonBounds = BuildCaptureWorldBounds(DungeonBounds);
 	FVector PawnLocation = FVector::ZeroVector;
 	const bool bLocalPlayerReady = !bWaitForLocalPlayerPawnInDungeon || (bHasDungeonBounds && IsLocalPlayerReadyForCapture(DungeonBounds, PawnLocation));
-	const bool bStableReady = bRoomsReady && bRenderableReady && bLocalPlayerReady;
+	const bool bStableReady = (!bHasDungeonGenerator || bRoomsReady) && bRenderableReady && bLocalPlayerReady;
 	const double ElapsedTime = World->GetTimeSeconds() - RoomReadyWaitStartTime;
 
 	if (bStableReady)
@@ -583,6 +682,11 @@ void ANSMinimapCaptureActor::CheckDungeonRoomsReady()
 
 void ANSMinimapCaptureActor::ExecuteScheduledCapture()
 {
+	if (!ShouldRunMinimapCapture())
+	{
+		return;
+	}
+
 	CaptureDungeonMinimap();
 }
 
@@ -809,6 +913,114 @@ bool ANSMinimapCaptureActor::BuildDungeonWorldBounds(FBox& OutWorldBounds) const
 	return OutWorldBounds.IsValid != 0;
 }
 
+bool ANSMinimapCaptureActor::BuildCaptureWorldBounds(FBox& OutWorldBounds) const
+{
+	if (BuildDungeonWorldBounds(OutWorldBounds))
+	{
+		return true;
+	}
+
+	if (!bUseWorldActorBoundsFallback)
+	{
+		return false;
+	}
+
+	return BuildWorldActorBounds(OutWorldBounds);
+}
+
+bool ANSMinimapCaptureActor::BuildWorldActorBounds(FBox& OutWorldBounds) const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return false;
+	}
+
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		const AActor* Actor = *It;
+		if (!ShouldUseActorForWorldBounds(Actor))
+		{
+			continue;
+		}
+
+		const FBox ActorBounds = Actor->GetComponentsBoundingBox(true, true);
+		if (!ActorBounds.IsValid || ActorBounds.GetSize().IsNearlyZero())
+		{
+			continue;
+		}
+
+		OutWorldBounds += ActorBounds;
+	}
+
+	return OutWorldBounds.IsValid != 0;
+}
+
+bool ANSMinimapCaptureActor::ShouldUseActorForWorldBounds(const AActor* Actor) const
+{
+	if (!IsValid(Actor) || Actor == this || Actor->IsHidden())
+	{
+		return false;
+	}
+
+	const bool bHiddenByTag = HiddenActorTags.ContainsByPredicate([Actor](const FName& HiddenTag)
+	{
+		return !HiddenTag.IsNone() && Actor->ActorHasTag(HiddenTag);
+	});
+	if (bHiddenByTag)
+	{
+		return false;
+	}
+
+	if (bUseWorldBoundsActorTag && !WorldBoundsActorTag.IsNone() && !Actor->ActorHasTag(WorldBoundsActorTag))
+	{
+		return false;
+	}
+
+	TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents;
+	Actor->GetComponents(PrimitiveComponents);
+	for (const UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+	{
+		if (PrimitiveComponent && PrimitiveComponent->IsRegistered() && PrimitiveComponent->IsRenderStateCreated())
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+int32 ANSMinimapCaptureActor::CountRenderableWorldPrimitiveComponents() const
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return 0;
+	}
+
+	int32 RenderablePrimitiveCount = 0;
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		const AActor* Actor = *It;
+		if (!ShouldUseActorForWorldBounds(Actor))
+		{
+			continue;
+		}
+
+		TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents;
+		Actor->GetComponents(PrimitiveComponents);
+		for (const UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+		{
+			if (PrimitiveComponent && PrimitiveComponent->IsRegistered() && PrimitiveComponent->IsRenderStateCreated())
+			{
+				++RenderablePrimitiveCount;
+			}
+		}
+	}
+
+	return RenderablePrimitiveCount;
+}
+
 void ANSMinimapCaptureActor::EnsureRenderTarget()
 {
 	const int32 ClampedRenderTargetSize = FMath::Clamp(RenderTargetSize, 128, 4096);
@@ -906,6 +1118,7 @@ void ANSMinimapCaptureActor::PrepareRoomActorVisibilityForLayer(const FNSMinimap
 	const UDungeonGraph* DungeonGraph = DungeonGenerator ? DungeonGenerator->GetRooms() : nullptr;
 	if (!DungeonGraph)
 	{
+		PrepareWorldActorVisibilityForLayer(LayerConfig);
 		return;
 	}
 
@@ -965,6 +1178,84 @@ void ANSMinimapCaptureActor::PrepareRoomActorVisibilityForLayer(const FNSMinimap
 
 			Actor->SetActorHiddenInGame(!bIntersectsLayer);
 		}
+	}
+}
+
+void ANSMinimapCaptureActor::PrepareWorldActorVisibilityForLayer(const FNSMinimapCaptureLayerConfig& LayerConfig)
+{
+	if (SceneCaptureComponent)
+	{
+		SceneCaptureComponent->ClearShowOnlyComponents();
+		SceneCaptureComponent->HiddenActors.Reset();
+		SceneCaptureComponent->PrimitiveRenderMode = bUseShowOnlyActorsWithTag
+			? ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList
+			: ESceneCapturePrimitiveRenderMode::PRM_RenderScenePrimitives;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const float LayerMinZ = FMath::Min(LayerConfig.FloorZ, LayerConfig.CeilingZ);
+	const float LayerMaxZ = FMath::Max(LayerConfig.FloorZ, LayerConfig.CeilingZ);
+	for (TActorIterator<AActor> It(World); It; ++It)
+	{
+		AActor* Actor = *It;
+		if (!IsValid(Actor) || Actor == this)
+		{
+			continue;
+		}
+
+		if (!ActorHiddenStateBeforeCapture.Contains(Actor))
+		{
+			ActorHiddenStateBeforeCapture.Add(Actor, Actor->IsHidden());
+		}
+
+		const bool bHiddenByTag = HiddenActorTags.ContainsByPredicate([Actor](const FName& HiddenTag)
+		{
+			return !HiddenTag.IsNone() && Actor->ActorHasTag(HiddenTag);
+		});
+		if (bHiddenByTag)
+		{
+			Actor->SetActorHiddenInGame(true);
+			continue;
+		}
+
+		TInlineComponentArray<UPrimitiveComponent*> PrimitiveComponents;
+		Actor->GetComponents(PrimitiveComponents);
+		bool bHasRenderablePrimitive = false;
+		for (const UPrimitiveComponent* PrimitiveComponent : PrimitiveComponents)
+		{
+			if (PrimitiveComponent && PrimitiveComponent->IsRegistered() && PrimitiveComponent->IsRenderStateCreated())
+			{
+				bHasRenderablePrimitive = true;
+				break;
+			}
+		}
+
+		if (!bHasRenderablePrimitive)
+		{
+			continue;
+		}
+
+		const FBox ActorBounds = Actor->GetComponentsBoundingBox(true, true);
+		const bool bIntersectsLayer = ActorBounds.IsValid && ActorBounds.Max.Z >= LayerMinZ && ActorBounds.Min.Z <= LayerMaxZ;
+		const bool bShowOnlyActor = !ShowOnlyActorTag.IsNone() && Actor->ActorHasTag(ShowOnlyActorTag);
+
+		if (bUseShowOnlyActorsWithTag)
+		{
+			const bool bShouldShow = bIntersectsLayer && bShowOnlyActor;
+			Actor->SetActorHiddenInGame(!bShouldShow);
+			if (bShouldShow && SceneCaptureComponent)
+			{
+				SceneCaptureComponent->ShowOnlyActorComponents(Actor, true);
+			}
+			continue;
+		}
+
+		Actor->SetActorHiddenInGame(!bIntersectsLayer);
 	}
 }
 

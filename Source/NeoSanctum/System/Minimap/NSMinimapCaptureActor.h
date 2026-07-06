@@ -22,6 +22,10 @@ class NEOSANCTUM_API ANSMinimapCaptureActor : public AActor
 public:
 	ANSMinimapCaptureActor();
 
+	// 미니맵 캡처 요청
+	UFUNCTION(BlueprintCallable, Category = "Minimap")
+	void CaptureMinimap();
+
 	// 던전 미니맵 캡처 요청
 	UFUNCTION(BlueprintCallable, Category = "Minimap")
 	void CaptureDungeonMinimap();
@@ -53,6 +57,12 @@ private:
 
 	// DungeonGenerator 자동 탐색
 	void TryAutoBindDungeonGenerator();
+
+	// 현재 NetMode에서 미니맵 캡처를 실행할 수 있는지 확인
+	bool ShouldRunMinimapCapture() const;
+
+	// DungeonGenerator 없이 정적 월드 캡처 예약
+	void ScheduleStaticWorldCapture();
 
 	// DataTable 기반 층 설정 적용
 	void ApplyLayerConfig();
@@ -90,6 +100,18 @@ private:
 	// 던전 월드 범위 계산
 	bool BuildDungeonWorldBounds(FBox& OutWorldBounds) const;
 
+	// 캡처에 사용할 월드 범위 계산
+	bool BuildCaptureWorldBounds(FBox& OutWorldBounds) const;
+
+	// 월드 액터 기반 범위 계산
+	bool BuildWorldActorBounds(FBox& OutWorldBounds) const;
+
+	// 액터가 월드 bounds 계산 대상인지 확인
+	bool ShouldUseActorForWorldBounds(const AActor* Actor) const;
+
+	// 렌더 가능한 월드 액터 컴포넌트 수 계산
+	int32 CountRenderableWorldPrimitiveComponents() const;
+
 	// 렌더 타겟 생성 보장
 	void EnsureRenderTarget();
 
@@ -122,6 +144,9 @@ private:
 
 	// 층 캡처용 룸 액터 표시 상태 준비
 	void PrepareRoomActorVisibilityForLayer(const FNSMinimapCaptureLayerConfig& LayerConfig);
+
+	// 층 캡처용 월드 액터 표시 상태 준비
+	void PrepareWorldActorVisibilityForLayer(const FNSMinimapCaptureLayerConfig& LayerConfig);
 
 	// 렌더 타겟 기반 다층 캡처
 	void CapturePreparedLayers();
@@ -181,6 +206,18 @@ private:
 	// 던전 경계 여유 범위
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
 	float BoundsPadding = 600.0f;
+
+	// DungeonGenerator가 없을 때 월드 액터 bounds로 캡처 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Bounds", meta = (AllowPrivateAccess = "true"))
+	bool bUseWorldActorBoundsFallback = true;
+
+	// 월드 액터 bounds 계산 시 태그가 있는 액터만 사용할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Bounds", meta = (AllowPrivateAccess = "true", EditCondition = "bUseWorldActorBoundsFallback"))
+	bool bUseWorldBoundsActorTag = false;
+
+	// 월드 액터 bounds 계산에 포함할 액터 태그
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Bounds", meta = (AllowPrivateAccess = "true", EditCondition = "bUseWorldActorBoundsFallback && bUseWorldBoundsActorTag"))
+	FName WorldBoundsActorTag = TEXT("MinimapBounds");
 
 	// 플레이어 주변 디버그 캡처 여부
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Debug", meta = (AllowPrivateAccess = "true"))
