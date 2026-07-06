@@ -53,6 +53,10 @@ struct FNSStageObjectiveState
 	int32 Current = 0;
 	UPROPERTY(BlueprintReadOnly, Category = "Stage")
 	int32 Target  = 0;
+	
+	//UI에 표시할 현재 목표 설명
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	FText Description;
 };
 
 UCLASS()

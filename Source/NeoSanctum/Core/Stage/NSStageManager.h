@@ -30,6 +30,11 @@ public:
     int32 GetObjectiveCurrent() const { return ObjectiveProgress; }
     int32 GetObjectiveTarget() const;
 	
+	const FText& GetObjectiveDescription() const
+	{
+		return CurrentObjective.Description;
+	}
+	
 	// 클리어 판정 완료 시 GameMode에 알릴 델리게이트
 	FNSOnObjectiveComplete OnObjectiveComplete;
 

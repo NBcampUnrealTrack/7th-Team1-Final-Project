@@ -34,6 +34,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 
+
 ANSRunGameMode::ANSRunGameMode()
 {
 	bUseSeamlessTravel = true;
@@ -1246,7 +1247,7 @@ void ANSRunGameMode::HandleObjectiveComplete()
 	{
 		return;
 	}
-
+	
 	if (ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>())
 	{
 		NSGameState->SetStagePhase(ENSStagePhase::BossReady);
@@ -1288,6 +1289,7 @@ void ANSRunGameMode::PushObjectiveStateToGameState()
 	ObjectiveState.Type    = NSStageManager->GetObjectiveType();
 	ObjectiveState.Current = NSStageManager->GetObjectiveCurrent();
 	ObjectiveState.Target  = NSStageManager->GetObjectiveTarget();
+	ObjectiveState.Description = NSStageManager->GetObjectiveDescription();
 	RunGS->SetObjectiveState(ObjectiveState);
 }
 
