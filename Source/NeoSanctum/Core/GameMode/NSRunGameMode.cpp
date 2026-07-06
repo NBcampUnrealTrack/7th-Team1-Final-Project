@@ -87,37 +87,6 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 		return;
 	}
 	
-	// 맵 생성 중 적 카운팅 잘못되었을수도 있어서 검증용 추가 로직
-	/*
-	int32 ActualAliveEnemies = 0;
-	for (TActorIterator<ANSEnemyCharacterBase> It(GetWorld()); It; ++It)
-	{
-		ANSEnemyCharacterBase* Enemy = *It;
-		if (Enemy && !Enemy->IsDead() && !Enemy->IsInPool())
-		{
-			ActualAliveEnemies++;
-		}
-	}
-
-	if (ActualAliveEnemies > 0)
-	{
-		// 카운팅 불일치 스테이지 매니저에서 보정
-		if (NSStageManager)
-		{
-			NSStageManager->SetEnemyCount(ActualAliveEnemies);
-		}
-		UE_LOG(LogTemp, Warning, TEXT("적 카운팅 불일치 현재 남은 적: %d"), ActualAliveEnemies);
-		return;
-	}
-	*/
-	
-	// [임시] 클리어 시 남은 적을 풀로 반환 (보스 구현 후 정리)
-	// 보스룸 진입 시 타이머 정지 (보스 구현되면 보스룸 Enter로 이전)
-	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
-	{
-		Flow->PauseDifficultyTimer(); 
-	}
-	
 	if (NSMonsterPoolManager)
 	{
 		TArray<ANSEnemyCharacterBase*> AliveEnemies;
@@ -211,6 +180,11 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
 	{
 		NSStageManager->HandleEnemyKilled();
 		PushObjectiveStateToGameState();
+	}
+	// BossFight 페이즈에서 보스 랭크 사망 시 스테이지 클리어
+	else if (RunGS && RunGS->StagePhase == ENSStagePhase::BossFight && IsBossEnemy(DeadEnemy))
+	{
+		NotifyStageCleared_Implementation();
 	}
 }
 
@@ -960,6 +934,20 @@ void ANSRunGameMode::ActivateBossSpawners()
 			break;
 		}
 	}
+}
+
+bool ANSRunGameMode::IsBossEnemy(const AActor* DeadEnemy) const
+{
+	const UNSEnemyCoreComponent* CoreComponent =
+		DeadEnemy ? DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>() : nullptr;
+	if (!IsValid(CoreComponent))
+	{
+		return false;
+	}
+	
+	const UNSEnemyData* EnemyData = CoreComponent->GetEnemyData();
+	
+	return EnemyData && EnemyData->EnemyRank == ENSEnemyRank::Boss;
 }
 
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
