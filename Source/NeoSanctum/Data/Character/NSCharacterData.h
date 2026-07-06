@@ -72,4 +72,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon",
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<ANSWeaponBase> DefaultWeaponClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon",
+		meta = (AssetBundles = "CommonData"))
+	TSoftClassPtr<ANSWeaponBase> DefaultLeftHandWeaponClass;
 };

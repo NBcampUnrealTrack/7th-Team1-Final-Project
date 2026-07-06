@@ -105,6 +105,7 @@ protected:
 	
 	void GiveCharacterDataAbilities();
 	void SpawnDefaultWeapon();
+	ANSWeaponBase* SpawnWeapon(TSubclassOf<ANSWeaponBase> WeaponClass, FName AttachSocketName);
 	
 	// 캐릭터 데이터를 런타임 중에 제거 : 캐릭터 데이터를 적용하는 상황에서 초기에 호출함
 	void ClearCharacterDataRuntimeState();
@@ -115,6 +116,9 @@ protected:
 	
 	UFUNCTION()
 	void OnRep_CurrentWeapon();
+
+	UFUNCTION()
+	void OnRep_CurrentLeftHandWeapon();
 	
 	// 사망 연출을 클라이언트에서 한 번 복제해야함.
 	UFUNCTION()
@@ -207,6 +211,9 @@ protected:
 	// 현재 캐릭터 무기
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentWeapon, BlueprintReadOnly, Category = "Weapon")
 	TObjectPtr<ANSWeaponBase> CurrentWeapon;
+
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentLeftHandWeapon, BlueprintReadOnly, Category = "Weapon")
+	TObjectPtr<ANSWeaponBase> CurrentLeftHandWeapon;
 	
 	// AbilitySpecHandle
 	UPROPERTY(Transient)
