@@ -19,6 +19,7 @@
 #include "Components/TextBlock.h"
 #include "Components/ScaleBox.h"
 #include "Components/Border.h"
+#include "Components/Button.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "GameFramework/PlayerController.h"
@@ -155,6 +156,12 @@ void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 {
+	// 리롤 응답을 기다리는 중이면 카드 선택도 막음.
+	if (bRerollRequestPending)
+	{
+		return;
+	}
+
 	//현재 오퍼 범위 밖이면 무시
 	if (!CurrentOfferCards.IsValidIndex(CardIndex))
 	{
@@ -173,14 +180,57 @@ void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 
 void UNSAugmentationWidget::RequestRerollAugment()
 {
-	// 재화/리롤 횟수 검증은 서버(Server_RerollCard)에서 처리 예정 (현재 재화 시스템 미연동)
+	// 이미 요청을 보내놨거나, 지금 오퍼에서 리롤이 안되는 상태면 무시 (버튼 숨김만으로는 T키를 못 막으니 여기서도 막음)
+	if (bRerollRequestPending || !bCanRerollCurrentOffer)
+	{
+		return;
+	}
+
 	UNSAugmentSelectionComponent* SelComp = GetSelectionComponent();
 	if (!SelComp)
 	{
 		return;
 	}
+
+	bRerollRequestPending = true;
+	SetRerollStatusMessage(FText::FromString(TEXT("리롤 중입니다.")));
+	RefreshRerollControls();
+
 	//서버에 전체 리롤 요청 → Client_PresentOffer → HandleOfferPresented로 카드 갱신
 	SelComp->Server_RerollCard(CurrentOfferRevision);
+}
+
+void UNSAugmentationWidget::RefreshRerollControls()
+{
+	const ESlateVisibility RerollVisibility =
+		bCanRerollCurrentOffer ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+
+	if (RerollButton)
+	{
+		RerollButton->SetVisibility(RerollVisibility);
+		RerollButton->SetIsEnabled(!bRerollRequestPending);
+	}
+
+	if (RerollShortcutHintWidget)
+	{
+		RerollShortcutHintWidget->SetVisibility(RerollVisibility);
+	}
+
+	if (RerollCostText)
+	{
+		RerollCostText->SetText(FText::AsNumber(CurrentRerollCost));
+	}
+}
+
+void UNSAugmentationWidget::SetRerollStatusMessage(const FText& Message)
+{
+	if (!RerollStatusText)
+	{
+		return;
+	}
+
+	RerollStatusText->SetText(Message);
+	RerollStatusText->SetVisibility(Message.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 }
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
@@ -349,13 +399,12 @@ void UNSAugmentationWidget::NativeConstruct()
 	HideCardSection();
 
 	//오너 PC의 선택 컴포넌트 델리게이트 구독
-	APlayerController* PC = GetOwningPlayer();
-
 	if (UNSAugmentSelectionComponent* SelComp = GetSelectionComponent())
 	{
 		SelComp->OnOfferPresented.AddDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelComp->OnOfferClosed.AddDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
 		SelComp->OnPendingCountChanged.AddDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+		SelComp->OnRerollResult.AddDynamic(this, &UNSAugmentationWidget::HandleRerollResult);
 		//현재 대기 카운트로 뱃지 초기화
 		HandlePendingCountChanged(SelComp->GetPendingCount());
 	}
@@ -365,6 +414,14 @@ void UNSAugmentationWidget::NativeConstruct()
 	{
 		Inv->OnInventoryChanged.AddDynamic(this, &UNSAugmentationWidget::HandleInventoryChanged);
 	}
+
+	if (RerollButton)
+	{
+		RerollButton->OnClicked.AddDynamic(this, &UNSAugmentationWidget::RequestRerollAugment);
+	}
+
+	RefreshRerollControls();
+	SetRerollStatusMessage(FText::GetEmpty());
 }
 
 void UNSAugmentationWidget::NativeDestruct()
@@ -386,6 +443,7 @@ void UNSAugmentationWidget::NativeDestruct()
 		SelectionComponent->OnOfferPresented.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelectionComponent->OnOfferClosed.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
 		SelectionComponent->OnPendingCountChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+		SelectionComponent->OnRerollResult.RemoveDynamic(this, &UNSAugmentationWidget::HandleRerollResult);
 	}
 	if (InventoryComponent.IsValid())
 	{
@@ -435,7 +493,17 @@ void UNSAugmentationWidget::HandleOfferPresented(
 	bool bCanReroll,
 	int32 OfferRevision)
 {
+	// 지금 잠겨있던 것이 리롤 요청이었는지 먼저 기억해두고 바로 품 (리롤 완료 문구 표시용)
+	const bool bWasRerollRequest = bRerollRequestPending;
+	bRerollRequestPending = false;
+
 	CurrentOfferRevision = OfferRevision;
+	CurrentRerollCost = RerollCost;
+	bCanRerollCurrentOffer = bCanReroll;
+
+	SetRerollStatusMessage(bWasRerollRequest ? FText::FromString(TEXT("리롤 완료")) : FText::GetEmpty());
+	RefreshRerollControls();
+
 	CurrentOfferCards = Cards;
 	CurrentOfferViewData.Reset();
 	CurrentOfferViewData.SetNum(Cards.Num());
@@ -571,6 +639,46 @@ void UNSAugmentationWidget::HandlePendingCountChanged(int32 NewCount)
 	}
 	PendingCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	PendingCountText->SetText(FText::AsNumber(NewCount));
+}
+
+void UNSAugmentationWidget::HandleRerollResult(
+	ENSAugmentRerollResult Result,
+	int64 RequiredCost,
+	int64 HaveCurrency,
+	int32 RequestRevision,
+	int32 ServerOfferRevision)
+{
+	bRerollRequestPending = false;
+
+	// 응답이 내가 보낸 요청 기준이 아니면(그 사이 오퍼가 이미 바뀌었으면) 문구는 안띄우고 잠금만 품
+	if (RequestRevision != CurrentOfferRevision)
+	{
+		RefreshRerollControls();
+		return;
+	}
+
+	CurrentOfferRevision = ServerOfferRevision;
+
+	FText Message;
+	switch (Result)
+	{
+	case ENSAugmentRerollResult::NotEnoughCurrency:
+		Message = FText::FromString(FString::Printf(
+			TEXT("임시 재화가 부족합니다. (보유 %lld / 필요 %lld)"), HaveCurrency, RequiredCost)
+		);
+		break;
+
+	case ENSAugmentRerollResult::NoDifferentOffer:
+		Message = FText::FromString(TEXT("현재 조건에서 새로운 증강 카드를 만들 수 없습니다."));
+		break;
+
+	default:
+		// InvalidRequest/NoActiveOffer/StaleRevision은 사용자가 딱히 알 필요 없는 상황이라 조용히 잠금만 풀어줌.
+		break;
+	}
+
+	SetRerollStatusMessage(Message);
+	RefreshRerollControls();
 }
 
 void UNSAugmentationWidget::HandleInventoryChanged()

@@ -10,6 +10,7 @@
 #include "NeoSanctum/Type/NSAugmentDisplayTypes.h"
 #include "NSAugmentationWidget.generated.h"
 
+class UButton;
 class UCanvasPanel;
 class USizeBox;
 class UTextBlock;
@@ -44,6 +45,7 @@ public:
 	//선택한 증강 적용 요청
 	void ConfirmAugmentSelection(int32 CardIndex);
 	//증강 선택지 리롤 요청
+	UFUNCTION()
 	void RequestRerollAugment();
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
@@ -70,6 +72,18 @@ private:
 	//생성된 증강 카드 목록
 	UPROPERTY()
 	TArray<TObjectPtr<UNSAugmentCardWidget>> AugmentCardWidgets;
+	// 리롤 버튼 (없어도 T키로는 계속 리롤 가능)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UButton> RerollButton;
+	// "[T]" 같은 단축키 안내 위젯 (리롤 가능할 때만 버튼과 같이 보임)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> RerollShortcutHintWidget;
+	// 현재 리롤 비용 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> RerollCostText;
+	// 리롤 진행 상태와 실패 문구 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> RerollStatusText;
 	//기본 증강 선택지 개수
 	int32 ChoiceCount = 3;
 	//현재 하이라이트된 카드 인덱스
@@ -83,6 +97,12 @@ private:
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
 	// 마지막으로 받은 오퍼 번호 (Server_Choose/Server_RerollCard 보낼 때 같이 실어 보냄)
 	int32 CurrentOfferRevision = 0;
+	// 리롤 요청을 보내고 서버 응답을 기다리는 중이면 true. 이 동안 카드 선택, 추가 리롤을 막음.
+	bool bRerollRequestPending = false;
+	// 서버가 마지막으로 알려준 리롤 비용.
+	int64 CurrentRerollCost = 0;
+	// 지금 오퍼에서 리롤이 가능한지 (규칙 없는 트리거이거나 부분 오퍼면 false)
+	bool bCanRerollCurrentOffer = false;
 	// Bridge가 생성한 현재 오퍼 카드 표시 데이터
 	UPROPERTY(Transient)
 	TArray<FNSAugmentCardViewData> CurrentOfferViewData;
@@ -112,6 +132,19 @@ private:
 		bool bCanReroll,
 		int32 OfferRevision
 	);
+	// 리롤 실패 결과 수신 -> 잠금 해제 + 문구 갱신
+	UFUNCTION()
+	void HandleRerollResult(
+		ENSAugmentRerollResult Result,
+		int64 RequiredCost,
+		int64 HaveCurrency,
+		int32 RequestRevision,
+		int32 ServerOfferRevision
+	);
+	// 리롤 버튼/힌트/비용 텍스트를 지금 상태에 맞게 갱신
+	void RefreshRerollControls();
+	// 상태 또는 실패 문구를 보여주거나(비어있으면) 숨김
+	void SetRerollStatusMessage(const FText& Message);
 	//오퍼 종료 수신 -> 카드 영역 숨김 (패널은 유지)
 	UFUNCTION()
 	void HandleOfferClosed();
