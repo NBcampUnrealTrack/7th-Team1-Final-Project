@@ -62,7 +62,7 @@ protected:
 	void ApplyDuration(float InDuration);
 	void HandleOutOfHealth();
 	void DestroyBarrier();
-	void ApplyVisualRadius(float Radius);
+	virtual void ApplyVisualRadius(float Radius);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
