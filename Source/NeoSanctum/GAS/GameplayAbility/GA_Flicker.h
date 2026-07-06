@@ -6,10 +6,14 @@
 #include "GA_SkillBase.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameplayTagContainer.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_Flicker.generated.h"
 
 class UAbilityTask_ApplyRootMotionMoveToForce;
+class UAbilityTask_PlayMontageAndWait;
+class UAbilityTask_WaitGameplayEvent;
+class UAnimMontage;
 class UGameplayEffect;
 
 /**
@@ -31,6 +35,12 @@ protected:
 		const FGameplayEventData* TriggerEventData
 	) override;
 
+	virtual void InputReleased(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo
+	) override;
+
 	virtual void EndAbility(
 		const FGameplayAbilitySpecHandle Handle,
 		const FGameplayAbilityActorInfo* ActorInfo,
@@ -42,6 +52,24 @@ protected:
 private:
 	UFUNCTION()
 	void OnFlickerMoveFinished();
+
+	UFUNCTION()
+	void OnFlickerMontageCompleted();
+
+	UFUNCTION()
+	void OnFlickerMontageInterrupted();
+
+	UFUNCTION()
+	void OnFlickerHitEventReceived(FGameplayEventData Payload);
+
+	// Flicker 몽타주 재생 시작
+	bool PlayFlickerMontage();
+	// Flicker 몽타주 정지
+	void StopFlickerMontage() const;
+	// Flicker Hit 이벤트 대기 시작
+	void StartHitEventTask();
+	// Attack 섹션으로 몽타주 전환
+	bool JumpToAttackSection() const;
 
 	// 크로스헤어 기준 최적 타겟 탐색
 	bool TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const;
@@ -64,7 +92,7 @@ private:
 	// 공격 위치로 이동 시작
 	bool StartFlickerMove(const FVector& AttackLocation);
 	// 이동 전 MovementMode 복구
-	void RestoreMovementMode() const;
+	void RestoreMovementMode();
 
 	// 현재 타겟에게 데미지 적용
 	void ApplyDamageToTarget();
@@ -80,6 +108,22 @@ private:
 	// Flicker 데미지 GameplayEffect
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker")
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+	
+	// Flicker 애니메이션 몽타주
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker|Montage")
+	TObjectPtr<UAnimMontage> FlickerMontage;
+
+	// Flicker 몽타주 재생 속도
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker|Montage", meta = (ClampMin = "0.01"))
+	float FlickerMontagePlayRate = 1.0f;
+
+	// 돌진 공격 단계의 애니메이션 몽타주 섹션 이름
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker|Montage")
+	FName AttackSectionName = TEXT("Attack");
+
+	// 데미지 적용 타이밍을 전달하는 GameplayEvent 태그
+	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker|Montage")
+	FGameplayTag HitEventTag;
 
 	// 타겟 앞 위치까지 이동하는 시간
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker", meta = (ClampMin = "0.01"))
@@ -108,6 +152,21 @@ private:
 	// 공격 위치 이동 AbilityTask
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_ApplyRootMotionMoveToForce> MoveTask;
+
+	// Flicker 몽타주 재생 AbilityTask
+	UPROPERTY()
+	TObjectPtr<UAbilityTask_PlayMontageAndWait> MontageTask;
+
+	// Flicker Hit GameplayEvent 대기 Task
+	UPROPERTY()
+	TObjectPtr<UAbilityTask_WaitGameplayEvent> HitEventTask;
+
+	// Release 입력 처리 여부
+	bool bReleaseRequested = false;
+	// 돌진 시작 여부
+	bool bDashStarted = false;
+	// 현재 타겟 데미지 적용 여부
+	bool bCurrentTargetDamageApplied = false;
 
 	// 현재 공격 대상
 	TWeakObjectPtr<AActor> CurrentTarget;

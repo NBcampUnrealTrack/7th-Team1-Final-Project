@@ -5,6 +5,10 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
+#include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
+#include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Animation/AnimInstance.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -22,6 +26,7 @@ UGA_Flicker::UGA_Flicker()
 	SetAssetTags(AssetTags);
 
 	SkillAbilityTag = NSGameplayTags::Ability_Vanguard_Flicker;
+	HitEventTag = NSGameplayTags::Event_Vanguard_Hit;
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
 }
@@ -38,7 +43,38 @@ void UGA_Flicker::ActivateAbility(
 		return;
 	}
 
-	// 발동 전 유효 타겟 탐색
+	// Ability가 새로 활성화될 때 이전 Release/돌진 상태를 초기화
+	bReleaseRequested = false;
+	bDashStarted = false;
+	bCurrentTargetDamageApplied = false;
+	PreviousMovementMode.Reset();
+
+	// Hold 단계 몽타주 재생 시작
+	PlayFlickerMontage();
+	StartHitEventTask();
+}
+
+void UGA_Flicker::InputReleased(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo)
+{
+	Super::InputReleased(Handle, ActorInfo, ActivationInfo);
+
+	// Release 입력 중복 처리 방지
+	if (bReleaseRequested)
+	{
+		return;
+	}
+
+	bReleaseRequested = true;
+
+	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	AActor* TargetActor = nullptr;
 	FVector TargetLocation = FVector::ZeroVector;
 	if (!TryFindBestTarget(TargetActor, TargetLocation))
@@ -62,6 +98,7 @@ void UGA_Flicker::ActivateAbility(
 	}
 
 	AddDashingState();
+	bDashStarted = true;
 
 	// 첫 번째 체인 타겟 처리 시작
 	CurrentTargetIndex = 0;
@@ -78,15 +115,34 @@ void UGA_Flicker::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	StopFlickerMontage();
+
 	if (MoveTask)
 	{
+		MoveTask->OnTimedOut.RemoveAll(this);
+		MoveTask->OnTimedOutAndDestinationReached.RemoveAll(this);
 		MoveTask->EndTask();
 		MoveTask = nullptr;
+	}
+
+	if (MontageTask)
+	{
+		MontageTask->EndTask();
+		MontageTask = nullptr;
+	}
+
+	if (HitEventTask)
+	{
+		HitEventTask->EndTask();
+		HitEventTask = nullptr;
 	}
 
 	RestoreMovementMode();
 	RemoveDashingState();
 
+	bReleaseRequested = false;
+	bDashStarted = false;
+	bCurrentTargetDamageApplied = false;
 	CurrentTarget.Reset();
 	CurrentTargetLocation = FVector::ZeroVector;
 	// 다음 발동을 위한 체인 타겟 상태 초기화
@@ -100,9 +156,150 @@ void UGA_Flicker::EndAbility(
 void UGA_Flicker::OnFlickerMoveFinished()
 {
 	MoveTask = nullptr;
-	ApplyDamageToTarget();
 	// 현재 타겟 공격 후 다음 타겟으로 진행
 	AdvanceToNextTarget();
+}
+
+void UGA_Flicker::OnFlickerMontageCompleted()
+{
+	MontageTask = nullptr;
+}
+
+void UGA_Flicker::OnFlickerMontageInterrupted()
+{
+	MontageTask = nullptr;
+
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		true);
+}
+
+void UGA_Flicker::OnFlickerHitEventReceived(FGameplayEventData Payload)
+{
+	if (!bDashStarted || bCurrentTargetDamageApplied)
+	{
+		return;
+	}
+
+	bCurrentTargetDamageApplied = true;
+	ApplyDamageToTarget();
+}
+
+bool UGA_Flicker::PlayFlickerMontage()
+{
+	if (!FlickerMontage)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Flicker montage is not assigned. AbilityClass=%s AbilityObject=%s"),
+			*GetClass()->GetPathName(),
+			*GetName());
+		return false;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
+	const UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+	if (!AnimInstance)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Flicker montage cannot play because AnimInstance is missing."));
+		return false;
+	}
+
+	if (MontageTask)
+	{
+		MontageTask->EndTask();
+		MontageTask = nullptr;
+	}
+
+	const float FinalPlayRate = FMath::Max(FlickerMontagePlayRate, 0.01f);
+	MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+		this,
+		TEXT("FlickerMontageTask"),
+		FlickerMontage,
+		FinalPlayRate,
+		NAME_None,
+		false,
+		1.0f,
+		0.0f);
+
+	if (!MontageTask)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Flicker montage task could not be created."));
+		return false;
+	}
+
+	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnFlickerMontageCompleted);
+	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnFlickerMontageInterrupted);
+	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnFlickerMontageInterrupted);
+	MontageTask->ReadyForActivation();
+
+	return true;
+}
+
+void UGA_Flicker::StopFlickerMontage() const
+{
+	if (!FlickerMontage)
+	{
+		return;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
+	UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimInstance->Montage_IsPlaying(FlickerMontage))
+	{
+		return;
+	}
+
+	AnimInstance->Montage_Stop(0.15f, FlickerMontage);
+}
+
+void UGA_Flicker::StartHitEventTask()
+{
+	if (!HitEventTag.IsValid())
+	{
+		return;
+	}
+
+	// 몽타주 Notify의 Hit GameplayEvent 대기
+	HitEventTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
+		this,
+		HitEventTag,
+		nullptr,
+		false,
+		true);
+
+	if (!HitEventTask)
+	{
+		return;
+	}
+
+	HitEventTask->EventReceived.AddDynamic(this, &ThisClass::OnFlickerHitEventReceived);
+	HitEventTask->ReadyForActivation();
+}
+
+bool UGA_Flicker::JumpToAttackSection() const
+{
+	if (!FlickerMontage || AttackSectionName.IsNone())
+	{
+		return false;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
+	UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimInstance->Montage_IsPlaying(FlickerMontage))
+	{
+		return false;
+	}
+
+	AnimInstance->Montage_JumpToSection(AttackSectionName, FlickerMontage);
+	return true;
 }
 
 bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const
@@ -494,6 +691,12 @@ bool UGA_Flicker::StartCurrentTargetMove()
 
 	CurrentTarget = TargetActor;
 	CurrentTargetLocation = SelectedTargetLocations[CurrentTargetIndex];
+	bCurrentTargetDamageApplied = false;
+	if (!JumpToAttackSection())
+	{
+		PlayFlickerMontage();
+		JumpToAttackSection();
+	}
 
 	// 타겟과 겹치지 않는 공격 위치 계산
 	FVector AttackLocation = FVector::ZeroVector;
@@ -543,8 +746,11 @@ bool UGA_Flicker::StartFlickerMove(const FVector& AttackLocation)
 		return false;
 	}
 
-	// 이동 종료 후 복구할 MovementMode 저장
-	PreviousMovementMode = MovementComponent->MovementMode;
+	// 첫 돌진 전 MovementMode만 복구 대상으로 저장
+	if (!PreviousMovementMode.IsSet())
+	{
+		PreviousMovementMode = MovementComponent->MovementMode;
+	}
 
 	const float FinalMoveDuration = FMath::Max(MoveDuration, 0.01f);
 
@@ -640,7 +846,7 @@ bool UGA_Flicker::TryGetFinalDamage(float& OutDamage) const
 	return TryGetFinalSkillDamage(SkillAbilityTag, OutDamage);
 }
 
-void UGA_Flicker::RestoreMovementMode() const
+void UGA_Flicker::RestoreMovementMode()
 {
 	ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
 	UCharacterMovementComponent* MovementComponent = Character ? Character->GetCharacterMovement() : nullptr;
@@ -652,10 +858,21 @@ void UGA_Flicker::RestoreMovementMode() const
 	// RootMotion 종료 후 잔여 속도 제거
 	MovementComponent->StopMovementImmediately();
 
-	if (PreviousMovementMode.IsSet())
+	if (PreviousMovementMode.IsSet() && PreviousMovementMode.GetValue() != MOVE_Flying)
 	{
 		MovementComponent->SetMovementMode(PreviousMovementMode.GetValue());
+		PreviousMovementMode.Reset();
 	}
+	else
+	{
+		PreviousMovementMode.Reset();
+		const EMovementMode RestoreMode = MovementComponent->IsMovingOnGround()
+			? MOVE_Walking
+			: MOVE_Falling;
+		MovementComponent->SetMovementMode(RestoreMode);
+	}
+
+	MovementComponent->StopMovementImmediately();
 }
 
 void UGA_Flicker::AddDashingState()
