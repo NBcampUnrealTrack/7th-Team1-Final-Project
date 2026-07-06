@@ -561,6 +561,8 @@ bool UNSAugmentSelectionComponent::TryFindRarityRule(
 	return false;
 }
 
+// IsDataValid는 에디터 시점 검증일 뿐이며, 런타임에는 그 이후 잘못 수정된 값이 그대로 로드될 수 있음.
+// InitialCost=0 같은 설정 오류가 NotEnoughCurrency로 오인되지 않도록 필드까지 다시 검증.
 bool UNSAugmentSelectionComponent::TryFindRerollRule(
 	const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const
 {

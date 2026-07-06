@@ -26,6 +26,8 @@ EDataValidationResult UNSRunConfig::IsDataValid(FDataValidationContext& Context)
 		Context.AddWarning(FText::FromString(Message));
 	};
 
+	// Reward.Trigger 자체는 네이티브로 등록되지 않았지만, 자식 태그(Reward.Trigger.LevelUp 등)가
+	// 등록되면 상위 태그가 트리에 자동 등록되므로 이 방식으로 조회 가능.
 	static const FGameplayTag RewardTriggerRoot =
 		FGameplayTag::RequestGameplayTag(FName(TEXT("Reward.Trigger")), false);
 
@@ -78,6 +80,8 @@ EDataValidationResult UNSRunConfig::IsDataValid(FDataValidationContext& Context)
 	// 역방향(RarityRuleSet에는 있으나 RerollRule 없음)은 "리롤 불가" 정책이므로 검증 대상이 아님.
 	if (!AugmentRarityRuleSet.IsNull())
 	{
+		// IsDataValid는 에디터 저장/검증 시점에 실행되어 살아있는 GameInstance/NSDataSubsystem이 없을 수 있으므로,
+		// 런타임 로드 경로에 기대지 않고 직접 동기 로드해 검증.
 		if (const UNSAugmentRarityRuleSet* LoadedRarityRuleSet = AugmentRarityRuleSet.LoadSynchronous())
 		{
 			TSet<FGameplayTag> RarityTriggerTags;
