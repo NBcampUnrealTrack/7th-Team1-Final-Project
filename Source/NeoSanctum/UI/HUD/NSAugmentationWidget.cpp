@@ -218,6 +218,7 @@ void UNSAugmentationWidget::RefreshRerollControls()
 
 	if (RerollCostText)
 	{
+		RerollCostText->SetVisibility(RerollVisibility);
 		RerollCostText->SetText(FText::AsNumber(CurrentRerollCost));
 	}
 }
@@ -653,6 +654,7 @@ void UNSAugmentationWidget::HandleRerollResult(
 	// 응답이 내가 보낸 요청 기준이 아니면(그 사이 오퍼가 이미 바뀌었으면) 문구는 안띄우고 잠금만 품
 	if (RequestRevision != CurrentOfferRevision)
 	{
+		SetRerollStatusMessage(FText::GetEmpty());
 		RefreshRerollControls();
 		return;
 	}
