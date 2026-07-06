@@ -17,7 +17,7 @@ struct FNSMonsterSpawnRow : public FTableRowBase
 	
 	// 캐릭터 클래스 (지상/공중)
 	UPROPERTY(EditDefaultsOnly, Category = "SpawnData")
-	TSoftClassPtr<ANSEnemyCharacterBase> CharacterClass;
+	TSoftClassPtr<APawn> CharacterClass;
 
 	// 데이터 에셋
 	UPROPERTY(EditDefaultsOnly, Category = "SpawnData")

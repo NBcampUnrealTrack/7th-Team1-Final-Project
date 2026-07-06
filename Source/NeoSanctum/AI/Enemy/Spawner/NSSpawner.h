@@ -134,7 +134,7 @@ protected:
 	int32 FixedSpawnQuantity = 0;
 
 private:
-	TSoftClassPtr<ANSEnemyCharacterBase> SoftCharacterClass;
+	TSoftClassPtr<APawn> SoftCharacterClass;
 	TSoftObjectPtr<UNSEnemyData> SoftEnemyData;
 	int32 FinalSpawnQuantity = 0;
 	TSharedPtr<FStreamableHandle> StreamingHandle;
