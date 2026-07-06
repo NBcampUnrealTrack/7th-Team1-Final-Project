@@ -11,6 +11,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSDestructibleAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "RoomLevel.h"
 
 
 ANSDestructibleObjectBase::ANSDestructibleObjectBase()
@@ -67,6 +68,39 @@ void ANSDestructibleObjectBase::BeginPlay()
 		AbilitySystem->GetGameplayAttributeValueChangeDelegate(UNSDestructibleAttributeSet::GetHealthAttribute())
 		             .AddUObject(this, &ANSDestructibleObjectBase::HandleHealthChanged);
 	}
+
+	// 룸 occlusion 편입: 룸 레벨의 visibility 이벤트를 구독하고 현재 상태로 초기화.
+	// (이벤트는 변화 시에만 발화하므로 구독 직후 초기 상태를 직접 반영해야 함)
+	if (ARoomLevel* RoomLevel = Cast<ARoomLevel>(GetLevel()->GetLevelScriptActor()))
+	{
+		CachedRoomLevel = RoomLevel;
+		RoomLevel->VisibilityChangedEvent.AddDynamic(this, &ANSDestructibleObjectBase::HandleRoomVisibilityChanged);
+		HandleRoomVisibilityChanged(RoomLevel, RoomLevel->IsVisible());
+	}
+}
+
+void ANSDestructibleObjectBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (ARoomLevel* RoomLevel = CachedRoomLevel.Get())
+	{
+		RoomLevel->VisibilityChangedEvent.RemoveDynamic(this, &ANSDestructibleObjectBase::HandleRoomVisibilityChanged);
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ANSDestructibleObjectBase::HandleRoomVisibilityChanged(ARoomLevel* RoomLevel, bool bRoomVisible)
+{
+	// 파괴 후에는 StartDestruction 이 정한 숨김 상태를 유지한다.
+	// GC 잔해는 Remove-On-Sleep/Destroy 로 수 초 내에 정리되므로 별도 토글하지 않는다.
+	// bDestroyed 도 함께 확인: 늦참 클라는 프로퍼티 적용(bDestroyed=true) → BeginPlay →
+	// OnRep_Destroyed 순서라, BeginPlay 의 초기 동기화 시점엔 bDestructionStarted 가 아직 false.
+	if (bDestructionStarted || bDestroyed)
+	{
+		return;
+	}
+
+	StaticMeshComp->SetVisibility(bRoomVisible);
 }
 
 void ANSDestructibleObjectBase::HandleHealthChanged(const FOnAttributeChangeData& Data)
