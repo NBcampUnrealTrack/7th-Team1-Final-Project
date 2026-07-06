@@ -53,7 +53,53 @@ void UNSGraphicSettingWidget::InitializeResolutionOptions()
 	ResolutionComboBox->ClearOptions();
 	SupportedResolutions.Reset();
 	
-	UKismetSystemLibrary::GetSupportedFullscreenResolutions(SupportedResolutions);
+	UKismetSystemLibrary::GetSupportedFullscreenResolutions(
+		SupportedResolutions);
+	
+	UGameUserSettings* Settings =
+		GetGameUserSettings();
+	
+	const FIntPoint DesktopResolution =
+		Settings
+			? Settings->GetDesktopResolution()
+			: FIntPoint::ZeroValue;
+	
+	SupportedResolutions.RemoveAll(
+		[DesktopResolution](const FIntPoint& Resolution)
+		{
+			const float AspectRatio =
+				static_cast<float>(Resolution.X) /
+					static_cast<float>(Resolution.Y);
+			
+			const bool bIs16By9 =
+				FMath::IsNearlyEqual(AspectRatio,
+					16.0f / 9.0f,
+					0.01f);
+			
+			const bool bIsDesktopResolution =
+				Resolution == DesktopResolution;
+			
+			return !bIs16By9 &&
+				!bIsDesktopResolution;
+		});
+	
+	if (DesktopResolution.X > 0 &&
+		DesktopResolution.Y > 0)
+	{
+		SupportedResolutions.AddUnique(
+			DesktopResolution);
+	}
+	
+	SupportedResolutions.Sort(
+		[](const FIntPoint& Left, const FIntPoint& Right)
+		{
+			if (Left.X == Right.X)
+				{
+				return Left.Y < Right.Y;
+				}
+			
+			return Left.X < Right.X;
+			});
 	
 	for (const FIntPoint& Resolution : SupportedResolutions)
 	{
