@@ -6,7 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/StateTreeAIComponent.h"
+#include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
@@ -154,4 +156,20 @@ void ANSEnemyControllerBase::SyncPhaseBlackboard(
 	CachedBBComp->SetValueAsName(
 		CurrentPhaseIdKey,
 		PhaseComponent ? PhaseComponent->GetCurrentPhaseId() : NAME_None);
+}
+
+UNSFlyingLocomotionComponent* ANSEnemyControllerBase::GetControlledFlyingLocomotion() const
+{
+	ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(GetPawn());
+	if (!EnemyPawn) return nullptr;
+	
+	return EnemyPawn->GetFlyingLocomotion();
+}
+
+void ANSEnemyControllerBase::SyncFlyingRotationTarget(AActor* Target)
+{
+	UNSFlyingLocomotionComponent* FlyMovementComponent = GetControlledFlyingLocomotion();
+	if (!FlyMovementComponent) return;
+	
+	FlyMovementComponent->SetRotationTarget(Target);
 }

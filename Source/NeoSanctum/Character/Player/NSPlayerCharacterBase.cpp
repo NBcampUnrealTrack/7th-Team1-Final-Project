@@ -12,7 +12,9 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
@@ -483,7 +485,7 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	FTransform SpawnTransform(GetActorRotation(), SpawnLocation);
 	
 	// SpawnActorDeferred 
-	ANSBaseCompanionAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSBaseCompanionAI>(
+	ANSCompanionDroneAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSCompanionDroneAI>(
 		DroneAIClass,
 		SpawnTransform,
 		this,

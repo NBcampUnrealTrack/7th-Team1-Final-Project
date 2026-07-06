@@ -82,4 +82,25 @@ private:
 	void ExecuteDamageFlashCueAfterDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
+	
+	// @민재 : 보스 쉴드 로직을 위한 임시 쉴드 옵션추가
+public:
+	// TODO(refactor): 현재는 보스만 사용. 향후 UNSBossAttributeSet로 분리 예정 — 아래 Shield 블록만 이전하면 됨
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Shield, Category = "GAS|Monster|Shield")
+	FGameplayAttributeData Shield;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, Shield);
+
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxShield, Category = "GAS|Monster|Shield")
+	FGameplayAttributeData MaxShield;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, MaxShield);
+
+protected:
+	// Health 차감 전 Shield로 데미지를 흡수 (MaxShield=0인 일반 몬스터는 즉시 통과)
+	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
+
+private:
+	UFUNCTION()
+	void OnRep_Shield(const FGameplayAttributeData& OldShield);
+	UFUNCTION()
+	void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
 };

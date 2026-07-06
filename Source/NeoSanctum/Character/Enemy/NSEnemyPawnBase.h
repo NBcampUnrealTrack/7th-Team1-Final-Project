@@ -24,6 +24,7 @@ class UNSEnemyThreatComponent;
 class UNSEnemyStateComponent;
 class UNSEnemyPartComponent;
 class UNSDissolveComponent;
+class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
 
 /*
@@ -76,7 +77,13 @@ public:
 
 	// 공격, 조준, Trace 기준으로 사용할 위치를 반환하는 함수
 	virtual FVector GetAimLocation() const override;
-
+	
+	// @민재 : 비행체 컴포넌트 사용을 위한 게터만 구현 지상몹일경우 자동 nullptr
+	virtual UNSFlyingLocomotionComponent* GetFlyingLocomotion() const { return nullptr; }
+	
+	// @민재 : 전투 타겟을 향해 몸체 회전을 할지 여부. 기본 true (드론·일반 비행체는 항상 주시)
+	virtual bool ShouldFaceCombatTarget() const { return true; }
+	
 	// 외부에서 EnemyData를 주입하는 함수
 	void SetEnemyData(UNSEnemyData* InEnemyData);
 

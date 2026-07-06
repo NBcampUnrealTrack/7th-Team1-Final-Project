@@ -8,7 +8,7 @@
 #include "NSBTService_JudgmentDroneTarget.generated.h"
 
 
-class ANSBaseCompanionAI;
+class ANSCompanionDroneAI;
 
 UCLASS()
 class NEOSANCTUM_API UNSBTService_JudgmentDroneTarget : public UBTService
@@ -30,9 +30,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector MoveTargetKey;
 	
-	/*UPROPERTY(EditAnywhere, Category="Blackboard")
-	FBlackboardKeySelector CurrencyActorKey;*/
-	
 	UPROPERTY(EditAnywhere, Category="Blackboard")
 	FBlackboardKeySelector TargetDropIdKey;
 	
@@ -40,11 +37,6 @@ protected:
 	FBlackboardKeySelector EnemyActorKey;
 	
 	// @민재 : 재화 관련 변수
-	/*UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
-	TSubclassOf<AActor> CurrencyClass;
-	
-	UPROPERTY(EditAnywhere, Category = "DroneAI|Currency")
-	TArray<TEnumAsByte<EObjectTypeQuery>> CurrencyObjectTypes;*/
 	
 	UPROPERTY(EditAnywhere, Category="DroneAI|Currency")
 	float CurrencyDetectionRadius = 1500.f;
@@ -70,7 +62,7 @@ protected:
 	FVector FollowOffset = FVector(-100.f, 0.f, 100.f);
 
 private:
-	ECompanionState EvaluateState(ANSBaseCompanionAI* CompanionPawn, UBlackboardComponent* BB) const;
+	ECompanionState EvaluateState(ANSCompanionDroneAI* CompanionPawn, UBlackboardComponent* BB) const;
 	
 	// @민재 : 감지범위구체
 	AActor* FindNearestActor(
@@ -84,6 +76,6 @@ private:
 	FVector ComputeStandoffPosition(const AActor* Drone, const AActor* Enemy) const;
 	
 	// @민재 : 발사 어빌리티 활성화 시도
-	void TryActivateFire(const ANSBaseCompanionAI* Drone) const;
+	void TryActivateFire(const ANSCompanionDroneAI* Drone) const;
 	
 };

@@ -3,7 +3,6 @@
 
 #include "NSTestCoin.h"
 #include "EngineUtils.h"
-#include "NSBasicDroneAI.h"
 #include "DrawDebugHelpers.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -61,7 +60,7 @@ void ANSTestCoin::CheckPlayerActor()
 	TArray<AActor*> IgnoreActors;
 	IgnoreActors.Add(this);
 	
-	// 범위 감지
+	/*// 범위 감지
 	UKismetSystemLibrary::SphereOverlapActors(
 	GetWorld(),
 	GetActorLocation(),	
@@ -70,7 +69,7 @@ void ANSTestCoin::CheckPlayerActor()
 	ANSBasicDroneAI::StaticClass(),
 	IgnoreActors,
 	OutActors
-	);
+	);*/
 	
 	// 찾은 엑터 판별
 	for (AActor* FindActor : OutActors)

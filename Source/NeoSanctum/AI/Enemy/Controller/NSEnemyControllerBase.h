@@ -9,9 +9,11 @@
 class UBlackboardComponent;
 class UStateTreeAIComponent;
 class UAbilitySystemComponent;
+class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
 class UNSEnemyPhaseComponent;
 class INSEnemyAgent;
+struct FNSEnemyAttackRow;
 
 /**
  * 일반 몬스터, 보스, 드론 Controller가 공유하는 Enemy AI 기반 Controller입니다.
@@ -72,4 +74,13 @@ protected:
 
 	// 현재 PhaseId를 저장할 Blackboard 키 이름
 	FName CurrentPhaseIdKey = TEXT("CurrentPhaseId");
+	
+	// ---@민재 : 비행 컴포넌트---
+	// 현재 Possess 중인 폰의 비행 로코모션을 반환 (비행체가 아니면 nullptr)
+	UNSFlyingLocomotionComponent* GetControlledFlyingLocomotion() const;
+
+	// 비행 로코모션의 회전 타겟 지정 (비행체 아니면 no-op). nullptr이면 velocity 방향 회전으로 복귀
+	void SyncFlyingRotationTarget(AActor* Target);
+	// ---
+	
 };
