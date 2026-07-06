@@ -48,9 +48,6 @@ protected:
 	// 대쉬 정상 종료 직후 Vanguard 대쉬공격 입력 창 열기
 	void AddDashAttackWindow();
 
-	// 대쉬공격 입력 가능 창 종료 및 상태태그 제거
-	void RemoveDashAttackWindow();
-
 protected:
 	// 대쉬 거리
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Dash", meta = (ClampMin = "0.0"))

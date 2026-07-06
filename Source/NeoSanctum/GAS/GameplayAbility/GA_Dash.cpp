@@ -205,20 +205,23 @@ void UGA_Dash::AddDashAttackWindow()
 	// 연속 대쉬로 태그 카운트가 누적되지 않도록 1로 고정
 	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 1);
 
+	// 타이머 종료 시점에 대쉬 Ability가 종료되면서 타이머가 Dash Ability 객체에 의존하는 함수를 호출한다면 문제가 발생함
+	// 따라서 람다로 WeakASC를 캡처해두고 이를 이용해서 태그 카운트를 0으로 만들어서 타이머를 작동하는 방식
+	const TWeakObjectPtr<UAbilitySystemComponent> WeakASC = ASC;
+	FTimerDelegate RemoveWindowDelegate;
+	RemoveWindowDelegate.BindLambda([WeakASC]()
+	{
+		if (UAbilitySystemComponent* TempASC = WeakASC.Get())
+		{
+			TempASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
+		}
+	});
+
 	World->GetTimerManager().ClearTimer(DashAttackWindowTimerHandle);
 	World->GetTimerManager().SetTimer(
 		DashAttackWindowTimerHandle,
-		this,
-		&ThisClass::RemoveDashAttackWindow,
+		RemoveWindowDelegate,
 		DashAttackWindowDuration,
 		false);
 }
 
-void UGA_Dash::RemoveDashAttackWindow()
-{
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
-	{
-		// 후속 공격 창 종료 시 태그 카운트 초기화
-		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
-	}
-}

@@ -18,6 +18,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Cooldown,					"CombatStat.Cooldown");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Duration,					"CombatStat.Duration");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_ChargingTime,				"CombatStat.ChargingTime");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_AttackSpeed,				"CombatStat.AttackSpeed");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_BuffRadius,				"CombatStat.BuffRadius");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_SkillRange,				"CombatStat.SkillRange");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MinSkillRange,			"CombatStat.MinSkillRange");
