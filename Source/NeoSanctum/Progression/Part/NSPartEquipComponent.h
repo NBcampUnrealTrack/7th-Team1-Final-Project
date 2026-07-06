@@ -127,7 +127,7 @@ private:
 
 	void RerollStat(FGameplayTag Slot);
 	void UpgradeRarity(FGameplayTag Slot);
-	float RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const;
+	float RollValueForRarity(ENSPartRarity Rarity) const;
 
 	void GenerateShopStock();
 	ENSPartRarity RollShopRarity() const;

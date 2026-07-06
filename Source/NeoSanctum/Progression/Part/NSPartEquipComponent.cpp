@@ -472,7 +472,7 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 		return;
 	}
 
-	Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
+	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
 	Part->RollCount++;
 
 	ApplyPartEffect(Slot);
@@ -517,33 +517,24 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 	}
 
 	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
+	Part->RollCount = 0;
 
-	if (UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part))
-	{
-		Part->CurrentValue = RollValueForRarity(Def, Part->CurrentRarity);
-	}
+	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
 
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
 	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess);
 }
 
-float UNSPartEquipComponent::RollValueForRarity(const UNSPartDefinition* Def, ENSPartRarity Rarity) const
+float UNSPartEquipComponent::RollValueForRarity(ENSPartRarity Rarity) const
 {
-	if (!Def)
-	{
-		return 0.f;
-	}
-
-	const FPrimaryAssetId DefId = Def->GetPrimaryAssetId();
-	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
+	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
 	if (!Row)
 	{
 		return 0.f;
 	}
 
-	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
-	return Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
+	return FMath::RandRange(Row->ValueRange.Min, Row->ValueRange.Max);
 }
 
 int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
@@ -639,8 +630,7 @@ void UNSPartEquipComponent::GenerateShopStock()
 			Item.Slot = SlotPair.Key;
 			Item.CurrentRarity = RollShopRarity();
 
-			const FNSPartValueRange* Range = Pick->ValueRange.Find(Item.CurrentRarity);
-			Item.CurrentValue = Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
+			Item.CurrentValue = RollValueForRarity(Item.CurrentRarity);
 
 			ShopStock.Add(Item);
 		}

@@ -52,10 +52,6 @@ struct FNSPartDefinitionRow : public FTableRowBase
 		meta = (ClampMin = "0"))
 	int64 UnlockCost = 0;
 
-	// 등급별 수치 범위 (장착/리롤/등급업 시 이 범위에서 결정)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
-	TMap<ENSPartRarity, FNSPartValueRange> ValueRange;
-
 	// false면 카탈로그에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bEnabled = true;
@@ -104,6 +100,10 @@ struct FNSPartUpgradeRow : public FTableRowBase
 	// 이 row가 적용되는 현재 등급
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
 	ENSPartRarity Rarity = ENSPartRarity::Common;
+
+	// 이 등급의 수치 범위 (장착/리롤/등급업 시 이 범위에서 결정)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
+	FNSPartValueRange ValueRange;
 
 	// 리롤 기본 비용 (임시 재화)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))

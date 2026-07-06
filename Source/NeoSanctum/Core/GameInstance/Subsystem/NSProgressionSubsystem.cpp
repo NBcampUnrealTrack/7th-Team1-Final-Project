@@ -358,13 +358,13 @@ bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNS
 		return false;
 	}
 
-	const FNSPartValueRange* Range = Row->ValueRange.Find(Rarity);
+	const FNSPartUpgradeRow* UpgradeRow = DataSS->GetPartUpgradeRow(Rarity);
 
 	FNSPartSaveData New;
 	New.Definition = Definition;
 	New.Rarity = Rarity;
 	New.EnhanceLevel = 0;
-	New.Value = Range ? FMath::RandRange(Range->Min, Range->Max) : 0.f;
+	New.Value = UpgradeRow ? FMath::RandRange(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max) : 0.f;
 
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
