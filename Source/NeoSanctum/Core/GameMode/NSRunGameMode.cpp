@@ -1148,12 +1148,13 @@ void ANSRunGameMode::ResolveVote()
 	for (APlayerState* PlayerState : NSGameState->PlayerArray)
 	{
 		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
-		const bool bNext = NSPlayerState && NSPlayerState->bVoteConfirmed
-						   && NSPlayerState->RunChoice == ENSRunChoice::NextStage;
-		bNext ? ++Next : ++Hub;
+		// 거점 귀환을 선택한 사람만 Hub, 나머지(미투표)는 Next
+		const bool bHub = NSPlayerState && NSPlayerState->bVoteConfirmed
+						  && NSPlayerState->RunChoice == ENSRunChoice::ReturnToHub;
+		bHub ? ++Hub : ++Next;
 	}
 	
-	const bool bGoNext = NSGameState->bIsClear && (Next > Hub);
+	const bool bGoNext = NSGameState->bIsClear && (Next >= Hub);
 
 	NSGameState->NextVotes = Next;
 	NSGameState->HubVotes = Hub;
