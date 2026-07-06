@@ -7,11 +7,18 @@
 #include "NeoSanctum/Combat/Component/NSBossAbilityExecutorComponent.h"
 #include "StateTreeExecutionContext.h"
 
+FNSSTTask_ExecuteBossAbility::FNSSTTask_ExecuteBossAbility()
+{
+	// Ability 실행 완료를 StateTree Task Tick에서 계속 감시하도록 하는 설정
+	bShouldCallTick = true;
+}
+
 EStateTreeRunStatus FNSSTTask_ExecuteBossAbility::EnterState(
 	FStateTreeExecutionContext& Context,
 	const FStateTreeTransitionResult& Transition) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	InstanceData = FInstanceDataType();
 
 	UNSBossAbilityExecutorComponent* Executor = ResolveExecutor(Context);
 	if (!Executor)
@@ -25,7 +32,7 @@ EStateTreeRunStatus FNSSTTask_ExecuteBossAbility::EnterState(
 	{
 		UE_LOG(
 			LogTemp,
-			Verbose,
+			Warning,
 			TEXT("NSSTTask_ExecuteBossAbility: 공격 실행 요청 실패. FixedAttackId=%s"),
 			*FixedAttackId.ToString());
 
@@ -33,6 +40,8 @@ EStateTreeRunStatus FNSSTTask_ExecuteBossAbility::EnterState(
 	}
 
 	InstanceData.CachedExecutor = Executor;
+	InstanceData.RequestedAttackId = FixedAttackId;
+	InstanceData.bRequestAccepted = true;
 
 	return EStateTreeRunStatus::Running;
 }
@@ -44,22 +53,30 @@ EStateTreeRunStatus FNSSTTask_ExecuteBossAbility::Tick(
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 
 	UNSBossAbilityExecutorComponent* Executor = InstanceData.CachedExecutor.Get();
-	if (!Executor)
+	if (!Executor || !InstanceData.bRequestAccepted)
 	{
 		return EStateTreeRunStatus::Failed;
 	}
+
+	const ENSBossAbilityExecutionState ExecutionState = Executor->GetExecutionState();
 
 	if (Executor->IsExecuting())
 	{
 		return EStateTreeRunStatus::Running;
 	}
 
-	if (Executor->WasLastAttackSuccessful())
+	if (ExecutionState == ENSBossAbilityExecutionState::Succeeded)
 	{
 		return EStateTreeRunStatus::Succeeded;
 	}
 
-	return EStateTreeRunStatus::Failed;
+	if (ExecutionState == ENSBossAbilityExecutionState::Failed ||
+		ExecutionState == ENSBossAbilityExecutionState::Cancelled)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	return EStateTreeRunStatus::Running;
 }
 
 void FNSSTTask_ExecuteBossAbility::ExitState(
@@ -74,12 +91,18 @@ void FNSSTTask_ExecuteBossAbility::ExitState(
 		return;
 	}
 
-	if (bCancelAbilityOnExit && Executor->IsExecuting())
+	const bool bCompleted =
+		Executor->WasLastAttackSuccessful() ||
+		Executor->WasLastAttackFailed();
+
+	if (bCancelAbilityOnExit && !bCompleted && Executor->IsExecuting())
 	{
 		Executor->CancelCurrentAttack();
 	}
 
 	InstanceData.CachedExecutor.Reset();
+	InstanceData.RequestedAttackId = NAME_None;
+	InstanceData.bRequestAccepted = false;
 }
 
 UNSBossAbilityExecutorComponent* FNSSTTask_ExecuteBossAbility::ResolveExecutor(

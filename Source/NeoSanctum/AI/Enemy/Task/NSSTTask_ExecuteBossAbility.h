@@ -23,6 +23,14 @@ struct FNSSTTask_ExecuteBossAbilityInstanceData
 	// 이번 Task가 요청한 ExecutorComponent
 	UPROPERTY(Transient)
 	TWeakObjectPtr<UNSBossAbilityExecutorComponent> CachedExecutor;
+
+	// 이번 Task가 실행 요청한 AttackId
+	UPROPERTY(Transient)
+	FName RequestedAttackId = NAME_None;
+
+	// 공격 실행 요청이 성공했는지 저장하는 값
+	UPROPERTY(Transient)
+	bool bRequestAccepted = false;
 };
 
 USTRUCT(meta = (DisplayName = "Execute Boss Ability", Category = "NeoSanctum|Boss"))
@@ -31,6 +39,8 @@ struct NEOSANCTUM_API FNSSTTask_ExecuteBossAbility : public FStateTreeTaskCommon
 	GENERATED_BODY()
 
 	using FInstanceDataType = FNSSTTask_ExecuteBossAbilityInstanceData;
+
+	FNSSTTask_ExecuteBossAbility();
 
 	virtual const UStruct* GetInstanceDataType() const override
 	{
@@ -48,7 +58,6 @@ struct NEOSANCTUM_API FNSSTTask_ExecuteBossAbility : public FStateTreeTaskCommon
 	virtual void ExitState(
 		FStateTreeExecutionContext& Context,
 		const FStateTreeTransitionResult& Transition) const override;
-
 
 	// 지정 공격만 실행할 때 사용하는 AttackId. None이면 조건 기반 자동 선택 사용
 	UPROPERTY(EditAnywhere, Category = "Config")
