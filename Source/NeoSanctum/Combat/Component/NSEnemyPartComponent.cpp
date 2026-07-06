@@ -127,6 +127,157 @@ void UNSEnemyPartComponent::GetPartRowsByAttackId(
 	}
 }
 
+void UNSEnemyPartComponent::GetMuzzleTransformsByAttackId(
+	FName AttackId,
+	TArray<FTransform>& OutTransforms) const
+{
+	OutTransforms.Reset();
+
+	if (AttackId.IsNone())
+	{
+		return;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (!PartRow)
+		{
+			continue;
+		}
+
+		FTransform MuzzleTransform;
+		if (TryGetMuzzleTransformFromPartRow(*PartRow, MuzzleTransform))
+		{
+			OutTransforms.Add(MuzzleTransform);
+		}
+	}
+}
+
+void UNSEnemyPartComponent::GetTraceSegmentsByAttackId(
+	FName AttackId,
+	float FallbackDistance,
+	const FVector& FallbackDirection,
+	TArray<FNSEnemyPartTraceSegment>& OutSegments) const
+{
+	OutSegments.Reset();
+
+	if (AttackId.IsNone())
+	{
+		return;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (!PartRow)
+		{
+			continue;
+		}
+
+		FVector Start;
+		FVector End;
+
+		if (TryGetTraceSegmentFromPartRow(
+			*PartRow,
+			FallbackDistance,
+			FallbackDirection,
+			Start,
+			End))
+		{
+			FNSEnemyPartTraceSegment Segment;
+			Segment.Start = Start;
+			Segment.End = End;
+			OutSegments.Add(Segment);
+		}
+	}
+}
+
+void UNSEnemyPartComponent::GetPartRowsByAttackIdAndAimRole(
+	FName AttackId,
+	ENSEnemyPartAimRole AimRole,
+	TArray<const FNSEnemyPartRow*>& OutPartRows) const
+{
+	OutPartRows.Reset();
+
+	if (AttackId.IsNone() || AimRole == ENSEnemyPartAimRole::None)
+	{
+		return;
+	}
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackId(AttackId, PartRows);
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (PartRow && PartRow->AimRole == AimRole)
+		{
+			OutPartRows.Add(PartRow);
+		}
+	}
+}
+
+bool UNSEnemyPartComponent::TryGetAimLimitsByAttackId(
+	FName AttackId,
+	ENSEnemyPartAimRole AimRole,
+	float& OutYawLimit,
+	float& OutPitchLimit,
+	float& OutAimSpeed) const
+{
+	OutYawLimit = 0.0f;
+	OutPitchLimit = 0.0f;
+	OutAimSpeed = 0.0f;
+
+	TArray<const FNSEnemyPartRow*> PartRows;
+	GetPartRowsByAttackIdAndAimRole(AttackId, AimRole, PartRows);
+
+	bool bHasAimData = false;
+
+	for (const FNSEnemyPartRow* PartRow : PartRows)
+	{
+		if (!PartRow)
+		{
+			continue;
+		}
+
+		const bool bHasAimTarget =
+			!PartRow->AimBone.IsNone() ||
+			!PartRow->AimControl.IsNone();
+
+		if (!bHasAimTarget)
+		{
+			continue;
+		}
+
+		if (PartRow->YawLimit > 0.0f)
+		{
+			OutYawLimit = OutYawLimit > 0.0f
+				              ? FMath::Min(OutYawLimit, PartRow->YawLimit)
+				              : PartRow->YawLimit;
+		}
+
+		if (PartRow->PitchLimit > 0.0f)
+		{
+			OutPitchLimit = OutPitchLimit > 0.0f
+				                ? FMath::Min(OutPitchLimit, PartRow->PitchLimit)
+				                : PartRow->PitchLimit;
+		}
+
+		if (OutAimSpeed <= 0.0f && PartRow->AimSpeed > 0.0f)
+		{
+			OutAimSpeed = PartRow->AimSpeed;
+		}
+
+		bHasAimData = true;
+	}
+
+	return bHasAimData;
+}
+
 bool UNSEnemyPartComponent::TryGetAnyMuzzleTransform(FTransform& OutTransform) const
 {
 	OutTransform = FTransform::Identity;

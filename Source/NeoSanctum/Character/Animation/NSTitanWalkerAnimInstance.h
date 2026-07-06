@@ -7,6 +7,7 @@
 #include "NSTitanWalkerAnimInstance.generated.h"
 
 class UNSEnemyThreatComponent;
+class UNSEnemyPartComponent;
 
 /**
  * Stage1 TitanWalker 전용 AnimInstance입니다.
@@ -86,6 +87,10 @@ private:
 	// 현재 전투 타깃을 읽기 위한 컴포넌트
 	UPROPERTY()
 	TObjectPtr<UNSEnemyThreatComponent> ThreatComponent;
+	
+	// 현재 공격의 상체 조준 제한값을 읽기 위한 파츠 컴포넌트
+	UPROPERTY()
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
 
 	// TurnYaw 계산을 위해 이전 프레임의 Actor Yaw
 	float LastActorYaw = 0.0f;

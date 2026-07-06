@@ -33,6 +33,11 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_RangerAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_FlyingBurstAttack);
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_MachineGun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Flame);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Bombard);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Laser);
+	
 	// Enemy Action - Common
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_Attack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_HitReaction);

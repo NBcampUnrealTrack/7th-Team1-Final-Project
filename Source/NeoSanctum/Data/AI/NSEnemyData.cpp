@@ -3,6 +3,7 @@
 
 #include "NSEnemyData.h"
 
+#include "Abilities/GameplayAbility.h"
 #include "Misc/DataValidation.h"
 
 
@@ -306,6 +307,110 @@ void UNSEnemyData::PostEditChangeProperty(FPropertyChangedEvent& PropertyChanged
 	InvalidateCachedRows();
 }
 
+EDataValidationResult FNSEnemyAttackRow::IsDataValid(FDataValidationContext& Context) const
+{
+	EDataValidationResult Result = FTableRowBase::IsDataValid(Context);
+
+	auto AddError = [&Context, &Result](const FString& Message)
+	{
+		Context.AddError(FText::FromString(Message));
+		Result = EDataValidationResult::Invalid;
+	};
+
+	auto AddWarning = [&Context](const FString& Message)
+	{
+		Context.AddWarning(FText::FromString(Message));
+	};
+
+	if (!EnemyId.IsValid())
+	{
+		AddError(TEXT("AttackRow EnemyId가 비어 있음"));
+	}
+
+	if (AttackId.IsNone())
+	{
+		AddError(TEXT("AttackRow AttackId가 비어 있음"));
+	}
+
+	if (!AbilityClass)
+	{
+		AddError(FString::Printf(
+			TEXT("AttackId=%s AbilityClass가 비어 있음"),
+			*AttackId.ToString()));
+	}
+
+	if (!AttackTag.IsValid())
+	{
+		AddWarning(FString::Printf(
+			TEXT("AttackId=%s AttackTag가 비어 있음. 후반 VFX/SFX/Debug/리팩토링 식별에 제한이 생길 수 있음"),
+			*AttackId.ToString()));
+	}
+
+	if (Condition.MaxRange < Condition.MinRange)
+	{
+		AddError(FString::Printf(
+			TEXT("AttackId=%s MaxRange가 MinRange보다 작음"),
+			*AttackId.ToString()));
+	}
+
+	if (AttackType == ENSEnemyAttackType::Projectile)
+	{
+		if (ProjectileData.FireCount <= 0)
+		{
+			AddError(FString::Printf(
+				TEXT("AttackId=%s Projectile 공격은 FireCount가 1 이상이어야 함"),
+				*AttackId.ToString()));
+		}
+
+		if (ProjectileData.Speed <= 0.0f)
+		{
+			AddError(FString::Printf(
+				TEXT("AttackId=%s Projectile 공격은 Speed 필요"),
+				*AttackId.ToString()));
+		}
+
+		if (ProjectileData.LifeTime <= 0.0f)
+		{
+			AddError(FString::Printf(
+				TEXT("AttackId=%s Projectile 공격은 LifeTime 필요"),
+				*AttackId.ToString()));
+		}
+
+		if (ProjectileData.Radius <= 0.0f)
+		{
+			AddError(FString::Printf(
+				TEXT("AttackId=%s Projectile 공격은 Radius 필요"),
+				*AttackId.ToString()));
+		}
+
+		if (ProjectileData.FireCount > 1 && ProjectileData.FireInterval <= 0.0f)
+		{
+			AddError(FString::Printf(
+				TEXT("AttackId=%s 반복 Projectile 발사에는 FireInterval 필요"),
+				*AttackId.ToString()));
+		}
+	}
+
+	if (AttackType == ENSEnemyAttackType::Area)
+	{
+		if (AreaData.Range <= 0.0f)
+		{
+			AddWarning(FString::Printf(
+				TEXT("AttackId=%s Area 공격인데 Range가 0 이하"),
+				*AttackId.ToString()));
+		}
+
+		if (AreaData.Radius <= 0.0f && AreaData.ConeHalfAngle <= 0.0f && BombardData.ImpactRadius <= 0.0f)
+		{
+			AddWarning(FString::Printf(
+				TEXT("AttackId=%s Area 공격인데 Radius/ConeHalfAngle/ImpactRadius가 모두 비어 있음"),
+				*AttackId.ToString()));
+		}
+	}
+
+	return Result;
+}
+
 EDataValidationResult FNSEnemyPartRow::IsDataValid(FDataValidationContext& Context) const
 {
 	EDataValidationResult Result = FTableRowBase::IsDataValid(Context);
@@ -368,9 +473,25 @@ EDataValidationResult FNSEnemyPartRow::IsDataValid(FDataValidationContext& Conte
 			*PartId.ToString()));
 	}
 
-	if ((YawLimit > 0.0f || PitchLimit > 0.0f) &&
-		AimBone.IsNone() &&
-		AimControl.IsNone())
+	const bool bHasAimTarget =
+		!AimBone.IsNone() ||
+		!AimControl.IsNone();
+
+	if (AimRole != ENSEnemyPartAimRole::None && !bHasAimTarget)
+	{
+		AddError(FString::Printf(
+			TEXT("PartId=%s AimRole이 있지만 AimBone/AimControl이 모두 비어 있음"),
+			*PartId.ToString()));
+	}
+
+	if (AimRole == ENSEnemyPartAimRole::None && bHasAimTarget)
+	{
+		AddWarning(FString::Printf(
+			TEXT("PartId=%s AimBone/AimControl이 있지만 AimRole이 None"),
+			*PartId.ToString()));
+	}
+
+	if ((YawLimit > 0.0f || PitchLimit > 0.0f) && !bHasAimTarget)
 	{
 		AddWarning(FString::Printf(
 			TEXT("PartId=%s 회전 제한값이 있지만 AimBone/AimControl이 모두 비어 있음"),

@@ -5,6 +5,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
@@ -39,6 +40,10 @@ void UNSTitanWalkerAnimInstance::CacheTitanWalker()
 	ThreatComponent = IsValid(OwnerPawn)
 		                  ? OwnerPawn->FindComponentByClass<UNSEnemyThreatComponent>()
 		                  : nullptr;
+
+	PartComponent = IsValid(OwnerPawn)
+		                ? OwnerPawn->FindComponentByClass<UNSEnemyPartComponent>()
+		                : nullptr;
 
 	if (IsValid(OwnerPawn) && !bHasLastActorYaw)
 	{
@@ -131,13 +136,42 @@ void UNSTitanWalkerAnimInstance::UpdateUpperAim(float DeltaSeconds)
 						WorldAimRotation,
 						ReferenceRotation);
 
-				const float YawLimit = CurrentAttackRow->YawLimit > 0.0f
-					                       ? CurrentAttackRow->YawLimit
-					                       : DefaultUpperYawLimit;
+				float YawLimit = DefaultUpperYawLimit;
+				float PitchLimit = DefaultUpperPitchLimit;
+				float AimSpeed = UpperAimInterpSpeed;
 
-				const float PitchLimit = CurrentAttackRow->PitchLimit > 0.0f
-					                         ? CurrentAttackRow->PitchLimit
-					                         : DefaultUpperPitchLimit;
+				if (IsValid(PartComponent))
+				{
+					float PartYawLimit = 0.0f;
+					float PartPitchLimit = 0.0f;
+					float PartAimSpeed = 0.0f;
+
+					const bool bHasPartAimLimit =
+						PartComponent->TryGetAimLimitsByAttackId(
+							CurrentAttackRow->AttackId,
+							ENSEnemyPartAimRole::UpperBody,
+							PartYawLimit,
+							PartPitchLimit,
+							PartAimSpeed);
+
+					if (bHasPartAimLimit)
+					{
+						if (PartYawLimit > 0.0f)
+						{
+							YawLimit = PartYawLimit;
+						}
+
+						if (PartPitchLimit > 0.0f)
+						{
+							PitchLimit = PartPitchLimit;
+						}
+
+						if (PartAimSpeed > 0.0f)
+						{
+							AimSpeed = PartAimSpeed;
+						}
+					}
+				}
 
 				TargetYaw = FMath::Clamp(
 					LocalAimRotation.Yaw,
@@ -148,6 +182,20 @@ void UNSTitanWalkerAnimInstance::UpdateUpperAim(float DeltaSeconds)
 					LocalAimRotation.Pitch,
 					-PitchLimit,
 					PitchLimit);
+
+				UpperAimYaw = FMath::FInterpTo(
+					UpperAimYaw,
+					TargetYaw,
+					DeltaSeconds,
+					AimSpeed);
+
+				UpperAimPitch = FMath::FInterpTo(
+					UpperAimPitch,
+					TargetPitch,
+					DeltaSeconds,
+					AimSpeed);
+
+				return;
 			}
 		}
 	}
