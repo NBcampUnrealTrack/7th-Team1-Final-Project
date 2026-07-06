@@ -10,6 +10,7 @@ class UAbilityTask_PlayMontageAndWait;
 class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 class UGameplayEffect;
+class AActor;
 
 UCLASS()
 class NEOSANCTUM_API UGA_Guard : public UGA_BarrierBase
@@ -54,6 +55,10 @@ private:
 	UFUNCTION()
 	void OnGuardMontageInterrupted();
 
+	// Guard Barrier 파괴 시 몽타주 섹션을 종료 섹션으로 점프
+	UFUNCTION()
+	void OnGuardBarrierDestroyed(AActor* DestroyedActor);
+
 	// Barrier 스폰 이벤트 대기
 	void StartGuardEventTask();
 
@@ -81,7 +86,7 @@ private:
 	// 이동속도 감소 GE 제거
 	void RemoveGuardMoveSpeedEffect();
 
-	// 활성 Guard Barrier 파괴
+	// 활성화된 Barrier를 직접 파괴하는 헬퍼
 	void DestroyActiveGuardBarrier();
 
 protected:

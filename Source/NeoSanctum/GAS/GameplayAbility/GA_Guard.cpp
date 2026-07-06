@@ -100,6 +100,11 @@ void UGA_Guard::EndAbility(
 	}
 	else
 	{
+		if (IsValid(ActiveGuardBarrier))
+		{
+			ActiveGuardBarrier->OnDestroyed.RemoveDynamic(this, &ThisClass::OnGuardBarrierDestroyed);
+		}
+
 		ActiveGuardBarrier = nullptr;
 	}
 
@@ -149,6 +154,30 @@ void UGA_Guard::OnGuardMontageInterrupted()
 {
 	// 중단된 경우 취소 종료로 처리
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+}
+
+void UGA_Guard::OnGuardBarrierDestroyed(AActor* DestroyedActor)
+{
+	if (DestroyedActor != ActiveGuardBarrier)
+	{
+		return;
+	}
+
+	ActiveGuardBarrier = nullptr;
+
+	// Barrier가 먼저 사라지면 Guard 자세도 종료
+	if (bGuardEndingFromInputRelease)
+	{
+		return;
+	}
+
+	bGuardEndingFromInputRelease = true;
+	if (TryJumpToGuardEndSection())
+	{
+		return;
+	}
+
+	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }
 
 void UGA_Guard::StartGuardEventTask()
@@ -246,7 +275,10 @@ void UGA_Guard::SpawnGuardBarrier()
 	if (!IsValid(ActiveGuardBarrier))
 	{
 		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+		return;
 	}
+
+	ActiveGuardBarrier->OnDestroyed.AddDynamic(this, &ThisClass::OnGuardBarrierDestroyed);
 }
 
 void UGA_Guard::AddGuardStateTags()
@@ -319,10 +351,20 @@ void UGA_Guard::RemoveGuardMoveSpeedEffect()
 
 void UGA_Guard::DestroyActiveGuardBarrier()
 {
-	if (IsValid(ActiveGuardBarrier) && ActiveGuardBarrier->HasAuthority())
-	{
-		ActiveGuardBarrier->Destroy();
-	}
-
+	ANSBarrierBase* BarrierToDestroy = ActiveGuardBarrier;
 	ActiveGuardBarrier = nullptr;
+	
+	// 이미 파괴되어있으므로 return
+	if (!IsValid(BarrierToDestroy))
+	{
+		return;
+	}
+	
+	// 배리어 파괴 바인딩
+	BarrierToDestroy->OnDestroyed.RemoveDynamic(this, &ThisClass::OnGuardBarrierDestroyed);
+
+	if (BarrierToDestroy->HasAuthority())
+	{
+		BarrierToDestroy->Destroy();
+	}
 }
