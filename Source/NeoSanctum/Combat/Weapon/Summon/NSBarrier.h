@@ -16,7 +16,6 @@ class UNSAbilitySystemComponent;
 class UNSBaseAttributeSet;
 class USphereComponent;
 class UStaticMeshComponent;
-class UNiagaraComponent;
 class UNSHitReactionComponent;
 class UNSDamageFlashComponent;
 
@@ -71,10 +70,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
 	TObjectPtr<USphereComponent> BarrierCollisionComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
-	TObjectPtr<UNiagaraComponent> BarrierNiagaraComponent;
-
-	// 피격 플래시 표현에 사용하는 투명 Sphere Mesh
+	// Barrier 범위 표현과 피격 플래시에 사용하는 Mesh
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Barrier|Components")
 	TObjectPtr<UStaticMeshComponent> BarrierFlashMeshComponent;
 
@@ -91,10 +87,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
 	float MinimumRadius = 50.0f;
-
-	// Flash용 Sphere Mesh의 기본 반지름.
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
-	float FlashMeshBaseRadius = 60.0f;
 
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
