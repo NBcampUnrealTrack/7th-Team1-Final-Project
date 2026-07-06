@@ -10,7 +10,7 @@
 
 
 DECLARE_MULTICAST_DELEGATE(FNSOnProgressChanged);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnProgressCurrencyChanged, int64, int64);
+DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnProgressCurrencyChanged, int64);
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSPlayerProgressComponent : public UActorComponent
