@@ -168,7 +168,7 @@ void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 	}
 
 	//서버 권한에서 증강 적용. UI 숨김은 서버의 Client_CloseOffer -> OnOfferClosed가 처리
-	SelComp->Server_Choose(CardIndex);
+	SelComp->Server_Choose(CardIndex, CurrentOfferRevision);
 }
 
 void UNSAugmentationWidget::RequestRerollAugment()
@@ -180,7 +180,7 @@ void UNSAugmentationWidget::RequestRerollAugment()
 		return;
 	}
 	//서버에 전체 리롤 요청 → Client_PresentOffer → HandleOfferPresented로 카드 갱신
-	SelComp->Server_RerollCard();
+	SelComp->Server_RerollCard(CurrentOfferRevision);
 }
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
@@ -429,8 +429,13 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 	return InventoryComponent.Get();
 }
 
-void UNSAugmentationWidget::HandleOfferPresented(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
+void UNSAugmentationWidget::HandleOfferPresented(
+	const TArray<FNSAugmentSelectionCard>& Cards,
+	int64 RerollCost,
+	bool bCanReroll,
+	int32 OfferRevision)
 {
+	CurrentOfferRevision = OfferRevision;
 	CurrentOfferCards = Cards;
 	CurrentOfferViewData.Reset();
 	CurrentOfferViewData.SetNum(Cards.Num());

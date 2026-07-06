@@ -81,6 +81,8 @@ private:
 
 	//현재 오퍼의 증강 ID 목록
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
+	// 마지막으로 받은 오퍼 번호 (Server_Choose/Server_RerollCard 보낼 때 같이 실어 보냄)
+	int32 CurrentOfferRevision = 0;
 	// Bridge가 생성한 현재 오퍼 카드 표시 데이터
 	UPROPERTY(Transient)
 	TArray<FNSAugmentCardViewData> CurrentOfferViewData;
@@ -104,7 +106,12 @@ private:
 	UNSAugmentInventoryComponent* GetInventoryComponent();
 	//오퍼 제시 수신 -> 카드 생성 및 표시
 	UFUNCTION()
-	void HandleOfferPresented(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost);
+	void HandleOfferPresented(
+		const TArray<FNSAugmentSelectionCard>& Cards,
+		int64 RerollCost,
+		bool bCanReroll,
+		int32 OfferRevision
+	);
 	//오퍼 종료 수신 -> 카드 영역 숨김 (패널은 유지)
 	UFUNCTION()
 	void HandleOfferClosed();

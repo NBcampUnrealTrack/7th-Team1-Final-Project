@@ -31,7 +31,8 @@ struct FNSAugmentCandidate
 	bool bCountsAsLegendarySlot = false;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FNSAugmentSelectionCard>&, Cards, int32, RerollCost);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnAugmentOfferPresented,
+	const TArray<FNSAugmentSelectionCard>&, Cards, int64, RerollCost, bool, bCanReroll, int32, OfferRevision);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnAugmentRerollResult,
@@ -74,11 +75,11 @@ public:
 
 	// 증강 리롤 (카드 3개 전부 새로 추첨)
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_RerollCard();
+	void Server_RerollCard(int32 ClientOfferRevision);
 
 	// 증강 골랐을때
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_Choose(int32 Index);
+	void Server_Choose(int32 Index, int32 ClientOfferRevision);
 
 	// 현재 대기 중인 증강 선택권 수
 	UFUNCTION(BlueprintPure, Category = "NS|Augment")
@@ -98,7 +99,12 @@ protected:
 
 private:
 	UFUNCTION(Client, Reliable)
-	void Client_PresentOffer(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost);
+	void Client_PresentOffer(
+		const TArray<FNSAugmentSelectionCard>& Cards,
+		int64 RerollCost,
+		bool bCanReroll,
+		int32 PresentedOfferRevision
+	);
 
 	UFUNCTION(Client, Reliable)
 	void Client_CloseOffer();

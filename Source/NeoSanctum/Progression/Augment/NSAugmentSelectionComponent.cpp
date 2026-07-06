@@ -87,12 +87,13 @@ void UNSAugmentSelectionComponent::Server_OpenPanel_Implementation()
 	PresentFront();
 }
 
-void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
+void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 ClientOfferRevision)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
+
 	// 표시 중인 오퍼가 없으면 리롤 불가
 	if (!bFrontRolled || RewardTriggerQueue.IsEmpty())
 	{
@@ -101,6 +102,19 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 			0,
 			0,
 			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 요청을 보낸 뒤 오퍼가 이미 바뀌었으면(다른 요청이 먼저 처리됐거나 연타) 이 요청은 버림.
+	if (ClientOfferRevision != OfferRevision)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::StaleRevision,
+			0,
+			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -209,16 +223,31 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 	++CurrentOfferRerollCount;
 	++OfferRevision;
 
-	Client_PresentOffer(PendingOffer, CurrentOfferRerollCount);
+	const int64 NextCost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+	Client_PresentOffer(PendingOffer, NextCost, true, OfferRevision);
 }
 
 // 증강 골랐을때
-void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
+void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index, int32 ClientOfferRevision)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
+
+	// 오퍼가 이미 바뀐 뒤에 도착한 예전 선택 요청은 거부 (리롤 직후 구 카드 선택 방지)
+	if (ClientOfferRevision != OfferRevision)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::StaleRevision,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
 	// 표시 중인 오퍼만 선택 가능
 	if (!bFrontRolled || !PendingOffer.IsValidIndex(Index))
 	{
@@ -342,14 +371,15 @@ void UNSAugmentSelectionComponent::PresentFront()
 		{
 			return;
 		}
-		
-		if (!bFrontRolled)
+
+		const bool bNeedsFreshRoll = !bFrontRolled;
+		if (bNeedsFreshRoll)
 		{
 			CurrentOfferRerollCount = 0;
 			PendingOffer = RollCards(RarityRule, CardsCount);
 			bFrontRolled = !PendingOffer.IsEmpty();
 		}
-		
+
 		// 현재 트리거가 허용하는 희귀도에서 후보를 만들 수 없으면
 		// 해당 선택 기회를 소비하고 다음 트리거를 확인.
 		if (PendingOffer.IsEmpty())
@@ -362,8 +392,20 @@ void UNSAugmentSelectionComponent::PresentFront()
 			ConsumeFrontOffer();
 			continue;
 		}
-		
-		Client_PresentOffer(PendingOffer, CurrentOfferRerollCount);
+
+		if (bNeedsFreshRoll)
+		{
+			// 새 오퍼를 처음 보여줄 때만 번호를 올림. 같은 오퍼를 다시 여는 건 번호를 그대로 둠.
+			++OfferRevision;
+		}
+
+		FNSAugmentRerollRule RerollRule;
+		const bool bHasRerollRule = TryFindRerollRule(RewardTriggerQueue[0], RerollRule);
+		// 리롤 규칙이 있고, 오퍼가 부분 오퍼가 아니라 꽉 찬 CardsCount장일 때만 리롤을 허용.
+		const bool bCanReroll = bHasRerollRule && PendingOffer.Num() == CardsCount;
+		const int64 RerollCost = bHasRerollRule ? ComputeRerollCost(RerollRule, CurrentOfferRerollCount) : 0;
+
+		Client_PresentOffer(PendingOffer, RerollCost, bCanReroll, OfferRevision);
 		return;
 	}
 	
@@ -604,9 +646,12 @@ void UNSAugmentSelectionComponent::OnRep_PendingCount()
 }
 
 void UNSAugmentSelectionComponent::Client_PresentOffer_Implementation(
-	const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
+	const TArray<FNSAugmentSelectionCard>& Cards,
+	int64 RerollCost,
+	bool bCanReroll,
+	int32 PresentedOfferRevision)
 {
-	OnOfferPresented.Broadcast(Cards, RerollCost);
+	OnOfferPresented.Broadcast(Cards, RerollCost, bCanReroll, PresentedOfferRevision);
 }
 
 void UNSAugmentSelectionComponent::Client_NotifyRerollResult_Implementation(
