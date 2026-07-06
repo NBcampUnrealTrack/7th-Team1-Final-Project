@@ -101,7 +101,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::NoActiveOffer,
 			0,
 			0,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -127,7 +127,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::InvalidRequest,
 			0,
 			0,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -141,7 +141,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::InvalidRequest,
 			0,
 			0,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -155,7 +155,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::InvalidRequest,
 			0,
 			0,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -171,7 +171,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::NotEnoughCurrency,
 			Cost,
 			HaveCurrency,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -200,7 +200,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::NoDifferentOffer,
 			0,
 			0,
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
@@ -212,7 +212,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 			ENSAugmentRerollResult::NotEnoughCurrency,
 			Cost,
 			CurrencyComponent->GetTemp(),
-			0,
+			ClientOfferRevision,
 			OfferRevision
 		);
 		return;
