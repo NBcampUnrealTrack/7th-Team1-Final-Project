@@ -738,6 +738,21 @@ void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
 		return;
 	}
 
+	// MaxHealth/MaxShield가 늘어난 만큼 Current도 같이 올리기 위한 사전 스냅샷
+	// 재구매로 재호출될 수 있으므로, 아래에서 이전 이펙트를 제거하기 전(=지금까지 적용된 상태 기준)에
+	// 스냅샷을 찍어야 이번에 새로 늘어난 만큼만 정확히 Current에 반영됨.
+	const float OldMaxHealth =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
+	const float OldMaxShield =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+	// 재구매로 호출될 수 있으므로, 이전에 적용된 공용 업그레이드 효과가 있으면 먼저 제거해 중복 누적을 방지.
+	if (CommonUpgradeEffectHandle.IsValid())
+	{
+		NSAbilitySystemComponent->RemoveActiveGameplayEffect(CommonUpgradeEffectHandle);
+		CommonUpgradeEffectHandle = FActiveGameplayEffectHandle();
+	}
+
 	// NodeId별 레벨을 Attribute 태그 기준으로 합산 (Add는 그대로, Multiply는 %로 누적)
 	TMap<FGameplayTag, float> AddSums;
 	TMap<FGameplayTag, float> MultiplyPercentSums;
@@ -793,17 +808,12 @@ void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
 		}
 	}
 
-	// MaxHealth/MaxShield가 늘어난 만큼 Current도 같이 올리기 위한 사전 스냅샷
-	const float OldMaxHealth =
-		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
-	const float OldMaxShield =
-		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
-
 	const FActiveGameplayEffectHandle EffectHandle =
 		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 
 	if (EffectHandle.IsValid())
 	{
+		CommonUpgradeEffectHandle = EffectHandle;
 		CharacterDataEffectHandles.Add(EffectHandle);
 	}
 
@@ -812,20 +822,22 @@ void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
 	const float NewMaxShield =
 		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
 
-	if (NewMaxHealth > OldMaxHealth)
+	if (NewMaxHealth != OldMaxHealth)
 	{
 		const float CurrentHealth =
 			NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
-		NSAbilitySystemComponent->SetNumericAttributeBase(
-			UNSBaseAttributeSet::GetHealthAttribute(), CurrentHealth + (NewMaxHealth - OldMaxHealth));
+		const float AdjustedHealth =
+			FMath::Clamp(CurrentHealth + (NewMaxHealth - OldMaxHealth), 0.0f, NewMaxHealth);
+		NSAbilitySystemComponent->SetNumericAttributeBase(UNSBaseAttributeSet::GetHealthAttribute(), AdjustedHealth);
 	}
 
-	if (NewMaxShield > OldMaxShield)
+	if (NewMaxShield != OldMaxShield)
 	{
 		const float CurrentShield =
 			NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
-		NSAbilitySystemComponent->SetNumericAttributeBase(
-			UNSPlayerAttributeSet::GetShieldAttribute(), CurrentShield + (NewMaxShield - OldMaxShield));
+		const float AdjustedShield =
+			FMath::Clamp(CurrentShield + (NewMaxShield - OldMaxShield), 0.0f, NewMaxShield);
+		NSAbilitySystemComponent->SetNumericAttributeBase(UNSPlayerAttributeSet::GetShieldAttribute(), AdjustedShield);
 	}
 }
 

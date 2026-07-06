@@ -2,6 +2,8 @@
 
 #include "NSCheatManager.h"
 
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
@@ -10,6 +12,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -237,52 +240,6 @@ void UNSCheatManager::Debug_SetCommonCurrency()
 	PermanentSave->CommonCurrency = 10000;
 }
 
-void UNSCheatManager::Debug_UpgradeCommonNode(FString NodeId)
-{
-	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
-	if (!OwningPC || NodeId.IsEmpty())
-	{
-		return;
-	}
-
-	UGameInstance* GameInstance = OwningPC->GetGameInstance();
-	UNSProgressionSubsystem* ProgressionSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
-	if (!ProgressionSubsystem)
-	{
-		return;
-	}
-
-	const FName Node(*NodeId);
-	const int32 NewLevel = ProgressionSubsystem->GetCommonSkillLevel(Node) + 1;
-	const int64 Cost = ProgressionSubsystem->GetCommonUpgradeCost(Node, NewLevel);
-	const bool bSuccess = ProgressionSubsystem->UpgradeCommonSkill(Node, NewLevel, Cost);
-
-	NS_LOG(LogNS, Warning,
-		"NodeId={NodeId}, NewLevel={NewLevel}, Cost={Cost}, Success={Success}",
-		("NodeId", NodeId),
-		("NewLevel", NewLevel),
-		("Cost", Cost),
-		("Success", bSuccess)
-	);
-
-	// 로컬 세이브 변경분을 서버 ProgressComponent에 반영
-	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
-}
-
-// 테스트용 치트 (인런 파츠 상점 테스트 — 임시재화 10000 즉시 지급, 드랍/줍기 없음)
-void UNSCheatManager::Debug_AddTempCurrency()
-{
-	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
-	if (!OwningPC)
-	{
-		return;
-	}
-
-	// 서버 권한 RPC 경유: 원격 클라가 입력해도 서버의 CurrencyComponent에 반영되도록 함
-	OwningPC->Server_DebugAddTempCurrency();
-}
-
 void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
 {
 	APlayerController* OwningPlayerController = GetOuterAPlayerController();
@@ -343,4 +300,103 @@ void UNSCheatManager::HandleRewardTriggerCheat(const FGameplayTag& TriggerTag)
 		ANSDroppedPart::StaticClass(),
 		60.0f
 	);
+}
+
+void UNSCheatManager::Debug_UpgradeCommonNode(FString NodeId)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC || NodeId.IsEmpty())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!ProgressionSubsystem)
+	{
+		return;
+	}
+
+	const FName Node(*NodeId);
+	const int32 NewLevel = ProgressionSubsystem->GetCommonSkillLevel(Node) + 1;
+	const int64 Cost = ProgressionSubsystem->GetCommonUpgradeCost(Node, NewLevel);
+	const bool bSuccess = ProgressionSubsystem->UpgradeCommonSkill(Node, NewLevel, Cost);
+
+	NS_LOG(LogNS, Warning,
+		"NodeId={NodeId}, NewLevel={NewLevel}, Cost={Cost}, Success={Success}",
+		("NodeId", NodeId),
+		("NewLevel", NewLevel),
+		("Cost", Cost),
+		("Success", bSuccess)
+	);
+
+	// 로컬 세이브 변경분을 서버 ProgressComponent에 반영
+	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
+}
+
+void UNSCheatManager::Debug_HurtSelf(float DamageAmount)
+{
+	APlayerController* OwningPC = GetOuterAPlayerController();
+	APawn* Pawn = OwningPC ? OwningPC->GetPawn() : nullptr;
+
+	// Player ASC는 캐릭터가 아니라 PlayerState에 있으므로 인터페이스로 조회.
+	IAbilitySystemInterface* ASCInterface = Cast<IAbilitySystemInterface>(Pawn);
+	UAbilitySystemComponent* ASC = ASCInterface ? ASCInterface->GetAbilitySystemComponent() : nullptr;
+	if (!ASC)
+	{
+		return;
+	}
+
+	const float CurrentHealth = ASC->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
+	const float NewHealth = FMath::Max(0.0f, CurrentHealth - DamageAmount);
+	ASC->SetNumericAttributeBase(UNSBaseAttributeSet::GetHealthAttribute(), NewHealth);
+
+	NS_LOG(LogNS, Warning, "[Debug] HurtSelf: {Amount} 데미지 적용, 현재 체력={NewHealth}",
+		("Amount", DamageAmount),
+		("NewHealth", NewHealth)
+	);
+}
+
+void UNSCheatManager::Debug_ResetCommonUpgrades()
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+
+	if (!OwningPC || !OwningPC->IsLocalController())
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+
+	UNSSaveGameSubsystem* SaveSubsystem = GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+
+	UNSPermanentSaveGame* PermanentSave = SaveSubsystem ? SaveSubsystem->GetCachedPermanentData() : nullptr;
+
+	if (!SaveSubsystem || !PermanentSave)
+	{
+		return;
+	}
+
+	// 노드별 저장 레벨 초기화 (재화는 건드리지 않음)
+	PermanentSave->CommonSkillLevels.Reset();
+
+	// 변경된 캐시 데이터를 영구 저장
+	SaveSubsystem->SavePermanent(PermanentSave, FNSSaveComplete());
+
+	// 리슨 서버 진행도에도 초기화된 노드 레벨 전달
+	OwningPC->UploadLocalProgress(OwningPC->GetActiveCharacterIdForUpload());
+}
+
+// 테스트용 치트 (인런 파츠 상점 테스트 — 임시재화 10000 즉시 지급, 드랍/줍기 없음)
+void UNSCheatManager::Debug_AddTempCurrency()
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+
+	// 서버 권한 RPC 경유: 원격 클라가 입력해도 서버의 CurrencyComponent에 반영되도록 함
+	OwningPC->Server_DebugAddTempCurrency();
 }

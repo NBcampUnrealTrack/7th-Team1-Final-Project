@@ -80,6 +80,14 @@ public:
 	UFUNCTION(Exec)
 	void Debug_UpgradeCommonNode(FString NodeId);
 
+	// TODO(원종): 테스트용 임시 코드 (공용 업그레이드 Current/Max 반영 테스트 - 검증 후 삭제)
+	UFUNCTION(Exec)
+	void Debug_HurtSelf(float DamageAmount);
+
+	// 저장된 공용 업그레이드 레벨 초기화(재화는 그대로)
+	UFUNCTION(Exec)
+	void Debug_ResetCommonUpgrades();
+
 	// 테스트용 치트 (인런 파츠 상점 테스트 — 임시재화 10000 즉시 지급, 드랍/줍기 없음)
 	UFUNCTION(Exec)
 	void Debug_AddTempCurrency();
