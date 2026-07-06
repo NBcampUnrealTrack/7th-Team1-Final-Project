@@ -21,6 +21,8 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, CurrentLevelConfig);
 	DOREPLIFETIME(ANSRunGameState, StagePhase);
 	DOREPLIFETIME(ANSRunGameState, ObjectiveState);
+	DOREPLIFETIME(ANSRunGameState, BossGateEndServerTime);
+	DOREPLIFETIME(ANSRunGameState, bBossGateAllPresent);
 }
 
 void ANSRunGameState::SetRunDataConfig(
@@ -109,6 +111,38 @@ void ANSRunGameState::SetRunEndPhase(ENSRunEndPhase NewPhase)
 void ANSRunGameState::NotifyRunVoteChanged()
 {
 	OnRunEndVoteChanged.Broadcast();
+}
+
+void ANSRunGameState::OnRep_BossGate()
+{
+	OnBossGateChanged.Broadcast();
+}
+
+float ANSRunGameState::GetBossGateTimeRemaining() const
+{
+	if (BossGateEndServerTime <= 0.0f)
+	{
+		return 0.0f;
+	}
+	
+	return FMath::Max(
+		0.0f,
+		BossGateEndServerTime - GetServerWorldTimeSeconds());
+}
+
+void ANSRunGameState::SetBossGateState(float InEndServerTime, bool bInAllPresent)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	BossGateEndServerTime = InEndServerTime;
+	bBossGateAllPresent   = bInAllPresent;
+	ForceNetUpdate();
+
+	// 호스트는 OnRep 안 불리므로 수동 실행
+	OnRep_BossGate();
 }
 
 void ANSRunGameState::OnRep_ObjectiveState()

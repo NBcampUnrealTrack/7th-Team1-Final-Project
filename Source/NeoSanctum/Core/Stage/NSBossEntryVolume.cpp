@@ -87,6 +87,9 @@ void ANSBossEntryVolume::Activate()
 				&ANSBossEntryVolume::OnDwellCompleted,
 				AllPresentDelay,
 				false);
+			
+			// 단축 duration + 전원여부(true) 통지
+			PushBossGateStateToGameState(AllPresentDelay);
 		}
 	}
 }
@@ -99,6 +102,7 @@ void ANSBossEntryVolume::Deactivate()
 	GetWorldTimerManager().ClearTimer(RevalidateTimerHandle);
 	TriggerBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OverlappingPlayers.Empty();
+	ClearBossGateState();
 }
 
 void ANSBossEntryVolume::OnBeginOverlap(
@@ -134,6 +138,9 @@ void ANSBossEntryVolume::OnBeginOverlap(
 			&ANSBossEntryVolume::OnDwellCompleted,
 			AllPresentDelay,
 			false);
+		
+		// 단축 duration + 전원여부(true) 통지
+		PushBossGateStateToGameState(AllPresentDelay);
 	}
 }
 
@@ -160,11 +167,17 @@ void ANSBossEntryVolume::OnEndOverlap(
 			// 아직 누군가 남아있으면 기본 카운트다운 재개
 			StartDwellTimer();  
 		}
+		else
+		{
+			// 남은 사람 없으면 미진행 통지
+			ClearBossGateState();
+		}
 	}
 	// 전원 이탈하면 기본 카운트다운 리셋
 	else if (OverlappingPlayers.Num() == 0)
 	{
 		GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+		ClearBossGateState();
 	}
 }
 
@@ -182,6 +195,7 @@ void ANSBossEntryVolume::OnDwellCompleted()
 	// 재검사 후 아무도 안 남았으면 통지 취소
 	if (OverlappingPlayers.Num() == 0)
 	{
+		ClearBossGateState();
 		return; 
 	}
 	
@@ -271,6 +285,7 @@ void ANSBossEntryVolume::RevalidateOccupants()
 		// 볼륨위에 아무도 없으면 초기회
 		bAllPresentScheduled = false;
 		GetWorldTimerManager().ClearTimer(DwellTimerHandle);
+		ClearBossGateState();
 	}
 	else if (bAllPresentScheduled && !AreAllPlayersPresent())
 	{
@@ -290,6 +305,8 @@ void ANSBossEntryVolume::RevalidateOccupants()
 			&ANSBossEntryVolume::OnDwellCompleted,
 			AllPresentDelay,
 			false);
+		
+		PushBossGateStateToGameState(AllPresentDelay);
 	}
 }
 
@@ -331,6 +348,37 @@ void ANSBossEntryVolume::StartDwellTimer()
 		this,
 		&ANSBossEntryVolume::OnDwellCompleted,
 		DwellDuration,
+		false);
+	
+	// 기본 duration 기준 종료시각 통지
+	PushBossGateStateToGameState(DwellDuration);
+}
+
+void ANSBossEntryVolume::PushBossGateStateToGameState(float DurationFromNow)
+{
+	if (!HasAuthority() || !CachedRunGameState)
+	{
+		return;
+	}
+	
+	// 클라 계산과 일치하도록 서버월드시간 기준으로 종료시각 산출
+	const float EndServerTime =
+		CachedRunGameState->GetServerWorldTimeSeconds() + DurationFromNow;
+	CachedRunGameState->SetBossGateState(
+		EndServerTime,
+		bAllPresentScheduled);
+}
+
+void ANSBossEntryVolume::ClearBossGateState()
+{
+	if (!HasAuthority() || !CachedRunGameState)
+	{
+		return;
+	}
+	
+	// 종료시각 0이면 미진행, 전원여부도 해제
+	CachedRunGameState->SetBossGateState(
+		0.0f,
 		false);
 }
 

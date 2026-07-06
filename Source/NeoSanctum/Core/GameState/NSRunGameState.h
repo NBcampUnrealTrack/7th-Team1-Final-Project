@@ -18,6 +18,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunEndVoteChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnRunDataConfigChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStagePhaseChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStageObjectiveChanged);
+// 보스 게이트 상태 변화 알림
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnBossGateChanged);
 
 
 /**
@@ -150,6 +152,28 @@ public:
 
 	UPROPERTY(ReplicatedUsing = OnRep_ObjectiveState, BlueprintReadOnly, Category = "Stage")
 	FNSStageObjectiveState ObjectiveState;
+	
+	// dwell 남은 시간/전원 집결 상태 변화
+	UPROPERTY(BlueprintAssignable, Category = "Stage")
+	FNSOnBossGateChanged OnBossGateChanged;
+
+	// dwell 카운트다운 종료 서버시각 (0이면 미진행)
+	UPROPERTY(ReplicatedUsing = OnRep_BossGate, BlueprintReadOnly, Category = "Stage")
+	float BossGateEndServerTime = 0.0f;
+
+	// 볼륨 위에 살아있는 전원이 모였는지
+	UPROPERTY(ReplicatedUsing = OnRep_BossGate, BlueprintReadOnly, Category = "Stage")
+	bool bBossGateAllPresent = false;
+
+	UFUNCTION()
+	void OnRep_BossGate();
+
+	// UI 카운트다운용 남은 초 (미진행이면 0)
+	UFUNCTION(BlueprintPure, Category = "Stage")
+	float GetBossGateTimeRemaining() const;
+
+	// 서버 전용: 볼륨이 dwell 상태를 밀어넣을 때 호출
+	void SetBossGateState(float InEndServerTime, bool bInAllPresent);
 
 	UFUNCTION()
 	void OnRep_ObjectiveState();

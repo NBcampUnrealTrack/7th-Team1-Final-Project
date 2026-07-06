@@ -66,6 +66,10 @@ private:
 	bool AreAllPlayersPresent() const;
 	// 볼륨 위에 머무르는 시간 타이머 시작(이미 돌고 있으면 유지)
 	void StartDwellTimer();
+	// 현재 dwell 상태(종료시각/전원여부)를 GameState에 넣을 함수
+	void PushBossGateStateToGameState(float DurationFromNow);
+	// dwell 비활성 상태를 GameState에 통지
+	void ClearBossGateState();
 
 	// 진입 감지용 트리거 박스 (크기는 레벨에서 조정)
 	UPROPERTY(VisibleAnywhere, Category = "BossEntry")
