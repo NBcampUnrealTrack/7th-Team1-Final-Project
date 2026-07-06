@@ -16,6 +16,7 @@
 #include "DrawDebugHelpers.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
@@ -106,6 +107,18 @@ void ANSSpawner::ActivateSpawner()
 	{
 		return;
 	}
+	
+	// 보스 스포너는 BossFight 페이즈에서만 활성화
+	if (bIsBossSpawner)
+	{
+		const ANSRunGameState* RunGameState =
+			GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
+		if (!RunGameState || RunGameState->StagePhase != ENSStagePhase::BossFight)
+		{
+			return;
+		}
+	}
+
 	
 	// 인원수 게이트 — 접속 인원이 임계값 미만이면 이 스포너는 켜지 않음
 	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState() : nullptr;

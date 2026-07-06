@@ -58,6 +58,9 @@ public:
 	// 인스턴스마다 어떤 몬스터 스폰할지 정하는 용도
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	TObjectPtr<UDataTable> SpawnDataTable;
+	
+	// 보스 스포너인지 알기 위한 게터 함수
+	bool IsBossSpawner() const { return bIsBossSpawner; }
 
 private:
 	void ProcessSpawnProbability(UDataTable* SpawnTable);
@@ -119,6 +122,10 @@ protected:
 	// 스폰 수량을 데이터테이블 대신 고정값으로 쓸지용
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	bool bUseFixedSpawnQuantity = false;
+	
+	// 이 스포너가 보스 스포너인지 정하는 불 플래그
+	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
+	bool bIsBossSpawner = false;
 
 	// bUseFixedSpawnQuantity가 true일 때 사용할 고정 스폰 수량
 	// 메타값은 최소값 clamp, bool 변수 값이 false이면 안보이도록 하는 역할
