@@ -3,7 +3,7 @@
 #include "GA_BarrierBase.h"
 
 #include "GameFramework/Character.h"
-#include "NeoSanctum/Combat/Weapon/Summon/NSBarrier.h"
+#include "NeoSanctum/Combat/Weapon/Summon/NSBarrierBase.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 
 bool UGA_BarrierBase::HasValidBarrierConfig() const
@@ -71,7 +71,7 @@ void UGA_BarrierBase::RebuildSetByCallerMagnitudes()
 	}
 }
 
-ANSBarrier* UGA_BarrierBase::SpawnBarrierActor(
+ANSBarrierBase* UGA_BarrierBase::SpawnBarrierActor(
 	const FGameplayAbilityActorInfo* ActorInfo,
 	float BarrierRadius,
 	float BarrierDuration,
@@ -98,7 +98,7 @@ ANSBarrier* UGA_BarrierBase::SpawnBarrierActor(
 	APawn* OwningPawn = Cast<APawn>(AvatarActor);
 	AController* OwningController = OwningPawn ? OwningPawn->GetController() : nullptr;
 
-	ANSBarrier* SpawnedBarrier = World->SpawnActorDeferred<ANSBarrier>(
+	ANSBarrierBase* SpawnedBarrier = World->SpawnActorDeferred<ANSBarrierBase>(
 		BarrierAbilityConfig.BarrierClass,
 		AvatarActor->GetActorTransform(),
 		AvatarActor,

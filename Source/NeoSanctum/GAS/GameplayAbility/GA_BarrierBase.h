@@ -7,7 +7,7 @@
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "GA_BarrierBase.generated.h"
 
-class ANSBarrier;
+class ANSBarrierBase;
 class UGameplayEffect;
 
 USTRUCT(BlueprintType)
@@ -16,7 +16,7 @@ struct FNSBarrierAbilityConfig
 	GENERATED_BODY()
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier")
-	TSubclassOf<ANSBarrier> BarrierClass;
+	TSubclassOf<ANSBarrierBase> BarrierClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Barrier|Attribute")
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
@@ -36,7 +36,7 @@ protected:
 	bool TryGetBarrierDuration(float& OutBarrierDuration) const;
 	void RebuildSetByCallerMagnitudes();
 
-	ANSBarrier* SpawnBarrierActor(
+	ANSBarrierBase* SpawnBarrierActor(
 		const FGameplayAbilityActorInfo* ActorInfo,
 		float BarrierRadius,
 		float BarrierDuration,
@@ -44,7 +44,7 @@ protected:
 	);
 
 	const TArray<FNSSetByCallerMagnitude>& GetSetByCallerMagnitudes() const { return SetByCallerMagnitudes; }
-	ANSBarrier* GetActiveBarrier() const { return ActiveBarrier; }
+	ANSBarrierBase* GetActiveBarrier() const { return ActiveBarrier; }
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Barrier")
@@ -64,5 +64,5 @@ private:
 	TArray<FNSSetByCallerMagnitude> SetByCallerMagnitudes;
 
 	UPROPERTY(Transient)
-	TObjectPtr<ANSBarrier> ActiveBarrier;
+	TObjectPtr<ANSBarrierBase> ActiveBarrier;
 };
