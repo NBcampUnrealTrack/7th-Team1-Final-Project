@@ -10,6 +10,9 @@
 
 class UNSAugmentDefinition;
 
+/**
+ * 증강별 희귀도 타입.
+ */
 UENUM(BlueprintType)
 enum class ENSAugmentRarity : uint8
 {
@@ -17,6 +20,19 @@ enum class ENSAugmentRarity : uint8
 	Rare      UMETA(DisplayName = "Rare"),
 	Epic      UMETA(DisplayName = "Epic"),
 	Legendary UMETA(DisplayName = "Legendary"),
+};
+
+/**
+ * 증강 리롤 요청 실패 사유. 성공은 별도 값 없이 Client_PresentOffer 재수신으로 통보.
+ */
+UENUM(BlueprintType)
+enum class ENSAugmentRerollResult : uint8
+{
+	NotEnoughCurrency,	// 임시 재화가 비용보다 부족함
+	NoDifferentOffer,	// 지금 오퍼가 3장이 아니거나, 다른 3장 조합을 만들 수 없음
+	InvalidRequest,		// 트리거에 리롤 규칙이 없거나, 규칙 값이 잘못됨(설정 오류)
+	NoActiveOffer,		// 지금 표시 중인 오퍼 자체가 없음(패널이 닫혔거나 대기열이 비어있음)
+	StaleRevision,		// 요청을 보낸 뒤 오퍼가 이미 바뀌어서, 들고 있던 오퍼 번호가 낡아버림
 };
 
 /**

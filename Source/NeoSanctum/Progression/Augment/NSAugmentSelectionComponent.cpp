@@ -16,6 +16,7 @@
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Player.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
@@ -95,14 +96,120 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 	// 표시 중인 오퍼가 없으면 리롤 불가
 	if (!bFrontRolled || RewardTriggerQueue.IsEmpty())
 	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NoActiveOffer,
+			0,
+			0,
+			0,
+			OfferRevision
+		);
 		return;
 	}
 
-	// TODO : 리롤 비용 차감 (재화 시스템 연동 후). 현재는 카운터만 증가.
-	CurrentOfferRerollCount++;
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsRunReady())
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			0,
+			OfferRevision
+		);
+		return;
+	}
 
-	// front 강제 재추첨 (Rarity도 다시 결정) → Client_PresentOffer까지 PresentFront가 처리
-	PresentFront(true);
+	// 오퍼가 떠 있다면 희귀도 규칙도 당연히 있어야 하지만, 혹시 모르니 한 번 더 확인.
+	FNSAugmentRarityRule RarityRule;
+	if (!TryFindRarityRule(DataSubsystem, RewardTriggerQueue[0], RarityRule))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 이 트리거에 리롤 규칙 자체가 없으면 리롤을 허용하지 않음.
+	FNSAugmentRerollRule RerollRule;
+	if (!TryFindRerollRule(RewardTriggerQueue[0], RerollRule))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	const int64 Cost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+
+	UNSCurrencyComponent* CurrencyComponent = GetOwnerCurrencyComponent();
+	const int64 HaveCurrency = CurrencyComponent ? CurrencyComponent->GetTemp() : 0;
+	if (!CurrencyComponent || HaveCurrency < Cost)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NotEnoughCurrency,
+			Cost,
+			HaveCurrency,
+			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	TSet<FPrimaryAssetId> PrevSet;
+	for (const FNSAugmentSelectionCard& Card : PendingOffer)
+	{
+		PrevSet.Add(Card.DefId);
+	}
+
+	bool bDifferentPossible = false;
+	TArray<FNSAugmentSelectionCard> NewOffer =
+		RollCardsExcludingComposition(RarityRule, CardsCount, PrevSet, bDifferentPossible);
+
+	TSet<FPrimaryAssetId> NewOfferDefIds;
+	for (const FNSAugmentSelectionCard& Card : NewOffer)
+	{
+		NewOfferDefIds.Add(Card.DefId);
+	}
+
+	// 재화를 차감하기 전에, 방금 만든 오퍼가 정말 카드 수도 맞고 직전과 다른 구성인지 마지막으로 한 번 더 확인.
+	if (!bDifferentPossible || NewOffer.Num() != CardsCount || AreDefIdSetsEqual(NewOfferDefIds, PrevSet))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NoDifferentOffer,
+			0,
+			0,
+			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	if (!CurrencyComponent->TrySpendTemp(Cost))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NotEnoughCurrency,
+			Cost,
+			CurrencyComponent->GetTemp(),
+			0,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 여기부터는 검증이 다 끝났으니, 실패 없이 세 줄이 한 번에 반영.
+	PendingOffer = MoveTemp(NewOffer);
+	++CurrentOfferRerollCount;
+	++OfferRevision;
+
+	Client_PresentOffer(PendingOffer, CurrentOfferRerollCount);
 }
 
 // 증강 골랐을때
@@ -189,7 +296,7 @@ void UNSAugmentSelectionComponent::Reset()
 }
 
 // 대기열 front를 클라에 표시
-void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
+void UNSAugmentSelectionComponent::PresentFront()
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -236,13 +343,9 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 			return;
 		}
 		
-		if (!bFrontRolled || bReroll)
+		if (!bFrontRolled)
 		{
-			if (!bFrontRolled)
-			{
-				CurrentOfferRerollCount = 0;
-			}
-			
+			CurrentOfferRerollCount = 0;
 			PendingOffer = RollCards(RarityRule, CardsCount);
 			bFrontRolled = !PendingOffer.IsEmpty();
 		}
@@ -506,6 +609,16 @@ void UNSAugmentSelectionComponent::Client_PresentOffer_Implementation(
 	OnOfferPresented.Broadcast(Cards, RerollCost);
 }
 
+void UNSAugmentSelectionComponent::Client_NotifyRerollResult_Implementation(
+	ENSAugmentRerollResult Result,
+	int64 RequiredCost,
+	int64 HaveCurrency,
+	int32 RequestRevision,
+	int32 CurrentOfferRevision)
+{
+	OnRerollResult.Broadcast(Result, RequiredCost, HaveCurrency, RequestRevision, CurrentOfferRevision);
+}
+
 void UNSAugmentSelectionComponent::Client_CloseOffer_Implementation()
 {
 	OnOfferClosed.Broadcast();
@@ -524,6 +637,23 @@ void UNSAugmentSelectionComponent::Client_AutoOpenPanel_Implementation()
 	{
 		UIManager->OpenAugmentationPanel();
 	}
+}
+
+UNSCurrencyComponent* UNSAugmentSelectionComponent::GetOwnerCurrencyComponent() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetOwner());
+	if (!IsValid(PlayerController))
+	{
+		return nullptr;
+	}
+
+	const ANSPlayerState* PlayerState = Cast<ANSPlayerState>(PlayerController->PlayerState);
+	if (!IsValid(PlayerState))
+	{
+		return nullptr;
+	}
+
+	return PlayerState->GetCurrencyComponent();
 }
 
 bool UNSAugmentSelectionComponent::TryFindRarityRule(
