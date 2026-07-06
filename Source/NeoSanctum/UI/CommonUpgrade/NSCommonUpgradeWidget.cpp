@@ -100,6 +100,8 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 
 	RefreshCommonCurrencyDisplay();
 
+	// ClearChildren()으로 기존 노드 위젯이 전부 파괴되므로, 그 노드를 가리키던 호버 상태와
+	// 디테일 패널도 같이 초기화함(재빌드 후에도 낡은 정보가 남아있는 것을 방지).
 	CurrentlyHoveredNodeId = NAME_None;
 	if (IsValid(DetailWidget))
 	{
@@ -228,6 +230,8 @@ void UNSCommonUpgradeWidget::HandleNodeHovered(FName NodeId)
 
 	CurrentlyHoveredNodeId = NodeId;
 
+	// 이 값들은 디테일 패널 표시 전용임. 실제 구매 시점에는 이 값을 재사용하지 않고
+	// 클릭 시점 기준으로 다시 계산(호버 이후 재화/레벨이 바뀔 수 있음).
 	const int32 CurrentLevel = ProgressionSubsystem->GetCommonSkillLevel(NodeId);
 	const int32 NewLevel = CurrentLevel + 1;
 	const int64 NextCost = ProgressionSubsystem->GetCommonUpgradeCost(NodeId, NewLevel);
