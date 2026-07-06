@@ -164,6 +164,19 @@ void ANSPlayerController::Server_DebugCommitPermanent_Implementation()
 	}
 }
 
+// 테스트용 임시 코드 (인런 파츠 상점 테스트 — 드롭/줍기 없이 서버 권한에서 임시재화 즉시 지급)
+void ANSPlayerController::Server_DebugAddTempCurrency_Implementation()
+{
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	UNSCurrencyComponent* Currency = PS ? PS->GetCurrencyComponent() : nullptr;
+	if (!Currency)
+	{
+		return;
+	}
+
+	Currency->AddTemp(0, 10000);
+}
+
 void ANSPlayerController::BindAttributeToHUD()
 {
 	if (!IsLocalController())
