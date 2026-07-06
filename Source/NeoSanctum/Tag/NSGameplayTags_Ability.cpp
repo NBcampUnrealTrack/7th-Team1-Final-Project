@@ -6,10 +6,6 @@ namespace NSGameplayTags
 {
 	// Common Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Common_Dash, "Ability.Common.Dash");	
-
-	// Vanguard Ability
-	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_BaseAttack, "Ability.Vanguard.BaseAttack");
-	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Guard, "Ability.Vanguard.Guard");
 	
 	// Ranger Ability
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Ranger_AutoFire, "Ability.Ranger.AutoFire");
@@ -25,6 +21,11 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_SpeedBuff, "Ability.Engineer.SpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Engineer_Barrier, "Ability.Engineer.Barrier");
 	
+	// Vanguard Ability
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_BaseAttack, "Ability.Vanguard.BaseAttack");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Flicker, "Ability.Vanguard.Flicker");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Guard, "Ability.Vanguard.Guard");
+	
 	// Engineer Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Engineer_AttachTurretSpawner, "Event.Engineer.AttachTurretSpawner");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Engineer_ThrowTurretSpawner, "Event.Engineer.ThrowTurretSpawner");
@@ -36,7 +37,6 @@ namespace NSGameplayTags
 
 	// Vanguard Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Hit, "Event.Vanguard.Hit");
-	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Guard, "Event.Vanguard.Guard");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ComboWindowOpened, "Event.Vanguard.ComboWindowOpened");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_DashAttackRecoverStarted, "Event.Vanguard.DashAttackRecoverStarted");
 	
