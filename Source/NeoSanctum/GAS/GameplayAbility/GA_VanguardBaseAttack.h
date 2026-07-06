@@ -369,6 +369,9 @@ private:
 	// 현재 근접 공격 판정 윈도우 식별자
 	uint32 CurrentMeleeTraceWindowId = 0;
 
+	// 현재 근접 공격 판정 윈도우에서 이미 데미지를 적용한 대상
+	TSet<TObjectKey<AActor>> DamagedActorsInTraceWindow;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
 

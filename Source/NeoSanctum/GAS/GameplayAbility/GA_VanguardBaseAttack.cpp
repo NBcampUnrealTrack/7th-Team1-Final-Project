@@ -155,6 +155,7 @@ void UGA_VanguardBaseAttack::EndAbility(
 	PreviousMeleeTraceSocketLocations.Reset();
 	bHasPreviousMeleeTraceSocketLocations = false;
 	CurrentMeleeTraceWindowId = 0;
+	DamagedActorsInTraceWindow.Reset();
 	ComboWindowEventTask = nullptr;
 	MeleeHitEventTask = nullptr;
 	DashAttackRecoverEventTask = nullptr;
@@ -401,6 +402,7 @@ void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Paylo
 		PreviousMeleeTraceSocketLocations.Reset();
 		bHasPreviousMeleeTraceSocketLocations = false;
 		CurrentMeleeTraceWindowId = TraceWindowId;
+		DamagedActorsInTraceWindow.Reset();
 	}
 
 	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
@@ -538,6 +540,12 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 		return;
 	}
 
+	const TObjectKey<AActor> TargetKey(TargetActor);
+	if (DamagedActorsInTraceWindow.Contains(TargetKey))
+	{
+		return;
+	}
+
 	float FinalDamage = 0.0f;
 	if (!TryGetFinalDamage(FinalDamage))
 	{
@@ -553,6 +561,8 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+
+	DamagedActorsInTraceWindow.Add(TargetKey);
 
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
 	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
