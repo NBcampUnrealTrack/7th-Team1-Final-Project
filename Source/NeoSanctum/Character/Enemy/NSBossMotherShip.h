@@ -23,11 +23,14 @@ class NEOSANCTUM_API ANSBossMotherShip : public ANSBossPawnBase
 public:
 	ANSBossMotherShip();
 	
-	void NotifySummonEnded() { bSummonInFlight = false; }
-
-protected:
+public:
 	virtual void BeginPlay() override;
 	virtual UNSFlyingLocomotionComponent* GetFlyingLocomotion() const override;
+	
+	// 페이즈2(이동 언락) 전까지는 고정 방향 포탑 → 회전 주시 안 함
+	virtual bool ShouldFaceCombatTarget() const override { return IsBossMovementUnlocked(); }
+	
+	void NotifySummonEnded() { bSummonInFlight = false; }
 	
 #pragma region SpawnDrone
 public:
