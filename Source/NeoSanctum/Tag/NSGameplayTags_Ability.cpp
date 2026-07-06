@@ -37,6 +37,7 @@ namespace NSGameplayTags
 
 	// Vanguard Ability Event Tags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Hit, "Event.Vanguard.Hit");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_Guard, "Event.Vanguard.Guard");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ComboWindowOpened, "Event.Vanguard.ComboWindowOpened");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_DashAttackRecoverStarted, "Event.Vanguard.DashAttackRecoverStarted");
 	
