@@ -98,7 +98,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
 	}
 
 	// TODO : 리롤 비용 차감 (재화 시스템 연동 후). 현재는 카운터만 증가.
-	CurrentRerollCost++;
+	CurrentOfferRerollCount++;
 
 	// front 강제 재추첨 (Rarity도 다시 결정) → Client_PresentOffer까지 PresentFront가 처리
 	PresentFront(true);
@@ -166,7 +166,8 @@ void UNSAugmentSelectionComponent::CopyRunStateFrom(const UNSAugmentSelectionCom
 	RewardTriggerQueue = Source->RewardTriggerQueue;
 	bFrontRolled = Source->bFrontRolled;
 	PendingOffer = Source->PendingOffer;
-	CurrentRerollCost = Source->CurrentRerollCost;
+	CurrentOfferRerollCount = Source->CurrentOfferRerollCount;
+	OfferRevision = Source->OfferRevision; // 같은 런이 이어지는 것이라 값을 그대로 이어받음(증가 아님).
 	
 	SetPendingCount(RewardTriggerQueue.Num());
 }
@@ -180,7 +181,8 @@ void UNSAugmentSelectionComponent::Reset()
 	RewardTriggerQueue.Reset();
 	PendingOffer.Reset();
 	bFrontRolled = false;
-	CurrentRerollCost = 0;
+	CurrentOfferRerollCount = 0;
+	++OfferRevision;	// 인런 종료 시점에 남아있던 리롤/선택 요청을 무효화.
 	bHasValidatedAugmentDefinitionGroups = false;
 	SetPendingCount(0);
 }
@@ -237,7 +239,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 		{
 			if (!bFrontRolled)
 			{
-				CurrentRerollCost = 0;
+				CurrentOfferRerollCount = 0;
 			}
 			
 			PendingOffer = RollCards(RarityRule, CardsCount);
@@ -257,7 +259,7 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 			continue;
 		}
 		
-		Client_PresentOffer(PendingOffer, CurrentRerollCost);
+		Client_PresentOffer(PendingOffer, CurrentOfferRerollCount);
 		return;
 	}
 	
@@ -480,7 +482,7 @@ void UNSAugmentSelectionComponent::ConsumeFrontOffer()
 	
 	bFrontRolled = false;
 	PendingOffer.Reset();
-	CurrentRerollCost = 0;
+	CurrentOfferRerollCount = 0;
 	
 	SetPendingCount(RewardTriggerQueue.Num());
 }
@@ -607,6 +609,27 @@ bool UNSAugmentSelectionComponent::TryFindRerollRule(
 		("RewardTriggerTag", RewardTriggerTag.ToString())
 	);
 	return false;
+}
+
+int64 UNSAugmentSelectionComponent::ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count)
+{
+	// 2^53 미만이면 double의 정수 표현이 정확해 ceil 결과가 항상 안전.
+	constexpr double SafeCeiling = 1.0e15;
+
+	if (Count <= 0)
+	{
+		return FMath::Max<int64>(0, Rule.InitialCost);
+	}
+
+	const double Base = static_cast<double>(FMath::Max<int64>(0, Rule.InitialCost));
+	const double Mult = FMath::Max(1.0, static_cast<double>(Rule.CostMultiplier));
+	const double Raw = Base * FMath::Pow(Mult, static_cast<double>(Count));
+
+	if (!FMath::IsFinite(Raw) || Raw >= SafeCeiling)
+	{
+		return static_cast<int64>(SafeCeiling);
+	}
+	return static_cast<int64>(FMath::CeilToDouble(Raw));
 }
 
 TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(

@@ -127,6 +127,9 @@ private:
 	bool TryFindRerollRule(
 		const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const;
 
+	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
+	static int64 ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count);
+
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
 
@@ -195,7 +198,12 @@ private:
 
 	TArray<FNSAugmentSelectionCard> PendingOffer;
 
-	int32 CurrentRerollCost = 0;
+	int32 CurrentOfferRerollCount = 0;
+
+	// 클라이언트가 들고 있는 오퍼가 최신인지 확인하는 버전 번호.
+	// 오퍼 내용이 바뀔 때마다(새로 추첨될 때, 리롤 성공 시) 값이 올라가고,
+	// 오래된 버전 번호로 온 요청은 서버가 거부한다. 그래서 0으로 되돌리는 일은 절대 없다.
+	int32 OfferRevision = 0;
 
 	// 대기 중인 증강 선택권 수 (오너에게만 레플리케이션, UI 뱃지용)
 	UPROPERTY(ReplicatedUsing = OnRep_PendingCount)
