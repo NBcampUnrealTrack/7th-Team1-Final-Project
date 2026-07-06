@@ -28,6 +28,7 @@
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
@@ -61,6 +62,8 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	CombatComponent = CreateDefaultSubobject<UNSEnemyCombatComponent>(TEXT("CombatComponent"));
 	StateComponent = CreateDefaultSubobject<UNSEnemyStateComponent>(TEXT("StateComponent"));
 	PartComponent = CreateDefaultSubobject<UNSEnemyPartComponent>(TEXT("PartComponent"));
+	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+	MinimapIconComponent->SetHideWhenOwnerHealthZero(true);
 
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
 

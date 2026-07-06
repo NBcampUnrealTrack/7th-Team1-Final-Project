@@ -34,6 +34,7 @@ class UNSPlayerAttackFeedbackComponent;
 class UNSPlayerHitTakenFeedbackComponent;
 class UNSHitReactionComponent;
 class UNSDamageFlashComponent;
+class UNSMinimapIconComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -72,6 +73,7 @@ public:
 	// PlayerAttackFeedbackComponent Getter
 	UNSPlayerAttackFeedbackComponent* GetPlayerAttackFeedbackComponent() const { return PlayerAttackFeedbackComp; }
 	UNSPlayerHitTakenFeedbackComponent* GetPlayerHitTakenFeedbackComponent() const { return PlayerHitTakenFeedbackComp; }
+	UNSMinimapIconComponent* GetMinimapIconComponent() const { return MinimapIconComponent; }
 
 	// 캐릭터 데이터에 등록된 반응형 GE를 상황 태그 기준으로 적용
 	void ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag);
@@ -174,6 +176,9 @@ protected:
 	// Shield 피격 시 캐릭터 머티리얼 플래시를 재생
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
 	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Minimap")
+	TObjectPtr<UNSMinimapIconComponent> MinimapIconComponent;
 	
 protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트

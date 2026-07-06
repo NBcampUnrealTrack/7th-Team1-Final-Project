@@ -26,6 +26,7 @@ class UNSEnemyPartComponent;
 class UNSDissolveComponent;
 class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
+class UNSMinimapIconComponent;
 
 /*
  * 작성자 : 최준혁
@@ -126,6 +127,9 @@ public:
 	// Enemy Pawn의 디졸브 컴포넌트를 반환하는 함수
 	UNSDissolveComponent* GetDissolveComponent() const { return DissolveComponent; }
 
+	// Enemy Pawn의 미니맵 아이콘 컴포넌트를 반환하는 함수
+	UNSMinimapIconComponent* GetMinimapIconComponent() const { return MinimapIconComponent; }
+
 protected:
 	// EnemyData 기반으로 GAS와 외형 데이터를 초기화하는 함수
 	virtual void InitializeFromData(bool bFullInit);
@@ -192,6 +196,10 @@ protected:
 	// Enemy Pawn의 사망 디졸브 효과를 처리하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSDissolveComponent> DissolveComponent;
+
+	// Enemy Pawn의 미니맵 아이콘 표시를 처리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSMinimapIconComponent> MinimapIconComponent;
 
 	// Enemy Pawn의 Ability System Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")

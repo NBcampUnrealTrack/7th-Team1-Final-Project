@@ -44,6 +44,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
@@ -97,6 +98,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Player);
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	DamageFlashComponent->SetTriggerPolicy(ENSDamageFlashTriggerPolicy::Shield);
+	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+	MinimapIconComponent->SetIconRowName(TEXT("Player"));
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));

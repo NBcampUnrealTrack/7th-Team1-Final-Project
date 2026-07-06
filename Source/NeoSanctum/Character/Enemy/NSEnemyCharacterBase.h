@@ -30,6 +30,7 @@ class UNSEnemyMeleeComponent;
 class UNSEnemyMoveComponent;
 class UNSEnemyStateComponent;
 class UNSEnemyPartComponent;
+class UNSMinimapIconComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter,
@@ -62,6 +63,9 @@ public:
 
 	// Enemy 공통 Interface에서 사용하는 주 메시 반환 함수
 	virtual USkeletalMeshComponent* GetEnemyMesh() const override { return GetMesh(); }
+
+	// Enemy의 미니맵 아이콘 컴포넌트를 반환하는 함수
+	UNSMinimapIconComponent* GetMinimapIconComponent() const { return MinimapIconComponent; }
 
 	// 현재 실행 중인 공격 Row를 저장하는 함수
 	virtual void SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow) override;
@@ -142,6 +146,10 @@ protected:
 	// 디졸브 효과 컴포넌트
 	UPROPERTY(EditDefaultsOnly, Category = "Components")
 	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
+
+	// Enemy의 미니맵 아이콘 표시를 처리하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSMinimapIconComponent> MinimapIconComponent;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
