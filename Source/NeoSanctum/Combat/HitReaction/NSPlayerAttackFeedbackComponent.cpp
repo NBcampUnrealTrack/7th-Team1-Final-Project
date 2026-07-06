@@ -6,7 +6,7 @@
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Combat/Weapon/Summon/NSBarrier.h"
+#include "NeoSanctum/Combat/Weapon/Summon/NSBarrierBase.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
@@ -64,7 +64,7 @@ ENSHitFeedbackTargetType UNSPlayerAttackFeedbackComponent::ResolveTargetType(con
 	}
 	
 	// 타겟이 Barrier
-	if (TargetActor->IsA<ANSBarrier>())
+	if (TargetActor->IsA<ANSBarrierBase>())
 	{
 		return ENSHitFeedbackTargetType::Barrier;
 	}

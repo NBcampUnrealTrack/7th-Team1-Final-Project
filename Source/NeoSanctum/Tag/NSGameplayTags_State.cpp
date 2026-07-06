@@ -12,6 +12,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Deactivate_HandIK, "State.Deactivate.HandIK");
 	UE_DEFINE_GAMEPLAY_TAG(State_DashAttackWindow, "State.DashAttackWindow");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Attacking, "State.Vanguard.Attacking");
+	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Guarding, "State.Vanguard.Guarding");
+	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_BarrierAttackWindow, "State.Vanguard.BarrierAttackWindow");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ChargingDashAttack, "State.Vanguard.ChargingDashAttack");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ComboInputWindow, "State.Vanguard.ComboInputWindow");
 	

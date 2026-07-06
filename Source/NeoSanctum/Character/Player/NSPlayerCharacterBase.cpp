@@ -220,6 +220,7 @@ void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentCharacterData);
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
+	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentLeftHandWeapon);
 	DOREPLIFETIME(ANSPlayerCharacterBase, bDeathPresentationStarted);
 }
 
@@ -557,6 +558,20 @@ void ANSPlayerCharacterBase::OnRep_CurrentWeapon()
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetIncludingScale,
 		CurrentWeapon->GetAttachSocketName()
+	);
+}
+
+void ANSPlayerCharacterBase::OnRep_CurrentLeftHandWeapon()
+{
+	if (!IsValid(CurrentLeftHandWeapon))
+	{
+		return;
+	}
+
+	CurrentLeftHandWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		TEXT("Weapon_l")
 	);
 }
 
@@ -916,15 +931,28 @@ void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 	}
 	
 	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CurrentCharacterData->DefaultWeaponClass.Get();
-	if (!LoadedWeaponClass)
+	CurrentWeapon = SpawnWeapon(
+		LoadedWeaponClass,
+		LoadedWeaponClass ? LoadedWeaponClass.GetDefaultObject()->GetAttachSocketName() : NAME_None
+	);
+
+	TSubclassOf<ANSWeaponBase> LoadedLeftHandWeaponClass = CurrentCharacterData->DefaultLeftHandWeaponClass.Get();
+	CurrentLeftHandWeapon = SpawnWeapon(LoadedLeftHandWeaponClass, TEXT("Weapon_l"));
+}
+
+ANSWeaponBase* ANSPlayerCharacterBase::SpawnWeapon(
+	TSubclassOf<ANSWeaponBase> WeaponClass,
+	FName AttachSocketName)
+{
+	if (!HasAuthority() || !WeaponClass)
 	{
-		return;
+		return nullptr;
 	}
 	
 	UWorld* World = GetWorld();
 	if (!World)
 	{
-		return;
+		return nullptr;
 	}
 	
 	FActorSpawnParameters SpawnParams;
@@ -933,23 +961,24 @@ void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	
 	ANSWeaponBase* SpawnedWeapon = World->SpawnActor<ANSWeaponBase>(
-		LoadedWeaponClass,
+		WeaponClass,
 		FTransform::Identity,
 		SpawnParams
 	);
 	
 	if (!IsValid(SpawnedWeapon))
 	{
-		return;
+		return nullptr;
 	}
 	
 	SpawnedWeapon->AttachToComponent(
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetIncludingScale,
-		SpawnedWeapon->GetAttachSocketName()
+		AttachSocketName
 	);
 	
-	CurrentWeapon = SpawnedWeapon;
+
+	return SpawnedWeapon;
 }
 
 void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
@@ -992,6 +1021,12 @@ void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
 		CurrentWeapon->Destroy();
 	}
 	CurrentWeapon = nullptr;
+
+	if (IsValid(CurrentLeftHandWeapon))
+	{
+		CurrentLeftHandWeapon->Destroy();
+	}
+	CurrentLeftHandWeapon = nullptr;
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)

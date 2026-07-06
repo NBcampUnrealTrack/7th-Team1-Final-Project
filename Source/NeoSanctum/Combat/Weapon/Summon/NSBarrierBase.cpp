@@ -1,19 +1,17 @@
-﻿// Copyright 2026 One Team. All rights reserved.
+// Copyright 2026 One Team. All rights reserved.
 
-
-#include "NSBarrier.h"
+#include "NSBarrierBase.h"
 
 #include "AbilitySystemComponent.h"
-#include "Components/SphereComponent.h"
+#include "Components/ShapeComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
-#include "NiagaraComponent.h"
 
-ANSBarrier::ANSBarrier()
+ANSBarrierBase::ANSBarrierBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -26,19 +24,9 @@ ANSBarrier::ANSBarrier()
 
 	AttributeSet = CreateDefaultSubobject<UNSBaseAttributeSet>(TEXT("AttributeSet"));
 
-	BarrierCollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("BarrierCollisionComponent"));
-	SetRootComponent(BarrierCollisionComponent);
 	CurrentRadius = DefaultRadius;
-	BarrierCollisionComponent->InitSphereRadius(DefaultRadius);
-	BarrierCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::PlayerBarrier);
-	BarrierCollisionComponent->SetGenerateOverlapEvents(false);
-
-	BarrierNiagaraComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BarrierNiagaraComponent"));
-	BarrierNiagaraComponent->SetupAttachment(BarrierCollisionComponent);
-	BarrierNiagaraComponent->SetAutoActivate(true);
 
 	BarrierFlashMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BarrierFlashMeshComponent"));
-	BarrierFlashMeshComponent->SetupAttachment(BarrierCollisionComponent);
 	BarrierFlashMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	BarrierFlashMeshComponent->SetGenerateOverlapEvents(false);
 	BarrierFlashMeshComponent->SetCastShadow(false);
@@ -49,12 +37,12 @@ ANSBarrier::ANSBarrier()
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 }
 
-UAbilitySystemComponent* ANSBarrier::GetAbilitySystemComponent() const
+UAbilitySystemComponent* ANSBarrierBase::GetAbilitySystemComponent() const
 {
 	return ASC;
 }
 
-void ANSBarrier::InitializeBarrier(
+void ANSBarrierBase::InitializeBarrier(
 	APawn* InOwningPawn,
 	AController* InOwningController,
 	float InRadius,
@@ -84,7 +72,12 @@ void ANSBarrier::InitializeBarrier(
 	}
 }
 
-void ANSBarrier::BeginPlay()
+float ANSBarrierBase::GetCurrentHealth() const
+{
+	return AttributeSet ? AttributeSet->GetHealth() : 0.0f;
+}
+
+void ANSBarrierBase::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -94,14 +87,31 @@ void ANSBarrier::BeginPlay()
 	ApplyInitialAttributeEffect();
 }
 
-void ANSBarrier::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void ANSBarrierBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
 
 	Super::EndPlay(EndPlayReason);
 }
 
-void ANSBarrier::InitializeAbilityActorInfo()
+void ANSBarrierBase::InitializeBarrierCollisionComponent(UShapeComponent* InBarrierCollisionComponent)
+{
+	BarrierCollisionComponent = InBarrierCollisionComponent;
+	SetRootComponent(BarrierCollisionComponent);
+
+	if (BarrierCollisionComponent)
+	{
+		BarrierCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::PlayerBarrier);
+		BarrierCollisionComponent->SetGenerateOverlapEvents(false);
+	}
+
+	if (BarrierFlashMeshComponent)
+	{
+		BarrierFlashMeshComponent->SetupAttachment(BarrierCollisionComponent);
+	}
+}
+
+void ANSBarrierBase::InitializeAbilityActorInfo()
 {
 	if (!ASC || bAbilityActorInfoInitialized)
 	{
@@ -118,7 +128,7 @@ void ANSBarrier::InitializeAbilityActorInfo()
 	bAbilityActorInfoInitialized = true;
 }
 
-void ANSBarrier::ApplyInitialAttributeEffect()
+void ANSBarrierBase::ApplyInitialAttributeEffect()
 {
 	if (!HasAuthority() || !ASC || !InitialAttributeEffectClass || bInitialAttributeEffectApplied)
 	{
@@ -156,31 +166,36 @@ void ANSBarrier::ApplyInitialAttributeEffect()
 	bInitialAttributeEffectApplied = true;
 }
 
-void ANSBarrier::ApplyRadius(float InRadius)
+void ANSBarrierBase::ApplyRadius(float InRadius)
 {
 	const float Radius = FMath::Max(InRadius, MinimumRadius);
 	CurrentRadius = Radius;
 
-	if (BarrierCollisionComponent)
-	{
-		BarrierCollisionComponent->SetSphereRadius(Radius);
-	}
+	ApplyCollisionRadius(Radius);
+	ApplyVisualRadius(Radius);
+}
 
-	if (BarrierNiagaraComponent)
-	{
-		const float VisualScale = Radius / DefaultRadius;
-		BarrierNiagaraComponent->SetRelativeScale3D(FVector(VisualScale));
-		BarrierNiagaraComponent->SetVariableFloat(TEXT("User.BarrierRadius"), Radius);
-	}
+void ANSBarrierBase::ApplyCollisionRadius(float Radius)
+{
+}
 
+void ANSBarrierBase::ApplyVisualRadius(float Radius)
+{
 	if (BarrierFlashMeshComponent)
 	{
-		const float FlashMeshScale = (Radius / FMath::Max(FlashMeshBaseRadius, KINDA_SMALL_NUMBER));
-		BarrierFlashMeshComponent->SetRelativeScale3D(FVector(FlashMeshScale));
+		float BaseVisualRadius = DefaultRadius;
+		if (const UStaticMesh* FlashMesh = BarrierFlashMeshComponent->GetStaticMesh())
+		{
+			const FVector MeshExtent = FlashMesh->GetBounds().BoxExtent;
+			BaseVisualRadius = FMath::Max3(MeshExtent.X, MeshExtent.Y, MeshExtent.Z);
+		}
+
+		const float VisualScale = Radius / FMath::Max(BaseVisualRadius, KINDA_SMALL_NUMBER);
+		BarrierFlashMeshComponent->SetRelativeScale3D(FVector(VisualScale));
 	}
 }
 
-void ANSBarrier::ApplyDuration(float InDuration)
+void ANSBarrierBase::ApplyDuration(float InDuration)
 {
 	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
 	CurrentDuration = FMath::Max(InDuration, 0.0f);
@@ -199,7 +214,7 @@ void ANSBarrier::ApplyDuration(float InDuration)
 	);
 }
 
-void ANSBarrier::HandleOutOfHealth()
+void ANSBarrierBase::HandleOutOfHealth()
 {
 	// 연출이 들어오기 전까지는 즉시 파괴함.
 	if (HasAuthority())
@@ -208,7 +223,7 @@ void ANSBarrier::HandleOutOfHealth()
 	}
 }
 
-void ANSBarrier::DestroyBarrier()
+void ANSBarrierBase::DestroyBarrier()
 {
 	if (HasAuthority())
 	{
