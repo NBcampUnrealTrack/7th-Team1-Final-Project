@@ -23,6 +23,7 @@
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "NeoSanctum/AI/Enemy/Spawner/NSSpawner.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/Stage/NSBossEntryVolume.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -550,7 +551,10 @@ void ANSRunGameMode::NotifyBossGateReached_Implementation()
 	}
 
 	TeleportAllPlayersToBossRoom();
+	// 페이즈 BossFight로 전환
 	RunGS->SetStagePhase(ENSStagePhase::BossFight);
+	// 보스 스포너 활성화
+	ActivateBossSpawners();
 }
 
 void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
@@ -938,6 +942,24 @@ void ANSRunGameMode::HandleRunDataReadyForObjective()
 	}
 	
 	InitializeObjectiveInternal();
+}
+
+void ANSRunGameMode::ActivateBossSpawners()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	// 월드의 보스 전용 스포너를 활성화
+	for (TActorIterator<ANSSpawner> It(GetWorld()); It; ++It)
+	{
+		ANSSpawner* Spawner = *It;
+		if (Spawner && Spawner->IsBossSpawner())
+		{
+			Spawner->ActivateSpawner();
+			break;
+		}
+	}
 }
 
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
