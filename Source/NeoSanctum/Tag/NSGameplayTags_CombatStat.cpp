@@ -36,7 +36,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill2Count,			"CombatStat.MaxSkill2Count");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill3Count,			"CombatStat.MaxSkill3Count");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_PelletCount,				"CombatStat.PelletCount");
-	UE_DEFINE_GAMEPLAY_TAG(CombatStat_TargetCount,				"CombatStat.TargetCount");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_HitCount,					"CombatStat.HitCount");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_PelletSpread,				"CombatStat.PelletSpread");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_FireRange,				"CombatStat.FireRange");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DetectionRange,			"CombatStat.DetectionRange");
