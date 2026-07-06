@@ -67,6 +67,10 @@ public:
 	// 현재 Ability 실행 또는 RecoverTime 대기 중인지 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Boss|Ability")
 	bool IsExecuting() const;
+	
+	// 현재 AbilityClass가 ASC에서 활성 상태인지 확인하는 함수
+	UFUNCTION(BlueprintPure, Category = "Boss|Ability")
+	bool IsCurrentAbilityActive() const;
 
 	// 현재 실행 상태를 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Boss|Ability")
@@ -111,9 +115,6 @@ private:
 
 	// 공격 실행 결과를 확정하고 Controller 공격 상태를 정리하는 함수
 	void FinishAttack(ENSBossAbilityExecutionState FinishState);
-
-	// 현재 Ability가 ASC에서 활성 상태인지 확인하는 함수
-	bool IsCurrentAbilityActive() const;
 
 	// ASC의 AbilityEnded Delegate에서 이 컴포넌트를 해제하는 함수
 	void UnbindAbilityEndedDelegate();

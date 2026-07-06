@@ -137,8 +137,13 @@ void UNSBossAbilityExecutorComponent::ResetExecutor()
 
 bool UNSBossAbilityExecutorComponent::IsExecuting() const
 {
-	return ExecutionState == ENSBossAbilityExecutionState::Running ||
-		ExecutionState == ENSBossAbilityExecutionState::Recovering;
+	if (ExecutionState == ENSBossAbilityExecutionState::Running ||
+		ExecutionState == ENSBossAbilityExecutionState::Recovering)
+	{
+		return true;
+	}
+
+	return IsCurrentAbilityActive();
 }
 
 bool UNSBossAbilityExecutorComponent::WasLastAttackFailed() const
