@@ -20,7 +20,15 @@ bool UNSProgressionSubsystem::UpgradeCommonSkill(FName NodeId, int32 NewLevel, i
 	{
 		return false;
 	}
-	
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(GetGameInstance());
+	const FNSCommonUpgradeNodeRow* Row = DataSubsystem ? DataSubsystem->GetCommonUpgradeNodeRow(NodeId) : nullptr;
+
+	if (!Row || NewLevel > Row->MaxLevel)
+	{
+		return false;
+	}
+
 	Save->CommonCurrency -= Cost;
 	Save->CommonSkillLevels.Add(NodeId, NewLevel);
 	SaveNow();

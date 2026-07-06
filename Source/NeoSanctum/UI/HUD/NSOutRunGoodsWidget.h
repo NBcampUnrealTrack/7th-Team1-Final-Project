@@ -39,4 +39,8 @@ private:
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
+
+private:
+	void HandleCurrencyChanged(int64 CommonCurrency);
 };

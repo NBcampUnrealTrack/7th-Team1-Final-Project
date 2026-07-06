@@ -16,6 +16,38 @@ void UNSOutRunGoodsWidget::NativeConstruct()
 
 	ApplyGoodsUIData();
 	RefreshGoods();
+
+	if (APlayerController* PlayerController = GetOwningPlayer())
+	{
+		if (ANSPlayerState* NSPlayerState = PlayerController->GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSPlayerProgressComponent* ProgressComponent = NSPlayerState->GetProgressComponent())
+			{
+				ProgressComponent->OnCurrencyChanged.AddUObject(this, &ThisClass::HandleCurrencyChanged);
+			}
+		}
+	}
+}
+
+void UNSOutRunGoodsWidget::NativeDestruct()
+{
+	if (APlayerController* PlayerController = GetOwningPlayer())
+	{
+		if (ANSPlayerState* NSPlayerState = PlayerController->GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSPlayerProgressComponent* ProgressComponent = NSPlayerState->GetProgressComponent())
+			{
+				ProgressComponent->OnCurrencyChanged.RemoveAll(this);
+			}
+		}
+	}
+
+	Super::NativeDestruct();
+}
+
+void UNSOutRunGoodsWidget::HandleCurrencyChanged(int64 CommonCurrency)
+{
+	SetCommonGoodsAmount(CommonCurrency);
 }
 
 void UNSOutRunGoodsWidget::ApplyGoodsUIData()

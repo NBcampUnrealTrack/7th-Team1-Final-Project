@@ -83,7 +83,7 @@ void UNSPlayerProgressComponent::SyncReplicatedPayloadFromCurrentState()
 void UNSPlayerProgressComponent::BroadcastProgressChanged()
 {
 	OnProgressChanged.Broadcast();
-	OnCurrencyChanged.Broadcast(CommonCurrency, JobCurrency);
+	OnCurrencyChanged.Broadcast(CommonCurrency);
 }
 
 namespace

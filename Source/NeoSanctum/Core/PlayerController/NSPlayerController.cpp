@@ -1749,6 +1749,7 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn()))
 	{
 		PlayerCharacter->ApplyEquippedPart();
+		PlayerCharacter->ApplyCommonUpgradeAttributeEffect();
 	}
 	
 	// 컴패니언: 선택 태그 런타임 동기화

@@ -83,6 +83,9 @@ public:
 	
 	// 저장된 장착 파츠를 현재 폰에 적용
 	void ApplyEquippedPart();
+
+	// 공용 업그레이드 레벨을 Attribute에 재적용. 캐릭터 초기화 시뿐만 아니라 구매 직후에도 호출.
+	void ApplyCommonUpgradeAttributeEffect();
 	
 protected:
 	void InitializeAbilitySystem();
@@ -96,7 +99,6 @@ protected:
 	
 	void ApplyCharacterVisual();
 	void ApplyInitialAttributeEffect();
-	void ApplyCommonUpgradeAttributeEffect();
 	void ApplyDefaultGameplayEffects();
 	
 	void GiveCharacterDataAbilities();
@@ -204,10 +206,14 @@ protected:
 	// AbilitySpecHandle
 	UPROPERTY(Transient)
 	TArray<FGameplayAbilitySpecHandle> CharacterDataAbilityHandles;
-	
+
 	// EffectHandle
 	UPROPERTY(Transient)
 	TArray<FActiveGameplayEffectHandle> CharacterDataEffectHandles;
+
+	// 공용 업그레이드 이펙트 핸들 (재구매 시 이전 것을 제거하고 재적용하기 위해 별도 추적)
+	UPROPERTY(Transient)
+	FActiveGameplayEffectHandle CommonUpgradeEffectHandle;
 
 protected:
 	// 카메라 방향 캐릭터 회전 설정들
