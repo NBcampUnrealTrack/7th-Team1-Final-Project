@@ -519,6 +519,7 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		if (Part && Def)
 		{
 			SelectedPartDetailWidget->SetupFromInstance(*Part, Def);
+			UpdatePreview(Def, SelectedPartDetailWidget);
 		}
 		else
 		{
@@ -567,15 +568,17 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 	const int64 RerollCost = EquipComp->GetRerollCost(SelectedUpgradeSlot);
 	if (IsValid(RerollRangeText))
 	{
-		const FNSPartValueRange* Range = Row ? Row->ValueRange.Find(Part->CurrentRarity) : nullptr;
-		RerollRangeText->SetText(Range
-			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollRange", "{0} ~ {1}"),
-				FText::AsNumber(Range->Min), FText::AsNumber(Range->Max))
+		const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+		RerollRangeText->SetText(UpgradeRow
+			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollRange", "스텟 변동폭 : {0} ~ {1}"),
+				FText::AsNumber(UpgradeRow->ValueRange.Min), FText::AsNumber(UpgradeRow->ValueRange.Max))
 			: FText::GetEmpty());
 	}
 	if (IsValid(RerollCostText))
 	{
-		RerollCostText->SetText(RerollCost >= 0 ? FText::AsNumber(RerollCost) : FText::GetEmpty());
+		RerollCostText->SetText(RerollCost >= 0
+			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollCost", "리롤 비용 : {0}"), FText::AsNumber(RerollCost))
+			: FText::GetEmpty());
 	}
 	if (IsValid(RerollButton))
 	{
@@ -598,12 +601,12 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		{
 			const ENSPartRarity NextRarity =
 				static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
-			const FNSPartValueRange* NextRange = Row ? Row->ValueRange.Find(NextRarity) : nullptr;
-			const FText RarityChange = FText::Format(NSLOCTEXT("PartUpgrade", "RarityChange", "{0} → {1}"),
+			const FNSPartUpgradeRow* NextUpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, NextRarity);
+			const FText RarityChange = FText::Format(NSLOCTEXT("PartUpgrade", "RarityChange", "변동 : {0} → {1}"),
 				GetRarityDisplayText(Part->CurrentRarity), GetRarityDisplayText(NextRarity));
-			const FText ValueChange = NextRange
-				? FText::Format(NSLOCTEXT("PartUpgrade", "ValueChange", "{0} → {1} ~ {2}"),
-					FText::AsNumber(Part->CurrentValue), FText::AsNumber(NextRange->Min), FText::AsNumber(NextRange->Max))
+			const FText ValueChange = NextUpgradeRow
+				? FText::Format(NSLOCTEXT("PartUpgrade", "ValueChange", "스텟 : {0} → {1} ~ {2}"),
+					FText::AsNumber(Part->CurrentValue), FText::AsNumber(NextUpgradeRow->ValueRange.Min), FText::AsNumber(NextUpgradeRow->ValueRange.Max))
 				: FText::GetEmpty();
 			UpgradePreviewText->SetText(FText::Format(
 				NSLOCTEXT("PartUpgrade", "UpgradePreview", "{0}\n{1}"), RarityChange, ValueChange));
@@ -612,11 +615,14 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 	if (IsValid(UpgradeChanceText))
 	{
 		UpgradeChanceText->SetText(UpgradeChance >= 0.f
-			? FText::AsPercent(UpgradeChance) : FText::GetEmpty());
+			? FText::Format(NSLOCTEXT("PartUpgrade", "UpgradeChance", "확률 : {0}"), FText::AsPercent(UpgradeChance))
+			: FText::GetEmpty());
 	}
 	if (IsValid(UpgradeCostText))
 	{
-		UpgradeCostText->SetText(UpgradeCost >= 0 ? FText::AsNumber(UpgradeCost) : FText::GetEmpty());
+		UpgradeCostText->SetText(UpgradeCost >= 0
+			? FText::Format(NSLOCTEXT("PartUpgrade", "UpgradeCost", "업그레이드 비용 : {0}"), FText::AsNumber(UpgradeCost))
+			: FText::GetEmpty());
 	}
 	if (IsValid(UpgradeButton))
 	{
