@@ -210,14 +210,8 @@ int64 UNSCurrencyComponent::ApplyCurrencyGainBoost(FName UtilityNodeId, int64 Ba
 	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
 
 	const double Percent = NSCommonUpgradeUtility::GetPercent(DataSubsystem, ProgressComp, UtilityNodeId);
-	if (Percent == 0.0)
-	{
-		return BaseAmount;
-	}
 
-	// 일단 내림으로 처리. 보상이 적으면 보너스가 안 붙은 것처럼 보일 수도 있는데,
-	// 그 정도는 감안하기로 함(소수점까지 딱 맞게 챙기는 건 지금은 안 함).
-	return FMath::FloorToInt64(static_cast<double>(BaseAmount) * (1.0 + Percent * 0.01));
+	return NSCommonUpgradeUtility::ApplyPercent(BaseAmount, Percent);
 }
 
 void UNSCurrencyComponent::NotifyWalletEntryChanged(const FNSCurrencyEntry& Entry)

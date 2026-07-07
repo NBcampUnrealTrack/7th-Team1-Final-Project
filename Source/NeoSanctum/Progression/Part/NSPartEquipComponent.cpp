@@ -571,14 +571,7 @@ int64 UNSPartEquipComponent::ApplyPartDiscount(FName UtilityNodeId, int64 BaseCo
 	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
 
 	const double Percent = NSCommonUpgradeUtility::GetPercent(DataSubsystem, ProgressComp, UtilityNodeId);
-	if (Percent == 0.0)
-	{
-		return BaseCost;
-	}
-
-	const int64 Discounted = FMath::FloorToInt64(static_cast<double>(BaseCost) * (1.0 + Percent * 0.01));
-	// TrySpendTemp(0)은 항상 실패하므로, 100% 할인이어도 최소 1은 받아야 리롤이 성립함
-	return FMath::Max<int64>(Discounted, 1);
+	return NSCommonUpgradeUtility::ApplyPercentAsCost(BaseCost, Percent);
 }
 
 int64 UNSPartEquipComponent::GetUpgradeCost(FGameplayTag Slot) const

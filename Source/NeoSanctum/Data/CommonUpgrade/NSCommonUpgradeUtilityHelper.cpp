@@ -51,3 +51,19 @@ double NSCommonUpgradeUtility::GetPercent(
 
 	return static_cast<double>(Row->ValuePerLevel) * Level;
 }
+
+int64 NSCommonUpgradeUtility::ApplyPercent(int64 Base, double Percent)
+{
+	if (Base <= 0 || Percent == 0.0)
+	{
+		return Base;
+	}
+
+	return FMath::FloorToInt64(static_cast<double>(Base) * (1.0 + Percent * 0.01));
+}
+
+int64 NSCommonUpgradeUtility::ApplyPercentAsCost(int64 Base, double Percent)
+{
+	// TrySpendTemp(0)은 무조건 실패라서, 할인이 세게 들어가도 최소 1은 받아야 함
+	return FMath::Max<int64>(ApplyPercent(Base, Percent), 1);
+}
