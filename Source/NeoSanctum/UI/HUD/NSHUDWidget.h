@@ -15,6 +15,7 @@ class UNSPartPanelWidget;
 class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
+class UNSDifficultyTimerWidget;
 
 
 /**
@@ -133,6 +134,8 @@ private:
 	//3번 스킬 슬롯
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot3Widget;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSDifficultyTimerWidget> DifficultyTimerWidget;
 	
 protected:
 	virtual void NativeConstruct() override;
