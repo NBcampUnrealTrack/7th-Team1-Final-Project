@@ -239,6 +239,10 @@ void ANSEnemyCharacterBase::ApplyAliveVisual()
 
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
+		MeshComp->SetComponentTickEnabled(true);
+		MeshComp->bBlendPhysics = false;
+		MeshComp->bPauseAnims = false;
+		MeshComp->SetAllBodiesSimulatePhysics(false);
 		MeshComp->SetSimulatePhysics(false);
 		MeshComp->AttachToComponent(
 			GetCapsuleComponent(),
@@ -253,6 +257,63 @@ void ANSEnemyCharacterBase::ApplyAliveVisual()
 	{
 		DissolveComponent->ResetDissolve();
 	}
+}
+
+void ANSEnemyCharacterBase::ApplyDeadVisual()
+{
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->DisableMovement();
+	}
+
+	if (UCapsuleComponent* CapsuleComp = GetCapsuleComponent())
+	{
+		CapsuleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		CapsuleComp->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	ClearCurrentAttackRow();
+	ClearCombatAimTarget();
+
+	if (!StartDeathRagdoll())
+	{
+		if (USkeletalMeshComponent* MeshComp = GetMesh())
+		{
+			MeshComp->bPauseAnims = true;
+			MeshComp->SetComponentTickEnabled(false);
+		}
+	}
+
+	if (DissolveComponent)
+	{
+		DissolveComponent->StartDissolve(false);
+	}
+}
+
+bool ANSEnemyCharacterBase::StartDeathRagdoll()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp || !MeshComp->GetPhysicsAsset())
+	{
+		return false;
+	}
+
+	if (MeshComp->IsAnySimulatingPhysics())
+	{
+		return true;
+	}
+
+	MeshComp->bPauseAnims = false;
+	MeshComp->SetComponentTickEnabled(true);
+	MeshComp->SetCollisionProfileName(TEXT("Ragdoll"));
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	MeshComp->SetAllBodiesSimulatePhysics(true);
+	MeshComp->SetSimulatePhysics(true);
+	MeshComp->WakeAllRigidBodies();
+	MeshComp->bBlendPhysics = true;
+
+	return MeshComp->IsAnySimulatingPhysics();
 }
 
 void ANSEnemyCharacterBase::OnDissolveFinished()
@@ -548,19 +609,11 @@ void ANSEnemyCharacterBase::HandleDeadStateChanged(bool bDead)
 {
 	if (bDead)
 	{
-		if (UCapsuleComponent* CurrentCapsuleComponent = GetCapsuleComponent())
-		{
-			CurrentCapsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			CurrentCapsuleComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
-		}
+		ApplyDeadVisual();
+		return;
+	}
 
-		ClearCurrentAttackRow();
-		ClearCombatAimTarget();
-	}
-	else
-	{
-		ApplyAliveVisual();
-	}
+	ApplyAliveVisual();
 }
 
 void ANSEnemyCharacterBase::HandleInactiveStateChanged(bool bInactive)

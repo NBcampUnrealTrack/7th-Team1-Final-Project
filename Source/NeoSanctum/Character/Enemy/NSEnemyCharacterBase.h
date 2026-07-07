@@ -161,6 +161,8 @@ protected:
 protected:
 	//(이용호 추가)
 	void ApplyAliveVisual();
+	void ApplyDeadVisual();
+	bool StartDeathRagdoll();
 	void ApplyVisualData();
 	void InitializeFromData(bool bFullInit);
 
