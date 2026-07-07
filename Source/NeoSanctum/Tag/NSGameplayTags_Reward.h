@@ -22,7 +22,10 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_DropGroup_Part);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_DropGroup_Heal);
-	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Potion_Heal_Large);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Potion_Heal_Mid);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Potion_Heal_Small);
+
 	// Rewards
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Trigger_NormalKill);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Reward_Trigger_EliteKill);

@@ -84,4 +84,7 @@ namespace NSGameplayTags
 	// Turret처럼 Source ASC에 해당 Attribute가 없는 경우, 발사 시점에 소환자의 실제 값을 대신 전달하기 위해 사용.
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_CritChanceOverride);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_Damage_CritDamageOverride);
+
+	// Heal SetByCaller
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Heal);
 }
