@@ -4,6 +4,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
+#include "EngineUtils.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
@@ -13,6 +14,7 @@
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/Interaction/NPC/NSRescueNPC.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
@@ -412,4 +414,25 @@ void UNSCheatManager::Debug_ForceBossFight()
 
 	// 서버 권한 RPC 경유: 원격 클라가 입력해도 서버에서 GameMode/GameState를 직접 조작하도록 함
 	OwningPC->Server_DebugForceBossFight();
+}
+
+// 테스트용 임시 코드 (인런 구출 NPC 재화 보상 테스트 — 실제 트리거 연결 후 삭제)
+void UNSCheatManager::Debug_TriggerRescue(FString NpcId)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	UWorld* World = OwningPC ? OwningPC->GetWorld() : nullptr;
+	if (!World || NpcId.IsEmpty())
+	{
+		return;
+	}
+
+	const FName TargetNpcId(*NpcId);
+	for (TActorIterator<ANSRescueNPC> It(World); It; ++It)
+	{
+		if (It->GetNPCId() == TargetNpcId)
+		{
+			INSInteractable::Execute_OnInteract(*It, OwningPC);
+			return;
+		}
+	}
 }

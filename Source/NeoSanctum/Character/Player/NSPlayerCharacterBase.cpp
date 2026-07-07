@@ -783,6 +783,13 @@ void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
 			continue;
 		}
 
+		// 유틸 계열은 Attribute GE가 아니라 Currency/Part/Augment 쪽에서
+		// NSCommonUpgradeUtility::GetPercent()로 별도 처리.
+		if (Row->Category == ENSCommonUpgradeCategory::Utility)
+		{
+			continue;
+		}
+
 		const float Contribution = Row->ValuePerLevel * static_cast<float>(Pair.Value);
 
 		if (Row->Operation == ENSCombatStatModifierOperation::Add)

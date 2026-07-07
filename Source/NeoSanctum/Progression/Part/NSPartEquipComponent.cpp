@@ -9,6 +9,8 @@
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
@@ -550,7 +552,26 @@ int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
 	{
 		return -1;
 	}
-	return Row->RerollBaseCost + Row->RerollCostIncrement * Part->RollCount;
+
+	const int64 BaseCost = Row->RerollBaseCost + Row->RerollCostIncrement * Part->RollCount;
+	// 파츠 구매 가격 할인(GetShopPrice)과는 별도 NodeId — 레벨을 따로 올릴 수 있어야 함
+	return ApplyPartDiscount(NSCommonUpgradeUtility::NodeId_PartRerollDiscount, BaseCost);
+}
+
+int64 UNSPartEquipComponent::ApplyPartDiscount(FName UtilityNodeId, int64 BaseCost) const
+{
+	if (BaseCost <= 0)
+	{
+		return BaseCost;
+	}
+
+	const AActor* Owner = GetOwner();
+	const UNSPlayerProgressComponent* ProgressComp =
+		Owner ? Owner->FindComponentByClass<UNSPlayerProgressComponent>() : nullptr;
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	const double Percent = NSCommonUpgradeUtility::GetPercent(DataSubsystem, ProgressComp, UtilityNodeId);
+	return NSCommonUpgradeUtility::ApplyPercentAsCost(BaseCost, Percent);
 }
 
 int64 UNSPartEquipComponent::GetUpgradeCost(FGameplayTag Slot) const
@@ -678,7 +699,9 @@ int64 UNSPartEquipComponent::GetShopPrice(ENSPartRarity Rarity) const
 	{
 		return -1;
 	}
-	return Row->ShopPrice;
+
+	// 파츠 리롤 할인(GetRerollCost)과는 별도 NodeId - 레벨을 따로 올릴 수 있어야 함
+	return ApplyPartDiscount(NSCommonUpgradeUtility::NodeId_PartShopDiscount, Row->ShopPrice);
 }
 
 void UNSPartEquipComponent::OnRep_ShopStock()

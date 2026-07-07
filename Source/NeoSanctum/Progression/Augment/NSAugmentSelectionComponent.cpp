@@ -10,10 +10,12 @@
 #include "Engine/GameInstance.h"
 #include "Engine/DataTable.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 #include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
@@ -161,7 +163,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 		return;
 	}
 
-	const int64 Cost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+	const int64 Cost = GetDiscountedRerollCost(RerollRule, CurrentOfferRerollCount);
 
 	UNSCurrencyComponent* CurrencyComponent = GetOwnerCurrencyComponent();
 	const int64 HaveCurrency = CurrencyComponent ? CurrencyComponent->GetTemp() : 0;
@@ -223,7 +225,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 	++CurrentOfferRerollCount;
 	++OfferRevision;
 
-	const int64 NextCost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+	const int64 NextCost = GetDiscountedRerollCost(RerollRule, CurrentOfferRerollCount);
 	Client_PresentOffer(PendingOffer, NextCost, true, OfferRevision);
 }
 
@@ -403,7 +405,7 @@ void UNSAugmentSelectionComponent::PresentFront()
 		const bool bHasRerollRule = TryFindRerollRule(RewardTriggerQueue[0], RerollRule);
 		// 리롤 규칙이 있고, 오퍼가 부분 오퍼가 아니라 꽉 찬 CardsCount장일 때만 리롤을 허용.
 		const bool bCanReroll = bHasRerollRule && PendingOffer.Num() == CardsCount;
-		const int64 RerollCost = bHasRerollRule ? ComputeRerollCost(RerollRule, CurrentOfferRerollCount) : 0;
+		const int64 RerollCost = bHasRerollRule ? GetDiscountedRerollCost(RerollRule, CurrentOfferRerollCount) : 0;
 
 		Client_PresentOffer(PendingOffer, RerollCost, bCanReroll, OfferRevision);
 		return;
@@ -701,6 +703,23 @@ UNSCurrencyComponent* UNSAugmentSelectionComponent::GetOwnerCurrencyComponent() 
 	return PlayerState->GetCurrencyComponent();
 }
 
+UNSPlayerProgressComponent* UNSAugmentSelectionComponent::GetOwnerProgressComponent() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetOwner());
+	if (!IsValid(PlayerController))
+	{
+		return nullptr;
+	}
+
+	const ANSPlayerState* PlayerState = Cast<ANSPlayerState>(PlayerController->PlayerState);
+	if (!IsValid(PlayerState))
+	{
+		return nullptr;
+	}
+
+	return PlayerState->GetProgressComponent();
+}
+
 bool UNSAugmentSelectionComponent::TryFindRarityRule(
 	UNSDataSubsystem* Data,
 	const FGameplayTag& RewardTriggerTag, 
@@ -806,6 +825,20 @@ int64 UNSAugmentSelectionComponent::ComputeRerollCost(const FNSAugmentRerollRule
 		return static_cast<int64>(SafeCeiling);
 	}
 	return static_cast<int64>(FMath::CeilToDouble(Raw));
+}
+
+int64 UNSAugmentSelectionComponent::GetDiscountedRerollCost(const FNSAugmentRerollRule& Rule, int32 Count) const
+{
+	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
+	// 할인 전 원가라 직접 부르면 안 되고, 실제로 쓸 땐 GetDiscountedRerollCost()를 거쳐야 함.
+	const int64 BaseCost = ComputeRerollCost(Rule, Count);
+
+	const UNSPlayerProgressComponent* ProgressComp = GetOwnerProgressComponent();
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	const double Percent = NSCommonUpgradeUtility::GetPercent(
+		DataSubsystem, ProgressComp, NSCommonUpgradeUtility::NodeId_AugmentRerollDiscount);
+	return NSCommonUpgradeUtility::ApplyPercentAsCost(BaseCost, Percent);
 }
 
 TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCardsExcludingComposition(

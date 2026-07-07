@@ -8,6 +8,7 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NSAugmentSelectionComponent.generated.h"
 
+class UNSPlayerProgressComponent;
 class UNSCurrencyComponent;
 struct FNSAugmentRarityRule;
 struct FNSAugmentRerollRule;
@@ -154,11 +155,17 @@ private:
 	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
 	static int64 ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count);
 
+	// 위 원가에 공용 업그레이드 리롤 할인까지 적용한 최종 비용. 표시/차감 양쪽에서 반드시 이걸로 통일
+	int64 GetDiscountedRerollCost(const FNSAugmentRerollRule& Rule, int32 Count) const;
+
 	// 두 DefId Set이 원소까지 완전히 같은지 판정(순서 무관).
 	static bool AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B);
 
 	// 오너 PlayerController -> PlayerState의 임시 재화 컴포넌트 조회.
 	UNSCurrencyComponent* GetOwnerCurrencyComponent() const;
+
+	// 오너 PlayerController -> PlayerState의 진행도 컴포넌트 조회 (유틸 할인 레벨 확인용).
+	UNSPlayerProgressComponent* GetOwnerProgressComponent() const;
 
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;

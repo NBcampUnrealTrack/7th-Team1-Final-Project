@@ -664,13 +664,13 @@ void ANSPlayerController::BindCurrencyToHUD()
 	
 	//중복 방지
 	CurrencyComponent->OnTempChanged.RemoveAll(this);
-	CurrencyComponent->OnPermanenetChanged.RemoveAll(this);
+	CurrencyComponent->OnPermanentChanged.RemoveAll(this);
 
 	CurrencyComponent->OnTempChanged.AddUObject(
 		this,
 		&ANSPlayerController::OnTempCurrencyChanged);
 
-	CurrencyComponent->OnPermanenetChanged.AddUObject(
+	CurrencyComponent->OnPermanentChanged.AddUObject(
 		this,
 		&ANSPlayerController::OnPermanentCurrencyChanged);
 
