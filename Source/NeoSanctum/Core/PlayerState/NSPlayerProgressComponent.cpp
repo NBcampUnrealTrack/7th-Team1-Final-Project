@@ -10,6 +10,13 @@ UNSPlayerProgressComponent::UNSPlayerProgressComponent()
 	SetIsReplicatedByDefault(true);
 }
 
+int32 UNSPlayerProgressComponent::GetCommonSkillLevel(FName NodeId) const
+{
+	const int32* Level = CommonSkillLevels.Find(NodeId);
+
+	return Level ? *Level : 0;
+}
+
 void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
