@@ -34,6 +34,8 @@ public:
 
 	FORCEINLINE AActor* GetRotationTarget() const { return RotationTarget.Get(); }
 
+	FORCEINLINE bool IsRetreating() const { return bIsRetreating; }
+	
 	// @민재 : 목표 지점 도착 여부를 XY 거리로 판정
 	bool HasReachedLocation(
 		const FVector& TargetLocation) const;        // 판정 기준 위치

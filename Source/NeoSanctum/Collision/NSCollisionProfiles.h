@@ -15,4 +15,6 @@ namespace NSCollisionProfiles
 	const inline FName PlayerTurret(TEXT("NS_PlayerTurret"));
 	const inline FName PlayerBarrier(TEXT("NS_PlayerBarrier"));
 	const inline FName Projectile(TEXT("NS_Projectile"));
+	const inline FName DroneGround(TEXT("NS_DroneGround"));
+	const inline FName DroneAvoidance(TEXT("NS_DroneAvoidance"));
 }
