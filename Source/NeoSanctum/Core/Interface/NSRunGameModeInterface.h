@@ -12,6 +12,7 @@ class AController;
 class APlayerController;
 class ANSEnemyCharacterBase;
 class UNSEnemyData;
+class ANSEnemyPawnBase; 
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UNSRunGameModeInterface : public UInterface { GENERATED_BODY() };
@@ -65,4 +66,11 @@ public:
 	// 보스 진입 볼륨 타이머 시간 완료 시 호출: 전원 텔레포트 + 보스 페이즈 진입
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
 	void NotifyBossGateReached();
+	// 보스 스폰 요청
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	ANSEnemyPawnBase* RequestSpawnBoss(
+		UClass* BossClass, 
+		UNSEnemyData* EnemyData,
+		const FVector& Location,
+		const FRotator& Rotation);
 };

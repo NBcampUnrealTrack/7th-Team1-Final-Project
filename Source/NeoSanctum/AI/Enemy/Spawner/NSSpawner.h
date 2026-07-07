@@ -49,7 +49,7 @@ public:
 	void ReturnMonstersToPool();
 	
 	// 배치된 위치를 받아서 최소 간격 이상으로 새 위치 선출
-	FVector GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const;
+	FVector GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced, float ZOffset) const;
 	
 	// 현재 스포너가 LevelConfig의 어떤 스테이지 공용 DT를 사용할지 결정.
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")

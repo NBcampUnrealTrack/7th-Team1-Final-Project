@@ -18,6 +18,7 @@ class UNSProjectileManagerComponent;
 class ANSProjectileReplicationProxy;
 class ANSCurrencyReplicationProxy;
 class APlayerController;
+class ANSEnemyPawnBase;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -46,7 +47,12 @@ public:
 	virtual void NotifyNPCRescued_Implementation(FName RescuedNPCId) override;
 	// 보스 게이트 도달 처리
 	virtual void NotifyBossGateReached_Implementation() override;
-
+	// 보스 스폰용
+	virtual ANSEnemyPawnBase* RequestSpawnBoss_Implementation(
+	UClass* BossClass,
+	UNSEnemyData* EnemyData,
+	const FVector& Location,
+	const FRotator& Rotation) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 	virtual void HandleSeamlessTravelPlayer(AController*& Controller) override;

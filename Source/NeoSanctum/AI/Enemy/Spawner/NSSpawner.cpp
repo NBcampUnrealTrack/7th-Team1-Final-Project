@@ -14,6 +14,7 @@
 #include "Room.h"
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
@@ -342,25 +343,40 @@ void ANSSpawner::ExecuteFinalSpawn()
 		return;
 	}
 
-	// 스폰 요청(카운트는 게임모드가 스폰 성공했을 때 진행)
+	// 스폰 대상 클래스의 캡슐 반높이로 바닥 오프셋 계산
+	float SpawnZOffset = 88.0f;
+	if (const AActor* CDO = CharacterClass->GetDefaultObject<AActor>())
+	{
+		if (const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(CDO->GetRootComponent()))
+		{
+			const float ScaleZ = EnemyData ? EnemyData->DrawScale.Z : 1.0f;
+			SpawnZOffset = Capsule->GetScaledCapsuleHalfHeight() * ScaleZ;
+		}
+	}
+
 	TArray<FVector> PlacedLocations;
 	PlacedLocations.Reserve(FinalSpawnQuantity);
 
 	for (int32 i = 0; i < FinalSpawnQuantity; ++i)
 	{
-		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations);
+		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations, SpawnZOffset);
 		PlacedLocations.Add(SpawnLocation);
 
-		ANSEnemyCharacterBase* Spawned = INSRunGameModeInterface::Execute_RequestSpawnMonster(
-			GameMode,
-			CharacterClass,
-			EnemyData,
-			SpawnLocation,
-			GetActorRotation());
-
-		if (Spawned)
+		if (bIsBossSpawner)
 		{
-			SpawnedMonsters.Add(Spawned);
+			// 보스는 풀링 대상이 아니므로 전용 경로로 스폰
+			INSRunGameModeInterface::Execute_RequestSpawnBoss(
+				GameMode, CharacterClass, EnemyData, SpawnLocation, GetActorRotation());
+		}
+		else
+		{
+			ANSEnemyCharacterBase* Spawned = INSRunGameModeInterface::Execute_RequestSpawnMonster(
+				GameMode, CharacterClass, EnemyData, SpawnLocation, GetActorRotation());
+
+			if (Spawned)
+			{
+				SpawnedMonsters.Add(Spawned);
+			}
 		}
 	}
 
@@ -392,7 +408,7 @@ void ANSSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 }
 
-FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const
+FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced, float ZOffset) const
 {
 	const FVector Origin = GetActorLocation();
 	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
@@ -422,10 +438,10 @@ FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced)
 			}
 			if (!bTooClose)
 			{
-				return NavLoc.Location + FVector(0.0f, 0.0f, 88.0f);
+				return NavLoc.Location + FVector(0.0f, 0.0f, ZOffset);
 			}
 		}
 	}
 	// 실패 시 스포너 위치
-	return Origin + FVector(0.0f, 0.0f, 88.0f);
+	return Origin + FVector(0.0f, 0.0f, ZOffset);
 }
