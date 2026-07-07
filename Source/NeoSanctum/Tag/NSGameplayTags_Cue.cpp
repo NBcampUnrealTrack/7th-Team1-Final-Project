@@ -42,7 +42,10 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpeedBuff, "GameplayCue.Engineer.SpeedBuff");
 	
 	//Enemy MotherShip
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning, "GameplayCue.MotherShip.BombingRun.Warning");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning01, "GameplayCue.MotherShip.BombingRun.Warning1");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning02, "GameplayCue.MotherShip.BombingRun.Warning2");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning03, "GameplayCue.MotherShip.BombingRun.Warning3");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning04, "GameplayCue.MotherShip.BombingRun.Warning4");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Missile, "GameplayCue.MotherShip_BombingRun_Missile");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Impact, "GameplayCue.MotherShip_BombingRun_Impact");
 }
