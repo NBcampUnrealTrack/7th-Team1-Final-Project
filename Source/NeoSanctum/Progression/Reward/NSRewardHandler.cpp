@@ -20,6 +20,7 @@
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
+#include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 
 void UNSRewardHandler::HandleRewardTrigger(
 	UWorld* World,
@@ -262,6 +263,23 @@ void UNSRewardHandler::HandleDropResults(
 			);
 			continue;
 		}
+
+		if (DropResult.RewardTypeTag == NSGameplayTags::Reward_Type_Heal)
+        {
+			// 재화와 동일하게
+            const FNSDropLaunchData LaunchData = MakeDropLaunchData(
+                    World,
+                    DropLocation,
+                    RandomStream
+            );
+            HandleHealDropResult(
+                    World,
+                    DropResult,
+                    LaunchData,
+                    CurrencyDropDuration
+            );
+            continue;
+        }
 		
 		if (DropResult.RewardTypeTag == NSGameplayTags::Reward_Type_Part)
 		{
@@ -460,6 +478,53 @@ void UNSRewardHandler::HandleCurrencyDropResult(
 		("DropId", DropId),
 		("Currency", DropResult.CurrencyTag.ToString()),
 		("Quantity", DropResult.Quantity)
+	);
+}
+
+void UNSRewardHandler::HandleHealDropResult(UWorld* World, const FNSRewardDropResult& DropResult,
+	const FNSDropLaunchData& LaunchData, float Duration)
+{
+	if (!World)
+	{
+		return;
+	}
+
+	// Heal은 CurrencyTag/PartDefinition을 쓰지 않고, 전용 HealPotionTag로 어떤 포션인지만 식별한다.
+	// 실제 회복%는 이 태그로 DT_HealPotion을 조회해서 얻으므로(서버 TryCollect 시점), 여기선 태그 유효성만 확인.
+	if (!DropResult.HealPotionTag.IsValid())
+	{
+		NS_LOG(LogNS, Warning,
+			"Heal RewardResult의 HealPotionTag가 유효하지 않습니다. RewardType={RewardType}",
+			("RewardType", DropResult.RewardTypeTag.ToString()));
+		return;
+	}
+
+	UNSHealDropSubsystem* HealDropSubsystem = World->GetSubsystem<UNSHealDropSubsystem>();
+	if (!HealDropSubsystem)
+	{
+		NS_LOG(LogNS, Warning, "HealDropSubsystem을 찾을 수 없습니다.");
+		return;
+	}
+
+	const int32 DropId = HealDropSubsystem->RegisterDrop(
+		  DropResult.HealPotionTag,
+		  LaunchData.TargetLocation,
+		  Duration,
+		  LaunchData
+	);
+	if (DropId == INDEX_NONE)
+	{
+		NS_LOG(LogNS, Warning,
+				"Heal 드랍 등록에 실패했습니다. PotionTag={PotionTag}",
+				("PotionTag", DropResult.HealPotionTag.ToString())
+		);
+		return;
+	}
+
+	NS_LOG(LogNS, Log,
+		"Heal 드랍을 등록했습니다. DropId={DropId}, PotionTag={PotionTag}",
+		("DropId", DropId),
+		("PotionTag", DropResult.HealPotionTag.ToString())
 	);
 }
 

@@ -76,6 +76,13 @@ private:
 		float CurrencyDropDuration
 	);
 	
+	static void HandleHealDropResult(
+			  UWorld* World,
+			  const FNSRewardDropResult& DropResult,
+			  const FNSDropLaunchData& LaunchData,
+			  float Duration
+	  );
+	
 	static void HandlePartDropResult(
 		UWorld* World,
 		const FNSRewardDropResult& DropResult,

@@ -21,6 +21,7 @@
 #include "NeoSanctum/Core/GameState/NSOutGameState.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
+#include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -154,7 +155,19 @@ void ANSPlayerState::Server_CollectCurrency_Implementation(int32 DropId)
 	{
 		DropSys->TryCollect(DropId, this);
 	}
+}
 
+void ANSPlayerState::Server_CollectHeal_Implementation(int32 DropId)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	if (UNSHealDropSubsystem* DropSys = World->GetSubsystem<UNSHealDropSubsystem>())
+	{
+		DropSys->TryCollect(DropId, this);
+	}
 }
 
 void ANSPlayerState::SetIsDead(bool bNewIsDead)
