@@ -63,8 +63,6 @@ void UNSCurrencyComponent::AddTemp(int32 Grade, int64 Amount)
 	const int64 FinalAmount = ApplyCurrencyGainBoost(NSCommonUpgradeUtility::NodeId_TempCurrencyGainRate, Amount);
 
 	AddToWallet(NSGameplayTags::Currency_Temp, FinalAmount);
-	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
-	UE_LOG(LogTemp, Log, TEXT("[Currency] 임시재화 +%lld 획득 → 현재 보유 %lld"), FinalAmount, GetTemp());
 }
 
 bool UNSCurrencyComponent::TrySpendTemp(int64 Amount)
@@ -91,11 +89,8 @@ void UNSCurrencyComponent::AddRunPermanent(FGameplayTag Type, int64 Amount)
 
 	const int64 FinalAmount = ApplyCurrencyGainBoost(NSCommonUpgradeUtility::NodeId_CommonCurrencyGainRate, Amount);
 
-	const int64 Pending = (PendingPermanent.FindOrAdd(Type) += FinalAmount);
+	PendingPermanent.FindOrAdd(Type) += FinalAmount;
 	AddToWallet(Type, FinalAmount);
-	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
-	UE_LOG(LogTemp, Log, TEXT("[Currency] 영구재화(%s) +%lld 획득 → 대기 누적 %lld (커밋 전)"),
-		*Type.ToString(), FinalAmount, Pending);
 }
 
 void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
