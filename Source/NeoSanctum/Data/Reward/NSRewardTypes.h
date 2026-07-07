@@ -55,6 +55,10 @@ struct FNSRewardDropRow : public FTableRowBase
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag AugmentPoolTag;
+
+	// 회복 포션 식별 태그. Reward.Type.Heal 행에서만 사용하며, 이 태그로 DT_HealPotion을 조회.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
+	FGameplayTag HealPotionTag;
 };
 
 /**
@@ -83,4 +87,8 @@ struct FNSRewardDropResult
 	
 	UPROPERTY(BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag AugmentPoolTag;
+
+	// 회복 포션 식별 태그 (Reward.Type.Heal 결과에서 사용)
+	UPROPERTY(BlueprintReadOnly, Category = "NS|Reward")
+	FGameplayTag HealPotionTag;
 };

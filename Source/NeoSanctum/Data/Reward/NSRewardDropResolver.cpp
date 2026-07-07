@@ -165,7 +165,8 @@ void UNSRewardDropResolver::ApplyDropRowToResult(
 	OutResult.CurrencyTag = Row.CurrencyTag;
 	OutResult.PartDefinition = Row.PartDefinition;
 	OutResult.AugmentPoolTag = Row.AugmentPoolTag;
-	
+	OutResult.HealPotionTag = Row.HealPotionTag;
+
 	if (Row.RewardTypeTag == NSGameplayTags::Reward_Type_None)
 	{
 		OutResult.Quantity = 0;

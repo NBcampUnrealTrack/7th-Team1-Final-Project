@@ -18,6 +18,7 @@ class UNSProjectileManagerComponent;
 class ANSProjectileReplicationProxy;
 class ANSCurrencyReplicationProxy;
 class APlayerController;
+class ANSHealReplicationProxy;
 class ANSEnemyPawnBase;
 
 UCLASS()
@@ -150,6 +151,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	TSubclassOf<ANSCurrencyReplicationProxy> CurrencyReplicationProxyClass;
 
+	
+	// PickupClass/HealPotionTable 지정을 위해 BP 서브클래스 
+	UPROPERTY(EditDefaultsOnly, Category = "Heal")
+	TSubclassOf<ANSHealReplicationProxy> HealReplicationProxyClass;
 private:
 	// 프록시 등록 함수
 	void EnsureProjectileProxy(APlayerController* PlayerController);
@@ -168,6 +173,13 @@ private:
 	void DestroyCurrencyProxy(APlayerController* PlayerController);
 	// 런 종료시 재화쪽 저장 및 클리어
 	void CommitAndClearAllWallets(float Multiplier);
+	
+	// 회복 프록시 등록 함수
+	void EnsureHealProxy(APlayerController* PlayerController);
+	// 회복 프록시 제거 함수
+	void DestroyHealProxy(APlayerController* PlayerController);
+	
+	
 
 	// 거점 귀환 시 모든 플레이어의 인런 증강 Clear
 	void ClearAllAugments();
@@ -198,6 +210,9 @@ private:
 	
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
+	
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSHealReplicationProxy>> HealProxies;
 	
 	// 몬스터 보상 처리 관련 변수
 	UPROPERTY(EditDefaultsOnly, Category = "NS|Reward")

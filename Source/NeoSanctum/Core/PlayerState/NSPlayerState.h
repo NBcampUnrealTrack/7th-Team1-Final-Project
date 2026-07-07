@@ -49,6 +49,10 @@ public:
 	// 클라에서 재화 액터에 오버랩 시 호출
 	UFUNCTION(Server, Reliable)
 	void Server_CollectCurrency(int32 DropId);
+                                                                                                      
+	// 클라에서 회복 아이템 픽업에 오버랩 시 호출
+	UFUNCTION(Server, Reliable)
+	void Server_CollectHeal(int32 DropId);
 	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 	UNSCurrencyComponent* GetCurrencyComponent() const { return CurrencyComponent; }

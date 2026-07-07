@@ -10,6 +10,7 @@
 class UNSAugmentRarityRuleSet;
 class UNSDifficultyConfig;
 class UDataTable;
+class UGameplayEffect;
 
 /**
  * 트리거별 증강 리롤 비용 규칙.
@@ -83,4 +84,14 @@ public:
 	// 레벨업(증강 지급)에 필요한 경험치 통 크기.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Combat")
 	float MaxExperience = 100.0f;
+
+	// 회복 아이템 픽업 시 SetByCaller로 회복량을 주입하는 즉시 회복 GE
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Progression",
+		meta = (AssetBundles = "InRunData"))
+	TSoftClassPtr<UGameplayEffect> InstantHealEffectClass;
+
+	// 회복 포션 정의 테이블
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Progression",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UDataTable> HealPotionTable;
 };

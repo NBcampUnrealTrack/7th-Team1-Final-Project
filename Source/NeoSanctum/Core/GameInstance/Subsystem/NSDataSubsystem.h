@@ -133,6 +133,12 @@ public:
 
 	TSubclassOf<UGameplayEffect> GetCommonUpgradeInitEffectClass() const;
 
+	// 회복 아이템 픽업 시 적용하는 공용 즉시 회복 GE
+	TSubclassOf<UGameplayEffect> GetInstantHealEffectClass() const;
+
+	// PotionTag로 회복/메시를 조회하는 회복 포션 정의 테이블
+	UDataTable* GetHealPotionTable() const;
+
 	UNSSoundData* GetCommonSoundData() const;
 	UDataTable* GetCommonVFXDataTable() const;
 	UDataTable* GetCommonHitReactionDataTable() const;

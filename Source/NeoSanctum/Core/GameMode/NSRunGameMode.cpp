@@ -30,8 +30,10 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Progression/Heal/NSHealReplicationProxy.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
+#include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 
 
@@ -47,6 +49,7 @@ ANSRunGameMode::ANSRunGameMode()
 
 	ProjectileReplicationProxyClass = ANSProjectileReplicationProxy::StaticClass();
 	CurrencyReplicationProxyClass = ANSCurrencyReplicationProxy::StaticClass();
+	HealReplicationProxyClass = ANSHealReplicationProxy::StaticClass();
 }
 
 void ANSRunGameMode::BeginPlay()
@@ -79,6 +82,7 @@ void ANSRunGameMode::BeginPlay()
 	{
 		EnsureProjectileProxy(*It);
 		EnsureCurrencyProxy(*It);
+		EnsureHealProxy(*It);
 	}
 }
 
@@ -575,12 +579,14 @@ void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
 
 	EnsureProjectileProxy(NewPlayer);
 	EnsureCurrencyProxy(NewPlayer);
+	EnsureHealProxy(NewPlayer);
 }
 
 void ANSRunGameMode::Logout(AController* Exiting)
 {
 	DestroyProjectileProxy(Cast<APlayerController>(Exiting));
 	DestroyCurrencyProxy(Cast<APlayerController>(Exiting));
+	DestroyHealProxy(Cast<APlayerController>(Exiting));
 
 	Super::Logout(Exiting);
 }
@@ -591,6 +597,7 @@ void ANSRunGameMode::HandleSeamlessTravelPlayer(AController*& Controller)
 
 	EnsureProjectileProxy(Cast<APlayerController>(Controller));
 	EnsureCurrencyProxy(Cast<APlayerController>(Controller));
+	EnsureHealProxy(Cast<APlayerController>(Controller));
 }
 
 void ANSRunGameMode::EnsureProjectileProxy(APlayerController* PlayerController)
@@ -752,6 +759,71 @@ void ANSRunGameMode::CommitAndClearAllWallets(float Multiplier)
 			Currency->ClearWallet();
 		}
 	}
+}
+
+void ANSRunGameMode::EnsureHealProxy(APlayerController* PlayerController)
+{
+	if (!HasAuthority() || !IsValid(PlayerController) || !HealReplicationProxyClass)
+	{
+		return;
+	}
+	
+	if (ANSHealReplicationProxy* ExistingProxy = HealProxies.FindRef(PlayerController))
+	{
+		if (IsValid(ExistingProxy))
+		{
+			return;
+		}
+	}
+	
+	UWorld* World = GetWorld();
+	UNSHealDropSubsystem* DropSys = World ? World->GetSubsystem<UNSHealDropSubsystem>() : nullptr;
+	if (!DropSys)
+	{
+		return;
+	}
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.Owner = PlayerController;
+	SpawnParameters.Instigator = PlayerController->GetPawn();
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	ANSHealReplicationProxy* Proxy = World->SpawnActor<ANSHealReplicationProxy>(
+		HealReplicationProxyClass,
+		FTransform::Identity,
+		SpawnParameters);
+	
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+	
+	HealProxies.Add(PlayerController, Proxy);
+	DropSys->RegisterProxy(Proxy);
+}
+
+void ANSRunGameMode::DestroyHealProxy(APlayerController* PlayerController)
+{
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
+
+	ANSHealReplicationProxy* Proxy = HealProxies.FindRef(PlayerController);
+
+	if (IsValid(Proxy))
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UNSHealDropSubsystem* DropSys = World->GetSubsystem<UNSHealDropSubsystem>())
+			{
+				DropSys->UnregisterProxy(Proxy);
+			}
+		}
+
+		Proxy->Destroy();
+	}
+
+	HealProxies.Remove(PlayerController);
 }
 
 // 거점 귀환 시 인런 증강 Clear
