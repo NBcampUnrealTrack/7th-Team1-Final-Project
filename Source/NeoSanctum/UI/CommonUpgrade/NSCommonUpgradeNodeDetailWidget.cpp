@@ -37,9 +37,14 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 
 	if (CurrentLevel > 0 && IsValid(CurrentGradeText))
 	{
+		// 최고 등급이면 카드 그리드에도 이미 "MaxLevel/MaxLevel"이 보이므로 숫자 대신 상태 문구로 대체.
+		const FText LevelLabel = bMaxLevel
+			? NSLOCTEXT("CommonUpgrade", "MaxGradeLabel", "최고 등급")
+			: FText::AsNumber(CurrentLevel);
+
 		CurrentGradeText->SetText(FText::Format(
 			NSLOCTEXT("CommonUpgrade", "CurrentGradeFormat", "{0} {1} {2}"),
-			FText::AsNumber(CurrentLevel),
+			LevelLabel,
 			Row.DisplayName,
 			FormatModifierValue(Row.ValuePerLevel * CurrentLevel, Row.Operation))
 		);
@@ -80,7 +85,11 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 
 FText UNSCommonUpgradeNodeDetailWidget::FormatModifierValue(float Value, ENSCombatStatModifierOperation Operation)
 {
+	// 증가/감소 방향은 Row.DisplayName이 이미 설명하므로(예: "~증가", "~할인", "~감소")
+	// 여기서는 절대값만 보여줘서 음수 값이 "+-0.5+"처럼 깨지는 걸 막음.
+	const float AbsValue = FMath::Abs(Value);
+
 	return Operation == ENSCombatStatModifierOperation::Add
-		? FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueAdd", "+{0}"), FText::AsNumber(Value))
-		: FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueMultiply", "+{0}%"), FText::AsNumber(Value));
+		? FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueAdd", "{0}"), FText::AsNumber(AbsValue))
+		: FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueMultiply", "{0}%"), FText::AsNumber(AbsValue));
 }
