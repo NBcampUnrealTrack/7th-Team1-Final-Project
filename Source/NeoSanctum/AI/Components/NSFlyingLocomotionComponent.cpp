@@ -30,12 +30,20 @@ void UNSFlyingLocomotionComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	// 회전 갱신 (타겟 or velocity 방향)
 	UpdateRotation(DeltaTime);
 
-	// 고도 샘플링은 매 프레임이 아니라 주기적으로만 수행 (트레이스 비용 절감)
-	GroundSampleAccumulator += DeltaTime;
-	if (GroundSampleAccumulator >= GroundSampleInterval)
+	if (bScriptedMove)
 	{
-		MaintainAltitude(GroundSampleAccumulator);
-		GroundSampleAccumulator = 0.f;
+		// 스크립트 이동 중엔 매 프레임 갱신 (끊김 방지). 평상시엔 기존 스로틀링 유지
+		MaintainAltitude(DeltaTime);
+	}
+	else
+	{
+		// 고도 샘플링은 매 프레임이 아니라 주기적으로만 수행 (트레이스 비용 절감)
+		GroundSampleAccumulator += DeltaTime;
+		if (GroundSampleAccumulator >= GroundSampleInterval)
+		{
+			MaintainAltitude(GroundSampleAccumulator);
+			GroundSampleAccumulator = 0.f;
+		}
 	}
 }
 
@@ -189,8 +197,11 @@ void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 
 	// 지형 샘플링 실패 시 조기 종료
 	float OutZ;
-	if (!SampleHighestGround(OutZ)) return;
-
+	if (!SampleHighestGround(OutZ))
+	{
+		return;
+	}
+	
 	// 원하는 목표 높이 (지형 + 유지 고도)
 	const float RawTarget = OutZ + Altitude;
 
@@ -481,6 +492,8 @@ void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, floa
 	
 	Altitude = TargetAltitude;
 	MaxSpeed = Speed;
+	Acceleration = Speed * 5.f;
+	MaxClimbSpeed = Speed;
 	RotationTarget = nullptr;
 	ScriptedDestXY = DestXY;
 	bScriptedMove = true;
@@ -500,10 +513,12 @@ void UNSFlyingLocomotionComponent::EndScriptedMove()
 bool UNSFlyingLocomotionComponent::HasReachedScriptedDest() const
 {
 	if (!PawnOwner) return false;
-	if (!HasReachedLocation(ScriptedDestXY) ||
-		!(FMath::Abs(PawnOwner->GetActorLocation().Z - SmoothedTargetHeight) < AltitudeDeadZone)) return false;
-	
-	return true;
+
+	const bool bXYReached = HasReachedLocation(ScriptedDestXY);
+	const float AltDiff = FMath::Abs(PawnOwner->GetActorLocation().Z - SmoothedTargetHeight);
+
+	if (!bXYReached) return false;
+	return AltDiff < AltitudeDeadZone;
 }
 
 void UNSFlyingLocomotionComponent::ApplyScriptedMoveInput(float DeltaSeconds)
