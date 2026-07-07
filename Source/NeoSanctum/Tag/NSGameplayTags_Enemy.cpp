@@ -19,6 +19,7 @@ namespace NSGameplayTags
 	
 	// Enemy MotherShip Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_MotherShip_SpawnDrone, "Ability.Enemy.MotherShip.SpawnDrone");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_MotherShip_BombingRun, "Ability.Enemy_MotherShip_BombingRun");
 	
 	// Enemy Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_BasicMelee, "Ability.Enemy.BasicMelee");
