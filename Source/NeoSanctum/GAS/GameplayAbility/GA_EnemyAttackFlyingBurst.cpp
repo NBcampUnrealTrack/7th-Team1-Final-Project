@@ -3,6 +3,7 @@
 
 #include "GA_EnemyAttackFlyingBurst.h"
 
+#include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_WaitDelay.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyDroneAIController.h"
@@ -12,6 +13,7 @@
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -145,6 +147,7 @@ void UGA_EnemyAttackFlyingBurst::FireOneVolley()
 		Req.TraceChannel=ProjectileTraceChannel;
 		Req.SourceActor=NSEnemyPawn;
 		Req.DamageEffectClass = DamageEffectClass;
+		Req.Damage = CalculateProjectileDamage(*Row);
 		PM->FireProjectile(Req); 
 	}
 	
@@ -176,4 +179,18 @@ void UGA_EnemyAttackFlyingBurst::OnShotDelayFinished()
 {
 	PendingDelayTask = nullptr;
 	FireOneVolley();
+}
+
+float UGA_EnemyAttackFlyingBurst::CalculateProjectileDamage(const FNSEnemyAttackRow& AttackRow) const
+{
+	const UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	if (!SourceASC)
+	{
+		return -1.0f;
+	}
+
+	const float SourceBaseDamage =
+		SourceASC->GetNumericAttribute(UNSBaseAttributeSet::GetBaseDamageAttribute());
+
+	return FMath::Max(SourceBaseDamage * AttackRow.DamageScale, 0.0f);
 }

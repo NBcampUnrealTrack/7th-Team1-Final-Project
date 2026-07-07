@@ -8,7 +8,7 @@
 #include "GA_EnemyAttackFlyingBurst.generated.h"
 
 class UAbilityTask_WaitDelay;
-
+struct FNSEnemyAttackRow;
 
 UCLASS()
 class NEOSANCTUM_API UGA_EnemyAttackFlyingBurst : public UGA_EnemyAttackBase
@@ -41,6 +41,9 @@ protected:
 	// 다음 볼리를 ShotInterval 뒤에 예약
 	void ScheduleNextVolley();
 
+	// 데미지 계산 함수
+	float CalculateProjectileDamage(const FNSEnemyAttackRow& AttackRow) const;
+	
 	UFUNCTION()
 	void OnShotDelayFinished();
 
