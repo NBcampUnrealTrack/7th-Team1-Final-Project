@@ -30,4 +30,5 @@ namespace NSGameplayTags
 	// Buff State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_RangerSpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_EngineerSpeedBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Buff_VanguardBuff);
 }
