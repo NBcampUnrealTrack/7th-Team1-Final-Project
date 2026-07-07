@@ -150,6 +150,18 @@ TSubclassOf<UGameplayEffect> UNSDataSubsystem::GetCommonUpgradeInitEffectClass()
 	return CommonConfig ? CommonConfig->CommonUpgradeInitEffectClass.Get() : nullptr;
 }
 
+TSubclassOf<UGameplayEffect> UNSDataSubsystem::GetInstantHealEffectClass() const
+{
+	const UNSRunConfig* RunConfig = GetCurrentRunConfig();
+	return RunConfig ? RunConfig->InstantHealEffectClass.Get() : nullptr;
+}
+
+UDataTable* UNSDataSubsystem::GetHealPotionTable() const
+{
+	const UNSRunConfig* RunConfig = GetCurrentRunConfig();
+	return RunConfig ? RunConfig->HealPotionTable.Get() : nullptr;
+}
+
 UNSSoundData* UNSDataSubsystem::GetCommonSoundData() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
