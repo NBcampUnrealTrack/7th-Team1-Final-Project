@@ -32,6 +32,7 @@ ANSDestructibleObjectBase::ANSDestructibleObjectBase()
 	GeometryCollectionComp->SetVisibility(false);
 	GeometryCollectionComp->SetSimulatePhysics(false);
 	GeometryCollectionComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GeometryCollectionComp->SetCanEverAffectNavigation(false);
 	
 	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
