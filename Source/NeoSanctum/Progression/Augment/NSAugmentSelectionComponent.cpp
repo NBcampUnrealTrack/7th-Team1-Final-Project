@@ -2,6 +2,7 @@
 
 
 #include "NSAugmentSelectionComponent.h"
+
 #include "NSAugmentInventoryComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
@@ -13,7 +14,9 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/Config/NSRunConfig.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Player.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
@@ -84,32 +87,167 @@ void UNSAugmentSelectionComponent::Server_OpenPanel_Implementation()
 	PresentFront();
 }
 
-void UNSAugmentSelectionComponent::Server_RerollCard_Implementation()
+void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 ClientOfferRevision)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
+
 	// 표시 중인 오퍼가 없으면 리롤 불가
 	if (!bFrontRolled || RewardTriggerQueue.IsEmpty())
 	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NoActiveOffer,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
 		return;
 	}
 
-	// TODO : 리롤 비용 차감 (재화 시스템 연동 후). 현재는 카운터만 증가.
-	CurrentRerollCost++;
+	// 요청을 보낸 뒤 오퍼가 이미 바뀌었으면(다른 요청이 먼저 처리됐거나 연타) 이 요청은 버림.
+	if (ClientOfferRevision != OfferRevision)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::StaleRevision,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
 
-	// front 강제 재추첨 (Rarity도 다시 결정) → Client_PresentOffer까지 PresentFront가 처리
-	PresentFront(true);
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsRunReady())
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 오퍼가 떠 있다면 희귀도 규칙도 당연히 있어야 하지만, 혹시 모르니 한 번 더 확인.
+	FNSAugmentRarityRule RarityRule;
+	if (!TryFindRarityRule(DataSubsystem, RewardTriggerQueue[0], RarityRule))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 이 트리거에 리롤 규칙 자체가 없으면 리롤을 허용하지 않음.
+	FNSAugmentRerollRule RerollRule;
+	if (!TryFindRerollRule(RewardTriggerQueue[0], RerollRule))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::InvalidRequest,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	const int64 Cost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+
+	UNSCurrencyComponent* CurrencyComponent = GetOwnerCurrencyComponent();
+	const int64 HaveCurrency = CurrencyComponent ? CurrencyComponent->GetTemp() : 0;
+	if (!CurrencyComponent || HaveCurrency < Cost)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NotEnoughCurrency,
+			Cost,
+			HaveCurrency,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	TSet<FPrimaryAssetId> PrevSet;
+	for (const FNSAugmentSelectionCard& Card : PendingOffer)
+	{
+		PrevSet.Add(Card.DefId);
+	}
+
+	bool bDifferentPossible = false;
+	TArray<FNSAugmentSelectionCard> NewOffer =
+		RollCardsExcludingComposition(RarityRule, CardsCount, PrevSet, bDifferentPossible);
+
+	TSet<FPrimaryAssetId> NewOfferDefIds;
+	for (const FNSAugmentSelectionCard& Card : NewOffer)
+	{
+		NewOfferDefIds.Add(Card.DefId);
+	}
+
+	// 재화를 차감하기 전에, 방금 만든 오퍼가 정말 카드 수도 맞고 직전과 다른 구성인지 마지막으로 한 번 더 확인.
+	if (!bDifferentPossible || NewOffer.Num() != CardsCount || AreDefIdSetsEqual(NewOfferDefIds, PrevSet))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NoDifferentOffer,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	if (!CurrencyComponent->TrySpendTemp(Cost))
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::NotEnoughCurrency,
+			Cost,
+			CurrencyComponent->GetTemp(),
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
+	// 여기부터는 검증이 다 끝났으니, 실패 없이 세 줄이 한 번에 반영.
+	PendingOffer = MoveTemp(NewOffer);
+	++CurrentOfferRerollCount;
+	++OfferRevision;
+
+	const int64 NextCost = ComputeRerollCost(RerollRule, CurrentOfferRerollCount);
+	Client_PresentOffer(PendingOffer, NextCost, true, OfferRevision);
 }
 
 // 증강 골랐을때
-void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index)
+void UNSAugmentSelectionComponent::Server_Choose_Implementation(int32 Index, int32 ClientOfferRevision)
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
+
+	// 오퍼가 이미 바뀐 뒤에 도착한 예전 선택 요청은 거부 (리롤 직후 구 카드 선택 방지)
+	if (ClientOfferRevision != OfferRevision)
+	{
+		Client_NotifyRerollResult(
+			ENSAugmentRerollResult::StaleRevision,
+			0,
+			0,
+			ClientOfferRevision,
+			OfferRevision
+		);
+		return;
+	}
+
 	// 표시 중인 오퍼만 선택 가능
 	if (!bFrontRolled || !PendingOffer.IsValidIndex(Index))
 	{
@@ -165,7 +303,8 @@ void UNSAugmentSelectionComponent::CopyRunStateFrom(const UNSAugmentSelectionCom
 	RewardTriggerQueue = Source->RewardTriggerQueue;
 	bFrontRolled = Source->bFrontRolled;
 	PendingOffer = Source->PendingOffer;
-	CurrentRerollCost = Source->CurrentRerollCost;
+	CurrentOfferRerollCount = Source->CurrentOfferRerollCount;
+	OfferRevision = Source->OfferRevision; // 같은 런이 이어지는 것이라 값을 그대로 이어받음(증가 아님).
 	
 	SetPendingCount(RewardTriggerQueue.Num());
 }
@@ -179,13 +318,14 @@ void UNSAugmentSelectionComponent::Reset()
 	RewardTriggerQueue.Reset();
 	PendingOffer.Reset();
 	bFrontRolled = false;
-	CurrentRerollCost = 0;
+	CurrentOfferRerollCount = 0;
+	++OfferRevision;	// 인런 종료 시점에 남아있던 리롤/선택 요청을 무효화.
 	bHasValidatedAugmentDefinitionGroups = false;
 	SetPendingCount(0);
 }
 
 // 대기열 front를 클라에 표시
-void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
+void UNSAugmentSelectionComponent::PresentFront()
 {
 	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
@@ -231,18 +371,15 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 		{
 			return;
 		}
-		
-		if (!bFrontRolled || bReroll)
+
+		const bool bNeedsFreshRoll = !bFrontRolled;
+		if (bNeedsFreshRoll)
 		{
-			if (!bFrontRolled)
-			{
-				CurrentRerollCost = 0;
-			}
-			
+			CurrentOfferRerollCount = 0;
 			PendingOffer = RollCards(RarityRule, CardsCount);
 			bFrontRolled = !PendingOffer.IsEmpty();
 		}
-		
+
 		// 현재 트리거가 허용하는 희귀도에서 후보를 만들 수 없으면
 		// 해당 선택 기회를 소비하고 다음 트리거를 확인.
 		if (PendingOffer.IsEmpty())
@@ -255,8 +392,20 @@ void UNSAugmentSelectionComponent::PresentFront(bool bReroll)
 			ConsumeFrontOffer();
 			continue;
 		}
-		
-		Client_PresentOffer(PendingOffer, CurrentRerollCost);
+
+		if (bNeedsFreshRoll)
+		{
+			// 새 오퍼를 처음 보여줄 때만 번호를 올림. 같은 오퍼를 다시 여는 건 번호를 그대로 둠.
+			++OfferRevision;
+		}
+
+		FNSAugmentRerollRule RerollRule;
+		const bool bHasRerollRule = TryFindRerollRule(RewardTriggerQueue[0], RerollRule);
+		// 리롤 규칙이 있고, 오퍼가 부분 오퍼가 아니라 꽉 찬 CardsCount장일 때만 리롤을 허용.
+		const bool bCanReroll = bHasRerollRule && PendingOffer.Num() == CardsCount;
+		const int64 RerollCost = bHasRerollRule ? ComputeRerollCost(RerollRule, CurrentOfferRerollCount) : 0;
+
+		Client_PresentOffer(PendingOffer, RerollCost, bCanReroll, OfferRevision);
 		return;
 	}
 	
@@ -479,7 +628,7 @@ void UNSAugmentSelectionComponent::ConsumeFrontOffer()
 	
 	bFrontRolled = false;
 	PendingOffer.Reset();
-	CurrentRerollCost = 0;
+	CurrentOfferRerollCount = 0;
 	
 	SetPendingCount(RewardTriggerQueue.Num());
 }
@@ -497,9 +646,22 @@ void UNSAugmentSelectionComponent::OnRep_PendingCount()
 }
 
 void UNSAugmentSelectionComponent::Client_PresentOffer_Implementation(
-	const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost)
+	const TArray<FNSAugmentSelectionCard>& Cards,
+	int64 RerollCost,
+	bool bCanReroll,
+	int32 PresentedOfferRevision)
 {
-	OnOfferPresented.Broadcast(Cards, RerollCost);
+	OnOfferPresented.Broadcast(Cards, RerollCost, bCanReroll, PresentedOfferRevision);
+}
+
+void UNSAugmentSelectionComponent::Client_NotifyRerollResult_Implementation(
+	ENSAugmentRerollResult Result,
+	int64 RequiredCost,
+	int64 HaveCurrency,
+	int32 RequestRevision,
+	int32 CurrentOfferRevision)
+{
+	OnRerollResult.Broadcast(Result, RequiredCost, HaveCurrency, RequestRevision, CurrentOfferRevision);
 }
 
 void UNSAugmentSelectionComponent::Client_CloseOffer_Implementation()
@@ -520,6 +682,23 @@ void UNSAugmentSelectionComponent::Client_AutoOpenPanel_Implementation()
 	{
 		UIManager->OpenAugmentationPanel();
 	}
+}
+
+UNSCurrencyComponent* UNSAugmentSelectionComponent::GetOwnerCurrencyComponent() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetOwner());
+	if (!IsValid(PlayerController))
+	{
+		return nullptr;
+	}
+
+	const ANSPlayerState* PlayerState = Cast<ANSPlayerState>(PlayerController->PlayerState);
+	if (!IsValid(PlayerState))
+	{
+		return nullptr;
+	}
+
+	return PlayerState->GetCurrencyComponent();
 }
 
 bool UNSAugmentSelectionComponent::TryFindRarityRule(
@@ -560,6 +739,251 @@ bool UNSAugmentSelectionComponent::TryFindRarityRule(
 	return false;
 }
 
+// IsDataValid는 에디터 시점 검증일 뿐이며, 런타임에는 그 이후 잘못 수정된 값이 그대로 로드될 수 있음.
+// InitialCost=0 같은 설정 오류가 NotEnoughCurrency로 오인되지 않도록 필드까지 다시 검증.
+bool UNSAugmentSelectionComponent::TryFindRerollRule(
+	const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const
+{
+	OutRule = FNSAugmentRerollRule();
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UNSRunConfig* RunConfig = DataSubsystem ? DataSubsystem->GetCurrentRunConfig() : nullptr;
+	if (!RunConfig || !RewardTriggerTag.IsValid())
+	{
+		return false;
+	}
+
+	static const FGameplayTag RewardTriggerRoot =
+		FGameplayTag::RequestGameplayTag(FName(TEXT("Reward.Trigger")), false);
+
+	for (const FNSAugmentRerollRule& Rule : RunConfig->AugmentRerollRules)
+	{
+		if (Rule.RewardTriggerTag != RewardTriggerTag)
+		{
+			continue;
+		}
+
+		const bool bHierarchyValid =
+			!RewardTriggerRoot.IsValid() || Rule.RewardTriggerTag.MatchesTag(RewardTriggerRoot);
+
+		if (!bHierarchyValid || Rule.InitialCost < 1
+			|| !FMath::IsFinite(Rule.CostMultiplier) || Rule.CostMultiplier < 1.0f)
+		{
+			NS_OBJ_LOG(LogNS, Warning,
+				"증강 리롤 규칙 필드가 유효하지 않습니다. RewardTriggerTag={RewardTriggerTag}",
+				("RewardTriggerTag", RewardTriggerTag.ToString())
+			);
+			return false;
+		}
+
+		OutRule = Rule;
+		return true;
+	}
+
+	NS_OBJ_LOG(LogNS, Warning,
+		"증강 리롤 규칙을 찾지 못했습니다(리롤 불가 트리거). RewardTriggerTag={RewardTriggerTag}",
+		("RewardTriggerTag", RewardTriggerTag.ToString())
+	);
+	return false;
+}
+
+int64 UNSAugmentSelectionComponent::ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count)
+{
+	// 2^53 미만이면 double의 정수 표현이 정확해 ceil 결과가 항상 안전.
+	constexpr double SafeCeiling = 1.0e15;
+
+	if (Count <= 0)
+	{
+		return FMath::Max<int64>(0, Rule.InitialCost);
+	}
+
+	const double Base = static_cast<double>(FMath::Max<int64>(0, Rule.InitialCost));
+	const double Mult = FMath::Max(1.0, static_cast<double>(Rule.CostMultiplier));
+	const double Raw = Base * FMath::Pow(Mult, static_cast<double>(Count));
+
+	if (!FMath::IsFinite(Raw) || Raw >= SafeCeiling)
+	{
+		return static_cast<int64>(SafeCeiling);
+	}
+	return static_cast<int64>(FMath::CeilToDouble(Raw));
+}
+
+TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCardsExcludingComposition(
+	const FNSAugmentRarityRule& RarityRule,
+	int32 N,
+	const TSet<FPrimaryAssetId>& PreviousDefIds,
+	bool& bOutDifferentPossible) const
+{
+	bOutDifferentPossible = false;
+
+	// 직전 오퍼가 완전한 N장이 아니면(부분 오퍼) 리롤 대상이 아니다.
+	if (N <= 0 || PreviousDefIds.Num() != N)
+	{
+		return {};
+	}
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsRunReady())
+	{
+		return {};
+	}
+
+	bool bLegendaryFull = false;
+	TSet<FPrimaryAssetId> OwnedLegendarySlotIds;
+	TSet<FPrimaryAssetId> StackFullIds;
+	CollectInventoryFilter(bLegendaryFull, OwnedLegendarySlotIds, StackFullIds);
+
+	// 기존 카드 일부 재등장은 허용하므로 PreviousDefIds를 후보 풀에서 제외하지 않음.
+	const TSet<FPrimaryAssetId> EmptyExcluded;
+
+	TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>> ByRarity;
+	BuildRarityBuckets(DataSubsystem, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
+
+	// 후보 풀을 DefId 집합 + 메타 맵으로 평탄화. 이 트리거에서 가중치가 0(또는 미설정)인 희귀도는 제외.
+	TSet<FPrimaryAssetId> CandidateDefIds;
+	TMap<FPrimaryAssetId, FNSAugmentCandidate> CandidatesByDefId;
+	for (const TPair<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& RarityBucket : ByRarity)
+	{
+		const int32* Weight = RarityRule.RarityWeights.Find(RarityBucket.Key);
+		if (!Weight || *Weight <= 0)
+		{
+			continue;
+		}
+
+		for (const FNSAugmentCandidate& Candidate : RarityBucket.Value)
+		{
+			CandidateDefIds.Add(Candidate.DefId);
+			CandidatesByDefId.Add(Candidate.DefId, Candidate);
+		}
+	}
+
+	// 후보 수가 N 이하이면 직전과 다른 N장 구성이 존재할 수 없다.
+	if (CandidateDefIds.Num() <= N)
+	{
+		return {};
+	}
+
+	// 자연스러운 기존 확률 분포를 최대한 유지하기 위해 정상 추첨을 K회 시도.
+	constexpr int32 K = 8;
+	TArray<FNSAugmentSelectionCard> LastFullOffer;
+
+	for (int32 Attempt = 0; Attempt < K; ++Attempt)
+	{
+		TArray<FNSAugmentSelectionCard> Candidate = DrawCards(RarityRule, ByRarity, N);
+		if (Candidate.Num() != N)
+		{
+			continue;
+		}
+
+		LastFullOffer = Candidate;
+
+		TSet<FPrimaryAssetId> CandidateSet;
+		for (const FNSAugmentSelectionCard& Card : Candidate)
+		{
+			CandidateSet.Add(Card.DefId);
+		}
+
+		if (!AreDefIdSetsEqual(CandidateSet, PreviousDefIds))
+		{
+			bOutDifferentPossible = true;
+			return Candidate;
+		}
+	}
+
+	// 여기까지 왔다는 건 K번을 뽑아도 계속 직전과 같은 조합만 나왔다는 뜻.
+	// 마지막으로 뽑은 오퍼에서 카드 한 장만 강제로 바꿔서 다른 조합을 만듬.
+	if (LastFullOffer.Num() != N)
+	{
+		return {};
+	}
+
+	TArray<FPrimaryAssetId> OutsideCandidates;
+	for (const FPrimaryAssetId& Id : CandidateDefIds)
+	{
+		if (!PreviousDefIds.Contains(Id))
+		{
+			OutsideCandidates.Add(Id);
+		}
+	}
+
+	if (OutsideCandidates.IsEmpty())
+	{
+		return {};
+	}
+
+	// OutsideCandidates 중에서 SelectionWeight 비율대로 하나를 무작위로 뽑아 치환 후보로 사용.
+	int32 TotalOutsideWeight = 0;
+	for (const FPrimaryAssetId& Id : OutsideCandidates)
+	{
+		if (const FNSAugmentCandidate* Candidate = CandidatesByDefId.Find(Id))
+		{
+			TotalOutsideWeight += FMath::Max(0, Candidate->SelectionWeight);
+		}
+	}
+
+	if (TotalOutsideWeight <= 0)
+	{
+		return {};
+	}
+
+	const int32 RollValue = FMath::RandRange(1, TotalOutsideWeight);
+	int32 Accumulated = 0;
+	FPrimaryAssetId ChosenDefId;
+	for (const FPrimaryAssetId& Id : OutsideCandidates)
+	{
+		const FNSAugmentCandidate* Candidate = CandidatesByDefId.Find(Id);
+		if (!Candidate)
+		{
+			continue;
+		}
+		Accumulated += FMath::Max(0, Candidate->SelectionWeight);
+		if (RollValue <= Accumulated)
+		{
+			ChosenDefId = Id;
+			break;
+		}
+	}
+
+	const FNSAugmentCandidate* ChosenCandidate = ChosenDefId.IsValid() ? CandidatesByDefId.Find(ChosenDefId) : nullptr;
+	if (!ChosenCandidate)
+	{
+		return {};
+	}
+
+	// 동일 희귀도 슬롯이 있으면 그 슬롯을 우선 교체해 자연 추첨 결과의 희귀도 구성을 최대한 보존.
+	// 없으면 0번 슬롯을 교체.
+	int32 ReplaceIndex = 0;
+	for (int32 Index = 0; Index < LastFullOffer.Num(); ++Index)
+	{
+		if (LastFullOffer[Index].Rarity == ChosenCandidate->Rarity)
+		{
+			ReplaceIndex = Index;
+			break;
+		}
+	}
+
+	TArray<FNSAugmentSelectionCard> NewOffer = LastFullOffer;
+	NewOffer[ReplaceIndex].DefId = ChosenCandidate->DefId;
+	NewOffer[ReplaceIndex].Rarity = ChosenCandidate->Rarity;
+
+	// 방금 한 장을 강제로 바꿔치기했으니, 결과가 여전히 N장인지 / 직전과 다른 구성인지 / 카드가 중복되지 않는지 마지막으로 다시 확인.
+	TSet<FPrimaryAssetId> NewOfferDefIds;
+	for (const FNSAugmentSelectionCard& Card : NewOffer)
+	{
+		NewOfferDefIds.Add(Card.DefId);
+	}
+
+	if (NewOffer.Num() != N
+		|| AreDefIdSetsEqual(NewOfferDefIds, PreviousDefIds)
+		|| NewOfferDefIds.Num() != NewOffer.Num())
+	{
+		return {};
+	}
+
+	bOutDifferentPossible = true;
+	return NewOffer;
+}
+
 TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(
 	const FNSAugmentRarityRule& RarityRule, int32 N) const
 {
@@ -585,6 +1009,24 @@ TArray<FNSAugmentSelectionCard> UNSAugmentSelectionComponent::RollCards(
 	BuildRarityBuckets(Data, bLegendaryFull, OwnedLegendarySlotIds, StackFullIds, EmptyExcluded, ByRarity);
 
 	return DrawCards(RarityRule, ByRarity, N);
+}
+
+bool UNSAugmentSelectionComponent::AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B)
+{
+	if (A.Num() != B.Num())
+	{
+		return false;
+	}
+
+	for (const FPrimaryAssetId& Id : A)
+	{
+		if (!B.Contains(Id))
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 // Definition SoftPtr를 직접 로드하지 않고 DataSubsystem 캐시에서 해석.

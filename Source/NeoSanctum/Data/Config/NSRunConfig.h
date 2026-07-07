@@ -3,12 +3,35 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Engine/DataAsset.h"
 #include "NSRunConfig.generated.h"
 
 class UNSAugmentRarityRuleSet;
 class UNSDifficultyConfig;
 class UDataTable;
+
+/**
+ * 트리거별 증강 리롤 비용 규칙.
+ */
+USTRUCT(BlueprintType)
+struct FNSAugmentRerollRule
+{
+	GENERATED_BODY()
+
+	// 이규칙이 적용될 증강 보상 트리거
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll",
+		meta = (Categories = "Reward.Trigger"))
+	FGameplayTag RewardTriggerTag;
+
+	// 첫 리롤(카운트 0) 비용. TrySpendTemp(0)이 항상 실패하므로 최소 1.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll", meta = (ClampMin = "1"))
+	int64 InitialCost = 100;
+
+	// 리롤마다 곱해지는 비용 배율. 1.0 이상만 허용.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll", meta = (ClampMin = "1.0"))
+	float CostMultiplier = 1.25f;
+};
 
 /**
  * 인런 전체가 유지되는 동안 공통으로 사용하는 데이터 설정.
@@ -23,7 +46,11 @@ class NEOSANCTUM_API UNSRunConfig : public UPrimaryDataAsset
 	
 public:
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
-	
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+
 	// 이번 런에서 사용할 증강 후보 목록. Definition DA 목록은 이 DT에서 수집.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
 		meta = (AssetBundles = "InRunData"))
@@ -33,6 +60,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
 		meta = (AssetBundles = "InRunData"))
 	TSoftObjectPtr<UNSAugmentRarityRuleSet> AugmentRarityRuleSet;
+
+	// 트리거별 증강 리롤 비용 규칙. 이 배열에 없는 트리거는 리롤 불가로 취급.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
+		meta = (TitleProperty = "RewardTriggerTag"))
+	TArray<FNSAugmentRerollRule> AugmentRerollRules;
 
 	// 몬스터의 기본 스탯 테이블. 난이도 배율 적용 전 기준값으로 사용.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Monster",

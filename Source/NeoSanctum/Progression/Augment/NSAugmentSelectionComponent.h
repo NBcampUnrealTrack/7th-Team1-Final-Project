@@ -8,7 +8,9 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NSAugmentSelectionComponent.generated.h"
 
+class UNSCurrencyComponent;
 struct FNSAugmentRarityRule;
+struct FNSAugmentRerollRule;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 
@@ -29,9 +31,13 @@ struct FNSAugmentCandidate
 	bool bCountsAsLegendarySlot = false;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FNSAugmentSelectionCard>&, Cards, int32, RerollCost);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnAugmentOfferPresented,
+	const TArray<FNSAugmentSelectionCard>&, Cards, int64, RerollCost, bool, bCanReroll, int32, OfferRevision);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnAugmentRerollResult,
+	ENSAugmentRerollResult, Result, int64, RequiredCost, int64, HaveCurrency,
+	int32, RequestRevision, int32, CurrentOfferRevision);
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSAugmentSelectionComponent : public UActorComponent
@@ -51,6 +57,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "NS|Augment")
 	FOnAugmentPendingCountChanged OnPendingCountChanged;
 
+	// 리롤 실패 통보 (성공은 OnOfferPresented 재수신으로 처리)
+	UPROPERTY(BlueprintAssignable, Category = "NS|Augment")
+	FOnAugmentRerollResult OnRerollResult;
+
 	// 서버 권한 트리거(레벨업/엘리트킬/보스처치)에서 직접 호출 → 대기열에 적재 후 패널 자동 오픈
 	UFUNCTION(BlueprintCallable, Category = "NS|Augment")
 	void EnqueueOffer(FGameplayTag RewardTriggerTag);
@@ -65,11 +75,11 @@ public:
 
 	// 증강 리롤 (카드 3개 전부 새로 추첨)
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_RerollCard();
+	void Server_RerollCard(int32 ClientOfferRevision);
 
 	// 증강 골랐을때
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_Choose(int32 Index);
+	void Server_Choose(int32 Index, int32 ClientOfferRevision);
 
 	// 현재 대기 중인 증강 선택권 수
 	UFUNCTION(BlueprintPure, Category = "NS|Augment")
@@ -89,10 +99,25 @@ protected:
 
 private:
 	UFUNCTION(Client, Reliable)
-	void Client_PresentOffer(const TArray<FNSAugmentSelectionCard>& Cards, int32 RerollCost);
+	void Client_PresentOffer(
+		const TArray<FNSAugmentSelectionCard>& Cards,
+		int64 RerollCost,
+		bool bCanReroll,
+		int32 PresentedOfferRevision
+	);
 
 	UFUNCTION(Client, Reliable)
 	void Client_CloseOffer();
+
+	// 리롤 실패 결과 통보. 성공 시에는 호출하지 않고 Client_PresentOffer 재수신으로 대체.
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyRerollResult(
+		ENSAugmentRerollResult Result,
+		int64 RequiredCost,
+		int64 HaveCurrency,
+		int32 RequestRevision,
+		int32 CurrentOfferRevision
+	);
 
 	// 대기열에 오퍼가 새로 적재됐을 때 클라이언트 패널 자동 오픈 지시
 	UFUNCTION(Client, Reliable)
@@ -105,7 +130,7 @@ private:
 	void SetPendingCount(int32 NewCount);
 	
 	// Queue Front를 카드로 제시. 후보가 없으면 해당 트리거를 소비하고 다음 Front를 계속 확인.
-	void PresentFront(bool bReroll = false);
+	void PresentFront();
 	
 	/**
 	 * 현재 Front 오퍼를 소비하고 카드 추첨 상태를 초기화.
@@ -122,8 +147,34 @@ private:
 		FNSAugmentRarityRule& OutRule
 	) const;
 
+	// 실패 시 "규칙 없음(설정 오류)"로 취급 -> Server_RerollCard가 InvalidRequest로 통보.
+	bool TryFindRerollRule(
+		const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const;
+
+	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
+	static int64 ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count);
+
+	// 두 DefId Set이 원소까지 완전히 같은지 판정(순서 무관).
+	static bool AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B);
+
+	// 오너 PlayerController -> PlayerState의 임시 재화 컴포넌트 조회.
+	UNSCurrencyComponent* GetOwnerCurrencyComponent() const;
+
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
+
+	/**
+ 	 * 직전 오퍼(PreviousDefIds)와 DefId 구성이 다른 완전한 N장 오퍼를 생성.
+ 	 *
+ 	 * 기존 카드 일부 재등장은 허용하되, N장 집합 전체가 직전과 동일한 재출현은 허용하지 않는다.
+ 	 * 다른 구성이 실제로 존재하지 않을 때만 bOutDifferentPossible=false와 빈 배열을 반환한다.
+ 	 */
+	TArray<FNSAugmentSelectionCard> RollCardsExcludingComposition(
+		const FNSAugmentRarityRule& RarityRule,
+		int32 N,
+		const TSet<FPrimaryAssetId>& PreviousDefIds,
+		bool& bOutDifferentPossible
+	) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,
@@ -190,7 +241,12 @@ private:
 
 	TArray<FNSAugmentSelectionCard> PendingOffer;
 
-	int32 CurrentRerollCost = 0;
+	int32 CurrentOfferRerollCount = 0;
+
+	// 클라이언트가 들고 있는 오퍼가 최신인지 확인하는 버전 번호.
+	// 오퍼 내용이 바뀔 때마다(새로 추첨될 때, 리롤 성공 시) 값이 올라가고,
+	// 오래된 버전 번호로 온 요청은 서버가 거부한다. 그래서 0으로 되돌리는 일은 절대 없다.
+	int32 OfferRevision = 0;
 
 	// 대기 중인 증강 선택권 수 (오너에게만 레플리케이션, UI 뱃지용)
 	UPROPERTY(ReplicatedUsing = OnRep_PendingCount)
