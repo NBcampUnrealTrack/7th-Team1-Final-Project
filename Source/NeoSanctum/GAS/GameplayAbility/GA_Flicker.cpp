@@ -14,6 +14,7 @@
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
+#include "NeoSanctum/Combat/Weapon/NSMeleeWeapon.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -98,6 +99,7 @@ void UGA_Flicker::InputReleased(
 	}
 
 	AddDashingState();
+	AddFlickerGameplayCue();
 	bDashStarted = true;
 
 	// 첫 번째 체인 타겟 처리 시작
@@ -137,12 +139,23 @@ void UGA_Flicker::EndAbility(
 		HitEventTask = nullptr;
 	}
 
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(AttackAdvanceTimerHandle);
+	}
+
 	RestoreMovementMode();
+	RemoveFlickerGameplayCue();
 	RemoveDashingState();
 
 	bReleaseRequested = false;
 	bDashStarted = false;
+	bFlickerGameplayCueAdded = false;
 	bCurrentTargetDamageApplied = false;
+	PreviousMeleeTraceSocketLocations.Reset();
+	bHasPreviousMeleeTraceSocketLocations = false;
+	CurrentMeleeTraceWindowId = 0;
+	DamagedActorsInTraceWindow.Reset();
 	CurrentTarget.Reset();
 	CurrentTargetLocation = FVector::ZeroVector;
 	// 다음 발동을 위한 체인 타겟 상태 초기화
@@ -156,8 +169,33 @@ void UGA_Flicker::EndAbility(
 void UGA_Flicker::OnFlickerMoveFinished()
 {
 	MoveTask = nullptr;
-	// 현재 타겟 공격 후 다음 타겟으로 진행
-	AdvanceToNextTarget();
+
+	if (!IsAttackableTarget(CurrentTarget.Get()))
+	{
+		AdvanceToNextTarget();
+		return;
+	}
+
+	if (!JumpToAttackSection())
+	{
+		PlayFlickerMontage();
+		if (!JumpToAttackSection())
+		{
+			EndAbility(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActorInfo(),
+				GetCurrentActivationInfo(),
+				true,
+				true);
+			return;
+		}
+	}
+
+	PreviousMeleeTraceSocketLocations.Reset();
+	bHasPreviousMeleeTraceSocketLocations = false;
+	CurrentMeleeTraceWindowId = 0;
+	DamagedActorsInTraceWindow.Reset();
+	ScheduleAdvanceToNextTargetAfterAttackSection();
 }
 
 void UGA_Flicker::OnFlickerMontageCompleted()
@@ -179,25 +217,18 @@ void UGA_Flicker::OnFlickerMontageInterrupted()
 
 void UGA_Flicker::OnFlickerHitEventReceived(FGameplayEventData Payload)
 {
-	if (!bDashStarted || bCurrentTargetDamageApplied)
+	if (!bDashStarted)
 	{
 		return;
 	}
 
-	bCurrentTargetDamageApplied = true;
-	ApplyDamageToTarget();
+	HandleMeleeHitEvent(Payload);
 }
 
 bool UGA_Flicker::PlayFlickerMontage()
 {
 	if (!FlickerMontage)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Flicker montage is not assigned. AbilityClass=%s AbilityObject=%s"),
-			*GetClass()->GetPathName(),
-			*GetName());
 		return false;
 	}
 
@@ -206,7 +237,6 @@ bool UGA_Flicker::PlayFlickerMontage()
 	const UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
 	if (!AnimInstance)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Flicker montage cannot play because AnimInstance is missing."));
 		return false;
 	}
 
@@ -229,7 +259,6 @@ bool UGA_Flicker::PlayFlickerMontage()
 
 	if (!MontageTask)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Flicker montage task could not be created."));
 		return false;
 	}
 
@@ -285,7 +314,13 @@ void UGA_Flicker::StartHitEventTask()
 
 bool UGA_Flicker::JumpToAttackSection() const
 {
-	if (!FlickerMontage || AttackSectionName.IsNone())
+	if (!FlickerMontage)
+	{
+		return false;
+	}
+
+	const FName AttackSectionName = GetCurrentAttackSectionName();
+	if (AttackSectionName.IsNone())
 	{
 		return false;
 	}
@@ -300,6 +335,128 @@ bool UGA_Flicker::JumpToAttackSection() const
 
 	AnimInstance->Montage_JumpToSection(AttackSectionName, FlickerMontage);
 	return true;
+}
+
+void UGA_Flicker::HandleMeleeHitEvent(const FGameplayEventData& Payload)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	const UObject* TraceWindow = Payload.OptionalObject.Get();
+	const uint32 TraceWindowId = IsValid(TraceWindow) ? TraceWindow->GetUniqueID() : 0;
+	if (TraceWindowId != 0 && TraceWindowId != CurrentMeleeTraceWindowId)
+	{
+		PreviousMeleeTraceSocketLocations.Reset();
+		bHasPreviousMeleeTraceSocketLocations = false;
+		CurrentMeleeTraceWindowId = TraceWindowId;
+		DamagedActorsInTraceWindow.Reset();
+	}
+
+	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
+	if (!MeleeWeapon)
+	{
+		return;
+	}
+
+	PerformMeleeSocketSweeps(*MeleeWeapon);
+}
+
+ANSMeleeWeapon* UGA_Flicker::GetCurrentMeleeWeapon() const
+{
+	const ANSPlayerCharacterBase* PlayerCharacter =
+		Cast<ANSPlayerCharacterBase>(GetAvatarActorFromActorInfo());
+	if (!PlayerCharacter)
+	{
+		return nullptr;
+	}
+
+	return Cast<ANSMeleeWeapon>(PlayerCharacter->GetCurrentWeapon());
+}
+
+void UGA_Flicker::PerformMeleeSocketSweeps(ANSMeleeWeapon& MeleeWeapon)
+{
+	TArray<FTransform> SocketTransforms;
+	if (!MeleeWeapon.TryGetMeleeTraceSocketTransforms(SocketTransforms))
+	{
+		return;
+	}
+
+	if (SocketTransforms.IsEmpty())
+	{
+		return;
+	}
+
+	const bool bCanUsePreviousLocations =
+		bHasPreviousMeleeTraceSocketLocations &&
+		PreviousMeleeTraceSocketLocations.Num() == SocketTransforms.Num();
+
+	for (int32 SocketIndex = 0; SocketIndex < SocketTransforms.Num(); ++SocketIndex)
+	{
+		const FVector CurrentLocation = SocketTransforms[SocketIndex].GetLocation();
+		const FVector TraceStart = bCanUsePreviousLocations
+			? PreviousMeleeTraceSocketLocations[SocketIndex]
+			: CurrentLocation;
+
+		SweepMeleeTrace(TraceStart, CurrentLocation);
+	}
+
+	PreviousMeleeTraceSocketLocations.Reset(SocketTransforms.Num());
+	for (const FTransform& SocketTransform : SocketTransforms)
+	{
+		PreviousMeleeTraceSocketLocations.Add(SocketTransform.GetLocation());
+	}
+
+	bHasPreviousMeleeTraceSocketLocations = true;
+}
+
+void UGA_Flicker::SweepMeleeTrace(
+	const FVector& TraceStart,
+	const FVector& TraceEnd)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	if (!AvatarActor || !World || MeleeTraceRadius <= 0.0f)
+	{
+		return;
+	}
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSFlickerMeleeTrace), false, AvatarActor);
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor))
+	{
+		if (ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon())
+		{
+			QueryParams.AddIgnoredActor(CurrentWeapon);
+		}
+	}
+
+	const FVector SweepEnd = TraceStart.Equals(TraceEnd)
+		? TraceEnd + FVector::UpVector * 0.1f
+		: TraceEnd;
+
+	TArray<FHitResult> HitResults;
+	const bool bHit = World->SweepMultiByChannel(
+		HitResults,
+		TraceStart,
+		SweepEnd,
+		FQuat::Identity,
+		NSCollisionChannels::PlayerWeaponTrace,
+		FCollisionShape::MakeSphere(MeleeTraceRadius),
+		QueryParams);
+
+	if (!bHit)
+	{
+		return;
+	}
+
+	for (const FHitResult& HitResult : HitResults)
+	{
+		ApplyDamageToActor(HitResult);
+	}
 }
 
 bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetLocation) const
@@ -700,6 +857,14 @@ bool UGA_Flicker::TryBuildAttackLocation(
 	return true;
 }
 
+bool UGA_Flicker::IsAttackableTarget(AActor* TargetActor) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	return IsValid(AvatarActor) &&
+		IsValid(TargetActor) &&
+		NSDamageRules::CanApplyDamage(AvatarActor, TargetActor);
+}
+
 bool UGA_Flicker::StartCurrentTargetMove()
 {
 	// 현재 인덱스에 해당하는 체인 타겟 확인
@@ -710,7 +875,7 @@ bool UGA_Flicker::StartCurrentTargetMove()
 	}
 
 	AActor* TargetActor = SelectedTargets[CurrentTargetIndex].Get();
-	if (!IsValid(TargetActor))
+	if (!IsAttackableTarget(TargetActor))
 	{
 		return false;
 	}
@@ -718,11 +883,6 @@ bool UGA_Flicker::StartCurrentTargetMove()
 	CurrentTarget = TargetActor;
 	CurrentTargetLocation = SelectedTargetLocations[CurrentTargetIndex];
 	bCurrentTargetDamageApplied = false;
-	if (!JumpToAttackSection())
-	{
-		PlayFlickerMontage();
-		JumpToAttackSection();
-	}
 
 	// 타겟과 겹치지 않는 공격 위치 계산
 	FVector AttackLocation = FVector::ZeroVector;
@@ -755,7 +915,81 @@ void UGA_Flicker::AdvanceToNextTarget()
 		GetCurrentActorInfo(),
 		GetCurrentActivationInfo(),
 		true,
+			false);
+}
+
+void UGA_Flicker::ScheduleAdvanceToNextTargetAfterAttackSection()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		AdvanceToNextTarget();
+		return;
+	}
+
+	const float RemainingTime = GetCurrentAttackSectionRemainingTime();
+	if (RemainingTime <= KINDA_SMALL_NUMBER)
+	{
+		AdvanceToNextTarget();
+		return;
+	}
+
+	World->GetTimerManager().ClearTimer(AttackAdvanceTimerHandle);
+	World->GetTimerManager().SetTimer(
+		AttackAdvanceTimerHandle,
+		this,
+		&ThisClass::AdvanceToNextTarget,
+		RemainingTime,
 		false);
+}
+
+FName UGA_Flicker::GetCurrentAttackSectionName() const
+{
+	if (CurrentTargetIndex < 0 || AttackSectionNames.IsEmpty())
+	{
+		return NAME_None;
+	}
+
+	const int32 AttackSectionIndex = CurrentTargetIndex % AttackSectionNames.Num();
+	return AttackSectionNames.IsValidIndex(AttackSectionIndex)
+		? AttackSectionNames[AttackSectionIndex]
+		: NAME_None;
+}
+
+float UGA_Flicker::GetCurrentAttackSectionRemainingTime() const
+{
+	if (!FlickerMontage)
+	{
+		return 0.0f;
+	}
+
+	const FName AttackSectionName = GetCurrentAttackSectionName();
+	if (AttackSectionName.IsNone())
+	{
+		return 0.0f;
+	}
+
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	const USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
+	const UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimInstance->Montage_IsPlaying(FlickerMontage))
+	{
+		return 0.0f;
+	}
+
+	const int32 SectionIndex = FlickerMontage->GetSectionIndex(AttackSectionName);
+	if (SectionIndex == INDEX_NONE)
+	{
+		return 0.0f;
+	}
+
+	float SectionStartTime = 0.0f;
+	float SectionEndTime = 0.0f;
+	FlickerMontage->GetSectionStartAndEndTime(SectionIndex, SectionStartTime, SectionEndTime);
+
+	const float CurrentPosition = AnimInstance->Montage_GetPosition(FlickerMontage);
+	const float PlayRate = FMath::Max(AnimInstance->Montage_GetPlayRate(FlickerMontage), 0.01f);
+	return FMath::Max((SectionEndTime - CurrentPosition) / PlayRate, 0.0f);
 }
 
 bool UGA_Flicker::StartFlickerMove(const FVector& AttackLocation)
@@ -861,6 +1095,64 @@ void UGA_Flicker::ApplyDamageToTarget()
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
 }
 
+bool UGA_Flicker::ApplyDamageToActor(const FHitResult& HitResult)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	AActor* TargetActor = HitResult.GetActor();
+	if (!IsValid(AvatarActor) || !AvatarActor->HasAuthority() || !IsValid(TargetActor) || !DamageEffectClass)
+	{
+		return false;
+	}
+
+	if (TargetActor != CurrentTarget.Get())
+	{
+		return false;
+	}
+
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+	if (!SourceASC || !TargetASC)
+	{
+		return false;
+	}
+
+	if (!NSDamageRules::CanApplyDamage(AvatarActor, TargetActor))
+	{
+		return false;
+	}
+
+	const TObjectKey<AActor> TargetKey(TargetActor);
+	if (DamagedActorsInTraceWindow.Contains(TargetKey))
+	{
+		return false;
+	}
+
+	float FinalDamage = 0.0f;
+	if (!TryGetFinalDamage(FinalDamage))
+	{
+		return false;
+	}
+
+	FGameplayEffectSpecHandle DamageSpecHandle =
+		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
+	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
+	{
+		return false;
+	}
+
+	DamagedActorsInTraceWindow.Add(TargetKey);
+	bCurrentTargetDamageApplied = true;
+
+	DamageSpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_Base,
+		FMath::Max(FinalDamage, 0.0f));
+	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
+	DamageSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+
+	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+	return true;
+}
+
 bool UGA_Flicker::TryGetFinalDamage(float& OutDamage) const
 {
 	if (!SkillAbilityTag.IsValid())
@@ -925,4 +1217,33 @@ void UGA_Flicker::RemoveDashingState()
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
 	}
+}
+
+void UGA_Flicker::AddFlickerGameplayCue()
+{
+	if (bFlickerGameplayCueAdded || !FlickerGameplayCueTag.IsValid())
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->AddGameplayCue(FlickerGameplayCueTag);
+		bFlickerGameplayCueAdded = true;
+	}
+}
+
+void UGA_Flicker::RemoveFlickerGameplayCue()
+{
+	if (!bFlickerGameplayCueAdded || !FlickerGameplayCueTag.IsValid())
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->RemoveGameplayCue(FlickerGameplayCueTag);
+	}
+
+	bFlickerGameplayCueAdded = false;
 }
