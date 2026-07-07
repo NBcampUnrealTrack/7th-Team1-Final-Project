@@ -63,6 +63,8 @@ bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Lev
 
 void UNSGameFlowSubsystem::StartNewRun()
 {
+	StopAndResetDifficultyTimer();
+	
 	UNSLevelCatalog* NSCatalog = GetCatalog();
 	
 	if (!NSCatalog || NSCatalog->InRunLevels.Num() == 0)
@@ -183,11 +185,16 @@ bool UNSGameFlowSubsystem::AdvanceToNextStage()
 	CurrentInRunIndex = NextIndex;
 	CurrentStageNumber++;
 	
+	PauseDifficultyTimer();
+	SetDifficultyTimerWaitingForReady(true);
+	
 	return RequestEnterRun(Catalog->RunConfig, Catalog->InRunLevels[NextIndex].LevelConfig);
 }
 
 bool UNSGameFlowSubsystem::ReturnToHub()
 {
+	StopAndResetDifficultyTimer();
+	
 	UNSLevelCatalog* Catalog = GetCatalog();
 	
 	return Catalog ? ServerTravelToWorld(
@@ -220,6 +227,11 @@ int32 UNSGameFlowSubsystem::PickRandomIndexExcludingCurrent() const
 
 void UNSGameFlowSubsystem::ResumeDifficultyTimer()
 {
+	if (bDifficultyTimerWaitingForReady)
+	{
+		return;
+	}
+
 	bDifficultyTimerRunning = true;
 }
 
@@ -232,6 +244,66 @@ void UNSGameFlowSubsystem::StopAndResetDifficultyTimer()
 {
 	bDifficultyTimerRunning = false;
 	RunElapsedSeconds = 0.0f;
+}
+
+void UNSGameFlowSubsystem::RestartDifficultyTimer()
+{
+	bDifficultyTimerWaitingForReady = false;
+	
+	StopAndResetDifficultyTimer();
+	ResumeDifficultyTimer();
+}
+
+void UNSGameFlowSubsystem::SetDifficultyTimerWaitingForReady(bool bWaiting)
+{
+	bDifficultyTimerWaitingForReady = bWaiting;
+}
+
+int32 UNSGameFlowSubsystem::GetDifficultyLevel() const
+{
+	const float Interval = GetDifficultyTimeStepInterval();
+	
+	if (Interval <= 0.0f)
+	{
+		return 1;
+	}
+	
+	return FMath::FloorToInt(RunElapsedSeconds / Interval) + 1;
+}
+
+float UNSGameFlowSubsystem::GetDifficultyProgressPercent() const
+{
+	const float Interval = GetDifficultyTimeStepInterval();
+	
+	if (Interval <= 0.0f)
+	{
+		return 0.0f;
+	}
+	
+	const float CurrentStepElapsed =
+		FMath::Fmod(RunElapsedSeconds, Interval);
+	
+	return FMath::Clamp(CurrentStepElapsed / Interval, 0.0f, 1.0f);
+}
+
+float UNSGameFlowSubsystem::GetDifficultyTimeStepInterval() const
+{
+	const UNSDifficultyConfig* DifficultyConfig = nullptr;
+	
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (const UNSRunConfig* RunConfig = DataSubsystem->GetCurrentRunConfig())
+		{
+			DifficultyConfig = RunConfig->DifficultyConfig.Get();
+		}
+	}
+	
+	if (!DifficultyConfig)
+	{
+		return 60.0f;
+	}
+	
+	return FMath::Max(DifficultyConfig->TimeStepInterval, 1.0f);
 }
 
 FNSDifficultyScale UNSGameFlowSubsystem::GetCurrentMonsterScale(int32 PlayerCount) const

@@ -124,6 +124,8 @@ private:
 	// 보스룸의 보스 전용 스포너를 활성화
 	void ActivateBossSpawners();
 	
+	void StartDifficultyTimerForReadyStage();
+	
 	// 죽은 적이 보스 랭크인지 판정
 	bool IsBossEnemy(const AActor* DeadEnemy) const;
 	

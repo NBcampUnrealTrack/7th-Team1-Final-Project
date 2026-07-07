@@ -42,9 +42,42 @@ public:
 	void PauseDifficultyTimer();  
 	// 런 시작/거점 귀환 시
 	void StopAndResetDifficultyTimer();   
+	
+	// 실제 플레이 가능 시점부터 난이도 타이머를 다시 시작한다.
+	// 던전 생성/로딩 중 누적된 시간을 제거하기 위해 사용한다.
+	UFUNCTION(BlueprintCallable, Category = "Difficulty")
+	void RestartDifficultyTimer();
+	
 	float GetRunElapsedSeconds() const { return RunElapsedSeconds; }
+	
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	bool IsDifficultyTimerRunning() const { return bDifficultyTimerRunning; }
+	
+	void SetDifficultyTimerWaitingForReady(bool bWaiting);
+	
+	//현재 난이도 단계 표시용값
+	//RunElapsedSeconds와 DifficultyConfig의 TimeStepInterval을 기준으로 1->2->3 형태로 계산
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	int32 GetDifficultyLevel() const;
+	
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	bool ShouldShowDifficultyTimer() const
+	{
+		return bDifficultyTimerRunning || RunElapsedSeconds > 0.0f;
+	}
+	
+	//다음 난이도 단계 진행률
+	//UMG ProgressBar에서 바로 사용할수있도록 0.0f ~ 1.0f 값으로 반환
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	float GetDifficultyProgressPercent() const;
+	
+	//현재 난이도 증가 인터벌
+	//UI에서 남은시간 표시가 필요할때 사용
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	float GetDifficultyTimeStepInterval() const;
+	
 	FNSDifficultyScale GetCurrentMonsterScale(int32 PlayerCount) const;
-
+	
 	// FTickableGameObject
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override;
@@ -62,6 +95,8 @@ private:
 	
 	bool RequestEnterRun(
 		const TSoftObjectPtr<UNSRunConfig>& RunConfig, const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
+	
+	bool bDifficultyTimerWaitingForReady = false;
 	
 	UFUNCTION()
 	void HandleRunGameDataReady();

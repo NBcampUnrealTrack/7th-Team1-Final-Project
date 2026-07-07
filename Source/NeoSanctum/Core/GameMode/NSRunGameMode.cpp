@@ -892,6 +892,7 @@ void ANSRunGameMode::InitializeStage()
 	if (Data->IsRunReady())
 	{
 		InitializeObjectiveInternal();
+		StartDifficultyTimerForReadyStage();
 	}
 	else
 	{
@@ -954,6 +955,7 @@ void ANSRunGameMode::HandleRunDataReadyForObjective()
 	}
 	
 	InitializeObjectiveInternal();
+	StartDifficultyTimerForReadyStage();
 }
 
 void ANSRunGameMode::ActivateBossSpawners()
@@ -970,6 +972,28 @@ void ANSRunGameMode::ActivateBossSpawners()
 		{
 			Spawner->ActivateSpawner();
 			break;
+		}
+	}
+}
+
+void ANSRunGameMode::StartDifficultyTimerForReadyStage()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (UNSGameFlowSubsystem* Flow =
+		GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		if (Flow->GetCurrentStageNumber() <= 1)
+		{
+			Flow->RestartDifficultyTimer();
+		}
+		else
+		{
+			Flow->SetDifficultyTimerWaitingForReady(false);
+			Flow->ResumeDifficultyTimer();
 		}
 	}
 }
