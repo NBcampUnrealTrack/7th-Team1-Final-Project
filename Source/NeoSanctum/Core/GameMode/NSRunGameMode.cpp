@@ -24,6 +24,7 @@
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
 #include "NeoSanctum/AI/Enemy/Spawner/NSSpawner.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/Stage/NSBossEntryVolume.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -530,6 +531,42 @@ void ANSRunGameMode::NotifyBossGateReached_Implementation()
 	RunGS->SetStagePhase(ENSStagePhase::BossFight);
 	// 보스 스포너 활성화
 	ActivateBossSpawners();
+}
+
+ANSEnemyPawnBase* ANSRunGameMode::RequestSpawnBoss_Implementation(UClass* BossClass, UNSEnemyData* EnemyData, const FVector& Location,
+	const FRotator& Rotation)
+{
+	if (!HasAuthority() || !BossClass || !EnemyData)
+	{
+		return nullptr;
+	}
+
+	const int32 PlayerCount = GameState ? GameState->PlayerArray.Num() : 1;
+	FNSDifficultyScale Scale;
+	if (UNSGameFlowSubsystem* Flow = GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>())
+	{
+		Scale = Flow->GetCurrentMonsterScale(PlayerCount);
+	}
+
+	// 보스는 풀링하지 않고 직접 스폰
+	const FTransform SpawnTransform(Rotation, Location);
+	ANSEnemyPawnBase* Boss = GetWorld()->SpawnActorDeferred<ANSEnemyPawnBase>(
+		BossClass, SpawnTransform, nullptr, nullptr,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+
+	if (!Boss)
+	{
+		NS_ACTOR_LOG(this, LogNS, Warning,
+			"보스 스폰 실패: BossClass가 ANSEnemyPawnBase 하위가 아닙니다. Class={Class}",
+			("Class", GetNameSafe(BossClass)));
+		return nullptr;
+	}
+
+	Boss->SetEnemyData(EnemyData);
+	Boss->SetDifficultyScale(Scale);
+	Boss->FinishSpawning(SpawnTransform);
+
+	return Boss;
 }
 
 void ANSRunGameMode::PostLogin(APlayerController* NewPlayer)
