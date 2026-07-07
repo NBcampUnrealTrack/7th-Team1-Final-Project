@@ -96,6 +96,11 @@ public:
 	UFUNCTION(Exec)
 	void Debug_ForceBossFight();
 
+	// 테스트용 임시 코드 (인런 구출 NPC 재화 보상 테스트 — 실제 트리거 연결 후 삭제)
+	// 지정한 NPCId를 가진 ANSRescueNPC를 찾아 즉시 OnInteract 실행. 인자 = NPCId
+	UFUNCTION(Exec)
+	void Debug_TriggerRescue(FString NpcId);
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };
