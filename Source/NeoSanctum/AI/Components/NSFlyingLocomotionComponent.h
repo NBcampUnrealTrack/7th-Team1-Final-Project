@@ -192,6 +192,34 @@ protected:
 	TWeakObjectPtr<AActor> RotationTarget;
 #pragma endregion
 
+#pragma region ScriptedMove
+public:
+	// 평상시 카이팅/고도유지를 잠시 끄고, Dest를 향해 지정 속도·고도로 직선 비행 시작
+	// 이미 진행 중이면 목적지/속도만 갱신 (레그 전환 시 재호출 용도)
+	void BeginScriptedMove(const FVector& DestXY, float TargetAltitude, float Speed);
+
+	// 스크립트 이동 종료. 캐시해둔 평상시 값 복원 + 상태 리셋 → 자연스럽게 평상시 고도로 복귀
+	void EndScriptedMove();
+
+	// 현재 ScriptedDestXY에 도달했는지 (XY: ArrivalRadius, Z: AltitudeDeadZone 기준)
+	bool HasReachedScriptedDest() const;
+
+protected:
+	// bScriptedMove 중 매 프레임 Dest를 향한 순수 수평 입력만 적용 (스티어링/회피/후퇴 미사용)
+	void ApplyScriptedMoveInput(float DeltaSeconds);
+
+private:
+	bool bScriptedMove = false;
+	FVector ScriptedDestXY = FVector::ZeroVector;
+
+	// BeginScriptedMove 최초 진입 시 캐시, EndScriptedMove에서 복원
+	float CachedAltitude = 0.f;
+	float CachedMaxSpeed = 0.f;
+	float CachedAcceleration = 0.f;
+	float CachedMaxClimbSpeed = 0.f;
+	TWeakObjectPtr<AActor> CachedRotationTarget;
+#pragma endregion
+	
 private:
 	// @민재 : 서버 권한 체크. 오너 폰이 Authority일 때만 로직 실행
 	bool HasAuthorityChecked() const;

@@ -25,7 +25,8 @@ void UNSFlyingLocomotionComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	// 서버 권한 및 오너 유효성 방어
 	if (!HasAuthorityChecked()) return;
-
+	if (bScriptedMove) { ApplyScriptedMoveInput(DeltaTime); }
+	
 	// 회전 갱신 (타겟 or velocity 방향)
 	UpdateRotation(DeltaTime);
 
@@ -104,6 +105,7 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 {
 	// 서버 권한 확인
 	if (!HasAuthorityChecked()) return;
+	if (bScriptedMove) return;
 
 	APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return;
@@ -462,4 +464,59 @@ FVector UNSFlyingLocomotionComponent::ChooseRetreatDirection() const
 	// 이동 가능한 루트 반환
 	return SteeringDirections[BestIndex];
 }
+#pragma endregion
+
+#pragma region ScriptedMove
+
+void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, float TargetAltitude, float Speed)
+{
+	if (!bScriptedMove)
+	{
+		CachedAltitude = Altitude;
+		CachedMaxSpeed = MaxSpeed;
+		CachedRotationTarget = RotationTarget;
+		CachedAcceleration = Acceleration;
+		CachedMaxClimbSpeed = MaxClimbSpeed;
+	}
+	
+	Altitude = TargetAltitude;
+	MaxSpeed = Speed;
+	RotationTarget = nullptr;
+	ScriptedDestXY = DestXY;
+	bScriptedMove = true;
+}
+
+void UNSFlyingLocomotionComponent::EndScriptedMove()
+{
+	Altitude = CachedAltitude;
+	MaxSpeed = CachedMaxSpeed;
+	Acceleration = CachedAcceleration;
+	MaxClimbSpeed = CachedMaxClimbSpeed;
+	RotationTarget = CachedRotationTarget;
+	bScriptedMove = false;
+	ResetLocomotionState();
+}
+
+bool UNSFlyingLocomotionComponent::HasReachedScriptedDest() const
+{
+	if (!PawnOwner) return false;
+	if (!HasReachedLocation(ScriptedDestXY) ||
+		!(FMath::Abs(PawnOwner->GetActorLocation().Z - SmoothedTargetHeight) < AltitudeDeadZone)) return false;
+	
+	return true;
+}
+
+void UNSFlyingLocomotionComponent::ApplyScriptedMoveInput(float DeltaSeconds)
+{
+	if (!PawnOwner) return;
+	FVector Dist = ScriptedDestXY - PawnOwner->GetActorLocation();
+	Dist.Z = 0.f;
+	
+	const FVector Direction2D = Dist.GetSafeNormal2D();
+	
+	if (Dist.SizeSquared() <= FMath::Square(ArrivalRadius)) return;
+	
+	PawnOwner->AddMovementInput(Direction2D, 1.f);
+}
+
 #pragma endregion
