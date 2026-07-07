@@ -28,4 +28,5 @@ namespace NSGameplayTags
 	// Buff State
 	UE_DEFINE_GAMEPLAY_TAG(State_Buff_RangerSpeedBuff, "State.Buff.RangerSpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(State_Buff_EngineerSpeedBuff, "State.Buff.EngineerSpeedBuff");
+	UE_DEFINE_GAMEPLAY_TAG(State_Buff_VanguardBuff, "State.Buff.VanguardBuff");
 }
