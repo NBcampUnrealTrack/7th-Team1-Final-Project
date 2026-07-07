@@ -95,8 +95,8 @@ public:
 	int64 GetAmount(FGameplayTag Type) const;
 	
 	FNSOnTempChanged OnTempChanged;
-	FNSOnPermanentChanged OnPermanenetChanged;
-	
+	FNSOnPermanentChanged OnPermanentChanged;
+
 	// FastArray 콜백이 부르는 전파 함수
 	void NotifyWalletEntryChanged(const FNSCurrencyEntry& Entry);
 	

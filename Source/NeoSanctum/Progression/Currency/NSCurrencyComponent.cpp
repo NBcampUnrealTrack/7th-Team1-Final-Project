@@ -202,7 +202,7 @@ void UNSCurrencyComponent::NotifyWalletEntryChanged(const FNSCurrencyEntry& Entr
 		OnTempChanged.Broadcast(Entry.Amount);
 		return;
 	}
-	OnPermanenetChanged.Broadcast(Entry.CurrencyType, Entry.Amount);
+	OnPermanentChanged.Broadcast(Entry.CurrencyType, Entry.Amount);
 }
 
 void UNSCurrencyComponent::CopyRunStateFrom(const UNSCurrencyComponent* Source)
