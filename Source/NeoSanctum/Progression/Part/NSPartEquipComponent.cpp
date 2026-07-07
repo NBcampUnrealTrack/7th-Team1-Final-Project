@@ -699,7 +699,9 @@ int64 UNSPartEquipComponent::GetShopPrice(ENSPartRarity Rarity) const
 	{
 		return -1;
 	}
-	return Row->ShopPrice;
+
+	// 파츠 리롤 할인(GetRerollCost)과는 별도 NodeId - 레벨을 따로 올릴 수 있어야 함
+	return ApplyPartDiscount(NSCommonUpgradeUtility::NodeId_PartShopDiscount, Row->ShopPrice);
 }
 
 void UNSPartEquipComponent::OnRep_ShopStock()
