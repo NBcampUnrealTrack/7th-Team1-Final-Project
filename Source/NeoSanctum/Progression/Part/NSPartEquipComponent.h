@@ -137,6 +137,9 @@ private:
 	UAbilitySystemComponent* GetOwnerASC() const;
 	UNSCurrencyComponent* GetCurrencyComponent() const;
 
+	// 공용 업그레이드 할인 유틸 노드를 적용한 최종 비용 계산. BaseCost가 양수면 결과를 최소 1로 Clamp.
+	int64 ApplyPartDiscount(FName UtilityNodeId, int64 BaseCost) const;
+
 	UFUNCTION()
 	void OnRep_EquippedParts();
 
