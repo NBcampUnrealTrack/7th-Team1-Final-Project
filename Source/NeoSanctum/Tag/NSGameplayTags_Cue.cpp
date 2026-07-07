@@ -27,6 +27,7 @@ namespace NSGameplayTags
 
 	// Vanguard
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_BaseAttack_Flash, "GameplayCue.Vanguard.BaseAttack.Flash");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_VanguardBuff, "GameplayCue.Vanguard.VanguardBuff");
 
 	// Engineer
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_MuzzleFire, "GameplayCue.Engineer.ShotgunFire.MuzzleFire");

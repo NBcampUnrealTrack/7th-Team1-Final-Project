@@ -29,6 +29,7 @@ namespace NSGameplayTags
 
 	// Vanguard
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BaseAttack_Flash);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_VanguardBuff);
 	
 	// Engineer
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_MuzzleFire);

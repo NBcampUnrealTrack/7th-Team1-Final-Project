@@ -27,6 +27,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_BaseAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_Flicker);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_Guard);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_VanguardBuff);
 	
 	// Engineer Ability Event Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Engineer_AttachTurretSpawner);
