@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NSBossArenaBounds.generated.h"
+
+class UBoxComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSBossArenaBounds : public AActor
@@ -12,14 +15,32 @@ class NEOSANCTUM_API ANSBossArenaBounds : public AActor
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
 	ANSBossArenaBounds();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	// 진행축 최상단(보스 시작 쪽) 중심을 반환. AtZ로 원하는 고도를 지정
+	FVector GetFarEndCenter(float AtZ) const;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	// 진행축 입구 쪽 중심을 반환. AtZ로 원하는 고도를 지정
+	FVector GetEntranceCenter(float AtZ) const;
+
+	// 존 i(0=보스 쪽, N-1=입구 쪽)의 월드 중심을 반환
+	FVector GetZoneCenter(int32 ZoneIndex, int32 ZoneCount) const;
+
+	// 존 박스 1개의 half-extent (X=진행축 폭/N, Y=룸 폭, Z=ZoneHeight/2)
+	FVector GetZoneBoxExtent(int32 ZoneCount, float ZoneHeight) const;
+
+	// 존 박스 판정에 사용할 회전 (액터 회전과 동일)
+	FQuat GetZoneBoxRotation() const;
+
+	// 존 i 박스와 겹치는 플레이어 액터를 수집
+	void OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight, TArray<AActor*>& OutActors) const;
+
+private:
+	// 보스룸 사각형을 정의하는 루트 컴포넌트. 디자이너가 룸에 맞춰 배치
+	UPROPERTY(VisibleAnywhere, Category = "ArenaBounds")
+	TObjectPtr<UBoxComponent> AreaBox;
+
+	// 존 오버랩 판정에 사용할 트레이스 채널 (기본: Player)
+	UPROPERTY(EditDefaultsOnly, Category = "ArenaBounds")
+	TEnumAsByte<ECollisionChannel> PlayerOverlapChannel = NSCollisionChannels::Player;
 };
