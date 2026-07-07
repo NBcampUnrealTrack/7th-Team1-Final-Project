@@ -49,6 +49,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 
 ANSPlayerController::ANSPlayerController()
 {
@@ -2388,6 +2389,11 @@ void ANSPlayerController::RequestLeaveToMainMenu()
 	{
 		UIManager->ClosePauseMenu();
 		UIManager->CloseOptionPanel();
+	}
+	if (UNSGameFlowSubsystem* GameFlow = GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>() : nullptr)
+	{
+		GameFlow->StopAndResetDifficultyTimer();
 	}
 	// 세션 정리 + 타이틀
 	if (UNSSessionSubsystem* Session = GetGameInstance()
