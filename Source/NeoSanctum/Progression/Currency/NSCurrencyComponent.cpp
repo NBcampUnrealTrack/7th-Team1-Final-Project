@@ -114,7 +114,10 @@ void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
 	{
 		return;
 	}
-	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
+
+	// PendingPermanent는 AddRunPermanent()/AddPermanentDirect()에서 이미 공용 업그레이드
+	// 재화 획득량 보너스가 적용된 값이므로 여기서는 클리어/전멸 배율만 곱해야 하며,
+	// 유틸 보너스를 다시 적용하면 중복 적용.
 	UE_LOG(LogTemp, Log, TEXT("[Currency] 런 종료 영구재화 커밋 시작 (배율 %.2f)"), Multiplier);
 	for (const TPair<FGameplayTag, int64>& Pair : PendingPermanent)
 	{
@@ -212,6 +215,8 @@ int64 UNSCurrencyComponent::ApplyCurrencyGainBoost(FName UtilityNodeId, int64 Ba
 		return BaseAmount;
 	}
 
+	// 일단 내림으로 처리. 보상이 적으면 보너스가 안 붙은 것처럼 보일 수도 있는데,
+	// 그 정도는 감안하기로 함(소수점까지 딱 맞게 챙기는 건 지금은 안 함).
 	return FMath::FloorToInt64(static_cast<double>(BaseAmount) * (1.0 + Percent * 0.01));
 }
 

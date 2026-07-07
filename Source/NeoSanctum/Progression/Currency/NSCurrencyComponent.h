@@ -77,11 +77,13 @@ public:
 	// 서버 전용 API
 	// ================================================================
 	
-	// 임시 재화 습득
+	// 임시 재화 습득. 공용 업그레이드 재화 획득량 보너스가 무조건 적용되므로,
+	// 보상 획득이 아닌 호출(환불 등)을 추가할 땐 별도 검토 필요.
 	void AddTemp(int32 Grade, int64 Amount);
 	// 임시 재화 사용
 	bool TrySpendTemp(int64 Amount);
-	// 영구재화 획득 -> 버킷 
+	// 공용 재화 습득. 공용 업그레이드 재화 획득량 보너스가 무조건 적용되므로,
+	// 보상 획득이 아닌 호출(환불 등)을 추가할 땐 별도 검토 필요.
 	void AddRunPermanent(FGameplayTag Type, int64 Amount);
 	// 스테이지 보상 -> 버킷
 	void AddPermanentDirect(FGameplayTag Type, int64 Amount);
