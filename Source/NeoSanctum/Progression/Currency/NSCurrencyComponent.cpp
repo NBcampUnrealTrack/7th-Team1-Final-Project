@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 
 
 // ================================================================
@@ -58,9 +59,12 @@ void UNSCurrencyComponent::AddTemp(int32 Grade, int64 Amount)
 	{
 		return;
 	}
-	AddToWallet(NSGameplayTags::Currency_Temp, Amount);
+
+	const int64 FinalAmount = ApplyCurrencyGainBoost(NSCommonUpgradeUtility::NodeId_TempCurrencyGainRate, Amount);
+
+	AddToWallet(NSGameplayTags::Currency_Temp, FinalAmount);
 	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
-	UE_LOG(LogTemp, Log, TEXT("[Currency] 임시재화 +%lld 획득 → 현재 보유 %lld"), Amount, GetTemp());
+	UE_LOG(LogTemp, Log, TEXT("[Currency] 임시재화 +%lld 획득 → 현재 보유 %lld"), FinalAmount, GetTemp());
 }
 
 bool UNSCurrencyComponent::TrySpendTemp(int64 Amount)
@@ -84,11 +88,14 @@ void UNSCurrencyComponent::AddRunPermanent(FGameplayTag Type, int64 Amount)
 	{
 		return;
 	}
-	const int64 Pending = (PendingPermanent.FindOrAdd(Type) += Amount);
-	AddToWallet(Type, Amount);
+
+	const int64 FinalAmount = ApplyCurrencyGainBoost(NSCommonUpgradeUtility::NodeId_CommonCurrencyGainRate, Amount);
+
+	const int64 Pending = (PendingPermanent.FindOrAdd(Type) += FinalAmount);
+	AddToWallet(Type, FinalAmount);
 	// 테스트용 임시 로그 (드롭 테이블 연동 후 삭제)
 	UE_LOG(LogTemp, Log, TEXT("[Currency] 영구재화(%s) +%lld 획득 → 대기 누적 %lld (커밋 전)"),
-		*Type.ToString(), Amount, Pending);
+		*Type.ToString(), FinalAmount, Pending);
 }
 
 void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
@@ -97,8 +104,11 @@ void UNSCurrencyComponent::AddPermanentDirect(FGameplayTag Type, int64 Amount)
 	{
 		return;
 	}
-	PendingPermanent.FindOrAdd(Type) += Amount;
-	AddToWallet(Type, Amount);
+
+	const int64 FinalAmount = ApplyCurrencyGainBoost(NSCommonUpgradeUtility::NodeId_CommonCurrencyGainRate, Amount);
+
+	PendingPermanent.FindOrAdd(Type) += FinalAmount;
+	AddToWallet(Type, FinalAmount);
 }
 
 void UNSCurrencyComponent::CommitRunPermanent(float Multiplier)
@@ -193,6 +203,21 @@ void UNSCurrencyComponent::AddToWallet(FGameplayTag Type, int64 Amount)
 	
 	Wallet.MarkItemDirty(*Found);
 	NotifyWalletEntryChanged(*Found);
+}
+
+int64 UNSCurrencyComponent::ApplyCurrencyGainBoost(FName UtilityNodeId, int64 BaseAmount) const
+{
+	const ANSPlayerState* PS = GetOwner<ANSPlayerState>();
+	const UNSPlayerProgressComponent* ProgressComp = PS ? PS->GetProgressComponent() : nullptr;
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	const double Percent = NSCommonUpgradeUtility::GetPercent(DataSubsystem, ProgressComp, UtilityNodeId);
+	if (Percent == 0.0)
+	{
+		return BaseAmount;
+	}
+
+	return FMath::FloorToInt64(static_cast<double>(BaseAmount) * (1.0 + Percent * 0.01));
 }
 
 void UNSCurrencyComponent::NotifyWalletEntryChanged(const FNSCurrencyEntry& Entry)

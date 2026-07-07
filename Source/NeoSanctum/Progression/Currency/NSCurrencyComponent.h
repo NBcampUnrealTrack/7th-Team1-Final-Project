@@ -105,7 +105,10 @@ public:
 private:
 	// 지갑에 추가
 	void AddToWallet(FGameplayTag Type, int64 Amount);
-	
+
+	// 공용 업그레이드 재화 획득량 유틸 노드를 적용한 최종 지급량 계산 (Row 없음/레벨 0 이면 원본 그대로)
+	int64 ApplyCurrencyGainBoost(FName UtilityNodeId, int64 BaseAmount) const;
+
 	UPROPERTY(Replicated)
 	FNSCurrencyWallet Wallet;
 	
