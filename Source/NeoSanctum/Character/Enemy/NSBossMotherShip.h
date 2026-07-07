@@ -14,6 +14,7 @@ class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
 class UGameplayAbility;
 class ANSBossControlDevice;
+class ANSBossArenaBounds;
 
 UCLASS()
 class NEOSANCTUM_API ANSBossMotherShip : public ANSBossPawnBase
@@ -31,6 +32,8 @@ public:
 	virtual bool ShouldFaceCombatTarget() const override { return IsBossMovementUnlocked(); }
 	
 	void NotifySummonEnded() { bSummonInFlight = false; }
+	
+	ANSBossArenaBounds* GetArenaBounds() const { return ArenaBounds; };
 	
 #pragma region SpawnDrone
 public:
@@ -222,4 +225,7 @@ private:
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess))
 	TObjectPtr<UNSFlyingLocomotionComponent> FlyingLocomotionComponent;
+	
+	UPROPERTY(EditInstanceOnly, Category = "BombingRun")
+	TObjectPtr<ANSBossArenaBounds> ArenaBounds;
 };

@@ -4,6 +4,7 @@
 #include "NSBossMotherShip.h"
 
 #include "AbilitySystemComponent.h"
+#include "EngineUtils.h"
 #include "NSEnemyDrone.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h"
@@ -18,6 +19,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Interaction/Prop/NSBossControlDevice.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "NeoSanctum/AI/Enemy/HelperActor/NSBossArenaBounds.h"
 
 ANSBossMotherShip::ANSBossMotherShip()
 {
@@ -30,6 +32,10 @@ void ANSBossMotherShip::BeginPlay()
 {
 	Super::BeginPlay();
 	if (!HasAuthority()) return;
+	if (!ArenaBounds)
+	{
+		for (TActorIterator<ANSBossArenaBounds> It(GetWorld()); It; ++It) { ArenaBounds = *It; break; }
+	}
 	
 	DronePool = NewObject<UNSDronePoolManager>(this);
 	StartDronePattern();
