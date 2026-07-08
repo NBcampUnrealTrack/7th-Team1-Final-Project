@@ -9,6 +9,8 @@
 class USphereComponent;
 class UWidgetComponent;
 class UNSInteractionPromptWidget;
+class UMaterialInterface;
+struct FStreamableHandle;
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSInteractionComponent : public UActorComponent
@@ -20,7 +22,8 @@ public:
 	
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	// PlayerController의 Interact 입력에서 호출
 	void TryInteract();
 
@@ -49,7 +52,19 @@ protected:
 	void UpdateActiveTarget();
 	void ShowPromptFor(AActor* Target);
 	void HidePrompt();
-	
+
+	// ActiveTarget 아웃라인
+	void SetupOutlinePostProcess();
+
+	/**
+	 * 아웃라인 대상 교체 -> 이전 대상은 끄고 새 대상은 켠다.
+	 * 같은 대상이면 즉시 리턴하므로 매 틱 호출되어도 비용 없다.
+	 */
+	void UpdateOutlineTarget(AActor* NewTarget);
+
+	// 대상 액터의 모든 메시 컴포넌트에 CustomDepth 렌더링 on/off 적용
+	void SetActorOutlineEnabled(AActor* Target, bool bEnabled);
+
 	APlayerController* GetOwnerController() const;
 	bool IsOwnerLocallyControlled() const;
 
@@ -73,6 +88,22 @@ protected:
 	// 파츠 전용 프롬프트 위젯 —> 아이콘/이름 표시
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Prompt")
 	TSubclassOf<UNSInteractionPromptWidget> PartPromptWidgetClass;
+	
+	/**
+	 * 아웃라인용 포스트프로세스 머티리얼
+	 * 스텐실 값→색상 매핑 구조로 제작됨 -> 추후 아군 or 적군쪽에서 재사용
+	 * EnableLocalInteraction에서 비동기 로드
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Outline")
+	TSoftObjectPtr<UMaterialInterface> OutlinePostProcessMaterial;
+	
+	/**
+	 * 아웃라인 대상 메시에 기록할 스텐실 값
+	 * PP 머티리얼에서 1=흰색으로 매핑
+	 * 0은 `아웃라인 없음` 예약값이므로 사용 금지 
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Outline")
+	int32 OutlineStencilValue = 1;
 
 private:
 	// 현재 WidgetComponent에 세팅된 클래스 캐싱
@@ -85,6 +116,13 @@ private:
 	UPROPERTY()
 	TWeakObjectPtr<AActor> ActiveTarget;
 
+	// 현재 아웃라인이 켜져 있는 대상 — 전환 시 이전 대상을 꺼주기 위해 추적
+	UPROPERTY()
+	TWeakObjectPtr<AActor> OutlinedTarget;
+
 	// 중복 셋업 방지
 	bool bLocalInteractionEnabled = false;
+
+	// 진행 중인 아웃라인 PP 머티리얼 비동기 로드 핸들
+	TSharedPtr<FStreamableHandle> OutlineMaterialLoadHandle;
 };
