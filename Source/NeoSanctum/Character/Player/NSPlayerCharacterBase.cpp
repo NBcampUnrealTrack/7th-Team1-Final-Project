@@ -13,6 +13,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
+#include "MotionWarpingComponent.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
@@ -79,6 +80,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
+	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
 	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
