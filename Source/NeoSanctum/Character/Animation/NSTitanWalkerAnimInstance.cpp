@@ -3,11 +3,32 @@
 #include "NSTitanWalkerAnimInstance.h"
 
 #include "Components/PrimitiveComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
+
+namespace
+{
+	float InterpAngleDegrees(
+		float Current,
+		float Target,
+		float DeltaSeconds,
+		float InterpSpeed)
+	{
+		if (InterpSpeed <= 0.0f || DeltaSeconds <= UE_KINDA_SMALL_NUMBER)
+		{
+			return FRotator::NormalizeAxis(Target);
+		}
+
+		const float DeltaAngle = FMath::FindDeltaAngleDegrees(Current, Target);
+		const float Alpha = FMath::Clamp(DeltaSeconds * InterpSpeed, 0.0f, 1.0f);
+
+		return FRotator::NormalizeAxis(Current + DeltaAngle * Alpha);
+	}
+}
 
 void UNSTitanWalkerAnimInstance::NativeInitializeAnimation()
 {
@@ -99,34 +120,34 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 {
 	const auto ResetAimValues =
 		[this, DeltaSeconds]()
-	{
-		bUseUpperAim = false;
-		bUseWeaponAim = false;
+		{
+			bUseUpperAim = false;
+			bUseWeaponAim = false;
 
-		UpperAimYaw = FMath::FInterpTo(
-			UpperAimYaw,
-			0.0f,
-			DeltaSeconds,
-			UpperAimInterpSpeed);
+			UpperAimYaw = InterpAngleDegrees(
+				UpperAimYaw,
+				0.0f,
+				DeltaSeconds,
+				UpperAimInterpSpeed);
 
-		UpperAimPitch = FMath::FInterpTo(
-			UpperAimPitch,
-			0.0f,
-			DeltaSeconds,
-			UpperAimInterpSpeed);
+			UpperAimPitch = FMath::FInterpTo(
+				UpperAimPitch,
+				0.0f,
+				DeltaSeconds,
+				UpperAimInterpSpeed);
 
-		WeaponAimYaw = FMath::FInterpTo(
-			WeaponAimYaw,
-			0.0f,
-			DeltaSeconds,
-			WeaponAimInterpSpeed);
+			WeaponAimYaw = InterpAngleDegrees(
+				WeaponAimYaw,
+				0.0f,
+				DeltaSeconds,
+				WeaponAimInterpSpeed);
 
-		WeaponAimPitch = FMath::FInterpTo(
-			WeaponAimPitch,
-			0.0f,
-			DeltaSeconds,
-			WeaponAimInterpSpeed);
-	};
+			WeaponAimPitch = FMath::FInterpTo(
+				WeaponAimPitch,
+				0.0f,
+				DeltaSeconds,
+				WeaponAimInterpSpeed);
+		};
 
 	CurrentAttackId = NAME_None;
 
@@ -143,7 +164,6 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 	if (!IsValid(OwnerPawn) ||
 		bIsDead ||
 		bIsHitReacting ||
-		!CurrentAttackRow ||
 		!IsValid(ThreatComponent))
 	{
 		ResetAimValues();
@@ -171,9 +191,20 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 	}
 
 	const FRotator WorldAimRotation = ToTarget.Rotation();
+
+	USkeletalMeshComponent* EnemyMeshComponent =
+		EnemyAgentInterface ? EnemyAgentInterface->GetEnemyMesh() : nullptr;
+
+	const float BaseReferenceYaw = IsValid(EnemyMeshComponent)
+		                               ? EnemyMeshComponent->GetComponentRotation().Yaw
+		                               : OwnerPawn->GetActorRotation().Yaw;
+
+	const float ReferenceYaw =
+		FRotator::NormalizeAxis(BaseReferenceYaw + AimReferenceYawOffset);
+
 	const FRotator ReferenceRotation(
 		0.0f,
-		OwnerPawn->GetActorRotation().Yaw,
+		ReferenceYaw,
 		0.0f);
 
 	const FRotator LocalAimRotation =
@@ -181,18 +212,34 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 			WorldAimRotation,
 			ReferenceRotation);
 
+	const bool bHasAttackRow = CurrentAttackRow != nullptr;
+
+	const bool bAllowUpperAim = bHasAttackRow
+		                            ? CurrentAttackRow->bTurnUpper
+		                            : bTrackUpperToTarget;
+
+	const bool bAllowWeaponAim =
+		bHasAttackRow &&
+		CurrentAttackRow->bTurnWeapon &&
+		IsValid(PartComponent);
+
 	float TargetUpperYaw = 0.0f;
 	float TargetUpperPitch = 0.0f;
-	float UpperAimSpeed = UpperAimInterpSpeed;
+	float UpperAimSpeed = bHasAttackRow ? UpperAimInterpSpeed : TrackAimSpeed;
 
 	bUseUpperAim = false;
 
-	if (CurrentAttackRow->bTurnUpper)
+	if (bAllowUpperAim)
 	{
-		float UpperYawLimit = DefaultUpperYawLimit;
-		float UpperPitchLimit = DefaultUpperPitchLimit;
+		float UpperYawLimit = bHasAttackRow
+			                      ? DefaultUpperYawLimit
+			                      : TrackYawLimit;
 
-		if (IsValid(PartComponent))
+		float UpperPitchLimit = bHasAttackRow
+			                        ? DefaultUpperPitchLimit
+			                        : TrackPitchLimit;
+
+		if (bHasAttackRow && IsValid(PartComponent))
 		{
 			float PartYawLimit = 0.0f;
 			float PartPitchLimit = 0.0f;
@@ -238,7 +285,7 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		bUseUpperAim = true;
 	}
 
-	UpperAimYaw = FMath::FInterpTo(
+	UpperAimYaw = InterpAngleDegrees(
 		UpperAimYaw,
 		TargetUpperYaw,
 		DeltaSeconds,
@@ -256,7 +303,7 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 
 	bUseWeaponAim = false;
 
-	if (CurrentAttackRow->bTurnWeapon && IsValid(PartComponent))
+	if (bAllowWeaponAim)
 	{
 		float WeaponYawLimit = 0.0f;
 		float WeaponPitchLimit = 0.0f;
@@ -303,7 +350,7 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		}
 	}
 
-	WeaponAimYaw = FMath::FInterpTo(
+	WeaponAimYaw = InterpAngleDegrees(
 		WeaponAimYaw,
 		TargetWeaponYaw,
 		DeltaSeconds,
@@ -318,18 +365,22 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 
 void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
 {
-	const bool bWantsControlRigAttack =
+	const bool bWantsControlRigPose =
 		(bUseUpperAim || bUseWeaponAim) &&
 		!bIsDead &&
 		!bIsHitReacting;
 
-	bUseControlRigAttack = bWantsControlRigAttack;
+	const bool bHasAttackPoseRequest =
+		!CurrentAttackId.IsNone() &&
+		bWantsControlRigPose;
+
+	bUseControlRigAttack = bHasAttackPoseRequest;
 
 	bUseAttackBasePose =
 		bUseControlRigAttack &&
 		!bIsMoving;
 
-	const float TargetAlpha = bUseControlRigAttack ? 1.0f : 0.0f;
+	const float TargetAlpha = bWantsControlRigPose ? 1.0f : 0.0f;
 
 	if (ControlRigInterpSpeed <= 0.0f || DeltaSeconds <= UE_KINDA_SMALL_NUMBER)
 	{
@@ -344,15 +395,16 @@ void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
 			ControlRigInterpSpeed);
 	}
 
-	const float DisableThreshold = FMath::Max(ControlRigPoseDisableThreshold, 0.0f);
+	const float DisableThreshold =
+		FMath::Max(ControlRigPoseDisableThreshold, 0.0f);
 
-	if (!bUseControlRigAttack && ControlRigAlpha <= DisableThreshold)
+	if (!bWantsControlRigPose && ControlRigAlpha <= DisableThreshold)
 	{
 		ControlRigAlpha = 0.0f;
 	}
 
 	bShouldUseControlRigPose =
-		bUseControlRigAttack ||
+		bWantsControlRigPose ||
 		ControlRigAlpha > DisableThreshold;
 }
 

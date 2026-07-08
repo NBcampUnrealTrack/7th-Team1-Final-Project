@@ -117,6 +117,10 @@ protected:
 	// AttackRow에 YawLimit이 없을 때 사용할 기본 상체 좌우 제한 각도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float DefaultUpperYawLimit = 60.0f;
+	
+	// TitanWalker 스켈레톤/소켓의 실제 전방 축과 MeshComponent 전방 축 차이를 보정하는 Yaw 오프셋
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config")
+	float AimReferenceYawOffset = 90.0f;
 
 	// AttackRow에 PitchLimit이 없을 때 사용할 기본 상체 상하 제한 각도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
@@ -125,6 +129,22 @@ protected:
 	// 타깃 Bounds에서 조준 위치를 위로 보정하는 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float AimZRatio = 0.15f;
+	
+	// 공격 중이 아니어도 타깃 감지 시 상체 조준을 사용할지 결정하는 값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config")
+	bool bTrackUpperToTarget = true;
+
+	// 타깃 추적 상체 좌우 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float TrackYawLimit = 180.0f;
+
+	// 타깃 추적 상체 상하 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float TrackPitchLimit = 45.0f;
+
+	// 타깃 추적 상체 조준 보간 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float TrackAimSpeed = 10.0f;
 	
 	// Control Rig Alpha가 0과 1 사이로 보간되는 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
