@@ -373,6 +373,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	{
 		CardIndex = 2;
 	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card4)
+	{
+		CardIndex = 3;
+	}
 
 	if (CardIndex == INDEX_NONE)
 	{
