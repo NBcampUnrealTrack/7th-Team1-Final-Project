@@ -46,10 +46,11 @@ public:
 	// UI에서 클래스 선택시 구분하는 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character")
 	FGameplayTag CharacterTag;
-	
+
+	// 캐릭터 리더 스켈레톤 + 상시 표시되는 베이스 바디. DefaultVisualParts 미입력 슬롯의 fallback 역할도 겸함.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual",
 		meta = (AssetBundles = "CommonData"))
-	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
+	TSoftObjectPtr<USkeletalMesh> BaseLeaderMesh;
 
 	// 장착 파츠가 없는 슬롯을 기본으로 채울 시각 파츠 목록. 시각 전용이라 GE/GA는 적용 안됨
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual")

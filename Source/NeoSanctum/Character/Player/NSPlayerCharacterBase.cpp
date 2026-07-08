@@ -726,7 +726,7 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 		return;
 	}
 	
-	USkeletalMesh* LoadedMesh = CurrentCharacterData->SkeletalMesh.Get();
+	USkeletalMesh* LoadedMesh = CurrentCharacterData->BaseLeaderMesh.Get();
 	if (LoadedMesh)
 	{
 		GetMesh()->SetSkeletalMesh(LoadedMesh);
