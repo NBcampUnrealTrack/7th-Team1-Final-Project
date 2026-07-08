@@ -25,6 +25,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 
 
 void UNSAugmentationWidget::OpenPanel()
@@ -217,6 +218,12 @@ void UNSAugmentationWidget::RequestRerollAugment()
 
 	//서버에 전체 리롤 요청 → Client_PresentOffer → HandleOfferPresented로 카드 갱신
 	SelComp->Server_RerollCard(CurrentOfferRevision);
+}
+
+bool UNSAugmentationWidget::CanAffordReroll()
+{
+	const UNSCurrencyComponent* CurrencyComp = GetCurrencyComponent();
+	return CurrencyComp && CurrencyComp->GetTemp() >= CurrentRerollCost;
 }
 
 void UNSAugmentationWidget::RefreshRerollControls()
@@ -586,6 +593,24 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 
 	InventoryComponent = PS->FindComponentByClass<UNSAugmentInventoryComponent>();
 	return InventoryComponent.Get();
+}
+
+UNSCurrencyComponent* UNSAugmentationWidget::GetCurrencyComponent()
+{
+	if (CurrencyComponent.IsValid())
+	{
+		return CurrencyComponent.Get();
+	}
+
+	APlayerController* PC = GetOwningPlayer();
+	APlayerState* PS = PC ? PC->PlayerState : nullptr;
+	if (!PS)
+	{
+		return nullptr;
+	}
+
+	CurrencyComponent = PS->FindComponentByClass<UNSCurrencyComponent>();
+	return CurrencyComponent.Get();
 }
 
 void UNSAugmentationWidget::HandleOfferPresented(
