@@ -6,7 +6,6 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
-#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
@@ -1077,10 +1076,15 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	RestoreTravelLoadingScreenIfRequested();
 
 	ClearDeathSpectatorModeTimer();
-	SpectatingPlayerState = nullptr;
+	const bool bIsDeathSpectatorRestart = NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>();
+	if (!bIsDeathSpectatorRestart)
+	{
+		SpectatingPlayerState = nullptr;
+	}
+
 
 	// 사망 직후 첫 관전 대상을 결정하고 해당 화면 View를 볼 수 있게 수동으로 NextPlayer를 호출해줘야함
-	if (NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>())
+	if (bIsDeathSpectatorRestart)
 	{
 		if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 		{
@@ -1088,7 +1092,10 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 			UIManager->ShowSpectator(TEXT(""));
 		}
 		SetViewTarget(NewPawn);
-		SpectateNextPlayer();
+		if (ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(NewPawn))
+		{
+			DeathSpectatorPawn->RefreshSpectatorTargetView();
+		}
 		return;
 	}
 
@@ -1435,16 +1442,16 @@ void ANSPlayerController::EnterDeathSpectatorMode()
 		return;
 	}
 
+
 	if (HasAuthority())
 	{
 		SpawnAndPossessDeathSpectatorPawn();
-		SpectateNextPlayer();
 		return;
 	}
 
 	// 사망 관전자 모드 Input 태그에 따라서 InputConfig 안에 있는 IMC를 골라서 교체
+	// 서버 권한으로 관전자 Pawn 생성 요청
 	Server_EnterDeathSpectatorMode();
-	SpectateNextPlayer();
 }
 
 void ANSPlayerController::ClearDeathSpectatorModeTimer()
@@ -1465,6 +1472,25 @@ void ANSPlayerController::SpectateNextPlayer()
 	SwitchSpectatorTarget(1);
 }
 
+void ANSPlayerController::ApplyConfirmedSpectatorTarget(ANSPlayerCharacterBase* TargetCharacter)
+{
+	if (!IsLocalController() || !TargetCharacter)
+	{
+		return;
+	}
+	
+	ANSPlayerState* TargetPlayerState = TargetCharacter->GetPlayerState<ANSPlayerState>();
+	SpectatingPlayerState = TargetPlayerState;
+	
+	// 서버에서 확정한 관전 대상 Pawn을 실제 ViewTarget으로 적용
+	SetViewTargetWithBlend(TargetCharacter, DeathSpectatorViewBlendTime);
+	
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->ShowSpectator(TargetPlayerState ? TargetPlayerState->GetPlayerName() : TargetCharacter->GetName());
+	}
+}
+
 void ANSPlayerController::SwitchSpectatorTarget(int32 Direction)
 {
 	if (!IsLocalController())
@@ -1472,70 +1498,106 @@ void ANSPlayerController::SwitchSpectatorTarget(int32 Direction)
 		return;
 	}
 	
+	// 관전자 Pawn에 빙의된 상태에서만 관전 대상 전환 허용
+	if (!GetPawn() || !GetPawn()->IsA<ANSDeathSpectatorPawn>())
+	{
+		return;
+	}
+
+	if (!HasAuthority())
+	{
+		// 서버 권한에서 관전 대상 선택 확정
+		Server_RequestSpectatorTargetChange(Direction);
+		return;
+	}
+
+	ApplyServerSpectatorTargetChange(Direction);
+}
+
+void ANSPlayerController::Server_RequestSpectatorTargetChange_Implementation(int32 Direction)
+{
+	ApplyServerSpectatorTargetChange(Direction);
+}
+
+void ANSPlayerController::ApplyServerSpectatorTargetChange(int32 Direction)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(GetPawn());
 	const ANSPlayerState* ViewerPlayerState = GetPlayerState<ANSPlayerState>();
 	const ANSRunGameState* RunGameState = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
-	if (!ViewerPlayerState || !RunGameState)
+	if (!DeathSpectatorPawn || !ViewerPlayerState || !RunGameState)
 	{
 		return;
 	}
 	
 	TArray<ANSPlayerState*> AlivePlayerStates;
-	// GameState에서 PlayerState를 순회해서 살아있는 Player를 찾음
 	RunGameState->GetAlivePlayerStates(AlivePlayerStates, ViewerPlayerState);
 	if (AlivePlayerStates.IsEmpty())
 	{
+		DeathSpectatorPawn->SetSpectatorTarget(nullptr);
 		return;
 	}
-	
+
+	// 생존 후보 1명이고 기존 대상과 동일한 경우 재확정 생략
+	if (AlivePlayerStates.Num() == 1
+		&& AlivePlayerStates[0] == SpectatingPlayerState.Get()
+		&& DeathSpectatorPawn->GetSpectatorTarget())
+	{
+		return;
+	}
+
+	// 현재 관전 대상 기준 이전/다음 생존자 순환 탐색
+	const int32 Step = Direction >= 0 ? 1 : -1;
 	int32 CurrentIndex = AlivePlayerStates.IndexOfByKey(SpectatingPlayerState.Get());
 	if (CurrentIndex == INDEX_NONE)
 	{
-		CurrentIndex = Direction >= 0 ? -1 : 0;
+		CurrentIndex = Step > 0 ? -1 : 0;
 	}
-	
-	const int32 TargetIndex = (CurrentIndex + Direction + AlivePlayerStates.Num()) % AlivePlayerStates.Num();
-	SetSpectatorTarget(AlivePlayerStates[TargetIndex]);
-}
 
-void ANSPlayerController::SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget)
-{
-	if (!NewSpectatorTarget)
+	for (int32 Attempt = 0; Attempt < AlivePlayerStates.Num(); ++Attempt)
 	{
+		const int32 TargetIndex = (CurrentIndex + (Step * (Attempt + 1)) + AlivePlayerStates.Num()) % AlivePlayerStates.Num();
+		ANSPlayerState* TargetPlayerState = AlivePlayerStates[TargetIndex];
+		ANSPlayerCharacterBase* TargetCharacter = ResolveServerSpectatorTargetPawn(TargetPlayerState);
+		if (!TargetCharacter)
+		{
+			continue;
+		}
+
+		SpectatingPlayerState = TargetPlayerState;
+
+		// 서버 확정 대상 복제 및 대상 위치 추적 시작
+		DeathSpectatorPawn->SetSpectatorTarget(TargetCharacter);
+
+		if (IsLocalController())
+		{
+			ApplyConfirmedSpectatorTarget(TargetCharacter);
+		}
 		return;
 	}
 
-	SpectatingPlayerState = NewSpectatorTarget;
-	
-	// 관전 대상을 찾은 후라서 해당 TargetCharacter의 SpectatorViewComponent를 보고 카메라 정보를 받아 설정하는 부분
-	ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(GetPawn());
-	ANSPlayerCharacterBase* TargetCharacter = Cast<ANSPlayerCharacterBase>(GetPawnFromPlayerState(NewSpectatorTarget));
-	UNSSpectatorViewComponent* TargetSpectatorView =
-		TargetCharacter ? TargetCharacter->GetSpectatorViewComponent() : nullptr;
-	if (DeathSpectatorPawn)
-	{
-		DeathSpectatorPawn->SetSpectatorView(TargetSpectatorView);
-	}
-	UE_LOG(LogTemp, Log, TEXT("관전 대상 : %s"), *NewSpectatorTarget->GetPlayerName());
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-	{
-		UIManager->ShowSpectator(NewSpectatorTarget->GetPlayerName());
-	}
+	DeathSpectatorPawn->SetSpectatorTarget(nullptr);
 }
 
-APawn* ANSPlayerController::GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const
+ANSPlayerCharacterBase* ANSPlayerController::ResolveServerSpectatorTargetPawn(const ANSPlayerState* TargetPlayerState) const
 {
-	if (!TargetPlayerState)
+	if (!HasAuthority() || !TargetPlayerState)
 	{
 		return nullptr;
 	}
 
-	if (APawn* TargetPawn = TargetPlayerState->GetPawn())
+	if (ANSPlayerCharacterBase* TargetCharacter = Cast<ANSPlayerCharacterBase>(TargetPlayerState->GetPawn()))
 	{
-		return TargetPawn;
+		return TargetCharacter;
 	}
 
-	const AController* OwningController = Cast<AController>(TargetPlayerState->GetOwner());
-	return OwningController ? OwningController->GetPawn() : nullptr;
+	// PlayerState가 Pawn을 캐시하지 못한 경우 소유 Controller에서 재확인
+	const AController* TargetController = Cast<AController>(TargetPlayerState->GetOwner());
+	return TargetController ? Cast<ANSPlayerCharacterBase>(TargetController->GetPawn()) : nullptr;
 }
 
 void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()
@@ -1562,6 +1624,7 @@ void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
 	}
 
 	APawn* PreviousPawn = GetPawn();
+	// 사망 지점에 관전자 Pawn 생성 후 서버에서 관전 대상 근처로 이동
 	const FVector SpectatorSpawnLocation = PreviousPawn ? PreviousPawn->GetActorLocation() : FVector::ZeroVector;
 	const FRotator SpectatorSpawnRotation = PreviousPawn ? PreviousPawn->GetActorRotation() : GetControlRotation();
 
@@ -1584,6 +1647,9 @@ void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
 
 	Possess(DeathSpectatorPawn);
 	SetViewTarget(DeathSpectatorPawn);
+
+	// 서버 권한에서 첫 관전 대상 즉시 확정
+	ApplyServerSpectatorTargetChange(1);
 }
 void ANSPlayerController::SetupInputComponent()
 {
