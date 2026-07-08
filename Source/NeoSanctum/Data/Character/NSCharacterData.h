@@ -6,6 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "Engine/DataAsset.h"
 #include "NeoSanctum/Data/Ability/NSCharacterDataTypes.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NSCharacterData.generated.h"
 
 class ANSWeaponBase;
@@ -49,6 +50,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual",
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<USkeletalMesh> SkeletalMesh;
+
+	// 장착 파츠가 없는 슬롯을 기본으로 채울 시각 파츠 목록. 시각 전용이라 GE/GA는 적용 안됨
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual")
+	TArray<FNSDefaultVisualPartEntry> DefaultVisualParts;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Visual",
 		meta = (AssetBundles = "CommonData"))

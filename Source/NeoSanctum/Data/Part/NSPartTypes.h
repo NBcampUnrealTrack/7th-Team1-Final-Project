@@ -8,6 +8,7 @@
 #include "NSPartTypes.generated.h"
 
 class UNSPartDefinition;
+class USkeletalMesh;
 
 UENUM(BlueprintType)
 enum class ENSPartRarity : uint8
@@ -55,6 +56,24 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	// false면 카탈로그에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bEnabled = true;
+};
+
+/**
+ * 캐릭터 기본 외형에서 이 슬롯에 기본으로 보여줄 메시를 정의하는 항목
+ * 시각 전용 메시 하나만 들고 있음.
+ */
+USTRUCT(BlueprintType)
+struct FNSDefaultVisualPartEntry
+{
+	GENERATED_BODY()
+
+	// 이 항목이 채울 시각 슬롯. 기존 Part.Slot 네임스페이스 그대로 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Slot"))
+	FGameplayTag SlotTag;
+
+	// 기본으로 보여줄 메시 - CommonData 번들에 포함시켜 캐릭터 스폰 전에 미리 로드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<USkeletalMesh> PartMesh;
 };
 
 USTRUCT(BlueprintType)
