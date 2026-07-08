@@ -47,9 +47,9 @@ public:
 	//증강 선택지 리롤 요청
 	UFUNCTION()
 	void RequestRerollAugment();
-	// 현재 리롤 비용을 감당할 수 있는지 (WBP에서 색상 등 Bind용)
-	UFUNCTION(BlueprintPure, Category = "UI")
+	// 현재 리롤 비용을 감당할 수 있는지
 	bool CanAffordReroll();
+	// 리롤 요청 중이 아니면서 재화도 충분하고 지금 리롤 가능한지 (WBP RerollButton에서 IsEnable Bind 용)
 	UFUNCTION(BlueprintPure, Category = "UI")
 	bool IsRerollAvailable();
 	//현재 보유 증강 목록 갱신
