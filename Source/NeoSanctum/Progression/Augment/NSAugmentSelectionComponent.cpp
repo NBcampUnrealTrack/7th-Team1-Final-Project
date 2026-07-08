@@ -61,9 +61,7 @@ void UNSAugmentSelectionComponent::EnqueueOffer(FGameplayTag RewardTriggerTag)
 
 	RewardTriggerQueue.Add(RewardTriggerTag);
 	SetPendingCount(RewardTriggerQueue.Num());
-
-	// 클라이언트 패널 UI 열기
-	Client_AutoOpenPanel();
+	
 
 	// 현재 표시 중인 오퍼가 없으면 새 front를 즉시 추첨/표시 (이미 표시 중이면 큐에 쌓아두고 대기)
 	if (!bFrontRolled)

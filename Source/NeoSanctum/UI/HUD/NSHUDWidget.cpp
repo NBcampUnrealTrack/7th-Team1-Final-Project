@@ -105,7 +105,9 @@ void UNSHUDWidget::OpenAugmentationPanel()
 	{
 		return;
 	}
+
 	AugmentationWidget->OpenPanel();
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::CloseAugmentationPanel()
@@ -114,7 +116,9 @@ void UNSHUDWidget::CloseAugmentationPanel()
 	{
 		return;
 	}
+
 	AugmentationWidget->ClosePanel();
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::OpenPartPanel()
@@ -126,6 +130,14 @@ void UNSHUDWidget::OpenPartPanel()
 	//패널을 열때 장착상태를 최신상태로 표시
 	PartPanelWidget->RefreshEquippedParts();
 	PartPanelWidget->SetVisibility(ESlateVisibility::Visible);
+
+	if (AugmentationWidget)
+	{
+		AugmentationWidget->SetOwnedAugmentListVisible(true);
+		AugmentationWidget->RefreshOwnedAugmentList();
+	}
+
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::ClosePartPanel()
@@ -134,7 +146,15 @@ void UNSHUDWidget::ClosePartPanel()
 	{
 		return;
 	}
+
 	PartPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+	if (AugmentationWidget && !AugmentationWidget->IsPanelOpen())
+	{
+		AugmentationWidget->SetOwnedAugmentListVisible(false);
+	}
+
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::OpenRunBuildPanel()
@@ -178,6 +198,28 @@ void UNSHUDWidget::RequestRerollAugment()
 	}
 
 	AugmentationWidget->RequestRerollAugment();
+}
+
+void UNSHUDWidget::RefreshHudDimBackground()
+{
+	if (!HudDimBackground)
+	{
+		return;
+	}
+
+	const bool bIsAugmentationOpen =
+		AugmentationWidget &&
+		AugmentationWidget->IsPanelOpen();
+
+	const bool bIsPartPanelOpen =
+		IsValid(PartPanelWidget) &&
+		PartPanelWidget->GetVisibility() != ESlateVisibility::Collapsed &&
+		PartPanelWidget->GetVisibility() != ESlateVisibility::Hidden;
+
+	HudDimBackground->SetVisibility(
+		(bIsAugmentationOpen || bIsPartPanelOpen)
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed);
 }
 
 void UNSHUDWidget::NativeConstruct()

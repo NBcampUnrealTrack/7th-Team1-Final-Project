@@ -49,6 +49,7 @@ public:
 	void RequestRerollAugment();
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
+	void SetOwnedAugmentListVisible(bool bVisible);
 
 
 private:
@@ -60,6 +61,8 @@ private:
 	//카드 영역 전체 컨테이너 (대기 유무에 따라 표시/숨김) — BP 미배치 가능성 대비 Optional
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> CardSectionRoot;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> CardDimBackground;
 	//증강 선택 카드들이 들어가는 박스
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> ChoiceRootCanvas;
@@ -84,6 +87,11 @@ private:
 	// 리롤 진행 상태와 실패 문구 표시
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollStatusText;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> CenterControlRoot;
+	//남은 증강 개수 표시
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> RemainingAugmentCountText;
 	//기본 증강 선택지 개수
 	int32 ChoiceCount = 3;
 	//현재 하이라이트된 카드 인덱스
@@ -93,6 +101,8 @@ private:
 	//선택한 카드만 하이라이트 처리
 	void HighLightCard(int32 CardIndex);
 
+	void RefreshAugmentPanelState();
+	
 	//현재 오퍼의 증강 ID 목록
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
 	// 마지막으로 받은 오퍼 번호 (Server_Choose/Server_RerollCard 보낼 때 같이 실어 보냄)

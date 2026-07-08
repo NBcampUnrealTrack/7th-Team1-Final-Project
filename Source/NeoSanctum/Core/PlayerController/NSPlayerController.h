@@ -86,6 +86,8 @@ public:
 
 	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
 	void ToggleAugmentationPanel();
+	// C키 : 파츠 인벤토리 및 캐릭터 스텟 패널 토글 (InputBinderComponent에서 호출)
+	void TogglePartInventoryPanel();
 	
 	// UI 나올때 플레이어 인풋 제어용
 	UFUNCTION(BlueprintCallable, Category="RunEnd")
