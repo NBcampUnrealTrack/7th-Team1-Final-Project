@@ -167,6 +167,13 @@ private:
 	// 오너 PlayerController -> PlayerState의 진행도 컴포넌트 조회 (유틸 할인 레벨 확인용).
 	UNSPlayerProgressComponent* GetOwnerProgressComponent() const;
 
+	static constexpr int32 BaseCardsCount = 3;
+	static constexpr int32 MaxCardsCount = 4;
+
+	// 서버 기준 이번 오퍼의 카드 수. Clamp(BaseCardsCount + AugmentChoiceCount 보너스, BaseCardsCount, MaxCardsCount).
+	// 조회 실패/Row 없음/레벨 0은 보너스 0으로 처리되어 자연히 3장이 나옴.
+	int32 GetEffectiveCardsCount() const;
+
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
 	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
 

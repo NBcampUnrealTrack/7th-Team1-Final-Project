@@ -718,6 +718,17 @@ UNSPlayerProgressComponent* UNSAugmentSelectionComponent::GetOwnerProgressCompon
 	return PlayerState->GetProgressComponent();
 }
 
+int32 UNSAugmentSelectionComponent::GetEffectiveCardsCount() const
+{
+	const UNSPlayerProgressComponent* ProgressComp = GetOwnerProgressComponent();
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	const int32 AddBonus = NSCommonUpgradeUtility::GetAddBonus(
+		DataSubsystem, ProgressComp, NSCommonUpgradeUtility::NodeId_AugmentChoiceCount);
+
+	return FMath::Clamp(BaseCardsCount + AddBonus, BaseCardsCount, MaxCardsCount);
+}
+
 bool UNSAugmentSelectionComponent::TryFindRarityRule(
 	UNSDataSubsystem* Data,
 	const FGameplayTag& RewardTriggerTag, 
