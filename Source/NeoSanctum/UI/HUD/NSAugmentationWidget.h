@@ -98,6 +98,8 @@ private:
 	int32 HighlightedCardIndex = INDEX_NONE;
 	//패널 열림 여부
 	bool bPanelOpen = false;
+	// C키 등으로 보유 증강 목록이 요청된 상태인지 (Tab 없어도 위젯을 보여줘야 함)
+	bool bOwnedListRequested = false;
 	//선택한 카드만 하이라이트 처리
 	void HighLightCard(int32 CardIndex);
 	// 카드 슬롯 위치 조회 (좌/우 끝은 공용, 가운데만 3장/4장 별도)

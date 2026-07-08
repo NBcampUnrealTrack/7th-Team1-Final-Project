@@ -417,8 +417,10 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 	const bool bHasPendingAugment = PendingCount > 0;
 	const bool bHasOfferCards = CurrentOfferCards.Num() > 0;
-	//증강 알림은 대기중은 증강 개수만 있으면 보여준다
-	const bool bShouldShowAugmentNotice = bHasPendingAugment;
+	// 위젯 자체는 Tab으로 열렸거나(bPanelOpen), C로 보유 목록이 요청됐거나(bOwnedListRequested),
+	// 새로 고를 증강이 대기 중이면(알림 뱃지) 보여준다. 셋 중 하나라도 아니면
+	// 대기 오퍼가 없을 때 Tab/C를 눌러도 보유 목록이 안 보이는 문제가 생긴다.
+	const bool bShouldShowAugmentNotice = bPanelOpen || bOwnedListRequested || bHasPendingAugment;
 	// 카드 선택 화면은 실제 카드 데이터가 있고, Tab으로 패널을 연 상태에서만 보여준다.
 	const bool bShouldShowCardSection = bPanelOpen && bHasOfferCards;
 	if (!bShouldShowAugmentNotice)
@@ -475,15 +477,17 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 void UNSAugmentationWidget::SetOwnedAugmentListVisible(bool bVisible)
 {
-	if (!OwnedAugmentWrapBox)
+	bOwnedListRequested = bVisible;
+
+	if (OwnedAugmentWrapBox)
 	{
-		return;
+		OwnedAugmentWrapBox->SetVisibility(
+			bVisible
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
 
-	OwnedAugmentWrapBox->SetVisibility(
-		bVisible
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::NativeConstruct()
