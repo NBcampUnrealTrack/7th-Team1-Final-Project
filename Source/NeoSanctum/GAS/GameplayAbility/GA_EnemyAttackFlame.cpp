@@ -6,6 +6,7 @@
 #include "AbilitySystemInterface.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
+#include "NiagaraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
@@ -13,6 +14,8 @@
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -79,6 +82,7 @@ void UGA_EnemyAttackFlame::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	StopFlameCosmetics();
 	ClearFlameTimers();
 
 	CachedAttackRow = nullptr;
@@ -206,6 +210,7 @@ void UGA_EnemyAttackFlame::StartFlame()
 		return;
 	}
 
+	StartFlameCosmetics();
 	TickFlameDamage();
 
 	const float Duration = FMath::Max(CachedAttackRow->SustainData.Duration, 0.0f);
@@ -259,6 +264,8 @@ void UGA_EnemyAttackFlame::TickFlameDamage()
 		CancelAttackAbility();
 		return;
 	}
+
+	PlayFlameVFX(Emitters);
 
 	TSet<TObjectKey<AActor>> TargetsThisTick;
 
@@ -712,4 +719,72 @@ void UGA_EnemyAttackFlame::DrawDebugFlameCone(
 		FColor::Red,
 		false,
 		AttackRow.DebugData.DrawTime);
+}
+
+void UGA_EnemyAttackFlame::StartFlameCosmetics()
+{
+	UWorld* World = GetWorld();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!World || World->GetNetMode() == NM_DedicatedServer || !IsValid(AvatarActor))
+	{
+		return;
+	}
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		ActiveFlameAudioComponent =
+			SoundSubsystem->PlaySoundAttached(FlameSoundID, AvatarActor->GetRootComponent());
+	}
+}
+
+void UGA_EnemyAttackFlame::PlayFlameVFX(const TArray<FNSFlameEmitter>& Emitters) const
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer || !CachedAttackRow || FlameVFXID.IsNone())
+	{
+		return;
+	}
+
+	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this);
+	if (!VFXSubsystem)
+	{
+		return;
+	}
+
+	const float Range = GetFlameRange(*CachedAttackRow);
+	const float Scale = FMath::Max(Range / FlameVFXBaseRange, 0.1f);
+
+	for (const FNSFlameEmitter& Emitter : Emitters)
+	{
+		UNiagaraComponent* VFX = VFXSubsystem->PlayVFXAtLocation(
+			FlameVFXID,
+			Emitter.Start,
+			Emitter.Direction.Rotation(),
+			Scale);
+
+		if (VFX)
+		{
+			VFX->SetVariableFloat(FlameRangeParameterName, Range);
+			VFX->SetVariableFloat(FlameRadiusParameterName, CachedAttackRow->AreaData.Radius);
+		}
+	}
+}
+
+void UGA_EnemyAttackFlame::StopFlameCosmetics()
+{
+	if (ActiveFlameAudioComponent)
+	{
+		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+		{
+			SoundSubsystem->StopSound(ActiveFlameAudioComponent, 0.15f);
+		}
+		ActiveFlameAudioComponent = nullptr;
+	}
+}
+
+float UGA_EnemyAttackFlame::GetFlameRange(const FNSEnemyAttackRow& AttackRow) const
+{
+	return AttackRow.AreaData.Range > 0.0f
+		       ? AttackRow.AreaData.Range
+		       : AttackRow.Condition.MaxRange;
 }

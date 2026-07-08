@@ -8,6 +8,8 @@
 #include "GA_EnemyAttackLaser.generated.h"
 
 class UNSEnemyPartComponent;
+class UAudioComponent;
+class UNiagaraComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -118,4 +120,47 @@ private:
 
 	// Laser 종료 Timer
 	FTimerHandle LaserEndTimerHandle;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserChargeSoundID = FName(TEXT("Monster_TitanWalker_Laser_Charge"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserFireSoundID = FName(TEXT("Monster_TitanWalker_Laser_Beam"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserChargeVFXID = FName(TEXT("Monster_TitanWalker_Laser_Charge"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserBeamVFXID = FName(TEXT("Monster_TitanWalker_Laser_Beam"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
+	float LaserBeamBaseLength = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserChargeDurationParameterName = FName(TEXT("User.ChargeDuration"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserBeamLengthParameterName = FName(TEXT("User.BeamLength"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName LaserBeamRadiusParameterName = FName(TEXT("User.BeamRadius"));
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ActiveLaserChargeAudioComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ActiveLaserFireAudioComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNiagaraComponent> ActiveLaserChargeVFXComponent;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UNiagaraComponent>> ActiveLaserBeamVFXComponents;
+
+	void StartLaserChargeCosmetics();
+	void StopLaserChargeCosmetics();
+	void StartLaserFireCosmetics(const TArray<FNSLaserBeam>& Beams);
+	void UpdateLaserBeamCosmetics(const TArray<FNSLaserBeam>& Beams);
+	void StopLaserCosmetics();
 };

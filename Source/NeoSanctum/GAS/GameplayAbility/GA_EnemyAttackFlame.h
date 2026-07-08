@@ -9,6 +9,7 @@
 
 class ANSBossAIController;
 class UNSEnemyPartComponent;
+class UAudioComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -97,7 +98,7 @@ private:
 
 	// TargetActor에게 Flame DamageEffect를 적용하는 함수
 	bool ApplyFlameDamageToTarget(AActor* TargetActor, const FNSEnemyAttackRow& AttackRow);
-	
+
 	// 현재 공격 대상 Actor를 반환하는 함수
 	AActor* ResolveAttackActor() const;
 
@@ -131,4 +132,28 @@ private:
 
 	// Flame 종료 Timer
 	FTimerHandle FlameEndTimerHandle;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName FlameSoundID = FName(TEXT("Monster_TitanWalker_Flame_Loop"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName FlameVFXID = FName(TEXT("Monster_TitanWalker_Flame_Loop"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
+	float FlameVFXBaseRange = 1000.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName FlameRangeParameterName = FName(TEXT("User.FlameRange"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName FlameRadiusParameterName = FName(TEXT("User.FlameRadius"));
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ActiveFlameAudioComponent;
+
+	void StartFlameCosmetics();
+	void PlayFlameVFX(const TArray<FNSFlameEmitter>& Emitters) const;
+	void StopFlameCosmetics();
+	float GetFlameRange(const FNSEnemyAttackRow& AttackRow) const;
 };

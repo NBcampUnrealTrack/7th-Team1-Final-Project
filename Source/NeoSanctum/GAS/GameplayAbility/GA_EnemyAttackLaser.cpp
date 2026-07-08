@@ -6,11 +6,14 @@
 #include "AbilitySystemInterface.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
+#include "NiagaraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -89,6 +92,7 @@ void UGA_EnemyAttackLaser::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
+	StopLaserCosmetics();
 	ClearLaserTimers();
 
 	CachedAttackRow = nullptr;
@@ -205,6 +209,8 @@ void UGA_EnemyAttackLaser::StartLaser()
 		return;
 	}
 
+	StartLaserChargeCosmetics();
+
 	const float WarnTime = FMath::Max(CachedAttackRow->WarnTime, 0.0f);
 
 	if (WarnTime <= 0.0f)
@@ -230,6 +236,10 @@ void UGA_EnemyAttackLaser::BeginLaserDamage()
 	{
 		return;
 	}
+
+	TArray<FNSLaserBeam> Beams;
+	GetCurrentLaserBeams(Beams);
+	StartLaserFireCosmetics(Beams);
 
 	TickLaserDamage();
 
@@ -289,6 +299,8 @@ void UGA_EnemyAttackLaser::TickLaserDamage()
 		CancelAttackAbility();
 		return;
 	}
+
+	UpdateLaserBeamCosmetics(LaserBeams);
 
 	TSet<TObjectKey<AActor>> TargetsThisTick;
 
@@ -625,4 +637,151 @@ void UGA_EnemyAttackLaser::DrawDebugLaserBeam(
 		FColor::Cyan,
 		false,
 		AttackRow.DebugData.DrawTime);
+}
+
+void UGA_EnemyAttackLaser::StartLaserChargeCosmetics()
+{
+	UWorld* World = GetWorld();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!World || World->GetNetMode() == NM_DedicatedServer || !IsValid(AvatarActor))
+	{
+		return;
+	}
+
+	TArray<FNSLaserBeam> Beams;
+	GetCurrentLaserBeams(Beams);
+	const FVector ChargeLocation = Beams.IsEmpty() ? AvatarActor->GetActorLocation() : Beams[0].Start;
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		ActiveLaserChargeAudioComponent =
+			SoundSubsystem->PlaySoundAttached(LaserChargeSoundID, AvatarActor->GetRootComponent());
+	}
+
+	if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
+	{
+		ActiveLaserChargeVFXComponent =
+			VFXSubsystem->SpawnVFXAtLocation(LaserChargeVFXID, ChargeLocation, FRotator::ZeroRotator, 1.0f, true);
+
+		if (ActiveLaserChargeVFXComponent && CachedAttackRow)
+		{
+			ActiveLaserChargeVFXComponent->SetVariableFloat(
+				LaserChargeDurationParameterName,
+				FMath::Max(CachedAttackRow->WarnTime, 0.0f));
+		}
+	}
+}
+
+void UGA_EnemyAttackLaser::StopLaserChargeCosmetics()
+{
+	if (ActiveLaserChargeAudioComponent)
+	{
+		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+		{
+			SoundSubsystem->StopSound(ActiveLaserChargeAudioComponent, 0.1f);
+		}
+		ActiveLaserChargeAudioComponent = nullptr;
+	}
+
+	if (ActiveLaserChargeVFXComponent)
+	{
+		ActiveLaserChargeVFXComponent->Deactivate();
+		ActiveLaserChargeVFXComponent->DestroyComponent();
+		ActiveLaserChargeVFXComponent = nullptr;
+	}
+}
+
+void UGA_EnemyAttackLaser::StartLaserFireCosmetics(const TArray<FNSLaserBeam>& Beams)
+{
+	StopLaserChargeCosmetics();
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor))
+	{
+		return;
+	}
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		ActiveLaserFireAudioComponent =
+			SoundSubsystem->PlaySoundAttached(LaserFireSoundID, AvatarActor->GetRootComponent());
+	}
+
+	UpdateLaserBeamCosmetics(Beams);
+}
+
+void UGA_EnemyAttackLaser::UpdateLaserBeamCosmetics(const TArray<FNSLaserBeam>& Beams)
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer || LaserBeamVFXID.IsNone())
+	{
+		return;
+	}
+
+	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this);
+	if (!VFXSubsystem)
+	{
+		return;
+	}
+
+	while (ActiveLaserBeamVFXComponents.Num() < Beams.Num())
+	{
+		ActiveLaserBeamVFXComponents.Add(nullptr);
+	}
+
+	for (int32 Index = 0; Index < Beams.Num(); ++Index)
+	{
+		const FNSLaserBeam& Beam = Beams[Index];
+		const FVector Direction = (Beam.End - Beam.Start).GetSafeNormal();
+		const float Length = FVector::Dist(Beam.Start, Beam.End);
+		if (Direction.IsNearlyZero() || Length <= 0.0f)
+		{
+			continue;
+		}
+
+		UNiagaraComponent* VFX = ActiveLaserBeamVFXComponents[Index];
+		if (!VFX)
+		{
+			VFX = VFXSubsystem->SpawnVFXAtLocation(
+				LaserBeamVFXID,
+				Beam.Start,
+				Direction.Rotation(),
+				FMath::Max(Length / LaserBeamBaseLength, 0.1f),
+				true);
+
+			ActiveLaserBeamVFXComponents[Index] = VFX;
+		}
+
+		if (VFX)
+		{
+			VFX->SetWorldLocationAndRotation(Beam.Start, Direction.Rotation());
+			VFX->SetWorldScale3D(FVector::OneVector * FMath::Max(Length / LaserBeamBaseLength, 0.1f));
+			VFX->SetVariableFloat(LaserBeamLengthParameterName, Length);
+			VFX->SetVariableFloat(LaserBeamRadiusParameterName, GetLaserRadius(*CachedAttackRow));
+		}
+	}
+}
+
+void UGA_EnemyAttackLaser::StopLaserCosmetics()
+{
+	StopLaserChargeCosmetics();
+
+	if (ActiveLaserFireAudioComponent)
+	{
+		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+		{
+			SoundSubsystem->StopSound(ActiveLaserFireAudioComponent, 0.1f);
+		}
+		ActiveLaserFireAudioComponent = nullptr;
+	}
+
+	for (UNiagaraComponent* VFX : ActiveLaserBeamVFXComponents)
+	{
+		if (VFX)
+		{
+			VFX->Deactivate();
+			VFX->DestroyComponent();
+		}
+	}
+	ActiveLaserBeamVFXComponents.Reset();
 }

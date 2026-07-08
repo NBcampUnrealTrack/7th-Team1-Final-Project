@@ -95,7 +95,7 @@ private:
 		const FNSEnemyAttackRow& AttackRow,
 		const FVector& Start,
 		const FVector& Direction) const;
-	
+
 	// WarnTime과 조준 수렴을 기다린 뒤 연속 발사를 시작하는 함수
 	void StartPreAimOrBurst();
 
@@ -124,7 +124,7 @@ private:
 
 	// FireInterval 반복 발사를 위한 타이머 핸들
 	FTimerHandle BurstTimerHandle;
-	
+
 	// 조준 완료로 인정할 최대 각도 오차
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim", meta = (ClampMin = "0.0"))
 	float AimReadyToleranceDegrees = 6.0f;
@@ -142,4 +142,10 @@ private:
 
 	// PreAim 대기 Timer
 	FTimerHandle PreAimTimerHandle;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName MachineGunFireSoundID = FName(TEXT("Monster_TitanWalker_MachineGun_Fire"));
+
+	void PlayMachineGunFireSound(const FTransform& MuzzleTransform) const;
 };
