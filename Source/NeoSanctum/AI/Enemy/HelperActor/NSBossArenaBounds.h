@@ -32,6 +32,12 @@ public:
 	// 존 박스 판정에 사용할 회전 (액터 회전과 동일)
 	FQuat GetZoneBoxRotation() const;
 
+	// 대각선 시작 쪽(보스 쪽) 코너 중심을 반환. AtZ로 원하는 고도를 지정
+	FVector GetDiagonalStartCorner(float AtZ) const;
+
+	// 대각선 반대쪽 코너 중심을 반환. AtZ로 원하는 고도를 지정
+	FVector GetDiagonalEndCorner(float AtZ) const;
+	
 	// 존 i 박스와 겹치는 플레이어 액터를 수집
 	void OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight, TArray<AActor*>& OutActors) const;
 

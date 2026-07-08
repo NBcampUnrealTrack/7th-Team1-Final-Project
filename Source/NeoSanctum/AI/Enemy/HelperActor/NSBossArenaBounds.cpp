@@ -87,8 +87,32 @@ FQuat ANSBossArenaBounds::GetZoneBoxRotation() const
 	return AreaBox->GetComponentQuat();
 }
 
+FVector ANSBossArenaBounds::GetDiagonalStartCorner(float AtZ) const
+{
+	const FVector HalfExtent = AreaBox->GetUnscaledBoxExtent();
+	
+	const FVector LocalPoint(-HalfExtent.X, -HalfExtent.Y, 0.f);
+	
+	FVector WorldPoint = AreaBox->GetComponentTransform().TransformPosition(LocalPoint);
+	WorldPoint.Z = AtZ;
+	
+	return WorldPoint;
+}
+
+FVector ANSBossArenaBounds::GetDiagonalEndCorner(float AtZ) const
+{
+	const FVector HalfExtent = AreaBox->GetUnscaledBoxExtent();
+	
+	const FVector LocalPoint(HalfExtent.X, HalfExtent.Y, 0.f);
+	
+	FVector WorldPoint = AreaBox->GetComponentTransform().TransformPosition(LocalPoint);
+	WorldPoint.Z = AtZ;
+	
+	return WorldPoint;
+}
+
 void ANSBossArenaBounds::OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight,
-	TArray<AActor*>& OutActors) const
+                                              TArray<AActor*>& OutActors) const
 {
 	OutActors.Reset();
 	
