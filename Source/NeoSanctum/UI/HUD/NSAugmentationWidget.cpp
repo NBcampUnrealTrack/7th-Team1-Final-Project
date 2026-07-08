@@ -24,6 +24,7 @@
 #include "Components/OverlaySlot.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
 void UNSAugmentationWidget::OpenPanel()
@@ -84,6 +85,17 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 	{
 		return;
 	}
+
+	// 스코프 초과 방어: 3/4장만 지원. 서버/데이터 문제를 조용히 숨기지 않고 Warning으로 드러냄.
+	if (NewChoiceCount > 4)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"[AugmentationWidget] 지원하지 않는 카드 수라 생성하지 않습니다. Count={Count}",
+			("Count", NewChoiceCount)
+		);
+		return;
+	}
+
 	//기존 가드 제거
 	ChoiceRootCanvas->ClearChildren();
 	AugmentCardWidgets.Empty();
@@ -121,28 +133,32 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 			//증강 카드의 중심점을 기준으로 위치를 잡는다
 			CardSlot->SetAutoSize(true);
 			CardSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-			
-			FVector2D CardPosition;
-			switch (Index)
-			{
-			case 0:
-				//1번 선택지: 왼쪽아래
-				CardPosition = FVector2D(-540.f, 200.f);
-				break;
-			case 1:
-				//2번 선택지: 중앙 위
-				CardPosition = FVector2D(0.0f,100.f);
-				break;
-			case 2:
-				//3번 선택지 오른쪽 아래
-				CardPosition = FVector2D(540.f,200.f);
-				break;
-			default:
-				CardPosition = FVector2D(0.0f,0.0f);
-				break;
-			}
-			CardSlot->SetPosition(CardPosition);
+
+			CardSlot->SetPosition(GetChoiceCardPosition(Index));
 		}
+	}
+}
+
+FVector2D UNSAugmentationWidget::GetChoiceCardPosition(int32 Index) const
+{
+	if (ChoiceCount == 4)
+	{
+		switch (Index)
+		{
+		case 0: return LeftCardPosition;
+		case 1: return FourCardCenterLeftPosition;
+		case 2: return FourCardCenterRightPosition;
+		case 3: return RightCardPosition;
+		default: return FVector2D::ZeroVector;
+		}
+	}
+
+	switch (Index)
+	{
+	case 0: return LeftCardPosition;
+	case 1: return ThreeCardCenterPosition;
+	case 2: return RightCardPosition;
+	default: return FVector2D::ZeroVector;
 	}
 }
 
@@ -401,8 +417,10 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 	const bool bHasPendingAugment = PendingCount > 0;
 	const bool bHasOfferCards = CurrentOfferCards.Num() > 0;
-	//증강 알림은 대기중은 증강 개수만 있으면 보여준다
-	const bool bShouldShowAugmentNotice = bHasPendingAugment;
+	// 위젯 자체는 Tab으로 열렸거나(bPanelOpen), C로 보유 목록이 요청됐거나(bOwnedListRequested),
+	// 새로 고를 증강이 대기 중이면(알림 뱃지) 보여준다. 셋 중 하나라도 아니면
+	// 대기 오퍼가 없을 때 Tab/C를 눌러도 보유 목록이 안 보이는 문제가 생긴다.
+	const bool bShouldShowAugmentNotice = bPanelOpen || bOwnedListRequested || bHasPendingAugment;
 	// 카드 선택 화면은 실제 카드 데이터가 있고, Tab으로 패널을 연 상태에서만 보여준다.
 	const bool bShouldShowCardSection = bPanelOpen && bHasOfferCards;
 	if (!bShouldShowAugmentNotice)
@@ -459,15 +477,17 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 void UNSAugmentationWidget::SetOwnedAugmentListVisible(bool bVisible)
 {
-	if (!OwnedAugmentWrapBox)
+	bOwnedListRequested = bVisible;
+
+	if (OwnedAugmentWrapBox)
 	{
-		return;
+		OwnedAugmentWrapBox->SetVisibility(
+			bVisible
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
 
-	OwnedAugmentWrapBox->SetVisibility(
-		bVisible
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::NativeConstruct()
