@@ -50,4 +50,5 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning04);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Missile);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Impact);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Cloaking);
 }

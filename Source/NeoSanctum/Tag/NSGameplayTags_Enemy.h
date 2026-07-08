@@ -24,6 +24,10 @@ namespace NSGameplayTags
 	// Enemy MotherShip Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_SpawnDrone);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_BombingRun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_HomingMissile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_CloakDeployRun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_MachineGun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_ChargeShield);
 	
 	// Enemy Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_BasicMelee);
