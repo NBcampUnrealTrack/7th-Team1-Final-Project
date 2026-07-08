@@ -101,6 +101,11 @@ public:
 	UFUNCTION(Exec)
 	void Debug_TriggerRescue(FString NpcId);
 
+	// 테스트용 치트 (파츠 VisualTag 테스트 — DT_PartDefinition의 Row Name을 그대로 입력, 예: Arm1)
+	// 빈 문자열을 넣으면 해당 슬롯 해제
+	UFUNCTION(Exec)
+	void Debug_EquipPart(FString RowName);
+
 private:
 	void HandleRewardTriggerCheat(const FGameplayTag& TriggerTag);
 };

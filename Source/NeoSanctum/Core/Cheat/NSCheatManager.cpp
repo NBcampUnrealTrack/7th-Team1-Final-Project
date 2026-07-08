@@ -10,7 +10,10 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
+#include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
+#include "Engine/DataTable.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
@@ -435,4 +438,46 @@ void UNSCheatManager::Debug_TriggerRescue(FString NpcId)
 			return;
 		}
 	}
+}
+
+// 테스트용 치트 (파츠 VisualTag 테스트 — DT_PartDefinition의 Row Name을 그대로 입력, 예: Arm1)
+void UNSCheatManager::Debug_EquipPart(FString RowName)
+{
+	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
+	if (!OwningPC)
+	{
+		return;
+	}
+
+	UGameInstance* GameInstance = OwningPC->GetGameInstance();
+	UNSProgressionSubsystem* Progression =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+	if (!Progression)
+	{
+		return;
+	}
+
+	const FName CharId = Progression->GetLastSelectedCharacterId();
+
+	// 빈 문자열이면 null 소프트 포인터로 두어 EquipPartLive가 해제로 처리하게 함
+	TSoftObjectPtr<UNSPartDefinition> Definition;
+	if (!RowName.IsEmpty())
+	{
+		const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(OwningPC);
+		const UNSCommonDataConfig* CommonConfig = DataSS ? DataSS->GetCommonDataConfig() : nullptr;
+		UDataTable* PartTable = CommonConfig ? CommonConfig->PartsBaseStatTable.Get() : nullptr;
+		const FNSPartDefinitionRow* Row = PartTable
+			? PartTable->FindRow<FNSPartDefinitionRow>(FName(*RowName), TEXT("Debug_EquipPart"), false)
+			: nullptr;
+		if (!Row)
+		{
+			NS_LOG(LogNS, Warning, "[Debug_EquipPart] Row를 찾을 수 없습니다. RowName={RowName}", ("RowName", RowName));
+			return;
+		}
+
+		Definition = Row->Definition;
+	}
+
+	// 로컬 저장 + 서버 업로드 + 현재 폰 즉시 적용까지 EquipPartLive가 한 번에 처리
+	OwningPC->EquipPartLive(CharId, Definition, ENSPartRarity::Common);
 }
