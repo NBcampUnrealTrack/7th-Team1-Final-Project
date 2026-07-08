@@ -83,9 +83,6 @@ private:
 	// 리롤 버튼 (없어도 T키로는 계속 리롤 가능)
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> RerollButton;
-	// "[T]" 같은 단축키 안내 위젯 (리롤 가능할 때만 버튼과 같이 보임)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UWidget> RerollShortcutHintWidget;
 	// 현재 리롤 비용 표시
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollCostText;

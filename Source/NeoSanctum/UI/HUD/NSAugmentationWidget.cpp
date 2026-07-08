@@ -241,11 +241,6 @@ void UNSAugmentationWidget::RefreshRerollControls()
 		RerollButton->SetVisibility(RerollVisibility);
 	}
 
-	if (RerollShortcutHintWidget)
-	{
-		RerollShortcutHintWidget->SetVisibility(RerollVisibility);
-	}
-
 	if (RerollCostText)
 	{
 		RerollCostText->SetVisibility(RerollVisibility);
