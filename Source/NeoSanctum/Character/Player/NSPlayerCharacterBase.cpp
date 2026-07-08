@@ -4,6 +4,7 @@
 #include "NSPlayerCharacterBase.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraTypes.h"
 #include "CharacterTrajectoryComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -17,7 +18,7 @@
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
-#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
+#include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
 #include "NeoSanctum/Character/Component/NSGateAccessComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
@@ -81,7 +82,6 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
-	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
 	
 	MeleeAttackReservationComp = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
@@ -115,6 +115,7 @@ void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
 	}
 	
 	UpdateCameraFacingRotation(DeltaSeconds);
+	UpdateSpectatorCameraState(DeltaSeconds);
 }
 
 void ANSPlayerCharacterBase::BeginPlay()
@@ -122,12 +123,6 @@ void ANSPlayerCharacterBase::BeginPlay()
 	Super::BeginPlay();
 	
 	InitializeAbilitySystem();
-	
-	if (SpectatorViewComp)
-	{
-		// 관전자에게 보낼 카메라 정보의 타겟이 되는 카메라 설정
-		SpectatorViewComp->SetSourceCamera(CameraComp);
-	}
 }
 
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -214,6 +209,27 @@ void ANSPlayerCharacterBase::OnRep_Controller()
 	}
 }
 
+bool ANSPlayerCharacterBase::IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const
+{
+	// 관전 대상은 거리와 무관하게 해당 관전자에게 복제
+	const ANSDeathSpectatorPawn* DeathSpectatorViewTarget = Cast<ANSDeathSpectatorPawn>(ViewTarget);
+	if (!DeathSpectatorViewTarget)
+	{
+		if (const AController* ViewerController = Cast<AController>(RealViewer))
+		{
+			DeathSpectatorViewTarget = Cast<ANSDeathSpectatorPawn>(ViewerController->GetPawn());
+		}
+	}
+
+	if (DeathSpectatorViewTarget && DeathSpectatorViewTarget->GetSpectatorTarget() == this)
+	{
+		// 관전자가 보고 있는 플레이어 Pawn은 NetCullDistance 밖이어도 유지
+		return true;
+	}
+
+	return Super::IsNetRelevantFor(RealViewer, ViewTarget, SrcLocation);
+}
+
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -222,6 +238,27 @@ void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentLeftHandWeapon);
 	DOREPLIFETIME(ANSPlayerCharacterBase, bDeathPresentationStarted);
+	DOREPLIFETIME(ANSPlayerCharacterBase, SpectatorCameraState);
+}
+
+FRotator ANSPlayerCharacterBase::GetViewRotation() const
+{
+	if (IsLocallyControlled() || !SpectatorCameraState.bHasValidData)
+	{
+		return Super::GetViewRotation();
+	}
+
+	return SpectatorCameraState.ViewRotation;
+}
+
+void ANSPlayerCharacterBase::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	Super::CalcCamera(DeltaTime, OutResult);
+
+	if (IsLocallyControlled() || !SpectatorCameraState.bHasValidData)
+	{
+		return;
+	}
 }
 
 UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
@@ -458,6 +495,80 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 		CameraFacingRotationSpeed);
 
 	SetActorRotation(NewRotation);
+}
+
+void ANSPlayerCharacterBase::UpdateSpectatorCameraState(float DeltaSeconds)
+{
+	if (!IsLocallyControlled())
+	{
+		if (SpectatorCameraState.bHasValidData && CameraComp)
+		{
+			// 원격 캐릭터의 카메라 FOV를 관전자 시점 값에 맞춤
+			CameraComp->SetFieldOfView(SpectatorCameraState.FOV);
+		}
+
+		return;
+	}
+
+	if (!Controller)
+	{
+		return;
+	}
+
+	SpectatorCameraStateSendElapsed += DeltaSeconds;
+	if (SpectatorCameraStateSendElapsed < SpectatorCameraStateSendInterval)
+	{
+		return;
+	}
+	SpectatorCameraStateSendElapsed = 0.f;
+
+	FNSReplicatedSpectatorCameraState NewCameraState;
+	NewCameraState.bHasValidData = true;
+	NewCameraState.ViewRotation = Controller->GetControlRotation();
+	NewCameraState.FOV = CameraComp ? CameraComp->FieldOfView : 90.f;
+
+	// 변화량이 작으면 관전자용 카메라 상태 전송 생략
+	if (!ShouldSendSpectatorCameraState(NewCameraState))
+	{
+		return;
+	}
+
+	LastSentSpectatorCameraState = NewCameraState;
+
+	if (HasAuthority())
+	{
+		// 리슨 서버 로컬 플레이어는 RPC 없이 서버 값 직접 갱신
+		SpectatorCameraState = NewCameraState;
+		return;
+	}
+
+	// 클라이언트 소유 Pawn의 카메라 상태를 서버로 올려 관전자에게 복제
+	Server_UpdateSpectatorCameraState(NewCameraState);
+}
+
+bool ANSPlayerCharacterBase::ShouldSendSpectatorCameraState(const FNSReplicatedSpectatorCameraState& NewCameraState) const
+{
+	if (!LastSentSpectatorCameraState.bHasValidData)
+	{
+		return true;
+	}
+
+	const FRotator RotationDelta = (NewCameraState.ViewRotation - LastSentSpectatorCameraState.ViewRotation).GetNormalized();
+	const bool bRotationChanged =
+		FMath::Abs(RotationDelta.Pitch) >= SpectatorCameraRotationThreshold
+		|| FMath::Abs(RotationDelta.Yaw) >= SpectatorCameraRotationThreshold
+		|| FMath::Abs(RotationDelta.Roll) >= SpectatorCameraRotationThreshold;
+
+	const bool bFOVChanged =
+		FMath::Abs(NewCameraState.FOV - LastSentSpectatorCameraState.FOV) >= SpectatorCameraFOVThreshold;
+
+	return bRotationChanged || bFOVChanged;
+}
+
+void ANSPlayerCharacterBase::Server_UpdateSpectatorCameraState_Implementation(
+	const FNSReplicatedSpectatorCameraState& NewCameraState)
+{
+	SpectatorCameraState = NewCameraState;
 }
 
 #pragma region CompanionSpawn

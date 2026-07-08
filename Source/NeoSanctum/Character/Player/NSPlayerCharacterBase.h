@@ -25,7 +25,6 @@ class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
 class UNSInputBinderComponent;
-class UNSSpectatorViewComponent;
 class UNSPartVisualComponent;
 class UNSInteractionComponent;
 class UNSMeleeAttackReservationComponent;
@@ -35,6 +34,23 @@ class UNSPlayerHitTakenFeedbackComponent;
 class UNSHitReactionComponent;
 class UNSDamageFlashComponent;
 class UNSMinimapIconComponent;
+struct FMinimalViewInfo;
+
+// 관전자 ViewTarget 계산에 필요한 최소 카메라 상태
+USTRUCT()
+struct FNSReplicatedSpectatorCameraState
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	bool bHasValidData = false;
+
+	UPROPERTY()
+	FRotator ViewRotation = FRotator::ZeroRotator;
+
+	UPROPERTY()
+	float FOV = 90.f;
+};
 
 UCLASS()
 class NEOSANCTUM_API ANSPlayerCharacterBase : public ACharacter, public IAbilitySystemInterface, 
@@ -51,7 +67,12 @@ public:
 	virtual void PossessedBy(AController* EventController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
+	// 관전 중인 대상 Pawn은 거리와 무관하게 관전자에게 복제
+	virtual bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	// 원격 관전자 시점에서 복제된 카메라 회전 사용
+	virtual FRotator GetViewRotation() const override;
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
 	
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
@@ -68,7 +89,6 @@ public:
 
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; }
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
-	UNSSpectatorViewComponent* GetSpectatorViewComponent() const { return SpectatorViewComp; }
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	// PlayerAttackFeedbackComponent Getter
 	UNSPlayerAttackFeedbackComponent* GetPlayerAttackFeedbackComponent() const { return PlayerAttackFeedbackComp; }
@@ -137,6 +157,13 @@ protected:
 protected:
 	// 카메라 컨트롤 방향 기준 캐릭터 회전 보간, 현재 Tick()에서 함
 	void UpdateCameraFacingRotation(float DeltaSeconds);
+	// 관전자에게 전달할 카메라 상태 주기적 갱신
+	void UpdateSpectatorCameraState(float DeltaSeconds);
+	// 회전이나 FOV가 충분히 변했을 때만 카메라 상태 전송
+	bool ShouldSendSpectatorCameraState(const FNSReplicatedSpectatorCameraState& NewCameraState) const;
+
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateSpectatorCameraState(const FNSReplicatedSpectatorCameraState& NewCameraState);
 
 protected:
 	// Spring Arm 컴포넌트
@@ -151,9 +178,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UNSInputBinderComponent> InputBinderComp;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spectator")
-	TObjectPtr<UNSSpectatorViewComponent> SpectatorViewComp;
-	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Parts")
 	TObjectPtr<UNSPartVisualComponent> PartVisualComp;
 
@@ -247,6 +271,26 @@ protected:
 	// 카메라 방향 회전 진행 상태관리
 	UPROPERTY(BlueprintReadOnly, Category = "Rotation")
 	bool bIsCameraFacingRotationActive = false;
+
+	// 관전자가 ViewTarget으로 볼 때 사용할 카메라 상태
+	UPROPERTY(Replicated)
+	FNSReplicatedSpectatorCameraState SpectatorCameraState;
+
+	UPROPERTY(Transient)
+	FNSReplicatedSpectatorCameraState LastSentSpectatorCameraState;
+
+	// 카메라 상태 전송 주기 계산용 누적 시간
+	UPROPERTY(Transient)
+	float SpectatorCameraStateSendElapsed = 0.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.01"))
+	float SpectatorCameraStateSendInterval = 0.066f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
+	float SpectatorCameraRotationThreshold = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
+	float SpectatorCameraFOVThreshold = 0.1f;
 	
 	//드론 스폰관련 Test
 protected:
