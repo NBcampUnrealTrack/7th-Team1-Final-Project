@@ -94,9 +94,6 @@ public:
 
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	
-	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment", meta = (ClampMin = "1"))
-	int32 CardsCount = 3;
 
 private:
 	UFUNCTION(Client, Reliable)

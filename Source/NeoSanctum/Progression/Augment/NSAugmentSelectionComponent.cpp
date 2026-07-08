@@ -183,9 +183,11 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 		PrevSet.Add(Card.DefId);
 	}
 
+	const int32 EffectiveCardsCount = GetEffectiveCardsCount();
+
 	bool bDifferentPossible = false;
 	TArray<FNSAugmentSelectionCard> NewOffer =
-		RollCardsExcludingComposition(RarityRule, CardsCount, PrevSet, bDifferentPossible);
+		RollCardsExcludingComposition(RarityRule, EffectiveCardsCount, PrevSet, bDifferentPossible);
 
 	TSet<FPrimaryAssetId> NewOfferDefIds;
 	for (const FNSAugmentSelectionCard& Card : NewOffer)
@@ -194,7 +196,7 @@ void UNSAugmentSelectionComponent::Server_RerollCard_Implementation(int32 Client
 	}
 
 	// 재화를 차감하기 전에, 방금 만든 오퍼가 정말 카드 수도 맞고 직전과 다른 구성인지 마지막으로 한 번 더 확인.
-	if (!bDifferentPossible || NewOffer.Num() != CardsCount || AreDefIdSetsEqual(NewOfferDefIds, PrevSet))
+	if (!bDifferentPossible || NewOffer.Num() != EffectiveCardsCount || AreDefIdSetsEqual(NewOfferDefIds, PrevSet))
 	{
 		Client_NotifyRerollResult(
 			ENSAugmentRerollResult::NoDifferentOffer,
@@ -372,11 +374,13 @@ void UNSAugmentSelectionComponent::PresentFront()
 			return;
 		}
 
+		const int32 EffectiveCardsCount = GetEffectiveCardsCount();
+
 		const bool bNeedsFreshRoll = !bFrontRolled;
 		if (bNeedsFreshRoll)
 		{
 			CurrentOfferRerollCount = 0;
-			PendingOffer = RollCards(RarityRule, CardsCount);
+			PendingOffer = RollCards(RarityRule, EffectiveCardsCount);
 			bFrontRolled = !PendingOffer.IsEmpty();
 		}
 
@@ -401,8 +405,8 @@ void UNSAugmentSelectionComponent::PresentFront()
 
 		FNSAugmentRerollRule RerollRule;
 		const bool bHasRerollRule = TryFindRerollRule(RewardTriggerQueue[0], RerollRule);
-		// 리롤 규칙이 있고, 오퍼가 부분 오퍼가 아니라 꽉 찬 CardsCount장일 때만 리롤을 허용.
-		const bool bCanReroll = bHasRerollRule && PendingOffer.Num() == CardsCount;
+		// 리롤 규칙이 있고, 오퍼가 부분 오퍼가 아니라 완전한 카드 수일 때만 리롤을 허용.
+		const bool bCanReroll = bHasRerollRule && PendingOffer.Num() == EffectiveCardsCount;
 		const int64 RerollCost = bHasRerollRule ? GetDiscountedRerollCost(RerollRule, CurrentOfferRerollCount) : 0;
 
 		Client_PresentOffer(PendingOffer, RerollCost, bCanReroll, OfferRevision);
