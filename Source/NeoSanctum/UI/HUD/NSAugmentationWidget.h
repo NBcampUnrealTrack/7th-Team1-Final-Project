@@ -100,6 +100,8 @@ private:
 	bool bPanelOpen = false;
 	//선택한 카드만 하이라이트 처리
 	void HighLightCard(int32 CardIndex);
+	// 카드 슬롯 위치 조회 (좌/우 끝은 공용, 가운데만 3장/4장 별도)
+	FVector2D GetChoiceCardPosition(int32 Index) const;
 
 	void RefreshAugmentPanelState();
 	
@@ -175,4 +177,20 @@ protected:
 	// 보유 증강 아이콘 크기 (에디터에서 BP별 조정 가능)
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	FVector2D OwnedIconSize = FVector2D(48.f, 48.f);
+
+	// 좌/우 끝 카드 슬롯 좌표 (3장/4장 공용, 에디터에서 BP별 조정 가능)
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	FVector2D LeftCardPosition = FVector2D(-540.f, 200.f);
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	FVector2D RightCardPosition = FVector2D(540.f, 200.f);
+
+	// 3장일 때 가운데 슬롯 좌표
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	FVector2D ThreeCardCenterPosition = FVector2D(0.f, 100.f);
+
+	// 4장일 때 가운데 두 슬롯 좌표
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	FVector2D FourCardCenterLeftPosition = FVector2D(-180.f, 100.f);
+	UPROPERTY(EditDefaultsOnly, Category = "UI")
+	FVector2D FourCardCenterRightPosition = FVector2D(180.f, 100.f);
 };

@@ -24,6 +24,7 @@
 #include "Components/OverlaySlot.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
 void UNSAugmentationWidget::OpenPanel()
@@ -84,6 +85,17 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 	{
 		return;
 	}
+
+	// 스코프 초과 방어: 3/4장만 지원. 서버/데이터 문제를 조용히 숨기지 않고 Warning으로 드러냄.
+	if (NewChoiceCount > 4)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"[AugmentationWidget] 지원하지 않는 카드 수라 생성하지 않습니다. Count={Count}",
+			("Count", NewChoiceCount)
+		);
+		return;
+	}
+
 	//기존 가드 제거
 	ChoiceRootCanvas->ClearChildren();
 	AugmentCardWidgets.Empty();
@@ -121,28 +133,32 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 			//증강 카드의 중심점을 기준으로 위치를 잡는다
 			CardSlot->SetAutoSize(true);
 			CardSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-			
-			FVector2D CardPosition;
-			switch (Index)
-			{
-			case 0:
-				//1번 선택지: 왼쪽아래
-				CardPosition = FVector2D(-540.f, 200.f);
-				break;
-			case 1:
-				//2번 선택지: 중앙 위
-				CardPosition = FVector2D(0.0f,100.f);
-				break;
-			case 2:
-				//3번 선택지 오른쪽 아래
-				CardPosition = FVector2D(540.f,200.f);
-				break;
-			default:
-				CardPosition = FVector2D(0.0f,0.0f);
-				break;
-			}
-			CardSlot->SetPosition(CardPosition);
+
+			CardSlot->SetPosition(GetChoiceCardPosition(Index));
 		}
+	}
+}
+
+FVector2D UNSAugmentationWidget::GetChoiceCardPosition(int32 Index) const
+{
+	if (ChoiceCount == 4)
+	{
+		switch (Index)
+		{
+		case 0: return LeftCardPosition;
+		case 1: return FourCardCenterLeftPosition;
+		case 2: return FourCardCenterRightPosition;
+		case 3: return RightCardPosition;
+		default: return FVector2D::ZeroVector;
+		}
+	}
+
+	switch (Index)
+	{
+	case 0: return LeftCardPosition;
+	case 1: return ThreeCardCenterPosition;
+	case 2: return RightCardPosition;
+	default: return FVector2D::ZeroVector;
 	}
 }
 
