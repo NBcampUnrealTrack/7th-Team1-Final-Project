@@ -1307,6 +1307,7 @@ void UGA_VanguardBaseAttack::AddVanguardStateTags()
 
 	// 다른 Vanguard 기본공격 재진입 방지용 공통 공격 상태태그
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge)
 	{
@@ -1325,6 +1326,7 @@ void UGA_VanguardBaseAttack::RemoveVanguardStateTags()
 
 	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
 	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 }
 
 void UGA_VanguardBaseAttack::ConsumeDashAttackWindow()
