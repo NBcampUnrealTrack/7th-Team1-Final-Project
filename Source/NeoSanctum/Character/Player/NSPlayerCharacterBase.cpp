@@ -743,6 +743,8 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 	{
 		GetMesh()->LinkAnimClassLayers(LoadedUpperBodyAnimLayerClass);
 	}
+
+	// TODO(원종): Step 3에서 여기에 PartVisualComp->SetDefaultVisualParts(CurrentCharacterData->DefaultVisualParts) 호출 추가 예정
 }
 
 void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
