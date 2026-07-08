@@ -31,13 +31,14 @@ void UNSAugmentationWidget::OpenPanel()
 	// 순수 UI 표시만 담당 (보유 아이콘 갱신)
 	bPanelOpen = true;
 	SetVisibility(ESlateVisibility::Visible);
+	SetOwnedAugmentListVisible(true);
 	RefreshOwnedAugmentList();
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::ClosePanel()
 {
 	bPanelOpen = false;
-	SetVisibility(ESlateVisibility::Collapsed);
 	
 	if (IconLoadHandle.IsValid())
 	{
@@ -49,6 +50,8 @@ void UNSAugmentationWidget::ClosePanel()
 		OwnedIconLoadHandle->CancelHandle();
 		OwnedIconLoadHandle.Reset();
 	}
+	SetOwnedAugmentListVisible(false);
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::ShowCardSection()
@@ -124,7 +127,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 			{
 			case 0:
 				//1번 선택지: 왼쪽아래
-				CardPosition = FVector2D(-350.f,200.f);
+				CardPosition = FVector2D(-540.f, 200.f);
 				break;
 			case 1:
 				//2번 선택지: 중앙 위
@@ -132,7 +135,7 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 				break;
 			case 2:
 				//3번 선택지 오른쪽 아래
-				CardPosition = FVector2D(350.f,200.f);
+				CardPosition = FVector2D(540.f,200.f);
 				break;
 			default:
 				CardPosition = FVector2D(0.0f,0.0f);
@@ -391,6 +394,82 @@ void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 	}
 }
 
+void UNSAugmentationWidget::RefreshAugmentPanelState()
+{
+	const UNSAugmentSelectionComponent* SelComp = SelectionComponent.Get();
+	const int32 PendingCount = SelComp ? SelComp->GetPendingCount() : 0;
+
+	const bool bHasPendingAugment = PendingCount > 0;
+	const bool bHasOfferCards = CurrentOfferCards.Num() > 0;
+	//증강 알림은 대기중은 증강 개수만 있으면 보여준다
+	const bool bShouldShowAugmentNotice = bHasPendingAugment;
+	// 카드 선택 화면은 실제 카드 데이터가 있고, Tab으로 패널을 연 상태에서만 보여준다.
+	const bool bShouldShowCardSection = bPanelOpen && bHasOfferCards;
+	if (!bShouldShowAugmentNotice)
+	{
+		SetVisibility(ESlateVisibility::Collapsed);
+		HideCardSection();
+
+		if (CenterControlRoot)
+		{
+			CenterControlRoot->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		
+		if (CardDimBackground)
+		{
+			CardDimBackground->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		return;
+	}
+
+	SetVisibility(ESlateVisibility::Visible);
+
+	if (CenterControlRoot)
+	{
+		CenterControlRoot->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	if (CardSectionRoot)
+	{
+		CardSectionRoot->SetVisibility(
+			bShouldShowCardSection
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+
+	if (CardDimBackground)
+	{
+		CardDimBackground->SetVisibility(
+			bShouldShowCardSection
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+
+	if (PendingCountText)
+	{
+		PendingCountText->SetText(FText::AsNumber(PendingCount));
+	}
+
+	if (RemainingAugmentCountText)
+	{
+		RemainingAugmentCountText->SetText(FText::AsNumber(PendingCount));
+	}
+}
+
+void UNSAugmentationWidget::SetOwnedAugmentListVisible(bool bVisible)
+{
+	if (!OwnedAugmentWrapBox)
+	{
+		return;
+	}
+
+	OwnedAugmentWrapBox->SetVisibility(
+		bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+}
+
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -398,6 +477,7 @@ void UNSAugmentationWidget::NativeConstruct()
 	bPanelOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
 	HideCardSection();
+	SetOwnedAugmentListVisible(false);
 
 	//오너 PC의 선택 컴포넌트 델리게이트 구독
 	if (UNSAugmentSelectionComponent* SelComp = GetSelectionComponent())
@@ -571,14 +651,14 @@ void UNSAugmentationWidget::HandleOfferPresented(
 	else
 	{
 		PopulateOfferCards();
-		ShowCardSection();
+		RefreshAugmentPanelState();
 	}
 }
 
 void UNSAugmentationWidget::OnIconsLoaded()
 {
 	PopulateOfferCards();
-	ShowCardSection();
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::PopulateOfferCards()
@@ -622,24 +702,30 @@ void UNSAugmentationWidget::HandleOfferClosed()
 		UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->CloseAugmentationPanel();
-		UIManager->ClosePartPanel();
 	}
 }
 
 void UNSAugmentationWidget::HandlePendingCountChanged(int32 NewCount)
 {
-	if (!PendingCountText)
+	if (PendingCountText)
 	{
-		return;
+		if (NewCount <= 0)
+		{
+			PendingCountText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+		else
+		{
+			PendingCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
+			PendingCountText->SetText(FText::AsNumber(NewCount));
+		}
 	}
-	//대기 0개면 뱃지 숨김
-	if (NewCount <= 0)
+
+	if (RemainingAugmentCountText)
 	{
-		PendingCountText->SetVisibility(ESlateVisibility::Collapsed);
-		return;
+		RemainingAugmentCountText->SetText(FText::AsNumber(NewCount));
 	}
-	PendingCountText->SetVisibility(ESlateVisibility::HitTestInvisible);
-	PendingCountText->SetText(FText::AsNumber(NewCount));
+
+	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::HandleRerollResult(
