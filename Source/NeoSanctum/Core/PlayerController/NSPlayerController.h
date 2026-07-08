@@ -14,9 +14,9 @@
 
 class UNSRunConfig;
 class UNSLevelConfig;
-class ANSDeathSpectatorPawn;
 class ANSPlayerCharacterBase;
 class ANSPlayerState;
+class UNSDeathSpectatorComponent;
 class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
@@ -143,30 +143,6 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PlayHitTakenFeedback(const FNSHitTakenFeedbackContext& Context);
 
-private:
-	// 실제로 사망 관전자 상태로 진입
-	void EnterDeathSpectatorMode();
-	// Spectator Pawn을 스폰하고 Possess하는 헬퍼
-	void SpawnAndPossessDeathSpectatorPawn();
-	// 진입 타이머 초기화 헬퍼
-	void ClearDeathSpectatorModeTimer();
-	
-	// 관전자 스위칭
-	void SwitchSpectatorTarget(int32 Direction);
-	// 서버 권한에서 실제 관전 대상을 확정
-	void ApplyServerSpectatorTargetChange(int32 Direction);
-	// PlayerState에서 서버 기준 관전 대상 Pawn 확인
-	ANSPlayerCharacterBase* ResolveServerSpectatorTargetPawn(const ANSPlayerState* TargetPlayerState) const;
-	
-	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
-	UFUNCTION(Server, Reliable)
-	void Server_EnterDeathSpectatorMode();
-
-	// 클라이언트의 관전 대상 전환 입력을 서버로 전달
-	UFUNCTION(Server, Reliable)
-	void Server_RequestSpectatorTargetChange(int32 Direction);
-	
-private:
 	const FGameplayTagContainer& GetGameplayInputModeTags() const { return GameplayInputModeTags; }
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
 	
@@ -317,28 +293,13 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	FGameplayTagContainer DeathSpectatorInputModeTags;
 	
-private:
-	// 사망 후 몇 초 뒤에 Death Spectator 모드로 진입할지 결정
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "0.0"))
-	float DeathSpectatorModeDelay = 2.0f;
-	
-	// 사망 시 Spawn / Possess될 Spectator Pawn
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
-	TSubclassOf<ANSDeathSpectatorPawn> DeathSpectatorPawnClass;
-
-	// 관전 대상 전환 시 ViewTarget 보간 시간
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "0.0"))
-	float DeathSpectatorViewBlendTime = 0.35f;
-
-	// 관전 대상 PlayerState 캐싱
-	UPROPERTY(Transient)
-	TObjectPtr<ANSPlayerState> SpectatingPlayerState;
-
-	FTimerHandle DeathSpectatorModeTimerHandle;
-
 	// 증강 추첨/선택 로직을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "NS|Augment")
 	TObjectPtr<UNSAugmentSelectionComponent> AugmentSelectionComponent;
+
+	// 사망 관전자 전환 로직을 담당하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "NS|Spectator")
+	TObjectPtr<UNSDeathSpectatorComponent> DeathSpectatorComponent;
 
 	// 현재 열린 NPC 상호작용 위젯
 	UPROPERTY()
