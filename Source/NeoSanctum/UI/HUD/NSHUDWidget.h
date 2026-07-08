@@ -16,6 +16,7 @@ class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
 class UNSDifficultyTimerWidget;
+class UWidget;
 
 
 /**
@@ -122,6 +123,9 @@ private:
 	//파츠 장착 상태 HUD 위젯
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSPartPanelWidget> PartPanelWidget;
+	// Tab 증강 선택 / C 파츠 인벤토리 패널이 열렸을 때 사용하는 공용 어두운 배경
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> HudDimBackground;
 	//탄약 HUD 위젯
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSAmmoWidget> AmmoWidget;
@@ -136,7 +140,8 @@ private:
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot3Widget;
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSDifficultyTimerWidget> DifficultyTimerWidget;
-	
+
+	void RefreshHudDimBackground();
 protected:
 	virtual void NativeConstruct() override;
 };
