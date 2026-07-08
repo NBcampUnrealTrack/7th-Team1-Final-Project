@@ -28,6 +28,7 @@ void UNSTitanWalkerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateLocomotion();
 	UpdateTurn(DeltaSeconds);
 	UpdateAim(DeltaSeconds);
+	UpdateControlRigBlend(DeltaSeconds);
 }
 
 void UNSTitanWalkerAnimInstance::CacheTitanWalker()
@@ -98,34 +99,34 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 {
 	const auto ResetAimValues =
 		[this, DeltaSeconds]()
-		{
-			bUseUpperAim = false;
-			bUseWeaponAim = false;
+	{
+		bUseUpperAim = false;
+		bUseWeaponAim = false;
 
-			UpperAimYaw = FMath::FInterpTo(
-				UpperAimYaw,
-				0.0f,
-				DeltaSeconds,
-				UpperAimInterpSpeed);
+		UpperAimYaw = FMath::FInterpTo(
+			UpperAimYaw,
+			0.0f,
+			DeltaSeconds,
+			UpperAimInterpSpeed);
 
-			UpperAimPitch = FMath::FInterpTo(
-				UpperAimPitch,
-				0.0f,
-				DeltaSeconds,
-				UpperAimInterpSpeed);
+		UpperAimPitch = FMath::FInterpTo(
+			UpperAimPitch,
+			0.0f,
+			DeltaSeconds,
+			UpperAimInterpSpeed);
 
-			WeaponAimYaw = FMath::FInterpTo(
-				WeaponAimYaw,
-				0.0f,
-				DeltaSeconds,
-				WeaponAimInterpSpeed);
+		WeaponAimYaw = FMath::FInterpTo(
+			WeaponAimYaw,
+			0.0f,
+			DeltaSeconds,
+			WeaponAimInterpSpeed);
 
-			WeaponAimPitch = FMath::FInterpTo(
-				WeaponAimPitch,
-				0.0f,
-				DeltaSeconds,
-				WeaponAimInterpSpeed);
-		};
+		WeaponAimPitch = FMath::FInterpTo(
+			WeaponAimPitch,
+			0.0f,
+			DeltaSeconds,
+			WeaponAimInterpSpeed);
+	};
 
 	CurrentAttackId = NAME_None;
 
@@ -313,6 +314,46 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		TargetWeaponPitch,
 		DeltaSeconds,
 		WeaponAimSpeed);
+}
+
+void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
+{
+	const bool bWantsControlRigAttack =
+		(bUseUpperAim || bUseWeaponAim) &&
+		!bIsDead &&
+		!bIsHitReacting;
+
+	bUseControlRigAttack = bWantsControlRigAttack;
+
+	bUseAttackBasePose =
+		bUseControlRigAttack &&
+		!bIsMoving;
+
+	const float TargetAlpha = bUseControlRigAttack ? 1.0f : 0.0f;
+
+	if (ControlRigInterpSpeed <= 0.0f || DeltaSeconds <= UE_KINDA_SMALL_NUMBER)
+	{
+		ControlRigAlpha = TargetAlpha;
+	}
+	else
+	{
+		ControlRigAlpha = FMath::FInterpTo(
+			ControlRigAlpha,
+			TargetAlpha,
+			DeltaSeconds,
+			ControlRigInterpSpeed);
+	}
+
+	const float DisableThreshold = FMath::Max(ControlRigPoseDisableThreshold, 0.0f);
+
+	if (!bUseControlRigAttack && ControlRigAlpha <= DisableThreshold)
+	{
+		ControlRigAlpha = 0.0f;
+	}
+
+	bShouldUseControlRigPose =
+		bUseControlRigAttack ||
+		ControlRigAlpha > DisableThreshold;
 }
 
 FVector UNSTitanWalkerAnimInstance::GetTargetAimLocation(const AActor* TargetActor) const

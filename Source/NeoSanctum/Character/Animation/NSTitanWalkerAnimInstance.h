@@ -34,6 +34,9 @@ protected:
 
 	// 현재 공격 Row와 현재 타깃을 기준으로 상체/무기 조준 값을 갱신하는 함수
 	void UpdateAim(float DeltaSeconds);
+	
+	// Control Rig 적용 여부와 Alpha 값을 갱신하는 함수
+	void UpdateControlRigBlend(float DeltaSeconds);
 
 	// 타깃 Actor의 Bounds 기준 조준 위치를 반환하는 함수
 	FVector GetTargetAimLocation(const AActor* TargetActor) const;
@@ -78,6 +81,22 @@ protected:
 	// 현재 AnimBP/Control Rig가 처리 중인 공격 ID
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
 	FName CurrentAttackId = NAME_None;
+	
+	// 현재 공격이 Control Rig 조준 포즈를 필요로 하는지 나타내는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	bool bUseControlRigAttack = false;
+	
+	// 정지 공격 중 Idle 대신 공격 기준 포즈를 사용할지 결정하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	bool bUseAttackBasePose = false;
+
+	// AnimGraph의 Blend Poses by Bool에서 Control Rig Pose 경로를 사용할지 결정하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	bool bShouldUseControlRigPose = false;
+
+	// Control Rig 노드의 Alpha에 연결할 최종 보간 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	float ControlRigAlpha = 0.0f;
 
 	// 이 속도보다 빠르면 이동 중으로 판단
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
@@ -106,6 +125,14 @@ protected:
 	// 타깃 Bounds에서 조준 위치를 위로 보정하는 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float AimZRatio = 0.15f;
+	
+	// Control Rig Alpha가 0과 1 사이로 보간되는 속도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float ControlRigInterpSpeed = 10.0f;
+
+	// Control Rig Pose 경로를 끄기 위한 Alpha 최소 기준값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float ControlRigPoseDisableThreshold = 0.01f;
 
 private:
 	// 현재 전투 타깃을 읽기 위한 컴포넌트
