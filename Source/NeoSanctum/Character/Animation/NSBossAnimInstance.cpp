@@ -25,6 +25,10 @@ void UNSBossAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateState();
 }
 
+void UNSBossAnimInstance::ResetCombatAimImmediate()
+{
+}
+
 void UNSBossAnimInstance::CacheOwner()
 {
 	OwnerPawn = TryGetPawnOwner();

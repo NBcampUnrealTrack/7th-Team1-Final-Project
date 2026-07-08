@@ -21,6 +21,13 @@ class NEOSANCTUM_API UNSTitanWalkerAnimInstance : public UNSBossAnimInstance
 public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+	
+	// 현재 조준값이 목표 조준값에 충분히 가까운지 확인하는 함수
+	UFUNCTION(BlueprintPure, Category = "TitanWalker|Aim")
+	bool IsAimAligned(float ToleranceDegrees = 5.0f) const;
+	
+	// 몽타주 진입 전 Control Rig 조준 상태를 즉시 초기화하는 함수
+	virtual void ResetCombatAimImmediate() override;
 
 protected:
 	// TitanWalker 전용 컴포넌트와 런타임 값을 캐싱하는 함수
@@ -37,9 +44,15 @@ protected:
 	
 	// Control Rig 적용 여부와 Alpha 값을 갱신하는 함수
 	void UpdateControlRigBlend(float DeltaSeconds);
+	
+	// 전투 중 Idle 애니메이션으로 돌아가지 않도록 보정하는 함수
+	void UpdateCombatPoseHold();
 
 	// 타깃 Actor의 Bounds 기준 조준 위치를 반환하는 함수
 	FVector GetTargetAimLocation(const AActor* TargetActor) const;
+	
+	// TitanWalker의 상체/무기 조준 값과 Control Rig Alpha를 즉시 초기화하는 함수
+	void ResetAimImmediate();
 
 protected:
 	// TitanWalker의 수평 이동 속도
@@ -69,6 +82,14 @@ protected:
 	// TitanWalker 무기 파츠가 타깃을 향해 상하로 조준해야 하는 각도
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
 	float WeaponAimPitch = 0.0f;
+	
+	// Control Rig 상체 회전 Weight에 연결할 보간 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	float UpperAimAlpha = 0.0f;
+
+	// Control Rig 무기 회전 Weight에 연결할 보간 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
+	float WeaponAimAlpha = 0.0f;
 
 	// 현재 상체 조준을 Control Rig에 적용할지 판단하는 값
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
@@ -78,7 +99,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
 	bool bUseWeaponAim = false;
 
-	// 현재 AnimBP/Control Rig가 처리 중인 공격 ID
+	// 현재 실행 중이거나 무기 조준 Fade-Out에 필요한 공격 ID
 	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Aim")
 	FName CurrentAttackId = NAME_None;
 	
@@ -114,18 +135,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float WeaponAimInterpSpeed = 12.0f;
 
-	// AttackRow에 YawLimit이 없을 때 사용할 기본 상체 좌우 제한 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
-	float DefaultUpperYawLimit = 60.0f;
-	
-	// TitanWalker 스켈레톤/소켓의 실제 전방 축과 MeshComponent 전방 축 차이를 보정하는 Yaw 오프셋
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config")
-	float AimReferenceYawOffset = 90.0f;
-
-	// AttackRow에 PitchLimit이 없을 때 사용할 기본 상체 상하 제한 각도
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
-	float DefaultUpperPitchLimit = 35.0f;
-
 	// 타깃 Bounds에서 조준 위치를 위로 보정하는 비율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float AimZRatio = 0.15f;
@@ -153,6 +162,58 @@ protected:
 	// Control Rig Pose 경로를 끄기 위한 Alpha 최소 기준값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
 	float ControlRigPoseDisableThreshold = 0.01f;
+	
+	// 타깃을 잃은 뒤에도 전투 기준 포즈를 유지할 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float CombatPoseHoldTime = 10.0f;
+	
+	// 최근 타깃을 감지했거나 전투 상태였던 시간을 누적 추적하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Combat")
+	float LastTargetSeenTime = -1000.0f;
+
+	// 현재 Idle 대신 CombatBasePose를 사용할지 결정하는 값
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|Combat")
+	bool bUseCombatBasePose = false;
+	
+	// Part Row에 UpperBody YawLimit이 없을 때 사용할 기본 상체 좌우 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float DefaultUpperYawLimit = 180.0f;
+
+	// Part Row에 UpperBody PitchLimit이 없을 때 사용할 기본 상체 상하 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float DefaultUpperPitchLimit = 35.0f;
+
+	// Part Row에 Weapon YawLimit이 없을 때 사용할 기본 무기 좌우 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float DefaultWeaponYawLimit = 180.0f;
+
+	// Part Row에 Weapon PitchLimit이 없을 때 사용할 기본 무기 상하 제한 각도
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "TitanWalker|Config", meta = (ClampMin = "0.0"))
+	float DefaultWeaponPitchLimit = 45.0f;
+	
+	// 계산된 원본 조준 Yaw
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float RawAimYaw = 0.0f;
+
+	// 계산된 원본 조준 Pitch
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float RawAimPitch = 0.0f;
+
+	// Body에 적용하려는 목표 Yaw
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float TargetUpperYaw = 0.0f;
+	
+	// Body에 적용하려는 목표 Pitch
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float TargetUpperPitch = 0.0f;
+
+	// Weapon에 적용하려는 목표 Yaw
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float TargetWeaponYaw = 0.0f;
+	
+	// Weapon에 적용하려는 목표 Pitch
+	UPROPERTY(BlueprintReadOnly, Category = "TitanWalker|AimDebug")
+	float TargetWeaponPitch = 0.0f;
 
 private:
 	// 현재 전투 타깃을 읽기 위한 컴포넌트
@@ -168,4 +229,7 @@ private:
 
 	// LastActorYaw가 초기화되었는지 확인하는 값
 	bool bHasLastActorYaw = false;
+	
+	// 현재 프레임에 실제 공격 Row가 존재하는지 확인하는 값
+	bool bHasCurrentAttackRow = false;
 };

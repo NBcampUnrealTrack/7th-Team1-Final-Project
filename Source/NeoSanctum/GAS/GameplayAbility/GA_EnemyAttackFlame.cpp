@@ -142,11 +142,16 @@ void UGA_EnemyAttackFlame::GetCurrentFlameEmitters(
 		CachedAttackRow->AttackId,
 		MuzzleTransforms);
 
+	AActor* AttackActor = ResolveAttackActor();
+
 	for (const FTransform& MuzzleTransform : MuzzleTransforms)
 	{
 		FNSFlameEmitter Emitter;
 		Emitter.Start = MuzzleTransform.GetLocation();
-		Emitter.Direction = MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+		Emitter.Direction = ResolveFlameDirection(
+			*CachedAttackRow,
+			MuzzleTransform,
+			AttackActor);
 
 		if (!Emitter.Direction.IsNearlyZero())
 		{
@@ -574,6 +579,85 @@ bool UGA_EnemyAttackFlame::ApplyFlameDamageToTarget(
 	}
 
 	return true;
+}
+
+AActor* UGA_EnemyAttackFlame::ResolveAttackActor() const
+{
+	ANSBossAIController* BossController = GetBossController();
+	if (!BossController)
+	{
+		return nullptr;
+	}
+
+	if (AActor* AttackActor = BossController->GetCurrentAttackActor())
+	{
+		return AttackActor;
+	}
+
+	return BossController->GetCurrentTargetActor();
+}
+
+FVector UGA_EnemyAttackFlame::ResolveAimPoint(
+	const FNSEnemyAttackRow& AttackRow,
+	const FTransform& MuzzleTransform,
+	const AActor* AttackActor) const
+{
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+	const FVector MuzzleForward = MuzzleTransform.GetRotation().GetForwardVector();
+
+	const float Range =
+		AttackRow.AreaData.Range > 0.0f
+			? AttackRow.AreaData.Range
+			: AttackRow.Condition.MaxRange;
+
+	if (AttackRow.AimMode == ENSEnemyAimMode::Forward || !IsValid(AttackActor))
+	{
+		return MuzzleLocation + MuzzleForward * Range;
+	}
+
+	FVector TargetLocation = AttackActor->GetActorLocation();
+
+	if (const UPrimitiveComponent* PrimitiveComponent =
+		Cast<UPrimitiveComponent>(AttackActor->GetRootComponent()))
+	{
+		TargetLocation = PrimitiveComponent->Bounds.Origin;
+	}
+
+	if (AttackRow.AimMode == ENSEnemyAimMode::Ground)
+	{
+		TargetLocation.Z = AttackActor->GetActorLocation().Z;
+	}
+
+	return TargetLocation;
+}
+
+FVector UGA_EnemyAttackFlame::ResolveFlameDirection(
+	const FNSEnemyAttackRow& AttackRow,
+	const FTransform& MuzzleTransform,
+	const AActor* AttackActor) const
+{
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+
+	FVector Direction =
+		MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+
+	if (AttackRow.AimMode != ENSEnemyAimMode::Forward && IsValid(AttackActor))
+	{
+		const FVector AimPoint = ResolveAimPoint(
+			AttackRow,
+			MuzzleTransform,
+			AttackActor);
+
+		const FVector TargetDirection =
+			(AimPoint - MuzzleLocation).GetSafeNormal();
+
+		if (!TargetDirection.IsNearlyZero())
+		{
+			Direction = TargetDirection;
+		}
+	}
+
+	return Direction;
 }
 
 void UGA_EnemyAttackFlame::DrawDebugFlameCone(

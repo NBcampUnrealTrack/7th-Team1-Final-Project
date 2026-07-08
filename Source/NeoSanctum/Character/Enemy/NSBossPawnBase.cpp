@@ -4,6 +4,10 @@
 
 #include "NeoSanctum/Combat/Component/NSBossModeComponent.h"
 #include "NeoSanctum/Combat/Component/NSBossTargetComponent.h"
+#include "GameFramework/Controller.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "NeoSanctum/Character/Animation/NSBossAnimInstance.h"
 
 ANSBossPawnBase::ANSBossPawnBase()
 {
@@ -28,5 +32,57 @@ void ANSBossPawnBase::ApplyDeadState()
 	if (BossTargetComponent)
 	{
 		BossTargetComponent->ResetTargets();
+	}
+}
+
+void ANSBossPawnBase::HandleHitReactionStateChanged(bool bHitReacting)
+{
+	Super::HandleHitReactionStateChanged(bHitReacting);
+
+	if (!bHitReacting || !bFaceTargetOnHitReaction || !HasAuthority())
+	{
+		return;
+	}
+
+	FaceCurrentTargetForHitReaction();
+}
+
+void ANSBossPawnBase::FaceCurrentTargetForHitReaction()
+{
+	if (USkeletalMeshComponent* MeshComponent = GetEnemyMesh())
+	{
+		if (UNSBossAnimInstance* BossAnimInstance =
+			Cast<UNSBossAnimInstance>(MeshComponent->GetAnimInstance()))
+		{
+			BossAnimInstance->ResetCombatAimImmediate();
+		}
+	}
+
+	const AActor* TargetActor = ThreatComponent
+		                            ? ThreatComponent->GetCurrentTarget()
+		                            : nullptr;
+
+	if (!IsValid(TargetActor))
+	{
+		return;
+	}
+
+	FVector ToTarget = TargetActor->GetActorLocation() - GetActorLocation();
+	ToTarget.Z = 0.0f;
+
+	if (!ToTarget.Normalize())
+	{
+		return;
+	}
+
+	FRotator TargetRotation = ToTarget.Rotation();
+	TargetRotation.Pitch = 0.0f;
+	TargetRotation.Roll = 0.0f;
+
+	SetActorRotation(TargetRotation);
+
+	if (AController* OwnerController = GetController())
+	{
+		OwnerController->SetControlRotation(TargetRotation);
 	}
 }

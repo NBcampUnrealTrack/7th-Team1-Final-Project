@@ -97,6 +97,21 @@ private:
 
 	// TargetActor에게 Flame DamageEffect를 적용하는 함수
 	bool ApplyFlameDamageToTarget(AActor* TargetActor, const FNSEnemyAttackRow& AttackRow);
+	
+	// 현재 공격 대상 Actor를 반환하는 함수
+	AActor* ResolveAttackActor() const;
+
+	// AimMode와 타깃 상태 기준으로 화염 조준 위치를 계산하는 함수
+	FVector ResolveAimPoint(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform,
+		const AActor* AttackActor) const;
+
+	// Muzzle 위치와 공격 대상 기준으로 Flame 진행 방향을 계산하는 함수
+	FVector ResolveFlameDirection(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform,
+		const AActor* AttackActor) const;
 
 	// DebugData 기준으로 Flame Cone을 표시하는 함수
 	void DrawDebugFlameCone(

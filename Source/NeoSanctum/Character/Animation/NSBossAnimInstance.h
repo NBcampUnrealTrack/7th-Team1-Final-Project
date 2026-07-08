@@ -22,6 +22,9 @@ class NEOSANCTUM_API UNSBossAnimInstance : public UAnimInstance
 public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
+	
+	// 몽타주 진입 전 보스별 조준 상태를 즉시 초기화하기 위한 함수
+	virtual void ResetCombatAimImmediate();
 
 protected:
 	// AnimInstance를 소유한 Boss Pawn을 캐싱하는 함수

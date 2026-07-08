@@ -3,9 +3,7 @@
 #include "NSTitanWalkerAnimInstance.h"
 
 #include "Components/PrimitiveComponent.h"
-#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Pawn.h"
-#include "Kismet/KismetMathLibrary.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -50,6 +48,43 @@ void UNSTitanWalkerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	UpdateTurn(DeltaSeconds);
 	UpdateAim(DeltaSeconds);
 	UpdateControlRigBlend(DeltaSeconds);
+	UpdateCombatPoseHold();
+}
+
+bool UNSTitanWalkerAnimInstance::IsAimAligned(float ToleranceDegrees) const
+{
+	const float SafeTolerance = FMath::Max(ToleranceDegrees, 0.0f);
+
+	float MaxError = 0.0f;
+
+	if (bUseUpperAim)
+	{
+		MaxError = FMath::Max(
+			MaxError,
+			FMath::Abs(FMath::FindDeltaAngleDegrees(UpperAimYaw, TargetUpperYaw)));
+
+		MaxError = FMath::Max(
+			MaxError,
+			FMath::Abs(UpperAimPitch - TargetUpperPitch));
+	}
+
+	if (bUseWeaponAim)
+	{
+		MaxError = FMath::Max(
+			MaxError,
+			FMath::Abs(FMath::FindDeltaAngleDegrees(WeaponAimYaw, TargetWeaponYaw)));
+
+		MaxError = FMath::Max(
+			MaxError,
+			FMath::Abs(WeaponAimPitch - TargetWeaponPitch));
+	}
+
+	return MaxError <= SafeTolerance;
+}
+
+void UNSTitanWalkerAnimInstance::ResetCombatAimImmediate()
+{
+	ResetAimImmediate();
 }
 
 void UNSTitanWalkerAnimInstance::CacheTitanWalker()
@@ -124,49 +159,41 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 			bUseUpperAim = false;
 			bUseWeaponAim = false;
 
-			UpperAimYaw = InterpAngleDegrees(
-				UpperAimYaw,
-				0.0f,
-				DeltaSeconds,
-				UpperAimInterpSpeed);
+			RawAimYaw = 0.0f;
+			RawAimPitch = 0.0f;
+			TargetUpperYaw = 0.0f;
+			TargetUpperPitch = 0.0f;
+			TargetWeaponYaw = 0.0f;
+			TargetWeaponPitch = 0.0f;
 
-			UpperAimPitch = FMath::FInterpTo(
-				UpperAimPitch,
-				0.0f,
-				DeltaSeconds,
-				UpperAimInterpSpeed);
+			UpperAimYaw = InterpAngleDegrees(UpperAimYaw, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
+			UpperAimPitch = FMath::FInterpTo(UpperAimPitch, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
 
-			WeaponAimYaw = InterpAngleDegrees(
-				WeaponAimYaw,
-				0.0f,
-				DeltaSeconds,
-				WeaponAimInterpSpeed);
-
-			WeaponAimPitch = FMath::FInterpTo(
-				WeaponAimPitch,
-				0.0f,
-				DeltaSeconds,
-				WeaponAimInterpSpeed);
+			WeaponAimYaw = InterpAngleDegrees(WeaponAimYaw, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
+			WeaponAimPitch = FMath::FInterpTo(WeaponAimPitch, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
 		};
-
-	CurrentAttackId = NAME_None;
 
 	const INSEnemyAgent* EnemyAgentInterface = EnemyAgent.GetInterface();
 	const FNSEnemyAttackRow* CurrentAttackRow = EnemyAgentInterface
-		                                            ? EnemyAgentInterface->GetCurrentAttackRow()
-		                                            : nullptr;
+		? EnemyAgentInterface->GetCurrentAttackRow()
+		: nullptr;
+
+	bHasCurrentAttackRow = CurrentAttackRow != nullptr;
 
 	if (CurrentAttackRow)
 	{
 		CurrentAttackId = CurrentAttackRow->AttackId;
 	}
 
-	if (!IsValid(OwnerPawn) ||
-		bIsDead ||
-		bIsHitReacting ||
-		!IsValid(ThreatComponent))
+	if (!IsValid(OwnerPawn) || bIsDead || !IsValid(ThreatComponent))
 	{
 		ResetAimValues();
+		return;
+	}
+
+	if (bIsHitReacting)
+	{
+		ResetAimImmediate();
 		return;
 	}
 
@@ -177,9 +204,14 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		return;
 	}
 
+	if (const UWorld* World = GetWorld())
+	{
+		LastTargetSeenTime = World->GetTimeSeconds();
+	}
+
 	const FVector AimOrigin = EnemyAgentInterface
-		                          ? EnemyAgentInterface->GetAimLocation()
-		                          : OwnerPawn->GetActorLocation();
+		? EnemyAgentInterface->GetAimLocation()
+		: OwnerPawn->GetActorLocation();
 
 	const FVector TargetLocation = GetTargetAimLocation(TargetActor);
 	const FVector ToTarget = TargetLocation - AimOrigin;
@@ -190,56 +222,54 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		return;
 	}
 
-	const FRotator WorldAimRotation = ToTarget.Rotation();
+	FVector ToTargetFlat = ToTarget;
+	ToTargetFlat.Z = 0.0f;
 
-	USkeletalMeshComponent* EnemyMeshComponent =
-		EnemyAgentInterface ? EnemyAgentInterface->GetEnemyMesh() : nullptr;
+	if (!ToTargetFlat.Normalize())
+	{
+		ResetAimValues();
+		return;
+	}
 
-	const float BaseReferenceYaw = IsValid(EnemyMeshComponent)
-		                               ? EnemyMeshComponent->GetComponentRotation().Yaw
-		                               : OwnerPawn->GetActorRotation().Yaw;
+	const float ReferenceYaw = OwnerPawn->GetActorRotation().Yaw;
 
-	const float ReferenceYaw =
-		FRotator::NormalizeAxis(BaseReferenceYaw + AimReferenceYawOffset);
+	const FVector ReferenceForward =
+		FRotationMatrix(FRotator(0.0f, ReferenceYaw, 0.0f))
+		.GetUnitAxis(EAxis::X)
+		.GetSafeNormal2D();
 
-	const FRotator ReferenceRotation(
-		0.0f,
-		ReferenceYaw,
-		0.0f);
+	const float Dot = FVector::DotProduct(ReferenceForward, ToTargetFlat);
+	const float CrossZ = FVector::CrossProduct(ReferenceForward, ToTargetFlat).Z;
 
-	const FRotator LocalAimRotation =
-		UKismetMathLibrary::NormalizedDeltaRotator(
-			WorldAimRotation,
-			ReferenceRotation);
+	const float SignedYaw = FMath::RadiansToDegrees(FMath::Atan2(CrossZ, Dot));
+	const float HorizontalDistance = FVector::Dist2D(AimOrigin, TargetLocation);
+	const float SignedPitch = FMath::RadiansToDegrees(FMath::Atan2(ToTarget.Z, HorizontalDistance));
 
-	const bool bHasAttackRow = CurrentAttackRow != nullptr;
+	const FRotator LocalAimRotation(SignedPitch, SignedYaw, 0.0f);
 
-	const bool bAllowUpperAim = bHasAttackRow
-		                            ? CurrentAttackRow->bTurnUpper
-		                            : bTrackUpperToTarget;
+	RawAimYaw = LocalAimRotation.Yaw;
+	RawAimPitch = LocalAimRotation.Pitch;
+
+	const bool bAllowUpperAim = bHasCurrentAttackRow
+		? CurrentAttackRow->bTurnUpper
+		: bTrackUpperToTarget;
 
 	const bool bAllowWeaponAim =
-		bHasAttackRow &&
-		CurrentAttackRow->bTurnWeapon &&
-		IsValid(PartComponent);
+		bHasCurrentAttackRow &&
+		CurrentAttackRow->bTurnWeapon;
 
-	float TargetUpperYaw = 0.0f;
-	float TargetUpperPitch = 0.0f;
-	float UpperAimSpeed = bHasAttackRow ? UpperAimInterpSpeed : TrackAimSpeed;
+	float DesiredUpperYaw = 0.0f;
+	float DesiredUpperPitch = 0.0f;
+	float UpperAimSpeed = bHasCurrentAttackRow ? UpperAimInterpSpeed : TrackAimSpeed;
 
 	bUseUpperAim = false;
 
 	if (bAllowUpperAim)
 	{
-		float UpperYawLimit = bHasAttackRow
-			                      ? DefaultUpperYawLimit
-			                      : TrackYawLimit;
+		float UpperYawLimit = bHasCurrentAttackRow ? DefaultUpperYawLimit : TrackYawLimit;
+		float UpperPitchLimit = bHasCurrentAttackRow ? DefaultUpperPitchLimit : TrackPitchLimit;
 
-		float UpperPitchLimit = bHasAttackRow
-			                        ? DefaultUpperPitchLimit
-			                        : TrackPitchLimit;
-
-		if (bHasAttackRow && IsValid(PartComponent))
+		if (bHasCurrentAttackRow && IsValid(PartComponent))
 		{
 			float PartYawLimit = 0.0f;
 			float PartPitchLimit = 0.0f;
@@ -272,103 +302,134 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 			}
 		}
 
-		TargetUpperYaw = FMath::Clamp(
-			LocalAimRotation.Yaw,
-			-UpperYawLimit,
-			UpperYawLimit);
-
-		TargetUpperPitch = FMath::Clamp(
-			LocalAimRotation.Pitch,
-			-UpperPitchLimit,
-			UpperPitchLimit);
+		DesiredUpperYaw = FMath::Clamp(LocalAimRotation.Yaw, -UpperYawLimit, UpperYawLimit);
+		DesiredUpperPitch = FMath::Clamp(LocalAimRotation.Pitch, -UpperPitchLimit, UpperPitchLimit);
 
 		bUseUpperAim = true;
 	}
 
-	UpperAimYaw = InterpAngleDegrees(
-		UpperAimYaw,
-		TargetUpperYaw,
-		DeltaSeconds,
-		UpperAimSpeed);
+	TargetUpperYaw = DesiredUpperYaw;
+	TargetUpperPitch = DesiredUpperPitch;
 
-	UpperAimPitch = FMath::FInterpTo(
-		UpperAimPitch,
-		TargetUpperPitch,
-		DeltaSeconds,
-		UpperAimSpeed);
+	UpperAimYaw = InterpAngleDegrees(UpperAimYaw, DesiredUpperYaw, DeltaSeconds, UpperAimSpeed);
+	UpperAimPitch = FMath::FInterpTo(UpperAimPitch, DesiredUpperPitch, DeltaSeconds, UpperAimSpeed);
 
-	float TargetWeaponYaw = 0.0f;
-	float TargetWeaponPitch = 0.0f;
+	float DesiredWeaponYaw = 0.0f;
+	float DesiredWeaponPitch = 0.0f;
 	float WeaponAimSpeed = WeaponAimInterpSpeed;
 
 	bUseWeaponAim = false;
 
 	if (bAllowWeaponAim)
 	{
-		float WeaponYawLimit = 0.0f;
-		float WeaponPitchLimit = 0.0f;
-		float PartAimSpeed = 0.0f;
+		float WeaponYawLimit = DefaultWeaponYawLimit;
+		float WeaponPitchLimit = DefaultWeaponPitchLimit;
 
-		const bool bHasWeaponAim =
-			PartComponent->TryGetAimLimitsByAttackId(
-				CurrentAttackRow->AttackId,
-				ENSEnemyPartAimRole::Weapon,
-				WeaponYawLimit,
-				WeaponPitchLimit,
-				PartAimSpeed);
-
-		if (bHasWeaponAim)
+		if (IsValid(PartComponent))
 		{
-			const float ResidualYaw =
-				FRotator::NormalizeAxis(LocalAimRotation.Yaw - UpperAimYaw);
+			float PartYawLimit = 0.0f;
+			float PartPitchLimit = 0.0f;
+			float PartAimSpeed = 0.0f;
 
-			const float ResidualPitch =
-				FRotator::NormalizeAxis(LocalAimRotation.Pitch - UpperAimPitch);
+			const bool bHasWeaponAimData =
+				PartComponent->TryGetAimLimitsByAttackId(
+					CurrentAttackRow->AttackId,
+					ENSEnemyPartAimRole::Weapon,
+					PartYawLimit,
+					PartPitchLimit,
+					PartAimSpeed);
 
-			if (WeaponYawLimit > 0.0f)
+			if (bHasWeaponAimData)
 			{
-				TargetWeaponYaw = FMath::Clamp(
-					ResidualYaw,
-					-WeaponYawLimit,
-					WeaponYawLimit);
-			}
+				if (PartYawLimit > 0.0f)
+				{
+					WeaponYawLimit = PartYawLimit;
+				}
 
-			if (WeaponPitchLimit > 0.0f)
-			{
-				TargetWeaponPitch = FMath::Clamp(
-					ResidualPitch,
-					-WeaponPitchLimit,
-					WeaponPitchLimit);
-			}
+				if (PartPitchLimit > 0.0f)
+				{
+					WeaponPitchLimit = PartPitchLimit;
+				}
 
-			if (PartAimSpeed > 0.0f)
-			{
-				WeaponAimSpeed = PartAimSpeed;
+				if (PartAimSpeed > 0.0f)
+				{
+					WeaponAimSpeed = PartAimSpeed;
+				}
 			}
-
-			bUseWeaponAim = true;
 		}
+
+		const float ResidualYaw = FRotator::NormalizeAxis(LocalAimRotation.Yaw - UpperAimYaw);
+		const float ResidualPitch = FRotator::NormalizeAxis(LocalAimRotation.Pitch - UpperAimPitch);
+
+		if (WeaponYawLimit > 0.0f)
+		{
+			DesiredWeaponYaw = FMath::Clamp(ResidualYaw, -WeaponYawLimit, WeaponYawLimit);
+		}
+
+		if (WeaponPitchLimit > 0.0f)
+		{
+			DesiredWeaponPitch = FMath::Clamp(ResidualPitch, -WeaponPitchLimit, WeaponPitchLimit);
+		}
+
+		bUseWeaponAim = true;
 	}
 
-	WeaponAimYaw = InterpAngleDegrees(
-		WeaponAimYaw,
-		TargetWeaponYaw,
-		DeltaSeconds,
-		WeaponAimSpeed);
+	TargetWeaponYaw = DesiredWeaponYaw;
+	TargetWeaponPitch = DesiredWeaponPitch;
 
-	WeaponAimPitch = FMath::FInterpTo(
-		WeaponAimPitch,
-		TargetWeaponPitch,
-		DeltaSeconds,
-		WeaponAimSpeed);
+	WeaponAimYaw = InterpAngleDegrees(WeaponAimYaw, DesiredWeaponYaw, DeltaSeconds, WeaponAimSpeed);
+	WeaponAimPitch = FMath::FInterpTo(WeaponAimPitch, DesiredWeaponPitch, DeltaSeconds, WeaponAimSpeed);
 }
 
 void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
 {
-	const bool bWantsControlRigPose =
-		(bUseUpperAim || bUseWeaponAim) &&
+	const bool bWantsUpperAim =
+		bUseUpperAim &&
 		!bIsDead &&
 		!bIsHitReacting;
+
+	const bool bWantsWeaponAim =
+		bUseWeaponAim &&
+		!bIsDead &&
+		!bIsHitReacting;
+
+	const float TargetUpperAlpha = bWantsUpperAim ? 1.0f : 0.0f;
+	const float TargetWeaponAlpha = bWantsWeaponAim ? 1.0f : 0.0f;
+
+	if (ControlRigInterpSpeed <= 0.0f || DeltaSeconds <= UE_KINDA_SMALL_NUMBER)
+	{
+		UpperAimAlpha = TargetUpperAlpha;
+		WeaponAimAlpha = TargetWeaponAlpha;
+	}
+	else
+	{
+		UpperAimAlpha = FMath::FInterpTo(UpperAimAlpha, TargetUpperAlpha, DeltaSeconds, ControlRigInterpSpeed);
+		WeaponAimAlpha = FMath::FInterpTo(WeaponAimAlpha, TargetWeaponAlpha, DeltaSeconds, ControlRigInterpSpeed);
+	}
+
+	const float DisableThreshold = FMath::Max(ControlRigPoseDisableThreshold, 0.0f);
+
+	if (!bWantsUpperAim && UpperAimAlpha <= DisableThreshold)
+	{
+		UpperAimAlpha = 0.0f;
+	}
+
+	if (!bWantsWeaponAim && WeaponAimAlpha <= DisableThreshold)
+	{
+		WeaponAimAlpha = 0.0f;
+	}
+
+	if (!bHasCurrentAttackRow && !bUseWeaponAim && WeaponAimAlpha <= DisableThreshold)
+	{
+		CurrentAttackId = NAME_None;
+	}
+
+	ControlRigAlpha = FMath::Max(UpperAimAlpha, WeaponAimAlpha);
+
+	const bool bWantsControlRigPose =
+		bWantsUpperAim ||
+		bWantsWeaponAim ||
+		ControlRigAlpha > DisableThreshold;
 
 	const bool bHasAttackPoseRequest =
 		!CurrentAttackId.IsNone() &&
@@ -380,32 +441,27 @@ void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
 		bUseControlRigAttack &&
 		!bIsMoving;
 
-	const float TargetAlpha = bWantsControlRigPose ? 1.0f : 0.0f;
+	bShouldUseControlRigPose = bWantsControlRigPose;
+}
 
-	if (ControlRigInterpSpeed <= 0.0f || DeltaSeconds <= UE_KINDA_SMALL_NUMBER)
-	{
-		ControlRigAlpha = TargetAlpha;
-	}
-	else
-	{
-		ControlRigAlpha = FMath::FInterpTo(
-			ControlRigAlpha,
-			TargetAlpha,
-			DeltaSeconds,
-			ControlRigInterpSpeed);
-	}
+void UNSTitanWalkerAnimInstance::UpdateCombatPoseHold()
+{
+	const UWorld* World = GetWorld();
+	const float CurrentTime = World ? World->GetTimeSeconds() : 0.0f;
 
-	const float DisableThreshold =
-		FMath::Max(ControlRigPoseDisableThreshold, 0.0f);
+	const bool bRecentlyHadTarget =
+		World &&
+		(CurrentTime - LastTargetSeenTime) <= CombatPoseHoldTime;
 
-	if (!bWantsControlRigPose && ControlRigAlpha <= DisableThreshold)
-	{
-		ControlRigAlpha = 0.0f;
-	}
+	const bool bWantsCombatBasePose =
+		bUseAttackBasePose ||
+		bRecentlyHadTarget;
 
-	bShouldUseControlRigPose =
-		bWantsControlRigPose ||
-		ControlRigAlpha > DisableThreshold;
+	bUseCombatBasePose =
+		bWantsCombatBasePose &&
+		!bIsMoving &&
+		!bIsDead &&
+		!bIsHitReacting;
 }
 
 FVector UNSTitanWalkerAnimInstance::GetTargetAimLocation(const AActor* TargetActor) const
@@ -426,4 +482,32 @@ FVector UNSTitanWalkerAnimInstance::GetTargetAimLocation(const AActor* TargetAct
 	}
 
 	return Origin + FVector::UpVector * (Extent.Z * AimZRatio);
+}
+
+void UNSTitanWalkerAnimInstance::ResetAimImmediate()
+{
+	bUseUpperAim = false;
+	bUseWeaponAim = false;
+
+	UpperAimYaw = 0.0f;
+	UpperAimPitch = 0.0f;
+	WeaponAimYaw = 0.0f;
+	WeaponAimPitch = 0.0f;
+
+	UpperAimAlpha = 0.0f;
+	WeaponAimAlpha = 0.0f;
+	ControlRigAlpha = 0.0f;
+
+	RawAimYaw = 0.0f;
+	RawAimPitch = 0.0f;
+	TargetUpperYaw = 0.0f;
+	TargetUpperPitch = 0.0f;
+	TargetWeaponYaw = 0.0f;
+	TargetWeaponPitch = 0.0f;
+
+	CurrentAttackId = NAME_None;
+	bUseControlRigAttack = false;
+	bUseAttackBasePose = false;
+	bShouldUseControlRigPose = false;
+	bHasCurrentAttackRow = false;
 }
