@@ -41,6 +41,14 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_Impact);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_BulletTrail);
 	
-	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpeedBuff);
+	
+	//Enemy MotherShip
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning01);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning02);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning03);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning04);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Missile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Impact);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Cloaking);
 }

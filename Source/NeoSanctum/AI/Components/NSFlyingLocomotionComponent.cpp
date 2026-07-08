@@ -25,16 +25,25 @@ void UNSFlyingLocomotionComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	// 서버 권한 및 오너 유효성 방어
 	if (!HasAuthorityChecked()) return;
-
+	if (bScriptedMove) { ApplyScriptedMoveInput(DeltaTime); }
+	
 	// 회전 갱신 (타겟 or velocity 방향)
 	UpdateRotation(DeltaTime);
 
-	// 고도 샘플링은 매 프레임이 아니라 주기적으로만 수행 (트레이스 비용 절감)
-	GroundSampleAccumulator += DeltaTime;
-	if (GroundSampleAccumulator >= GroundSampleInterval)
+	if (bScriptedMove)
 	{
-		MaintainAltitude(GroundSampleAccumulator);
-		GroundSampleAccumulator = 0.f;
+		// 스크립트 이동 중엔 매 프레임 갱신 (끊김 방지). 평상시엔 기존 스로틀링 유지
+		MaintainAltitude(DeltaTime);
+	}
+	else
+	{
+		// 고도 샘플링은 매 프레임이 아니라 주기적으로만 수행 (트레이스 비용 절감)
+		GroundSampleAccumulator += DeltaTime;
+		if (GroundSampleAccumulator >= GroundSampleInterval)
+		{
+			MaintainAltitude(GroundSampleAccumulator);
+			GroundSampleAccumulator = 0.f;
+		}
 	}
 }
 
@@ -104,6 +113,7 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 {
 	// 서버 권한 확인
 	if (!HasAuthorityChecked()) return;
+	if (bScriptedMove) return;
 
 	APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return;
@@ -187,8 +197,11 @@ void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 
 	// 지형 샘플링 실패 시 조기 종료
 	float OutZ;
-	if (!SampleHighestGround(OutZ)) return;
-
+	if (!SampleHighestGround(OutZ))
+	{
+		return;
+	}
+	
 	// 원하는 목표 높이 (지형 + 유지 고도)
 	const float RawTarget = OutZ + Altitude;
 
@@ -462,4 +475,63 @@ FVector UNSFlyingLocomotionComponent::ChooseRetreatDirection() const
 	// 이동 가능한 루트 반환
 	return SteeringDirections[BestIndex];
 }
+#pragma endregion
+
+#pragma region ScriptedMove
+
+void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, float TargetAltitude, float Speed)
+{
+	if (!bScriptedMove)
+	{
+		CachedAltitude = Altitude;
+		CachedMaxSpeed = MaxSpeed;
+		CachedRotationTarget = RotationTarget;
+		CachedAcceleration = Acceleration;
+		CachedMaxClimbSpeed = MaxClimbSpeed;
+	}
+	
+	Altitude = TargetAltitude;
+	MaxSpeed = Speed;
+	Acceleration = Speed * 5.f;
+	MaxClimbSpeed = Speed;
+	RotationTarget = nullptr;
+	ScriptedDestXY = DestXY;
+	bScriptedMove = true;
+}
+
+void UNSFlyingLocomotionComponent::EndScriptedMove()
+{
+	Altitude = CachedAltitude;
+	MaxSpeed = CachedMaxSpeed;
+	Acceleration = CachedAcceleration;
+	MaxClimbSpeed = CachedMaxClimbSpeed;
+	RotationTarget = CachedRotationTarget;
+	bScriptedMove = false;
+	ResetLocomotionState();
+}
+
+bool UNSFlyingLocomotionComponent::HasReachedScriptedDest() const
+{
+	if (!PawnOwner) return false;
+
+	const bool bXYReached = HasReachedLocation(ScriptedDestXY);
+	const float AltDiff = FMath::Abs(PawnOwner->GetActorLocation().Z - SmoothedTargetHeight);
+
+	if (!bXYReached) return false;
+	return AltDiff < AltitudeDeadZone;
+}
+
+void UNSFlyingLocomotionComponent::ApplyScriptedMoveInput(float DeltaSeconds)
+{
+	if (!PawnOwner) return;
+	FVector Dist = ScriptedDestXY - PawnOwner->GetActorLocation();
+	Dist.Z = 0.f;
+	
+	const FVector Direction2D = Dist.GetSafeNormal2D();
+	
+	if (Dist.SizeSquared() <= FMath::Square(ArrivalRadius)) return;
+	
+	PawnOwner->AddMovementInput(Direction2D, 1.f);
+}
+
 #pragma endregion
