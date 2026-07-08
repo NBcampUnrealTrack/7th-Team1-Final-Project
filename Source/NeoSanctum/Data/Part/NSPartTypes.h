@@ -67,9 +67,9 @@ struct FNSDefaultVisualPartEntry
 {
 	GENERATED_BODY()
 
-	// 이 항목이 채울 시각 슬롯. 기존 Part.Slot 네임스페이스 그대로 사용
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Slot"))
-	FGameplayTag SlotTag;
+	// 이 항목이 채울 시각 슬롯. 거래/장착용 Part.Slot과 구분되는 시각 전용 네임스페이스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Visual"))
+	FGameplayTag PartVisualTag;
 
 	// 기본으로 보여줄 메시 - CommonData 번들에 포함시켜 캐릭터 스폰 전에 미리 로드
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (AssetBundles = "CommonData"))
