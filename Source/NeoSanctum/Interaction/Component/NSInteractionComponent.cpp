@@ -11,6 +11,10 @@
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
+#include "Camera/CameraComponent.h"
+#include "Components/MeshComponent.h"
+#include "Engine/AssetManager.h"
+#include "Materials/MaterialInterface.h"
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -49,6 +53,21 @@ void UNSInteractionComponent::BeginPlay()
 	EnableLocalInteraction();
 }
 
+void UNSInteractionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 컴포넌트가 없어질때 확실하게 CustomDepth해제
+	UpdateOutlineTarget(nullptr);
+
+	// 진행 중이던 머티리얼 비동기 로드 취소, 파괴 후 콜백 실행 방지
+	if (OutlineMaterialLoadHandle.IsValid())
+	{
+		OutlineMaterialLoadHandle->CancelHandle();
+		OutlineMaterialLoadHandle.Reset();
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void UNSInteractionComponent::EnableLocalInteraction()
 {
 	if (bLocalInteractionEnabled)
@@ -71,6 +90,9 @@ void UNSInteractionComponent::EnableLocalInteraction()
 	DetectionSphere->OnComponentBeginOverlap.AddDynamic(this, &UNSInteractionComponent::OnSphereBeginOverlap);
 	DetectionSphere->OnComponentEndOverlap.AddDynamic(this, &UNSInteractionComponent::OnSphereEndOverlap);
 	DetectionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+	// 아웃라인 PP 머티리얼 로드, 카메라 등록
+	SetupOutlinePostProcess();
 }
 
 void UNSInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -244,6 +266,9 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 		return;
 	}
 
+	// 프롬프트가 뜨는 대상 = 아웃라인 대상
+	UpdateOutlineTarget(Target);
+
 	// 타겟 타입에 따라 위젯 클래스 결정 (타겟 전환 시에만 교체)
 	TSubclassOf<UNSInteractionPromptWidget> DesiredClass = DefaultPromptWidgetClass;
 	if (Cast<ANSDroppedPart>(Target))
@@ -286,11 +311,101 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 
 void UNSInteractionComponent::HidePrompt()
 {
+	// 프롬프트가 사라지는 모든 경로에서 아웃라인도 함께 해제
+	UpdateOutlineTarget(nullptr);
+
 	if (!PromptWidgetComponent)
 	{
 		return;
 	}
 	PromptWidgetComponent->SetVisibility(false);
+}
+
+void UNSInteractionComponent::SetupOutlinePostProcess()
+{
+	// 머티리얼이 지정 안 된 프로젝트 상태(에디터 작업 전)에서도 조용히 동작하도록
+	if (OutlinePostProcessMaterial.IsNull())
+	{
+		return;
+	}
+	AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return;
+	}
+	// 카메라가 없는 폰이면 아웃라인만 생략 — 감지/프롬프트는 정상 동작
+	UCameraComponent* Camera = Owner->FindComponentByClass<UCameraComponent>();
+	if (!Camera)
+	{
+		return;
+	}
+
+	// 비동기 로드 후 완료 시점에 블렌더블 등록
+	TWeakObjectPtr<UNSInteractionComponent> WeakThis(this);
+	OutlineMaterialLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
+		OutlinePostProcessMaterial.ToSoftObjectPath(),
+		[WeakThis]()
+		{
+			UNSInteractionComponent* Self = WeakThis.Get();
+			if (!Self)
+			{
+				return;
+			}
+			UMaterialInterface* Material = Self->OutlinePostProcessMaterial.Get();
+			if (!Material)
+			{
+				return;
+			}
+			AActor* LoadedOwner = Self->GetOwner();
+			if (!LoadedOwner)
+			{
+				return;
+			}
+			UCameraComponent* LoadedCamera = LoadedOwner->FindComponentByClass<UCameraComponent>();
+			if (!LoadedCamera)
+			{
+				return;
+			}
+			// 아웃라인 표시 여부는 CustomDepth on/off가 결정
+			LoadedCamera->PostProcessSettings.AddBlendable(Material, 1.f);
+		});
+}
+
+void UNSInteractionComponent::UpdateOutlineTarget(AActor* NewTarget)
+{
+	AActor* Current = OutlinedTarget.Get();
+	// 같은 대상이면 아무것도 안 함
+	if (Current == NewTarget)
+	{
+		return;
+	}
+	// 이전 대상 끄기
+	if (Current)
+	{
+		SetActorOutlineEnabled(Current, false);
+	}
+	if (NewTarget)
+	{
+		SetActorOutlineEnabled(NewTarget, true);
+	}
+	OutlinedTarget = NewTarget;
+}
+
+void UNSInteractionComponent::SetActorOutlineEnabled(AActor* Target, bool bEnabled)
+{
+	// NPC/드롭 파츠 등 타입 구분 없이 대상의 모든 메시에 적용
+	TArray<UMeshComponent*> MeshComponents;
+	Target->GetComponents<UMeshComponent>(MeshComponents);
+	for (UMeshComponent* Mesh : MeshComponents)
+	{
+		if (!Mesh)
+		{
+			continue;
+		}
+		Mesh->SetRenderCustomDepth(bEnabled);
+		// 끌 때는 0으로 되돌려 잔여 스텐실을 남기지 않음
+		Mesh->SetCustomDepthStencilValue(bEnabled ? OutlineStencilValue : 0);
+	}
 }
 
 APlayerController* UNSInteractionComponent::GetOwnerController() const
