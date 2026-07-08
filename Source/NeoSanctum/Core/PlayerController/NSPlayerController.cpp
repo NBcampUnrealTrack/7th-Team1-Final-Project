@@ -1006,6 +1006,23 @@ void ANSPlayerController::BeginPlay()
 	StartSkillUIApplyRetry();
 }
 
+void ANSPlayerController::GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const
+{
+	if (!IsLocalController())
+	{
+		if (const ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(GetPawn()))
+		{
+			// 서버에서 관전자의 복제 기준 위치만 Spectator Pawn 위치와 방향으로 고정하기 위함
+			Location = DeathSpectatorPawn->GetActorLocation();
+			Rotation = DeathSpectatorPawn->GetActorRotation();
+			return;
+		}
+	}
+	
+	// 로컬에서는 적용하지 않음.
+	Super::GetPlayerViewPoint(Location, Rotation);
+}
+
 void ANSPlayerController::ShowTravelLoadingScreen()
 {
 	if (!IsLocalController())

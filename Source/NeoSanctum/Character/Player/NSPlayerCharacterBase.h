@@ -67,8 +67,6 @@ public:
 	virtual void PossessedBy(AController* EventController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual void OnRep_Controller() override;
-	// 관전 중인 대상 Pawn은 거리와 무관하게 관전자에게 복제
-	virtual bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	// 원격 관전자 시점에서 복제된 카메라 회전 사용
 	virtual FRotator GetViewRotation() const override;

@@ -18,7 +18,6 @@
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
-#include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
 #include "NeoSanctum/Character/Component/NSGateAccessComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
@@ -207,27 +206,6 @@ void ANSPlayerCharacterBase::OnRep_Controller()
 	{
 		InteractionComp->EnableLocalInteraction();
 	}
-}
-
-bool ANSPlayerCharacterBase::IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const
-{
-	// 관전 대상은 거리와 무관하게 해당 관전자에게 복제
-	const ANSDeathSpectatorPawn* DeathSpectatorViewTarget = Cast<ANSDeathSpectatorPawn>(ViewTarget);
-	if (!DeathSpectatorViewTarget)
-	{
-		if (const AController* ViewerController = Cast<AController>(RealViewer))
-		{
-			DeathSpectatorViewTarget = Cast<ANSDeathSpectatorPawn>(ViewerController->GetPawn());
-		}
-	}
-
-	if (DeathSpectatorViewTarget && DeathSpectatorViewTarget->GetSpectatorTarget() == this)
-	{
-		// 관전자가 보고 있는 플레이어 Pawn은 NetCullDistance 밖이어도 유지
-		return true;
-	}
-
-	return Super::IsNetRelevantFor(RealViewer, ViewTarget, SrcLocation);
 }
 
 void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

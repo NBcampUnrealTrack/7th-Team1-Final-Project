@@ -349,6 +349,7 @@ private:
 	FDelegateHandle PermanentDataLoadedHandle;
 protected:
 	virtual void BeginPlay() override;
+	virtual void GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
 	
 	// 클라이언트가 다른 맵/서버로 이동하기 직전에 호출되는 함수로, Loading창을 띄우는 시점을 관리하기 위해 가져왔음
