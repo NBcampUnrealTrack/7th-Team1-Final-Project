@@ -330,7 +330,23 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 		}
 		return;
 	}
+	
+	if (InputTag == NSGameplayTags::Input_Augment_TogglePartInventory)
+	{
+		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+		ANSPlayerController* PlayerController =
+			OwnerPawn
+				? Cast<ANSPlayerController>(OwnerPawn->GetController())
+				: nullptr;
 
+		if (PlayerController)
+		{
+			PlayerController->TogglePartInventoryPanel();
+		}
+
+		return;
+	}
+	
 	// 증강 패널이 닫혀있으면 1/2/3/T 입력 무시
 	if (!UIManager->IsAugmentationPanelOpen())
 	{
