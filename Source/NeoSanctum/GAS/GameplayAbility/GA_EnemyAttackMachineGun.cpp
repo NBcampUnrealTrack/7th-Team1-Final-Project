@@ -394,10 +394,10 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 
 	ProjectileManager->FireProjectile(Request);
 
-	DrawDebugFire(
+	/*DrawDebugFire(
 		*CachedAttackRow,
 		Request.StartLocation,
-		Direction);
+		Direction);*/
 
 	++FiredCount;
 
