@@ -226,6 +226,11 @@ bool UNSAugmentationWidget::CanAffordReroll()
 	return CurrencyComp && CurrencyComp->GetTemp() >= CurrentRerollCost;
 }
 
+bool UNSAugmentationWidget::IsRerollAvailable()
+{
+	return !bRerollRequestPending && CanAffordReroll();
+}
+
 void UNSAugmentationWidget::RefreshRerollControls()
 {
 	const ESlateVisibility RerollVisibility =
@@ -234,7 +239,6 @@ void UNSAugmentationWidget::RefreshRerollControls()
 	if (RerollButton)
 	{
 		RerollButton->SetVisibility(RerollVisibility);
-		RerollButton->SetIsEnabled(!bRerollRequestPending);
 	}
 
 	if (RerollShortcutHintWidget)

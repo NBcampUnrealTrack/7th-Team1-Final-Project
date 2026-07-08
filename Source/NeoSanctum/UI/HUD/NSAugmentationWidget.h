@@ -50,6 +50,8 @@ public:
 	// 현재 리롤 비용을 감당할 수 있는지 (WBP에서 색상 등 Bind용)
 	UFUNCTION(BlueprintPure, Category = "UI")
 	bool CanAffordReroll();
+	UFUNCTION(BlueprintPure, Category = "UI")
+	bool IsRerollAvailable();
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
 	void SetOwnedAugmentListVisible(bool bVisible);
