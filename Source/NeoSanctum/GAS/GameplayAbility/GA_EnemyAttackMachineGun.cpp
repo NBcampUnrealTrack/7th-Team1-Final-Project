@@ -3,13 +3,13 @@
 #include "GA_EnemyAttackMachineGun.h"
 
 #include "AbilitySystemComponent.h"
-#include "AIController.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Character/Animation/NSTitanWalkerAnimInstance.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
@@ -36,7 +36,6 @@ void UGA_EnemyAttackMachineGun::ActivateAbility(
 	const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-	
 	UGameplayAbility::ActivateAbility(
 		Handle,
 		ActorInfo,
@@ -66,7 +65,7 @@ void UGA_EnemyAttackMachineGun::ActivateAbility(
 		return;
 	}
 
-	StartBurst();
+	StartPreAimOrBurst();
 }
 
 void UGA_EnemyAttackMachineGun::InitializeAttack()
@@ -91,6 +90,7 @@ void UGA_EnemyAttackMachineGun::EndAbility(
 	FiredCount = 0;
 	NextMuzzleIndex = 0;
 	bBurstStarted = false;
+	PreAimStartTime = 0.0f;
 
 	Super::EndAbility(
 		Handle,
@@ -223,8 +223,26 @@ FVector UGA_EnemyAttackMachineGun::ResolveFireDirection(
 	const FTransform& MuzzleTransform,
 	const AActor* AttackActor) const
 {
+	const FVector MuzzleLocation = MuzzleTransform.GetLocation();
+
 	FVector Direction =
 		MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+
+	if (AttackRow.AimMode != ENSEnemyAimMode::Forward && IsValid(AttackActor))
+	{
+		const FVector AimPoint = ResolveAimPoint(
+			AttackRow,
+			MuzzleTransform,
+			AttackActor);
+
+		const FVector TargetDirection =
+			(AimPoint - MuzzleLocation).GetSafeNormal();
+
+		if (!TargetDirection.IsNearlyZero())
+		{
+			Direction = TargetDirection;
+		}
+	}
 
 	if (Direction.IsNearlyZero())
 	{
@@ -356,10 +374,12 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 
 	++NextMuzzleIndex;
 
+	AActor* AttackActor = ResolveAttackActor();
+
 	const FVector Direction = ResolveFireDirection(
 		*CachedAttackRow,
 		MuzzleTransform,
-		nullptr);
+		AttackActor);
 
 	FNSProjectileFireRequest Request;
 	Request.StartLocation = MuzzleTransform.GetLocation();
@@ -374,10 +394,10 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 
 	ProjectileManager->FireProjectile(Request);
 
-	DrawDebugFire(
+	/*DrawDebugFire(
 		*CachedAttackRow,
 		Request.StartLocation,
-		Direction);
+		Direction);*/
 
 	++FiredCount;
 
@@ -392,6 +412,7 @@ void UGA_EnemyAttackMachineGun::ClearBurstTimer()
 {
 	if (UWorld* World = GetWorld())
 	{
+		World->GetTimerManager().ClearTimer(PreAimTimerHandle);
 		World->GetTimerManager().ClearTimer(BurstTimerHandle);
 	}
 }
@@ -437,4 +458,85 @@ void UGA_EnemyAttackMachineGun::DrawDebugFire(
 		FColor::Orange,
 		false,
 		AttackRow.DebugData.DrawTime);
+}
+
+void UGA_EnemyAttackMachineGun::StartPreAimOrBurst()
+{
+	if (!CachedAttackRow)
+	{
+		CancelAttackAbility();
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		StartBurst();
+		return;
+	}
+
+	PreAimStartTime = World->GetTimeSeconds();
+	TryStartBurstAfterPreAim();
+}
+
+void UGA_EnemyAttackMachineGun::TryStartBurstAfterPreAim()
+{
+	if (!IsActive() || !CachedAttackRow)
+	{
+		ClearBurstTimer();
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		StartBurst();
+		return;
+	}
+
+	const float ElapsedTime =
+		FMath::Max(World->GetTimeSeconds() - PreAimStartTime, 0.0f);
+
+	const float RequiredWarnTime =
+		FMath::Max(CachedAttackRow->WarnTime, 0.0f);
+
+	const float MaxWaitTime =
+		FMath::Max(RequiredWarnTime, MaxPreAimWaitTime);
+
+	const bool bWarnFinished = ElapsedTime >= RequiredWarnTime;
+	const bool bAimReady = IsAimReadyForFire();
+	const bool bTimedOut = ElapsedTime >= MaxWaitTime;
+
+	if ((bWarnFinished && bAimReady) || bTimedOut)
+	{
+		World->GetTimerManager().ClearTimer(PreAimTimerHandle);
+		StartBurst();
+		return;
+	}
+
+	World->GetTimerManager().SetTimer(
+		PreAimTimerHandle,
+		this,
+		&ThisClass::TryStartBurstAfterPreAim,
+		FMath::Max(PreAimPollInterval, 0.01f),
+		false);
+}
+
+bool UGA_EnemyAttackMachineGun::IsAimReadyForFire() const
+{
+	if (AimReadyToleranceDegrees <= 0.0f)
+	{
+		return true;
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(AvatarActor);
+	const USkeletalMeshComponent* EnemyMesh =
+		EnemyAgent ? EnemyAgent->GetEnemyMesh() : nullptr;
+
+	const UNSTitanWalkerAnimInstance* TitanAnimInstance =
+		EnemyMesh ? Cast<UNSTitanWalkerAnimInstance>(EnemyMesh->GetAnimInstance()) : nullptr;
+
+	return !TitanAnimInstance ||
+		TitanAnimInstance->IsAimAligned(AimReadyToleranceDegrees);
 }

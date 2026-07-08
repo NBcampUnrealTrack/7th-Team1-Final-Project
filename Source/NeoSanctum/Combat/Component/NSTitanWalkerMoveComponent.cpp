@@ -89,6 +89,11 @@ void UNSTitanWalkerMoveComponent::TickMove(float DeltaSeconds)
 
 	Velocity = CalculateMoveVelocity(DirectionToTarget, DistanceToTarget);
 
+	if (CanTurnActorForMove(DistanceToTarget, Velocity))
+	{
+		UpdateActorRotation(DirectionToTarget, DeltaSeconds);
+	}
+
 	if (Velocity.IsNearlyZero())
 	{
 		ClearMoveVelocity();

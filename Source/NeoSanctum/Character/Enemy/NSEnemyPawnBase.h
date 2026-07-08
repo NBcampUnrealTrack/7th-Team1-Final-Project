@@ -136,6 +136,9 @@ protected:
 
 	// EnemyData가 바뀌었을 때 외형 데이터를 다시 적용하는 함수
 	virtual void HandleEnemyDataChanged(UNSEnemyData* NewEnemyData);
+	
+	// 피격 경직 상태가 변경됐을 때 Pawn 기반 Enemy가 반응하기 위한 함수
+	virtual void HandleHitReactionStateChanged(bool bHitReacting);
 
 	// EnemyData의 Mesh, AnimClass, Scale을 Pawn에 적용하는 함수
 	virtual void ApplyVisualData();
@@ -208,4 +211,13 @@ protected:
 	// Enemy Pawn의 체력, 피격 게이지 등을 보관하는 AttributeSet
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
+	
+protected:
+	// Enemy Pawn 메시의 상대 위치 보정값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Visual")
+	FVector EnemyMeshRelativeLocation = FVector::ZeroVector;
+
+	// Enemy Pawn 메시의 상대 회전 보정값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Visual")
+	FRotator EnemyMeshRelativeRotation = FRotator::ZeroRotator;
 };

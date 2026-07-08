@@ -36,6 +36,12 @@ public:
 protected:
 	// Boss 사망 시 Boss 전용 공격 타깃 상태를 함께 정리하는 함수
 	virtual void ApplyDeadState() override;
+	
+	// Boss가 피격 경직에 진입할 때 타깃 방향으로 몸체를 정렬하는 함수
+	virtual void HandleHitReactionStateChanged(bool bHitReacting) override;
+
+	// 피격 경직 몽타주가 타깃 방향으로 재생되도록 Actor Yaw를 보정하는 함수
+	void FaceCurrentTargetForHitReaction();
 
 protected:
 	// Boss의 현재 전투 Mode를 관리하는 컴포넌트
@@ -45,4 +51,8 @@ protected:
 	// Boss의 공격별 다중 타깃 목록을 관리하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSBossTargetComponent> BossTargetComponent;
+	
+	// 피격 경직 진입 시 현재 타깃 방향으로 Actor를 돌릴지 결정하는 값
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|HitReaction")
+	bool bFaceTargetOnHitReaction = true;
 };

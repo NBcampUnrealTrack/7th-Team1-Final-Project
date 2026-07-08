@@ -74,6 +74,9 @@ void ANSEnemyPawnBase::BeginPlay()
 		StateComponent->OnDeathStarted.AddUObject(
 			this,
 			&ThisClass::HandleDeathStarted);
+		StateComponent->OnHitReactionStateChanged.AddUObject(
+			this,
+			&ThisClass::HandleHitReactionStateChanged);
 	}
 
 	InitializeFromData(true);
@@ -189,6 +192,10 @@ void ANSEnemyPawnBase::HandleEnemyDataChanged(UNSEnemyData* NewEnemyData)
 	ApplyVisualData();
 }
 
+void ANSEnemyPawnBase::HandleHitReactionStateChanged(bool bHitReacting)
+{
+}
+
 void ANSEnemyPawnBase::ApplyVisualData()
 {
 	UNSEnemyData* EnemyData = GetEnemyData();
@@ -196,6 +203,9 @@ void ANSEnemyPawnBase::ApplyVisualData()
 	{
 		return;
 	}
+	
+	EnemyMesh->SetRelativeLocation(EnemyMeshRelativeLocation);
+	EnemyMesh->SetRelativeRotation(EnemyMeshRelativeRotation);
 
 	if (EnemyData->SkeletalMesh)
 	{

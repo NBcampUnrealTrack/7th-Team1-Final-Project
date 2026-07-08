@@ -95,6 +95,15 @@ private:
 		const FNSEnemyAttackRow& AttackRow,
 		const FVector& Start,
 		const FVector& Direction) const;
+	
+	// WarnTime과 조준 수렴을 기다린 뒤 연속 발사를 시작하는 함수
+	void StartPreAimOrBurst();
+
+	// PreAim 대기 중 조준 수렴 여부를 반복 확인하는 함수
+	void TryStartBurstAfterPreAim();
+
+	// AnimInstance 기준으로 현재 조준이 발사 가능한 수준인지 확인하는 함수
+	bool IsAimReadyForFire() const;
 
 private:
 	// ProjectileManager Sweep에 사용할 Trace Channel
@@ -115,4 +124,22 @@ private:
 
 	// FireInterval 반복 발사를 위한 타이머 핸들
 	FTimerHandle BurstTimerHandle;
+	
+	// 조준 완료로 인정할 최대 각도 오차
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim", meta = (ClampMin = "0.0"))
+	float AimReadyToleranceDegrees = 6.0f;
+
+	// WarnTime 이후에도 조준이 맞지 않을 때 최대 추가 대기할 시간
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim", meta = (ClampMin = "0.0"))
+	float MaxPreAimWaitTime = 1.0f;
+
+	// PreAim 중 조준 완료 여부를 확인하는 주기
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Aim", meta = (ClampMin = "0.01"))
+	float PreAimPollInterval = 0.03f;
+
+	// PreAim 시작 시각
+	float PreAimStartTime = 0.0f;
+
+	// PreAim 대기 Timer
+	FTimerHandle PreAimTimerHandle;
 };
