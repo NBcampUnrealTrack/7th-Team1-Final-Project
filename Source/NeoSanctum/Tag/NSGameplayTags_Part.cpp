@@ -18,12 +18,12 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_Hands, "Part.Visual.Hands");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_HandsArmor, "Part.Visual.HandsArmor");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_Helm, "Part.Visual.Helm");
-	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_ThighArmor, "Part.Visual.ThighArmor");
-	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_ShinArmor, "Part.Visual.ShinArmor");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_UpperLegArmor, "Part.Visual.UpperLegArmor");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_LowerLegArmor, "Part.Visual.LowerLegArmor");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_ShoulderPads, "Part.Visual.ShoulderPads");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_Kneepads, "Part.Visual.Kneepads");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_Waist, "Part.Visual.Waist");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_UpperArmArmor, "Part.Visual.UpperArmArmor");
-	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_ForearmArmor, "Part.Visual.ForearmArmor");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_LowerArmArmor, "Part.Visual.LowerArmArmor");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Visual_Torso, "Part.Visual.Torso");
 }
