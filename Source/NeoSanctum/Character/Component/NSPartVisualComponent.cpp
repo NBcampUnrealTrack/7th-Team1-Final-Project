@@ -66,14 +66,14 @@ void UNSPartVisualComponent::BindToEquipComponent(UNSPartEquipComponent* EquipCo
 
 	PartChangedHandle = EquipComp->OnPartChanged.AddUObject(this, &UNSPartVisualComponent::HandlePartChanged);
 
-	// 구독 전 이미 복제된 파츠가 있을 수 있음
+	// 구독 전 이미 복제된 파츠가 있을 수 있음 - 여기선 PendingParts만 채우고, 실제 표시는 아래 RebuildAllSlotVisuals에서 한 번에 처리
 	if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner()))
 	{
 		for (const auto& Pair : DataSS->GetAllSlotRows())
 		{
 			if (const FNSPartData* Part = EquipComp->GetEquippedPart(Pair.Key))
 			{
-				HandlePartChanged(Pair.Key, *Part);
+				PendingParts.Add(Pair.Key, *Part);
 			}
 		}
 	}
@@ -143,7 +143,8 @@ void UNSPartVisualComponent::HandlePartChanged(FGameplayTag Slot, const FNSPartD
 {
 	// 비동기 로드 중 교체 대비용
 	PendingParts.Add(Slot, Part);
-	UpdateSlotVisual(Slot);
+	// 이 파츠의 VisualTag가 다른 시각 슬롯에도 영향을 줄 수 있어서 전체 재계산
+	RebuildAllSlotVisuals();
 }
 
 void UNSPartVisualComponent::RebuildAllSlotVisuals()
@@ -155,9 +156,12 @@ void UNSPartVisualComponent::RebuildAllSlotVisuals()
 }
 
 /**
- * 슬롯 하나의 최종 소스를 계산해 적용 — 장착 파츠 우선, 없으면 CharacterData 기본 파츠
+ * 슬롯 하나의 최종 소스를 계산해 적용
+ * 1) 이 슬롯이 게임플레이 슬롯 자신의 자리면 장착 파츠 확인 (VisualTag 있으면 다른 자리에서 보여주니 여긴 비움)
+ * 2) 이 슬롯이 시각 슬롯이면 VisualTag로 이 자리를 차지하겠다는 장착 파츠가 있는지 확인
+ * 3) 없으면 CharacterData 기본 파츠로 대체
  * 비동기 로드 콜백으로 자기 자신을 넘겨서 로드 완료 시점에도 최신 상태를 다시 계산하게 함
- * @param Slot 슬롯 (레그, 바디, 암 + 시각 전용 슬롯)
+ * @param Slot 슬롯 (게임플레이 슬롯 + 시각 전용 슬롯)
  */
 void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 {
@@ -180,12 +184,37 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 			}
 
 			MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
-				DefPath, FStreamableDelegate::CreateUObject(
-					this,
-					&UNSPartVisualComponent::UpdateSlotVisual,
-					Slot
-				))
-			);
+				DefPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
+			return;
+		}
+
+		const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId());
+		if (Row && Row->VisualTag.IsValid())
+		{
+			// 이 파츠는 VisualTag 시각 슬롯 쪽에서 표시되니, 원래 게임플레이 슬롯 자리는 비워둠(중복 표시 방지)
+			ClearSlotVisual(Slot);
+			return;
+		}
+
+		// VisualTag 미설정 - 과도기 fallback으로 예전처럼 게임플레이 슬롯 자리에 그대로 표시
+		ApplySlotMesh(Slot, MeshComp, Def->PartMesh);
+		return;
+	}
+
+	// 시각 슬롯이라면, 이 자리를 차지하겠다는 장착 파츠가 있는지 확인
+	if (const FNSPartData* MappedPart = FindEquippedPartForVisualSlot(Slot))
+	{
+		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *MappedPart);
+		if (!IsValid(Def))
+		{
+			const FSoftObjectPath DefPath = MappedPart->DefinitionPtr.ToSoftObjectPath();
+			if (DefPath.IsNull())
+			{
+				return;
+			}
+
+			MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
+				DefPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
 			return;
 		}
 
@@ -193,7 +222,7 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 		return;
 	}
 
-	// 장착 파츠가 없는 슬롯은 CharacterData 기본 파츠로 대체
+	// 장착으로 채워지지 않은 슬롯은 CharacterData 기본 파츠로 대체
 	if (const FNSDefaultVisualPartEntry* DefaultEntry = FindDefaultEntry(Slot))
 	{
 		ApplySlotMesh(Slot, MeshComp, DefaultEntry->PartMesh);
@@ -244,3 +273,28 @@ const FNSDefaultVisualPartEntry* UNSPartVisualComponent::FindDefaultEntry(FGamep
 		[Slot](const FNSDefaultVisualPartEntry& Entry) { return Entry.PartVisualTag == Slot; });
 }
 
+const FNSPartData* UNSPartVisualComponent::FindEquippedPartForVisualSlot(FGameplayTag VisualSlot) const
+{
+	for (const TPair<FGameplayTag, FNSPartData>& Pair : PendingParts)
+	{
+		if (!Pair.Value.IsValid())
+		{
+			continue;
+		}
+
+		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, Pair.Value);
+		if (!IsValid(Def))
+		{
+			continue;
+		}
+
+		const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId());
+
+		if (Row && Row->VisualTag == VisualSlot)
+		{
+			return &Pair.Value;
+		}
+	}
+
+	return nullptr;
+}

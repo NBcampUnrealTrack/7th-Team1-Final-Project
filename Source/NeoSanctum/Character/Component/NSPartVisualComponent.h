@@ -54,6 +54,9 @@ private:
 
 	const FNSDefaultVisualPartEntry* FindDefaultEntry(FGameplayTag Slot) const;
 
+	// 지금 장착된 파츠 중 VisualTag가 이 시각 슬롯과 일치하는 걸 찾음
+	const FNSPartData* FindEquippedPartForVisualSlot(FGameplayTag VisualSlot) const;
+
 private:
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> LeaderMeshComp;

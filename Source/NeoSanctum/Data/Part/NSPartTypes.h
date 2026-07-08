@@ -44,6 +44,10 @@ struct FNSPartDefinitionRow : public FTableRowBase
 		meta = (Categories = "Part.Slot"))
 	FGameplayTag PartSlot;
 
+	// 이 파츠가 대체할 시각 슬롯. 비어있으면 예전처럼 PartSlot 자리에 그대로 표시(과도기 fallback)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Visual"))
+	FGameplayTag VisualTag;
+
 	// 레그 파츠는 false (인런 밸런스상 리롤 불가)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bCanReroll = true;
