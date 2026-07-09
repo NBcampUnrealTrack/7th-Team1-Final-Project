@@ -98,11 +98,44 @@ void ANSOutGameMode::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
-	// 슬롯이 없을 때만 부여
-	if (NSPS->GetPlayerSlotIndex() == INDEX_NONE)
+	// 심리스 이월로 이미 슬롯이 있으면 유지
+	if (NSPS->GetPlayerSlotIndex() != INDEX_NONE)
 	{
-		// 현재 접속 순번
-		const int32 NewSlot = GetNumPlayers() - 1;
-		NSPS->SetPlayerSlotIndex(NewSlot);
+		return;
 	}
+
+	NSPS->SetPlayerSlotIndex(FindFreeSlotIndex(NSPS));
+}
+
+int32 ANSOutGameMode::FindFreeSlotIndex(const APlayerState* Requester) const
+{
+	// 현재 사용 중인 슬롯 수집
+	TSet<int32> UsedSlots;
+	if (GameState)
+	{
+		for (APlayerState* OtherPS : GameState->PlayerArray)
+		{
+			if (!OtherPS || OtherPS == Requester)
+			{
+				continue;
+			}
+			if (const ANSPlayerState* OtherNSPS = Cast<ANSPlayerState>(OtherPS))
+			{
+				const int32 Slot = OtherNSPS->GetPlayerSlotIndex();
+				if (Slot != INDEX_NONE)
+				{
+					UsedSlots.Add(Slot);
+				}
+			}
+		}
+	}
+
+	// 0부터 빈 번호 탐색
+	int32 Candidate = 0;
+	while (UsedSlots.Contains(Candidate))
+	{
+		++Candidate;
+	}
+	
+	return Candidate;
 }
