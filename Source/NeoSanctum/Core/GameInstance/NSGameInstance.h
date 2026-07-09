@@ -58,7 +58,6 @@ private:
 
 	// 심리스 트래블 전용
 	void OnSeamlessTravelStart(UWorld* CurrentWorld, const FString& LevelName);
-	void HandlePreLoadMap(const FString& MapName);
 
 	FDelegateHandle PreLoadMapHandle;
 	FDelegateHandle PostLoadMapHandle;
