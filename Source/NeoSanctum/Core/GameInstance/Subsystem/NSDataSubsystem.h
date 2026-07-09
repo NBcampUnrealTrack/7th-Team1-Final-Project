@@ -90,6 +90,10 @@ public:
 	// 타이틀 -> 거점지역 진입 시 호출
 	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
 	void LoadOutGameData();
+	
+	// Common→OutGame을 한 번에 선로딩, 호출자가 죽어도 자기 체인
+	UFUNCTION(BlueprintCallable, Category = "NS|DataSubsystem")
+	void PreloadOutGameData();
 
 	/**
 	 * 선택된 LevelConfig 기준으로 인런 데이터를 준비.
@@ -377,6 +381,9 @@ private:
 	void BuildPartUpgradeRowCache();
 
 	void CacheCommonUpgradeNodeRows();
+	
+	UFUNCTION()
+	void HandlePreloadCommonReady();
 
 	// ================================================================
 	// 상태
