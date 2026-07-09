@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "NeoSanctum/Core/Interface/NSHitReactionSourceInterface.h"
 #include "GA_EnemyAttackBase.generated.h"
 
 class UNSEnemyData;
@@ -13,12 +14,15 @@ class UNSEnemyData;
  * 멀티플레이어 애니메이션 동기화 및 BT 제어권 연동 흐름을 통제합니다.
  */
 UCLASS()
-class NEOSANCTUM_API UGA_EnemyAttackBase : public UGameplayAbility
+class NEOSANCTUM_API UGA_EnemyAttackBase : public UGameplayAbility,
+                                           public INSHitReactionSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	UGA_EnemyAttackBase();
+
+	virtual ENSHitReactionAttackType GetHitReactionAttackType() const override { return ENSHitReactionAttackType::Any; }
 
 	virtual void ActivateAbility(
 		const FGameplayAbilitySpecHandle Handle,

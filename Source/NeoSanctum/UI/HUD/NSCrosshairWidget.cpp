@@ -79,7 +79,6 @@ void UNSCrosshairWidget::HideAttackFeedbackImages() const
 	{
 		NormalHitFeedbackImage,
 		CriticalHitFeedbackImage,
-		HeadShotFeedbackImage,
 		ShieldBarrierHitFeedbackImage,
 		KillFeedbackImage,
 		DestroyFeedbackImage
@@ -101,8 +100,6 @@ UImage* UNSCrosshairWidget::GetAttackFeedbackImage(const ENSCrosshairAttackFeedb
 	{
 	case ENSCrosshairAttackFeedbackType::CriticalAttack:
 		return CriticalHitFeedbackImage;
-	case ENSCrosshairAttackFeedbackType::HeadShot:
-		return HeadShotFeedbackImage;
 	case ENSCrosshairAttackFeedbackType::ShieldBarrierAttack:
 		return ShieldBarrierHitFeedbackImage;
 	case ENSCrosshairAttackFeedbackType::Kill:
@@ -123,8 +120,6 @@ UWidgetAnimation* UNSCrosshairWidget::GetAttackFeedbackAnimation(
 	{
 	case ENSCrosshairAttackFeedbackType::CriticalAttack:
 		return CriticalHitFeedbackAnimation;
-	case ENSCrosshairAttackFeedbackType::HeadShot:
-		return HeadShotFeedbackAnimation;
 	case ENSCrosshairAttackFeedbackType::ShieldBarrierAttack:
 		return ShieldBarrierHitFeedbackAnimation;
 	case ENSCrosshairAttackFeedbackType::Kill:

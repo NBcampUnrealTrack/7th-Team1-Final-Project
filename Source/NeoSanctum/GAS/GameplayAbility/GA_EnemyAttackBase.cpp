@@ -181,7 +181,8 @@ bool UGA_EnemyAttackBase::TryApplyDamageToTarget(AActor* TargetActor, const FHit
 
 	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
 
-	EffectContext.AddSourceObject(SourceActor);
+	EffectContext.AddInstigator(SourceActor, SourceActor);
+	EffectContext.AddSourceObject(this);
 	EffectContext.AddHitResult(HitResult);
 
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, EffectContext);

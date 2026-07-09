@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
+#include "NeoSanctum/Core/Interface/NSHitReactionSourceInterface.h"
 #include "GA_VanguardBaseAttack.generated.h"
 
 class UAbilityTask_ApplyRootMotionConstantForce;
@@ -34,12 +35,15 @@ enum class ENSVanguardBaseAttackMode : uint8
  * 실제 히트 판정/데미지/이동은 후속 단계에서 연결함.
  */
 UCLASS()
-class NEOSANCTUM_API UGA_VanguardBaseAttack : public UGA_SkillBase
+class NEOSANCTUM_API UGA_VanguardBaseAttack : public UGA_SkillBase,
+                                             public INSHitReactionSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	UGA_VanguardBaseAttack();
+
+	virtual ENSHitReactionAttackType GetHitReactionAttackType() const override { return ENSHitReactionAttackType::Melee; }
 
 protected:
 	virtual void ActivateAbility(

@@ -20,6 +20,10 @@ struct NEOSANCTUM_API FNSHitReactionContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
 	ENSHitReactionDamageLayer DamageLayer = ENSHitReactionDamageLayer::Health;
 
+	// 공격 방식
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
+	ENSHitReactionAttackType AttackType = ENSHitReactionAttackType::Any;
+
 	// 피격 위치
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitReaction")
 	FVector HitLocation = FVector::ZeroVector;

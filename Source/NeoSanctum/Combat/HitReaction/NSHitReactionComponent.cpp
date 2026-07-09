@@ -119,6 +119,10 @@ bool UNSHitReactionComponent::CheckReactionDataMatch(
 	const bool bDamageLayerMatched =
 		Data.DamageLayer == ENSHitReactionDamageLayer::Any ||
 		Data.DamageLayer == Context.DamageLayer;
+
+	const bool bAttackTypeMatched =
+		Data.AttackType == ENSHitReactionAttackType::Any ||
+		Data.AttackType == Context.AttackType;
 	
 	const bool bQualityMatched =
 		Data.HitQuality == ENSHitFeedbackQuality::Any ||
@@ -128,7 +132,7 @@ bool UNSHitReactionComponent::CheckReactionDataMatch(
 		Data.Outcome == ENSHitFeedbackOutcome::Any ||
 		Data.Outcome == Context.Outcome;
 	
-	return bTargetMatched && bDamageLayerMatched && bQualityMatched && bOutcomeMatched;
+	return bTargetMatched && bDamageLayerMatched && bAttackTypeMatched && bQualityMatched && bOutcomeMatched;
 }
 
 void UNSHitReactionComponent::ExecuteHitCue(
