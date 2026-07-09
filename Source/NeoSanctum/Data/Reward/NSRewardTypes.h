@@ -7,8 +7,6 @@
 #include "Engine/DataTable.h"
 #include "NSRewardTypes.generated.h"
 
-class UNSPartDefinition;
-
 /**
  * 보상 트리거에서 사용할 보상 항목 데이터
  */
@@ -51,9 +49,6 @@ struct FNSRewardDropRow : public FTableRowBase
 	FGameplayTag CurrencyTag;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
-	TSoftObjectPtr<UNSPartDefinition> PartDefinition;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag AugmentPoolTag;
 
 	// 회복 포션 식별 태그. Reward.Type.Heal 행에서만 사용하며, 이 태그로 DT_HealPotion을 조회.
@@ -81,10 +76,7 @@ struct FNSRewardDropResult
 	
 	UPROPERTY(BlueprintReadOnly, Category = "NS|Reward")
 	int32 Quantity = 0;
-	
-	UPROPERTY(BlueprintReadOnly, Category = "NS|Reward")
-	TSoftObjectPtr<UNSPartDefinition> PartDefinition;
-	
+
 	UPROPERTY(BlueprintReadOnly, Category = "NS|Reward")
 	FGameplayTag AugmentPoolTag;
 
