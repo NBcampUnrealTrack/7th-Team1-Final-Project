@@ -8,6 +8,7 @@
 #include "GA_EnemyAttackLaser.generated.h"
 
 class UNSEnemyPartComponent;
+class ANSBossAIController;
 class UAudioComponent;
 class UNiagaraComponent;
 struct FNSEnemyAttackRow;
@@ -134,17 +135,29 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
 	FName LaserBeamVFXID = FName(TEXT("Monster_TitanWalker_Laser_Beam"));
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
-	float LaserBeamBaseLength = 1000.0f;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
 	FName LaserChargeDurationParameterName = FName(TEXT("User.ChargeDuration"));
+	
+	// Beam Niagara가 사용할 월드 좌표 끝점 User Parameter 이름을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FName LaserBeamEndParameterName = FName(TEXT("User.Beam End"));
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserBeamLengthParameterName = FName(TEXT("User.BeamLength"));
+	// Beam Niagara에 적용할 고정 스케일 값을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.01"))
+	float LaserBeamVFXScale = 1.0f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserBeamRadiusParameterName = FName(TEXT("User.BeamRadius"));
+	// Beam Niagara의 표시 두께 User Parameter 이름을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FName LaserBeamWidthParameterName = FName(TEXT("User.Beam Width"));
+	
+	// AreaData.Radius를 Niagara Beam Width로 변환할 때 곱하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
+	float LaserBeamWidthRadiusMultiplier = 2.0f;
+
+	// Niagara Beam Width의 최소 표시 폭을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
+	float LaserBeamMinVisualWidth = 4.0f;
+	
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAudioComponent> ActiveLaserChargeAudioComponent;
@@ -163,4 +176,47 @@ protected:
 	void StartLaserFireCosmetics(const TArray<FNSLaserBeam>& Beams);
 	void UpdateLaserBeamCosmetics(const TArray<FNSLaserBeam>& Beams);
 	void StopLaserCosmetics();
+	
+	// AttackRow의 AreaData.Radius 기준으로 Niagara Beam Width 값을 계산하는 함수
+	float GetLaserBeamVisualWidth(const FNSEnemyAttackRow& AttackRow) const;
+	
+protected:
+	// Charge 사운드 안에 Beam 사운드까지 포함되어 있으면 Beam 시작 시 별도 사운드를 재생하지 않음
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|Sound")
+	bool bLaserFireSoundIncludedInChargeSound = true;
+
+	// WarnTime 동안 Charge VFX를 소켓 위치에 따라 갱신하는 간격
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.01"))
+	float LaserChargeVFXUpdateInterval = 0.03f;
+
+	// WarnTime 동안 Charge VFX 위치 갱신에 사용하는 타이머
+	FTimerHandle LaserChargeVFXUpdateTimerHandle;
+
+	// Charge VFX를 현재 레이저 소켓 위치와 방향으로 갱신하는 함수
+	void UpdateLaserChargeCosmetics();
+
+	// Charge VFX만 정리하는 함수
+	void StopLaserChargeVFX();
+
+	// Charge 사운드만 정리하는 함수
+	void StopLaserChargeSound();
+	
+private:
+	// 현재 Avatar를 제어하는 BossAIController를 반환하는 함수
+	ANSBossAIController* GetBossController() const;
+
+	// 현재 공격 대상 Actor를 반환하는 함수
+	AActor* ResolveAttackActor() const;
+
+	// AimMode와 타깃 상태 기준으로 레이저 조준 위치를 계산하는 함수
+	FVector ResolveLaserAimPoint(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform,
+		const AActor* AttackActor) const;
+
+	// Muzzle 위치와 공격 대상 기준으로 레이저 진행 방향을 계산하는 함수
+	FVector ResolveLaserDirection(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform,
+		const AActor* AttackActor) const;
 };
