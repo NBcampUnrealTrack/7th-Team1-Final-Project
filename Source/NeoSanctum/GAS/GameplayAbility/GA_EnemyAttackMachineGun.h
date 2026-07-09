@@ -44,6 +44,12 @@ public:
 
 	// 현재 Control Rig 조준이 반영된 Muzzle Transform 목록을 반환하는 함수
 	void GetCurrentMuzzleTransforms(TArray<FTransform>& OutTransforms) const;
+	
+public:
+	// MachineGun 발사 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendMachineGunFireCosmeticEvent(
+		const FTransform& MuzzleTransform,
+		const FVector& Direction) const;
 
 private:
 	// 현재 Avatar의 CurrentAttackRow를 반환하는 함수

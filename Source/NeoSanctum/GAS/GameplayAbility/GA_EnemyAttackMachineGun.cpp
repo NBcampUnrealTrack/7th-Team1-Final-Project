@@ -123,6 +123,34 @@ void UGA_EnemyAttackMachineGun::GetCurrentMuzzleTransforms(
 		OutTransforms);
 }
 
+void UGA_EnemyAttackMachineGun::SendMachineGunFireCosmeticEvent(
+	const FTransform& MuzzleTransform,
+	const FVector& Direction) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor))
+	{
+		return;
+	}
+
+	UNSEnemyCosmeticComponent* CosmeticComponent =
+		AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>();
+
+	if (!CosmeticComponent)
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_MachineGun_Fire;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = MuzzleTransform.GetLocation();
+	EventData.Direction = Direction;
+	EventData.Radius = CachedAttackRow ? CachedAttackRow->ProjectileData.Radius : 0.0f;
+
+	CosmeticComponent->SendCosmeticEvent(EventData, false);
+}
+
 const FNSEnemyAttackRow* UGA_EnemyAttackMachineGun::GetCurrentAttackRow() const
 {
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
@@ -394,7 +422,7 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 	Request.Damage = CalculateProjectileDamage(*CachedAttackRow);
 
 	ProjectileManager->FireProjectile(Request);
-	PlayMachineGunFireSound(MuzzleTransform);
+	SendMachineGunFireCosmeticEvent(MuzzleTransform, Direction);
 	
 	if (UNSEnemyCosmeticComponent* CosmeticComponent =
 	AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>())
