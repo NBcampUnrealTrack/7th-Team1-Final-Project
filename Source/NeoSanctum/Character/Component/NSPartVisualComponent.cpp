@@ -7,6 +7,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 
@@ -84,6 +85,13 @@ void UNSPartVisualComponent::BindToEquipComponent(UNSPartEquipComponent* EquipCo
 void UNSPartVisualComponent::SetDefaultVisualParts(const TArray<FNSDefaultVisualPartEntry>& InDefaultVisualParts)
 {
 	DefaultVisualParts = InDefaultVisualParts;
+
+	// 기본 파츠가 하나도 없으면 BaseLeaderMesh만 그대로 보임 - 의도한 fallback인지 빠뜨린 건지 로그로 남겨둠
+	if (DefaultVisualParts.Num() == 0)
+	{
+		NS_ACTOR_LOG(GetOwner(), LogNS, Warning,
+			"DefaultVisualParts가 비어있어 BaseLeaderMesh로만 표시됩니다. 신규 캐릭터라면 기본 파츠 값을 채워야 합니다.");
+	}
 
 	// 게임플레이 슬롯표(Arm/Body/Leg)에 없는 시각 전용 슬롯(Head, Hair 등)도 컴포넌트를 만들어둠
 	for (const FNSDefaultVisualPartEntry& Entry : DefaultVisualParts)
