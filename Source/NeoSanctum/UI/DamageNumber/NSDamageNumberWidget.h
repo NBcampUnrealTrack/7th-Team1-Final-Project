@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NSDamageNumberWidget.generated.h"
 
+class UTextBlock;
 struct FNSDamageNumberFeedbackContext;
 /**
  *
@@ -25,4 +26,22 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	bool bCritical = false;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> DamageText;
+
+	UPROPERTY(Transient, meta = (BindWidgetOptional))
+	TObjectPtr<UWidgetAnimation> PopupAnimation;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
+	FLinearColor NormalDamageColor = FLinearColor::White;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damag Number")
+	FLinearColor CriticalDamageColor = FLinearColor(1.0f, 0.2f, 0.2, 1.0f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
+	FVector2D NormalRenderScale = FVector2D(1.0f, 1.0f);
+
+	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
+	FVector2D CriticalRenderScale = FVector2D(1.25f, 1.25f);
 };
