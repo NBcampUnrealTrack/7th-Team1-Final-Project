@@ -104,7 +104,37 @@ void ANSEnemyPawnBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
 
 const FNSEnemyAttackRow* ANSEnemyPawnBase::GetCurrentAttackRow() const
 {
-	return CombatComponent ? CombatComponent->GetAttackRow() : nullptr;
+	if (!CombatComponent)
+	{
+		return nullptr;
+	}
+
+	if (const FNSEnemyAttackRow* AttackRow = CombatComponent->GetAttackRow())
+	{
+		return AttackRow;
+	}
+
+	const FName AttackId = CombatComponent->GetCurrentAttackId();
+	if (AttackId.IsNone())
+	{
+		return nullptr;
+	}
+
+	const UNSEnemyData* EnemyData = GetEnemyData();
+	if (!EnemyData)
+	{
+		return nullptr;
+	}
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (AttackRow && AttackRow->AttackId == AttackId)
+		{
+			return AttackRow;
+		}
+	}
+
+	return nullptr;
 }
 
 void ANSEnemyPawnBase::ClearCurrentAttackRow()

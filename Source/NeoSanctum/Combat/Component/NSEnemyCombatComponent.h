@@ -17,6 +17,8 @@ class NEOSANCTUM_API UNSEnemyCombatComponent : public UActorComponent
 
 public:
 	UNSEnemyCombatComponent();
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 현재 실행할 공격 Row를 저장하는 함수
 	void SetAttackRow(const FNSEnemyAttackRow& InAttackRow);
@@ -41,4 +43,8 @@ private:
 	// 현재 공격 Row가 유효한지 여부
 	UPROPERTY(Transient)
 	bool bHasCurrentAttackRow = false;
+	
+	// 클라이언트 ABP가 현재 공격 Row를 EnemyData에서 다시 찾기 위해 사용하는 공격 ID를 복제하는 변수
+	UPROPERTY(Replicated)
+	FName ReplicatedAttackId = NAME_None;
 };

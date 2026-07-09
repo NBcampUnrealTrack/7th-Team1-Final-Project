@@ -40,6 +40,8 @@ class NEOSANCTUM_API UNSEnemyThreatComponent : public UActorComponent
 
 public:
 	UNSEnemyThreatComponent();
+	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// 타겟 평가 주기가 되었는지 확인하는 함수
 	bool CanEvaluateTarget() const;
@@ -139,4 +141,8 @@ private:
 	double NextTargetEvalTime = 0.0;
 
 	bool bAttackStartedOnCurrentTarget = false;
+	
+	// 클라이언트 ABP가 조준 계산에 사용할 현재 타깃 Actor를 복제하는 변수
+	UPROPERTY(Replicated)
+	TObjectPtr<AActor> ReplicatedCurrentTarget;
 };
