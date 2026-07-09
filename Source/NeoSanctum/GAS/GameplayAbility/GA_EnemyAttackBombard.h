@@ -9,6 +9,7 @@
 
 class UMaterialInterface;
 class ANSBossAIController;
+class ANSAreaWarningPlaneActor;
 class UNSEnemyPartComponent;
 struct FNSEnemyAttackRow;
 
@@ -158,8 +159,20 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
 	float BombardExplosionBaseRadius = 100.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
+	TSubclassOf<ANSAreaWarningPlaneActor> BombardWarningPlaneClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane", meta = (ClampMin = "0.0"))
+	float BombardWarningPlaneDuration = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
+	float BombardWarningPlaneZOffset = 1.0f;
 
 	void PlayBombardLaunchCosmetics(const FVector& MuzzleLocation, const FVector& ImpactLocation) const;
 	void PlayBombardImpactCosmetics(const FVector& ImpactLocation, const FNSEnemyAttackRow& AttackRow) const;
 	
+	void SpawnBombardWarningPlane(
+		const FVector& ImpactLocation,
+		const FNSEnemyAttackRow& AttackRow) const;
 };
