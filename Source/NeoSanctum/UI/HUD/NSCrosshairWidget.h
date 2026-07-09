@@ -50,9 +50,6 @@ private:
 	TObjectPtr<UImage> CriticalHitFeedbackImage;
 
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UImage> HeadShotFeedbackImage;
-
-	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UImage> ShieldBarrierHitFeedbackImage;
 
 	UPROPERTY(meta = (BindWidgetOptional))
@@ -67,9 +64,6 @@ private:
 
 	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
 	TObjectPtr<UWidgetAnimation> CriticalHitFeedbackAnimation;
-
-	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
-	TObjectPtr<UWidgetAnimation> HeadShotFeedbackAnimation;
 
 	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
 	TObjectPtr<UWidgetAnimation> ShieldBarrierHitFeedbackAnimation;

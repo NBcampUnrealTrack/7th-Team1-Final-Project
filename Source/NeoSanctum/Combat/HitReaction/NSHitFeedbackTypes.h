@@ -17,14 +17,13 @@ enum class ENSHitFeedbackTargetType : uint8
 	Turret
 };
 
-// 히트 판정 품질 : 추후에 추가될 사항까지 고려했으나 아직 Critical, Headshot은 로직이 없음
+// 히트 판정 품질
 UENUM(BlueprintType)
 enum class ENSHitFeedbackQuality : uint8
 {
 	Any,
 	Normal,
-	Critical,
-	HeadShot
+	Critical
 };
 
 // 히트에 따른 결과
@@ -55,14 +54,13 @@ enum class ENSHitReactionAttackType : uint8
 	Melee
 };
 
-// 크로스헤어 공격 피드백 종류 : 추후에 추가될 사항까지 고려했으나 아직 Critical, Headshot은 로직이 없음
+// 크로스헤어 공격 피드백 종류
 UENUM(BlueprintType)
 enum class ENSCrosshairAttackFeedbackType : uint8
 {
 	None,
 	NormalAttack,
 	CriticalAttack,
-	HeadShot,
 	ShieldBarrierAttack,
 	Kill,
 	Destroy
@@ -96,7 +94,7 @@ struct NEOSANCTUM_API FNSHitFeedbackContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
 	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
 	
-	// 히트가 어떤 타입인지 : Normal, Critical, Headshot 구분용
+	// 히트가 어떤 타입인지 : Normal, Critical 구분용
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
 	ENSHitFeedbackQuality HitQuality = ENSHitFeedbackQuality::Normal;
 	
