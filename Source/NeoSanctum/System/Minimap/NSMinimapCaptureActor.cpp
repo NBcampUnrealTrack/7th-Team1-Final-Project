@@ -1564,7 +1564,6 @@ UTexture2D* ANSMinimapCaptureActor::BuildNavMeshTextureForLayer(const FNSMinimap
 	Texture->SRGB = true;
 	Texture->NeverStream = true;
 	Texture->CompressionSettings = TC_EditorIcon;
-	Texture->MipGenSettings = TMGS_NoMipmaps;
 	Texture->LODGroup = TEXTUREGROUP_UI;
 	Texture->Filter = TF_Bilinear;
 	Texture->AddressX = TA_Clamp;
