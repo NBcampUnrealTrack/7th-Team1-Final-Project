@@ -10,8 +10,10 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "Engine/DataTable.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
@@ -441,6 +443,7 @@ void UNSCheatManager::Debug_TriggerRescue(FString NpcId)
 }
 
 // 테스트용 치트 (파츠 VisualTag 테스트 — DT_PartDefinition의 Row Name을 그대로 입력, 예: Arm1)
+// 실제 드랍/줍기와 같은 경로(Server_RequestEquip)를 타서 OnPartChanged가 정상 브로드캐스트되게 함
 void UNSCheatManager::Debug_EquipPart(FString RowName)
 {
 	ANSPlayerController* OwningPC = Cast<ANSPlayerController>(GetOuterAPlayerController());
@@ -449,35 +452,37 @@ void UNSCheatManager::Debug_EquipPart(FString RowName)
 		return;
 	}
 
-	UGameInstance* GameInstance = OwningPC->GetGameInstance();
-	UNSProgressionSubsystem* Progression =
-		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
-	if (!Progression)
+	ANSPlayerState* PS = OwningPC->GetPlayerState<ANSPlayerState>();
+	UNSPartEquipComponent* EquipComp = PS ? PS->GetPartEquipComponent() : nullptr;
+	if (!EquipComp)
 	{
 		return;
 	}
 
-	const FName CharId = Progression->GetLastSelectedCharacterId();
-
-	// 빈 문자열이면 null 소프트 포인터로 두어 EquipPartLive가 해제로 처리하게 함
-	TSoftObjectPtr<UNSPartDefinition> Definition;
-	if (!RowName.IsEmpty())
+	// 빈 문자열이면 장착 파츠 전체 해제 (슬롯 하나만 지우는 RPC는 따로 없음, 호스트에서만 동작)
+	if (RowName.IsEmpty())
 	{
-		const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(OwningPC);
-		const UNSCommonDataConfig* CommonConfig = DataSS ? DataSS->GetCommonDataConfig() : nullptr;
-		UDataTable* PartTable = CommonConfig ? CommonConfig->PartsBaseStatTable.Get() : nullptr;
-		const FNSPartDefinitionRow* Row = PartTable
-			? PartTable->FindRow<FNSPartDefinitionRow>(FName(*RowName), TEXT("Debug_EquipPart"), false)
-			: nullptr;
-		if (!Row)
+		if (OwningPC->HasAuthority())
 		{
-			NS_LOG(LogNS, Warning, "[Debug_EquipPart] Row를 찾을 수 없습니다. RowName={RowName}", ("RowName", RowName));
-			return;
+			EquipComp->ClearAll();
 		}
-
-		Definition = Row->Definition;
+		return;
 	}
 
-	// 로컬 저장 + 서버 업로드 + 현재 폰 즉시 적용까지 EquipPartLive가 한 번에 처리
-	OwningPC->EquipPartLive(CharId, Definition, ENSPartRarity::Common);
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(OwningPC);
+	const UNSCommonDataConfig* CommonConfig = DataSS ? DataSS->GetCommonDataConfig() : nullptr;
+	UDataTable* PartTable = CommonConfig ? CommonConfig->PartsBaseStatTable.Get() : nullptr;
+	const FNSPartDefinitionRow* Row = PartTable
+		? PartTable->FindRow<FNSPartDefinitionRow>(FName(*RowName), TEXT("Debug_EquipPart"), false)
+		: nullptr;
+	if (!Row)
+	{
+		NS_LOG(LogNS, Warning, "[Debug_EquipPart] Row를 찾을 수 없습니다. RowName={RowName}", ("RowName", RowName));
+		return;
+	}
+
+	FNSPartData NewPart;
+	NewPart.DefinitionPtr = Row->Definition;
+	NewPart.CurrentRarity = ENSPartRarity::Common;
+	EquipComp->Server_RequestEquip(NewPart);
 }
