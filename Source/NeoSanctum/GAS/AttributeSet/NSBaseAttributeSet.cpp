@@ -9,6 +9,7 @@
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
+#include "NeoSanctum/Core/Interface/NSHitReactionSourceInterface.h"
 #include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "Net/UnrealNetwork.h"
@@ -193,6 +194,33 @@ bool UNSBaseAttributeSet::ShouldTriggerPlayerAttackFeedback(
 	return true;
 }
 
+ENSHitReactionAttackType UNSBaseAttributeSet::ResolveHitReactionAttackType(
+	const FGameplayEffectModCallbackData& Data) const
+{
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+
+	const UObject* SourceCandidates[] =
+	{
+		EffectContext.GetEffectCauser(),
+		EffectContext.GetSourceObject(),
+		EffectContext.GetInstigator()
+	};
+
+	for (const UObject* SourceCandidate : SourceCandidates)
+	{
+		const INSHitReactionSourceInterface* HitReactionSource =
+			Cast<INSHitReactionSourceInterface>(SourceCandidate);
+		if (!HitReactionSource)
+		{
+			continue;
+		}
+
+		return HitReactionSource->GetHitReactionAttackType();
+	}
+
+	return ENSHitReactionAttackType::Any;
+}
+
 void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 	const FGameplayEffectModCallbackData& Data,
 	const float PreviousHealth) const
@@ -236,6 +264,7 @@ void UNSBaseAttributeSet::NotifyHitReaction(
 
 	FNSHitReactionContext ReactionContext;
 	ReactionContext.DamageLayer = DamageLayer;
+	ReactionContext.AttackType = ResolveHitReactionAttackType(Data);
 	ReactionContext.TargetActor = TargetActor;
 	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
 	ReactionContext.DamageAmount = DamageAmount;
