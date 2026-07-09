@@ -46,6 +46,15 @@ enum class ENSHitReactionDamageLayer : uint8
 	Shield
 };
 
+// 공격 방식 분류
+UENUM(BlueprintType)
+enum class ENSHitReactionAttackType : uint8
+{
+	Any,
+	Ranged,
+	Melee
+};
+
 // 크로스헤어 공격 피드백 종류 : 추후에 추가될 사항까지 고려했으나 아직 Critical, Headshot은 로직이 없음
 UENUM(BlueprintType)
 enum class ENSCrosshairAttackFeedbackType : uint8
