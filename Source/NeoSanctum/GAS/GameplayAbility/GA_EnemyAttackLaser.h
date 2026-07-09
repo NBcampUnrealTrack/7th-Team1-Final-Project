@@ -11,6 +11,7 @@
 class UNSEnemyPartComponent;
 class ANSBossAIController;
 class UNSEnemyCosmeticComponent;
+class UNSEnemyCombatComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -113,6 +114,12 @@ private:
 	// 현재 Ability에서 사용할 AttackRow
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
 
+	// Beam 발사 순간에 고정된 레이저 조준 위치 변수
+	FVector LockedLaserAimPoint = FVector::ZeroVector;
+
+	// 현재 레이저가 고정 조준 위치를 사용하는지 나타내는 변수
+	bool bHasLockedLaserAimPoint = false;
+
 	// WarnTime 대기 Timer
 	FTimerHandle LaserStartTimerHandle;
 
@@ -183,4 +190,17 @@ private:
 		const FNSEnemyAttackRow& AttackRow,
 		const FTransform& MuzzleTransform,
 		const AActor* AttackActor) const;
+
+
+	// 적 CombatComponent를 가져오는 함수
+	UNSEnemyCombatComponent* GetEnemyCombatComponent() const;
+
+	// Beam 발사 순간의 조준 위치를 고정하는 함수
+	bool LockLaserAimPoint();
+
+	// Beam 종료 시 고정 조준 위치를 해제하는 함수
+	void ClearLockedLaserAimPoint();
+
+	// 고정된 조준 위치를 기준으로 레이저 방향을 계산하는 함수
+	FVector ResolveLockedLaserDirection(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
 };

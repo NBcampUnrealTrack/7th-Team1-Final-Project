@@ -17,8 +17,17 @@ class NEOSANCTUM_API UNSEnemyCombatComponent : public UActorComponent
 
 public:
 	UNSEnemyCombatComponent();
-	
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	// ABP가 바라볼 고정 조준 위치를 서버에서 클라이언트로 복제하는 함수
+	void SetReplicatedAimTargetLocation(const FVector& InLocation);
+
+	// ABP 고정 조준 위치를 해제하는 함수
+	void ClearReplicatedAimTargetLocation();
+
+	// ABP가 사용할 고정 조준 위치를 가져오는 함수
+	bool TryGetReplicatedAimTargetLocation(FVector& OutLocation) const;
 
 	// 현재 실행할 공격 Row를 저장하는 함수
 	void SetAttackRow(const FNSEnemyAttackRow& InAttackRow);
@@ -30,7 +39,7 @@ public:
 	void ClearAttackRow();
 
 	// 현재 공격 Row가 유효한지 반환하는 함수
-	bool HasCurrentAttackRow() const { return bHasCurrentAttackRow; }
+	bool HasCurrentAttackRow() const { return bHasCurrentAttackRow || !ReplicatedAttackId.IsNone(); }
 
 	// 현재 공격의 AttackId를 반환하는 함수
 	FName GetCurrentAttackId() const;
@@ -43,8 +52,16 @@ private:
 	// 현재 공격 Row가 유효한지 여부
 	UPROPERTY(Transient)
 	bool bHasCurrentAttackRow = false;
-	
+
 	// 클라이언트 ABP가 현재 공격 Row를 EnemyData에서 다시 찾기 위해 사용하는 공격 ID를 복제하는 변수
 	UPROPERTY(Replicated)
 	FName ReplicatedAttackId = NAME_None;
+
+	// 클라이언트 ABP가 고정 조준 위치를 사용해야 하는지 나타내는 변수
+	UPROPERTY(Replicated)
+	bool bHasReplicatedAimTargetLocation = false;
+
+	// 클라이언트 ABP가 바라볼 고정 조준 위치 변수
+	UPROPERTY(Replicated)
+	FVector_NetQuantize ReplicatedAimTargetLocation = FVector::ZeroVector;
 };

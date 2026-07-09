@@ -6,6 +6,7 @@
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 
 namespace
@@ -39,7 +40,7 @@ void UNSTitanWalkerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 
-	if (!IsValid(OwnerPawn) || !IsValid(ThreatComponent))
+	if (!IsValid(OwnerPawn) || !IsValid(ThreatComponent) || !IsValid(CombatComponent))
 	{
 		CacheTitanWalker();
 	}
@@ -102,6 +103,10 @@ void UNSTitanWalkerAnimInstance::CacheTitanWalker()
 		                ? OwnerPawn->FindComponentByClass<UNSEnemyPartComponent>()
 		                : nullptr;
 
+	CombatComponent = IsValid(OwnerPawn)
+		                  ? OwnerPawn->FindComponentByClass<UNSEnemyCombatComponent>()
+		                  : nullptr;
+
 	if (IsValid(OwnerPawn) && !bHasLastActorYaw)
 	{
 		LastActorYaw = OwnerPawn->GetActorRotation().Yaw;
@@ -155,28 +160,28 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 {
 	const auto ResetAimValues =
 		[this, DeltaSeconds]()
-		{
-			bUseUpperAim = false;
-			bUseWeaponAim = false;
+	{
+		bUseUpperAim = false;
+		bUseWeaponAim = false;
 
-			RawAimYaw = 0.0f;
-			RawAimPitch = 0.0f;
-			TargetUpperYaw = 0.0f;
-			TargetUpperPitch = 0.0f;
-			TargetWeaponYaw = 0.0f;
-			TargetWeaponPitch = 0.0f;
+		RawAimYaw = 0.0f;
+		RawAimPitch = 0.0f;
+		TargetUpperYaw = 0.0f;
+		TargetUpperPitch = 0.0f;
+		TargetWeaponYaw = 0.0f;
+		TargetWeaponPitch = 0.0f;
 
-			UpperAimYaw = InterpAngleDegrees(UpperAimYaw, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
-			UpperAimPitch = FMath::FInterpTo(UpperAimPitch, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
+		UpperAimYaw = InterpAngleDegrees(UpperAimYaw, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
+		UpperAimPitch = FMath::FInterpTo(UpperAimPitch, 0.0f, DeltaSeconds, UpperAimInterpSpeed);
 
-			WeaponAimYaw = InterpAngleDegrees(WeaponAimYaw, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
-			WeaponAimPitch = FMath::FInterpTo(WeaponAimPitch, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
-		};
+		WeaponAimYaw = InterpAngleDegrees(WeaponAimYaw, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
+		WeaponAimPitch = FMath::FInterpTo(WeaponAimPitch, 0.0f, DeltaSeconds, WeaponAimInterpSpeed);
+	};
 
 	const INSEnemyAgent* EnemyAgentInterface = EnemyAgent.GetInterface();
 	const FNSEnemyAttackRow* CurrentAttackRow = EnemyAgentInterface
-		? EnemyAgentInterface->GetCurrentAttackRow()
-		: nullptr;
+		                                            ? EnemyAgentInterface->GetCurrentAttackRow()
+		                                            : nullptr;
 
 	bHasCurrentAttackRow = CurrentAttackRow != nullptr;
 
@@ -197,8 +202,28 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 		return;
 	}
 
-	const AActor* TargetActor = ThreatComponent->GetCurrentTarget();
-	if (!IsValid(TargetActor))
+	FVector TargetLocation = FVector::ZeroVector;
+	bool bHasAimTargetLocation = false;
+
+	if (IsValid(CombatComponent))
+	{
+		bHasAimTargetLocation = CombatComponent->TryGetReplicatedAimTargetLocation(TargetLocation);
+	}
+
+	if (!bHasAimTargetLocation)
+	{
+		const AActor* TargetActor = ThreatComponent->GetCurrentTarget();
+		if (!IsValid(TargetActor))
+		{
+			ResetAimValues();
+			return;
+		}
+
+		TargetLocation = GetTargetAimLocation(TargetActor);
+		bHasAimTargetLocation = true;
+	}
+
+	if (!bHasAimTargetLocation)
 	{
 		ResetAimValues();
 		return;
@@ -210,10 +235,9 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 	}
 
 	const FVector AimOrigin = EnemyAgentInterface
-		? EnemyAgentInterface->GetAimLocation()
-		: OwnerPawn->GetActorLocation();
+		                          ? EnemyAgentInterface->GetAimLocation()
+		                          : OwnerPawn->GetActorLocation();
 
-	const FVector TargetLocation = GetTargetAimLocation(TargetActor);
 	const FVector ToTarget = TargetLocation - AimOrigin;
 
 	if (ToTarget.IsNearlyZero())
@@ -251,8 +275,8 @@ void UNSTitanWalkerAnimInstance::UpdateAim(float DeltaSeconds)
 	RawAimPitch = LocalAimRotation.Pitch;
 
 	const bool bAllowUpperAim = bHasCurrentAttackRow
-		? CurrentAttackRow->bTurnUpper
-		: bTrackUpperToTarget;
+		                            ? CurrentAttackRow->bTurnUpper
+		                            : bTrackUpperToTarget;
 
 	const bool bAllowWeaponAim =
 		bHasCurrentAttackRow &&
