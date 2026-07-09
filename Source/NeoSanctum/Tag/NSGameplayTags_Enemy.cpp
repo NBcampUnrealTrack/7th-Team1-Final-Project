@@ -59,6 +59,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Bombard_Impact, "Cosmetic.Enemy.TitanWalker.Bombard.Impact");
 
 	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_ChargeStart, "Cosmetic.Enemy.TitanWalker.Laser.ChargeStart");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_ChargeUpdate, "Cosmetic.Enemy.TitanWalker.Laser.ChargeUpdate");
 	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_BeamStart, "Cosmetic.Enemy.TitanWalker.Laser.BeamStart");
 	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate, "Cosmetic.Enemy.TitanWalker.Laser.BeamUpdate");
 	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_Stop, "Cosmetic.Enemy.TitanWalker.Laser.Stop");

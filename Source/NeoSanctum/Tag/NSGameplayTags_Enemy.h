@@ -63,6 +63,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Impact);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_ChargeStart);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_ChargeUpdate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamStart);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_Stop);
