@@ -40,17 +40,23 @@ void ANSOutGameMode::RequestStartRun_Implementation()
 
 AActor* ANSOutGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[OutSpawn] FindPlayerStart 호출 Player=%s"), *GetNameSafe(Player));
 	// 플레이어의 고정 슬롯 인덱스 결정(PlayerArray 내 위치)
 	int32 SlotIndex = 0;
-	if (GameState && Player && Player->PlayerState)
+	if (ANSPlayerState* NSPS = Player ? Player->GetPlayerState<ANSPlayerState>() : nullptr)
 	{
-		const int32 FoundIndex = 
-			GameState->PlayerArray.IndexOfByKey(Player->PlayerState);
-		SlotIndex = (FoundIndex != INDEX_NONE) ? FoundIndex : 0;
+		const int32 Stored = NSPS->GetPlayerSlotIndex();
+		if (Stored != INDEX_NONE)
+		{
+			// 저장된 고정 슬롯 사용
+			SlotIndex = Stored; 
+		}
 	}
 
 	const FName DesiredTag =
 		*FString::Printf(TEXT("PlayerSpawn%d"), SlotIndex);
+	
+	UE_LOG(LogTemp, Warning, TEXT("[OutSpawn] SlotIndex=%d DesiredTag=%s"), SlotIndex, *DesiredTag.ToString());
 
 	APlayerStart* FallbackStart = nullptr;
 	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It)
@@ -80,6 +86,23 @@ AActor* ANSOutGameMode::FindPlayerStart_Implementation(AController* Player, cons
 void ANSOutGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
-	
-	// TODO: 플레이어 입장 시 SaveData에서 진행도 받아서 연동해야함
+
+	if (!HasAuthority() || !NewPlayer)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPS = NewPlayer->GetPlayerState<ANSPlayerState>();
+	if (!NSPS)
+	{
+		return;
+	}
+
+	// 슬롯이 없을 때만 부여
+	if (NSPS->GetPlayerSlotIndex() == INDEX_NONE)
+	{
+		// 현재 접속 순번
+		const int32 NewSlot = GetNumPlayers() - 1;
+		NSPS->SetPlayerSlotIndex(NewSlot);
+	}
 }
