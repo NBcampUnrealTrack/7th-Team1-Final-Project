@@ -43,14 +43,15 @@ AActor* ANSOutGameMode::FindPlayerStart_Implementation(AController* Player, cons
 	UE_LOG(LogTemp, Warning, TEXT("[OutSpawn] FindPlayerStart 호출 Player=%s"), *GetNameSafe(Player));
 	// 플레이어의 고정 슬롯 인덱스 결정(PlayerArray 내 위치)
 	int32 SlotIndex = 0;
+
 	if (ANSPlayerState* NSPS = Player ? Player->GetPlayerState<ANSPlayerState>() : nullptr)
 	{
-		const int32 Stored = NSPS->GetPlayerSlotIndex();
-		if (Stored != INDEX_NONE)
+		// 아직 슬롯이 없으면 여기서 부여
+		if (NSPS->GetPlayerSlotIndex() == INDEX_NONE)
 		{
-			// 저장된 고정 슬롯 사용
-			SlotIndex = Stored; 
+			NSPS->SetPlayerSlotIndex(FindFreeSlotIndex(NSPS));
 		}
+		SlotIndex = NSPS->GetPlayerSlotIndex();
 	}
 
 	const FName DesiredTag =
