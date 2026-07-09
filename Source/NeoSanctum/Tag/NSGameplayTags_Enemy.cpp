@@ -45,4 +45,21 @@ namespace NSGameplayTags
 
 	// Enemy Event
 	UE_DEFINE_GAMEPLAY_TAG(Event_Enemy_Hit, "Event.Enemy.Hit");
+	
+	// Enemy Cosmetic
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_MachineGun_Fire, "Cosmetic.Enemy.TitanWalker.MachineGun.Fire");
+
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Flame_Start, "Cosmetic.Enemy.TitanWalker.Flame.Start");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Flame_Update, "Cosmetic.Enemy.TitanWalker.Flame.Update");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Flame_Stop, "Cosmetic.Enemy.TitanWalker.Flame.Stop");
+
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Bombard_Prepare, "Cosmetic.Enemy.TitanWalker.Bombard.Prepare");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Bombard_Launch, "Cosmetic.Enemy.TitanWalker.Bombard.Launch");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Bombard_Warning, "Cosmetic.Enemy.TitanWalker.Bombard.Warning");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Bombard_Impact, "Cosmetic.Enemy.TitanWalker.Bombard.Impact");
+
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_ChargeStart, "Cosmetic.Enemy.TitanWalker.Laser.ChargeStart");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_BeamStart, "Cosmetic.Enemy.TitanWalker.Laser.BeamStart");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate, "Cosmetic.Enemy.TitanWalker.Laser.BeamUpdate");
+	UE_DEFINE_GAMEPLAY_TAG(Cosmetic_Enemy_TitanWalker_Laser_Stop, "Cosmetic.Enemy.TitanWalker.Laser.Stop");
 }

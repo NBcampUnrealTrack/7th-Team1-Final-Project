@@ -11,6 +11,7 @@
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Character/Animation/NSTitanWalkerAnimInstance.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
@@ -394,6 +395,19 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 
 	ProjectileManager->FireProjectile(Request);
 	PlayMachineGunFireSound(MuzzleTransform);
+	
+	if (UNSEnemyCosmeticComponent* CosmeticComponent =
+	AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>())
+	{
+		FNSCosmeticEventNetData EventData;
+		EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_MachineGun_Fire;
+		EventData.Phase = ENSCosmeticEventPhase::OneShot;
+		EventData.Location = MuzzleTransform.GetLocation();
+		EventData.Direction = Direction;
+		EventData.Radius = CachedAttackRow->ProjectileData.Radius;
+
+		CosmeticComponent->SendCosmeticEvent(EventData, false);
+	}
 
 	/*DrawDebugFire(
 		*CachedAttackRow,

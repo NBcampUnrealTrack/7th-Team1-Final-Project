@@ -8,6 +8,7 @@
 
 class UNSBossModeComponent;
 class UNSBossTargetComponent;
+class UNSEnemyCosmeticComponent;
 
 /*
  * 작성자 : 최준혁
@@ -32,6 +33,9 @@ public:
 
 	// Boss의 다중 타깃 컴포넌트를 반환하는 함수
 	UNSBossTargetComponent* GetBossTargetComponent() const { return BossTargetComponent; }
+	
+	// Enemy Pawn의 코스메틱 이벤트 컴포넌트를 반환하는 함수
+	UNSEnemyCosmeticComponent* GetCosmeticComponent() const { return CosmeticComponent; }
 
 protected:
 	// Boss 사망 시 Boss 전용 공격 타깃 상태를 함께 정리하는 함수
@@ -51,6 +55,10 @@ protected:
 	// Boss의 공격별 다중 타깃 목록을 관리하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UNSBossTargetComponent> BossTargetComponent;
+	
+	// Enemy Pawn의 코스메틱 이벤트를 리슨서버 호스트와 클라이언트로 전달하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UNSEnemyCosmeticComponent> CosmeticComponent;
 	
 	// 피격 경직 진입 시 현재 타깃 방향으로 Actor를 돌릴지 결정하는 값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|HitReaction")

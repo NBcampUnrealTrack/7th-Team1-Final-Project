@@ -48,4 +48,22 @@ namespace NSGameplayTags
 
 	// Enemy Event
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Enemy_Hit);
+	
+	
+	// Enemy Cosmetic
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_MachineGun_Fire);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Start);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Update);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Stop);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Prepare);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Launch);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Warning);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Impact);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_ChargeStart);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamStart);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_Stop);
 }
