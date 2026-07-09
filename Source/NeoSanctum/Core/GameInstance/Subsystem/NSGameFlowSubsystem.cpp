@@ -11,8 +11,32 @@
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/Data/Config/NSDifficultyConfig.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 
 
+static void SyncDifficultyTimerToGameState(
+	const UObject* WorldContext,
+	bool bRunning,
+	float ElapsedSeconds,
+	int32 StageNumber)
+{
+	const UWorld* World = WorldContext ? WorldContext->GetWorld() : nullptr;
+	if (!World)
+	{
+		return;
+	}
+
+	ANSRunGameState* RunGameState = World->GetGameState<ANSRunGameState>();
+	if (!RunGameState)
+	{
+		return;
+	}
+
+	RunGameState->SetDifficultyTimerState(
+		bRunning,
+		ElapsedSeconds,
+		StageNumber);
+}
 
 UNSLevelCatalog* UNSGameFlowSubsystem::GetCatalog() const
 {
@@ -233,17 +257,35 @@ void UNSGameFlowSubsystem::ResumeDifficultyTimer()
 	}
 
 	bDifficultyTimerRunning = true;
+
+	SyncDifficultyTimerToGameState(
+		this,
+		true,
+		RunElapsedSeconds,
+		CurrentStageNumber);
 }
 
 void UNSGameFlowSubsystem::PauseDifficultyTimer()
 {
 	bDifficultyTimerRunning = false;
+
+	SyncDifficultyTimerToGameState(
+		this,
+		false,
+		RunElapsedSeconds,
+		CurrentStageNumber);
 }
 
 void UNSGameFlowSubsystem::StopAndResetDifficultyTimer()
 {
 	bDifficultyTimerRunning = false;
 	RunElapsedSeconds = 0.0f;
+
+	SyncDifficultyTimerToGameState(
+		this,
+		false,
+		RunElapsedSeconds,
+		CurrentStageNumber);
 }
 
 void UNSGameFlowSubsystem::RestartDifficultyTimer()

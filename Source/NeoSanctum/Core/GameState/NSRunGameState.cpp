@@ -23,6 +23,10 @@ void ANSRunGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME(ANSRunGameState, ObjectiveState);
 	DOREPLIFETIME(ANSRunGameState, BossGateEndServerTime);
 	DOREPLIFETIME(ANSRunGameState, bBossGateAllPresent);
+	DOREPLIFETIME(ANSRunGameState, bDifficultyTimerRunning);
+	DOREPLIFETIME(ANSRunGameState, DifficultyBaseElapsedSeconds);
+	DOREPLIFETIME(ANSRunGameState, DifficultyStartServerTime);
+	DOREPLIFETIME(ANSRunGameState, DifficultyStageNumber);
 }
 
 void ANSRunGameState::SetRunDataConfig(
@@ -209,4 +213,76 @@ void ANSRunGameState::AddRunResultKillCount(int32 Amount)
 
 	ForceNetUpdate();
 	OnRep_RunResultData();
+}
+
+void ANSRunGameState::SetDifficultyTimerState(
+	bool bInRunning,
+	float InBaseElapsedSeconds,
+	int32 InStageNumber)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	bDifficultyTimerRunning = bInRunning;
+	DifficultyBaseElapsedSeconds = FMath::Max(0.0f, InBaseElapsedSeconds);
+	DifficultyStageNumber = InStageNumber;
+
+	if (bDifficultyTimerRunning)
+	{
+		DifficultyStartServerTime = GetServerWorldTimeSeconds();
+	}
+	else
+	{
+		DifficultyStartServerTime = 0.0f;
+	}
+
+	ForceNetUpdate();
+	OnRep_DifficultyTimerState();
+}
+
+void ANSRunGameState::OnRep_DifficultyTimerState()
+{
+	// 지금은 UI가 Tick으로 읽으니까 비워둬도 됨.
+}
+
+float ANSRunGameState::GetDifficultyElapsedSeconds() const
+{
+	if (!bDifficultyTimerRunning)
+	{
+		return DifficultyBaseElapsedSeconds;
+	}
+
+	return DifficultyBaseElapsedSeconds + FMath::Max(
+		0.0f,
+		GetServerWorldTimeSeconds() - DifficultyStartServerTime);
+}
+
+bool ANSRunGameState::ShouldShowDifficultyTimer() const
+{
+	return bDifficultyTimerRunning || GetDifficultyElapsedSeconds() > 0.0f;
+}
+
+int32 ANSRunGameState::GetDifficultyLevel(float Interval) const
+{
+	if (Interval <= 0.0f)
+	{
+		return 1;
+	}
+
+	return FMath::FloorToInt(GetDifficultyElapsedSeconds() / Interval) + 1;
+}
+
+float ANSRunGameState::GetDifficultyProgressPercent(float Interval) const
+{
+	if (Interval <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const float CurrentStepElapsed =
+		FMath::Fmod(GetDifficultyElapsedSeconds(), Interval);
+
+	return FMath::Clamp(CurrentStepElapsed / Interval, 0.0f, 1.0f);
 }
