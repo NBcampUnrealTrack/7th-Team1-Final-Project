@@ -25,4 +25,6 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Message_UI_TeammateStatus_Snapshot,"Message.UI.TeammateStatus.Snapshot");
 	//특정 팀원의 체력/쉴드상태 변경 채널
 	UE_DEFINE_GAMEPLAY_TAG(Message_UI_TeammateStatus_Changed,"Message.UI.TeammateStatus.Changed");
+	//캐릭터 스텟을 표시 Snapshot
+	UE_DEFINE_GAMEPLAY_TAG(Message_UI_CharacterStats_Snapshot, TEXT("Message.UI.CharacterStats.Snapshot"));
 }

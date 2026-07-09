@@ -31,4 +31,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Snapshot);
 	//특정 팀원의 체력, 쉴드 상태 변경
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Changed);
+	//캐릭터 스텟 표시 Snapshot
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_CharacterStats_Snapshot);
 }
