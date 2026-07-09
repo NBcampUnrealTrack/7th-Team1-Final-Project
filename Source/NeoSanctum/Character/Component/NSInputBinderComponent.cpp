@@ -13,7 +13,9 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
 
@@ -218,6 +220,17 @@ void UNSInputBinderComponent::Input_Move(const FInputActionValue& Value)
 		return;
 	}
 
+	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(OwnerPawn))
+	{
+		if (const UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+		{
+			if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Input_BlockInputMove))
+			{
+				return;
+			}
+		}
+	}
+
 	const FVector2D MoveValue = Value.Get<FVector2D>();
 	const FRotator MoveRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
 
@@ -281,6 +294,19 @@ void UNSInputBinderComponent::Input_Jump()
 {
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Character))
+		{
+			if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+			{
+				FGameplayTagContainer ParkourAbilityTags;
+				ParkourAbilityTags.AddTag(NSGameplayTags::Ability_Common_Parkour);
+				if (ASC->TryActivateAbilitiesByTag(ParkourAbilityTags))
+				{
+					return;
+				}
+			}
+		}
+
 		Character->Jump();
 	}
 }

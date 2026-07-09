@@ -24,6 +24,7 @@ class UNSAbilitySystemComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UCharacterTrajectoryComponent;
+class UMotionWarpingComponent;
 class UNSInputBinderComponent;
 class UNSPartVisualComponent;
 class UNSInteractionComponent;
@@ -86,6 +87,7 @@ public:
 	void Server_ChangeCharacterData(UNSCharacterData* InCharacterData);
 
 	UCharacterTrajectoryComponent* GetCharacterTrajectoryComponent() const { return CharacterTrajectoryComp; }
+	UMotionWarpingComponent* GetMotionWarpingComponent() const { return MotionWarpingComp; }
 	UNSInputBinderComponent* GetInputBinderComponent() const { return InputBinderComp; }
 	ANSWeaponBase* GetCurrentWeapon() const { return CurrentWeapon; }
 	// PlayerAttackFeedbackComponent Getter
@@ -210,6 +212,9 @@ protected:
 	// Motion Matching에서 사용하는 애니메이션 이동 예측 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation")
 	TObjectPtr<UCharacterTrajectoryComponent> CharacterTrajectoryComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Animation")
+	TObjectPtr<UMotionWarpingComponent> MotionWarpingComp;
 	
 protected:
 	// ASC 캐시
