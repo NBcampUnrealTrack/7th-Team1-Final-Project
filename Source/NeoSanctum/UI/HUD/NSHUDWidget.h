@@ -17,6 +17,8 @@ class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
 class UNSDifficultyTimerWidget;
 class UWidget;
+class UNSCharacterStatsWidget;
+class UNSMinimapWidget;
 
 
 /**
@@ -140,6 +142,11 @@ private:
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot3Widget;
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSDifficultyTimerWidget> DifficultyTimerWidget;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSCharacterStatsWidget> CharacterStatsWidget;
+	
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSMinimapWidget> MinimapWidget;
 
 	void RefreshHudDimBackground();
 protected:

@@ -9,6 +9,7 @@
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 
 void UNSPartPanelWidget::NativeConstruct()
 {
@@ -165,5 +166,11 @@ void UNSPartPanelWidget::HandlePartChanged(FGameplayTag PartSlot, const FNSPartD
 	if (Found && IsValid(*Found))
 	{
 		ApplySlot(PartSlot, *Found);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
 	}
 }
