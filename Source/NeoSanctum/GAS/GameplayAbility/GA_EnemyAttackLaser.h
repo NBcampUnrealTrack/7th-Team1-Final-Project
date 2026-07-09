@@ -110,6 +110,18 @@ private:
 	// Laser Sweep에 사용할 Trace Channel
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser")
 	TEnumAsByte<ECollisionChannel> LaserTraceChannel = NSCollisionChannels::EnemyWeaponTrace;
+	
+	// 이 값 이하로 아래를 조준할 때만 Pitch 보간을 시작하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
+	float LaserPitchFlattenStartThreshold = -5.0f;
+
+	// Pitch를 목표 각도까지 보간하는 데 걸리는 시간 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection", meta = (ClampMin = "0.01"))
+	float LaserPitchFlattenDuration = 0.35f;
+
+	// 아래로 꺾인 Pitch가 최종적으로 도달할 목표 Pitch 각도 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
+	float LaserPitchFlattenTargetPitch = 0.0f;
 
 	// 현재 Ability에서 사용할 AttackRow
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
@@ -119,6 +131,18 @@ private:
 
 	// 현재 레이저가 고정 조준 위치를 사용하는지 나타내는 변수
 	bool bHasLockedLaserAimPoint = false;
+
+	// Beam 발사 순간에 고정된 레이저 Yaw 각도 변수
+	float LockedLaserYaw = 0.0f;
+
+	// Beam 발사 순간에 고정된 레이저 Pitch 각도 변수
+	float LockedLaserInitialPitch = 0.0f;
+
+	// Beam 발사 시작 월드 시간을 저장하는 변수
+	float LockedLaserBeamStartTime = 0.0f;
+
+	// 현재 고정 레이저 Pitch를 수평 방향으로 보간해야 하는지 나타내는 변수
+	bool bShouldFlattenLockedLaserPitch = false;
 
 	// WarnTime 대기 Timer
 	FTimerHandle LaserStartTimerHandle;
@@ -203,4 +227,13 @@ private:
 
 	// 고정된 조준 위치를 기준으로 레이저 방향을 계산하는 함수
 	FVector ResolveLockedLaserDirection(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
+	
+	// 현재 시간 기준으로 보간된 고정 레이저 Pitch를 반환하는 함수
+	float GetCurrentLockedLaserPitch() const;
+
+	// 고정된 Yaw와 보간된 Pitch 기준으로 현재 레이저 방향을 반환하는 함수
+	FVector ResolveCurrentLockedLaserDirection() const;
+
+	// 클라이언트 ABP가 바라볼 고정 레이저 조준 위치를 갱신하는 함수
+	void UpdateReplicatedLockedLaserAimTargetLocation();
 };
