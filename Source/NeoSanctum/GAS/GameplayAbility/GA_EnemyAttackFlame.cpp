@@ -6,7 +6,6 @@
 #include "AbilitySystemInterface.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
-#include "NiagaraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
@@ -14,8 +13,7 @@
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -73,6 +71,10 @@ void UGA_EnemyAttackFlame::ActivateAbility(
 void UGA_EnemyAttackFlame::InitializeAttack()
 {
 	CachedAttackRow = GetCurrentAttackRow();
+
+	FlameStartTime = 0.0f;
+	FlameCurrentRange = 0.0f;
+	FlameCosmeticInstanceId = INDEX_NONE;
 }
 
 void UGA_EnemyAttackFlame::EndAbility(
@@ -82,11 +84,12 @@ void UGA_EnemyAttackFlame::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
-	StopFlameCosmetics();
+	SendFlameStopCosmeticEvent();
 	ClearFlameTimers();
 
 	FlameCurrentRange = 0.0f;
 	FlameStartTime = 0.0f;
+	FlameCosmeticInstanceId = INDEX_NONE;
 	CachedAttackRow = nullptr;
 
 	Super::EndAbility(
@@ -215,19 +218,22 @@ void UGA_EnemyAttackFlame::StartFlame()
 	FlameStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	FlameCurrentRange = 0.0f;
 
-	StartFlameCosmetics();
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		FlameCosmeticInstanceId = CosmeticComponent->AllocateCosmeticInstanceId();
+	}
 
-	TickFlameVFX();
+	SendFlameStartCosmeticEvent();
+	TickFlameCosmeticUpdate();
 
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().SetTimer(
-			FlameVFXTimerHandle,
+			FlameCosmeticUpdateTimerHandle,
 			this,
-			&UGA_EnemyAttackFlame::TickFlameVFX,
-			FlameVFXUpdateInterval,
-			true
-		);
+			&ThisClass::TickFlameCosmeticUpdate,
+			FMath::Max(FlameCosmeticUpdateInterval, 0.01f),
+			true);
 	}
 
 	TickFlameDamage();
@@ -308,7 +314,7 @@ void UGA_EnemyAttackFlame::ClearFlameTimers()
 
 		TimerManager.ClearTimer(FlameTickTimerHandle);
 		TimerManager.ClearTimer(FlameEndTimerHandle);
-		TimerManager.ClearTimer(FlameVFXTimerHandle);
+		TimerManager.ClearTimer(FlameCosmeticUpdateTimerHandle);
 	}
 }
 
@@ -405,7 +411,8 @@ bool UGA_EnemyAttackFlame::IsLocationInsideCone(
 	const float DistanceFromAxisSq = FVector::DistSquared(TargetLocation, ClosestPointOnAxis);
 
 	const float ConeHalfAngleRadians = FMath::DegreesToRadians(FMath::Max(AttackRow.AreaData.ConeHalfAngle, 0.0f));
-	const float RadiusAtDistance = FMath::Max(AttackRow.AreaData.Radius, 0.0f) + FMath::Tan(ConeHalfAngleRadians) * ForwardDistance;
+	const float RadiusAtDistance = FMath::Max(AttackRow.AreaData.Radius, 0.0f) + FMath::Tan(ConeHalfAngleRadians) *
+		ForwardDistance;
 
 	return DistanceFromAxisSq <= FMath::Square(RadiusAtDistance);
 }
@@ -698,217 +705,142 @@ void UGA_EnemyAttackFlame::DrawDebugFlameCone(
 		AttackRow.DebugData.DrawTime);
 }
 
-void UGA_EnemyAttackFlame::StartFlameCosmetics()
+UNSEnemyCosmeticComponent* UGA_EnemyAttackFlame::GetEnemyCosmeticComponent() const
 {
-	UWorld* World = GetWorld();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (!World || World->GetNetMode() == NM_DedicatedServer || !IsValid(AvatarActor))
+
+	return IsValid(AvatarActor)
+		       ? AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>()
+		       : nullptr;
+}
+
+void UGA_EnemyAttackFlame::SendFlameStartCosmeticEvent() const
+{
+	if (!CachedAttackRow || FlameCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	TArray<FNSFlameEmitter> Emitters;
+	GetCurrentFlameEmitters(Emitters);
+
+	FNSCosmeticEventNetData EventData;
+	BuildFlameCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Flame_Start,
+		ENSCosmeticEventPhase::Start,
+		Emitters,
+		0.0f);
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
 	{
-		ActiveFlameAudioComponent =
-			SoundSubsystem->PlaySoundAttached(FlameSoundID, AvatarActor->GetRootComponent());
+		CosmeticComponent->SendCosmeticEvent(EventData, true);
 	}
 }
 
-void UGA_EnemyAttackFlame::UpdateFlameVFX(const TArray<FNSFlameEmitter>& Emitters, float EffectiveRange)
+void UGA_EnemyAttackFlame::SendFlameUpdateCosmeticEvent(
+	const TArray<FNSFlameEmitter>& Emitters,
+	float EffectiveRange) const
 {
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer || !CachedAttackRow || FlameVFXID.IsNone())
+	if (!CachedAttackRow || FlameCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this);
-	if (!VFXSubsystem)
+	FNSCosmeticEventNetData EventData;
+	BuildFlameCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Flame_Update,
+		ENSCosmeticEventPhase::Update,
+		Emitters,
+		EffectiveRange);
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, false);
+	}
+}
+
+void UGA_EnemyAttackFlame::SendFlameStopCosmeticEvent() const
+{
+	if (FlameCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	TArray<FTransform> DesiredTransforms;
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Flame_Stop;
+	EventData.InstanceId = FlameCosmeticInstanceId;
+	EventData.Phase = ENSCosmeticEventPhase::Stop;
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, true);
+	}
+}
+
+void UGA_EnemyAttackFlame::BuildFlameCosmeticEvent(
+	FNSCosmeticEventNetData& OutEventData,
+	FGameplayTag EventTag,
+	ENSCosmeticEventPhase Phase,
+	const TArray<FNSFlameEmitter>& Emitters,
+	float EffectiveRange) const
+{
+	OutEventData = FNSCosmeticEventNetData();
+
+	OutEventData.EventTag = EventTag;
+	OutEventData.InstanceId = FlameCosmeticInstanceId;
+	OutEventData.Phase = Phase;
+	OutEventData.Range = FMath::Max(EffectiveRange, 0.0f);
+
+	if (CachedAttackRow)
+	{
+		OutEventData.Radius = CachedAttackRow->AreaData.Radius;
+		OutEventData.ConeHalfAngle = CachedAttackRow->AreaData.ConeHalfAngle;
+		OutEventData.Duration = CachedAttackRow->SustainData.Duration;
+	}
 
 	for (const FNSFlameEmitter& Emitter : Emitters)
 	{
-		TArray<FTransform> EmitterTransforms;
-		BuildFlameVFXTransforms(Emitter, *CachedAttackRow, EffectiveRange, EmitterTransforms);
-		DesiredTransforms.Append(EmitterTransforms);
-	}
-
-	while (ActiveFlameVFXComponents.Num() < DesiredTransforms.Num())
-	{
-		ActiveFlameVFXComponents.Add(nullptr);
-	}
-
-	for (int32 Index = 0; Index < DesiredTransforms.Num(); ++Index)
-	{
-		const FTransform& Transform = DesiredTransforms[Index];
-		UNiagaraComponent* VFX = ActiveFlameVFXComponents[Index];
-
-		if (!IsValid(VFX))
+		const FVector Direction = Emitter.Direction.GetSafeNormal();
+		if (Direction.IsNearlyZero())
 		{
-			VFX = VFXSubsystem->SpawnVFXAtLocation(
-				FlameVFXID,
-				Transform.GetLocation(),
-				Transform.Rotator(),
-				FlameVFXComponentScale,
-				false);
-
-			ActiveFlameVFXComponents[Index] = VFX;
-
-			if (IsValid(VFX))
-			{
-				VFX->SetVariableFloat(FlameScaleParameterName, FlameNiagaraFlameScale);
-				VFX->SetVariableFloat(FlameSpawnRateParameterName, FlameNiagaraSpawnRate);
-				VFX->Activate(true);
-			}
+			continue;
 		}
 
-		if (IsValid(VFX))
-		{
-			VFX->SetWorldLocationAndRotation(Transform.GetLocation(), Transform.Rotator());
-		}
+		FNSCosmeticEventPointNetData PointData;
+		PointData.Location = Emitter.Start;
+		PointData.Direction = Direction;
+		PointData.EndLocation = Emitter.Start + Direction * OutEventData.Range;
+
+		OutEventData.Points.Add(PointData);
 	}
 
-	for (int32 Index = DesiredTransforms.Num(); Index < ActiveFlameVFXComponents.Num(); ++Index)
+	if (!OutEventData.Points.IsEmpty())
 	{
-		if (IsValid(ActiveFlameVFXComponents[Index]))
-		{
-			ActiveFlameVFXComponents[Index]->Deactivate();
-			ActiveFlameVFXComponents[Index]->DestroyComponent();
-		}
-	}
+		const FNSCosmeticEventPointNetData& FirstPoint = OutEventData.Points[0];
 
-	ActiveFlameVFXComponents.SetNum(DesiredTransforms.Num());
+		OutEventData.Location = FirstPoint.Location;
+		OutEventData.EndLocation = FirstPoint.EndLocation;
+		OutEventData.Direction = FirstPoint.Direction;
+	}
 }
 
-void UGA_EnemyAttackFlame::BuildFlameVFXTransforms(
-	const FNSFlameEmitter& Emitter,
-	const FNSEnemyAttackRow& AttackRow,
-	float EffectiveRange,
-	TArray<FTransform>& OutTransforms
-) const
+void UGA_EnemyAttackFlame::TickFlameCosmeticUpdate()
 {
-	OutTransforms.Reset();
-
-	const FVector Direction = Emitter.Direction.GetSafeNormal();
-
-	if (Direction.IsNearlyZero())
+	if (!CachedAttackRow || FlameCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	const float MaxRange = GetFlameRange(AttackRow);
-	const float Range = FMath::Clamp(EffectiveRange, 0.0f, MaxRange);
+	TArray<FNSFlameEmitter> Emitters;
+	GetCurrentFlameEmitters(Emitters);
 
-	if (Range <= KINDA_SMALL_NUMBER)
-	{
-		return;
-	}
+	FlameCurrentRange = GetCurrentFlameRange();
 
-	
-
-	const FRotator SpawnRotation = Direction.Rotation() + FlameVFXRotationOffset;
-	const FVector RightVector = FRotationMatrix(Direction.Rotation()).GetUnitAxis(EAxis::Y);
-	
-	const float FirstDistance = FMath::Min(FMath::Max(FlameVFXStartOffset, 0.0f), Range);
-	const float ForwardSpacing = FMath::Max(FlameVFXForwardSpacing, 1.0f);
-	const float LateralSpacing = FMath::Max(FlameVFXLateralSpacing, 1.0f);
-
-	TArray<float> SampleDistances;
-	SampleDistances.Add(FirstDistance);
-
-	for (float Distance = FirstDistance + ForwardSpacing; Distance < Range; Distance += ForwardSpacing)
-	{
-		SampleDistances.Add(Distance);
-	}
-
-	if (Range > FirstDistance + KINDA_SMALL_NUMBER)
-	{
-		SampleDistances.Add(Range);
-	}
-
-	const float ConeHalfAngleRadians = FMath::DegreesToRadians(FMath::Max(AttackRow.AreaData.ConeHalfAngle, 0.0f));
-	const float ConeTan = FMath::Tan(ConeHalfAngleRadians);
-	const float BaseRadius = FMath::Max(AttackRow.AreaData.Radius, 0.0f);
-
-	for (const float Distance : SampleDistances)
-	{
-		const bool bSocketPoint = Distance <= FirstDistance + KINDA_SMALL_NUMBER;
-		const float HalfWidth = bSocketPoint ? 0.0f : BaseRadius + ConeTan * Distance;
-
-	const int32 LateralCount = HalfWidth <= KINDA_SMALL_NUMBER
-		? 1
-		: FMath::Clamp(
-			FMath::FloorToInt((HalfWidth * 2.0f) / LateralSpacing) + 1,
-			1,
-			3);
-
-		for (int32 Index = 0; Index < LateralCount; ++Index)
-		{
-			const float LateralAlpha = LateralCount == 1 ? 0.5f : static_cast<float>(Index) / static_cast<float>(LateralCount - 1);
-			const float LateralOffset = FMath::Lerp(-HalfWidth, HalfWidth, LateralAlpha);
-
-			const FVector SpawnLocation =
-				Emitter.Start +
-				Direction * Distance +
-				RightVector * LateralOffset;
-
-			OutTransforms.Add(FTransform(SpawnRotation, SpawnLocation, FVector(FlameVFXComponentScale)));
-		}
-	}
-
-	if (MaxFlameVFXPerEmitter > 0 && OutTransforms.Num() > MaxFlameVFXPerEmitter)
-	{
-		TArray<FTransform> SampledTransforms;
-
-		if (MaxFlameVFXPerEmitter == 1)
-		{
-			SampledTransforms.Add(OutTransforms[0]);
-		}
-		else
-		{
-			const float Step = static_cast<float>(OutTransforms.Num() - 1) / static_cast<float>(MaxFlameVFXPerEmitter - 1);
-
-			for (int32 Index = 0; Index < MaxFlameVFXPerEmitter; ++Index)
-			{
-				const int32 SourceIndex = FMath::Clamp(FMath::RoundToInt(Index * Step), 0, OutTransforms.Num() - 1);
-				SampledTransforms.Add(OutTransforms[SourceIndex]);
-			}
-		}
-
-		OutTransforms = MoveTemp(SampledTransforms);
-	}
-}
-
-void UGA_EnemyAttackFlame::StopFlameVFXComponents()
-{
-	for (UNiagaraComponent* VFX : ActiveFlameVFXComponents)
-	{
-		if (IsValid(VFX))
-		{
-			VFX->Deactivate();
-			VFX->DestroyComponent();
-		}
-	}
-
-	ActiveFlameVFXComponents.Reset();
-}
-
-void UGA_EnemyAttackFlame::StopFlameCosmetics()
-{
-	StopFlameVFXComponents();
-	
-	if (ActiveFlameAudioComponent)
-	{
-		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-		{
-			SoundSubsystem->StopSound(ActiveFlameAudioComponent, 0.15f);
-		}
-		ActiveFlameAudioComponent = nullptr;
-	}
+	SendFlameUpdateCosmeticEvent(
+		Emitters,
+		FlameCurrentRange);
 }
 
 float UGA_EnemyAttackFlame::GetFlameRange(const FNSEnemyAttackRow& AttackRow) const
@@ -933,7 +865,7 @@ float UGA_EnemyAttackFlame::GetFlameRangeAlpha() const
 
 	const float ElapsedTime = World->GetTimeSeconds() - FlameStartTime;
 	const float LinearAlpha = FMath::Clamp(ElapsedTime / FlameRangeGrowDuration, 0.0f, 1.0f);
-	
+
 	return FMath::Pow(LinearAlpha, 1.6f);
 }
 
@@ -945,18 +877,4 @@ float UGA_EnemyAttackFlame::GetCurrentFlameRange() const
 	}
 
 	return GetFlameRange(*CachedAttackRow) * GetFlameRangeAlpha();
-}
-
-void UGA_EnemyAttackFlame::TickFlameVFX()
-{
-	if (!CachedAttackRow)
-	{
-		return;
-	}
-
-	TArray<FNSFlameEmitter> Emitters;
-	GetCurrentFlameEmitters(Emitters);
-
-	FlameCurrentRange = GetCurrentFlameRange();
-	UpdateFlameVFX(Emitters, FlameCurrentRange);
 }

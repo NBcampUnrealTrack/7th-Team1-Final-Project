@@ -84,4 +84,8 @@ struct FNSCosmeticEventNetData
 	// 여러 소켓, 빔, 탄착점 정보를 저장하는 변수
 	UPROPERTY(BlueprintReadWrite)
 	TArray<FNSCosmeticEventPointNetData> Points;
+
+	// Cone 형태 코스메틱의 반각을 저장하는 변수
+	UPROPERTY(BlueprintReadWrite)
+	float ConeHalfAngle = 0.0f;
 };

@@ -14,7 +14,6 @@
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
@@ -423,24 +422,6 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 
 	ProjectileManager->FireProjectile(Request);
 	SendMachineGunFireCosmeticEvent(MuzzleTransform, Direction);
-	
-	if (UNSEnemyCosmeticComponent* CosmeticComponent =
-	AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>())
-	{
-		FNSCosmeticEventNetData EventData;
-		EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_MachineGun_Fire;
-		EventData.Phase = ENSCosmeticEventPhase::OneShot;
-		EventData.Location = MuzzleTransform.GetLocation();
-		EventData.Direction = Direction;
-		EventData.Radius = CachedAttackRow->ProjectileData.Radius;
-
-		CosmeticComponent->SendCosmeticEvent(EventData, false);
-	}
-
-	/*DrawDebugFire(
-		*CachedAttackRow,
-		Request.StartLocation,
-		Direction);*/
 
 	++FiredCount;
 
@@ -582,18 +563,4 @@ bool UGA_EnemyAttackMachineGun::IsAimReadyForFire() const
 
 	return !TitanAnimInstance ||
 		TitanAnimInstance->IsAimAligned(AimReadyToleranceDegrees);
-}
-
-void UGA_EnemyAttackMachineGun::PlayMachineGunFireSound(const FTransform& MuzzleTransform) const
-{
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer || MachineGunFireSoundID.IsNone())
-	{
-		return;
-	}
-
-	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-	{
-		SoundSubsystem->PlaySoundAtLocation(MachineGunFireSoundID, MuzzleTransform.GetLocation());
-	}
 }
