@@ -49,7 +49,11 @@ private:
 	void UpdateSlotVisual(FGameplayTag Slot);
 	// 최종 메시가 정해지면 로드 후 세팅. 미로드 시 비동기 로드 후 UpdateSlotVisual 재진입
 	void ApplySlotMesh(
-		FGameplayTag Slot, USkeletalMeshComponent* MeshComp, const TSoftObjectPtr<USkeletalMesh>& MeshPtr);
+		FGameplayTag Slot,
+		USkeletalMeshComponent* MeshComp,
+		const TSoftObjectPtr<USkeletalMesh>& MeshPtr,
+		const TSoftObjectPtr<UMaterialInterface>& MaterialOverride
+	);
 	void ClearSlotVisual(FGameplayTag Slot);
 
 	const FNSDefaultVisualPartEntry* FindDefaultEntry(FGameplayTag Slot) const;
