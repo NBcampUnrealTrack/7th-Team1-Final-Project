@@ -11,6 +11,7 @@
 #include "InputAction.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameMode/NSIntroGameMode.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Prologue/NSPrologueWidget.h"
@@ -26,6 +27,16 @@ ANSIntroPlayerController::ANSIntroPlayerController()
 void ANSIntroPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if (ANSIntroGameMode* IntroGM = GetWorld() ? GetWorld()->GetAuthGameMode<ANSIntroGameMode>() : nullptr)
+	{
+		if (IntroGM->bEnteredViaConnectionClosed)
+		{
+			// 폴백 진입하면 프롤로그 스킵
+			FinishPrologue();
+			return;
+		}
+	}
 	
 	if (PrologueWidgetClass && !PrologueWidget)
 	{
