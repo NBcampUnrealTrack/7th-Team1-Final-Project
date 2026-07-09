@@ -61,10 +61,16 @@ protected:
 
 	// DefinitionPtr -> PartMesh 비동기 로드 후 MeshComp에 세팅 (로드 완료 시 재진입)
 	void SetupVisual();
-	
+
 	void StartDropLaunch(const FNSDropLaunchData& InLaunchData);
 	void UpdateDropLaunch();
 	void FinishDropLaunch();
+
+	// 착지 후 계속 틱을 돌며 MeshComp를 사인파로 위아래 움직임
+	void UpdateBobAnimation(float DeltaSeconds);
+
+	// DespawnDuration 경과 시 타이머에서 호출
+	void HandleDespawnTimerExpired();
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Part")
@@ -73,14 +79,37 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_StoredInstance, BlueprintReadOnly, Category = "Part")
 	FNSPartData StoredInstance;
 
+	// 스폰 후 이 시간이 지나면 자동으로 Destroy
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	float DespawnDuration = 15.f;
+
+	// 바운싱 애니메이션 진폭/속도
+	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	float BobAmplitude = 8.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	float BobSpeed = 2.f;
+
+	// 파츠를 감싸는 링 VFX ID
+	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	FName RingVFXID;
+
 private:
 	FNSDropLaunchData LaunchData;
 	float LaunchStartWorldTime = 0.0f;
 	bool bIsLaunching = false;
-	
+
 	// 진행 중인 비주얼(Definition/PartMesh) 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> VisualLoadHandle;
-	
+
+	// SetupVisual에서 계산한 피벗 보정 Z값 —> 바운싱은 이 값 위에 오프셋을 더함
+	float MeshBaseRelativeZ = 0.f;
+
+	// 링 VFX 중복 재생 방지
+	bool bRingVFXPlayed = false;
+
+	FTimerHandle DespawnTimerHandle;
+
 // ================================================================
 // 데이터 접근 API
 // ================================================================
