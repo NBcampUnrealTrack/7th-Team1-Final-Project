@@ -58,6 +58,10 @@ public class NeoSanctum : ModuleRules
 			// Chaos Destruction
 			"GeometryCollectionEngine",
 			"Chaos",
+			
+			// 인트로 관련 설정
+			"MediaAssets",
+			"MoviePlayer",
 		});
 
 		// Uncomment if you are using Slate UI
