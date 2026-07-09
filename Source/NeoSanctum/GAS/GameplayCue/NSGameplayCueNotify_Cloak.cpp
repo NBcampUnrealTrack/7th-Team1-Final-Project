@@ -3,24 +3,28 @@
 
 #include "NSGameplayCueNotify_Cloak.h"
 
+#include "NeoSanctum/AI/Enemy/Components/NSCloakComponent.h"
 
-// Sets default values
-ANSGameplayCueNotify_Cloak::ANSGameplayCueNotify_Cloak()
+bool ANSGameplayCueNotify_Cloak::OnActive_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
-}
-
-// Called when the game starts or when spawned
-void ANSGameplayCueNotify_Cloak::BeginPlay()
-{
-	Super::BeginPlay();
+	if (!MyTarget) return false;
+	Super::OnActive_Implementation(MyTarget, Parameters);
+	if (UNSCloakComponent* CloakComponent = MyTarget->FindComponentByClass<UNSCloakComponent>())
+	{
+		CloakComponent->StartCloak();
+	}
 	
+	return true;
 }
 
-// Called every frame
-void ANSGameplayCueNotify_Cloak::Tick(float DeltaTime)
+bool ANSGameplayCueNotify_Cloak::OnRemove_Implementation(AActor* MyTarget, const FGameplayCueParameters& Parameters)
 {
-	Super::Tick(DeltaTime);
+	if (!MyTarget) return false;
+	if (UNSCloakComponent* CloakComponent = MyTarget->FindComponentByClass<UNSCloakComponent>())
+	{
+		CloakComponent->StopCloak();
+	}
+	
+	Super::OnRemove_Implementation(MyTarget, Parameters);
+	return true;
 }
-
