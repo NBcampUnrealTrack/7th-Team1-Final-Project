@@ -117,13 +117,25 @@ struct FNSMonsterAttributeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	float BaseDamage = 50.0f;
 
+	// 최대 체력의 이 비율만큼 피해를 받으면 HitGauge가 가득 차도록 계산하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.01"))
+	float HitGaugeDamageThresholdRatio = 0.25f;
+
+	// 데미지 기반 HitGauge 증가량에 곱하는 보정 배율 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float HitGaugeGainMultiplier = 1.0f;
+
+	// 유효한 피격 한 번에 보장되는 최소 HitGauge 증가량 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float MinHitGaugeGainPerHit = 0.0f;
+
+	// 유효한 피격 한 번에 증가할 수 있는 최대 HitGauge 증가량 변수. 0이면 제한 없음
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
+	float MaxHitGaugeGainPerHit = 7.0f;
+
 	// 피격 경직 이벤트가 발생하는 게이지 최대치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "1.0"))
 	float MaxHitGauge = 100.0f;
-
-	// 유효한 피격 한 번에 증가하는 게이지 수치
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
-	float HitGaugeGainPerHit = 15.0f;
 
 	// 처치시 모든 플레이어에게 지급하는 기본 경험치
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = "0.0"))
@@ -255,7 +267,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 이 공격 Row를 사용할 몬스터 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
-	
+
 	// 공격의 전역 의미를 식별하는 GameplayTag. 후반 리팩토링에서 AttackId 대체 후보
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack", meta = (Categories = "Ability.Enemy"))
 	FGameplayTag AttackTag;
@@ -263,7 +275,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// AttackList의 AttackId와 연결되는 공격 ID
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	FName AttackId = NAME_None;
-	
+
 	// 공격 실행 GA
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
 	TSubclassOf<UGameplayAbility> AbilityClass;
@@ -347,7 +359,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 현재 타깃 포함 여부
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Target")
 	bool bIncludePrimaryTarget = true;
-	
+
 	// Projectile 기반 공격 튜닝 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Projectile",
 		meta = (EditCondition = "AttackType == ENSEnemyAttackType::Projectile", EditConditionHides))
@@ -371,7 +383,7 @@ struct FNSEnemyAttackRow : public FTableRowBase
 	// 공격 Debug 표시 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Debug")
 	FNSEnemyDebugAttackData DebugData;
-	
+
 #if WITH_EDITOR
 	// Attack Row의 패턴별 필수 입력값을 검증하는 함수
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
@@ -501,7 +513,7 @@ struct FNSEnemyPartRow : public FTableRowBase
 	// 이 파츠가 조준에서 담당하는 역할
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	ENSEnemyPartAimRole AimRole = ENSEnemyPartAimRole::None;
-	
+
 	// AnimBP 또는 Control Rig에서 회전시킬 조준 본 이름
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim")
 	FName AimBone = NAME_None;
@@ -521,7 +533,7 @@ struct FNSEnemyPartRow : public FTableRowBase
 	// 이 파츠가 조준 목표를 따라갈 때 사용하는 보간 속도
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part|Aim", meta = (ClampMin = "0.0"))
 	float AimSpeed = 10.0f;
-	
+
 #if WITH_EDITOR
 	// Part Row의 타입별 필수 입력값을 검증하는 함수
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
@@ -674,7 +686,7 @@ public:
 #if WITH_EDITOR
 	// EnemyData와 연결된 DataTable Row들의 입력 상태를 검증하는 함수
 	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
-	
+
 	// 에디터에서 EnemyData가 수정되면 캐시된 Row를 초기화하는 함수
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
