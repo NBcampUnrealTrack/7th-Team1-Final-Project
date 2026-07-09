@@ -24,6 +24,7 @@
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSDamageNumberFeedbackComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
@@ -93,6 +94,7 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 
 	GateAccessComp = CreateDefaultSubobject<UNSGateAccessComponent>(TEXT("GateAccessComp"));
 	PlayerAttackFeedbackComp = CreateDefaultSubobject<UNSPlayerAttackFeedbackComponent>(TEXT("PlayerAttackFeedbackComp"));
+	DamageNumberFeedbackComp = CreateDefaultSubobject<UNSDamageNumberFeedbackComponent>(TEXT("DamageNumberFeedbackComp"));
 	PlayerHitTakenFeedbackComp = CreateDefaultSubobject<UNSPlayerHitTakenFeedbackComponent>(
 		TEXT("PlayerHitTakenFeedbackComp"));
 	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
