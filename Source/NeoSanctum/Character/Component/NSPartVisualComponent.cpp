@@ -7,6 +7,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 
@@ -57,25 +58,68 @@ void UNSPartVisualComponent::BindToEquipComponent(UNSPartEquipComponent* EquipCo
 	BoundEquipComp = EquipComp;
 
 	EnsureSlotComponents();
+	// SetDefaultVisualParts가 이 함수보다 먼저 호출됐을 수도 있음 - 그때는 LeaderMeshComp가 없어서
+	// 시각 전용 슬롯 컴포넌트를 못 만들었을 테니, 여기서 한 번 더 보장해줌
+	for (const FNSDefaultVisualPartEntry& Entry : DefaultVisualParts)
+	{
+		EnsureSlotComponent(Entry.PartVisualTag);
+	}
 
 	PartChangedHandle = EquipComp->OnPartChanged.AddUObject(this, &UNSPartVisualComponent::HandlePartChanged);
 
-	// 구독 전 이미 복제된 파츠가 있을 수 있음
+	// 구독 전 이미 복제된 파츠가 있을 수 있음 - 여기선 PendingParts만 채우고, 실제 표시는 아래 RebuildAllSlotVisuals에서 한 번에 처리
 	if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner()))
 	{
 		for (const auto& Pair : DataSS->GetAllSlotRows())
 		{
 			if (const FNSPartData* Part = EquipComp->GetEquippedPart(Pair.Key))
 			{
-				HandlePartChanged(Pair.Key, *Part);
+				PendingParts.Add(Pair.Key, *Part);
 			}
 		}
 	}
+
+	RebuildAllSlotVisuals();
+}
+
+void UNSPartVisualComponent::SetDefaultVisualParts(const TArray<FNSDefaultVisualPartEntry>& InDefaultVisualParts)
+{
+	DefaultVisualParts = InDefaultVisualParts;
+
+	// 기본 파츠가 하나도 없으면 BaseLeaderMesh만 그대로 보임 - 의도한 fallback인지 빠뜨린 건지 로그로 남겨둠
+	if (DefaultVisualParts.Num() == 0)
+	{
+		NS_ACTOR_LOG(GetOwner(), LogNS, Warning,
+			"DefaultVisualParts가 비어있어 BaseLeaderMesh로만 표시됩니다. 신규 캐릭터라면 기본 파츠 값을 채워야 합니다.");
+	}
+
+	// 게임플레이 슬롯표(Arm/Body/Leg)에 없는 시각 전용 슬롯(Head, Hair 등)도 컴포넌트를 만들어둠
+	for (const FNSDefaultVisualPartEntry& Entry : DefaultVisualParts)
+	{
+		EnsureSlotComponent(Entry.PartVisualTag);
+	}
+
+	RebuildAllSlotVisuals();
 }
 
 void UNSPartVisualComponent::EnsureSlotComponents()
 {
-	if (SlotMeshComps.Num() > 0 || !LeaderMeshComp)
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(GetOwner());
+	if (!DataSS)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PartVisual] EnsureSlotComponents: DataSubsystem 없음"));
+		return;
+	}
+
+	for (const auto& Pair : DataSS->GetAllSlotRows())
+	{
+		EnsureSlotComponent(Pair.Key);
+	}
+}
+
+void UNSPartVisualComponent::EnsureSlotComponent(FGameplayTag Slot)
+{
+	if (!LeaderMeshComp || SlotMeshComps.Contains(Slot))
 	{
 		return;
 	}
@@ -86,24 +130,14 @@ void UNSPartVisualComponent::EnsureSlotComponents()
 		return;
 	}
 
-	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(Owner);
-	if (!DataSS)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[PartVisual] EnsureSlotComponents: DataSubsystem 없음"));
-		return;
-	}
-	for (const auto& Pair : DataSS->GetAllSlotRows())
-	{
-		const FGameplayTag Slot = Pair.Key;
-		USkeletalMeshComponent* MeshComp = NewObject<USkeletalMeshComponent>(Owner);
-		MeshComp->SetupAttachment(LeaderMeshComp);
-		MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		MeshComp->RegisterComponent();
-		// 메인 바디 본 트랜스폼을 그대로 따라감
-		MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
+	USkeletalMeshComponent* MeshComp = NewObject<USkeletalMeshComponent>(Owner);
+	MeshComp->SetupAttachment(LeaderMeshComp);
+	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->RegisterComponent();
+	// 메인 바디 본 트랜스폼을 그대로 따라감
+	MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
 
-		SlotMeshComps.Add(Slot, MeshComp);
-	}
+	SlotMeshComps.Add(Slot, MeshComp);
 }
 
 USkeletalMeshComponent* UNSPartVisualComponent::GetSlotMeshComp(FGameplayTag Slot) const
@@ -117,14 +151,25 @@ void UNSPartVisualComponent::HandlePartChanged(FGameplayTag Slot, const FNSPartD
 {
 	// 비동기 로드 중 교체 대비용
 	PendingParts.Add(Slot, Part);
-	UpdateSlotVisual(Slot);
+	// 이 파츠의 VisualTag가 다른 시각 슬롯에도 영향을 줄 수 있어서 전체 재계산
+	RebuildAllSlotVisuals();
+}
+
+void UNSPartVisualComponent::RebuildAllSlotVisuals()
+{
+	for (const TPair<FGameplayTag, TObjectPtr<USkeletalMeshComponent>>& Pair : SlotMeshComps)
+	{
+		UpdateSlotVisual(Pair.Key);
+	}
 }
 
 /**
- * 비동기 로드 비주얼 업데이트
- * 비동기 로드 중 
- * 비동기 콜백으로 자기자신을 넘겨서 최신파츠만 갱신될 수 있도록 해줌
- * @param Slot 슬롯 (레그, 바디, 암)
+ * 슬롯 하나의 최종 소스를 계산해 적용
+ * 1) 이 슬롯이 게임플레이 슬롯 자신의 자리면 장착 파츠 확인 (VisualTag 있으면 다른 자리에서 보여주니 여긴 비움)
+ * 2) 이 슬롯이 시각 슬롯이면 VisualTag로 이 자리를 차지하겠다는 장착 파츠가 있는지 확인
+ * 3) 없으면 CharacterData 기본 파츠로 대체
+ * 비동기 로드 콜백으로 자기 자신을 넘겨서 로드 완료 시점에도 최신 상태를 다시 계산하게 함
+ * @param Slot 슬롯 (게임플레이 슬롯 + 시각 전용 슬롯)
  */
 void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 {
@@ -135,42 +180,90 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 	}
 
 	const FNSPartData* Part = PendingParts.Find(Slot);
-	if (!Part || !Part->IsValid())
+	if (Part && Part->IsValid())
 	{
-		ClearSlotVisual(Slot);
-		return;
-	}
-
-	
-	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	if (!IsValid(Def))
-	{
-		const FSoftObjectPath DefPath = Part->DefinitionPtr.ToSoftObjectPath();
-		if (DefPath.IsNull())
+		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
+		if (!IsValid(Def))
 		{
+			const FSoftObjectPath DefPath = Part->DefinitionPtr.ToSoftObjectPath();
+			if (DefPath.IsNull())
+			{
+				return;
+			}
+
+			MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
+				DefPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
 			return;
 		}
-		MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
-			DefPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
+
+		const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId());
+		if (Row && Row->VisualTag.IsValid())
+		{
+			// 이 파츠는 VisualTag 시각 슬롯 쪽에서 표시되니, 원래 게임플레이 슬롯 자리는 비워둠(중복 표시 방지)
+			ClearSlotVisual(Slot);
+			return;
+		}
+
+		// VisualTag 미설정 - 과도기 fallback으로 예전처럼 게임플레이 슬롯 자리에 그대로 표시
+		ApplySlotMesh(Slot, MeshComp, Def->PartMesh);
 		return;
 	}
 
-	USkeletalMesh* Mesh = Def->PartMesh.Get();
+	// 시각 슬롯이라면, 이 자리를 차지하겠다는 장착 파츠가 있는지 확인
+	if (const FNSPartData* MappedPart = FindEquippedPartForVisualSlot(Slot))
+	{
+		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *MappedPart);
+		if (!IsValid(Def))
+		{
+			const FSoftObjectPath DefPath = MappedPart->DefinitionPtr.ToSoftObjectPath();
+			if (DefPath.IsNull())
+			{
+				return;
+			}
+
+			MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
+				DefPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
+			return;
+		}
+
+		ApplySlotMesh(Slot, MeshComp, Def->PartMesh);
+		return;
+	}
+
+	// 장착으로 채워지지 않은 슬롯은 CharacterData 기본 파츠로 대체
+	if (const FNSDefaultVisualPartEntry* DefaultEntry = FindDefaultEntry(Slot))
+	{
+		ApplySlotMesh(Slot, MeshComp, DefaultEntry->PartMesh);
+		return;
+	}
+
+	ClearSlotVisual(Slot);
+}
+
+void UNSPartVisualComponent::ApplySlotMesh(
+	FGameplayTag Slot, USkeletalMeshComponent* MeshComp, const TSoftObjectPtr<USkeletalMesh>& MeshPtr)
+{
+	USkeletalMesh* Mesh = MeshPtr.Get();
 	if (!Mesh)
 	{
-		const FSoftObjectPath MeshPath = Def->PartMesh.ToSoftObjectPath();
+		const FSoftObjectPath MeshPath = MeshPtr.ToSoftObjectPath();
 		if (MeshPath.IsNull())
 		{
 			ClearSlotVisual(Slot);
 			return;
 		}
 		MeshLoadHandles.Add(Slot, UAssetManager::GetStreamableManager().RequestAsyncLoad(
-			MeshPath, FStreamableDelegate::CreateUObject(this, &UNSPartVisualComponent::UpdateSlotVisual, Slot)));
+			MeshPath, FStreamableDelegate::CreateUObject(
+				this,
+				&UNSPartVisualComponent::UpdateSlotVisual,
+				Slot
+			))
+		);
 		return;
 	}
 
 	MeshComp->SetSkeletalMesh(Mesh);
-	// 리더포즈 연결상태 재초기화 방지용 
+	// 리더포즈 연결상태 재초기화 방지용
 	MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
 }
 
@@ -182,3 +275,34 @@ void UNSPartVisualComponent::ClearSlotVisual(FGameplayTag Slot)
 	}
 }
 
+const FNSDefaultVisualPartEntry* UNSPartVisualComponent::FindDefaultEntry(FGameplayTag Slot) const
+{
+	return DefaultVisualParts.FindByPredicate(
+		[Slot](const FNSDefaultVisualPartEntry& Entry) { return Entry.PartVisualTag == Slot; });
+}
+
+const FNSPartData* UNSPartVisualComponent::FindEquippedPartForVisualSlot(FGameplayTag VisualSlot) const
+{
+	for (const TPair<FGameplayTag, FNSPartData>& Pair : PendingParts)
+	{
+		if (!Pair.Value.IsValid())
+		{
+			continue;
+		}
+
+		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, Pair.Value);
+		if (!IsValid(Def))
+		{
+			continue;
+		}
+
+		const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId());
+
+		if (Row && Row->VisualTag == VisualSlot)
+		{
+			return &Pair.Value;
+		}
+	}
+
+	return nullptr;
+}

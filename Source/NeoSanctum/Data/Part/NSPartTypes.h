@@ -8,6 +8,7 @@
 #include "NSPartTypes.generated.h"
 
 class UNSPartDefinition;
+class USkeletalMesh;
 
 UENUM(BlueprintType)
 enum class ENSPartRarity : uint8
@@ -43,6 +44,10 @@ struct FNSPartDefinitionRow : public FTableRowBase
 		meta = (Categories = "Part.Slot"))
 	FGameplayTag PartSlot;
 
+	// 이 파츠가 대체할 시각 슬롯. 비어있으면 예전처럼 PartSlot 자리에 그대로 표시(과도기 fallback)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Visual"))
+	FGameplayTag VisualTag;
+
 	// 레그 파츠는 false (인런 밸런스상 리롤 불가)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bCanReroll = true;
@@ -55,6 +60,24 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	// false면 카탈로그에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bEnabled = true;
+};
+
+/**
+ * 캐릭터 기본 외형에서 이 슬롯에 기본으로 보여줄 메시를 정의하는 항목
+ * 시각 전용 메시 하나만 들고 있음.
+ */
+USTRUCT(BlueprintType)
+struct FNSDefaultVisualPartEntry
+{
+	GENERATED_BODY()
+
+	// 이 항목이 채울 시각 슬롯. 거래/장착용 Part.Slot과 구분되는 시각 전용 네임스페이스
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "Part.Visual"))
+	FGameplayTag PartVisualTag;
+
+	// 기본으로 보여줄 메시 - CommonData 번들에 포함시켜 캐릭터 스폰 전에 미리 로드
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<USkeletalMesh> PartMesh;
 };
 
 USTRUCT(BlueprintType)

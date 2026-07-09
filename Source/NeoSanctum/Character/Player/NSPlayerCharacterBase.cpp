@@ -726,7 +726,7 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 		return;
 	}
 	
-	USkeletalMesh* LoadedMesh = CurrentCharacterData->SkeletalMesh.Get();
+	USkeletalMesh* LoadedMesh = CurrentCharacterData->BaseLeaderMesh.Get();
 	if (LoadedMesh)
 	{
 		GetMesh()->SetSkeletalMesh(LoadedMesh);
@@ -742,6 +742,11 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 	if (LoadedUpperBodyAnimLayerClass)
 	{
 		GetMesh()->LinkAnimClassLayers(LoadedUpperBodyAnimLayerClass);
+	}
+
+	if (PartVisualComp)
+	{
+		PartVisualComp->SetDefaultVisualParts(CurrentCharacterData->DefaultVisualParts);
 	}
 }
 
