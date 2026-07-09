@@ -21,6 +21,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Materials/MaterialInterface.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Combat/Warning/NSAreaWarningPlaneActor.h"
 
 UGA_EnemyAttackBombard::UGA_EnemyAttackBombard()
@@ -186,8 +187,8 @@ void UGA_EnemyAttackBombard::FireBombardShot(int32 ShotIndex)
 	const FVector ImpactLocation = ResolveImpactLocation(TargetActor);
 	const FVector MuzzleLocation = ResolveMuzzleLocation(ShotIndex);
 
-	PlayBombardLaunchCosmetics(MuzzleLocation, ImpactLocation);
-	SpawnBombardWarningPlane(ImpactLocation, *CachedAttackRow);
+	SendBombardLaunchCosmeticEvent(MuzzleLocation, ImpactLocation);
+	SendBombardWarningCosmeticEvent(ImpactLocation);
 
 	/*DrawDebugBombardWarning(
 		MuzzleLocation,
@@ -249,7 +250,7 @@ void UGA_EnemyAttackBombard::ApplyBombardImpact(FVector ImpactLocation)
 		ImpactLocation,
 		*CachedAttackRow);*/
 
-	PlayBombardImpactCosmetics(ImpactLocation, *CachedAttackRow);
+	SendBombardImpactCosmeticEvent(ImpactLocation);
 
 	if (UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo())
 	{
@@ -346,7 +347,7 @@ FVector UGA_EnemyAttackBombard::ResolveImpactLocation(AActor* TargetActor) const
 
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
-	
+
 	if (IsValid(TargetActor))
 	{
 		QueryParams.AddIgnoredActor(TargetActor);
@@ -770,91 +771,101 @@ void UGA_EnemyAttackBombard::TryFinishBombardAbility()
 	FinishAttackAbility();
 }
 
-void UGA_EnemyAttackBombard::PlayBombardLaunchCosmetics(
+void UGA_EnemyAttackBombard::PrepareForAttackMontage()
+{
+	Super::PrepareForAttackMontage();
+
+	SendBombardPrepareCosmeticEvent();
+}
+
+void UGA_EnemyAttackBombard::SendBombardPrepareCosmeticEvent() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor) || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Prepare;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = AvatarActor->GetActorLocation();
+	EventData.Direction = AvatarActor->GetActorForwardVector();
+	EventData.Duration = CachedAttackRow ? CachedAttackRow->WarnTime : 0.0f;
+
+	SendBombardCosmeticEvent(EventData, true);
+}
+
+void UGA_EnemyAttackBombard::SendBombardLaunchCosmeticEvent(
 	const FVector& MuzzleLocation,
 	const FVector& ImpactLocation) const
 {
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer)
-	{
-		return;
-	}
-
 	const FVector Direction = (ImpactLocation - MuzzleLocation).GetSafeNormal();
-	const FRotator Rotation = Direction.IsNearlyZero() ? FRotator::ZeroRotator : Direction.Rotation();
 
-	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-	{
-		SoundSubsystem->PlaySoundAtLocation(BombardLaunchSoundID, MuzzleLocation);
-	}
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Launch;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = MuzzleLocation;
+	EventData.EndLocation = ImpactLocation;
+	EventData.Direction = Direction;
+	EventData.Range = FVector::Dist(MuzzleLocation, ImpactLocation);
+	EventData.Duration = CachedAttackRow ? CachedAttackRow->BombardData.ImpactDelay : 0.0f;
 
-	if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
-	{
-		VFXSubsystem->PlayVFXAtLocation(BombardLaunchVFXID, MuzzleLocation, Rotation, 1.0f);
-	}
+	SendBombardCosmeticEvent(EventData, true);
 }
 
-void UGA_EnemyAttackBombard::PlayBombardImpactCosmetics(
-	const FVector& ImpactLocation,
-	const FNSEnemyAttackRow& AttackRow) const
+void UGA_EnemyAttackBombard::SendBombardWarningCosmeticEvent(
+	const FVector& ImpactLocation) const
 {
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	if (!CachedAttackRow)
 	{
 		return;
 	}
 
-	const float Scale =
-		GetImpactRadius(AttackRow) / FMath::Max(BombardExplosionBaseRadius, 1.0f);
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Warning;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = ImpactLocation;
+	EventData.Direction = FVector::UpVector;
+	EventData.Radius = GetImpactRadius(*CachedAttackRow);
+	EventData.Duration = FMath::Max(CachedAttackRow->BombardData.ImpactDelay, 0.0f);
 
-	if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
-	{
-		VFXSubsystem->PlayVFXAtLocation(
-			BombardExplosionVFXID,
-			ImpactLocation,
-			FRotator::ZeroRotator,
-			Scale);
-	}
-
-	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-	{
-		SoundSubsystem->PlaySoundAtLocation(BombardImpactSoundID, ImpactLocation);
-	}
+	SendBombardCosmeticEvent(EventData, true);
 }
 
-void UGA_EnemyAttackBombard::SpawnBombardWarningPlane(
-	const FVector& ImpactLocation,
-	const FNSEnemyAttackRow& AttackRow) const
+void UGA_EnemyAttackBombard::SendBombardImpactCosmeticEvent(
+	const FVector& ImpactLocation) const
 {
-	UWorld* World = GetWorld();
-	if (!World ||
-		World->GetNetMode() == NM_DedicatedServer ||
-		!BombardWarningPlaneClass)
+	if (!CachedAttackRow)
 	{
 		return;
 	}
 
-	const FVector SpawnLocation =
-		ImpactLocation + FVector::UpVector * BombardWarningPlaneZOffset;
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Impact;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = ImpactLocation;
+	EventData.Direction = FVector::UpVector;
+	EventData.Radius = GetImpactRadius(*CachedAttackRow);
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = GetAvatarActorFromActorInfo();
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SendBombardCosmeticEvent(EventData, true);
+}
 
-	ANSAreaWarningPlaneActor* WarningPlane =
-		World->SpawnActor<ANSAreaWarningPlaneActor>(
-			BombardWarningPlaneClass,
-			SpawnLocation,
-			FRotator::ZeroRotator,
-			SpawnParams);
-
-	if (!WarningPlane)
+void UGA_EnemyAttackBombard::SendBombardCosmeticEvent(
+	const FNSCosmeticEventNetData& EventData,
+	bool bReliable) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor))
 	{
 		return;
 	}
 
-	WarningPlane->InitializeCircleWarning(
-		GetImpactRadius(AttackRow),
-		BombardWarningPlaneDuration);
+	UNSEnemyCosmeticComponent* CosmeticComponent =
+		AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>();
+
+	if (CosmeticComponent)
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, bReliable);
+	}
 }
