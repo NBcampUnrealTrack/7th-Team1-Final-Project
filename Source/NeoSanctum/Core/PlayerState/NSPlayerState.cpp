@@ -71,6 +71,7 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
 	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
 	DOREPLIFETIME(ANSPlayerState, CurrentCompanionDefinitionTag);
+	DOREPLIFETIME(ANSPlayerState, PlayerSlotIndex);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -81,6 +82,7 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 	{
 		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
 		NewPlayerState->CurrentCompanionDefinitionTag = CurrentCompanionDefinitionTag;
+		NewPlayerState->PlayerSlotIndex = PlayerSlotIndex; 
 		
 		UNSPlayerProgressComponent* OldProgress = ProgressComponent;
 		UNSPlayerProgressComponent* NewProgress = NewPlayerState->GetProgressComponent();
@@ -264,6 +266,17 @@ UNSCompanionDefinition* ANSPlayerState::GetCurrentCompanionDefinition() const
 	}
 	// 기본값 폴백
 	return LoadCompanionDefinition(DefaultCompanionDefinitionTag);
+}
+
+void ANSPlayerState::SetPlayerSlotIndex(int32 InIndex)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	PlayerSlotIndex = InIndex;
+	ForceNetUpdate();
 }
 
 UNSCompanionDefinition* ANSPlayerState::LoadCompanionDefinition(FGameplayTag CompanionTag) const

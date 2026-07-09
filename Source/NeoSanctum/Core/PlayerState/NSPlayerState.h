@@ -89,6 +89,10 @@ public:
 	UFUNCTION()
 	UNSCompanionProgressionComponent* GetCompanionProgressionComponent() const {return CompanionProgressionComponent;}
 	
+	// PlayerIndex 번호 관련 get,set 함수
+	int32 GetPlayerSlotIndex() const { return PlayerSlotIndex; }
+	void SetPlayerSlotIndex(int32 InIndex);
+	
 public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
 	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
@@ -157,6 +161,10 @@ private:
 	// @민재 : companion 데이터 ID
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CurrentCompanionDefinitionTag;
+	
+	// 플레이어별 고정 스폰 슬롯
+	UPROPERTY(Replicated)
+	int32 PlayerSlotIndex = INDEX_NONE;
 	
 	UFUNCTION()
 	void OnRep_bIsReady();
