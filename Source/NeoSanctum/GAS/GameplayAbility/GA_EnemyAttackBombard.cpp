@@ -13,11 +13,15 @@
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "Materials/MaterialInterface.h"
+#include "NeoSanctum/Combat/Warning/NSAreaWarningPlaneActor.h"
 
 UGA_EnemyAttackBombard::UGA_EnemyAttackBombard()
 {
@@ -182,10 +186,13 @@ void UGA_EnemyAttackBombard::FireBombardShot(int32 ShotIndex)
 	const FVector ImpactLocation = ResolveImpactLocation(TargetActor);
 	const FVector MuzzleLocation = ResolveMuzzleLocation(ShotIndex);
 
-	DrawDebugBombardWarning(
+	PlayBombardLaunchCosmetics(MuzzleLocation, ImpactLocation);
+	SpawnBombardWarningPlane(ImpactLocation, *CachedAttackRow);
+
+	/*DrawDebugBombardWarning(
 		MuzzleLocation,
 		ImpactLocation,
-		*CachedAttackRow);
+		*CachedAttackRow);*/
 
 	++FiredShotCount;
 	++PendingImpactCount;
@@ -238,9 +245,11 @@ void UGA_EnemyAttackBombard::ApplyBombardImpact(FVector ImpactLocation)
 		return;
 	}
 
-	DrawDebugBombardImpact(
+	/*DrawDebugBombardImpact(
 		ImpactLocation,
-		*CachedAttackRow);
+		*CachedAttackRow);*/
+
+	PlayBombardImpactCosmetics(ImpactLocation, *CachedAttackRow);
 
 	if (UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo())
 	{
@@ -337,6 +346,11 @@ FVector UGA_EnemyAttackBombard::ResolveImpactLocation(AActor* TargetActor) const
 
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
+	
+	if (IsValid(TargetActor))
+	{
+		QueryParams.AddIgnoredActor(TargetActor);
+	}
 
 	if (const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent())
 	{
@@ -754,4 +768,93 @@ void UGA_EnemyAttackBombard::TryFinishBombardAbility()
 	}
 
 	FinishAttackAbility();
+}
+
+void UGA_EnemyAttackBombard::PlayBombardLaunchCosmetics(
+	const FVector& MuzzleLocation,
+	const FVector& ImpactLocation) const
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	const FVector Direction = (ImpactLocation - MuzzleLocation).GetSafeNormal();
+	const FRotator Rotation = Direction.IsNearlyZero() ? FRotator::ZeroRotator : Direction.Rotation();
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		SoundSubsystem->PlaySoundAtLocation(BombardLaunchSoundID, MuzzleLocation);
+	}
+
+	if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
+	{
+		VFXSubsystem->PlayVFXAtLocation(BombardLaunchVFXID, MuzzleLocation, Rotation, 1.0f);
+	}
+}
+
+void UGA_EnemyAttackBombard::PlayBombardImpactCosmetics(
+	const FVector& ImpactLocation,
+	const FNSEnemyAttackRow& AttackRow) const
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+
+	const float Scale =
+		GetImpactRadius(AttackRow) / FMath::Max(BombardExplosionBaseRadius, 1.0f);
+
+	if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
+	{
+		VFXSubsystem->PlayVFXAtLocation(
+			BombardExplosionVFXID,
+			ImpactLocation,
+			FRotator::ZeroRotator,
+			Scale);
+	}
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		SoundSubsystem->PlaySoundAtLocation(BombardImpactSoundID, ImpactLocation);
+	}
+}
+
+void UGA_EnemyAttackBombard::SpawnBombardWarningPlane(
+	const FVector& ImpactLocation,
+	const FNSEnemyAttackRow& AttackRow) const
+{
+	UWorld* World = GetWorld();
+	if (!World ||
+		World->GetNetMode() == NM_DedicatedServer ||
+		!BombardWarningPlaneClass)
+	{
+		return;
+	}
+
+	const FVector SpawnLocation =
+		ImpactLocation + FVector::UpVector * BombardWarningPlaneZOffset;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = GetAvatarActorFromActorInfo();
+	SpawnParams.SpawnCollisionHandlingOverride =
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	ANSAreaWarningPlaneActor* WarningPlane =
+		World->SpawnActor<ANSAreaWarningPlaneActor>(
+			BombardWarningPlaneClass,
+			SpawnLocation,
+			FRotator::ZeroRotator,
+			SpawnParams);
+
+	if (!WarningPlane)
+	{
+		return;
+	}
+
+	WarningPlane->InitializeCircleWarning(
+		GetImpactRadius(AttackRow),
+		BombardWarningPlaneDuration);
 }

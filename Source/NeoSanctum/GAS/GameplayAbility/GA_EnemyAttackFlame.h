@@ -9,6 +9,8 @@
 
 class ANSBossAIController;
 class UNSEnemyPartComponent;
+class UNiagaraComponent;
+class UAudioComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -75,16 +77,20 @@ private:
 	// 화염 관련 Timer를 정리하는 함수
 	void ClearFlameTimers();
 
-	// Emitter 하나의 Cone 범위 안에 들어온 타깃을 수집하는 함수
+	// 현재 유효 사거리 안에 들어온 대상만 수집하는 함수
 	void CollectTargetsForEmitter(
-		const FNSFlameEmitter& Emitter,
-		TSet<TObjectKey<AActor>>& OutTargets) const;
+		const FNSFlameEmitter& Emitter, 
+		float EffectiveRange, 
+		TSet<AActor*>& OutTargets) const;
 
-	// TargetLocation이 Flame Cone 내부인지 확인하는 함수
+
+	// 대상 위치가 현재 유효 사거리의 화염 원뿔 안에 있는지 확인합니다.
 	bool IsLocationInsideCone(
-		const FNSFlameEmitter& Emitter,
-		const FVector& TargetLocation,
-		const FNSEnemyAttackRow& AttackRow) const;
+		const FVector& Origin, 
+		const FVector& Direction, 
+		const FVector& TargetLocation, 
+		const FNSEnemyAttackRow& AttackRow, 
+		float EffectiveRange) const;
 
 	// TargetActor가 데미지를 받을 수 있는 유효한 적대 대상인지 확인하는 함수
 	bool IsValidDamageTarget(AActor* TargetActor) const;
@@ -97,7 +103,7 @@ private:
 
 	// TargetActor에게 Flame DamageEffect를 적용하는 함수
 	bool ApplyFlameDamageToTarget(AActor* TargetActor, const FNSEnemyAttackRow& AttackRow);
-	
+
 	// 현재 공격 대상 Actor를 반환하는 함수
 	AActor* ResolveAttackActor() const;
 
@@ -131,4 +137,110 @@ private:
 
 	// Flame 종료 Timer
 	FTimerHandle FlameEndTimerHandle;
+
+protected:
+	// 화염 지속 사운드를 재생할 SoundDataTable
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|Sound")
+	FName FlameSoundID = FName(TEXT("Monster_TitanWalker_Flame_Loop"));
+
+	// 화염 Niagara를 재생할 VFXDataTable
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FName FlameVFXID = FName(TEXT("Monster_TitanWalker_Flame_Loop"));
+
+	// Niagara 컴포넌트 자체의 추가 스케일, DT_VFXDataTable ScaleMultiplier와 곱해짐
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.01"))
+	float FlameVFXComponentScale = 1.0f;
+
+	// 공격 Range 방향으로 화염 Niagara를 배치할 간격
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "1.0"))
+	float FlameVFXForwardSpacing = 180.0f;
+
+	// Cone 좌우 폭 방향으로 화염 Niagara를 배치할 간격
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "1.0"))
+	float FlameVFXLateralSpacing = 160.0f;
+
+	// 소켓 하나당 생성 가능한 최대 화염 Niagara 수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "1"))
+	int32 MaxFlameVFXPerEmitter = 32;
+
+	// NS_Fire의 개별 불꽃 크기 User Parameter 이름
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FName FlameScaleParameterName = FName(TEXT("User.Flame Scale"));
+
+	// NS_Fire의 Spawn Rate User Parameter 이름
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FName FlameSpawnRateParameterName = FName(TEXT("User.Spawn Rate"));
+
+	// NS_Fire의 불꽃 크기 값
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
+	float FlameNiagaraFlameScale = 1.4f;
+
+	// NS_Fire의 Spawn Rate 값
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
+	float FlameNiagaraSpawnRate = 80.0f;
+
+	// Niagara 전방 축이 맞지 않을 때 보정하는 회전값
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
+	FRotator FlameVFXRotationOffset = FRotator::ZeroRotator;
+
+	// 현재 유지 중인 화염 Niagara 컴포넌트 목록
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UNiagaraComponent>> ActiveFlameVFXComponents;
+
+	// 화염 지속 사운드 컴포넌트
+	UPROPERTY(Transient)
+	TObjectPtr<UAudioComponent> ActiveFlameAudioComponent;
+
+	// 화염 사운드 재생을 시작하는 함수
+	void StartFlameCosmetics();
+
+	// 현재 유효 사거리를 기준으로 화염 VFX 컴포넌트 위치를 갱신하는 함수
+	void UpdateFlameVFX(const TArray<FNSFlameEmitter>& Emitters, float EffectiveRange);
+
+	// 현재 유효 사거리 안에서 소켓부터 끝 지점까지 화염 VFX 배치 Transform을 생성하는 함수
+	void BuildFlameVFXTransforms(
+		const FNSFlameEmitter& Emitter,
+		const FNSEnemyAttackRow& AttackRow,
+		float EffectiveRange,
+		TArray<FTransform>& OutTransforms) const;
+
+	// 유지 중인 화염 Niagara 컴포넌트를 정리하는 함수
+	void StopFlameVFXComponents();
+
+	// 화염 사운드와 VFX를 정리하는 함수
+	void StopFlameCosmetics();
+	
+	
+	float GetFlameRange(const FNSEnemyAttackRow& AttackRow) const;
+	
+protected:
+	// 화염 유효 사거리가 0에서 AreaData.Range까지 커지는 데 걸리는 시간
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Flame", meta = (ClampMin = "0.0"))
+	float FlameRangeGrowDuration = 0.35f;
+
+	// 화염 VFX를 갱신하는 간격. 피해 틱과 분리해서 사거리 성장을 부드럽게 보여줌
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Flame|VFX", meta = (ClampMin = "0.01"))
+	float FlameVFXUpdateInterval = 0.03f;
+
+	// 화염 VFX가 소켓 위치에서 몇 cm 앞부터 배치될지 정함. 소켓에서 바로 나오게 하려면 0
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Flame|VFX", meta = (ClampMin = "0.0"))
+	float FlameVFXStartOffset = 0.0f;
+
+	// 현재 화염 공격이 시작된 월드 시간
+	float FlameStartTime = 0.0f;
+
+	// 현재 피해 판정과 VFX에 적용되는 화염 유효 사거리
+	float FlameCurrentRange = 0.0f;
+
+	// 화염 VFX만 부드럽게 갱신하기 위한 타이머
+	FTimerHandle FlameVFXTimerHandle;
+
+	// 현재 시간 기준으로 0~1 사이의 화염 사거리 성장 비율을 반환하는 함수
+	float GetFlameRangeAlpha() const;
+
+	// AreaData.Range를 기준으로 현재 적용해야 할 화염 유효 사거리를 반환하는 함수
+	float GetCurrentFlameRange() const;
+
+	// 화염 VFX를 피해 틱과 별도로 갱신하는 함수
+	void TickFlameVFX();
 };

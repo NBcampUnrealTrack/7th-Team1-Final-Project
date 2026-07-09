@@ -7,7 +7,9 @@
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GA_EnemyAttackBombard.generated.h"
 
+class UMaterialInterface;
 class ANSBossAIController;
+class ANSAreaWarningPlaneActor;
 class UNSEnemyPartComponent;
 struct FNSEnemyAttackRow;
 
@@ -141,4 +143,36 @@ private:
 
 	// Impact 예약 Timer 목록
 	TArray<FTimerHandle> ImpactTimerHandles;
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName BombardLaunchSoundID = FName(TEXT("Monster_TitanWalker_Bombard_Launch"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName BombardImpactSoundID = FName(TEXT("Monster_TitanWalker_Bombard_Explosion"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName BombardLaunchVFXID = FName(TEXT("Monster_TitanWalker_Bombard_Launch"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
+	FName BombardExplosionVFXID = FName(TEXT("Monster_TitanWalker_Bombard_Explosion"));
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
+	float BombardExplosionBaseRadius = 100.0f;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
+	TSubclassOf<ANSAreaWarningPlaneActor> BombardWarningPlaneClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane", meta = (ClampMin = "0.0"))
+	float BombardWarningPlaneDuration = 1.0f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
+	float BombardWarningPlaneZOffset = 1.0f;
+
+	void PlayBombardLaunchCosmetics(const FVector& MuzzleLocation, const FVector& ImpactLocation) const;
+	void PlayBombardImpactCosmetics(const FVector& ImpactLocation, const FNSEnemyAttackRow& AttackRow) const;
+	
+	void SpawnBombardWarningPlane(
+		const FVector& ImpactLocation,
+		const FNSEnemyAttackRow& AttackRow) const;
 };
