@@ -204,8 +204,8 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 			return;
 		}
 
-		// VisualTag 미설정 - 과도기 fallback으로 예전처럼 게임플레이 슬롯 자리에 그대로 표시
-		ApplySlotMesh(Slot, MeshComp, Def->PartMesh);
+		// VisualTag 미설정 - 게임플레이 슬롯 자리에 그대로 표시. 장착 파츠라 색상 오버라이드는 없음.
+		ApplySlotMesh(Slot, MeshComp, Def->PartMesh, TSoftObjectPtr<UMaterialInterface>());
 		return;
 	}
 
@@ -226,14 +226,15 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 			return;
 		}
 
-		ApplySlotMesh(Slot, MeshComp, Def->PartMesh);
+		// 장착 파츠는 자기 원래 머터리얼을 그대로 씀, 색상 오버라이드는 없음
+		ApplySlotMesh(Slot, MeshComp, Def->PartMesh, TSoftObjectPtr<UMaterialInterface>());
 		return;
 	}
 
 	// 장착으로 채워지지 않은 슬롯은 CharacterData 기본 파츠로 대체
 	if (const FNSDefaultVisualPartEntry* DefaultEntry = FindDefaultEntry(Slot))
 	{
-		ApplySlotMesh(Slot, MeshComp, DefaultEntry->PartMesh);
+		ApplySlotMesh(Slot, MeshComp, DefaultEntry->PartMesh, DefaultEntry->MaterialOverride);
 		return;
 	}
 
@@ -241,7 +242,10 @@ void UNSPartVisualComponent::UpdateSlotVisual(FGameplayTag Slot)
 }
 
 void UNSPartVisualComponent::ApplySlotMesh(
-	FGameplayTag Slot, USkeletalMeshComponent* MeshComp, const TSoftObjectPtr<USkeletalMesh>& MeshPtr)
+	FGameplayTag Slot,
+	USkeletalMeshComponent* MeshComp,
+	const TSoftObjectPtr<USkeletalMesh>& MeshPtr,
+	const TSoftObjectPtr<UMaterialInterface>& MaterialOverride)
 {
 	USkeletalMesh* Mesh = MeshPtr.Get();
 	if (!Mesh)
@@ -265,6 +269,14 @@ void UNSPartVisualComponent::ApplySlotMesh(
 	MeshComp->SetSkeletalMesh(Mesh);
 	// 리더포즈 연결상태 재초기화 방지용
 	MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
+
+	// 이전에 걸려있던 색상 오버라이드를 먼저 지우고, 이번 소스가 오버라이드를 갖고 있으면 그때만 다시 얹음
+	// (Equipped <-> Default 전환 시 이전 색상이 남는 잔상 방지)
+	MeshComp->EmptyOverrideMaterials();
+	if (UMaterialInterface* Material = MaterialOverride.Get())
+	{
+		MeshComp->SetMaterial(0, Material);
+	}
 }
 
 void UNSPartVisualComponent::ClearSlotVisual(FGameplayTag Slot)

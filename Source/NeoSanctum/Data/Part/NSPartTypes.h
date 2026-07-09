@@ -9,6 +9,7 @@
 
 class UNSPartDefinition;
 class USkeletalMesh;
+class UMaterialInterface;
 
 UENUM(BlueprintType)
 enum class ENSPartRarity : uint8
@@ -78,6 +79,10 @@ struct FNSDefaultVisualPartEntry
 	// 기본으로 보여줄 메시 - CommonData 번들에 포함시켜 캐릭터 스폰 전에 미리 로드
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<USkeletalMesh> PartMesh;
+
+	// 색상 스킨용 머터리얼 오버라이드. 색상 변형이 없는 부위는 비워두면 원본 머터리얼 유지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Part", meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UMaterialInterface> MaterialOverride;
 };
 
 USTRUCT(BlueprintType)
