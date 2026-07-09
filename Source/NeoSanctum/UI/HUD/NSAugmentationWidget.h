@@ -16,9 +16,9 @@ class USizeBox;
 class UTextBlock;
 class UWrapBox;
 class UWidget;
-class UWeapBox;
 class UNSAugmentCardWidget;
 class UNSAugmentInventoryComponent;
+class UNSCurrencyComponent;
 
 /**
  *  인게임 중 증강 통합 패널 (보유 증강 아이콘 상시 + 대기 시 선택 카드)
@@ -47,6 +47,11 @@ public:
 	//증강 선택지 리롤 요청
 	UFUNCTION()
 	void RequestRerollAugment();
+	// 현재 리롤 비용을 감당할 수 있는지
+	bool CanAffordReroll();
+	// 리롤 요청 중이 아니면서 재화도 충분하고 지금 리롤 가능한지 (WBP RerollButton에서 IsEnable Bind 용)
+	UFUNCTION(BlueprintPure, Category = "UI")
+	bool IsRerollAvailable();
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
 	void SetOwnedAugmentListVisible(bool bVisible);
@@ -78,9 +83,6 @@ private:
 	// 리롤 버튼 (없어도 T키로는 계속 리롤 가능)
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> RerollButton;
-	// "[T]" 같은 단축키 안내 위젯 (리롤 가능할 때만 버튼과 같이 보임)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UWidget> RerollShortcutHintWidget;
 	// 현재 리롤 비용 표시
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollCostText;
@@ -134,10 +136,14 @@ private:
 	TWeakObjectPtr<UNSAugmentSelectionComponent> SelectionComponent;
 	//바인딩한 인벤토리 컴포넌트 캐시 (소멸 시 언바인드용)
 	TWeakObjectPtr<UNSAugmentInventoryComponent> InventoryComponent;
+	// 바인딩한 재화 컴포넌트 캐시 (소멸 시 언바인드용)
+	TWeakObjectPtr<UNSCurrencyComponent> CurrencyComponent;
 	//오너 PlayerController의 선택 컴포넌트를 찾아 캐시
 	UNSAugmentSelectionComponent* GetSelectionComponent();
 	//오너 PlayerState의 인벤토리 컴포넌트를 찾아 캐시
 	UNSAugmentInventoryComponent* GetInventoryComponent();
+	// 오너 PlayerState의 재화 컴포넌트를 찾아 캐시
+	UNSCurrencyComponent* GetCurrencyComponent();
 	//오퍼 제시 수신 -> 카드 생성 및 표시
 	UFUNCTION()
 	void HandleOfferPresented(

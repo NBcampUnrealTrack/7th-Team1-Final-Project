@@ -25,6 +25,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 
 
 void UNSAugmentationWidget::OpenPanel()
@@ -219,6 +220,17 @@ void UNSAugmentationWidget::RequestRerollAugment()
 	SelComp->Server_RerollCard(CurrentOfferRevision);
 }
 
+bool UNSAugmentationWidget::CanAffordReroll()
+{
+	const UNSCurrencyComponent* CurrencyComp = GetCurrencyComponent();
+	return CurrencyComp && CurrencyComp->GetTemp() >= CurrentRerollCost;
+}
+
+bool UNSAugmentationWidget::IsRerollAvailable()
+{
+	return !bRerollRequestPending && CanAffordReroll();
+}
+
 void UNSAugmentationWidget::RefreshRerollControls()
 {
 	const ESlateVisibility RerollVisibility =
@@ -227,12 +239,6 @@ void UNSAugmentationWidget::RefreshRerollControls()
 	if (RerollButton)
 	{
 		RerollButton->SetVisibility(RerollVisibility);
-		RerollButton->SetIsEnabled(!bRerollRequestPending);
-	}
-
-	if (RerollShortcutHintWidget)
-	{
-		RerollShortcutHintWidget->SetVisibility(RerollVisibility);
 	}
 
 	if (RerollCostText)
@@ -586,6 +592,24 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 
 	InventoryComponent = PS->FindComponentByClass<UNSAugmentInventoryComponent>();
 	return InventoryComponent.Get();
+}
+
+UNSCurrencyComponent* UNSAugmentationWidget::GetCurrencyComponent()
+{
+	if (CurrencyComponent.IsValid())
+	{
+		return CurrencyComponent.Get();
+	}
+
+	APlayerController* PC = GetOwningPlayer();
+	APlayerState* PS = PC ? PC->PlayerState : nullptr;
+	if (!PS)
+	{
+		return nullptr;
+	}
+
+	CurrencyComponent = PS->FindComponentByClass<UNSCurrencyComponent>();
+	return CurrencyComponent.Get();
 }
 
 void UNSAugmentationWidget::HandleOfferPresented(
