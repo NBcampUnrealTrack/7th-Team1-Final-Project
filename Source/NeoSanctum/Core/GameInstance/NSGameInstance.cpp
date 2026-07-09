@@ -2,6 +2,8 @@
 
 
 #include "NSGameInstance.h"
+
+#include "MoviePlayer.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
@@ -29,6 +31,10 @@ void UNSGameInstance::Init()
 		this,
 		&UNSGameInstance::OnSeamlessTravelStart);
 	
+	// 맵 로드 직전마다 로딩 스크린 셋업을 걸어줄 콜백
+	FCoreUObjectDelegates::PreLoadMap.AddUObject(
+		this,
+		&UNSGameInstance::HandlePreLoadMap);
 }
 
 void UNSGameInstance::Shutdown()
@@ -116,4 +122,22 @@ void UNSGameInstance::OnSeamlessTravelStart(UWorld* CurrentWorld, const FString&
 {
 	UE_LOG(LogTemp, Log, TEXT("SeamlessTravel 시작: %s"), *LevelName);
 	ShowLoadingScreen();
+}
+
+void UNSGameInstance::HandlePreLoadMap(const FString& MapName)
+{
+	if (!MapName.Contains(TEXT("L_Intro")))
+	{
+		return;
+	}
+	
+	// 최초 인트로 진입 때만 로고 무비를 수동정지 모드로
+	FLoadingScreenAttributes Attrs;
+	Attrs.bAutoCompleteWhenLoadingCompletes = true;  
+	Attrs.bWaitForManualStop = false;                 
+	Attrs.bMoviesAreSkippable = false;                // 로고 스킵 불가
+	Attrs.MoviePaths.Add(TEXT("Intro"));       
+	
+
+	GetMoviePlayer()->SetupLoadingScreen(Attrs);
 }
