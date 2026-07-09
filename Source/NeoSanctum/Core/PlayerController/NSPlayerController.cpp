@@ -2058,6 +2058,20 @@ void ANSPlayerController::Client_PlayHitTakenFeedback_Implementation(
 	FeedbackComponent->HandleHitTakenFeedback(Context);
 }
 
+void ANSPlayerController::Client_PlayDamageNumberFeedback_Implementation(const FNSDamageNumberFeedbackContext& Context)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	FNSDamageNumberFeedbackMessage Message;
+	Message.Context = Context;
+
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_DamageNumber,	Message);
+}
+
 void ANSPlayerController::Debug_EnqueueAugmentOffer()
 {
 	if (!AugmentSelectionComponent)

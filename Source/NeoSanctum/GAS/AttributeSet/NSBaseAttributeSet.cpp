@@ -90,6 +90,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		NotifyAttackFeedbackAfterHealthDamage(Data, PreviousHealth);
 		// 실제 Health 감소가 확정된 뒤 피격 로컬 피드백을 요청
 		NotifyHitTakenFeedbackAfterHealthDamage(Data, PreviousHealth);
+		NotifyDamageNumberFeedbackAfterHealthDamage(Data, PreviousHealth);
 		NotifyHitReactionAfterHealthDamage(Data, PreviousHealth);
 		SetDamageHitQuality(0.0f);
 	}
@@ -168,6 +169,81 @@ void UNSBaseAttributeSet::NotifyHitTakenFeedbackAfterHealthDamage(
 	const float) const
 {
 	// 사실상 아직은 Player 전용로직이므로 virtual 함수를 PlayerAttributeSet에서 구현
+}
+
+void UNSBaseAttributeSet::NotifyDamageNumberFeedbackAfterHealthDamage(
+	const FGameplayEffectModCallbackData& Data,
+	float PreviousHealth) const
+{
+	// 숫자는 실제 Health에 1 이상 들어간 피해만 보여줌.
+	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+	if (AppliedHealthDamage < 1.0f)
+	{
+		return;
+	}
+
+	AActor* TargetActor = Data.Target.GetAvatarActor();
+	if (!TargetActor || !TargetActor->HasAuthority())
+	{
+		return;
+	}
+
+	ANSPlayerController* ViewerController = ResolveDamageNumberViewerController(Data, TargetActor);
+	if (!ViewerController)
+	{
+		return;
+	}
+
+	// UI가 값을 다시 계산하지 않도록 서버에서 표시 숫자까지 확정.
+	FNSDamageNumberFeedbackContext FeedbackContext;
+	FeedbackContext.DamageAmount = static_cast<float>(FMath::RoundToInt(AppliedHealthDamage));
+	FeedbackContext.bIsCritical = ResolveDamageHitQuality() == ENSHitFeedbackQuality::Critical;
+	FeedbackContext.WorldLocation = ResolveDamageNumberWorldLocation(Data, TargetActor);
+	FeedbackContext.DamageLayer = ENSHitReactionDamageLayer::Health;
+
+	ViewerController->Client_PlayDamageNumberFeedback(FeedbackContext);
+}
+
+ANSPlayerController* UNSBaseAttributeSet::ResolveDamageNumberViewerController(
+	const FGameplayEffectModCallbackData& Data,
+	const AActor* TargetActor) const
+{
+	// 플레이어가 맞은 피해는 데미지 숫자를 띄우지 않음.
+	const APawn* TargetPawn = Cast<APawn>(TargetActor);
+	if (TargetPawn && Cast<ANSPlayerController>(TargetPawn->GetController()))
+	{
+		return nullptr;
+	}
+
+	// 플레이어 공격으로 몬스터나 오브젝트가 피해를 받았을 때만 공격자에게 보여줌.
+	AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+	const APawn* InstigatorPawn = Cast<APawn>(InstigatorActor);
+	return InstigatorPawn ? Cast<ANSPlayerController>(InstigatorPawn->GetController()) : nullptr;
+}
+
+FVector UNSBaseAttributeSet::ResolveDamageNumberWorldLocation(
+	const FGameplayEffectModCallbackData& Data,
+	const AActor* TargetActor) const
+{
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+
+	// HitResult가 있으면 실제 충돌 지점을 가장 먼저 씀.
+	if (const FHitResult* HitResult = EffectContext.GetHitResult())
+	{
+		return HitResult->ImpactPoint;
+	}
+
+	// 폭발처럼 HitResult가 없는 피해는 EffectContext Origin을 사용.
+	if (const FGameplayEffectContext* RawEffectContext = EffectContext.Get())
+	{
+		if (RawEffectContext->HasOrigin())
+		{
+			return RawEffectContext->GetOrigin();
+		}
+	}
+
+	return TargetActor ?
+		TargetActor->GetActorLocation() + FVector(0.0f, 0.0f, 80.0f) : FVector::ZeroVector;
 }
 
 bool UNSBaseAttributeSet::ShouldTriggerPlayerAttackFeedback(

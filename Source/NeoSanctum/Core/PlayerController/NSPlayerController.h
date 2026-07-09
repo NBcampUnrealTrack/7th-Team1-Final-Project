@@ -143,6 +143,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PlayHitTakenFeedback(const FNSHitTakenFeedbackContext& Context);
 
+	// 서버에서 확정된 데미지 숫자 표시 데이터를 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayDamageNumberFeedback(const FNSDamageNumberFeedbackContext& Context);
+
 	const FGameplayTagContainer& GetGameplayInputModeTags() const { return GameplayInputModeTags; }
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
 	
