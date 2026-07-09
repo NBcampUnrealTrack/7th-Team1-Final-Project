@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Part.h"
 
 UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const TSoftObjectPtr<UNSPartDefinition>& DefinitionPtr)
 {
@@ -77,4 +78,29 @@ const FNSPartUpgradeRow* NSPartUtils::ResolvePartUpgradeRow(const UObject* World
 		return nullptr;
 	}
 	return DataSS->GetPartUpgradeRow(Rarity);
+}
+
+bool NSPartUtils::ResolveRarityFromTag(const FGameplayTag& RarityTag, ENSPartRarity& OutRarity)
+{
+	if (RarityTag == NSGameplayTags::Part_Rarity_Common)
+	{
+		OutRarity = ENSPartRarity::Common;
+		return true;
+	}
+	if (RarityTag == NSGameplayTags::Part_Rarity_Rare)
+	{
+		OutRarity = ENSPartRarity::Rare;
+		return true;
+	}
+	if (RarityTag == NSGameplayTags::Part_Rarity_Epic)
+	{
+		OutRarity = ENSPartRarity::Epic;
+		return true;
+	}
+	if (RarityTag == NSGameplayTags::Part_Rarity_Legendary)
+	{
+		OutRarity = ENSPartRarity::Legendary;
+		return true;
+	}
+	return false;
 }
