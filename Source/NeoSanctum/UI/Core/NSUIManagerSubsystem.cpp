@@ -40,10 +40,29 @@ void UNSUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
 	}
+	
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(
+	  this,
+	  &UNSUIManagerSubsystem::HandlePostLoadMap);
 }
 
 void UNSUIManagerSubsystem::Deinitialize()
 {
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UGameViewportClient* VC = GI->GetGameViewportClient())
+		{
+			if (LoadingScreenSlate.IsValid())
+			{
+				VC->RemoveViewportWidgetContent(LoadingScreenSlate.ToSharedRef());
+			}
+		}
+	}
+	LoadingScreenSlate.Reset();
+	LoadingScreenWidget = nullptr;
+	
+	FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
+	
 	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
 		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
@@ -191,6 +210,49 @@ void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameStat
 		ResultData.KillCount);
 }
 
+void UNSUIManagerSubsystem::MarkTravelPawnReady()
+{
+	bTravelPawnReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PawnReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::MarkTravelLevelReady()
+{
+	bTravelLevelReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] LevelReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::MarkTravelViewReady()
+{
+	bTravelViewReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] ViewReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PostLoadMap / World=%s / Active=%d"),
+	*GetNameSafe(LoadedWorld), bTravelLoadingScreenActive ? 1 : 0);
+
+	// 로딩 트래블이 진행 중일 때만 재확인
+	if (!bTravelLoadingScreenActive || !LoadedWorld)
+	{
+		return;
+	}
+
+	APlayerController* PC = LoadedWorld->GetFirstPlayerController();
+	if (!PC)
+	{
+		return;
+	}
+
+	// !IsInViewport면 재생성 후 표시 (드롭됐던 위젯 복원)
+	CreateLoadingScreen(PC);
+	ShowLoadingScreen();
+}
+
 void UNSUIManagerSubsystem::HandleCommonDataReady()
 {
 	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
@@ -266,6 +328,21 @@ TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetWidgetClassFromTable(FName Ro
 	}
 
 	return nullptr;
+}
+
+void UNSUIManagerSubsystem::TryFinishTravelLoading()
+{
+	if (!bTravelLoadingScreenActive)
+	{
+		return;
+	}
+	
+	if (!bTravelPawnReady || !bTravelLevelReady || !bTravelViewReady)
+	{
+		return;
+	}
+	
+	HideTravelLoadingScreen(); 
 }
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
@@ -779,35 +856,50 @@ void UNSUIManagerSubsystem::ClearOptionPanel()
 
 void UNSUIManagerSubsystem::CreateLoadingScreen(APlayerController* OwningPlayer)
 {
-	if (!OwningPlayer)
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
 	{
 		return;
 	}
 	
-	if (LoadingScreenWidget && !LoadingScreenWidget->IsInViewport())
-	{
-		LoadingScreenWidget = nullptr;
-	}
-	
-	if (LoadingScreenWidget)
+	// 이미 유효하게 살아있으면 재생성하지 않음
+	if (LoadingScreenWidget && LoadingScreenSlate.IsValid())
 	{
 		return;
 	}
-	
-	TSubclassOf<UUserWidget> WidgetClassToUse = 
+
+	// 잔재가 남은 경우 정리 후 재생성
+	LoadingScreenWidget = nullptr;
+	LoadingScreenSlate.Reset();
+
+	TSubclassOf<UUserWidget> WidgetClassToUse =
 		GetWidgetClassFromTable(TEXT("LoadingScreen"));
-	
 	if (!WidgetClassToUse)
 	{
 		return;
 	}
-	
-	LoadingScreenWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
-	if (LoadingScreenWidget)
+
+	// 오너를 GameInstance로 설정
+	LoadingScreenWidget = CreateWidget<UUserWidget>(GI, WidgetClassToUse);
+	if (!LoadingScreenWidget)
 	{
-		LoadingScreenWidget->AddToViewport(1000);
-		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+		return;
 	}
+
+	UGameViewportClient* VC = GI->GetGameViewportClient();
+	if (!VC)
+	{
+		// 뷰포트가 아직 없으면 위젯만 생성
+		return;
+	}
+
+	// Slate 핸들을 한 번만 생성해 캐싱
+	LoadingScreenSlate = LoadingScreenWidget->TakeWidget();
+
+	VC->AddViewportWidgetContent(LoadingScreenSlate.ToSharedRef(), 1000 /*ZOrder*/);
+
+	// 숨김 상태로 부착
+	LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UNSUIManagerSubsystem::ShowLoadingScreen()
@@ -828,13 +920,22 @@ void UNSUIManagerSubsystem::HideLoadingScreen()
 
 void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show / World=%s"), *GetNameSafe(GetWorld()));
+	
 	bTravelLoadingScreenActive = true;
+	bTravelPawnReady = false;
+	bTravelLevelReady = false;
+	bTravelViewReady = false;
 	CreateLoadingScreen(OwningPlayer);
 	ShowLoadingScreen();
 }
 
 void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* OwningPlayer)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Restore / World=%s / Active=%d"),
+	*GetNameSafe(GetWorld()),
+	bTravelLoadingScreenActive ? 1 : 0);
+	
 	if (!bTravelLoadingScreenActive)
 	{
 		return;
@@ -846,8 +947,29 @@ void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* Owning
 
 void UNSUIManagerSubsystem::HideTravelLoadingScreen()
 {
+	UE_LOG(LogTemp, Warning,
+		TEXT("[TravelLoading] Hide / World=%s / PawnReady=%d / LevelReady=%d / ViewReady=%d"),
+		*GetNameSafe(GetWorld()),
+		bTravelPawnReady ? 1 : 0,
+		bTravelLevelReady ? 1 : 0,
+		bTravelViewReady ? 1 : 0);
+	
 	bTravelLoadingScreenActive = false;
-	HideLoadingScreen();
+	// 부착할 때 쓴 Slate 핸들로 제거
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UGameViewportClient* VC = GI->GetGameViewportClient())
+		{
+			if (LoadingScreenSlate.IsValid())
+			{
+				VC->RemoveViewportWidgetContent(LoadingScreenSlate.ToSharedRef());
+			}
+		}
+	}
+
+	LoadingScreenSlate.Reset();
+	// 다음 트래블에 새로 생성
+	LoadingScreenWidget = nullptr; 
 }
 
 void UNSUIManagerSubsystem::OpenPartPanel()

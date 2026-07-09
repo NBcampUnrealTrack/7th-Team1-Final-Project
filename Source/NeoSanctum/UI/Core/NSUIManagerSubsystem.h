@@ -179,6 +179,14 @@ public:
 	void ClearSpectator();
 	
 	void UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState);
+	
+	// 이용호 추가
+	void MarkTravelPawnReady();    // 실제 플레이어 캐릭터 빙의됨
+	void MarkTravelLevelReady();   // 도착 레벨용 데이터 로드 완료
+	void MarkTravelViewReady();
+	
+	// 트래블 중 새 월드가 로드될 때마다 로딩 위젯을 재확인
+	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	// @원종 추가
 private:
@@ -224,6 +232,9 @@ private:
 	// 로딩스크린을 계속 Active할 것인가에 대한 판단을 위한 bool 변수
 	bool bTravelLoadingScreenActive = false;
 	
+	// (이용호 추가) 심리스 트래블에도 유지되도록 뷰포트에 직접 올릴 Slate 핸들 캐시
+	TSharedPtr<SWidget> LoadingScreenSlate;
+	
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
@@ -260,6 +271,12 @@ private:
 	//관전자 상태 UI위젯
 	UPROPERTY()
 	TObjectPtr<UNSSpectatorWidget> SpectatorWidget;
+	
+	// (이용호 추가) 로딩스크린 Hide 시도용
+	void TryFinishTravelLoading();
+	bool bTravelPawnReady = false;
+	bool bTravelLevelReady = false;
+	bool bTravelViewReady = false;
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
