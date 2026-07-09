@@ -4,6 +4,7 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
@@ -50,6 +51,19 @@ void UGA_Flicker::ActivateAbility(
 	bCurrentTargetDamageApplied = false;
 	PreviousMovementMode.Reset();
 
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
+	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
+		Handle,
+		ActivationInfo.GetActivationPredictionKey()
+	).AddUObject(this, &ThisClass::OnTargetDataReadyCallback);
+
 	// Hold 단계 몽타주 재생 시작
 	PlayFlickerMontage();
 	StartHitEventTask();
@@ -76,6 +90,18 @@ void UGA_Flicker::InputReleased(
 		return;
 	}
 
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		if (UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get())
+		{
+			// 서버의 원격 클라이언트 Ability TargetData 수신 대기
+			ASC->CallReplicatedTargetDataDelegatesIfSet(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey());
+		}
+		return;
+	}
+
 	AActor* TargetActor = nullptr;
 	FVector TargetLocation = FVector::ZeroVector;
 	if (!TryFindBestTarget(TargetActor, TargetLocation))
@@ -91,23 +117,9 @@ void UGA_Flicker::InputReleased(
 		return;
 	}
 
-	// 타겟이 확정된 뒤 Cost/Cooldown Commit
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
-	AddDashingState();
-	AddFlickerGameplayCue();
-	bDashStarted = true;
-
-	// 첫 번째 체인 타겟 처리 시작
-	CurrentTargetIndex = 0;
-	if (!StartCurrentTargetMove())
-	{
-		AdvanceToNextTarget();
-	}
+	// 로컬 선택 타겟 체인 공유 및 동일 TargetData 기준 이동 시작
+	OnTargetDataReadyCallback(MakeTargetDataFromSelectedTargets(), FGameplayTag());
+	return;
 }
 
 void UGA_Flicker::EndAbility(
@@ -144,6 +156,24 @@ void UGA_Flicker::EndAbility(
 		World->GetTimerManager().ClearTimer(AttackAdvanceTimerHandle);
 	}
 
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
+		{
+			// Ability 종료 시 TargetData Delegate 제거 및 다음 발동 PredictionKey 혼선 방지
+			ASC->AbilityTargetDataSetDelegate(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey()
+			).Remove(OnTargetDataReadyCallbackDelegateHandle);
+
+			OnTargetDataReadyCallbackDelegateHandle.Reset();
+		}
+
+		ASC->ConsumeClientReplicatedTargetData(
+			Handle,
+			ActivationInfo.GetActivationPredictionKey());
+	}
+
 	RestoreMovementMode();
 	RemoveFlickerGameplayCue();
 	RemoveDashingState();
@@ -164,6 +194,105 @@ void UGA_Flicker::EndAbility(
 	CurrentTargetIndex = INDEX_NONE;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_Flicker::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FGameplayTag ApplicationTag)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FScopedPredictionWindow ScopedPredictionWindow(ASC);
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	const bool bShouldNotifyServer =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
+
+	// 원격 클라이언트의 로컬 Flicker 타겟 체인 서버 전송
+	if (bShouldNotifyServer)
+	{
+		ASC->CallServerSetReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey(),
+			TargetDataHandle,
+			ApplicationTag,
+			ASC->ScopedPredictionKey);
+	}
+
+	// 로컬 예측 인스턴스와 서버 권한 인스턴스의 동일 TargetData 기반 후속 처리
+	OnFlickerTargetDataReady(TargetDataHandle);
+
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		ASC->ConsumeClientReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey());
+	}
+}
+
+void UGA_Flicker::OnFlickerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	if (bDashStarted)
+	{
+		return;
+	}
+
+	bReleaseRequested = true;
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return;
+	}
+
+	if (AvatarActor->HasAuthority() && !IsTargetDataValidForServer(TargetDataHandle))
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			true);
+		return;
+	}
+
+	// 검증 완료 TargetData의 Flicker 타겟 체인 상태 복원
+	if (!TryApplyTargetData(TargetDataHandle))
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			true);
+		return;
+	}
+
+	// 타겟 확정 이후 Cost/Cooldown Commit 및 실패 요청 비용 소모 방지
+	if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			true);
+		return;
+	}
+
+	if (!StartFlickerFromSelectedTargets())
+	{
+		EndAbility(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActorInfo(),
+			GetCurrentActivationInfo(),
+			true,
+			true);
+	}
 }
 
 void UGA_Flicker::OnFlickerMoveFinished()
@@ -725,6 +854,158 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 	return !SelectedTargets.IsEmpty();
 }
 
+FGameplayAbilityTargetDataHandle UGA_Flicker::MakeTargetDataFromSelectedTargets() const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const FVector TraceStart = AvatarActor ? AvatarActor->GetActorLocation() : FVector::ZeroVector;
+
+	for (int32 TargetIndex = 0; TargetIndex < SelectedTargets.Num(); ++TargetIndex)
+	{
+		AActor* TargetActor = SelectedTargets[TargetIndex].Get();
+		if (!IsValid(TargetActor) || !SelectedTargetLocations.IsValidIndex(TargetIndex))
+		{
+			continue;
+		}
+
+		// SingleTargetHit HitObject/ImpactPoint 기반 체인 타겟 및 공격 기준 위치 전달
+		FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+			new FGameplayAbilityTargetData_SingleTargetHit();
+
+		FHitResult& HitResult = TargetData->HitResult;
+		HitResult.bBlockingHit = true;
+		HitResult.HitObjectHandle = FActorInstanceHandle(TargetActor);
+		HitResult.Location = SelectedTargetLocations[TargetIndex];
+		HitResult.ImpactPoint = SelectedTargetLocations[TargetIndex];
+		HitResult.TraceStart = TraceStart;
+		HitResult.TraceEnd = SelectedTargetLocations[TargetIndex];
+
+		TargetDataHandle.Add(TargetData);
+	}
+
+	return TargetDataHandle;
+}
+
+bool UGA_Flicker::TryApplyTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	SelectedTargets.Reset();
+	SelectedTargetLocations.Reset();
+
+	for (int32 DataIndex = 0; DataIndex < TargetDataHandle.Num(); ++DataIndex)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(DataIndex);
+		const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+		AActor* TargetActor = HitResult ? HitResult->GetActor() : nullptr;
+		if (!IsAttackableTarget(TargetActor))
+		{
+			continue;
+		}
+
+		const FVector TargetLocation = !HitResult->ImpactPoint.IsNearlyZero()
+			? FVector(HitResult->ImpactPoint)
+			: TargetActor->GetActorLocation();
+
+		SelectedTargets.Add(TargetActor);
+		SelectedTargetLocations.Add(TargetLocation);
+	}
+
+	return !SelectedTargets.IsEmpty();
+}
+
+bool UGA_Flicker::IsTargetDataValidForServer(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor) || TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	int32 HitCount = 0;
+	if (!TryGetHitCount(HitCount))
+	{
+		return false;
+	}
+
+	if (TargetDataHandle.Num() > FMath::Max(HitCount, 1))
+	{
+		return false;
+	}
+
+	float SkillRange = 0.0f;
+	if (!SkillAbilityTag.IsValid() ||
+		!TryGetFinalAbilityStat(SkillAbilityTag, NSGameplayTags::CombatStat_SkillRange, SkillRange))
+	{
+		return false;
+	}
+
+	const float MaxPrimaryDistance = FMath::Max(SkillRange, 0.0f) + AttackDistance + 200.0f;
+	const float MaxChainDistance = FMath::Max(ChainRadius, 0.0f) + 200.0f;
+	FVector PreviousLocation = AvatarActor->GetActorLocation();
+
+	// 첫 타겟 시전 사거리, 이후 타겟 체인 반경 기준 서버 재검증
+	for (int32 DataIndex = 0; DataIndex < TargetDataHandle.Num(); ++DataIndex)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(DataIndex);
+		const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+		AActor* TargetActor = HitResult ? HitResult->GetActor() : nullptr;
+		if (!IsAttackableTarget(TargetActor))
+		{
+			return false;
+		}
+
+		const FVector TargetLocation = !HitResult->ImpactPoint.IsNearlyZero()
+			? FVector(HitResult->ImpactPoint)
+			: TargetActor->GetActorLocation();
+
+		const float AllowedDistance = DataIndex == 0 ? MaxPrimaryDistance : MaxChainDistance;
+		if (FVector::DistSquared(PreviousLocation, TargetLocation) > FMath::Square(AllowedDistance))
+		{
+			return false;
+		}
+
+		FVector ActorOrigin = TargetActor->GetActorLocation();
+		FVector ActorExtent = FVector::ZeroVector;
+		TargetActor->GetActorBounds(false, ActorOrigin, ActorExtent);
+		const float LocationTolerance = FMath::Max3(ActorExtent.X, ActorExtent.Y, ActorExtent.Z) + 250.0f;
+		// 클라이언트 공격 기준 위치와 실제 타겟 bounds 근접성 확인
+		if (FVector::DistSquared(ActorOrigin, TargetLocation) > FMath::Square(LocationTolerance))
+		{
+			return false;
+		}
+
+		if (!HasSightToTarget(AvatarActor->GetActorLocation(), TargetActor, TargetLocation))
+		{
+			return false;
+		}
+
+		PreviousLocation = TargetLocation;
+	}
+
+	return true;
+}
+
+bool UGA_Flicker::IsWaitingForRemoteClientTargetData() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	return ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+}
+
+bool UGA_Flicker::StartFlickerFromSelectedTargets()
+{
+	// 검증 완료 타겟 체인 준비 이후 이동 상태와 Cue 시작
+	AddDashingState();
+	AddFlickerGameplayCue();
+	bDashStarted = true;
+
+	CurrentTargetIndex = 0;
+	if (!StartCurrentTargetMove())
+	{
+		AdvanceToNextTarget();
+	}
+
+	return bDashStarted;
+}
+
 bool UGA_Flicker::TryGetHitCount(int32& OutHitCount) const
 {
 	OutHitCount = 0;
@@ -896,6 +1177,12 @@ bool UGA_Flicker::StartCurrentTargetMove()
 
 void UGA_Flicker::AdvanceToNextTarget()
 {
+	// 서버 소켓 Sweep 실패 시 검증 완료 현재 타겟 fallback 데미지 적용
+	if (bDashStarted && !bCurrentTargetDamageApplied)
+	{
+		ApplyDamageToTarget();
+	}
+
 	++CurrentTargetIndex;
 
 	// 유효하지 않은 중간 타겟은 건너뛰고 다음 체인 타겟 시도
@@ -1077,6 +1364,9 @@ void UGA_Flicker::ApplyDamageToTarget()
 	{
 		return;
 	}
+
+	// 동일 타겟 섹션 내 Sweep/fallback 데미지 중복 적용 방지 기록
+	bCurrentTargetDamageApplied = true;
 
 	FHitResult HitResult;
 	HitResult.HitObjectHandle = FActorInstanceHandle(TargetActor);
