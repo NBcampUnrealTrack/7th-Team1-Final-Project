@@ -28,6 +28,14 @@ void ANSDamageNumberActor::InitializeDamageNumber(const FNSDamageNumberFeedbackC
 	SetActorLocation(Context.WorldLocation);
 	SetLifeSpan(LifeTime);
 
+	if (!WidgetComponent)
+	{
+		return;
+	}
+
+	// 스폰 직후에도 WBP 인스턴스가 준비되도록 한 번 보장.
+	WidgetComponent->InitWidget();
+
 	// 위젯이 아직 안 물려 있으면 이번 숫자는 조용히 넘김.
 	UNSDamageNumberWidget* DamageNumberWidget =
 		Cast<UNSDamageNumberWidget>(WidgetComponent->GetUserWidgetObject());

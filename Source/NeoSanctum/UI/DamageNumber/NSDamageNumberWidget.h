@@ -7,6 +7,7 @@
 #include "NSDamageNumberWidget.generated.h"
 
 class UTextBlock;
+class UWidgetAnimation;
 struct FNSDamageNumberFeedbackContext;
 /**
  *
@@ -30,14 +31,14 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> DamageText;
 
-	UPROPERTY(Transient, meta = (BindWidgetOptional))
+	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
 	TObjectPtr<UWidgetAnimation> PopupAnimation;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
 	FLinearColor NormalDamageColor = FLinearColor::White;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damag Number")
-	FLinearColor CriticalDamageColor = FLinearColor(1.0f, 0.2f, 0.2, 1.0f);
+	FLinearColor CriticalDamageColor = FLinearColor(1.0f, 0.1f, 0.1, 1.0f);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
 	FVector2D NormalRenderScale = FVector2D(1.0f, 1.0f);
