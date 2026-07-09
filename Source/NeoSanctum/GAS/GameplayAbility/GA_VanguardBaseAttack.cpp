@@ -5,6 +5,7 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Abilities/GameplayAbilityTargetTypes.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionConstantForce.h"
 #include "Abilities/Tasks/AbilityTask_ApplyRootMotionMoveToForce.h"
@@ -59,6 +60,19 @@ void UGA_VanguardBaseAttack::ActivateAbility(
 
 	// 입력 시점 상태 기준 기본공격 파생 공격 결정
 	ActiveAttackMode = SelectAttackMode(ActorInfo);
+
+	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	if (!ASC)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
+	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
+		Handle,
+		ActivationInfo.GetActivationPredictionKey()
+	).AddUObject(this, &ThisClass::OnTargetDataReadyCallback);
 
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::None ||
 		!CommitAbility(Handle, ActorInfo, ActivationInfo))
@@ -146,6 +160,24 @@ void UGA_VanguardBaseAttack::EndAbility(
 	{
 		RestoreAirSlamMovementMode();
 	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
+		{
+			// Ability 종료 시 TargetData Delegate 제거 및 다음 발동 PredictionKey 혼선 방지
+			ASC->AbilityTargetDataSetDelegate(
+				Handle,
+				ActivationInfo.GetActivationPredictionKey()
+			).Remove(OnTargetDataReadyCallbackDelegateHandle);
+
+			OnTargetDataReadyCallbackDelegateHandle.Reset();
+		}
+
+		ASC->ConsumeClientReplicatedTargetData(
+			Handle,
+			ActivationInfo.GetActivationPredictionKey());
+	}
 	
 	RemoveAttackFlashGameplayCue();
 	RemoveVanguardStateTags();
@@ -169,6 +201,434 @@ void UGA_VanguardBaseAttack::EndAbility(
 	bDashAttackMontageFinished = false;
 
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+}
+
+void UGA_VanguardBaseAttack::OnTargetDataReadyCallback(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FGameplayTag ApplicationTag)
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!ASC)
+	{
+		return;
+	}
+
+	FScopedPredictionWindow ScopedPredictionWindow(ASC);
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	const bool bShouldNotifyServer =
+		ActorInfo && ActorInfo->IsLocallyControlled() && !ActorInfo->IsNetAuthority();
+
+	// 원격 클라이언트의 로컬 공격 의도 데이터 서버 전송
+	if (bShouldNotifyServer)
+	{
+		ASC->CallServerSetReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey(),
+			TargetDataHandle,
+			ApplicationTag,
+			ASC->ScopedPredictionKey);
+	}
+
+	// 로컬 예측 인스턴스와 서버 권한 인스턴스의 동일 TargetData 기반 후속 처리
+	OnVanguardTargetDataReady(TargetDataHandle);
+
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		ASC->ConsumeClientReplicatedTargetData(
+			GetCurrentAbilitySpecHandle(),
+			GetCurrentActivationInfo().GetActivationPredictionKey());
+	}
+}
+
+void UGA_VanguardBaseAttack::OnVanguardTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return;
+	}
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge ||
+		ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack)
+	{
+		// DashAttack 차지 비율/돌진 방향의 TargetData 기준 처리
+		if (AvatarActor->HasAuthority() && !IsDashAttackTargetDataValidForServer(TargetDataHandle))
+		{
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+			return;
+		}
+
+		float ChargeRatio = 0.0f;
+		FVector DashDirection = FVector::ZeroVector;
+		if (!TryConsumeDashAttackTargetData(TargetDataHandle, ChargeRatio, DashDirection))
+		{
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+			return;
+		}
+
+		StartDashAttack(ChargeRatio, DashDirection);
+		return;
+	}
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::AirSlam)
+	{
+		// AirSlam 클라이언트 착지점과 서버 지면 판정 비교 후 동일 위치 Dive
+		if (AvatarActor->HasAuthority() && !IsAirSlamTargetDataValidForServer(TargetDataHandle))
+		{
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+			return;
+		}
+
+		FVector TargetLocation = FVector::ZeroVector;
+		if (!TryConsumeAirSlamTargetData(TargetDataHandle, TargetLocation))
+		{
+			EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
+			return;
+		}
+
+		StartAirSlamDiveToTarget(TargetLocation);
+		return;
+	}
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::GroundCombo)
+	{
+		// GroundCombo 클라이언트 hit intent 서버 근접 검증 및 서버 전용 데미지 적용
+		if (AvatarActor->HasAuthority() && IsMeleeHitTargetDataValidForServer(TargetDataHandle))
+		{
+			ApplyMeleeHitTargetData(TargetDataHandle);
+		}
+	}
+}
+
+bool UGA_VanguardBaseAttack::IsWaitingForRemoteClientTargetData() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	return ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled();
+}
+
+FGameplayAbilityTargetDataHandle UGA_VanguardBaseAttack::MakeDashAttackTargetData(float ChargeRatio) const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return TargetDataHandle;
+	}
+
+	float FinalMinDistance = 0.0f;
+	float FinalMaxDistance = 0.0f;
+	float FinalDuration = 0.0f;
+	if (!TryResolveDashAttackMovementStats(FinalMinDistance, FinalMaxDistance, FinalDuration))
+	{
+		return TargetDataHandle;
+	}
+
+	FVector DashDirection = FVector::ZeroVector;
+	if (!TryGetDashAttackDirection(DashDirection))
+	{
+		return TargetDataHandle;
+	}
+
+	const float ClampedChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
+	const float DashDistance = FMath::Lerp(FinalMinDistance, FinalMaxDistance, ClampedChargeRatio);
+	const FVector TraceStart = AvatarActor->GetActorLocation();
+	const FVector TraceEnd = TraceStart + DashDirection.GetSafeNormal2D() * DashDistance;
+
+	// SingleTargetHit TraceStart/TraceEnd 기반 돌진 방향/예상 도착점, Time 기반 차지 비율 전달
+	FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+		new FGameplayAbilityTargetData_SingleTargetHit();
+
+	FHitResult& HitResult = TargetData->HitResult;
+	HitResult.TraceStart = TraceStart;
+	HitResult.TraceEnd = TraceEnd;
+	HitResult.Location = TraceEnd;
+	HitResult.ImpactPoint = TraceEnd;
+	HitResult.Time = ClampedChargeRatio;
+
+	TargetDataHandle.Add(TargetData);
+	return TargetDataHandle;
+}
+
+bool UGA_VanguardBaseAttack::TryConsumeDashAttackTargetData(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	float& OutChargeRatio,
+	FVector& OutDirection) const
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+	const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+	if (!HitResult)
+	{
+		return false;
+	}
+
+	OutChargeRatio = FMath::Clamp(HitResult->Time, 0.0f, 1.0f);
+	OutDirection = (HitResult->TraceEnd - HitResult->TraceStart).GetSafeNormal2D();
+	return !OutDirection.IsNearlyZero();
+}
+
+bool UGA_VanguardBaseAttack::IsDashAttackTargetDataValidForServer(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const APawn* Pawn = Cast<APawn>(AvatarActor);
+	if (!AvatarActor || !Pawn || TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	float ChargeRatio = 0.0f;
+	FVector DashDirection = FVector::ZeroVector;
+	if (!TryConsumeDashAttackTargetData(TargetDataHandle, ChargeRatio, DashDirection))
+	{
+		return false;
+	}
+
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+	const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+	if (!HitResult)
+	{
+		return false;
+	}
+
+	float FinalMinDistance = 0.0f;
+	float FinalMaxDistance = 0.0f;
+	float FinalDuration = 0.0f;
+	if (!TryResolveDashAttackMovementStats(FinalMinDistance, FinalMaxDistance, FinalDuration))
+	{
+		return false;
+	}
+
+	const float ClientDistance = FVector::Dist(HitResult->TraceStart, HitResult->TraceEnd);
+	if (ClientDistance > FinalMaxDistance + 250.0f)
+	{
+		return false;
+	}
+
+	// 서버 현재 위치와 클라이언트 돌진 시작점 거리 검증
+	if (FVector::DistSquared(AvatarActor->GetActorLocation(), HitResult->TraceStart) > FMath::Square(500.0f))
+	{
+		return false;
+	}
+
+	FVector ServerAimDirection = Pawn->GetBaseAimRotation().Vector().GetSafeNormal2D();
+	if (ServerAimDirection.IsNearlyZero())
+	{
+		ServerAimDirection = AvatarActor->GetActorForwardVector().GetSafeNormal2D();
+	}
+
+	// 서버 조준 회전 기준 돌진 방향 각도 검증 및 근접 공격 허용 오차 적용
+	constexpr float MinAcceptedDot = 0.35f;
+	return ServerAimDirection.IsNearlyZero() ||
+		FVector::DotProduct(ServerAimDirection, DashDirection) >= MinAcceptedDot;
+}
+
+FGameplayAbilityTargetDataHandle UGA_VanguardBaseAttack::MakeAirSlamTargetData() const
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+
+	FVector TargetLocation = FVector::ZeroVector;
+	if (!TryGetAirSlamTargetLocation(TargetLocation))
+	{
+		return TargetDataHandle;
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const FVector TraceStart = AvatarActor ? AvatarActor->GetActorLocation() : TargetLocation;
+
+	// AirSlam 착지 목표 위치의 ImpactPoint 전달
+	FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+		new FGameplayAbilityTargetData_SingleTargetHit();
+
+	FHitResult& HitResult = TargetData->HitResult;
+	HitResult.bBlockingHit = true;
+	HitResult.TraceStart = TraceStart;
+	HitResult.TraceEnd = TargetLocation;
+	HitResult.Location = TargetLocation;
+	HitResult.ImpactPoint = TargetLocation;
+
+	TargetDataHandle.Add(TargetData);
+	return TargetDataHandle;
+}
+
+bool UGA_VanguardBaseAttack::TryConsumeAirSlamTargetData(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle,
+	FVector& OutTargetLocation) const
+{
+	if (TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(0);
+	const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+	if (!HitResult)
+	{
+		return false;
+	}
+
+	OutTargetLocation = HitResult->ImpactPoint;
+	return !OutTargetLocation.IsNearlyZero();
+}
+
+bool UGA_VanguardBaseAttack::IsAirSlamTargetDataValidForServer(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
+{
+	FVector ClientTargetLocation = FVector::ZeroVector;
+	if (!TryConsumeAirSlamTargetData(TargetDataHandle, ClientTargetLocation))
+	{
+		return false;
+	}
+
+	FVector ServerTargetLocation = FVector::ZeroVector;
+	if (!TryGetAirSlamTargetLocation(ServerTargetLocation))
+	{
+		return false;
+	}
+
+	// 클라이언트 착지점과 서버 계산 착지점 거리 검증
+	return FVector::DistSquared(ClientTargetLocation, ServerTargetLocation) <= FMath::Square(600.0f);
+}
+
+FGameplayAbilityTargetDataHandle UGA_VanguardBaseAttack::MakeMeleeHitTargetData()
+{
+	FGameplayAbilityTargetDataHandle TargetDataHandle;
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
+	if (!AvatarActor || !World || !MeleeWeapon || MeleeTraceRadius <= 0.0f)
+	{
+		return TargetDataHandle;
+	}
+
+	TArray<FTransform> SocketTransforms;
+	if (!MeleeWeapon->TryGetMeleeTraceSocketTransforms(SocketTransforms) || SocketTransforms.IsEmpty())
+	{
+		return TargetDataHandle;
+	}
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSVanguardPredictedMeleeTrace), false, AvatarActor);
+	QueryParams.AddIgnoredActor(AvatarActor);
+	QueryParams.AddIgnoredActor(MeleeWeapon);
+
+	const bool bCanUsePreviousLocations =
+		bHasPreviousMeleeTraceSocketLocations &&
+		PreviousMeleeTraceSocketLocations.Num() == SocketTransforms.Num();
+
+	// 클라이언트 예측 위치 기반 근접 명중 후보의 서버 검증용 hit intent 수집
+	TSet<TObjectKey<AActor>> AddedActors;
+	for (int32 SocketIndex = 0; SocketIndex < SocketTransforms.Num(); ++SocketIndex)
+	{
+		const FVector CurrentLocation = SocketTransforms[SocketIndex].GetLocation();
+		const FVector TraceStart = bCanUsePreviousLocations
+			? PreviousMeleeTraceSocketLocations[SocketIndex]
+			: CurrentLocation;
+		const FVector TraceEnd = TraceStart.Equals(CurrentLocation)
+			? CurrentLocation + FVector::UpVector * 0.1f
+			: CurrentLocation;
+
+		TArray<FHitResult> HitResults;
+		if (!World->SweepMultiByChannel(
+			HitResults,
+			TraceStart,
+			TraceEnd,
+			FQuat::Identity,
+			NSCollisionChannels::PlayerWeaponTrace,
+			FCollisionShape::MakeSphere(MeleeTraceRadius),
+			QueryParams))
+		{
+			continue;
+		}
+
+		for (const FHitResult& HitResult : HitResults)
+		{
+			AActor* HitActor = HitResult.GetActor();
+			const TObjectKey<AActor> HitKey(HitActor);
+			if (!HitActor || AddedActors.Contains(HitKey))
+			{
+				continue;
+			}
+
+			AddedActors.Add(HitKey);
+
+			FGameplayAbilityTargetData_SingleTargetHit* TargetData =
+				new FGameplayAbilityTargetData_SingleTargetHit();
+			TargetData->HitResult = HitResult;
+			TargetDataHandle.Add(TargetData);
+		}
+	}
+
+	PreviousMeleeTraceSocketLocations.Reset(SocketTransforms.Num());
+	for (const FTransform& SocketTransform : SocketTransforms)
+	{
+		PreviousMeleeTraceSocketLocations.Add(SocketTransform.GetLocation());
+	}
+	bHasPreviousMeleeTraceSocketLocations = true;
+
+	return TargetDataHandle;
+}
+
+bool UGA_VanguardBaseAttack::IsMeleeHitTargetDataValidForServer(
+	const FGameplayAbilityTargetDataHandle& TargetDataHandle) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor || TargetDataHandle.Num() <= 0)
+	{
+		return false;
+	}
+
+	const FVector AvatarLocation = AvatarActor->GetActorLocation();
+	const FVector AvatarForward = AvatarActor->GetActorForwardVector().GetSafeNormal2D();
+	constexpr float MaxMeleeIntentDistance = 550.0f;
+	constexpr float MinMeleeIntentDot = -0.25f;
+
+	// 서버 위치 기준 거리/전방각 hit intent 검증
+	for (int32 DataIndex = 0; DataIndex < TargetDataHandle.Num(); ++DataIndex)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(DataIndex);
+		const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+		AActor* TargetActor = HitResult ? HitResult->GetActor() : nullptr;
+		if (!TargetActor || !NSDamageRules::CanApplyDamage(AvatarActor, TargetActor))
+		{
+			return false;
+		}
+
+		const FVector TargetLocation = TargetActor->GetActorLocation();
+		if (FVector::DistSquared(AvatarLocation, TargetLocation) > FMath::Square(MaxMeleeIntentDistance))
+		{
+			return false;
+		}
+
+		const FVector ToTarget = (TargetLocation - AvatarLocation).GetSafeNormal2D();
+		if (!AvatarForward.IsNearlyZero() && !ToTarget.IsNearlyZero() &&
+			FVector::DotProduct(AvatarForward, ToTarget) < MinMeleeIntentDot)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void UGA_VanguardBaseAttack::ApplyMeleeHitTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle)
+{
+	// 검증 통과 hit intent의 기존 ApplyDamageToActor 경로 전달 및 데미지 규칙 재사용
+	for (int32 DataIndex = 0; DataIndex < TargetDataHandle.Num(); ++DataIndex)
+	{
+		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(DataIndex);
+		const FHitResult* HitResult = TargetData ? TargetData->GetHitResult() : nullptr;
+		if (HitResult)
+		{
+			ApplyDamageToActor(*HitResult);
+		}
+	}
 }
 
 void UGA_VanguardBaseAttack::OnAttackMontageCompleted()
@@ -406,7 +866,7 @@ void UGA_VanguardBaseAttack::StartMeleeHitEventTask()
 void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Payload)
 {
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (!AvatarActor || !AvatarActor->HasAuthority())
+	if (!AvatarActor)
 	{
 		return;
 	}
@@ -420,6 +880,12 @@ void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Paylo
 		bHasPreviousMeleeTraceSocketLocations = false;
 		CurrentMeleeTraceWindowId = TraceWindowId;
 		DamagedActorsInTraceWindow.Reset();
+	}
+
+	if (!AvatarActor->HasAuthority())
+	{
+		OnTargetDataReadyCallback(MakeMeleeHitTargetData(), FGameplayTag());
+		return;
 	}
 
 	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
@@ -818,16 +1284,31 @@ void UGA_VanguardBaseAttack::StartAirSlamDive()
 		FinishInstantMode();
 		return;
 	}
-	
-	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
-	if (!Character)
+
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			ASC->CallReplicatedTargetDataDelegatesIfSet(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActivationInfo().GetActivationPredictionKey());
+		}
+		return;
+	}
+
+	OnTargetDataReadyCallback(MakeAirSlamTargetData(), FGameplayTag());
+}
+
+void UGA_VanguardBaseAttack::StartAirSlamDiveToTarget(const FVector& TargetLocation)
+{
+	if (!JumpToAirSlamSection(AirSlamDiveSectionName))
 	{
 		FinishInstantMode();
 		return;
 	}
 	
-	FVector TargetLocation = FVector::ZeroVector;
-	if (!TryGetAirSlamTargetLocation(TargetLocation))
+	const ACharacter* Character = Cast<ACharacter>(GetAvatarActorFromActorInfo());
+	if (!Character)
 	{
 		FinishInstantMode();
 		return;
@@ -996,10 +1477,21 @@ void UGA_VanguardBaseAttack::FinishDashCharge()
 			("ChargeRatio", ChargeRatio));
 	}
 
-	StartDashAttack(ChargeRatio);
+	if (IsWaitingForRemoteClientTargetData())
+	{
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+		{
+			ASC->CallReplicatedTargetDataDelegatesIfSet(
+				GetCurrentAbilitySpecHandle(),
+				GetCurrentActivationInfo().GetActivationPredictionKey());
+		}
+		return;
+	}
+
+	OnTargetDataReadyCallback(MakeDashAttackTargetData(ChargeRatio), FGameplayTag());
 }
 
-void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
+void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio, const FVector& DashAttackDirection)
 {
 	// 대쉬공격 실행 상태로 전환
 	ActiveAttackMode = ENSVanguardBaseAttackMode::DashAttack;
@@ -1016,7 +1508,7 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio)
 	}
 
 	// 차지 비율에 따른 전방 돌진 시작
-	bDashAttackMoveStarted = StartDashAttackMovement(ChargeRatio);
+	bDashAttackMoveStarted = StartDashAttackMovement(ChargeRatio, DashAttackDirection);
 	bDashAttackMoveFinished = !bDashAttackMoveStarted;
 
 	StartDashAttackRecoverEventTask();
@@ -1057,7 +1549,7 @@ bool UGA_VanguardBaseAttack::JumpToDashAttackSection()
 	return true;
 }
 
-bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
+bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio, const FVector& DashAttackDirection)
 {
 	float FinalMinDistance = 0.0f;
 	float FinalMaxDistance = 0.0f;
@@ -1067,8 +1559,8 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
 		return false;
 	}
 
-	FVector DashAttackDirection = FVector::ZeroVector;
-	if (!TryGetDashAttackDirection(DashAttackDirection))
+	const FVector FinalDashAttackDirection = DashAttackDirection.GetSafeNormal2D();
+	if (FinalDashAttackDirection.IsNearlyZero())
 	{
 		return false;
 	}
@@ -1081,7 +1573,7 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio)
 	DashAttackMoveTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
 		this,
 		TEXT("VanguardDashAttack"),
-		DashAttackDirection,
+		FinalDashAttackDirection,
 		DashAttackSpeed,
 		FinalDuration,
 		false,
