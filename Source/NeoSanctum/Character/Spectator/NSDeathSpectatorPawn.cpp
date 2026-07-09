@@ -4,6 +4,7 @@
 
 #include "ProceduralDungeonSettings.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraTypes.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
@@ -64,6 +65,9 @@ void ANSDeathSpectatorPawn::Tick(float DeltaSeconds)
 		FollowInterpSpeed
 	);
 	SetActorLocation(NewLocation);
+
+	// Pawn 이동 이후 최종 카메라 위치 보정
+	UpdateSpectatorCamera(DeltaSeconds);
 }
 
 void ANSDeathSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -91,6 +95,11 @@ void ANSDeathSpectatorPawn::SetFollowTarget(AActor* NewFollowTarget)
 
 void ANSDeathSpectatorPawn::SetSpectatorTarget(ANSPlayerCharacterBase* NewSpectatorTarget)
 {
+	if (SpectatorTarget != NewSpectatorTarget)
+	{
+		LastAppliedSpectatorTarget = nullptr;
+	}
+
 	SpectatorTarget = NewSpectatorTarget;
 	if (HasAuthority())
 	{
@@ -141,7 +150,7 @@ void ANSDeathSpectatorPawn::ApplySpectatorTargetView()
 
 	if (ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(GetController()))
 	{
-		if (LastAppliedSpectatorTarget == SpectatorTarget && NSPlayerController->GetViewTarget() == SpectatorTarget)
+		if (LastAppliedSpectatorTarget == SpectatorTarget && NSPlayerController->GetViewTarget() == this)
 		{
 			return;
 		}
@@ -150,4 +159,44 @@ void ANSDeathSpectatorPawn::ApplySpectatorTargetView()
 		// 로컬 PlayerController에 최종 관전 ViewTarget 적용 위임
 		NSPlayerController->ApplyConfirmedSpectatorTarget(SpectatorTarget);
 	}
+}
+
+void ANSDeathSpectatorPawn::UpdateSpectatorCamera(float DeltaSeconds)
+{
+	if (!IsLocallyControlled() || !SpectatorTarget || !CameraComp)
+	{
+		return;
+	}
+
+	FMinimalViewInfo TargetPOV;
+	SpectatorTarget->CalcCamera(DeltaSeconds, TargetPOV);
+
+	if (!bHasSmoothedCameraPOV)
+	{
+		SmoothedCameraLocation = TargetPOV.Location;
+		SmoothedCameraRotation = TargetPOV.Rotation;
+		SmoothedCameraFOV = TargetPOV.FOV;
+		bHasSmoothedCameraPOV = true;
+	}
+	else
+	{
+		SmoothedCameraLocation = FMath::VInterpTo(
+			SmoothedCameraLocation,
+			TargetPOV.Location,
+			DeltaSeconds,
+			CameraLocationInterpSpeed);
+		SmoothedCameraRotation = FMath::RInterpTo(
+			SmoothedCameraRotation,
+			TargetPOV.Rotation,
+			DeltaSeconds,
+			CameraRotationInterpSpeed);
+		SmoothedCameraFOV = FMath::FInterpTo(
+			SmoothedCameraFOV,
+			TargetPOV.FOV,
+			DeltaSeconds,
+			CameraFOVInterpSpeed);
+	}
+
+	CameraComp->SetWorldLocationAndRotation(SmoothedCameraLocation, SmoothedCameraRotation);
+	CameraComp->SetFieldOfView(SmoothedCameraFOV);
 }
