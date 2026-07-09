@@ -1091,6 +1091,7 @@ void UGA_Flicker::ApplyDamageToTarget()
 		FMath::Max(FinalDamage, 0.0f));
 	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	DamageSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+	DamageSpecHandle.Data->GetContext().AddSourceObject(this);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
 }
@@ -1148,6 +1149,7 @@ bool UGA_Flicker::ApplyDamageToActor(const FHitResult& HitResult)
 		FMath::Max(FinalDamage, 0.0f));
 	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	DamageSpecHandle.Data->GetContext().AddInstigator(AvatarActor, AvatarActor);
+	DamageSpecHandle.Data->GetContext().AddSourceObject(this);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
 	return true;

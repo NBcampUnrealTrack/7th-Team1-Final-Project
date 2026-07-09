@@ -579,6 +579,8 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 		return;
 	}
 
+	DamageSpecHandle.Data->GetContext().AddSourceObject(this);
+
 	DamagedActorsInTraceWindow.Add(TargetKey);
 
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);

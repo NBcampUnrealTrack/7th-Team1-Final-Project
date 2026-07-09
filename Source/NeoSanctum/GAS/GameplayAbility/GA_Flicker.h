@@ -8,6 +8,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameplayTagContainer.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Core/Interface/NSHitReactionSourceInterface.h"
 #include "GA_Flicker.generated.h"
 
 class UAbilityTask_ApplyRootMotionMoveToForce;
@@ -21,12 +22,15 @@ class ANSMeleeWeapon;
  * Crosshair 근처의 사거리 내 적 하나에게 빠르게 접근해 베는 스킬.
  */
 UCLASS()
-class NEOSANCTUM_API UGA_Flicker : public UGA_SkillBase
+class NEOSANCTUM_API UGA_Flicker : public UGA_SkillBase,
+                                  public INSHitReactionSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	UGA_Flicker();
+
+	virtual ENSHitReactionAttackType GetHitReactionAttackType() const override { return ENSHitReactionAttackType::Melee; }
 
 protected:
 	virtual void ActivateAbility(
