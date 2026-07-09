@@ -11,6 +11,12 @@ namespace NSGameplayTags
 	 * SetByCaller로 태그로 넘겨준 값을 쓰게끔
 	 */
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Value);
+	
+	// 드랍테이블 등에서 파츠 레어도를 태그로 지정할 때 사용, ENSPartRarity와 1:1 매핑
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Rarity_Common);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Rarity_Rare);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Rarity_Epic);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Rarity_Legendary);
 
 	// 기존 게임플레이 파츠 슬롯 - 거래/장착/스탯이 있는 대상
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Part_Slot_Arm);
