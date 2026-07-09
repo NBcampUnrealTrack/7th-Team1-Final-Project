@@ -320,6 +320,29 @@ void UNSDataSubsystem::LoadOutGameData()
 	StartLoadOutGame();
 }
 
+void UNSDataSubsystem::PreloadOutGameData()
+{
+	// 이미 OutGame 준비,진행 중이면 아무것도 안 함
+	if (IsOutGameReady() || CurrentPhase == ENSDataLoadPhase::LoadingOutGame)
+	{
+		return;
+	}
+
+	// Common이 이미 끝났으면 바로 OutGame
+	if (IsCommonReady())
+	{
+		LoadOutGameData();
+		return;
+	}
+
+	// 아직이면 Common 완료를 스스로 바인딩해서 이어감
+	OnCommonDataReady.RemoveDynamic(this, &UNSDataSubsystem::HandlePreloadCommonReady);
+	OnCommonDataReady.AddDynamic(this, &UNSDataSubsystem::HandlePreloadCommonReady);
+
+	// NotStarted면 시작, 이미 로딩 중이면 작동안함
+	LoadCommonData();
+}
+
 void UNSDataSubsystem::EnterRun(TSoftObjectPtr<UNSRunConfig> RunConfig, TSoftObjectPtr<UNSLevelConfig> LevelConfig)
 {
 	if (RunConfig.IsNull() || LevelConfig.IsNull())
@@ -1273,6 +1296,14 @@ void UNSDataSubsystem::CacheCommonUpgradeNodeRows()
 
 		CachedCommonUpgradeNodeRows.Add(RowName, *Row);
 	}
+}
+
+void UNSDataSubsystem::HandlePreloadCommonReady()
+{
+	OnCommonDataReady.RemoveDynamic(
+		this,
+		&UNSDataSubsystem::HandlePreloadCommonReady);
+	LoadOutGameData();
 }
 
 const FNSCommonUpgradeNodeRow* UNSDataSubsystem::GetCommonUpgradeNodeRow(FName NodeId) const

@@ -147,6 +147,8 @@ public:
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
 	
 private:
+	UFUNCTION()
+	void HandleOutGameLevelReady();
 	// OutGame 월드에 들어온 로컬 클라이언트가 거점 전용 데이터를 미리 로드하도록 보장.
 	void EnsureOutGameDataLoaded();
 

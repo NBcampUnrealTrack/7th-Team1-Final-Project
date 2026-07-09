@@ -1079,6 +1079,12 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
 	if (!IsLocalController()) return;
+	
+	UE_LOG(LogTemp, Warning,
+	TEXT("[TravelLoading] ClientRestart / Map=%s / NewPawn=%s / ViewTarget=%s"),
+	*GetWorld()->GetName(),
+	*GetNameSafe(NewPawn),
+	*GetNameSafe(GetViewTarget()));
 
 	// ClientRestart는 Seamless Travel 이후 다시 호출될 수 있으므로, 로딩창이 유지 중이면 먼저 복구한다.
 	RestoreTravelLoadingScreenIfRequested();
@@ -1119,8 +1125,11 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		
 		RebindHUDRuntimeState();
 
-	// Spectator가 아니라 실제 플레이어 캐릭터에 붙은 순간부터 플레이 가능 상태로 보고 로딩창을 닫는다.
-	HideTravelLoadingScreenIfPlayable(NewPawn);
+		// 실제 플레이어 캐릭터에 붙은 순간을 게이트에 알림
+		if (Cast<ANSPlayerCharacterBase>(NewPawn))
+		{
+			UIManager->MarkTravelPawnReady();
+		}
 
 	if (MapName.Contains(TEXT("HideOut")))
 	{
@@ -1129,6 +1138,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 		// 거점에서는 아웃런 재화 UI 표시
 		UIManager->ShowOutRunGoods();
+		
+		UIManager->MarkTravelViewReady();
 
 		// Seamless Travel 이후 로컬 클라이언트의 OutGameData 캐시가 비어있을 수 있으므로 미리 로드.
 		EnsureOutGameDataLoaded();
@@ -1154,6 +1165,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	{
 		// 인런에서는 인런 재화 UI 표시
 		UIManager->ShowInRunGoods();
+		
+		UIManager->MarkTravelViewReady();
 	}
 
 	// 마우스 커서 및 입력 모드 제어
@@ -1261,6 +1274,21 @@ void ANSPlayerController::Client_NotifyRunStarted_Implementation(
 	HandleClientRunDataReady();
 }
 
+void ANSPlayerController::HandleOutGameLevelReady()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnOutGameDataReady.RemoveDynamic(
+			this,
+			&ThisClass::HandleOutGameLevelReady);
+	}
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->MarkTravelLevelReady();
+	}
+}
+
 void ANSPlayerController::EnsureOutGameDataLoaded()
 {
 	if (!IsLocalController())
@@ -1276,8 +1304,16 @@ void ANSPlayerController::EnsureOutGameDataLoaded()
 
 	if (DataSubsystem->IsOutGameReady())
 	{
+		if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+		{
+			UIManager->MarkTravelLevelReady();
+		}
 		return;
 	}
+	
+	// OutGame 데이터 준비 완료 시 게이트에 통지하도록 바인딩
+	DataSubsystem->OnOutGameDataReady.RemoveDynamic(this, &ThisClass::HandleOutGameLevelReady);
+	DataSubsystem->OnOutGameDataReady.AddDynamic(this, &ThisClass::HandleOutGameLevelReady);
 
 	if (!DataSubsystem->IsCommonReady())
 	{
@@ -1314,6 +1350,7 @@ void ANSPlayerController::HandleClientRunDataReady()
 		UIManager->ResetRunResultStats();
 		UIManager->ShowHUD();
 		UIManager->ShowInRunGoods();
+		UIManager->MarkTravelLevelReady();
 	}
 }
 

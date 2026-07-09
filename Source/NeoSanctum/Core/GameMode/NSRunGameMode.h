@@ -72,6 +72,8 @@ public:
 	// 스테이지 진입할 때 호출될 함수: 목표 랜덤 선택, 초기화
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void InitializeStage();
+	
+	void BeginReturnToHubTravel();
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
 
@@ -224,4 +226,7 @@ private:
 	// 보상 드랍 판정이 매번 같은 결과로 고정되지 않도록 GameMode에서 유지하는 서버 전용 랜덤 스트림
 	UPROPERTY(Transient)
 	FRandomStream RewardRandomStream;
+	
+	UPROPERTY(Transient)
+	bool bReturnToHubTravelStarted = false;
 };
