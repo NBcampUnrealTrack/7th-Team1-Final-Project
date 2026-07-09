@@ -12,6 +12,9 @@
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
 #include "NeoSanctum/UI/HUD/NSSkillSlotWidget.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsWidget.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
+#include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
 
 
 void UNSHUDWidget::UpdateHealthAndShield(
@@ -130,11 +133,27 @@ void UNSHUDWidget::OpenPartPanel()
 	//패널을 열때 장착상태를 최신상태로 표시
 	PartPanelWidget->RefreshEquippedParts();
 	PartPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	
+	if (CharacterStatsWidget)
+	{
+		CharacterStatsWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
+	}
 
 	if (AugmentationWidget)
 	{
 		AugmentationWidget->SetOwnedAugmentListVisible(true);
 		AugmentationWidget->RefreshOwnedAugmentList();
+	}
+	
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	RefreshHudDimBackground();
@@ -152,6 +171,22 @@ void UNSHUDWidget::ClosePartPanel()
 	if (AugmentationWidget && !AugmentationWidget->IsPanelOpen())
 	{
 		AugmentationWidget->SetOwnedAugmentListVisible(false);
+	}
+	
+	if (CharacterStatsWidget)
+	{
+		CharacterStatsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->StopBroadcastCharacterStats();
+	}
+	
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
 	RefreshHudDimBackground();
@@ -217,7 +252,7 @@ void UNSHUDWidget::RefreshHudDimBackground()
 		PartPanelWidget->GetVisibility() != ESlateVisibility::Hidden;
 
 	HudDimBackground->SetVisibility(
-		(bIsAugmentationOpen || bIsPartPanelOpen)
+		(bIsAugmentationOpen)
 			? ESlateVisibility::Visible
 			: ESlateVisibility::Collapsed);
 }

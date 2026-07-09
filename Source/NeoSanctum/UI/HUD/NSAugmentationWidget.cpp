@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/HUD/NSAugmentDisplayBridgeSubsystem.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "Engine/AssetManager.h"
 #include "Engine/GameInstance.h"
@@ -819,5 +820,11 @@ void UNSAugmentationWidget::HandleInventoryChanged()
 	if (bPanelOpen)
 	{
 		RefreshOwnedAugmentList();
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
 	}
 }

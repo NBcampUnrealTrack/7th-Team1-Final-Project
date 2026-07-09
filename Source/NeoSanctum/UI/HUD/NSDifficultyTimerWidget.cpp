@@ -5,6 +5,7 @@
 #include "Components/ProgressBar.h"
 #include "CommonTextBlock.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 
 #define LOCTEXT_NAMESPACE "DifficultyTimerWidget"
 
@@ -31,10 +32,14 @@ void UNSDifficultyTimerWidget::NativeTick(
 
 void UNSDifficultyTimerWidget::RefreshDifficultyTimer()
 {
+	const UWorld* World = GetWorld();
+	const ANSRunGameState* RunGameState =
+		World ? World->GetGameState<ANSRunGameState>() : nullptr;
+
 	const UNSGameFlowSubsystem* GameFlowSubsystem =
 		GetGameFlowSubsystem();
-		
-	if (!GameFlowSubsystem || !GameFlowSubsystem->ShouldShowDifficultyTimer())
+
+	if (!RunGameState || !GameFlowSubsystem || !RunGameState->ShouldShowDifficultyTimer())
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
 		return;
@@ -42,24 +47,26 @@ void UNSDifficultyTimerWidget::RefreshDifficultyTimer()
 
 	SetVisibility(ESlateVisibility::HitTestInvisible);
     
+	const float Interval = GameFlowSubsystem->GetDifficultyTimeStepInterval();
+
 	if (DifficultyProgressBar)
 	{
 		DifficultyProgressBar->SetPercent(
-			GameFlowSubsystem->GetDifficultyProgressPercent());
+			RunGameState->GetDifficultyProgressPercent(Interval));
 	}
 
 	if (DifficultyLevelText)
 	{
 		DifficultyLevelText->SetText(
 			FText::AsNumber(
-				GameFlowSubsystem->GetDifficultyLevel()));
+				RunGameState->GetDifficultyLevel(Interval)));
 	}
 
 	if (StageNumberText)
 	{
 		StageNumberText->SetText(
 			FText::AsNumber(
-				GameFlowSubsystem->GetCurrentStageNumber()));
+				RunGameState->GetDifficultyStageNumber()));
 	}
 }
 

@@ -197,6 +197,40 @@ public:
 
 	void AddRunResultKillCount(int32 Amount = 1);
 	
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	float GetDifficultyElapsedSeconds() const;
+
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	float GetDifficultyProgressPercent(float Interval) const;
+
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	int32 GetDifficultyLevel(float Interval) const;
+
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	bool ShouldShowDifficultyTimer() const;
+
+	UFUNCTION(BlueprintPure, Category = "Difficulty")
+	int32 GetDifficultyStageNumber() const { return DifficultyStageNumber; }
+
+	void SetDifficultyTimerState(
+		bool bInRunning,
+		float InBaseElapsedSeconds,
+		int32 InStageNumber);
+	
+	UPROPERTY(ReplicatedUsing = OnRep_DifficultyTimerState, BlueprintReadOnly, Category = "Difficulty", meta = (AllowPrivateAccess = "true"))
+	bool bDifficultyTimerRunning = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_DifficultyTimerState, BlueprintReadOnly, Category = "Difficulty", meta = (AllowPrivateAccess = "true"))
+	float DifficultyBaseElapsedSeconds = 0.0f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_DifficultyTimerState, BlueprintReadOnly, Category = "Difficulty", meta = (AllowPrivateAccess = "true"))
+	float DifficultyStartServerTime = 0.0f;
+
+	UPROPERTY(ReplicatedUsing = OnRep_DifficultyTimerState, BlueprintReadOnly, Category = "Difficulty", meta = (AllowPrivateAccess = "true"))
+	int32 DifficultyStageNumber = 0;
+
+	UFUNCTION()
+	void OnRep_DifficultyTimerState();
 private:
 	// 런 전체에서 서버 투사체를 관리하는 Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (AllowPrivateAccess = "true"))
