@@ -62,6 +62,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		
 		if (DamageAmount <= 0.0f)
 		{
+			SetDamageHitQuality(0.0f);
 			return;
 		}
 		
@@ -70,6 +71,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		
 		if (DamageAmount <= 0.0f)
 		{
+			SetDamageHitQuality(0.0f);
 			return;
 		}
 		
@@ -89,6 +91,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		// 실제 Health 감소가 확정된 뒤 피격 로컬 피드백을 요청
 		NotifyHitTakenFeedbackAfterHealthDamage(Data, PreviousHealth);
 		NotifyHitReactionAfterHealthDamage(Data, PreviousHealth);
+		SetDamageHitQuality(0.0f);
 	}
 	else if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
@@ -147,7 +150,7 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 	}
 
 	FNSHitFeedbackContext FeedbackContext;
-	FeedbackContext.HitQuality = ENSHitFeedbackQuality::Normal;
+	FeedbackContext.HitQuality = ResolveDamageHitQuality();
 	FeedbackContext.TargetActor = TargetActor;
 	FeedbackContext.HitLocation = TargetActor->GetActorLocation();
 	FeedbackContext.bTargetDead = GetHealth() <= 0.0f;
@@ -221,6 +224,17 @@ ENSHitReactionAttackType UNSBaseAttributeSet::ResolveHitReactionAttackType(
 	return ENSHitReactionAttackType::Any;
 }
 
+ENSHitFeedbackQuality UNSBaseAttributeSet::ResolveDamageHitQuality() const
+{
+	const int32 HitQualityValue = FMath::RoundToInt(GetDamageHitQuality());
+	if (HitQualityValue == static_cast<int32>(ENSHitFeedbackQuality::Critical))
+	{
+		return ENSHitFeedbackQuality::Critical;
+	}
+
+	return ENSHitFeedbackQuality::Normal;
+}
+
 void UNSBaseAttributeSet::NotifyHitReactionAfterHealthDamage(
 	const FGameplayEffectModCallbackData& Data,
 	const float PreviousHealth) const
@@ -268,7 +282,7 @@ void UNSBaseAttributeSet::NotifyHitReaction(
 	ReactionContext.TargetActor = TargetActor;
 	ReactionContext.InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
 	ReactionContext.DamageAmount = DamageAmount;
-	ReactionContext.HitQuality = ENSHitFeedbackQuality::Normal;
+	ReactionContext.HitQuality = ResolveDamageHitQuality();
 	ReactionContext.bTargetDead = bTargetDead;
 	ReactionContext.HitLocation = TargetActor->GetActorLocation();
 	ReactionContext.HitNormal = FVector::UpVector;

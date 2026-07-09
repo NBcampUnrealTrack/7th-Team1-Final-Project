@@ -58,6 +58,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attribute")
 	FGameplayAttributeData Damage;
 	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, Damage);
+
+	// 이번 Damage의 HitQuality를 잠시 담는 용이므로 Replicate하지 않음
+	UPROPERTY(BlueprintReadOnly, Category = "GAS|Attribute")
+	FGameplayAttributeData DamageHitQuality;
+	ATTRIBUTE_ACCESSORS(UNSBaseAttributeSet, DamageHitQuality);
 	
 public:
 	FOnOutOfHealth OnOutOfHealth;
@@ -81,6 +86,9 @@ protected:
 
 	// Damage Source의 피격 리액션 공격 방식 조회
 	ENSHitReactionAttackType ResolveHitReactionAttackType(const FGameplayEffectModCallbackData& Data) const;
+
+	// Damage Meta Attribute에 담긴 HitQuality 조회
+	ENSHitFeedbackQuality ResolveDamageHitQuality() const;
 
 	// 실제 Health 감소 후 대상 액터의 월드 피격 리액션을 요청
 	void NotifyHitReactionAfterHealthDamage(

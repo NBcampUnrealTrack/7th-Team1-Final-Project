@@ -128,6 +128,18 @@ void UGEC_DamageExecution::Execute_Implementation(
 	{
 		return;
 	}
+
+	const ENSHitFeedbackQuality DamageHitQuality = bIsCritical
+		? ENSHitFeedbackQuality::Critical
+		: ENSHitFeedbackQuality::Normal;
+
+	OutExecutionOutput.AddOutputModifier(
+		FGameplayModifierEvaluatedData(
+			UNSBaseAttributeSet::GetDamageHitQualityAttribute(),
+			EGameplayModOp::Override,
+			static_cast<float>(static_cast<uint8>(DamageHitQuality))
+		)
+	);
 	
 	// Shield 흡수와 Health 차감은 AttributeSet에서 처리하도록 Damage Meta Attribute에 출력
 	OutExecutionOutput.AddOutputModifier(
