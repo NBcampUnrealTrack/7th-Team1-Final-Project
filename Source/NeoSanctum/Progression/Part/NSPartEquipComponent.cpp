@@ -15,6 +15,7 @@
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/System/Subsystem/NSDroppedPartRegistrySubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
 
 UNSPartEquipComponent::UNSPartEquipComponent()
@@ -205,7 +206,28 @@ void UNSPartEquipComponent::DropPartInSlot(FGameplayTag Slot, TOptional<FVector>
 
 void UNSPartEquipComponent::SpawnDroppedPart(const FNSPartData& Part, const FVector& Location)
 {
-	ANSDroppedPart::SpawnInWorld(GetWorld(), DroppedPartClass, Part, Location);
+	UWorld* World = GetWorld();
+	FVector ResolvedLocation = Location;
+
+	// 
+	if (UNSDroppedPartRegistrySubsystem* Registry = World ? World->GetSubsystem<UNSDroppedPartRegistrySubsystem>() : nullptr)
+	{
+		// 무한루프 방지용 시도 횟수/반경 하드코딩
+		constexpr int32 MaxAttempts = 6;
+		constexpr float JitterRadius = 150.f;
+
+		// 겹치는지 확인, IsLocationOccupied가 false면 겹치치 않으므로 for문 종료
+		for (int32 Attempt = 0; Attempt < MaxAttempts && Registry->IsLocationOccupied(ResolvedLocation); ++Attempt)
+		{
+			// 겹치면 새로운 위치 찾기
+			const float Angle = FMath::FRandRange(0.f, UE_TWO_PI);
+			const float Distance = FMath::FRandRange(JitterRadius * 0.5f, JitterRadius);
+			ResolvedLocation = Location + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.f);
+		}
+	}
+
+	// 새로운 위치에 스폰
+	ANSDroppedPart::SpawnInWorld(World, DroppedPartClass, Part, ResolvedLocation);
 }
 
 void UNSPartEquipComponent::RemovePartEffects(FGameplayTag Slot)
