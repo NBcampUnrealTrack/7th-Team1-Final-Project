@@ -5,6 +5,11 @@
 namespace NSGameplayTags
 {
 	UE_DEFINE_GAMEPLAY_TAG(Part_Value, "Part.Value");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Part_Rarity_Common, "Part.Rarity.Common");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Rarity_Rare, "Part.Rarity.Rare");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Rarity_Epic, "Part.Rarity.Epic");
+	UE_DEFINE_GAMEPLAY_TAG(Part_Rarity_Legendary, "Part.Rarity.Legendary");
 
 	UE_DEFINE_GAMEPLAY_TAG(Part_Slot_Arm, "Part.Slot.Arm");
 	UE_DEFINE_GAMEPLAY_TAG(Part_Slot_Body, "Part.Slot.Body");

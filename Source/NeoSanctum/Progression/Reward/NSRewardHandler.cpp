@@ -2,7 +2,6 @@
 
 
 #include "NSRewardHandler.h"
-#include "Engine/AssetManager.h"
 
 #include "CollisionQueryParams.h"
 #include "Engine/World.h"
@@ -489,8 +488,10 @@ void UNSRewardHandler::HandleHealDropResult(UWorld* World, const FNSRewardDropRe
 		return;
 	}
 
-	// Heal은 CurrencyTag/PartDefinition을 쓰지 않고, 전용 HealPotionTag로 어떤 포션인지만 식별한다.
-	// 실제 회복%는 이 태그로 DT_HealPotion을 조회해서 얻으므로(서버 TryCollect 시점), 여기선 태그 유효성만 확인.
+	/**
+	 * Heal은 CurrencyTag/PartDefinition을 쓰지 않고, 전용 HealPotionTag로 어떤 포션인지만 식별한다.
+	 * 실제 회복%는 이 태그로 DT_HealPotion을 조회해서 얻으므로(서버 TryCollect 시점), 여기선 태그 유효성만 확인.
+	 */
 	if (!DropResult.HealPotionTag.IsValid())
 	{
 		NS_LOG(LogNS, Warning,
@@ -540,17 +541,10 @@ void UNSRewardHandler::HandlePartDropResult(
 		return;
 	}
 	
-	if (DropResult.PartDefinition.IsNull())
-	{
-		NS_LOG(LogNS, Warning, "Part RewardResult의 PartDefinition이 비어 있습니다.");
-		return;
-	}
-	
 	if (DropResult.Quantity <= 0)
 	{
 		NS_LOG(LogNS, Warning,
-			"Part RewardResult의 Quantity가 0 이하입니다. PartDefinition={PartDefinition}, Quantity={Quantity}",
-			("PartDefinition", DropResult.PartDefinition.ToSoftObjectPath().ToString()),
+			"Part RewardResult의 Quantity가 0 이하입니다. Quantity={Quantity}",
 			("Quantity", DropResult.Quantity)
 		);
 		return;
@@ -563,9 +557,7 @@ void UNSRewardHandler::HandlePartDropResult(
 		if (!PartData.IsValid())
 		{
 			NS_LOG(LogNS, Warning,
-				"Part RewardResult에서 유효한 FNSPartData를 만들 수 없습니다. PartDefinition={PartDefinition}",
-				("PartDefinition", DropResult.PartDefinition.ToSoftObjectPath().ToString())
-			);
+				"Part RewardResult에서 유효한 FNSPartData를 만들 수 없습니다.");
 			continue;
 		}
 		
@@ -581,16 +573,12 @@ void UNSRewardHandler::HandlePartDropResult(
 		
 		if (!DroppedPart)
 		{
-			NS_LOG(LogNS, Warning,
-				"Part 드랍 액터 생성에 실패했습니다. PartDefinition={PartDefinition}",
-				("PartDefinition", DropResult.PartDefinition.ToSoftObjectPath().ToString())
-			);
+			NS_LOG(LogNS, Warning, "Part 드랍 액터 생성에 실패했습니다.");
 			continue;
 		}
 		
 		NS_LOG(LogNS, Log,
-			"Part 드랍 액터를 생성했습니다. PartDefinition={PartDefinition}, Rarity={Rarity}, Value={Value}",
-			("PartDefinition", DropResult.PartDefinition.ToSoftObjectPath().ToString()),
+			"Part 드랍 액터를 생성했습니다. Rarity={Rarity}, Value={Value}",
 			("Rarity", static_cast<int32>(PartData.CurrentRarity)),
 			("Value", PartData.CurrentValue)
 		);
@@ -610,22 +598,38 @@ FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
 {
 	FNSPartData PartData;
 
-	if (DropResult.PartDefinition.IsNull())
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(World);
+	if (!DataSS)
 	{
 		return PartData;
 	}
-
-	const FPrimaryAssetId DefId =
-		UAssetManager::Get().GetPrimaryAssetIdForPath(DropResult.PartDefinition.ToSoftObjectPath());
-	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(World, DefId);
-	if (!Row)
+	
+	TArray<const FNSPartDefinitionRow*> Candidates;
+	for (const TPair<FPrimaryAssetId, FNSPartDefinitionRow>& PartPair : DataSS->GetAllPartRows())
 	{
+		Candidates.Add(&PartPair.Value);
+	}
+	
+	if (Candidates.Num() == 0)
+	{
+		NS_LOG(LogNS, Warning, "Part드랍 대상 풀이 비어있습니다.");
 		return PartData;
 	}
-
-	PartData.DefinitionPtr = DropResult.PartDefinition;
-	PartData.Slot = Row->PartSlot;
-	PartData.CurrentRarity = ENSPartRarity::Common;
+	
+	ENSPartRarity Rarity;
+	if (!NSPartUtils::ResolveRarityFromTag(DropResult.RarityTag, Rarity))
+	{
+		NS_LOG(LogNS, Warning, 
+			"Part 드랍 결과의 RarityTag가 유효하지 않습니다. RarityTag={RarityTag}",
+			("RarityTag", DropResult.RarityTag.ToString()));
+		return PartData;
+	}
+	
+	const FNSPartDefinitionRow* Pick = Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
+	
+	PartData.DefinitionPtr = Pick->Definition;
+	PartData.Slot = Pick->PartSlot;
+	PartData.CurrentRarity = Rarity;
 	PartData.RollCount = 0;
 
 	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(World, PartData.CurrentRarity);
@@ -635,6 +639,6 @@ FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
 		const float MaxValue = FMath::Max(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
 		PartData.CurrentValue = RandomStream.FRandRange(MinValue, MaxValue);
 	}
-
+	
 	return PartData;
 }
