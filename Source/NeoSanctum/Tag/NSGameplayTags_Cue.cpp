@@ -11,8 +11,15 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Damage_Flash, "GameplayCue.Damage.Flash");
 	
 	// Hit Reaction
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Basic, "GameplayCue.HitReaction.NormalHit.Basic");
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Barrier, "GameplayCue.HitReaction.NormalHit.Barrier");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Basic_Ranged, "GameplayCue.HitReaction.NormalHit.Basic.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Basic_Melee, "GameplayCue.HitReaction.NormalHit.Basic.Melee");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Barrier_Ranged, "GameplayCue.HitReaction.NormalHit.Barrier.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_NormalHit_Barrier_Melee, "GameplayCue.HitReaction.NormalHit.Barrier.Melee");
+	
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_CriticalHit_Basic_Ranged, "GameplayCue.HitReaction.CriticalHit.Basic.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_CriticalHit_Basic_Melee, "GameplayCue.HitReaction.CriticalHit.Basic.Melee");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_CriticalHit_Barrier_Ranged, "GameplayCue.HitReaction.CriticalHit.Barrier.Ranged");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_HitReaction_CriticalHit_Barrier_Melee, "GameplayCue.HitReaction.CriticalHit.Barrier.Melee");
 	
 	// Ranger
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Ranger_AutoFire_MuzzleFire, "GameplayCue.Ranger.AutoFire.MuzzleFire");
