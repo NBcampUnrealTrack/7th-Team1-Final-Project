@@ -85,6 +85,8 @@ void UGA_EnemyAttackFlame::EndAbility(
 	StopFlameCosmetics();
 	ClearFlameTimers();
 
+	FlameCurrentRange = 0.0f;
+	FlameStartTime = 0.0f;
 	CachedAttackRow = nullptr;
 
 	Super::EndAbility(
@@ -210,7 +212,24 @@ void UGA_EnemyAttackFlame::StartFlame()
 		return;
 	}
 
+	FlameStartTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	FlameCurrentRange = 0.0f;
+
 	StartFlameCosmetics();
+
+	TickFlameVFX();
+
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(
+			FlameVFXTimerHandle,
+			this,
+			&UGA_EnemyAttackFlame::TickFlameVFX,
+			FlameVFXUpdateInterval,
+			true
+		);
+	}
+
 	TickFlameDamage();
 
 	const float Duration = FMath::Max(CachedAttackRow->SustainData.Duration, 0.0f);
@@ -243,14 +262,7 @@ void UGA_EnemyAttackFlame::StartFlame()
 
 void UGA_EnemyAttackFlame::TickFlameDamage()
 {
-	if (!IsActive() || !CachedAttackRow)
-	{
-		ClearFlameTimers();
-		return;
-	}
-
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (!IsValid(AvatarActor) || !AvatarActor->HasAuthority())
+	if (!CachedAttackRow)
 	{
 		return;
 	}
@@ -260,35 +272,26 @@ void UGA_EnemyAttackFlame::TickFlameDamage()
 
 	if (Emitters.IsEmpty())
 	{
-		ClearFlameTimers();
-		CancelAttackAbility();
 		return;
 	}
 
-	PlayFlameVFX(Emitters);
+	FlameCurrentRange = GetCurrentFlameRange();
 
-	TSet<TObjectKey<AActor>> TargetsThisTick;
+	if (FlameCurrentRange <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	TSet<AActor*> DamagedTargets;
 
 	for (const FNSFlameEmitter& Emitter : Emitters)
 	{
-		CollectTargetsForEmitter(
-			Emitter,
-			TargetsThisTick);
-
-		DrawDebugFlameCone(
-			Emitter,
-			*CachedAttackRow);
+		CollectTargetsForEmitter(Emitter, FlameCurrentRange, DamagedTargets);
 	}
 
-	for (const TObjectKey<AActor>& TargetKey : TargetsThisTick)
+	for (AActor* Target : DamagedTargets)
 	{
-		AActor* TargetActor = TargetKey.ResolveObjectPtr();
-		if (IsValid(TargetActor))
-		{
-			ApplyFlameDamageToTarget(
-				TargetActor,
-				*CachedAttackRow);
-		}
+		ApplyFlameDamageToTarget(Target, *CachedAttackRow);
 	}
 }
 
@@ -301,14 +304,18 @@ void UGA_EnemyAttackFlame::ClearFlameTimers()
 {
 	if (UWorld* World = GetWorld())
 	{
-		World->GetTimerManager().ClearTimer(FlameTickTimerHandle);
-		World->GetTimerManager().ClearTimer(FlameEndTimerHandle);
+		FTimerManager& TimerManager = World->GetTimerManager();
+
+		TimerManager.ClearTimer(FlameTickTimerHandle);
+		TimerManager.ClearTimer(FlameEndTimerHandle);
+		TimerManager.ClearTimer(FlameVFXTimerHandle);
 	}
 }
 
 void UGA_EnemyAttackFlame::CollectTargetsForEmitter(
 	const FNSFlameEmitter& Emitter,
-	TSet<TObjectKey<AActor>>& OutTargets) const
+	float EffectiveRange,
+	TSet<AActor*>& OutTargets) const
 {
 	if (!CachedAttackRow)
 	{
@@ -316,57 +323,40 @@ void UGA_EnemyAttackFlame::CollectTargetsForEmitter(
 	}
 
 	UWorld* World = GetWorld();
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-
-	if (!World || !IsValid(AvatarActor))
+	if (!World)
 	{
 		return;
 	}
 
-	const float Range =
-		CachedAttackRow->AreaData.Range > 0.0f
-			? CachedAttackRow->AreaData.Range
-			: CachedAttackRow->Condition.MaxRange;
+	const float Range = FMath::Clamp(EffectiveRange, 0.0f, GetFlameRange(*CachedAttackRow));
 
-	const float QueryRadius =
-		FMath::Max(Range + CachedAttackRow->AreaData.Radius, 1.0f);
-
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(AvatarActor);
-
-	if (const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent())
+	if (Range <= KINDA_SMALL_NUMBER)
 	{
-		TArray<AActor*> IgnoredPartActors;
-		PartComponent->GetSpawnedPartActorsByAttackId(
-			CachedAttackRow->AttackId,
-			IgnoredPartActors);
-
-		for (AActor* IgnoredActor : IgnoredPartActors)
-		{
-			if (IsValid(IgnoredActor))
-			{
-				QueryParams.AddIgnoredActor(IgnoredActor);
-			}
-		}
+		return;
 	}
 
-	TArray<FOverlapResult> Overlaps;
-	const bool bHasOverlap = World->OverlapMultiByChannel(
-		Overlaps,
+	const float QueryRadius = FMath::Max(Range + CachedAttackRow->AreaData.Radius, 1.0f);
+
+	TArray<FOverlapResult> OverlapResults;
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyFlameAttack), false, GetAvatarActorFromActorInfo());
+
+	const bool bHit = World->OverlapMultiByChannel(
+		OverlapResults,
 		Emitter.Start,
 		FQuat::Identity,
-		FlameTraceChannel,
+		FlameTraceChannel.GetValue(),
 		FCollisionShape::MakeSphere(QueryRadius),
 		QueryParams);
 
-	if (!bHasOverlap)
+	if (!bHit)
 	{
 		return;
 	}
 
-	for (const FOverlapResult& Overlap : Overlaps)
+	for (const FOverlapResult& Result : OverlapResults)
 	{
-		AActor* TargetActor = Overlap.GetActor();
+		AActor* TargetActor = Result.GetActor();
+
 		if (!IsValidDamageTarget(TargetActor))
 		{
 			continue;
@@ -374,63 +364,50 @@ void UGA_EnemyAttackFlame::CollectTargetsForEmitter(
 
 		const FVector TargetLocation = GetTargetCheckLocation(TargetActor);
 
-		if (!IsLocationInsideCone(
-			Emitter,
-			TargetLocation,
-			*CachedAttackRow))
+		if (IsLocationInsideCone(Emitter.Start, Emitter.Direction, TargetLocation, *CachedAttackRow, Range))
 		{
-			continue;
+			OutTargets.Add(TargetActor);
 		}
-
-		OutTargets.Add(TObjectKey<AActor>(TargetActor));
 	}
 }
 
 bool UGA_EnemyAttackFlame::IsLocationInsideCone(
-	const FNSFlameEmitter& Emitter,
+	const FVector& Origin,
+	const FVector& Direction,
 	const FVector& TargetLocation,
-	const FNSEnemyAttackRow& AttackRow) const
+	const FNSEnemyAttackRow& AttackRow,
+	float EffectiveRange
+) const
 {
-	const FVector Direction = Emitter.Direction.GetSafeNormal();
-	if (Direction.IsNearlyZero())
+	const FVector SafeDirection = Direction.GetSafeNormal();
+
+	if (SafeDirection.IsNearlyZero())
 	{
 		return false;
 	}
 
-	const FVector ToTarget = TargetLocation - Emitter.Start;
-	const float DistanceSquared = ToTarget.SizeSquared();
+	const float Range = FMath::Max(EffectiveRange, 0.0f);
 
-	const float Range =
-		AttackRow.AreaData.Range > 0.0f
-			? AttackRow.AreaData.Range
-			: AttackRow.Condition.MaxRange;
-
-	const float Radius = FMath::Max(AttackRow.AreaData.Radius, 0.0f);
-
-	if (DistanceSquared <= FMath::Square(Radius))
-	{
-		return true;
-	}
-
-	const float ForwardDistance = FVector::DotProduct(ToTarget, Direction);
-	if (ForwardDistance < 0.0f || ForwardDistance > Range + Radius)
+	if (Range <= KINDA_SMALL_NUMBER)
 	{
 		return false;
 	}
 
-	const float LateralDistanceSquared =
-		FMath::Max(
-			DistanceSquared - FMath::Square(ForwardDistance),
-			0.0f);
+	const FVector ToTarget = TargetLocation - Origin;
+	const float ForwardDistance = FVector::DotProduct(ToTarget, SafeDirection);
 
-	const float ConeHalfAngleRadians =
-		FMath::DegreesToRadians(
-			FMath::Clamp(AttackRow.AreaData.ConeHalfAngle, 0.0f, 89.0f));
+	if (ForwardDistance < 0.0f || ForwardDistance > Range)
+	{
+		return false;
+	}
 
-	const float ConeRadiusAtDistance =
-		FMath::Tan(ConeHalfAngleRadians) * ForwardDistance + Radius;
+	const FVector ClosestPointOnAxis = Origin + SafeDirection * ForwardDistance;
+	const float DistanceFromAxisSq = FVector::DistSquared(TargetLocation, ClosestPointOnAxis);
 
-	return LateralDistanceSquared <= FMath::Square(ConeRadiusAtDistance);
+	const float ConeHalfAngleRadians = FMath::DegreesToRadians(FMath::Max(AttackRow.AreaData.ConeHalfAngle, 0.0f));
+	const float RadiusAtDistance = FMath::Max(AttackRow.AreaData.Radius, 0.0f) + FMath::Tan(ConeHalfAngleRadians) * ForwardDistance;
+
+	return DistanceFromAxisSq <= FMath::Square(RadiusAtDistance);
 }
 
 bool UGA_EnemyAttackFlame::IsValidDamageTarget(AActor* TargetActor) const
@@ -737,7 +714,7 @@ void UGA_EnemyAttackFlame::StartFlameCosmetics()
 	}
 }
 
-void UGA_EnemyAttackFlame::PlayFlameVFX(const TArray<FNSFlameEmitter>& Emitters) const
+void UGA_EnemyAttackFlame::UpdateFlameVFX(const TArray<FNSFlameEmitter>& Emitters, float EffectiveRange)
 {
 	UWorld* World = GetWorld();
 	if (!World || World->GetNetMode() == NM_DedicatedServer || !CachedAttackRow || FlameVFXID.IsNone())
@@ -751,27 +728,179 @@ void UGA_EnemyAttackFlame::PlayFlameVFX(const TArray<FNSFlameEmitter>& Emitters)
 		return;
 	}
 
-	const float Range = GetFlameRange(*CachedAttackRow);
-	const float Scale = FMath::Max(Range / FlameVFXBaseRange, 0.1f);
+	TArray<FTransform> DesiredTransforms;
 
 	for (const FNSFlameEmitter& Emitter : Emitters)
 	{
-		UNiagaraComponent* VFX = VFXSubsystem->PlayVFXAtLocation(
-			FlameVFXID,
-			Emitter.Start,
-			Emitter.Direction.Rotation(),
-			Scale);
+		TArray<FTransform> EmitterTransforms;
+		BuildFlameVFXTransforms(Emitter, *CachedAttackRow, EffectiveRange, EmitterTransforms);
+		DesiredTransforms.Append(EmitterTransforms);
+	}
 
-		if (VFX)
+	while (ActiveFlameVFXComponents.Num() < DesiredTransforms.Num())
+	{
+		ActiveFlameVFXComponents.Add(nullptr);
+	}
+
+	for (int32 Index = 0; Index < DesiredTransforms.Num(); ++Index)
+	{
+		const FTransform& Transform = DesiredTransforms[Index];
+		UNiagaraComponent* VFX = ActiveFlameVFXComponents[Index];
+
+		if (!IsValid(VFX))
 		{
-			VFX->SetVariableFloat(FlameRangeParameterName, Range);
-			VFX->SetVariableFloat(FlameRadiusParameterName, CachedAttackRow->AreaData.Radius);
+			VFX = VFXSubsystem->SpawnVFXAtLocation(
+				FlameVFXID,
+				Transform.GetLocation(),
+				Transform.Rotator(),
+				FlameVFXComponentScale,
+				false);
+
+			ActiveFlameVFXComponents[Index] = VFX;
+
+			if (IsValid(VFX))
+			{
+				VFX->SetVariableFloat(FlameScaleParameterName, FlameNiagaraFlameScale);
+				VFX->SetVariableFloat(FlameSpawnRateParameterName, FlameNiagaraSpawnRate);
+				VFX->Activate(true);
+			}
+		}
+
+		if (IsValid(VFX))
+		{
+			VFX->SetWorldLocationAndRotation(Transform.GetLocation(), Transform.Rotator());
 		}
 	}
+
+	for (int32 Index = DesiredTransforms.Num(); Index < ActiveFlameVFXComponents.Num(); ++Index)
+	{
+		if (IsValid(ActiveFlameVFXComponents[Index]))
+		{
+			ActiveFlameVFXComponents[Index]->Deactivate();
+			ActiveFlameVFXComponents[Index]->DestroyComponent();
+		}
+	}
+
+	ActiveFlameVFXComponents.SetNum(DesiredTransforms.Num());
+}
+
+void UGA_EnemyAttackFlame::BuildFlameVFXTransforms(
+	const FNSFlameEmitter& Emitter,
+	const FNSEnemyAttackRow& AttackRow,
+	float EffectiveRange,
+	TArray<FTransform>& OutTransforms
+) const
+{
+	OutTransforms.Reset();
+
+	const FVector Direction = Emitter.Direction.GetSafeNormal();
+
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+
+	const float MaxRange = GetFlameRange(AttackRow);
+	const float Range = FMath::Clamp(EffectiveRange, 0.0f, MaxRange);
+
+	if (Range <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	
+
+	const FRotator SpawnRotation = Direction.Rotation() + FlameVFXRotationOffset;
+	const FVector RightVector = FRotationMatrix(Direction.Rotation()).GetUnitAxis(EAxis::Y);
+	
+	const float FirstDistance = FMath::Min(FMath::Max(FlameVFXStartOffset, 0.0f), Range);
+	const float ForwardSpacing = FMath::Max(FlameVFXForwardSpacing, 1.0f);
+	const float LateralSpacing = FMath::Max(FlameVFXLateralSpacing, 1.0f);
+
+	TArray<float> SampleDistances;
+	SampleDistances.Add(FirstDistance);
+
+	for (float Distance = FirstDistance + ForwardSpacing; Distance < Range; Distance += ForwardSpacing)
+	{
+		SampleDistances.Add(Distance);
+	}
+
+	if (Range > FirstDistance + KINDA_SMALL_NUMBER)
+	{
+		SampleDistances.Add(Range);
+	}
+
+	const float ConeHalfAngleRadians = FMath::DegreesToRadians(FMath::Max(AttackRow.AreaData.ConeHalfAngle, 0.0f));
+	const float ConeTan = FMath::Tan(ConeHalfAngleRadians);
+	const float BaseRadius = FMath::Max(AttackRow.AreaData.Radius, 0.0f);
+
+	for (const float Distance : SampleDistances)
+	{
+		const bool bSocketPoint = Distance <= FirstDistance + KINDA_SMALL_NUMBER;
+		const float HalfWidth = bSocketPoint ? 0.0f : BaseRadius + ConeTan * Distance;
+
+	const int32 LateralCount = HalfWidth <= KINDA_SMALL_NUMBER
+		? 1
+		: FMath::Clamp(
+			FMath::FloorToInt((HalfWidth * 2.0f) / LateralSpacing) + 1,
+			1,
+			3);
+
+		for (int32 Index = 0; Index < LateralCount; ++Index)
+		{
+			const float LateralAlpha = LateralCount == 1 ? 0.5f : static_cast<float>(Index) / static_cast<float>(LateralCount - 1);
+			const float LateralOffset = FMath::Lerp(-HalfWidth, HalfWidth, LateralAlpha);
+
+			const FVector SpawnLocation =
+				Emitter.Start +
+				Direction * Distance +
+				RightVector * LateralOffset;
+
+			OutTransforms.Add(FTransform(SpawnRotation, SpawnLocation, FVector(FlameVFXComponentScale)));
+		}
+	}
+
+	if (MaxFlameVFXPerEmitter > 0 && OutTransforms.Num() > MaxFlameVFXPerEmitter)
+	{
+		TArray<FTransform> SampledTransforms;
+
+		if (MaxFlameVFXPerEmitter == 1)
+		{
+			SampledTransforms.Add(OutTransforms[0]);
+		}
+		else
+		{
+			const float Step = static_cast<float>(OutTransforms.Num() - 1) / static_cast<float>(MaxFlameVFXPerEmitter - 1);
+
+			for (int32 Index = 0; Index < MaxFlameVFXPerEmitter; ++Index)
+			{
+				const int32 SourceIndex = FMath::Clamp(FMath::RoundToInt(Index * Step), 0, OutTransforms.Num() - 1);
+				SampledTransforms.Add(OutTransforms[SourceIndex]);
+			}
+		}
+
+		OutTransforms = MoveTemp(SampledTransforms);
+	}
+}
+
+void UGA_EnemyAttackFlame::StopFlameVFXComponents()
+{
+	for (UNiagaraComponent* VFX : ActiveFlameVFXComponents)
+	{
+		if (IsValid(VFX))
+		{
+			VFX->Deactivate();
+			VFX->DestroyComponent();
+		}
+	}
+
+	ActiveFlameVFXComponents.Reset();
 }
 
 void UGA_EnemyAttackFlame::StopFlameCosmetics()
 {
+	StopFlameVFXComponents();
+	
 	if (ActiveFlameAudioComponent)
 	{
 		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
@@ -787,4 +916,47 @@ float UGA_EnemyAttackFlame::GetFlameRange(const FNSEnemyAttackRow& AttackRow) co
 	return AttackRow.AreaData.Range > 0.0f
 		       ? AttackRow.AreaData.Range
 		       : AttackRow.Condition.MaxRange;
+}
+
+float UGA_EnemyAttackFlame::GetFlameRangeAlpha() const
+{
+	if (FlameRangeGrowDuration <= KINDA_SMALL_NUMBER)
+	{
+		return 1.0f;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World || FlameStartTime <= 0.0f)
+	{
+		return 0.0f;
+	}
+
+	const float ElapsedTime = World->GetTimeSeconds() - FlameStartTime;
+	const float LinearAlpha = FMath::Clamp(ElapsedTime / FlameRangeGrowDuration, 0.0f, 1.0f);
+	
+	return FMath::Pow(LinearAlpha, 1.6f);
+}
+
+float UGA_EnemyAttackFlame::GetCurrentFlameRange() const
+{
+	if (!CachedAttackRow)
+	{
+		return 0.0f;
+	}
+
+	return GetFlameRange(*CachedAttackRow) * GetFlameRangeAlpha();
+}
+
+void UGA_EnemyAttackFlame::TickFlameVFX()
+{
+	if (!CachedAttackRow)
+	{
+		return;
+	}
+
+	TArray<FNSFlameEmitter> Emitters;
+	GetCurrentFlameEmitters(Emitters);
+
+	FlameCurrentRange = GetCurrentFlameRange();
+	UpdateFlameVFX(Emitters, FlameCurrentRange);
 }
