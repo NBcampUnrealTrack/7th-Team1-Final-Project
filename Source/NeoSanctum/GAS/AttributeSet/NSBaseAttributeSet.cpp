@@ -74,7 +74,9 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 			SetDamageHitQuality(0.0f);
 			return;
 		}
-		
+
+		// 사망 처리 전에 이번 피해의 크리티컬 여부를 미리 고정.
+		const bool bIsCriticalDamage = ResolveDamageHitQuality() == ENSHitFeedbackQuality::Critical;
 		const float PreviousHealth = GetHealth();
 		const float NewHealth = FMath::Clamp(PreviousHealth - DamageAmount, 0.0f, GetMaxHealth());
 		
@@ -90,7 +92,7 @@ void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffect
 		NotifyAttackFeedbackAfterHealthDamage(Data, PreviousHealth);
 		// 실제 Health 감소가 확정된 뒤 피격 로컬 피드백을 요청
 		NotifyHitTakenFeedbackAfterHealthDamage(Data, PreviousHealth);
-		NotifyDamageNumberFeedbackAfterHealthDamage(Data, PreviousHealth);
+		NotifyDamageNumberFeedbackAfterHealthDamage(Data, PreviousHealth, DamageAmount, bIsCriticalDamage);
 		NotifyHitReactionAfterHealthDamage(Data, PreviousHealth);
 		SetDamageHitQuality(0.0f);
 	}
@@ -173,9 +175,11 @@ void UNSBaseAttributeSet::NotifyHitTakenFeedbackAfterHealthDamage(
 
 void UNSBaseAttributeSet::NotifyDamageNumberFeedbackAfterHealthDamage(
 	const FGameplayEffectModCallbackData& Data,
-	float PreviousHealth) const
+	float PreviousHealth,
+	float FinalDamageAmount,
+	bool bIsCriticalDamage) const
 {
-	// 숫자는 실제 Health에 1 이상 들어간 피해만 보여줌.
+	// 실제 체력이 줄지 않은 공격은 기존 정책대로 숫자를 띄우지 않음.
 	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
 	if (AppliedHealthDamage < 1.0f)
 	{
@@ -196,8 +200,11 @@ void UNSBaseAttributeSet::NotifyDamageNumberFeedbackAfterHealthDamage(
 
 	// UI가 값을 다시 계산하지 않도록 서버에서 표시 숫자까지 확정.
 	FNSDamageNumberFeedbackContext FeedbackContext;
-	FeedbackContext.DamageAmount = static_cast<float>(FMath::RoundToInt(AppliedHealthDamage));
-	FeedbackContext.bIsCritical = ResolveDamageHitQuality() == ENSHitFeedbackQuality::Critical;
+
+	// 체력이 0에서 멈춰도 방어 처리 뒤의 공격 피해량을 그대로 보여줌.
+	FeedbackContext.DamageAmount = static_cast<float>(FMath::RoundToInt(FinalDamageAmount));
+	FeedbackContext.bIsCritical = bIsCriticalDamage;
+
 	FeedbackContext.WorldLocation = ResolveDamageNumberWorldLocation(Data, TargetActor);
 	FeedbackContext.DamageLayer = ENSHitReactionDamageLayer::Health;
 
