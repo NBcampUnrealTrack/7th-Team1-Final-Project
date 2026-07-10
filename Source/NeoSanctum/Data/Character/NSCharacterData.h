@@ -12,6 +12,7 @@
 class ANSWeaponBase;
 class UGameplayEffect;
 class UAnimInstance;
+class UTexture2D;
 
 /**
  * 특정 상황 태그가 발생했을 때 캐릭터에게 적용할 반응형 Gameplay Effect를 정의.
@@ -82,4 +83,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Weapon",
 		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<ANSWeaponBase> DefaultLeftHandWeaponClass;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSoftObjectPtr<UTexture2D> HUDPortraitTexture;
 };
