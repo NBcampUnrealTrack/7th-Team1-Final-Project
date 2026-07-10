@@ -11,6 +11,7 @@
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSPlayerCharacterBase.generated.h"
 
+class UNSDamageNumberFeedbackComponent;
 class ANSCompanionDroneAI;
 class UNSCompanionDefinition;
 class ANSBaseDroneAI;
@@ -192,6 +193,10 @@ protected:
 	// 플레이어가 공격으로 만든 히트 결과 피드백 처리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
 	TObjectPtr<UNSPlayerAttackFeedbackComponent> PlayerAttackFeedbackComp;
+
+	// 로컬 데미지 숫자 표시 메시지를 받아 월드 UI로 연결
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")
+	TObjectPtr<UNSDamageNumberFeedbackComponent> DamageNumberFeedbackComp;
 
 	// 플레이어가 피해를 받았을 때의 로컬 피격 피드백 처리
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Feedback")

@@ -26,6 +26,8 @@ public:
 	// 액터가 어떤 피격 대상인지 코드 생성 시 지정
 	void SetTargetType(ENSHitFeedbackTargetType InTargetType) { TargetType = InTargetType; }
 
+	ENSHitFeedbackTargetType GetTargetType() const { return TargetType; }
+
 private:
 	// 컴포넌트 설정값을 이용해 Context의 빈 분류 값을 보정
 	FNSHitReactionContext BuildResolvedContext(const FNSHitReactionContext& Context) const;

@@ -14,6 +14,7 @@
 	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
 	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+class ANSPlayerController;
 DECLARE_MULTICAST_DELEGATE(FOnOutOfHealth);
 
 struct FGameplayEffectModCallbackData;
@@ -94,6 +95,23 @@ protected:
 	void NotifyHitReactionAfterHealthDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
+
+	// 실제 Health 감소 후 데미지 숫자 표시를 요청
+	void NotifyDamageNumberFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth,
+		float FinalDamageAmount,
+		bool bIsCriticalDamage) const;
+
+	// 플레이어 공격으로 피해를 받은 대상에 표시할 공격자 컨트롤러를 찾음.
+	ANSPlayerController* ResolveDamageNumberViewerController(
+		const FGameplayEffectModCallbackData& Data,
+		const AActor* TargetActor) const;
+
+	// HitResult, EffectContext Origin, Target 위치 순서로 표시 위치를 찾음.
+	FVector ResolveDamageNumberWorldLocation(
+		const FGameplayEffectModCallbackData& Data,
+		const AActor* TargetActor) const;
 
 	// 데미지 레이어 정보를 포함해서 월드 피격 리액션을 요청
 	void NotifyHitReaction(

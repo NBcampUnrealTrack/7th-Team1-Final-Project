@@ -196,3 +196,40 @@ struct NEOSANCTUM_API FNSHitTakenFeedbackVitalsMessage
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	float ShieldRatio = 1.0f;
 };
+
+/**
+ * GMS로 데미지 숫자 표시를 전달할 때 사용하는 Context
+ */
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSDamageNumberFeedbackContext
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	float DamageAmount = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	bool bIsCritical = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	FVector WorldLocation = FVector::ZeroVector;
+
+	// 표시 여부는 서버에서 이미 정했고, UI는 이 값으로 다시 판단하지 않음.
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	ENSHitReactionDamageLayer DamageLayer = ENSHitReactionDamageLayer::Health;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
+};
+
+/**
+ * GMS로 데미지 숫자 표시를 전달할 때 사용하는 메시지
+ */
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSDamageNumberFeedbackMessage
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	FNSDamageNumberFeedbackContext Context;
+};

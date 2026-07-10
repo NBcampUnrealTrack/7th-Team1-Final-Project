@@ -757,6 +757,8 @@ void ANSTurret::FireHitscan()
 				FGameplayEffectContextHandle EffectContext = TurretASC->MakeEffectContext();
 				EffectContext.AddSourceObject(this);
 				EffectContext.AddHitResult(HitResult);
+				// 터렛 피해도 설치한 플레이어 화면에 데미지 숫자를 보여줌.
+				EffectContext.AddInstigator(GetOwningPawn(), this);
 
 				FGameplayEffectSpecHandle NewSpecHandle = TurretASC->MakeOutgoingSpec(
 					DamageEffectClass, 1.0f, EffectContext);
