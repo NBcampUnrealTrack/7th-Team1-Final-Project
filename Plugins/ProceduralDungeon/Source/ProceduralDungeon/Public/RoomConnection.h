@@ -21,6 +21,8 @@ class PROCEDURALDUNGEON_API URoomConnection : public UReplicableObject, public I
 {
 	GENERATED_BODY()
 
+	friend class UDungeonGraph;
+
 public:
 	//~ Begin IDungeonCustomSerialization Interface
 	virtual bool SerializeObject(FStructuredArchive::FRecord& Record, bool bIsLoading) override;

@@ -46,6 +46,8 @@ class PROCEDURALDUNGEON_API URoom : public UReplicableObject, public IReadOnlyRo
 {
 	GENERATED_BODY()
 
+	friend class UDungeonGraph;
+
 public:
 	// TODO: Make them private
 	UPROPERTY()

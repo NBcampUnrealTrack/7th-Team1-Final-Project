@@ -56,6 +56,11 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Dungeon Generator", meta = (DisplayName = "Continue To Add Room"))
 	bool ContinueToAddRoom();
 
+	// Called after all rooms have been generated, but before room initialization and dungeon validation.
+	// This is the safe place to remove unwanted rooms from the generated graph.
+	UFUNCTION(BlueprintNativeEvent, Category = "Dungeon Generator", meta = (DisplayName = "Prune Dungeon"))
+	void PruneDungeon();
+
 	// ===== Utility functions you can use in blueprint =====
 
 	// Return true if a specific RoomData is already in the dungeon
