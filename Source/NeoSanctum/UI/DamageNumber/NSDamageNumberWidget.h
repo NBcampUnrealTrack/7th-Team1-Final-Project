@@ -31,7 +31,7 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> DamageText;
 
-	UPROPERTY(Transient, meta = (BindWidgetAnimOptional))
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	TObjectPtr<UWidgetAnimation> PopupAnimation;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
