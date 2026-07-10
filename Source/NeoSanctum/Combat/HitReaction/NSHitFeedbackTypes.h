@@ -217,6 +217,9 @@ struct NEOSANCTUM_API FNSDamageNumberFeedbackContext
 	// 표시 여부는 서버에서 이미 정했고, UI는 이 값으로 다시 판단하지 않음.
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	ENSHitReactionDamageLayer DamageLayer = ENSHitReactionDamageLayer::Health;
+
+	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
+	ENSHitFeedbackTargetType TargetType = ENSHitFeedbackTargetType::Any;
 };
 
 /**

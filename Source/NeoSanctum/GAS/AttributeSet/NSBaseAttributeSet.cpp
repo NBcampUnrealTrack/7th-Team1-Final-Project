@@ -201,6 +201,13 @@ void UNSBaseAttributeSet::NotifyDamageNumberFeedbackAfterHealthDamage(
 	FeedbackContext.WorldLocation = ResolveDamageNumberWorldLocation(Data, TargetActor);
 	FeedbackContext.DamageLayer = ENSHitReactionDamageLayer::Health;
 
+	// 대상이 이미 가진 피격 분류를 UI에도 그대로 전달.
+	if (const UNSHitReactionComponent* HitReactionComponent =
+		TargetActor->FindComponentByClass<UNSHitReactionComponent>())
+	{
+		FeedbackContext.TargetType = HitReactionComponent->GetTargetType();
+	}
+
 	ViewerController->Client_PlayDamageNumberFeedback(FeedbackContext);
 }
 

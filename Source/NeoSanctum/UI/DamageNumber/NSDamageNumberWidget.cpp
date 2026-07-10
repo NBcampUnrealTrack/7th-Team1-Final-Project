@@ -4,6 +4,8 @@
 #include "NSDamageNumberWidget.h"
 
 #include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Components/TextBlock.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 
@@ -18,6 +20,8 @@ namespace
 		FVector2D(0.65f, -0.80f).GetSafeNormal(),
 		FVector2D(0.95f, -0.55f).GetSafeNormal()
 	};
+
+	const FName CriticalIconColorParameter(TEXT("FontColor"));
 
 	constexpr float PopupMotionDuration = 0.8f;
 	constexpr float PopupRiseDurationRatio = 0.65f;
@@ -39,14 +43,32 @@ void UNSDamageNumberWidget::SetDamageNumber(
 			DamageTextSlot->SetPosition(DisplayOffset);
 		}
 
+		const FLinearColor DisplayColor = ResolveDamageNumberColor(Context);
+		const bool bShowCriticalIcon = ShouldShowCriticalIcon(Context);
+
 		DamageText->SetText(FText::AsNumber(DisplayDamage));
-		DamageText->SetColorAndOpacity(bCritical ? CriticalDamageColor : NormalDamageColor);
+		DamageText->SetColorAndOpacity(DisplayColor);
 		if (bCritical)
 		{
 			// 크리티컬은 WBP 기본 폰트를 유지하되 외곽선은 뺌.
 			FSlateFontInfo CriticalFont = DamageText->GetFont();
 			CriticalFont.OutlineSettings.OutlineSize = 0;
 			DamageText->SetFont(CriticalFont);
+		}
+
+		if (CriticalIcon)
+		{
+			CriticalIcon->SetVisibility(bShowCriticalIcon
+				? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+
+			if (bShowCriticalIcon)
+			{
+				// 아이콘 Material도 숫자와 같은 색을 받음.
+				if (UMaterialInstanceDynamic* IconMaterial = CriticalIcon->GetDynamicMaterial())
+				{
+					IconMaterial->SetVectorParameterValue(CriticalIconColorParameter, DisplayColor);
+				}
+			}
 		}
 
 		StartPopupMotion();
@@ -74,6 +96,23 @@ void UNSDamageNumberWidget::StartPopupMotion()
 	PopupMotionElapsedTime = 0.0f;
 	bPopupMotionActive = true;
 	DamageText->SetRenderTranslation(FVector2D::ZeroVector);
+}
+
+FLinearColor UNSDamageNumberWidget::ResolveDamageNumberColor(const FNSDamageNumberFeedbackContext& Context) const
+{
+	if (Context.TargetType == ENSHitFeedbackTargetType::DestructibleObject)
+	{
+		return Context.bIsCritical ? DestructibleCriticalDamageColor : DestructibleNormalDamageColor;
+	}
+
+	return Context.bIsCritical ? CriticalDamageColor : NormalDamageColor;
+}
+
+bool UNSDamageNumberWidget::ShouldShowCriticalIcon(const FNSDamageNumberFeedbackContext& Context) const
+{
+	return Context.bIsCritical &&
+		(Context.TargetType == ENSHitFeedbackTargetType::Enemy ||
+			Context.TargetType == ENSHitFeedbackTargetType::DestructibleObject);
 }
 
 void UNSDamageNumberWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
