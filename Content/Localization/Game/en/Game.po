@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-07-09 10:11\n"
-"PO-Revision-Date: 2026-07-09 10:11\n"
+"POT-Creation-Date: 2026-07-10 02:46\n"
+"PO-Revision-Date: 2026-07-10 02:46\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -1088,7 +1088,7 @@ msgstr "Ranger"
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterName
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterName
 msgctxt ",54A91232428FABE69E03F4BE04402703"
-msgid "Ranger"
+msgid "레인저"
 msgstr "Ranger"
 
 #. Key:	C0C9F7E24FFB36B7AB6FE492E62A092E
@@ -1102,7 +1102,7 @@ msgstr "Engineer"
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterName
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterName
 msgctxt ",1FC30E364EBB3EC1D546E5A5C5B01A52"
-msgid "Engineer"
+msgid "엔지니어"
 msgstr "Engineer"
 
 #. Key:	BC48DB3A4F2C7B6F75FF27B7ABF22D32
@@ -1116,7 +1116,7 @@ msgstr "Vanguard"
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterName
 #: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterName
 msgctxt ",9D8395E14601AD8AA4BB40AB669B9FE5"
-msgid "Vanguard"
+msgid "뱅가드"
 msgstr "Vanguard"
 
 #. Key:	F5F04BBD4F6287D2078F75BFF9AC2AED
@@ -1272,6 +1272,55 @@ msgstr "Upgrade"
 msgctxt ",E070101743673066DB36CE8EAAF3B119"
 msgid "입장"
 msgstr "Enter"
+
+#. Key:	25F6EC9441FCCC23BAA769BF5E608758
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
+msgctxt ",25F6EC9441FCCC23BAA769BF5E608758"
+msgid "공격력: "
+msgstr ""
+
+#. Key:	C3CC05464DF945EAF21E7596817F10D7
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
+msgctxt ",C3CC05464DF945EAF21E7596817F10D7"
+msgid "치명타 확률:"
+msgstr ""
+
+#. Key:	C5BA00C94400B11D980E358E381E1397
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
+msgctxt ",C5BA00C94400B11D980E358E381E1397"
+msgid "치명타 피해:"
+msgstr ""
+
+#. Key:	376CF73D456FE9CC533D5F9402C3955B
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
+msgctxt ",376CF73D456FE9CC533D5F9402C3955B"
+msgid "방어력:"
+msgstr ""
+
+#. Key:	307C223E4810A8708E0B3286854F09FE
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
+msgctxt ",307C223E4810A8708E0B3286854F09FE"
+msgid "체력:"
+msgstr ""
+
+#. Key:	5824807644DC04B1EAFAA58407FA1DF0
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
+msgctxt ",5824807644DC04B1EAFAA58407FA1DF0"
+msgid "보호막:"
+msgstr ""
+
+#. Key:	D5BBFE114414917FE1D79ABACE8EA8AD
+#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
+#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
+msgctxt ",D5BBFE114414917FE1D79ABACE8EA8AD"
+msgid "이동속도:"
+msgstr ""
 
 #. Key:	C59ADC53438CCEDDB73ADF8025F97248
 #. SourceLocation:	/Game/NeoSanctum/UI/Common/RunEnd/WBP_NextStageButton.WBP_NextStageButton_C:WidgetTree.TextBlock_37.Text
@@ -1902,6 +1951,55 @@ msgstr "Replace"
 msgctxt "ReadyStartActor,PromptText"
 msgid "Ready / Start"
 msgstr "Ready / Start"
+
+#. Key:	MaxHealthFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(197)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(197)
+msgctxt "CharacterSelect,MaxHealthFormat"
+msgid "체력: {0}"
+msgstr "Health: {0}"
+
+#. Key:	BaseDamageFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(204)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(204)
+msgctxt "CharacterSelect,BaseDamageFormat"
+msgid "공격력: {0}"
+msgstr "Attack: {0}"
+
+#. Key:	DefenseFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(211)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(211)
+msgctxt "CharacterSelect,DefenseFormat"
+msgid "방어력: {0}"
+msgstr "Defense: {0}"
+
+#. Key:	MoveSpeedFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(218)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(218)
+msgctxt "CharacterSelect,MoveSpeedFormat"
+msgid "이동속도: {0}"
+msgstr "Move Speed: {0}"
+
+#. Key:	CritChanceFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(225)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(225)
+msgctxt "CharacterSelect,CritChanceFormat"
+msgid "치명타 확률: {0}%"
+msgstr "Critical Chance: {0}%"
+
+#. Key:	CritDamageFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(232)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(232)
+msgctxt "CharacterSelect,CritDamageFormat"
+msgid "치명타 피해: {0}%"
+msgstr "Critical Damage: {0}%"
+
+#. Key:	MaxShieldFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(239)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(239)
+msgctxt "CharacterSelect,MaxShieldFormat"
+msgid "보호막: {0}"
+msgstr "Shield: {0}"
 
 #. Key:	CategoryFormat
 #. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeNodeDetailWidget.cpp(14)
@@ -2595,5 +2693,4 @@ msgstr "Next : {0}"
 msgctxt "SpectatorWidget,SpectatingNameFormat"
 msgid "관전자 : {0}"
 msgstr "Spectating: {0}"
-
 
