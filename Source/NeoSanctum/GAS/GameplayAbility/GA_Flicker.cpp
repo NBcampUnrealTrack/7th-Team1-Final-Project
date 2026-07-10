@@ -58,6 +58,9 @@ void UGA_Flicker::ActivateAbility(
 		return;
 	}
 
+	// Flicker Ability 전체 수명 동안 이동 입력 차단
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
+
 	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
 		Handle,
@@ -158,6 +161,8 @@ void UGA_Flicker::EndAbility(
 
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
+		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
+
 		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
 		{
 			// Ability 종료 시 TargetData Delegate 제거 및 다음 발동 PredictionKey 혼선 방지
@@ -627,6 +632,7 @@ bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetL
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(FlickerTargetOverlap), false, AvatarActor);
 
@@ -768,6 +774,7 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(FlickerChainOverlap), false, AvatarActor);
 
@@ -1487,27 +1494,23 @@ void UGA_Flicker::RestoreMovementMode()
 
 void UGA_Flicker::AddDashingState()
 {
-	if (!bUseDashingStateTag)
-	{
-		return;
-	}
-
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
-		ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+		if (bUseDashingStateTag)
+		{
+			ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+		}
 	}
 }
 
 void UGA_Flicker::RemoveDashingState()
 {
-	if (!bUseDashingStateTag)
-	{
-		return;
-	}
-
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
-		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
+		if (bUseDashingStateTag)
+		{
+			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
+		}
 	}
 }
 
