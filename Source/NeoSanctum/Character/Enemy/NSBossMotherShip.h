@@ -197,6 +197,9 @@ public:
 	// [TransitionGA 연출 종료 시] 쉴드 드레인 / 보스 쉴드 / 무적 해제 / 이동 허용
 	void CompletePhase2Transition();
 
+	// 떼어둔 Phase2 PhaseTag를 실제로 ASC에 다시 부여하는 함수. 멱등(이미 커밋됐으면 아무 것도 안 함)
+	void CommitDeferredPhase2Tag();
+	
 	// 보스 직접 이동 허용 여부 (AIController가 이동 게이트로 사용 예정)
 	bool IsBossMovementUnlocked() const { return bBossMovementUnlocked; }
 	
@@ -220,6 +223,12 @@ private:
 	// ---- Runtime ----
 	// 보스 이동 허용 플래그(연출 종료 후 true). 실제 이동 로직은 AIController에서 게이트
 	bool bBossMovementUnlocked = false;
+	
+	// BeginPhase2Transition에서 떼어낸 뒤 커밋 대기 중인 Phase2 PhaseTag
+	FGameplayTag DeferredPhase2Tag;
+
+	// DeferredPhase2Tag가 아직 ASC에 커밋되지 않았는지 여부
+	bool bPhase2TagDeferred = false;
 #pragma endregion
 	
 private:

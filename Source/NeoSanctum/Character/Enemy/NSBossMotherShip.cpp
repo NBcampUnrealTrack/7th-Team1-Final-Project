@@ -41,6 +41,8 @@ void ANSBossMotherShip::BeginPlay()
 	StartDronePattern();
 	// TODO : 이상적으로는 '전투 진입' 콜백에서 호출. 전투 트리거가 생기면 그쪽으로 옮길 것.
 	InitControlDevices();
+	
+	GetFlyingLocomotion()->SetSteeringInputLocked(true);
 }
 
 UNSFlyingLocomotionComponent* ANSBossMotherShip::GetFlyingLocomotion() const
@@ -145,8 +147,6 @@ void ANSBossMotherShip::RequestSummonAbility()
 	{
 		bSummonInFlight = false;
 	}
-	
-	
 }
 
 void ANSBossMotherShip::SpawnMaturedDrones()
@@ -443,17 +443,67 @@ void ANSBossMotherShip::ClearBossInvincibility()
 
 void ANSBossMotherShip::BeginPhase2Transition()
 {
+	// 기존 서버 가드 및 보스 무적상태 진입
 	if (!HasAuthority()) return;
 	ApplyBossInvincibility();
+
+	// 보스ASC 캐스팅 및 끝나고 적용시킬 2페이즈 태그 가져오기
+	UAbilitySystemComponent* MotherShipAbilitySystemComponent = GetAbilitySystemComponent();
+	const FGameplayTag PhaseTagToDefer = PhaseComponent ? PhaseComponent->GetCurrentPhaseTag() : FGameplayTag();
+
+	// ASC와 페이즈태그 둘다 존재한다면
+	if (MotherShipAbilitySystemComponent && PhaseTagToDefer.IsValid())
+	{
+		// 2페이즈 이후 다시 적용시킬 태그 캐싱
+		DeferredPhase2Tag = PhaseTagToDefer;
+		
+		// 태그가 현재 보류상태임을 전달
+		bPhase2TagDeferred = true;
+		
+		// 연출시작시 현재 적용되어있는 연출동안 숨기려고 잠시 제거
+		MotherShipAbilitySystemComponent->RemoveLooseGameplayTag(DeferredPhase2Tag);
+	}
 }
 
 void ANSBossMotherShip::CompletePhase2Transition()
 {
+	// 서버 가드
 	if (!HasAuthority()) return;
+	
+	// 플레이어 쉴드 제거 함수 작동
 	DrainAllPlayerShields(PlayerShieldDrainRatio);
+	
+	// 보스 쉴드 추가
 	GrantBossShield();
+	
+	// 보스 무적 해제
 	ClearBossInvincibility();
+	
+	// 이동제한 해제
 	bBossMovementUnlocked = true;
+	
+	// flyingComponent 이동불가 해제
+	GetFlyingLocomotion()->SetSteeringInputLocked(false);
+
+	// 2페이즈 태그 주입
+	CommitDeferredPhase2Tag();
+}
+
+void ANSBossMotherShip::CommitDeferredPhase2Tag()
+{
+	// 서버 가드 및 숨긴 태그가 있는지 확인
+	if (!HasAuthority() || !bPhase2TagDeferred) return;
+
+	// ASC 가져와서 숨긴태그가 유효한지 확인
+	UAbilitySystemComponent* MotherShipAbilitySystemComponent = GetAbilitySystemComponent();
+	if (MotherShipAbilitySystemComponent && DeferredPhase2Tag.IsValid())
+	{
+		// 유효하다면 숨겼던 태그 다시 적용
+		MotherShipAbilitySystemComponent->AddLooseGameplayTag(DeferredPhase2Tag);
+		
+		// 재호출 방지 플래그 해제
+		bPhase2TagDeferred = false;
+	}
 }
 
 void ANSBossMotherShip::DrainAllPlayerShields(float RemoveRatio)
