@@ -8,6 +8,8 @@
 
 class UProgressBar;
 class UTextBlock;
+class UImage;
+class UNSCharacterData;
 
 /**
  *  플레이어의 체력과 실드를 표시하는 HUD위젯
@@ -59,6 +61,14 @@ private:
 	// 본인 경험치 수치
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> PlayerExperienceValueText;
+	//캐릭터 프로필
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> PortraitImage;
+	
+	UPROPERTY()
+	TObjectPtr<const UNSCharacterData> CachedPortraitCharacterData;
+	
+	void RefreshPortrait();
 	
 protected:
 	virtual void NativeConstruct()override;

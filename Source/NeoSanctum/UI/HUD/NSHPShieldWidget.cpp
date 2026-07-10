@@ -4,10 +4,15 @@
 #include "NSHPShieldWidget.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 
 
 void UNSHPShieldWidget::SetHealth(float CurrentHealth, float MaxHealth)
 {
+	RefreshPortrait();
+
 	//체력 비율 계산
 	
 	float HealthPercent = GetSafePercent(CurrentHealth, MaxHealth);
@@ -106,9 +111,66 @@ float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)const
 	return FMath::Clamp(CurrentValue / MaxValue, 0.0f, 1.0f);
 }
 
+void UNSHPShieldWidget::RefreshPortrait()
+{
+	if (!PortraitImage)
+	{
+		return;
+	}
+
+	const APlayerController* OwningPlayer = GetOwningPlayer();
+	if (!OwningPlayer)
+	{
+		PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	const ANSPlayerState* NSPlayerState =
+		OwningPlayer->GetPlayerState<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	const UNSCharacterData* CharacterData =
+		NSPlayerState->GetCurrentCharacterData();
+
+	if (!CharacterData || CharacterData->HUDPortraitTexture.IsNull())
+	{
+		PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	UTexture2D* PortraitTexture = CharacterData->HUDPortraitTexture.Get();
+
+	if (!PortraitTexture)
+	{
+		PortraitTexture = CharacterData->HUDPortraitTexture.LoadSynchronous();
+	}
+
+	if (!PortraitTexture)
+	{
+		PortraitImage->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	
+	if (CachedPortraitCharacterData == CharacterData)
+	{
+		return;
+	}
+	
+	CachedPortraitCharacterData = CharacterData;
+
+	PortraitImage->SetBrushFromTexture(PortraitTexture);
+	PortraitImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
 void UNSHPShieldWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	//실제 값이 들어오기 전 기본상태
 	ResetHealthAndShield();
+	RefreshPortrait();
 }
