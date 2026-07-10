@@ -66,8 +66,21 @@ void ANSDeathSpectatorPawn::Tick(float DeltaSeconds)
 	);
 	SetActorLocation(NewLocation);
 
-	// Pawn 이동 이후 최종 카메라 위치 보정
-	UpdateSpectatorCamera(DeltaSeconds);
+	UpdateSmoothedSpectatorPOV(DeltaSeconds);
+}
+
+void ANSDeathSpectatorPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	if (!bHasSmoothedCameraPOV)
+	{
+		Super::CalcCamera(DeltaTime, OutResult);
+		return;
+	}
+
+	// 보간된 관전 카메라 POV를 최종 View로 반환
+	OutResult.Location = SmoothedCameraLocation;
+	OutResult.Rotation = SmoothedCameraRotation;
+	OutResult.FOV = SmoothedCameraFOV;
 }
 
 void ANSDeathSpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -161,7 +174,7 @@ void ANSDeathSpectatorPawn::ApplySpectatorTargetView()
 	}
 }
 
-void ANSDeathSpectatorPawn::UpdateSpectatorCamera(float DeltaSeconds)
+void ANSDeathSpectatorPawn::UpdateSmoothedSpectatorPOV(float DeltaSeconds)
 {
 	if (!IsLocallyControlled() || !SpectatorTarget || !CameraComp)
 	{
@@ -196,7 +209,4 @@ void ANSDeathSpectatorPawn::UpdateSpectatorCamera(float DeltaSeconds)
 			DeltaSeconds,
 			CameraFOVInterpSpeed);
 	}
-
-	CameraComp->SetWorldLocationAndRotation(SmoothedCameraLocation, SmoothedCameraRotation);
-	CameraComp->SetFieldOfView(SmoothedCameraFOV);
 }
