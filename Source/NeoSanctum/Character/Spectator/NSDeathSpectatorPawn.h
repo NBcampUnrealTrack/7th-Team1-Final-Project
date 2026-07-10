@@ -20,6 +20,7 @@ public:
 	ANSDeathSpectatorPawn();
 	
 	virtual void Tick(float DeltaSeconds) override;
+	virtual void CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
@@ -60,6 +61,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Interpolation")
 	FVector FollowOffset = FVector(0.f, 0.f, 120.f);
 
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
+	float CameraLocationInterpSpeed = 18.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
+	float CameraRotationInterpSpeed = 24.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
+	float CameraFOVInterpSpeed = 24.f;
+
 	// 서버에서 확정한 관전 대상
 	UPROPERTY(ReplicatedUsing = OnRep_SpectatorTarget)
 	TObjectPtr<ANSPlayerCharacterBase> SpectatorTarget;
@@ -71,6 +81,18 @@ protected:
 	UPROPERTY(Transient)
 	TObjectPtr<ANSPlayerCharacterBase> LastAppliedSpectatorTarget;
 
+	UPROPERTY(Transient)
+	bool bHasSmoothedCameraPOV = false;
+
+	UPROPERTY(Transient)
+	FVector SmoothedCameraLocation = FVector::ZeroVector;
+
+	UPROPERTY(Transient)
+	FRotator SmoothedCameraRotation = FRotator::ZeroRotator;
+
+	UPROPERTY(Transient)
+	float SmoothedCameraFOV = 90.f;
+
 	UFUNCTION()
 	void OnRep_SpectatorTarget();
 
@@ -79,4 +101,7 @@ protected:
 
 	// 로컬 컨트롤러에서 관전 대상을 ViewTarget으로 적용
 	void ApplySpectatorTargetView();
+
+	// 관전 대상 카메라 POV 보간 상태 갱신
+	void UpdateSmoothedSpectatorPOV(float DeltaSeconds);
 };
