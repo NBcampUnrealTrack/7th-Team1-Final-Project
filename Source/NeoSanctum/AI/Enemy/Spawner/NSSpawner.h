@@ -61,6 +61,10 @@ public:
 	
 	// 보스 스포너인지 알기 위한 게터 함수
 	bool IsBossSpawner() const { return bIsBossSpawner; }
+	
+	// 재활성화 시 새로 뽑지 않고, 살아남은 수만큼만 복원
+	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
+	bool bPersistSurvivors = false;
 
 private:
 	void ProcessSpawnProbability(UDataTable* SpawnTable);
@@ -141,4 +145,31 @@ private:
 	
 	UPROPERTY(Transient)
 	TObjectPtr<URoom> CachedRoom;
+	
+	// 복원 경로
+	void RestoreSurvivors();
+
+	// 최초 스폰을 한 번이라도 했는가
+	bool bInitialSpawnDone = false;
+
+	// 재활성화 시 복원할 살아남은 수
+	int32 SurvivorCount = 0;
+
+	// 최초 스폰에 쓴 클래스/데이터
+	UPROPERTY()
+	TObjectPtr<UClass> CachedCharacterClass;
+	UPROPERTY()
+	TObjectPtr<UNSEnemyData> CachedEnemyData;
+	
+	// 헬퍼용 함수: 몬스터를 지정 클래스/데이터로 스폰 (보스는 다른 로직 사용)
+	void SpawnMonsters(UClass* InClass, UNSEnemyData* InData, int32 Count);
+	// 헬퍼용 함수: 스폰 대상의 바닥 Z오프셋 계산용
+	float ComputeSpawnZOffset(UClass* InClass, const UNSEnemyData* InData) const;
+	
+	// 몬스터 사망 추적용
+	void RegisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster);
+	void UnregisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster);
+
+	// 개체별 OnEnemyDead 바인딩 핸들 (재사용 시 정리용)
+	TMap<TWeakObjectPtr<ANSEnemyCharacterBase>, FDelegateHandle> DeathDelegateHandles;
 };
