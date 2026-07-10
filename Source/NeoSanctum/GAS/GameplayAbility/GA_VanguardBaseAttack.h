@@ -439,8 +439,8 @@ private:
 	// 같은 Combo Window 안에서 중복 섹션 이동 방지
 	bool bComboAdvancedInCurrentWindow = false;
 
-	// 첫 공격 입력이 콤보 입력으로 재사용되는 것 방지
-	bool bGroundComboInitialInputReleased = false;
+	// 기본공격 입력 유지 상태
+	bool bBaseAttackInputHeld = false;
 
 	// 대쉬공격 이동 태스크 시작 여부
 	bool bDashAttackMoveStarted = false;

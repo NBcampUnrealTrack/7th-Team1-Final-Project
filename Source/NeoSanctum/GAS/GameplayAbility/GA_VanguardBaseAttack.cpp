@@ -36,7 +36,7 @@ UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
 	AssetTags.AddTag(NSGameplayTags::Ability_Vanguard_BaseAttack);
 	SetAssetTags(AssetTags);
 
-	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	ActivationPolicy = ENSAbilityActivationPolicy::WhileInputActive;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	// 대쉬 중 기본공격 선입력 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
@@ -60,6 +60,7 @@ void UGA_VanguardBaseAttack::ActivateAbility(
 
 	// 입력 시점 상태 기준 기본공격 파생 공격 결정
 	ActiveAttackMode = SelectAttackMode(ActorInfo);
+	bBaseAttackInputHeld = true;
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 	if (!ASC)
@@ -108,10 +109,12 @@ void UGA_VanguardBaseAttack::InputReleased(
 {
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::GroundCombo)
 	{
-		// 첫 공격 입력 해제 이후 콤보 입력 허용
-		bGroundComboInitialInputReleased = true;
+		// 지상 콤보 입력 유지 해제
+		bBaseAttackInputHeld = false;
 		return;
 	}
+
+	bBaseAttackInputHeld = false;
 
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge)
 	{
@@ -125,6 +128,8 @@ void UGA_VanguardBaseAttack::InputPressed(
 	const FGameplayAbilityActivationInfo ActivationInfo)
 {
 	// 활성화 이후 추가 입력만 지상 콤보 입력으로 처리
+	bBaseAttackInputHeld = true;
+
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::GroundCombo)
 	{
 		HandleGroundComboInput();
@@ -194,7 +199,7 @@ void UGA_VanguardBaseAttack::EndAbility(
 	CurrentGroundComboIndex = INDEX_NONE;
 	bComboInputBuffered = false;
 	bComboAdvancedInCurrentWindow = false;
-	bGroundComboInitialInputReleased = false;
+	bBaseAttackInputHeld = false;
 	bDashAttackMoveStarted = false;
 	bDashAttackMoveFinished = false;
 	bDashAttackMontageStarted = false;
@@ -730,9 +735,9 @@ void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
 	// 새 Combo Window의 섹션 이동 가능 상태 초기화
 	bComboAdvancedInCurrentWindow = false;
 
-	if (bComboInputBuffered)
+	if (bComboInputBuffered || bBaseAttackInputHeld)
 	{
-		// Window 이전 선입력 소비
+		// Window 이전 선입력 또는 입력 유지 상태 소비
 		TryAdvanceGroundCombo();
 	}
 }
@@ -782,7 +787,6 @@ void UGA_VanguardBaseAttack::StartGroundCombo()
 	CurrentGroundComboIndex = 0;
 	bComboInputBuffered = false;
 	bComboAdvancedInCurrentWindow = false;
-	bGroundComboInitialInputReleased = false;
 	StartComboWindowEventTask();
 
 	if (bLogVanguardAttackMode)
@@ -799,12 +803,6 @@ void UGA_VanguardBaseAttack::StartGroundCombo()
 
 void UGA_VanguardBaseAttack::HandleGroundComboInput()
 {
-	if (!bGroundComboInitialInputReleased)
-	{
-		// Ability 활성화 입력 재사용 방지
-		return;
-	}
-
 	if (CurrentGroundComboIndex == INDEX_NONE ||
 		CurrentGroundComboIndex >= GroundComboSectionNames.Num() - 1)
 	{
