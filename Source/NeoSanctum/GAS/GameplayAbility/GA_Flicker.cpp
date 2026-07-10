@@ -627,6 +627,7 @@ bool UGA_Flicker::TryFindBestTarget(AActor*& OutTargetActor, FVector& OutTargetL
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(FlickerTargetOverlap), false, AvatarActor);
 
@@ -768,6 +769,7 @@ bool UGA_Flicker::TryBuildTargetChain(AActor* PrimaryTarget, const FVector& Prim
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(FlickerChainOverlap), false, AvatarActor);
 
