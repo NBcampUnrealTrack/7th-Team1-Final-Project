@@ -368,6 +368,24 @@ void UNSSessionSubsystem::HandleNetworkFailure(
 	ENetworkFailure::Type FailureType,
 	const FString& ErrorString)
 {
+	const bool bIsServer = World && World->GetNetMode() != NM_Client;
+
+	if (bIsServer)
+	{
+		switch (FailureType)
+		{
+			// 특정 클라 연결의 실패하면 호스트는 게임 유지, 그 연결만 엔진이 정리
+		case ENetworkFailure::ConnectionTimeout:
+		case ENetworkFailure::ConnectionLost:
+		case ENetworkFailure::FailureReceived:
+			return;
+
+		default:
+			// 호스트의 자신의 에러는 진행
+			break;
+		}
+	}
+	
 	const bool bIsPendingDriverFailure =
 		NetDriver &&
 		NetDriver->NetDriverName == FName(TEXT("PendingNetDriver"));
