@@ -9,6 +9,7 @@
 class UProgressBar;
 class UCommonTextBlock;
 class UNSGameFlowSubsystem;
+class ANSRunGameState;
 
 /**
  * 몬스터의 강해지는 시간과 난이도를 나타내는 위젯
@@ -27,8 +28,15 @@ protected:
 
 private:
 	void RefreshDifficultyTimer();
+	
+	void BindRunGameState();
+	
+	void UnBindRunGameState();
 
 	UNSGameFlowSubsystem* GetGameFlowSubsystem() const;
+	
+	UPROPERTY()
+	TObjectPtr<ANSRunGameState> CachedRunGameState;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UProgressBar> DifficultyProgressBar;
