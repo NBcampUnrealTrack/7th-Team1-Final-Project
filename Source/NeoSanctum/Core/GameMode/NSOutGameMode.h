@@ -24,4 +24,8 @@ public:
 
 protected:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+	
+private:
+	// 사용 중이지 않은 가장 작은 슬롯 인덱스를 반환 (자기 자신 제외)
+	int32 FindFreeSlotIndex(const APlayerState* Requester) const;
 };

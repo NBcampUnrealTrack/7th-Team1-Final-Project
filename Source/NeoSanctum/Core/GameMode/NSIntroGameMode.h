@@ -14,4 +14,10 @@ class NEOSANCTUM_API ANSIntroGameMode : public AGameModeBase
 	
 public:
 	ANSIntroGameMode();
+	
+protected:
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
+	
+public:
+	bool bEnteredViaConnectionClosed = false;
 };
