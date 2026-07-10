@@ -99,6 +99,7 @@ void UGA_ThrowProjectile::ActivateAbility(
 	StartGameplayEventTasks();
 	
 	ThrowMontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
+	ThrowMontageTask->OnBlendOut.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
 	ThrowMontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
 	ThrowMontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
 	AddDeactivateHandIKTag();
@@ -123,21 +124,11 @@ void UGA_ThrowProjectile::InputReleased(
 		return;
 	}
 
-	if (ActorInfo && ActorInfo->IsLocallyControlled())
-	{
-		const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-		USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
-		UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
+	bReleaseRequested = true;
 
-		if (AnimInstance && AnimMontage && AnimInstance->Montage_IsPlaying(AnimMontage))
-		{
-			bReleaseRequested = true;
-			AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
-		}
-		else
-		{
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		}
+	if (!TryJumpToReleaseSection())
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
 }
 
@@ -195,24 +186,12 @@ void UGA_ThrowProjectile::EndAbility(
 
 void UGA_ThrowProjectile::OnThrowMontageCompleted()
 {
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		false
-	);
+	FinishThrowProjectileAbility(false);
 }
 
 void UGA_ThrowProjectile::OnThrowMontageInterrupted()
 {
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		true
-	);
+	FinishThrowProjectileAbility(true);
 }
 
 void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Payload)
@@ -280,6 +259,40 @@ void UGA_ThrowProjectile::StartGameplayEventTasks()
 		ThrowProjectileEventTask->EventReceived.AddDynamic(this, &ThisClass::OnThrowProjectileEventReceived);
 		ThrowProjectileEventTask->ReadyForActivation();
 	}
+}
+
+bool UGA_ThrowProjectile::TryJumpToReleaseSection() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimMontage || ReleaseSectionName.IsNone())
+	{
+		return false;
+	}
+
+	if (!AnimInstance->Montage_IsPlaying(AnimMontage))
+	{
+		return false;
+	}
+
+	AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
+	return true;
+}
+
+void UGA_ThrowProjectile::FinishThrowProjectileAbility(bool bWasCancelled)
+{
+	if (!IsActive())
+	{
+		return;
+	}
+
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		bWasCancelled
+	);
 }
 
 void UGA_ThrowProjectile::AttachHeldMesh()
@@ -527,6 +540,17 @@ void UGA_ThrowProjectile::OnThrowProjectileTargetDataReady(const FGameplayAbilit
 	if (!TryGetAimPointFromTargetData(TargetDataHandle, AimPoint))
 	{
 		return;
+	}
+
+	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+		ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled() && !bReleaseRequested)
+	{
+		bReleaseRequested = true;
+		if (!TryJumpToReleaseSection())
+		{
+			FinishThrowProjectileAbility(true);
+			return;
+		}
 	}
 
 	SpawnProjectileAtAimPoint(AimPoint);

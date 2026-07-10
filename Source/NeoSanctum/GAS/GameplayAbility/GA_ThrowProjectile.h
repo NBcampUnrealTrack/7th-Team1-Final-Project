@@ -181,6 +181,8 @@ protected:
 
 protected:
 	void StartGameplayEventTasks();
+	bool TryJumpToReleaseSection() const;
+	void FinishThrowProjectileAbility(bool bWasCancelled);
 	void AttachHeldMesh();
 	void DestroyHeldMesh();
 	
