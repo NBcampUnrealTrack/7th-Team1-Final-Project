@@ -17,6 +17,7 @@ class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 class UGameplayEffect;
 class ANSMeleeWeapon;
+struct FGameplayAbilityTargetDataHandle;
 
 /**
  * Crosshair 근처의 사거리 내 적 하나에게 빠르게 접근해 베는 스킬.
@@ -66,6 +67,21 @@ private:
 
 	UFUNCTION()
 	void OnFlickerHitEventReceived(FGameplayEventData Payload);
+
+	// 클라이언트 Flicker 타겟 체인 TargetData 수신 콜백
+	void OnTargetDataReadyCallback(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ApplicationTag);
+	// Flicker TargetData 검증 및 이동/공격 흐름 연결
+	void OnFlickerTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	// 로컬 선택 타겟 체인의 서버 전송용 TargetData 구성
+	FGameplayAbilityTargetDataHandle MakeTargetDataFromSelectedTargets() const;
+	// 수신 TargetData의 현재 Flicker 타겟 체인 상태 적용
+	bool TryApplyTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	// 서버 Flicker TargetData 사거리/시야/타겟 위치 유효성 검증
+	bool IsTargetDataValidForServer(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+	// 원격 클라이언트 TargetData 수신 대기 서버 Ability 확인
+	bool IsWaitingForRemoteClientTargetData() const;
+	// 검증 완료 타겟 체인 기반 Flicker 이동 및 연출 시작
+	bool StartFlickerFromSelectedTargets();
 
 	// Flicker 몽타주 재생 시작
 	bool PlayFlickerMontage();
@@ -191,6 +207,9 @@ private:
 	// Flicker Hit GameplayEvent 대기 Task
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> HitEventTask;
+
+	// AutoFire 계열 방식의 서버 복제 TargetData 수신 Delegate 핸들
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	// Attack 섹션 종료 대기 타이머
 	FTimerHandle AttackAdvanceTimerHandle;

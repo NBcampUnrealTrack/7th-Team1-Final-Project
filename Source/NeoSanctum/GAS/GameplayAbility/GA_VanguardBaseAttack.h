@@ -13,6 +13,7 @@ class UAbilityTask_WaitGameplayEvent;
 class UAnimMontage;
 class UGameplayEffect;
 class ANSMeleeWeapon;
+struct FGameplayAbilityTargetDataHandle;
 
 UENUM(BlueprintType)
 enum class ENSVanguardBaseAttackMode : uint8
@@ -98,6 +99,36 @@ private:
 	UFUNCTION()
 	void OnMeleeHitEventReceived(FGameplayEventData Payload);
 
+private:
+	// 클라이언트 Vanguard 공격 의도 TargetData 수신 콜백
+	void OnTargetDataReadyCallback(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FGameplayTag ApplicationTag);
+	// 현재 공격 모드에 맞게 TargetData를 검증하고 처리
+	void OnVanguardTargetDataReady(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+	// 원격 클라이언트 TargetData 수신 대기 서버 Ability 확인
+	bool IsWaitingForRemoteClientTargetData() const;
+
+	// DashAttack 차지 비율과 돌진 방향을 TargetData로 구성
+	FGameplayAbilityTargetDataHandle MakeDashAttackTargetData(float ChargeRatio) const;
+	// DashAttack TargetData에서 차지 비율과 돌진 방향 추출
+	bool TryConsumeDashAttackTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle, float& OutChargeRatio, FVector& OutDirection) const;
+	// 서버에서 DashAttack TargetData가 허용 범위 안인지 검증
+	bool IsDashAttackTargetDataValidForServer(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+
+	// AirSlam 착지 목표 위치를 TargetData로 구성
+	FGameplayAbilityTargetDataHandle MakeAirSlamTargetData() const;
+	// AirSlam TargetData에서 착지 목표 위치 추출
+	bool TryConsumeAirSlamTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle, FVector& OutTargetLocation) const;
+	// 서버에서 AirSlam 착지 목표 위치가 허용 범위 안인지 검증
+	bool IsAirSlamTargetDataValidForServer(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+
+	// 근접 공격 Hit Window에서 클라이언트가 감지한 명중 의도를 TargetData로 구성
+	FGameplayAbilityTargetDataHandle MakeMeleeHitTargetData();
+	// 서버에서 근접 공격 명중 의도가 현재 캐릭터 위치 기준으로 유효한지 검증
+	bool IsMeleeHitTargetDataValidForServer(const FGameplayAbilityTargetDataHandle& TargetDataHandle) const;
+	// 검증된 근접 공격 TargetData를 서버 데미지 적용 흐름으로 전달
+	void ApplyMeleeHitTargetData(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
+
+private:
 	// 현재 캐릭터 상태 기준 기본공격 파생 모드 선택
 	ENSVanguardBaseAttackMode SelectAttackMode(const FGameplayAbilityActorInfo* ActorInfo) const;
 
@@ -154,6 +185,8 @@ private:
 
 	// 공중 내려찍기 Dive Section 시작
 	void StartAirSlamDive();
+	// TargetData 확정 목표 위치 기반 AirSlam Dive 시작
+	void StartAirSlamDiveToTarget(const FVector& TargetLocation);
 
 	// 공중 내려찍기 Impact Section 시작
 	void StartAirSlamImpact();
@@ -173,14 +206,14 @@ private:
 	// 대쉬공격 차지 종료 및 차지 비율 계산
 	void FinishDashCharge();
 
-	// 대쉬 차지 해제 후 대쉬공격 몽타주 재생
-	void StartDashAttack(float ChargeRatio);
+	// TargetData 확정 방향 기반 대쉬공격 시작
+	void StartDashAttack(float ChargeRatio, const FVector& DashAttackDirection);
 
 	// 통합 몽타주 Attack Section 이동
 	bool JumpToDashAttackSection();
 
-	// 차지 비율 기반 대쉬공격 돌진 이동 시작
-	bool StartDashAttackMovement(float ChargeRatio);
+	// TargetData 확정 방향 기반 대쉬공격 돌진 이동 시작
+	bool StartDashAttackMovement(float ChargeRatio, const FVector& DashAttackDirection);
 
 	// 대쉬공격 몽타주와 이동 완료 확인
 	void TryEndDashAttack();
@@ -384,6 +417,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> DashAttackRecoverEventTask;
+
+	// AutoFire와 같은 방식의 서버 복제 TargetData 수신 Delegate 핸들
+	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashAttackMoveTask;
