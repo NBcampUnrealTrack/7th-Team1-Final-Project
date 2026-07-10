@@ -193,6 +193,7 @@ void UGA_VanguardBaseAttack::EndAbility(
 	bHasPreviousMeleeTraceSocketLocations = false;
 	CurrentMeleeTraceWindowId = 0;
 	DamagedActorsInTraceWindow.Reset();
+	DamagedActorsInDashAttack.Reset();
 	ComboWindowEventTask = nullptr;
 	MeleeHitEventTask = nullptr;
 	DashAttackRecoverEventTask = nullptr;
@@ -985,7 +986,7 @@ void UGA_VanguardBaseAttack::SweepMeleeTrace(
 	if (bDrawMeleeTraceDebug)
 	{
 		const FHitResult DebugHitResult = bHit && HitResults.Num() > 0 ? HitResults[0] : FHitResult();
-		DrawMeleeTraceDebug(TraceStart, SweepEnd, bHit, DebugHitResult);
+		DrawMeleeTraceDebug(TraceStart, SweepEnd, MeleeTraceRadius, bHit, DebugHitResult);
 	}
 
 	if (!bHit)
@@ -1022,6 +1023,12 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	}
 
 	const TObjectKey<AActor> TargetKey(TargetActor);
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack &&
+		DamagedActorsInDashAttack.Contains(TargetKey))
+	{
+		return;
+	}
+
 	if (DamagedActorsInTraceWindow.Contains(TargetKey))
 	{
 		return;
@@ -1046,6 +1053,11 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	DamageSpecHandle.Data->GetContext().AddSourceObject(this);
 
 	DamagedActorsInTraceWindow.Add(TargetKey);
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack)
+	{
+		// DashAttack 경로 판정과 무기 Trace 간 중복 데미지 방지
+		DamagedActorsInDashAttack.Add(TargetKey);
+	}
 
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
 	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
@@ -1122,11 +1134,12 @@ void UGA_VanguardBaseAttack::AssignDamageInstigator(FGameplayEffectSpecHandle& I
 void UGA_VanguardBaseAttack::DrawMeleeTraceDebug(
 	const FVector& TraceStart,
 	const FVector& TraceEnd,
+	float TraceRadius,
 	bool bHit,
 	const FHitResult& HitResult) const
 {
 	UWorld* World = GetWorld();
-	if (!World)
+	if (!World || TraceRadius <= 0.0f)
 	{
 		return;
 	}
@@ -1142,7 +1155,7 @@ void UGA_VanguardBaseAttack::DrawMeleeTraceDebug(
 		DrawDebugSphere(
 			World,
 			TraceEnd,
-			MeleeTraceRadius,
+			TraceRadius,
 			12,
 			TraceColor,
 			false,
@@ -1152,14 +1165,14 @@ void UGA_VanguardBaseAttack::DrawMeleeTraceDebug(
 	{
 		// 구체 Sweep이 지나간 부피를 캡슐 형태로 표시
 		const FVector CapsuleCenter = (TraceStart + TraceEnd) * 0.5f;
-		const float CapsuleHalfHeight = TraceLength * 0.5f + MeleeTraceRadius;
+		const float CapsuleHalfHeight = TraceLength * 0.5f + TraceRadius;
 		const FQuat CapsuleRotation = FRotationMatrix::MakeFromZ(TraceDelta).ToQuat();
 
 		DrawDebugCapsule(
 			World,
 			CapsuleCenter,
 			CapsuleHalfHeight,
-			MeleeTraceRadius,
+			TraceRadius,
 			CapsuleRotation,
 			TraceColor,
 			false,
@@ -1494,6 +1507,7 @@ void UGA_VanguardBaseAttack::StartDashAttack(float ChargeRatio, const FVector& D
 	// 대쉬공격 실행 상태로 전환
 	ActiveAttackMode = ENSVanguardBaseAttackMode::DashAttack;
 	CurrentDashAttackChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
+	DamagedActorsInDashAttack.Reset();
 	bDashAttackMoveStarted = false;
 	bDashAttackMoveFinished = false;
 	bDashAttackMontageStarted = false;
@@ -1563,9 +1577,23 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio, const FV
 		return false;
 	}
 
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return false;
+	}
+
 	const float ClampedChargeRatio = FMath::Clamp(ChargeRatio, 0.0f, 1.0f);
 	const float DashAttackDistance = FMath::Lerp(FinalMinDistance, FinalMaxDistance, ClampedChargeRatio);
 	const float DashAttackSpeed = DashAttackDistance / FMath::Max(FinalDuration, 0.01f);
+	const FVector TraceStart = AvatarActor->GetActorLocation();
+	const FVector TraceEnd = TraceStart + FinalDashAttackDirection * DashAttackDistance;
+
+	if (AvatarActor->HasAuthority())
+	{
+		// 서버 권한 기준 돌진 경로상의 적에게 데미지 적용
+		ApplyDashAttackPathDamage(TraceStart, TraceEnd);
+	}
 
 	// GameplayAbility RootMotionSource 기반 강제 이동
 	DashAttackMoveTask = UAbilityTask_ApplyRootMotionConstantForce::ApplyRootMotionConstantForce(
@@ -1589,6 +1617,61 @@ bool UGA_VanguardBaseAttack::StartDashAttackMovement(float ChargeRatio, const FV
 	DashAttackMoveTask->OnFinish.AddDynamic(this, &ThisClass::OnDashAttackMoveFinished);
 	DashAttackMoveTask->ReadyForActivation();
 	return true;
+}
+
+void UGA_VanguardBaseAttack::ApplyDashAttackPathDamage(const FVector& TraceStart, const FVector& TraceEnd)
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UWorld* World = GetWorld();
+	if (!AvatarActor || !World || DashAttackPathTraceRadius <= 0.0f)
+	{
+		return;
+	}
+
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Enemy);
+
+	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(NSVanguardDashAttackPathTrace), false, AvatarActor);
+	QueryParams.AddIgnoredActor(AvatarActor);
+
+	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(AvatarActor))
+	{
+		if (ANSWeaponBase* CurrentWeapon = PlayerCharacter->GetCurrentWeapon())
+		{
+			QueryParams.AddIgnoredActor(CurrentWeapon);
+		}
+	}
+
+	const FVector SweepEnd = TraceStart.Equals(TraceEnd)
+		? TraceEnd + AvatarActor->GetActorForwardVector().GetSafeNormal2D() * 0.1f
+		: TraceEnd;
+
+	TArray<FHitResult> HitResults;
+	const bool bHit = World->SweepMultiByObjectType(
+		HitResults,
+		TraceStart,
+		SweepEnd,
+		FQuat::Identity,
+		ObjectQueryParams,
+		FCollisionShape::MakeSphere(DashAttackPathTraceRadius),
+		QueryParams);
+
+	if (bDrawMeleeTraceDebug)
+	{
+		const FHitResult DebugHitResult = bHit && HitResults.Num() > 0 ? HitResults[0] : FHitResult();
+		DrawMeleeTraceDebug(TraceStart, SweepEnd, DashAttackPathTraceRadius, bHit, DebugHitResult);
+	}
+
+	if (!bHit)
+	{
+		return;
+	}
+
+	for (const FHitResult& HitResult : HitResults)
+	{
+		ApplyDamageToActor(HitResult);
+	}
 }
 
 void UGA_VanguardBaseAttack::TryEndDashAttack()

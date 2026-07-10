@@ -172,7 +172,7 @@ private:
 	void AssignDamageInstigator(FGameplayEffectSpecHandle& InSpecHandle);
 
 	// 근접 공격 Sweep 디버그 표시
-	void DrawMeleeTraceDebug(const FVector& TraceStart, const FVector& TraceEnd, bool bHit, const FHitResult& HitResult) const;
+	void DrawMeleeTraceDebug(const FVector& TraceStart, const FVector& TraceEnd, float TraceRadius, bool bHit, const FHitResult& HitResult) const;
 
 	// 다음 콤보 섹션으로 이동
 	bool TryAdvanceGroundCombo();
@@ -214,6 +214,9 @@ private:
 
 	// TargetData 확정 방향 기반 대쉬공격 돌진 이동 시작
 	bool StartDashAttackMovement(float ChargeRatio, const FVector& DashAttackDirection);
+
+	// DashAttack 돌진 경로상의 대상 데미지 적용
+	void ApplyDashAttackPathDamage(const FVector& TraceStart, const FVector& TraceEnd);
 
 	// 대쉬공격 몽타주와 이동 완료 확인
 	void TryEndDashAttack();
@@ -352,6 +355,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true"))
 	bool bEnableGravityDuringDashAttack = true;
 
+	// 대쉬공격 돌진 경로 데미지 판정 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|DashAttack", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float DashAttackPathTraceRadius = 120.0f;
+
 	// 근접 공격 명중 시 적용할 데미지 GameplayEffect
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
@@ -408,6 +415,9 @@ private:
 
 	// 현재 근접 공격 판정 윈도우에서 이미 데미지를 적용한 대상
 	TSet<TObjectKey<AActor>> DamagedActorsInTraceWindow;
+
+	// 현재 DashAttack에서 이미 데미지를 적용한 대상
+	TSet<TObjectKey<AActor>> DamagedActorsInDashAttack;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UAbilityTask_WaitGameplayEvent> ComboWindowEventTask;
