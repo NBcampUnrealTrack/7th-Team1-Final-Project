@@ -101,7 +101,4 @@ protected:
 
 	// 로컬 컨트롤러에서 관전 대상을 ViewTarget으로 적용
 	void ApplySpectatorTargetView();
-
-	// 관전 대상 카메라 POV 보간 상태 갱신
-	void UpdateSmoothedSpectatorPOV(float DeltaSeconds);
 };

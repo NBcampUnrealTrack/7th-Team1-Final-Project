@@ -292,10 +292,10 @@ protected:
 	float SpectatorCameraStateSendElapsed = 0.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.01"))
-	float SpectatorCameraStateSendInterval = 0.066f;
+	float SpectatorCameraStateSendInterval = 0.033f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
-	float SpectatorCameraRotationThreshold = 0.5f;
+	float SpectatorCameraRotationThreshold = 0.25f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Spectator|Camera", meta = (ClampMin = "0.0"))
 	float SpectatorCameraFOVThreshold = 0.1f;

@@ -65,19 +65,46 @@ void ANSDeathSpectatorPawn::Tick(float DeltaSeconds)
 		FollowInterpSpeed
 	);
 	SetActorLocation(NewLocation);
-
-	UpdateSmoothedSpectatorPOV(DeltaSeconds);
 }
 
 void ANSDeathSpectatorPawn::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
 {
-	if (!bHasSmoothedCameraPOV)
+	if (!IsLocallyControlled() || !SpectatorTarget || !CameraComp)
 	{
 		Super::CalcCamera(DeltaTime, OutResult);
 		return;
 	}
 
-	// 보간된 관전 카메라 POV를 최종 View로 반환
+	// 관전 대상 카메라 POV를 보간해 최종 View로 반환
+	FMinimalViewInfo TargetPOV;
+	SpectatorTarget->CalcCamera(DeltaTime, TargetPOV);
+
+	if (!bHasSmoothedCameraPOV)
+	{
+		SmoothedCameraLocation = TargetPOV.Location;
+		SmoothedCameraRotation = TargetPOV.Rotation;
+		SmoothedCameraFOV = TargetPOV.FOV;
+		bHasSmoothedCameraPOV = true;
+	}
+	else
+	{
+		SmoothedCameraLocation = FMath::VInterpTo(
+			SmoothedCameraLocation,
+			TargetPOV.Location,
+			DeltaTime,
+			CameraLocationInterpSpeed);
+		SmoothedCameraRotation = FMath::RInterpTo(
+			SmoothedCameraRotation,
+			TargetPOV.Rotation,
+			DeltaTime,
+			CameraRotationInterpSpeed);
+		SmoothedCameraFOV = FMath::FInterpTo(
+			SmoothedCameraFOV,
+			TargetPOV.FOV,
+			DeltaTime,
+			CameraFOVInterpSpeed);
+	}
+
 	OutResult.Location = SmoothedCameraLocation;
 	OutResult.Rotation = SmoothedCameraRotation;
 	OutResult.FOV = SmoothedCameraFOV;
@@ -111,6 +138,7 @@ void ANSDeathSpectatorPawn::SetSpectatorTarget(ANSPlayerCharacterBase* NewSpecta
 	if (SpectatorTarget != NewSpectatorTarget)
 	{
 		LastAppliedSpectatorTarget = nullptr;
+		bHasSmoothedCameraPOV = false;
 	}
 
 	SpectatorTarget = NewSpectatorTarget;
@@ -171,42 +199,5 @@ void ANSDeathSpectatorPawn::ApplySpectatorTargetView()
 		LastAppliedSpectatorTarget = SpectatorTarget;
 		// 로컬 PlayerController에 최종 관전 ViewTarget 적용 위임
 		NSPlayerController->ApplyConfirmedSpectatorTarget(SpectatorTarget);
-	}
-}
-
-void ANSDeathSpectatorPawn::UpdateSmoothedSpectatorPOV(float DeltaSeconds)
-{
-	if (!IsLocallyControlled() || !SpectatorTarget || !CameraComp)
-	{
-		return;
-	}
-
-	FMinimalViewInfo TargetPOV;
-	SpectatorTarget->CalcCamera(DeltaSeconds, TargetPOV);
-
-	if (!bHasSmoothedCameraPOV)
-	{
-		SmoothedCameraLocation = TargetPOV.Location;
-		SmoothedCameraRotation = TargetPOV.Rotation;
-		SmoothedCameraFOV = TargetPOV.FOV;
-		bHasSmoothedCameraPOV = true;
-	}
-	else
-	{
-		SmoothedCameraLocation = FMath::VInterpTo(
-			SmoothedCameraLocation,
-			TargetPOV.Location,
-			DeltaSeconds,
-			CameraLocationInterpSpeed);
-		SmoothedCameraRotation = FMath::RInterpTo(
-			SmoothedCameraRotation,
-			TargetPOV.Rotation,
-			DeltaSeconds,
-			CameraRotationInterpSpeed);
-		SmoothedCameraFOV = FMath::FInterpTo(
-			SmoothedCameraFOV,
-			TargetPOV.FOV,
-			DeltaSeconds,
-			CameraFOVInterpSpeed);
 	}
 }

@@ -72,7 +72,10 @@ void UNSDeathSpectatorComponent::ApplyConfirmedSpectatorTarget(ANSPlayerCharacte
 	SpectatingPlayerState = TargetPlayerState;
 
 	// 서버에서 확정한 관전 대상 Pawn을 실제 ViewTarget으로 적용
-	OwnerPlayerController->SetViewTargetWithBlend(TargetCharacter, DeathSpectatorViewBlendTime);
+	if (ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(OwnerPlayerController->GetPawn()))
+	{
+		OwnerPlayerController->SetViewTargetWithBlend(DeathSpectatorPawn, DeathSpectatorViewBlendTime);
+	}
 
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
