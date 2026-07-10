@@ -42,13 +42,31 @@ protected:
 	TObjectPtr<UTextBlock> CharacterNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
-	TObjectPtr<UTextBlock> CharacterDescriptionText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonAnimatedSwitcher> CharacterSwitcher;
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UImage> PreviewImage;	
+	
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> MaxHealthText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> BaseDamageText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> DefenseText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> MoveSpeedText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> CritChanceText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> CritDamageText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
+	TObjectPtr<UTextBlock> MaxShieldText;
 
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void SelectNext();
@@ -71,6 +89,9 @@ private:
 	TArray<FNSCharacterSelectData> CachedCharacters;
 
 	void ApplyPreviewImage(const FNSCharacterSelectData& Data);
+	
+	void UpdateBaseStatTexts(const FNSCharacterSelectData& Data);
+	void ClearBaseStatTexts();
 	
 public:
 	UPROPERTY(BlueprintAssignable, Category = "CharacterSelect")
