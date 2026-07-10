@@ -7,7 +7,26 @@
 #include "Components/TextBlock.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 
-void UNSDamageNumberWidget::SetDamageNumber(const FNSDamageNumberFeedbackContext& Context)
+namespace
+{
+	const FVector2D DamageNumberPopupDirections[] =
+	{
+		FVector2D(-0.95f, -0.55f).GetSafeNormal(),
+		FVector2D(-0.65f, -0.80f).GetSafeNormal(),
+		FVector2D(-0.30f, -0.95f).GetSafeNormal(),
+		FVector2D(0.30f, -0.95f).GetSafeNormal(),
+		FVector2D(0.65f, -0.80f).GetSafeNormal(),
+		FVector2D(0.95f, -0.55f).GetSafeNormal()
+	};
+
+	constexpr float PopupMotionDuration = 0.8f;
+	constexpr float PopupRiseDurationRatio = 0.65f;
+	constexpr float PopupRiseDistance = 44.0f;
+	constexpr float PopupSettleDistance = 14.0f;
+}
+
+void UNSDamageNumberWidget::SetDamageNumber(
+	const FNSDamageNumberFeedbackContext& Context, const FVector2D& DisplayOffset)
 {
 	DisplayDamage = FMath::RoundToInt(Context.DamageAmount);
 	bCritical = Context.bIsCritical;
@@ -22,6 +41,15 @@ void UNSDamageNumberWidget::SetDamageNumber(const FNSDamageNumberFeedbackContext
 
 		DamageText->SetText(FText::AsNumber(DisplayDamage));
 		DamageText->SetColorAndOpacity(bCritical ? CriticalDamageColor : NormalDamageColor);
+		if (bCritical)
+		{
+			// 크리티컬은 WBP 기본 폰트를 유지하되 외곽선은 뺌.
+			FSlateFontInfo CriticalFont = DamageText->GetFont();
+			CriticalFont.OutlineSettings.OutlineSize = 0;
+			DamageText->SetFont(CriticalFont);
+		}
+
+		StartPopupMotion();
 		DamageText->SetRenderScale(bCritical ? CriticalRenderScale : NormalRenderScale);
 	}
 
@@ -29,5 +57,61 @@ void UNSDamageNumberWidget::SetDamageNumber(const FNSDamageNumberFeedbackContext
 	if (PopupAnimation)
 	{
 		PlayAnimation(PopupAnimation);
+	}
+}
+
+void UNSDamageNumberWidget::StartPopupMotion()
+{
+	if (!DamageText)
+	{
+		return;
+	}
+
+	// 숫자마다 위쪽 여섯 방향 중 하나를 골라 움직임.
+	const int32 DirectionIndex = FMath::RandRange(0, UE_ARRAY_COUNT(DamageNumberPopupDirections) - 1);
+
+	PopupMotionDirection = DamageNumberPopupDirections[DirectionIndex];
+	PopupMotionElapsedTime = 0.0f;
+	bPopupMotionActive = true;
+	DamageText->SetRenderTranslation(FVector2D::ZeroVector);
+}
+
+void UNSDamageNumberWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!bPopupMotionActive || !DamageText)
+	{
+		return;
+	}
+
+	PopupMotionElapsedTime += InDeltaTime;
+
+	const float MotionAlpha = FMath::Clamp(PopupMotionElapsedTime / PopupMotionDuration, 0.0f, 1.0f);
+
+	float TravelDistance = 0.0f;
+	if (MotionAlpha <= PopupRiseDurationRatio)
+	{
+		const float RiseAlpha = MotionAlpha / PopupRiseDurationRatio;
+		TravelDistance = FMath::InterpEaseOut(0.0f, PopupRiseDistance, RiseAlpha, 2.0f);
+	}
+	else
+	{
+		const float SettleAlpha = (MotionAlpha - PopupRiseDurationRatio) / (1.0f - PopupRiseDurationRatio);
+
+		// 꼭지점에서 출발 지점으로 조금 내려앉음.
+		TravelDistance = FMath::InterpEaseOut(
+			PopupRiseDistance,
+			PopupRiseDistance - PopupSettleDistance,
+			SettleAlpha,
+			2.0f
+		);
+	}
+
+	DamageText->SetRenderTranslation(PopupMotionDirection * TravelDistance);
+
+	if (MotionAlpha >= 1.0f)
+	{
+		bPopupMotionActive = false;
 	}
 }

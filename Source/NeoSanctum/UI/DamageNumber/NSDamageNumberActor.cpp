@@ -26,7 +26,10 @@ ANSDamageNumberActor::ANSDamageNumberActor()
 void ANSDamageNumberActor::InitializeDamageNumber(
 	const FNSDamageNumberFeedbackContext& Context, const FVector2D& DisplayOffset)
 {
-	SetActorLocation(Context.WorldLocation);
+	// BP에서 정한 높이만큼 피격 위치보다 위에 숫자를 띄움.
+	const FVector DamageNumberWorldLocation =
+		Context.WorldLocation + FVector::UpVector * DamageNumberHeightOffset;
+	SetActorLocation(DamageNumberWorldLocation);
 	SetLifeSpan(LifeTime);
 
 	if (!WidgetComponent)
