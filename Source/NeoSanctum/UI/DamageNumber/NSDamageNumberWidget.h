@@ -8,8 +8,10 @@
 
 class UImage;
 class UTextBlock;
+class UWidget;
 class UWidgetAnimation;
 struct FNSDamageNumberFeedbackContext;
+
 /**
  *
  */
@@ -40,6 +42,9 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UImage> CriticalIcon;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> DamageNumberContent;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Damage Number")
 	FLinearColor NormalDamageColor = FLinearColor::White;

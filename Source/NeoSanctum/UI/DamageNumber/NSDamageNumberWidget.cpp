@@ -35,45 +35,47 @@ void UNSDamageNumberWidget::SetDamageNumber(
 	DisplayDamage = FMath::RoundToInt(Context.DamageAmount);
 	bCritical = Context.bIsCritical;
 
-	if (DamageText)
+	if (!DamageText || !DamageNumberContent)
 	{
-		// 위로 올라가는 애니메이션과 겹치지 않게 시작 위치는 Canvas Slot에서 나눔.
-		if (UCanvasPanelSlot* DamageTextSlot = Cast<UCanvasPanelSlot>(DamageText->Slot))
+		return;
+	}
+
+	// 위로 올라가는 애니메이션과 겹치지 않게 시작 위치는 Canvas Slot에서 나눔.
+	if (UCanvasPanelSlot* ContentSlot = Cast<UCanvasPanelSlot>(DamageNumberContent->Slot))
+	{
+		ContentSlot->SetPosition(DisplayOffset);
+	}
+
+	const FLinearColor DisplayColor = ResolveDamageNumberColor(Context);
+	const bool bShowCriticalIcon = ShouldShowCriticalIcon(Context);
+
+	DamageText->SetText(FText::AsNumber(DisplayDamage));
+	DamageText->SetColorAndOpacity(DisplayColor);
+	if (bCritical)
+	{
+		// 크리티컬은 WBP 기본 폰트를 유지하되 외곽선은 뺌.
+		FSlateFontInfo CriticalFont = DamageText->GetFont();
+		CriticalFont.OutlineSettings.OutlineSize = 0;
+		DamageText->SetFont(CriticalFont);
+	}
+
+	if (CriticalIcon)
+	{
+		CriticalIcon->SetVisibility(bShowCriticalIcon
+			? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+
+		if (bShowCriticalIcon)
 		{
-			DamageTextSlot->SetPosition(DisplayOffset);
-		}
-
-		const FLinearColor DisplayColor = ResolveDamageNumberColor(Context);
-		const bool bShowCriticalIcon = ShouldShowCriticalIcon(Context);
-
-		DamageText->SetText(FText::AsNumber(DisplayDamage));
-		DamageText->SetColorAndOpacity(DisplayColor);
-		if (bCritical)
-		{
-			// 크리티컬은 WBP 기본 폰트를 유지하되 외곽선은 뺌.
-			FSlateFontInfo CriticalFont = DamageText->GetFont();
-			CriticalFont.OutlineSettings.OutlineSize = 0;
-			DamageText->SetFont(CriticalFont);
-		}
-
-		if (CriticalIcon)
-		{
-			CriticalIcon->SetVisibility(bShowCriticalIcon
-				? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
-
-			if (bShowCriticalIcon)
+			// 아이콘 Material도 숫자와 같은 색을 받음.
+			if (UMaterialInstanceDynamic* IconMaterial = CriticalIcon->GetDynamicMaterial())
 			{
-				// 아이콘 Material도 숫자와 같은 색을 받음.
-				if (UMaterialInstanceDynamic* IconMaterial = CriticalIcon->GetDynamicMaterial())
-				{
-					IconMaterial->SetVectorParameterValue(CriticalIconColorParameter, DisplayColor);
-				}
+				IconMaterial->SetVectorParameterValue(CriticalIconColorParameter, DisplayColor);
 			}
 		}
-
-		StartPopupMotion();
-		DamageText->SetRenderScale(bCritical ? CriticalRenderScale : NormalRenderScale);
 	}
+
+	StartPopupMotion();
+	DamageText->SetRenderScale(bCritical ? CriticalRenderScale : NormalRenderScale);
 
 	// WBP에 애니메이션이 있으면 숫자가 뜨는 연출만 재생.
 	if (PopupAnimation)
@@ -84,7 +86,7 @@ void UNSDamageNumberWidget::SetDamageNumber(
 
 void UNSDamageNumberWidget::StartPopupMotion()
 {
-	if (!DamageText)
+	if (!DamageText || !DamageNumberContent)
 	{
 		return;
 	}
@@ -95,7 +97,7 @@ void UNSDamageNumberWidget::StartPopupMotion()
 	PopupMotionDirection = DamageNumberPopupDirections[DirectionIndex];
 	PopupMotionElapsedTime = 0.0f;
 	bPopupMotionActive = true;
-	DamageText->SetRenderTranslation(FVector2D::ZeroVector);
+	DamageNumberContent->SetRenderTranslation(FVector2D::ZeroVector);
 }
 
 FLinearColor UNSDamageNumberWidget::ResolveDamageNumberColor(const FNSDamageNumberFeedbackContext& Context) const
@@ -119,7 +121,7 @@ void UNSDamageNumberWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	if (!bPopupMotionActive || !DamageText)
+	if (!bPopupMotionActive || !DamageText || !DamageNumberContent)
 	{
 		return;
 	}
@@ -147,7 +149,7 @@ void UNSDamageNumberWidget::NativeTick(const FGeometry& MyGeometry, float InDelt
 		);
 	}
 
-	DamageText->SetRenderTranslation(PopupMotionDirection * TravelDistance);
+	DamageNumberContent->SetRenderTranslation(PopupMotionDirection * TravelDistance);
 
 	if (MotionAlpha >= 1.0f)
 	{
