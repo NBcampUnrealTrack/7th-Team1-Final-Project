@@ -244,7 +244,7 @@ void ANSRunGameState::SetDifficultyTimerState(
 
 void ANSRunGameState::OnRep_DifficultyTimerState()
 {
-	// 지금은 UI가 Tick으로 읽으니까 비워둬도 됨.
+	OnDifficultyTimerStateChanged.Broadcast();
 }
 
 float ANSRunGameState::GetDifficultyElapsedSeconds() const

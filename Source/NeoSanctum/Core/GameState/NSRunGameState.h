@@ -20,6 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStagePhaseChanged);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnStageObjectiveChanged);
 // 보스 게이트 상태 변화 알림
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnBossGateChanged);
+DECLARE_MULTICAST_DELEGATE(FOnNSDifficultyTimerStateChanged);
 
 
 /**
@@ -231,6 +232,8 @@ public:
 
 	UFUNCTION()
 	void OnRep_DifficultyTimerState();
+	
+	FOnNSDifficultyTimerStateChanged OnDifficultyTimerStateChanged;
 private:
 	// 런 전체에서 서버 투사체를 관리하는 Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Projectile", meta = (AllowPrivateAccess = "true"))
