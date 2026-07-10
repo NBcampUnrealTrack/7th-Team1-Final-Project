@@ -19,7 +19,7 @@ class NEOSANCTUM_API UNSDamageNumberWidget : public UCommonUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
-	void SetDamageNumber(const FNSDamageNumberFeedbackContext& Context);
+	void SetDamageNumber(const FNSDamageNumberFeedbackContext& Context, const FVector2D& DisplayOffset);
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")

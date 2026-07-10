@@ -7,6 +7,19 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/UI/DamageNumber/NSDamageNumberActor.h"
 
+namespace
+{
+	// 첫 숫자는 정중앙에 두고, 연속 숫자는 위쪽으로 조금씩 흩어지게 함.
+	const FVector2D DamageNumberDisplayOffsets[] =
+	{
+		FVector2D(0.0f, 0.0f),
+		FVector2D(-36.0f, -6.0f),
+		FVector2D(36.0f, -6.0f),
+		FVector2D(-18.0f, -20.0f),
+		FVector2D(18.0f, -20.0f),
+		FVector2D(0.0f, -34.0f)
+	};
+}
 
 UNSDamageNumberFeedbackComponent::UNSDamageNumberFeedbackComponent()
 {
@@ -59,9 +72,15 @@ void UNSDamageNumberFeedbackComponent::HandleDamageNumberMessage(
 		SpawnParams
 	);
 
+
 	if (DamageNumberActor)
 	{
-		DamageNumberActor->InitializeDamageNumber(Message.Context);
+		// 스폰에 성공한 숫자만 다음 위치로 넘겨서 순서를 유지.
+		const int32 DisplayOffsetIndex = NextDisplayOffsetIndex;
+		NextDisplayOffsetIndex = (NextDisplayOffsetIndex + 1) % UE_ARRAY_COUNT(DamageNumberDisplayOffsets);
+
+
+		DamageNumberActor->InitializeDamageNumber(Message.Context, DamageNumberDisplayOffsets[DisplayOffsetIndex]);
 	}
 }
 

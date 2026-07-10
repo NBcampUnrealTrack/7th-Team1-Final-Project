@@ -23,7 +23,8 @@ ANSDamageNumberActor::ANSDamageNumberActor()
 	WidgetComponent->SetDrawSize(FVector2D(160.0f, 80.0f));
 }
 
-void ANSDamageNumberActor::InitializeDamageNumber(const FNSDamageNumberFeedbackContext& Context)
+void ANSDamageNumberActor::InitializeDamageNumber(
+	const FNSDamageNumberFeedbackContext& Context, const FVector2D& DisplayOffset)
 {
 	SetActorLocation(Context.WorldLocation);
 	SetLifeSpan(LifeTime);
@@ -44,5 +45,5 @@ void ANSDamageNumberActor::InitializeDamageNumber(const FNSDamageNumberFeedbackC
 		return;
 	}
 
-	DamageNumberWidget->SetDamageNumber(Context);
+	DamageNumberWidget->SetDamageNumber(Context, DisplayOffset);
 }

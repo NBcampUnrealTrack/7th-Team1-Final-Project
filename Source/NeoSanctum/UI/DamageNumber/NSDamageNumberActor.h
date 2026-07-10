@@ -17,7 +17,7 @@ class NEOSANCTUM_API ANSDamageNumberActor : public AActor
 public:
 	ANSDamageNumberActor();
 
-	void InitializeDamageNumber(const FNSDamageNumberFeedbackContext& Context);
+	void InitializeDamageNumber(const FNSDamageNumberFeedbackContext& Context, const FVector2D& DisplayOffset);
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "UI")

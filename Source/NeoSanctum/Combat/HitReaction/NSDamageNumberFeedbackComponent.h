@@ -32,4 +32,7 @@ private:
 	TSubclassOf<ANSDamageNumberActor> DamageNumberActorClass;
 
 	FGameplayMessageListenerHandle DamageNumberListenerHandle;
+
+	// 연속 피해 숫자가 같은 위치에 겹치지 않도록 다음 표시 위치를 기억.
+	int32 NextDisplayOffsetIndex = 0;
 };
