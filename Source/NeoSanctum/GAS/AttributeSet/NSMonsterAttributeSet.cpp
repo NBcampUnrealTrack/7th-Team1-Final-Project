@@ -17,7 +17,10 @@ void UNSMonsterAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePr
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGauge, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MaxHitGauge, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGaugeGainPerHit, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGaugeDamageThresholdRatio, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, HitGaugeGainMultiplier, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MinHitGaugeGainPerHit, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MaxHitGaugeGainPerHit, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, Shield, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSMonsterAttributeSet, MaxShield, COND_None, REPNOTIFY_Always);
 }
@@ -34,10 +37,23 @@ void UNSMonsterAttributeSet::PreAttributeChange(const FGameplayAttribute& Attrib
 	{
 		NewValue = FMath::Max(NewValue, 1.0f);
 	}
-	else if (Attribute == GetHitGaugeGainPerHitAttribute())
+	else if (Attribute == GetHitGaugeDamageThresholdRatioAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.01f);
+	}
+	else if (Attribute == GetHitGaugeGainMultiplierAttribute())
 	{
 		NewValue = FMath::Max(NewValue, 0.0f);
-	}// ---@ 민재 : 아래 쉴드 옵션 추가---
+	}
+	else if (Attribute == GetMinHitGaugeGainPerHitAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	else if (Attribute == GetMaxHitGaugeGainPerHitAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
+	}
+	// ---@ 민재 : 아래 쉴드 옵션 추가---
 	else if (Attribute == GetShieldAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxShield());
@@ -54,16 +70,18 @@ void UNSMonsterAttributeSet::ResetHitGauge()
 	SetHitGauge(0.0f);
 }
 
-void UNSMonsterAttributeSet::AccumulateHitGauge(UNSEnemyStateComponent* EnemyState)
+void UNSMonsterAttributeSet::AccumulateHitGauge(
+	UNSEnemyStateComponent* EnemyState,
+	float AppliedHealthDamage)
 {
 	if (!EnemyState || !EnemyState->CanReceiveHitGauge())
 	{
 		return;
 	}
 
-	const float GaugeGain = FMath::Max(GetHitGaugeGainPerHit(), 0.0f);
+	const float GaugeGain = CalculateHitGaugeGainFromDamage(AppliedHealthDamage);
 
-	if (GaugeGain <= 0.0f)
+	if (GaugeGain <= KINDA_SMALL_NUMBER)
 	{
 		return;
 	}
@@ -75,12 +93,39 @@ void UNSMonsterAttributeSet::AccumulateHitGauge(UNSEnemyStateComponent* EnemySta
 
 	if (NewGauge >= GaugeMaximum)
 	{
-		// 피격 게이지 최대치 도달 시 Hit Reaction GA 실행 시도 
 		EnemyState->StartHitReaction();
-		
-		// 현재 피격 게이지를 0으로 초기화
 		ResetHitGauge();
 	}
+}
+
+float UNSMonsterAttributeSet::CalculateHitGaugeGainFromDamage(float AppliedHealthDamage) const
+{
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER)
+	{
+		return 0.0f;
+	}
+
+	const float GaugeMaximum = FMath::Max(GetMaxHitGauge(), 1.0f);
+	const float HealthMaximum = FMath::Max(GetMaxHealth(), 1.0f);
+	const float ThresholdRatio = FMath::Max(GetHitGaugeDamageThresholdRatio(), 0.01f);
+	const float DamageThreshold = FMath::Max(HealthMaximum * ThresholdRatio, 1.0f);
+
+	float GaugeGain = (AppliedHealthDamage / DamageThreshold) * GaugeMaximum;
+	GaugeGain *= FMath::Max(GetHitGaugeGainMultiplier(), 0.0f);
+
+	const float MinGain = FMath::Max(GetMinHitGaugeGainPerHit(), 0.0f);
+	if (MinGain > 0.0f)
+	{
+		GaugeGain = FMath::Max(GaugeGain, MinGain);
+	}
+
+	const float MaxGain = FMath::Max(GetMaxHitGaugeGainPerHit(), 0.0f);
+	if (MaxGain > 0.0f)
+	{
+		GaugeGain = FMath::Min(GaugeGain, MaxGain);
+	}
+
+	return FMath::Max(GaugeGain, 0.0f);
 }
 
 void UNSMonsterAttributeSet::OnRep_HitGauge(const FGameplayAttributeData& OldHitGauge)
@@ -93,9 +138,40 @@ void UNSMonsterAttributeSet::OnRep_MaxHitGauge(const FGameplayAttributeData& Old
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSMonsterAttributeSet, MaxHitGauge, OldMaxHitGauge);
 }
 
-void UNSMonsterAttributeSet::OnRep_HitGaugeGainPerHit(const FGameplayAttributeData& OldHitGaugeGainPerHit)
+void UNSMonsterAttributeSet::OnRep_HitGaugeDamageThresholdRatio(
+	const FGameplayAttributeData& OldHitGaugeDamageThresholdRatio)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSMonsterAttributeSet, HitGaugeGainPerHit, OldHitGaugeGainPerHit);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(
+		UNSMonsterAttributeSet,
+		HitGaugeDamageThresholdRatio,
+		OldHitGaugeDamageThresholdRatio);
+}
+
+void UNSMonsterAttributeSet::OnRep_HitGaugeGainMultiplier(
+	const FGameplayAttributeData& OldHitGaugeGainMultiplier)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(
+		UNSMonsterAttributeSet,
+		HitGaugeGainMultiplier,
+		OldHitGaugeGainMultiplier);
+}
+
+void UNSMonsterAttributeSet::OnRep_MinHitGaugeGainPerHit(
+	const FGameplayAttributeData& OldMinHitGaugeGainPerHit)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(
+		UNSMonsterAttributeSet,
+		MinHitGaugeGainPerHit,
+		OldMinHitGaugeGainPerHit);
+}
+
+void UNSMonsterAttributeSet::OnRep_MaxHitGaugeGainPerHit(
+	const FGameplayAttributeData& OldMaxHitGaugeGainPerHit)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(
+		UNSMonsterAttributeSet,
+		MaxHitGaugeGainPerHit,
+		OldMaxHitGaugeGainPerHit);
 }
 
 void UNSMonsterAttributeSet::ReportDamageSenseEvent(const FGameplayEffectModCallbackData& Data) const
@@ -139,13 +215,13 @@ void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(
 
 	const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
 
-	// 완전히 방어된 공격이나 사망타는 피격 게이지에 포함하지 않음
-	if (AppliedHealthDamage <= 0.0f || GetHealth() <= 0.0f)
+	// 실제 Health 피해가 없거나 사망한 경우에는 HitGauge를 누적하지 않음
+	if (AppliedHealthDamage <= KINDA_SMALL_NUMBER || GetHealth() <= 0.0f)
 	{
 		return;
 	}
 
-	AccumulateHitGauge(EnemyState);
+	AccumulateHitGauge(EnemyState, AppliedHealthDamage);
 }
 
 void UNSMonsterAttributeSet::HandleDeathAfterEffect(UNSEnemyStateComponent* EnemyState) const
@@ -243,13 +319,13 @@ float UNSMonsterAttributeSet::HandlePreHealthDamage(float DamageAmount, const FG
 	{
 		return DamageAmount;
 	}
-	
+
 	const float AbsorbedDamage = FMath::Min(CurrentShield, DamageAmount);
-	
+
 	SetShield(CurrentShield - AbsorbedDamage);
-	
+
 	NotifyHitReaction(Data, ENSHitReactionDamageLayer::Shield, AbsorbedDamage, false);
-	
+
 	return DamageAmount - AbsorbedDamage;
 }
 

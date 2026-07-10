@@ -105,6 +105,11 @@ private:
 	// AnimInstance 기준으로 현재 조준이 발사 가능한 수준인지 확인하는 함수
 	bool IsAimReadyForFire() const;
 
+	// MachineGun 발사 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendMachineGunFireCosmeticEvent(
+		const FTransform& MuzzleTransform,
+		const FVector& Direction) const;
+
 private:
 	// ProjectileManager Sweep에 사용할 Trace Channel
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile")
@@ -142,10 +147,4 @@ private:
 
 	// PreAim 대기 Timer
 	FTimerHandle PreAimTimerHandle;
-
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName MachineGunFireSoundID = FName(TEXT("Monster_TitanWalker_MachineGun_Fire"));
-
-	void PlayMachineGunFireSound(const FTransform& MuzzleTransform) const;
 };

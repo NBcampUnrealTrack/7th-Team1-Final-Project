@@ -7,6 +7,7 @@
 #include "AbilitySystemInterface.h"
 #include "AttributeSet.h"
 #include "GameFramework/Pawn.h"
+#include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
 #include "Perception/AISense_Hearing.h"
 #include "Perception/AISense_Sight.h"
@@ -14,7 +15,14 @@
 UNSEnemyThreatComponent::UNSEnemyThreatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	SetIsReplicatedByDefault(false);
+	SetIsReplicatedByDefault(true);
+}
+
+void UNSEnemyThreatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(UNSEnemyThreatComponent, ReplicatedCurrentTarget);
 }
 
 bool UNSEnemyThreatComponent::CanEvaluateTarget() const
@@ -43,6 +51,7 @@ void UNSEnemyThreatComponent::ResetThreatState()
 	NextTargetEvalTime = 0.0;
 
 	bAttackStartedOnCurrentTarget = false;
+	ReplicatedCurrentTarget = nullptr;
 }
 
 void UNSEnemyThreatComponent::NotifyAttackStarted()
@@ -199,7 +208,12 @@ void UNSEnemyThreatComponent::RemoveTarget(AActor* TargetActor, bool bClearIfCur
 
 AActor* UNSEnemyThreatComponent::GetCurrentTarget() const
 {
-	return CurrentTarget.Get();
+	if (AActor* LocalTarget = CurrentTarget.Get())
+	{
+		return LocalTarget;
+	}
+
+	return ReplicatedCurrentTarget.Get();
 }
 
 void UNSEnemyThreatComponent::GetKnownTargets(
@@ -252,6 +266,7 @@ void UNSEnemyThreatComponent::ClearCurrentTarget(bool bBlockReacquisition)
 
 	CurrentTarget.Reset();
 	bAttackStartedOnCurrentTarget = false;
+	ReplicatedCurrentTarget = nullptr;
 }
 
 bool UNSEnemyThreatComponent::TryGetLastKnownLocation(
@@ -549,8 +564,14 @@ bool UNSEnemyThreatComponent::IsValidLivingTarget(const AActor* Target) const
 
 void UNSEnemyThreatComponent::SetCurrentTarget(AActor* NewTarget)
 {
-	if (!IsValidLivingTarget(NewTarget) || CurrentTarget.Get() == NewTarget)
+	if (!IsValidLivingTarget(NewTarget))
 	{
+		return;
+	}
+
+	if (CurrentTarget.Get() == NewTarget)
+	{
+		ReplicatedCurrentTarget = NewTarget;
 		return;
 	}
 
@@ -561,6 +582,7 @@ void UNSEnemyThreatComponent::SetCurrentTarget(AActor* NewTarget)
 	}
 
 	CurrentTarget = NewTarget;
+	ReplicatedCurrentTarget = NewTarget;
 
 	const double CurrentTime = World->GetTimeSeconds();
 

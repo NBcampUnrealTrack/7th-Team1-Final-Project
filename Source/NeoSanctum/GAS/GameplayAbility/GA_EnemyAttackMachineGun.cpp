@@ -11,9 +11,9 @@
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Character/Animation/NSTitanWalkerAnimInstance.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileManagerComponent.h"
 #include "NeoSanctum/Combat/Projectile/NSProjectileTypes.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
@@ -120,6 +120,34 @@ void UGA_EnemyAttackMachineGun::GetCurrentMuzzleTransforms(
 	PartComponent->GetMuzzleTransformsByAttackId(
 		CachedAttackRow->AttackId,
 		OutTransforms);
+}
+
+void UGA_EnemyAttackMachineGun::SendMachineGunFireCosmeticEvent(
+	const FTransform& MuzzleTransform,
+	const FVector& Direction) const
+{
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!IsValid(AvatarActor))
+	{
+		return;
+	}
+
+	UNSEnemyCosmeticComponent* CosmeticComponent =
+		AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>();
+
+	if (!CosmeticComponent)
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_MachineGun_Fire;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = MuzzleTransform.GetLocation();
+	EventData.Direction = Direction;
+	EventData.Radius = CachedAttackRow ? CachedAttackRow->ProjectileData.Radius : 0.0f;
+
+	CosmeticComponent->SendCosmeticEvent(EventData, false);
 }
 
 const FNSEnemyAttackRow* UGA_EnemyAttackMachineGun::GetCurrentAttackRow() const
@@ -393,12 +421,7 @@ void UGA_EnemyAttackMachineGun::FireNextProjectile()
 	Request.Damage = CalculateProjectileDamage(*CachedAttackRow);
 
 	ProjectileManager->FireProjectile(Request);
-	PlayMachineGunFireSound(MuzzleTransform);
-
-	/*DrawDebugFire(
-		*CachedAttackRow,
-		Request.StartLocation,
-		Direction);*/
+	SendMachineGunFireCosmeticEvent(MuzzleTransform, Direction);
 
 	++FiredCount;
 
@@ -540,18 +563,4 @@ bool UGA_EnemyAttackMachineGun::IsAimReadyForFire() const
 
 	return !TitanAnimInstance ||
 		TitanAnimInstance->IsAimAligned(AimReadyToleranceDegrees);
-}
-
-void UGA_EnemyAttackMachineGun::PlayMachineGunFireSound(const FTransform& MuzzleTransform) const
-{
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer || MachineGunFireSoundID.IsNone())
-	{
-		return;
-	}
-
-	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-	{
-		SoundSubsystem->PlaySoundAtLocation(MachineGunFireSoundID, MuzzleTransform.GetLocation());
-	}
 }

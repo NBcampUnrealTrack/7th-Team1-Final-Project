@@ -5,12 +5,13 @@
 #include "CoreMinimal.h"
 #include "GA_EnemyAttackBase.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 #include "GA_EnemyAttackLaser.generated.h"
 
 class UNSEnemyPartComponent;
 class ANSBossAIController;
-class UAudioComponent;
-class UNiagaraComponent;
+class UNSEnemyCosmeticComponent;
+class UNSEnemyCombatComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -109,9 +110,39 @@ private:
 	// Laser Sweep에 사용할 Trace Channel
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser")
 	TEnumAsByte<ECollisionChannel> LaserTraceChannel = NSCollisionChannels::EnemyWeaponTrace;
+	
+	// 이 값 이하로 아래를 조준할 때만 Pitch 보간을 시작하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
+	float LaserPitchFlattenStartThreshold = -5.0f;
+
+	// Pitch를 목표 각도까지 보간하는 데 걸리는 시간 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection", meta = (ClampMin = "0.01"))
+	float LaserPitchFlattenDuration = 0.35f;
+
+	// 아래로 꺾인 Pitch가 최종적으로 도달할 목표 Pitch 각도 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
+	float LaserPitchFlattenTargetPitch = 0.0f;
 
 	// 현재 Ability에서 사용할 AttackRow
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
+
+	// Beam 발사 순간에 고정된 레이저 조준 위치 변수
+	FVector LockedLaserAimPoint = FVector::ZeroVector;
+
+	// 현재 레이저가 고정 조준 위치를 사용하는지 나타내는 변수
+	bool bHasLockedLaserAimPoint = false;
+
+	// Beam 발사 순간에 고정된 레이저 Yaw 각도 변수
+	float LockedLaserYaw = 0.0f;
+
+	// Beam 발사 순간에 고정된 레이저 Pitch 각도 변수
+	float LockedLaserInitialPitch = 0.0f;
+
+	// Beam 발사 시작 월드 시간을 저장하는 변수
+	float LockedLaserBeamStartTime = 0.0f;
+
+	// 현재 고정 레이저 Pitch를 수평 방향으로 보간해야 하는지 나타내는 변수
+	bool bShouldFlattenLockedLaserPitch = false;
 
 	// WarnTime 대기 Timer
 	FTimerHandle LaserStartTimerHandle;
@@ -123,84 +154,48 @@ private:
 	FTimerHandle LaserEndTimerHandle;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserChargeSoundID = FName(TEXT("Monster_TitanWalker_Laser_Charge"));
+	// 현재 레이저 코스메틱 Start/Update/Stop을 묶는 InstanceId를 저장하는 변수
+	int32 LaserCosmeticInstanceId = INDEX_NONE;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserFireSoundID = FName(TEXT("Monster_TitanWalker_Laser_Beam"));
+	// 레이저 코스메틱 위치 갱신 타이머를 저장하는 변수
+	FTimerHandle LaserCosmeticUpdateTimerHandle;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserChargeVFXID = FName(TEXT("Monster_TitanWalker_Laser_Charge"));
+	// 레이저 코스메틱 위치 갱신 간격을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "0.01"))
+	float LaserCosmeticUpdateInterval = 0.03f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserBeamVFXID = FName(TEXT("Monster_TitanWalker_Laser_Beam"));
+	// 현재 Avatar의 EnemyCosmeticComponent를 반환하는 함수
+	UNSEnemyCosmeticComponent* GetEnemyCosmeticComponent() const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName LaserChargeDurationParameterName = FName(TEXT("User.ChargeDuration"));
-	
-	// Beam Niagara가 사용할 월드 좌표 끝점 User Parameter 이름을 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
-	FName LaserBeamEndParameterName = FName(TEXT("User.Beam End"));
+	// 레이저 차징 시작 코스메틱 이벤트를 전송하는 함수
+	void SendLaserChargeStartCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const;
 
-	// Beam Niagara에 적용할 고정 스케일 값을 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.01"))
-	float LaserBeamVFXScale = 1.0f;
+	// 레이저 차징 갱신 코스메틱 이벤트를 전송하는 함수
+	void SendLaserChargeUpdateCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const;
 
-	// Beam Niagara의 표시 두께 User Parameter 이름을 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX")
-	FName LaserBeamWidthParameterName = FName(TEXT("User.Beam Width"));
-	
-	// AreaData.Radius를 Niagara Beam Width로 변환할 때 곱하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
-	float LaserBeamWidthRadiusMultiplier = 2.0f;
+	// 레이저 Beam 시작 코스메틱 이벤트를 전송하는 함수
+	void SendLaserBeamStartCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const;
 
-	// Niagara Beam Width의 최소 표시 폭을 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.0"))
-	float LaserBeamMinVisualWidth = 4.0f;
-	
+	// 레이저 Beam 갱신 코스메틱 이벤트를 전송하는 함수
+	void SendLaserBeamUpdateCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UAudioComponent> ActiveLaserChargeAudioComponent;
+	// 레이저 종료 코스메틱 이벤트를 전송하는 함수
+	void SendLaserStopCosmeticEvent() const;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UAudioComponent> ActiveLaserFireAudioComponent;
+	// Beam 목록과 AttackRow 기준으로 Laser 코스메틱 이벤트 데이터를 구성하는 함수
+	void BuildLaserCosmeticEvent(
+		FNSCosmeticEventNetData& OutEventData,
+		FGameplayTag EventTag,
+		ENSCosmeticEventPhase Phase,
+		const TArray<FNSLaserBeam>& Beams,
+		float Duration) const;
 
-	UPROPERTY(Transient)
-	TObjectPtr<UNiagaraComponent> ActiveLaserChargeVFXComponent;
+	// WarnTime 동안 Charge 코스메틱 위치를 갱신하는 함수
+	void TickLaserChargeCosmeticUpdate();
 
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UNiagaraComponent>> ActiveLaserBeamVFXComponents;
+	// Beam 지속 시간 동안 Beam 코스메틱 위치를 갱신하는 함수
+	void TickLaserBeamCosmeticUpdate();
 
-	void StartLaserChargeCosmetics();
-	void StopLaserChargeCosmetics();
-	void StartLaserFireCosmetics(const TArray<FNSLaserBeam>& Beams);
-	void UpdateLaserBeamCosmetics(const TArray<FNSLaserBeam>& Beams);
-	void StopLaserCosmetics();
-	
-	// AttackRow의 AreaData.Radius 기준으로 Niagara Beam Width 값을 계산하는 함수
-	float GetLaserBeamVisualWidth(const FNSEnemyAttackRow& AttackRow) const;
-	
-protected:
-	// Charge 사운드 안에 Beam 사운드까지 포함되어 있으면 Beam 시작 시 별도 사운드를 재생하지 않음
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|Sound")
-	bool bLaserFireSoundIncludedInChargeSound = true;
-
-	// WarnTime 동안 Charge VFX를 소켓 위치에 따라 갱신하는 간격
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|VFX", meta = (ClampMin = "0.01"))
-	float LaserChargeVFXUpdateInterval = 0.03f;
-
-	// WarnTime 동안 Charge VFX 위치 갱신에 사용하는 타이머
-	FTimerHandle LaserChargeVFXUpdateTimerHandle;
-
-	// Charge VFX를 현재 레이저 소켓 위치와 방향으로 갱신하는 함수
-	void UpdateLaserChargeCosmetics();
-
-	// Charge VFX만 정리하는 함수
-	void StopLaserChargeVFX();
-
-	// Charge 사운드만 정리하는 함수
-	void StopLaserChargeSound();
-	
 private:
 	// 현재 Avatar를 제어하는 BossAIController를 반환하는 함수
 	ANSBossAIController* GetBossController() const;
@@ -219,4 +214,26 @@ private:
 		const FNSEnemyAttackRow& AttackRow,
 		const FTransform& MuzzleTransform,
 		const AActor* AttackActor) const;
+
+
+	// 적 CombatComponent를 가져오는 함수
+	UNSEnemyCombatComponent* GetEnemyCombatComponent() const;
+
+	// Beam 발사 순간의 조준 위치를 고정하는 함수
+	bool LockLaserAimPoint();
+
+	// Beam 종료 시 고정 조준 위치를 해제하는 함수
+	void ClearLockedLaserAimPoint();
+
+	// 고정된 조준 위치를 기준으로 레이저 방향을 계산하는 함수
+	FVector ResolveLockedLaserDirection(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
+	
+	// 현재 시간 기준으로 보간된 고정 레이저 Pitch를 반환하는 함수
+	float GetCurrentLockedLaserPitch() const;
+
+	// 고정된 Yaw와 보간된 Pitch 기준으로 현재 레이저 방향을 반환하는 함수
+	FVector ResolveCurrentLockedLaserDirection() const;
+
+	// 클라이언트 ABP가 바라볼 고정 레이저 조준 위치를 갱신하는 함수
+	void UpdateReplicatedLockedLaserAimTargetLocation();
 };

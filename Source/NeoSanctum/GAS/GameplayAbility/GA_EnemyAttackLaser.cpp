@@ -6,20 +6,19 @@
 #include "AbilitySystemInterface.h"
 #include "DrawDebugHelpers.h"
 #include "GenericTeamAgentInterface.h"
-#include "NiagaraComponent.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Components/PrimitiveComponent.h"
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
-#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
+#include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
 
 UGA_EnemyAttackLaser::UGA_EnemyAttackLaser()
 {
@@ -84,6 +83,13 @@ void UGA_EnemyAttackLaser::ActivateAbility(
 void UGA_EnemyAttackLaser::InitializeAttack()
 {
 	CachedAttackRow = GetCurrentAttackRow();
+	LaserCosmeticInstanceId = INDEX_NONE;
+	LockedLaserAimPoint = FVector::ZeroVector;
+	bHasLockedLaserAimPoint = false;
+	LockedLaserYaw = 0.0f;
+	LockedLaserInitialPitch = 0.0f;
+	LockedLaserBeamStartTime = 0.0f;
+	bShouldFlattenLockedLaserPitch = false;
 }
 
 void UGA_EnemyAttackLaser::EndAbility(
@@ -93,17 +99,14 @@ void UGA_EnemyAttackLaser::EndAbility(
 	bool bReplicateEndAbility,
 	bool bWasCancelled)
 {
-	StopLaserCosmetics();
+	SendLaserStopCosmeticEvent();
 	ClearLaserTimers();
+	ClearLockedLaserAimPoint();
 
+	LaserCosmeticInstanceId = INDEX_NONE;
 	CachedAttackRow = nullptr;
 
-	Super::EndAbility(
-		Handle,
-		ActorInfo,
-		ActivationInfo,
-		bReplicateEndAbility,
-		bWasCancelled);
+	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
 const FNSEnemyAttackRow* UGA_EnemyAttackLaser::GetCurrentAttackRow() const
@@ -134,81 +137,102 @@ void UGA_EnemyAttackLaser::GetCurrentLaserBeams(TArray<FNSLaserBeam>& OutBeams) 
 		return;
 	}
 
-	const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent();
-	if (!PartComponent)
-	{
-		return;
-	}
-
 	const float Range = GetLaserRange(*CachedAttackRow);
-	AActor* AttackActor = ResolveAttackActor();
+	AActor* AttackActor = bHasLockedLaserAimPoint ? nullptr : ResolveAttackActor();
 
-	TArray<FTransform> MuzzleTransforms;
-	PartComponent->GetMuzzleTransformsByAttackId(CachedAttackRow->AttackId, MuzzleTransforms);
-
-	for (const FTransform& MuzzleTransform : MuzzleTransforms)
+	if (const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent())
 	{
-		const FVector Direction = ResolveLaserDirection(*CachedAttackRow, MuzzleTransform, AttackActor);
+		TArray<FTransform> MuzzleTransforms;
+		PartComponent->GetMuzzleTransformsByAttackId(CachedAttackRow->AttackId, MuzzleTransforms);
 
-		if (Direction.IsNearlyZero())
+		for (const FTransform& MuzzleTransform : MuzzleTransforms)
 		{
-			continue;
+			const FVector Start = MuzzleTransform.GetLocation();
+			const FVector Direction = bHasLockedLaserAimPoint
+				                          ? ResolveLockedLaserDirection(*CachedAttackRow, MuzzleTransform)
+				                          : ResolveLaserDirection(*CachedAttackRow, MuzzleTransform, AttackActor);
+
+			if (Direction.IsNearlyZero())
+			{
+				continue;
+			}
+
+			FNSLaserBeam Beam;
+			Beam.Start = Start;
+			Beam.End = Start + Direction * Range;
+			OutBeams.Add(Beam);
 		}
 
-		FNSLaserBeam Beam;
-		Beam.Start = MuzzleTransform.GetLocation();
-		Beam.End = Beam.Start + Direction * Range;
-		OutBeams.Add(Beam);
-	}
+		if (!OutBeams.IsEmpty())
+		{
+			return;
+		}
 
-	if (!OutBeams.IsEmpty())
-	{
-		return;
+		const AActor* AvatarActorForFallback = GetAvatarActorFromActorInfo();
+		FVector FallbackDirection = AvatarActorForFallback
+			                            ? AvatarActorForFallback->GetActorForwardVector().GetSafeNormal()
+			                            : FVector::ForwardVector;
+
+		if (FallbackDirection.IsNearlyZero())
+		{
+			FallbackDirection = FVector::ForwardVector;
+		}
+
+		TArray<FNSEnemyPartTraceSegment> TraceSegments;
+		PartComponent->GetTraceSegmentsByAttackId(
+			CachedAttackRow->AttackId,
+			Range,
+			FallbackDirection,
+			TraceSegments);
+
+		for (const FNSEnemyPartTraceSegment& TraceSegment : TraceSegments)
+		{
+			const FVector Start = TraceSegment.Start;
+			const FVector SegmentDirection = (TraceSegment.End - TraceSegment.Start).GetSafeNormal();
+			const FTransform BeamStartTransform(SegmentDirection.Rotation(), Start, FVector::OneVector);
+
+			const FVector Direction = bHasLockedLaserAimPoint
+				                          ? ResolveLockedLaserDirection(*CachedAttackRow, BeamStartTransform)
+				                          : ResolveLaserDirection(*CachedAttackRow, BeamStartTransform, AttackActor);
+
+			if (Direction.IsNearlyZero())
+			{
+				continue;
+			}
+
+			FNSLaserBeam Beam;
+			Beam.Start = Start;
+			Beam.End = Start + Direction * Range;
+			OutBeams.Add(Beam);
+		}
+
+		if (!OutBeams.IsEmpty())
+		{
+			return;
+		}
 	}
 
 	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	const FVector FallbackDirection = AvatarActor
-		? AvatarActor->GetActorForwardVector()
-		: FVector::ForwardVector;
-
-	TArray<FNSEnemyPartTraceSegment> TraceSegments;
-	PartComponent->GetTraceSegmentsByAttackId(
-		CachedAttackRow->AttackId,
-		Range,
-		FallbackDirection,
-		TraceSegments);
-
-	for (const FNSEnemyPartTraceSegment& TraceSegment : TraceSegments)
+	if (!AvatarActor)
 	{
-		FVector SegmentDirection = (TraceSegment.End - TraceSegment.Start).GetSafeNormal();
-
-		if (SegmentDirection.IsNearlyZero())
-		{
-			SegmentDirection = FallbackDirection.GetSafeNormal();
-		}
-
-		if (SegmentDirection.IsNearlyZero())
-		{
-			continue;
-		}
-
-		const FTransform BeamStartTransform(
-			SegmentDirection.Rotation(),
-			TraceSegment.Start,
-			FVector::OneVector);
-
-		const FVector Direction = ResolveLaserDirection(*CachedAttackRow, BeamStartTransform, AttackActor);
-
-		if (Direction.IsNearlyZero())
-		{
-			continue;
-		}
-
-		FNSLaserBeam Beam;
-		Beam.Start = TraceSegment.Start;
-		Beam.End = Beam.Start + Direction * Range;
-		OutBeams.Add(Beam);
+		return;
 	}
+
+	const FTransform FallbackTransform(AvatarActor->GetActorRotation(), AvatarActor->GetActorLocation(),
+	                                   FVector::OneVector);
+	const FVector Direction = bHasLockedLaserAimPoint
+		                          ? ResolveLockedLaserDirection(*CachedAttackRow, FallbackTransform)
+		                          : ResolveLaserDirection(*CachedAttackRow, FallbackTransform, AttackActor);
+
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+
+	FNSLaserBeam Beam;
+	Beam.Start = FallbackTransform.GetLocation();
+	Beam.End = Beam.Start + Direction * Range;
+	OutBeams.Add(Beam);
 }
 
 void UGA_EnemyAttackLaser::StartLaser()
@@ -219,7 +243,16 @@ void UGA_EnemyAttackLaser::StartLaser()
 		return;
 	}
 
-	StartLaserChargeCosmetics();
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		LaserCosmeticInstanceId = CosmeticComponent->AllocateCosmeticInstanceId();
+	}
+
+	TArray<FNSLaserBeam> Beams;
+	GetCurrentLaserBeams(Beams);
+
+	SendLaserChargeStartCosmeticEvent(Beams);
+	TickLaserChargeCosmeticUpdate();
 
 	const float WarnTime = FMath::Max(CachedAttackRow->WarnTime, 0.0f);
 
@@ -231,6 +264,13 @@ void UGA_EnemyAttackLaser::StartLaser()
 
 	if (UWorld* World = GetWorld())
 	{
+		World->GetTimerManager().SetTimer(
+			LaserCosmeticUpdateTimerHandle,
+			this,
+			&ThisClass::TickLaserChargeCosmeticUpdate,
+			FMath::Max(LaserCosmeticUpdateInterval, 0.01f),
+			true);
+
 		World->GetTimerManager().SetTimer(
 			LaserStartTimerHandle,
 			this,
@@ -247,42 +287,60 @@ void UGA_EnemyAttackLaser::BeginLaserDamage()
 		return;
 	}
 
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(LaserCosmeticUpdateTimerHandle);
+	}
+
+	if (!bHasLockedLaserAimPoint && !LockLaserAimPoint())
+	{
+		ClearLaserTimers();
+		CancelAttackAbility();
+		return;
+	}
+
 	TArray<FNSLaserBeam> Beams;
 	GetCurrentLaserBeams(Beams);
-	StartLaserFireCosmetics(Beams);
+
+	if (Beams.IsEmpty())
+	{
+		ClearLaserTimers();
+		CancelAttackAbility();
+		return;
+	}
+
+	SendLaserBeamStartCosmeticEvent(Beams);
+	TickLaserBeamCosmeticUpdate();
 
 	TickLaserDamage();
 
-	if (!IsActive() || !CachedAttackRow)
-	{
-		return;
-	}
-
-	const float Duration = FMath::Max(CachedAttackRow->SustainData.Duration, 0.0f);
-	if (Duration <= 0.0f)
-	{
-		FinishAttackAbility();
-		return;
-	}
-
-	const float TickInterval =
-		FMath::Max(CachedAttackRow->SustainData.TickInterval, 0.01f);
-
 	if (UWorld* World = GetWorld())
 	{
+		const float TickInterval = FMath::Max(0.01f, CachedAttackRow->SustainData.TickInterval);
 		World->GetTimerManager().SetTimer(
 			LaserTickTimerHandle,
 			this,
-			&ThisClass::TickLaserDamage,
+			&UGA_EnemyAttackLaser::TickLaserDamage,
 			TickInterval,
-			true);
+			true
+		);
 
+		const float Duration = FMath::Max(0.f, CachedAttackRow->SustainData.Duration);
 		World->GetTimerManager().SetTimer(
 			LaserEndTimerHandle,
 			this,
-			&ThisClass::CompleteLaser,
+			&UGA_EnemyAttackLaser::CompleteLaser,
 			Duration,
-			false);
+			false
+		);
+
+		World->GetTimerManager().SetTimer(
+			LaserCosmeticUpdateTimerHandle,
+			this,
+			&UGA_EnemyAttackLaser::TickLaserBeamCosmeticUpdate,
+			LaserCosmeticUpdateInterval,
+			true
+		);
 	}
 }
 
@@ -309,8 +367,6 @@ void UGA_EnemyAttackLaser::TickLaserDamage()
 		CancelAttackAbility();
 		return;
 	}
-
-	UpdateLaserBeamCosmetics(LaserBeams);
 
 	TSet<TObjectKey<AActor>> TargetsThisTick;
 
@@ -351,7 +407,7 @@ void UGA_EnemyAttackLaser::ClearLaserTimers()
 		TimerManager.ClearTimer(LaserStartTimerHandle);
 		TimerManager.ClearTimer(LaserTickTimerHandle);
 		TimerManager.ClearTimer(LaserEndTimerHandle);
-		TimerManager.ClearTimer(LaserChargeVFXUpdateTimerHandle);
+		TimerManager.ClearTimer(LaserCosmeticUpdateTimerHandle);
 	}
 }
 
@@ -652,225 +708,166 @@ void UGA_EnemyAttackLaser::DrawDebugLaserBeam(
 		AttackRow.DebugData.DrawTime);
 }
 
-void UGA_EnemyAttackLaser::StartLaserChargeCosmetics()
+UNSEnemyCosmeticComponent* UGA_EnemyAttackLaser::GetEnemyCosmeticComponent() const
 {
-	UWorld* World = GetWorld();
 	AActor* AvatarActor = GetAvatarActorFromActorInfo();
 
-	if (!World || World->GetNetMode() == NM_DedicatedServer || !IsValid(AvatarActor))
+	return IsValid(AvatarActor)
+		       ? AvatarActor->FindComponentByClass<UNSEnemyCosmeticComponent>()
+		       : nullptr;
+}
+
+void UGA_EnemyAttackLaser::SendLaserChargeStartCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const
+{
+	if (!CachedAttackRow || LaserCosmeticInstanceId == INDEX_NONE || Beams.IsEmpty())
 	{
 		return;
 	}
 
-	TArray<FNSLaserBeam> Beams;
-	GetCurrentLaserBeams(Beams);
+	FNSCosmeticEventNetData EventData;
+	BuildLaserCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Laser_ChargeStart,
+		ENSCosmeticEventPhase::Start,
+		Beams,
+		FMath::Max(CachedAttackRow->WarnTime, 0.0f));
 
-	const FVector ChargeLocation =
-		Beams.IsEmpty() ? AvatarActor->GetActorLocation() : Beams[0].Start;
-
-	const FVector ChargeDirection =
-		Beams.IsEmpty()
-			? AvatarActor->GetActorForwardVector()
-			: (Beams[0].End - Beams[0].Start).GetSafeNormal();
-
-	const FRotator ChargeRotation =
-		ChargeDirection.IsNearlyZero() ? AvatarActor->GetActorRotation() : ChargeDirection.Rotation();
-
-	if (!LaserChargeSoundID.IsNone())
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
 	{
-		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-		{
-			ActiveLaserChargeAudioComponent =
-				SoundSubsystem->PlaySoundAttached(
-					LaserChargeSoundID,
-					AvatarActor->GetRootComponent());
-		}
-	}
-
-	if (!LaserChargeVFXID.IsNone())
-	{
-		if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
-		{
-			ActiveLaserChargeVFXComponent =
-				VFXSubsystem->SpawnVFXAtLocation(
-					LaserChargeVFXID,
-					ChargeLocation,
-					ChargeRotation,
-					1.0f,
-					false);
-
-			if (ActiveLaserChargeVFXComponent && CachedAttackRow)
-			{
-				ActiveLaserChargeVFXComponent->SetVariableFloat(
-					LaserChargeDurationParameterName,
-					FMath::Max(CachedAttackRow->WarnTime, 0.0f));
-
-				ActiveLaserChargeVFXComponent->Activate(true);
-			}
-		}
-	}
-
-	UpdateLaserChargeCosmetics();
-
-	if (ActiveLaserChargeVFXComponent)
-	{
-		World->GetTimerManager().SetTimer(
-			LaserChargeVFXUpdateTimerHandle,
-			this,
-			&ThisClass::UpdateLaserChargeCosmetics,
-			LaserChargeVFXUpdateInterval,
-			true);
+		CosmeticComponent->SendCosmeticEvent(EventData, true);
 	}
 }
 
-void UGA_EnemyAttackLaser::StopLaserChargeCosmetics()
+void UGA_EnemyAttackLaser::SendLaserChargeUpdateCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const
 {
-	StopLaserChargeVFX();
-	StopLaserChargeSound();
+	if (!CachedAttackRow || LaserCosmeticInstanceId == INDEX_NONE || Beams.IsEmpty())
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	BuildLaserCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Laser_ChargeUpdate,
+		ENSCosmeticEventPhase::Update,
+		Beams,
+		FMath::Max(CachedAttackRow->WarnTime, 0.0f));
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, false);
+	}
 }
 
-void UGA_EnemyAttackLaser::StartLaserFireCosmetics(const TArray<FNSLaserBeam>& Beams)
+void UGA_EnemyAttackLaser::SendLaserBeamStartCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const
 {
-	StopLaserChargeVFX();
-
-	AActor* AvatarActor = GetAvatarActorFromActorInfo();
-	if (!IsValid(AvatarActor))
+	if (!CachedAttackRow || LaserCosmeticInstanceId == INDEX_NONE || Beams.IsEmpty())
 	{
 		return;
 	}
 
-	if (!bLaserFireSoundIncludedInChargeSound && !LaserFireSoundID.IsNone())
-	{
-		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-		{
-			ActiveLaserFireAudioComponent =
-				SoundSubsystem->PlaySoundAttached(
-					LaserFireSoundID,
-					AvatarActor->GetRootComponent());
-		}
-	}
+	FNSCosmeticEventNetData EventData;
+	BuildLaserCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Laser_BeamStart,
+		ENSCosmeticEventPhase::Start,
+		Beams,
+		FMath::Max(CachedAttackRow->SustainData.Duration, 0.0f));
 
-	UpdateLaserBeamCosmetics(Beams);
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, true);
+	}
 }
 
-void UGA_EnemyAttackLaser::UpdateLaserBeamCosmetics(const TArray<FNSLaserBeam>& Beams)
+void UGA_EnemyAttackLaser::SendLaserBeamUpdateCosmeticEvent(const TArray<FNSLaserBeam>& Beams) const
 {
-	UWorld* World = GetWorld();
-	if (!World || World->GetNetMode() == NM_DedicatedServer || LaserBeamVFXID.IsNone())
+	if (!CachedAttackRow || LaserCosmeticInstanceId == INDEX_NONE || Beams.IsEmpty())
 	{
 		return;
 	}
 
-	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this);
-	if (!VFXSubsystem)
+	FNSCosmeticEventNetData EventData;
+	BuildLaserCosmeticEvent(
+		EventData,
+		NSGameplayTags::Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate,
+		ENSCosmeticEventPhase::Update,
+		Beams,
+		FMath::Max(CachedAttackRow->SustainData.Duration, 0.0f));
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, false);
+	}
+}
+
+void UGA_EnemyAttackLaser::SendLaserStopCosmeticEvent() const
+{
+	if (LaserCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	while (ActiveLaserBeamVFXComponents.Num() < Beams.Num())
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Laser_Stop;
+	EventData.InstanceId = LaserCosmeticInstanceId;
+	EventData.Phase = ENSCosmeticEventPhase::Stop;
+
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
 	{
-		ActiveLaserBeamVFXComponents.Add(nullptr);
+		CosmeticComponent->SendCosmeticEvent(EventData, true);
+	}
+}
+
+void UGA_EnemyAttackLaser::BuildLaserCosmeticEvent(
+	FNSCosmeticEventNetData& OutEventData,
+	FGameplayTag EventTag,
+	ENSCosmeticEventPhase Phase,
+	const TArray<FNSLaserBeam>& Beams,
+	float Duration) const
+{
+	OutEventData = FNSCosmeticEventNetData();
+
+	OutEventData.EventTag = EventTag;
+	OutEventData.InstanceId = LaserCosmeticInstanceId;
+	OutEventData.Phase = Phase;
+	OutEventData.Duration = FMath::Max(Duration, 0.0f);
+
+	if (CachedAttackRow)
+	{
+		OutEventData.Radius = GetLaserRadius(*CachedAttackRow);
+		OutEventData.Range = GetLaserRange(*CachedAttackRow);
 	}
 
-	for (int32 Index = 0; Index < Beams.Num(); ++Index)
+	for (const FNSLaserBeam& Beam : Beams)
 	{
-		const FNSLaserBeam& Beam = Beams[Index];
 		const FVector Direction = (Beam.End - Beam.Start).GetSafeNormal();
-		const float Length = FVector::Dist(Beam.Start, Beam.End);
-
-		if (Direction.IsNearlyZero() || Length <= 0.0f)
+		if (Direction.IsNearlyZero())
 		{
 			continue;
 		}
 
-		UNiagaraComponent* VFX = ActiveLaserBeamVFXComponents[Index];
+		FNSCosmeticEventPointNetData PointData;
+		PointData.Location = Beam.Start;
+		PointData.EndLocation = Beam.End;
+		PointData.Direction = Direction;
 
-		if (!IsValid(VFX))
-		{
-			VFX = VFXSubsystem->SpawnVFXAtLocation(
-				LaserBeamVFXID,
-				Beam.Start,
-				FRotator::ZeroRotator,
-				LaserBeamVFXScale,
-				false);
-
-			ActiveLaserBeamVFXComponents[Index] = VFX;
-		}
-
-		if (IsValid(VFX))
-		{
-			VFX->SetWorldLocationAndRotation(Beam.Start, FRotator::ZeroRotator);
-			VFX->SetWorldScale3D(FVector::OneVector * LaserBeamVFXScale);
-			VFX->SetVariableVec3(LaserBeamEndParameterName, Beam.End);
-
-			if (!LaserBeamWidthParameterName.IsNone())
-			{
-				const float BeamVisualWidth = CachedAttackRow
-					? GetLaserBeamVisualWidth(*CachedAttackRow)
-					: LaserBeamMinVisualWidth;
-
-				if (!LaserBeamWidthParameterName.IsNone())
-				{
-					VFX->SetVariableFloat(LaserBeamWidthParameterName, BeamVisualWidth);
-				}
-			}
-
-			if (!VFX->IsActive())
-			{
-				VFX->Activate(true);
-			}
-		}
+		OutEventData.Points.Add(PointData);
 	}
 
-	for (int32 Index = Beams.Num(); Index < ActiveLaserBeamVFXComponents.Num(); ++Index)
+	if (!OutEventData.Points.IsEmpty())
 	{
-		if (IsValid(ActiveLaserBeamVFXComponents[Index]))
-		{
-			ActiveLaserBeamVFXComponents[Index]->Deactivate();
-			ActiveLaserBeamVFXComponents[Index]->DestroyComponent();
-		}
-	}
+		const FNSCosmeticEventPointNetData& FirstPoint = OutEventData.Points[0];
 
-	ActiveLaserBeamVFXComponents.SetNum(Beams.Num());
+		OutEventData.Location = FirstPoint.Location;
+		OutEventData.EndLocation = FirstPoint.EndLocation;
+		OutEventData.Direction = FirstPoint.Direction;
+	}
 }
 
-void UGA_EnemyAttackLaser::StopLaserCosmetics()
+void UGA_EnemyAttackLaser::TickLaserChargeCosmeticUpdate()
 {
-	StopLaserChargeCosmetics();
-
-	if (ActiveLaserFireAudioComponent)
-	{
-		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-		{
-			SoundSubsystem->StopSound(ActiveLaserFireAudioComponent, 0.1f);
-		}
-
-		ActiveLaserFireAudioComponent = nullptr;
-	}
-
-	for (UNiagaraComponent* VFX : ActiveLaserBeamVFXComponents)
-	{
-		if (VFX)
-		{
-			VFX->Deactivate();
-			VFX->DestroyComponent();
-		}
-	}
-
-	ActiveLaserBeamVFXComponents.Reset();
-}
-
-float UGA_EnemyAttackLaser::GetLaserBeamVisualWidth(const FNSEnemyAttackRow& AttackRow) const
-{
-	const float Radius = GetLaserRadius(AttackRow);
-	const float Width = Radius * LaserBeamWidthRadiusMultiplier;
-
-	return FMath::Max(Width, LaserBeamMinVisualWidth);
-}
-
-void UGA_EnemyAttackLaser::UpdateLaserChargeCosmetics()
-{
-	if (!CachedAttackRow || !ActiveLaserChargeVFXComponent)
+	if (!CachedAttackRow || LaserCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
@@ -878,56 +875,28 @@ void UGA_EnemyAttackLaser::UpdateLaserChargeCosmetics()
 	TArray<FNSLaserBeam> Beams;
 	GetCurrentLaserBeams(Beams);
 
-	if (Beams.IsEmpty())
+	SendLaserChargeUpdateCosmeticEvent(Beams);
+}
+
+void UGA_EnemyAttackLaser::TickLaserBeamCosmeticUpdate()
+{
+	if (!CachedAttackRow)
 	{
 		return;
 	}
 
-	const FNSLaserBeam& Beam = Beams[0];
-	const FVector Direction = (Beam.End - Beam.Start).GetSafeNormal();
+	UpdateReplicatedLockedLaserAimTargetLocation();
 
-	if (Direction.IsNearlyZero())
+	if (LaserCosmeticInstanceId == INDEX_NONE)
 	{
 		return;
 	}
 
-	ActiveLaserChargeVFXComponent->SetWorldLocationAndRotation(
-		Beam.Start,
-		Direction.Rotation());
+	TArray<FNSLaserBeam> Beams;
+	GetCurrentLaserBeams(Beams);
 
-	ActiveLaserChargeVFXComponent->SetVariableFloat(
-		LaserChargeDurationParameterName,
-		FMath::Max(CachedAttackRow->WarnTime, 0.0f));
+	SendLaserBeamUpdateCosmeticEvent(Beams);
 }
-
-void UGA_EnemyAttackLaser::StopLaserChargeVFX()
-{
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(LaserChargeVFXUpdateTimerHandle);
-	}
-
-	if (ActiveLaserChargeVFXComponent)
-	{
-		ActiveLaserChargeVFXComponent->Deactivate();
-		ActiveLaserChargeVFXComponent->DestroyComponent();
-		ActiveLaserChargeVFXComponent = nullptr;
-	}
-}
-
-void UGA_EnemyAttackLaser::StopLaserChargeSound()
-{
-	if (ActiveLaserChargeAudioComponent)
-	{
-		if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
-		{
-			SoundSubsystem->StopSound(ActiveLaserChargeAudioComponent, 0.1f);
-		}
-
-		ActiveLaserChargeAudioComponent = nullptr;
-	}
-}
-
 
 // 현재 Avatar를 제어하는 BossAIController를 반환하는 함수
 ANSBossAIController* UGA_EnemyAttackLaser::GetBossController() const
@@ -1016,4 +985,215 @@ FVector UGA_EnemyAttackLaser::ResolveLaserDirection(
 	}
 
 	return Direction;
+}
+
+UNSEnemyCombatComponent* UGA_EnemyAttackLaser::GetEnemyCombatComponent() const
+{
+	if (AActor* AvatarActor = GetAvatarActorFromActorInfo())
+	{
+		return AvatarActor->FindComponentByClass<UNSEnemyCombatComponent>();
+	}
+
+	return nullptr;
+}
+
+bool UGA_EnemyAttackLaser::LockLaserAimPoint()
+{
+	if (!CachedAttackRow)
+	{
+		return false;
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent();
+
+	FTransform ReferenceTransform;
+	bool bHasReferenceTransform = false;
+
+	if (PartComponent)
+	{
+		TArray<FTransform> MuzzleTransforms;
+		PartComponent->GetMuzzleTransformsByAttackId(CachedAttackRow->AttackId, MuzzleTransforms);
+
+		if (!MuzzleTransforms.IsEmpty())
+		{
+			ReferenceTransform = MuzzleTransforms[0];
+			bHasReferenceTransform = true;
+		}
+	}
+
+	if (!bHasReferenceTransform && PartComponent)
+	{
+		FVector FallbackDirection = AvatarActor
+			? AvatarActor->GetActorForwardVector().GetSafeNormal()
+			: FVector::ForwardVector;
+
+		if (FallbackDirection.IsNearlyZero())
+		{
+			FallbackDirection = FVector::ForwardVector;
+		}
+
+		TArray<FNSEnemyPartTraceSegment> TraceSegments;
+		PartComponent->GetTraceSegmentsByAttackId(
+			CachedAttackRow->AttackId,
+			GetLaserRange(*CachedAttackRow),
+			FallbackDirection,
+			TraceSegments);
+
+		if (!TraceSegments.IsEmpty())
+		{
+			FVector Direction = (TraceSegments[0].End - TraceSegments[0].Start).GetSafeNormal();
+
+			if (Direction.IsNearlyZero() && AvatarActor)
+			{
+				Direction = AvatarActor->GetActorForwardVector();
+			}
+
+			if (!Direction.IsNearlyZero())
+			{
+				ReferenceTransform = FTransform(Direction.Rotation(), TraceSegments[0].Start, FVector::OneVector);
+				bHasReferenceTransform = true;
+			}
+		}
+	}
+
+	if (!bHasReferenceTransform && AvatarActor)
+	{
+		ReferenceTransform = FTransform(AvatarActor->GetActorRotation(), AvatarActor->GetActorLocation(), FVector::OneVector);
+		bHasReferenceTransform = true;
+	}
+
+	if (!bHasReferenceTransform)
+	{
+		return false;
+	}
+
+	LockedLaserAimPoint = ResolveLaserAimPoint(*CachedAttackRow, ReferenceTransform, ResolveAttackActor());
+	bHasLockedLaserAimPoint = true;
+
+	FVector LockedDirection = (LockedLaserAimPoint - ReferenceTransform.GetLocation()).GetSafeNormal();
+	if (LockedDirection.IsNearlyZero())
+	{
+		LockedDirection = ReferenceTransform.GetRotation().GetForwardVector().GetSafeNormal();
+	}
+
+	if (LockedDirection.IsNearlyZero())
+	{
+		LockedDirection = FVector::ForwardVector;
+	}
+
+	const FRotator LockedRotation = LockedDirection.Rotation();
+	LockedLaserYaw = LockedRotation.Yaw;
+	LockedLaserInitialPitch = LockedRotation.Pitch;
+
+	const UWorld* World = GetWorld();
+	LockedLaserBeamStartTime = World ? World->GetTimeSeconds() : 0.0f;
+
+	bShouldFlattenLockedLaserPitch = LockedLaserInitialPitch <= LaserPitchFlattenStartThreshold;
+
+	UpdateReplicatedLockedLaserAimTargetLocation();
+
+	return true;
+}
+
+void UGA_EnemyAttackLaser::ClearLockedLaserAimPoint()
+{
+	bHasLockedLaserAimPoint = false;
+	LockedLaserAimPoint = FVector::ZeroVector;
+	LockedLaserYaw = 0.0f;
+	LockedLaserInitialPitch = 0.0f;
+	LockedLaserBeamStartTime = 0.0f;
+	bShouldFlattenLockedLaserPitch = false;
+
+	if (UNSEnemyCombatComponent* CombatComponent = GetEnemyCombatComponent())
+	{
+		CombatComponent->ClearReplicatedAimTargetLocation();
+	}
+}
+
+FVector UGA_EnemyAttackLaser::ResolveLockedLaserDirection(
+	const FNSEnemyAttackRow& AttackRow,
+	const FTransform& MuzzleTransform) const
+{
+	if (!bHasLockedLaserAimPoint)
+	{
+		return ResolveLaserDirection(AttackRow, MuzzleTransform, ResolveAttackActor());
+	}
+
+	const FVector CurrentDirection = ResolveCurrentLockedLaserDirection();
+	if (!CurrentDirection.IsNearlyZero())
+	{
+		return CurrentDirection;
+	}
+
+	return MuzzleTransform.GetRotation().GetForwardVector().GetSafeNormal();
+}
+
+float UGA_EnemyAttackLaser::GetCurrentLockedLaserPitch() const
+{
+	if (!bShouldFlattenLockedLaserPitch)
+	{
+		return LockedLaserInitialPitch;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return LockedLaserInitialPitch;
+	}
+
+	const float ElapsedTime = FMath::Max(0.0f, World->GetTimeSeconds() - LockedLaserBeamStartTime);
+	const float Duration = FMath::Max(0.01f, LaserPitchFlattenDuration);
+	const float Alpha = FMath::Clamp(ElapsedTime / Duration, 0.0f, 1.0f);
+
+	return FMath::Lerp(LockedLaserInitialPitch, LaserPitchFlattenTargetPitch, Alpha);
+}
+
+FVector UGA_EnemyAttackLaser::ResolveCurrentLockedLaserDirection() const
+{
+	if (!bHasLockedLaserAimPoint)
+	{
+		return FVector::ZeroVector;
+	}
+
+	const float CurrentPitch = GetCurrentLockedLaserPitch();
+	const FRotator CurrentRotation(CurrentPitch, LockedLaserYaw, 0.0f);
+
+	return CurrentRotation.Vector().GetSafeNormal();
+}
+
+void UGA_EnemyAttackLaser::UpdateReplicatedLockedLaserAimTargetLocation()
+{
+	if (!CachedAttackRow || !bHasLockedLaserAimPoint)
+	{
+		return;
+	}
+
+	UNSEnemyCombatComponent* CombatComponent = GetEnemyCombatComponent();
+	if (!CombatComponent)
+	{
+		return;
+	}
+
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	if (!AvatarActor)
+	{
+		return;
+	}
+
+	FVector AimOrigin = AvatarActor->GetActorLocation();
+
+	if (const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(AvatarActor))
+	{
+		AimOrigin = EnemyAgent->GetAimLocation();
+	}
+
+	const FVector CurrentDirection = ResolveCurrentLockedLaserDirection();
+	if (CurrentDirection.IsNearlyZero())
+	{
+		return;
+	}
+
+	const FVector ReplicatedAimLocation = AimOrigin + CurrentDirection * GetLaserRange(*CachedAttackRow);
+	CombatComponent->SetReplicatedAimTargetLocation(ReplicatedAimLocation);
 }

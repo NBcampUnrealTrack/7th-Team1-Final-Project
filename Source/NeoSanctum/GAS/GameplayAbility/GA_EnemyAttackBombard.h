@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GA_EnemyAttackBase.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 #include "GA_EnemyAttackBombard.generated.h"
 
 class UMaterialInterface;
@@ -143,36 +144,23 @@ private:
 
 	// Impact 예약 Timer 목록
 	TArray<FTimerHandle> ImpactTimerHandles;
-	
+
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName BombardLaunchSoundID = FName(TEXT("Monster_TitanWalker_Bombard_Launch"));
+	virtual void PrepareForAttackMontage() override;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName BombardImpactSoundID = FName(TEXT("Monster_TitanWalker_Bombard_Explosion"));
+private:
+	// 포격 준비 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendBombardPrepareCosmeticEvent() const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName BombardLaunchVFXID = FName(TEXT("Monster_TitanWalker_Bombard_Launch"));
+	// 포격 발사 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendBombardLaunchCosmeticEvent(const FVector& MuzzleLocation, const FVector& ImpactLocation) const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic")
-	FName BombardExplosionVFXID = FName(TEXT("Monster_TitanWalker_Bombard_Explosion"));
+	// 포격 경고 Plane 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendBombardWarningCosmeticEvent(const FVector& ImpactLocation) const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic", meta = (ClampMin = "1.0"))
-	float BombardExplosionBaseRadius = 100.0f;
-	
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
-	TSubclassOf<ANSAreaWarningPlaneActor> BombardWarningPlaneClass;
+	// 포격 착탄 코스메틱 이벤트를 클라이언트에 전송하는 함수
+	void SendBombardImpactCosmeticEvent(const FVector& ImpactLocation) const;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane", meta = (ClampMin = "0.0"))
-	float BombardWarningPlaneDuration = 1.0f;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cosmetic|WarningPlane")
-	float BombardWarningPlaneZOffset = 1.0f;
-
-	void PlayBombardLaunchCosmetics(const FVector& MuzzleLocation, const FVector& ImpactLocation) const;
-	void PlayBombardImpactCosmetics(const FVector& ImpactLocation, const FNSEnemyAttackRow& AttackRow) const;
-	
-	void SpawnBombardWarningPlane(
-		const FVector& ImpactLocation,
-		const FNSEnemyAttackRow& AttackRow) const;
+	// 포격 코스메틱 이벤트를 CosmeticComponent로 전달하는 함수
+	void SendBombardCosmeticEvent(const FNSCosmeticEventNetData& EventData, bool bReliable) const;
 };

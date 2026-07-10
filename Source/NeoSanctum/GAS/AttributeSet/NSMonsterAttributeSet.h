@@ -38,10 +38,26 @@ public:
 	FGameplayAttributeData MaxHitGauge;
 	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, MaxHitGauge);
 
-	// 유효한 피격 한 번에 증가하는 게이지 수치
-	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_HitGaugeGainPerHit, Category = "GAS|Monster|Hit Gauge")
-	FGameplayAttributeData HitGaugeGainPerHit;
-	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, HitGaugeGainPerHit);
+	// 최대 체력의 이 비율만큼 피해를 받으면 HitGauge가 가득 차도록 계산하는 Attribute
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_HitGaugeDamageThresholdRatio,
+		Category = "GAS|Monster|Hit Gauge")
+	FGameplayAttributeData HitGaugeDamageThresholdRatio;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, HitGaugeDamageThresholdRatio);
+
+	// 데미지 기반 HitGauge 증가량에 곱하는 보정 배율 Attribute
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_HitGaugeGainMultiplier, Category = "GAS|Monster|Hit Gauge")
+	FGameplayAttributeData HitGaugeGainMultiplier;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, HitGaugeGainMultiplier);
+
+	// 유효한 피격 한 번에 보장되는 최소 HitGauge 증가량 Attribute
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MinHitGaugeGainPerHit, Category = "GAS|Monster|Hit Gauge")
+	FGameplayAttributeData MinHitGaugeGainPerHit;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, MinHitGaugeGainPerHit);
+
+	// 유효한 피격 한 번에 증가할 수 있는 최대 HitGauge 증가량 Attribute. 0이면 제한 없음
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxHitGaugeGainPerHit, Category = "GAS|Monster|Hit Gauge")
+	FGameplayAttributeData MaxHitGaugeGainPerHit;
+	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, MaxHitGaugeGainPerHit);
 
 	// 현재 피격 게이지를 0으로 초기화하는 함수
 	void ResetHitGauge();
@@ -50,8 +66,11 @@ public:
 	UNSEnemyStateComponent* GetTargetEnemyState(const FGameplayEffectModCallbackData& Data) const;
 
 private:
-	// 생존 중인 몬스터의 피격 게이지를 한 번 누적하는 함수
-	void AccumulateHitGauge(UNSEnemyStateComponent* EnemyState);
+	// 실제 적용된 Health Damage를 기준으로 HitGauge를 누적하는 함수
+	void AccumulateHitGauge(UNSEnemyStateComponent* EnemyState, float AppliedHealthDamage);
+
+	// 실제 적용된 Health Damage를 HitGauge 증가량으로 변환하는 함수
+	float CalculateHitGaugeGainFromDamage(float AppliedHealthDamage) const;
 
 	// 복제된 현재 피격 게이지를 GAS Attribute 시스템에 반영하는 콜백 함수
 	UFUNCTION()
@@ -61,9 +80,18 @@ private:
 	UFUNCTION()
 	void OnRep_MaxHitGauge(const FGameplayAttributeData& OldMaxHitGauge);
 
-	// 복제된 피격당 증가량을 GAS Attribute 시스템에 반영하는 콜백 함수
 	UFUNCTION()
-	void OnRep_HitGaugeGainPerHit(const FGameplayAttributeData& OldHitGaugeGainPerHit);
+	void OnRep_HitGaugeDamageThresholdRatio(const FGameplayAttributeData& OldHitGaugeDamageThresholdRatio);
+
+	UFUNCTION()
+	void OnRep_HitGaugeGainMultiplier(const FGameplayAttributeData& OldHitGaugeGainMultiplier);
+
+	UFUNCTION()
+	void OnRep_MinHitGaugeGainPerHit(const FGameplayAttributeData& OldMinHitGaugeGainPerHit);
+
+	UFUNCTION()
+	void OnRep_MaxHitGaugeGainPerHit(const FGameplayAttributeData& OldMaxHitGaugeGainPerHit);
+
 private:
 	/* PostGameplayEffectExecute 내부 로직 분리 */
 	// Damage Attribute가 소비되기 전에 AI Damage Sense 이벤트를 보고하는 함수
@@ -77,12 +105,13 @@ private:
 
 	// 드론 공격자를 실제 어그로 대상인 소유 플레이어로 변환하는 함수
 	AActor* ResolvePerceivedInstigator(AActor* InstigatorActor) const;
+
 private:
 	// 실제 체력 피해가 발생했을 때 몬스터 전용 피격 플래시 Cue를 실행하는 함수
 	void ExecuteDamageFlashCueAfterDamage(
 		const FGameplayEffectModCallbackData& Data,
 		float PreviousHealth) const;
-	
+
 	// @민재 : 보스 쉴드 로직을 위한 임시 쉴드 옵션추가
 public:
 	// TODO(refactor): 현재는 보스만 사용. 향후 UNSBossAttributeSet로 분리 예정 — 아래 Shield 블록만 이전하면 됨
