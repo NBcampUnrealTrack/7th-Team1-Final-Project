@@ -227,21 +227,13 @@ FVector UNSBaseAttributeSet::ResolveDamageNumberWorldLocation(
 {
 	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
 
-	// HitResult가 있으면 실제 충돌 지점을 가장 먼저 씀.
+	// 직접 맞춘 공격은 실제 충돌 지점에 숫자를 띄움.
 	if (const FHitResult* HitResult = EffectContext.GetHitResult())
 	{
 		return HitResult->ImpactPoint;
 	}
 
-	// 폭발처럼 HitResult가 없는 피해는 EffectContext Origin을 사용.
-	if (const FGameplayEffectContext* RawEffectContext = EffectContext.Get())
-	{
-		if (RawEffectContext->HasOrigin())
-		{
-			return RawEffectContext->GetOrigin();
-		}
-	}
-
+	// 범위 피해는 폭발 원점이 공통이니, 각 대상 위치를 따로 사용.
 	return TargetActor ?
 		TargetActor->GetActorLocation() + FVector(0.0f, 0.0f, 80.0f) : FVector::ZeroVector;
 }
