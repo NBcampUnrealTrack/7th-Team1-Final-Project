@@ -165,4 +165,11 @@ private:
 	void SpawnMonsters(UClass* InClass, UNSEnemyData* InData, int32 Count);
 	// 헬퍼용 함수: 스폰 대상의 바닥 Z오프셋 계산용
 	float ComputeSpawnZOffset(UClass* InClass, const UNSEnemyData* InData) const;
+	
+	// 몬스터 사망 추적용
+	void RegisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster);
+	void UnregisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster);
+
+	// 개체별 OnEnemyDead 바인딩 핸들 (재사용 시 정리용)
+	TMap<TWeakObjectPtr<ANSEnemyCharacterBase>, FDelegateHandle> DeathDelegateHandles;
 };
