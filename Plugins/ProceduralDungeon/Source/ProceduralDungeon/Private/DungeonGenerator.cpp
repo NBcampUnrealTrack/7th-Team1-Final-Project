@@ -118,6 +118,10 @@ bool ADungeonGenerator::CreateDungeon_Implementation()
 	}
 	case EState::Finalizing:
 		DungeonLog_Debug("--- Finalizing State");
+		// Allow generated rooms to be pruned while the graph only contains actual
+		// room-to-room connections. FinalizeDungeon creates placeholder connections
+		// for every unconnected door, so pruning must happen before that point.
+		PruneDungeon();
 		// Initialize the dungeon by eg. altering the room instances
 		FinalizeDungeon();
 		CurrentState = EState::Idle;
@@ -293,6 +297,10 @@ bool ADungeonGenerator::ContinueToAddRoom_Implementation()
 {
 	DungeonLog_Error("Error: ContinueToAddRoom not implemented");
 	return false;
+}
+
+void ADungeonGenerator::PruneDungeon_Implementation()
+{
 }
 
 // ===== Utility Functions (Deprectated!!!) =====

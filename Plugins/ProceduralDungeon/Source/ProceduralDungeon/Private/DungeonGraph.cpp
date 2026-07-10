@@ -106,6 +106,87 @@ void UDungeonGraph::AddRoom(URoom* Room)
 	UpdateOctree(Room);
 }
 
+bool UDungeonGraph::RemoveRoom(URoom* Room)
+{
+	return RemoveRooms({Room}) == 1;
+}
+
+int32 UDungeonGraph::RemoveRooms(const TArray<URoom*>& RoomsToRemove)
+{
+	if (!HasAuthority())
+	{
+		DungeonLog_Warning("Only the authority can remove rooms from the dungeon graph.");
+		return 0;
+	}
+
+	TSet<URoom*> ValidRoomsToRemove;
+	for (URoom* Room : RoomsToRemove)
+	{
+		if (IsValid(Room) && Rooms.Contains(Room))
+		{
+			ValidRoomsToRemove.Add(Room);
+		}
+	}
+
+	if (ValidRoomsToRemove.IsEmpty())
+		return 0;
+
+	// Remove in reverse order so array indices remain valid while erasing.
+	for (int32 ConnectionIndex = RoomConnections.Num() - 1; ConnectionIndex >= 0; --ConnectionIndex)
+	{
+		URoomConnection* Connection = RoomConnections[ConnectionIndex];
+		if (!IsValid(Connection))
+		{
+			RoomConnections.RemoveAt(ConnectionIndex);
+			continue;
+		}
+
+		URoom* RoomA = Connection->RoomA.Get();
+		URoom* RoomB = Connection->RoomB.Get();
+		if (!ValidRoomsToRemove.Contains(RoomA) && !ValidRoomsToRemove.Contains(RoomB))
+			continue;
+
+		if (IsValid(RoomA) && RoomA->Connections.IsValidIndex(Connection->RoomADoorId)
+			&& RoomA->Connections[Connection->RoomADoorId].Get() == Connection)
+		{
+			RoomA->Connections[Connection->RoomADoorId] = nullptr;
+			MARK_PROPERTY_DIRTY_FROM_NAME(URoom, Connections, RoomA);
+		}
+
+		if (IsValid(RoomB) && RoomB->Connections.IsValidIndex(Connection->RoomBDoorId)
+			&& RoomB->Connections[Connection->RoomBDoorId].Get() == Connection)
+		{
+			RoomB->Connections[Connection->RoomBDoorId] = nullptr;
+			MARK_PROPERTY_DIRTY_FROM_NAME(URoom, Connections, RoomB);
+		}
+
+		RoomConnections.RemoveAt(ConnectionIndex);
+	}
+
+	// Connection IDs are serialized as array indices, so keep them contiguous.
+	for (int32 ConnectionIndex = 0; ConnectionIndex < RoomConnections.Num(); ++ConnectionIndex)
+	{
+		URoomConnection* Connection = RoomConnections[ConnectionIndex];
+		if (IsValid(Connection) && Connection->ID != ConnectionIndex)
+		{
+			Connection->ID = ConnectionIndex;
+			MARK_PROPERTY_DIRTY_FROM_NAME(URoomConnection, ID, Connection);
+		}
+	}
+
+	const int32 RemovedCount = Rooms.RemoveAll([&ValidRoomsToRemove](const URoom* Room) {
+		return ValidRoomsToRemove.Contains(Room);
+	});
+	MARK_PROPERTY_DIRTY_FROM_NAME(UDungeonGraph, RoomConnections, this);
+
+	// Rebuild the spatial data only once after the complete batch is removed.
+	RebuildBounds();
+	RebuildOctree();
+
+	DungeonLog_Debug("Removed %d rooms from the dungeon graph.", RemovedCount);
+	return RemovedCount;
+}
+
 void UDungeonGraph::InitRooms()
 {
 	// We split the for loops to ensure custom data are created for all rooms before initializing them
