@@ -258,7 +258,7 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	FNSAugmentInstance& Inst,
 	const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 	UAbilitySystemComponent* ASC,
-	bool bAdjustCurrentByMaxDelta)
+	bool bAdjustResourceCurrentByMaxDelta)
 {
 	// 스킬 수치만 바꾸는 증강은 기존 CombatStat Modifier 흐름만 사용하고 Attribute GE는 적용하지 않음.
 	const bool bHasAttributeEffectRow = DefinitionRows.ContainsByPredicate(
@@ -290,15 +290,48 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 
 	FNSAugmentMaxDeltaSnapshot HealthSnapshot;
 	FNSAugmentMaxDeltaSnapshot ShieldSnapshot;
-	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
 
+	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
 	FNSAugmentMaxDeltaSnapshot Skill1CountSnapshot;
 	FNSAugmentMaxDeltaSnapshot Skill2CountSnapshot;
 	FNSAugmentMaxDeltaSnapshot Skill3CountSnapshot;
 
-	// 새 증강 획득/스택 증가 시에만 Max 증가분을 Current에 더하기 위해 적용 전 값을 저장.
-	// ReapplyAll()에서는 false로 호출해 스테이지 이동 중 의도치 않은 회복/탄약 회복을 막음.
-	if (bAdjustCurrentByMaxDelta)
+	// Ammo와 SkillCount는 새 증강 획득과 스테이지 재적용에서 모두 현재값을 보정해줘야 함.
+	AmmoSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxAmmo,
+			UNSPlayerAttributeSet::GetAmmoAttribute(),
+			UNSPlayerAttributeSet::GetMaxAmmoAttribute()
+		);
+
+	Skill1CountSnapshot = CaptureMaxDeltaSnapshot(
+		ASC,
+		DefinitionRows,
+		NSGameplayTags::CombatStat_MaxSkill1Count,
+		UNSPlayerAttributeSet::GetSkill1CountAttribute(),
+		UNSPlayerAttributeSet::GetMaxSkill1CountAttribute()
+	);
+
+	Skill2CountSnapshot = CaptureMaxDeltaSnapshot(
+		ASC,
+		DefinitionRows,
+		NSGameplayTags::CombatStat_MaxSkill2Count,
+		UNSPlayerAttributeSet::GetSkill2CountAttribute(),
+		UNSPlayerAttributeSet::GetMaxSkill2CountAttribute()
+	);
+
+	Skill3CountSnapshot = CaptureMaxDeltaSnapshot(
+		ASC,
+		DefinitionRows,
+		NSGameplayTags::CombatStat_MaxSkill3Count,
+		UNSPlayerAttributeSet::GetSkill3CountAttribute(),
+		UNSPlayerAttributeSet::GetMaxSkill3CountAttribute()
+	);
+
+	// 체력, 실드, 탄약은 새 증강 획득이나 스택 증가 때만 현재값도 보정.
+	// ReapplyAll()에서는 false로 호출해서 스테이지 이동 중 의도치 않은 회복을 막음.
+	if (bAdjustResourceCurrentByMaxDelta)
 	{
 		HealthSnapshot = CaptureMaxDeltaSnapshot(
 			ASC,
@@ -315,38 +348,6 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 			NSGameplayTags::CombatStat_MaxShield,
 			UNSPlayerAttributeSet::GetShieldAttribute(),
 			UNSPlayerAttributeSet::GetMaxShieldAttribute()
-		);
-
-		AmmoSnapshot = CaptureMaxDeltaSnapshot(
-			ASC,
-			DefinitionRows,
-			NSGameplayTags::CombatStat_MaxAmmo,
-			UNSPlayerAttributeSet::GetAmmoAttribute(),
-			UNSPlayerAttributeSet::GetMaxAmmoAttribute()
-		);
-
-		Skill1CountSnapshot = CaptureMaxDeltaSnapshot(
-			ASC,
-			DefinitionRows,
-			NSGameplayTags::CombatStat_MaxSkill1Count,
-			UNSPlayerAttributeSet::GetSkill1CountAttribute(),
-			UNSPlayerAttributeSet::GetMaxSkill1CountAttribute()
-		);
-
-		Skill2CountSnapshot = CaptureMaxDeltaSnapshot(
-			ASC,
-			DefinitionRows,
-			NSGameplayTags::CombatStat_MaxSkill2Count,
-			UNSPlayerAttributeSet::GetSkill2CountAttribute(),
-			UNSPlayerAttributeSet::GetMaxSkill2CountAttribute()
-		);
-
-		Skill3CountSnapshot = CaptureMaxDeltaSnapshot(
-			ASC,
-			DefinitionRows,
-			NSGameplayTags::CombatStat_MaxSkill3Count,
-			UNSPlayerAttributeSet::GetSkill3CountAttribute(),
-			UNSPlayerAttributeSet::GetMaxSkill3CountAttribute()
 		);
 	}
 	
@@ -410,37 +411,39 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	}
 
 	Inst.EffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data);
-	
-	if (bAdjustCurrentByMaxDelta)
+
+	// 새 ASC는 기본 Ammo와 SkillCount로 시작하므로 스테이지 재적용 때도 증강으로 늘어난 최대치만큼 현재값 유지.
+	ApplyMaxDeltaSnapshot(ASC, AmmoSnapshot);
+	ApplyMaxDeltaSnapshot(ASC, Skill1CountSnapshot);
+	ApplyMaxDeltaSnapshot(ASC, Skill2CountSnapshot);
+	ApplyMaxDeltaSnapshot(ASC, Skill3CountSnapshot);
+
+	if (UNSAbilitySystemComponent* NSASC = Cast<UNSAbilitySystemComponent>(ASC))
+	{
+		if (Skill1CountSnapshot.bShouldAdjust)
+		{
+			NSASC->NotifySkillCountChangedForMaxStat(
+				NSGameplayTags::CombatStat_MaxSkill1Count);
+		}
+
+		if (Skill2CountSnapshot.bShouldAdjust)
+		{
+			NSASC->NotifySkillCountChangedForMaxStat(
+				NSGameplayTags::CombatStat_MaxSkill2Count);
+		}
+
+		if (Skill3CountSnapshot.bShouldAdjust)
+		{
+			NSASC->NotifySkillCountChangedForMaxStat(
+				NSGameplayTags::CombatStat_MaxSkill3Count);
+		}
+	}
+
+	if (bAdjustResourceCurrentByMaxDelta)
 	{
 		// 새 StackEffect 적용으로 증가한 Max 값만큼 Health / Shield / Ammo 현재값을 보정.
 		ApplyMaxDeltaSnapshot(ASC, HealthSnapshot);
 		ApplyMaxDeltaSnapshot(ASC, ShieldSnapshot);
-		ApplyMaxDeltaSnapshot(ASC, AmmoSnapshot);
-		ApplyMaxDeltaSnapshot(ASC, Skill1CountSnapshot);
-		ApplyMaxDeltaSnapshot(ASC, Skill2CountSnapshot);
-		ApplyMaxDeltaSnapshot(ASC, Skill3CountSnapshot);
-
-		if (UNSAbilitySystemComponent* NSASC = Cast<UNSAbilitySystemComponent>(ASC))
-		{
-			if (Skill1CountSnapshot.bShouldAdjust)
-			{
-				NSASC->NotifySkillCountChangedForMaxStat(
-					NSGameplayTags::CombatStat_MaxSkill1Count);
-			}
-
-			if (Skill2CountSnapshot.bShouldAdjust)
-			{
-				NSASC->NotifySkillCountChangedForMaxStat(
-					NSGameplayTags::CombatStat_MaxSkill2Count);
-			}
-
-			if (Skill3CountSnapshot.bShouldAdjust)
-			{
-				NSASC->NotifySkillCountChangedForMaxStat(
-					NSGameplayTags::CombatStat_MaxSkill3Count);
-			}
-		}
 	}
 }
 

@@ -80,7 +80,7 @@ private:
 		FNSAugmentInstance& Inst,
 		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 		UAbilitySystemComponent* ASC,
-		bool bAdjustCurrentByMaxDelta
+		bool bAdjustResourceCurrentByMaxDelta
 	);
 	
 	static bool TryCalculateStackEffectMagnitude(
