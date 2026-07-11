@@ -10,6 +10,7 @@
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
@@ -65,6 +66,9 @@ void UGA_EngineerShotgunFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	// 서버에서 실제 데미지를 처리할 때만 발사 그룹 ID 필요.
+	AttackFeedbackGroupId = ActorInfo->IsNetAuthority() ? FGuid::NewGuid() : FGuid();
 
 	PlayFireMontage();
 
@@ -710,6 +714,30 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 		ApplyDamageToActor(ServerHitResult);
 		ExecuteImpactCue(ServerHitResult);
 	}
+
+	// 모든 펠릿 GE 적용이 끝난 다음에 완료 신호를 보냄.
+	CompleteAttackFeedbackGroup();
+}
+
+void UGA_EngineerShotgunFire::CompleteAttackFeedbackGroup() const
+{
+	if (!AttackFeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	const APawn* AvatarPawn = Cast<APawn>(GetAvatarActorFromActorInfo());
+
+	ANSPlayerController* PlayerController = AvatarPawn
+		? Cast<ANSPlayerController>(AvatarPawn->GetController()) : nullptr;
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// 대상별 피드백 RPC를 모두 보낸 뒤 대표 피드백 재생을 요청.
+	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
 }
 
 void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult)
@@ -748,8 +776,13 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult)
 		return;
 	}
 
+	FGameplayEffectContextHandle EffectContext = DamageSpecHandle.Data->GetContext();
+
+	// AttributeSet이 이번 발사의 그룹 ID를 Ability에서 찾을 수 있게 함.
+	EffectContext.AddSourceObject(this);
+	EffectContext.AddHitResult(HitResult, true);
+
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
-	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	AssignDamageInstigator(DamageSpecHandle);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
