@@ -248,7 +248,7 @@ void UGA_BuffBase::ApplySetByCallerMappingsToSpec(
 		// @원종: CombatStat 퍼센트 값(30 = 30%)을 GE의 MultiplyAdditive Modifier가 기대하는 비율(0.3)로 변환.
 		// GA_BuffBase는 Ranger/Engineer의 버프 스킬만 사용 중이며, SetByCallerMappings는 항상 퍼센트 스탯이라는 전제.
 		// 후에 다른 캐릭터도 이 버프 매커니즘을 사용한다면 주의할 필요가 있음.
-		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, Magnitude * 0.01f);
+		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, 1.0f + Magnitude * 0.01f);
 	}
 }
 
