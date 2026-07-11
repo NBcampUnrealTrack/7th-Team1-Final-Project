@@ -149,6 +149,10 @@ void ANSTurret::InitializeTurret(
 	InitializeAbilityActorInfo();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
+
+	// 터렛 전용 공속 버프가 적용되기 전 값을 기준 공속으로 저장.
+	BaseFireRateAtSpawn = AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+
 	StartLifetimeTimer();
 	
 	// 
@@ -954,17 +958,27 @@ bool ANSTurret::TryGetRuntimeStatMagnitude(
 
 float ANSTurret::GetCurrentFireRate() const
 {
-	float FireRate = 0.0f;
+	const float TurretAttributeFireRate = AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+
+	float UpgradedTurretFireRate = 0.0f;
 
 	if (OwningCombatStatComponent && SourceAbilityTag.IsValid() &&
 		OwningCombatStatComponent->TryGetFinalAbilityStat(
-			SourceAbilityTag, NSGameplayTags::CombatStat_FireRate, FireRate))
+			SourceAbilityTag, NSGameplayTags::CombatStat_FireRate, UpgradedTurretFireRate))
 	{
-		return FMath::Max(FireRate, 0.0f);
+		float TurretBuffMultiplier = 1.0f;
+
+		if (BaseFireRateAtSpawn > KINDA_SMALL_NUMBER)
+		{
+			TurretBuffMultiplier = TurretAttributeFireRate / BaseFireRateAtSpawn;
+		}
+
+		// 증강이 반영된 최신 공속에 터렛 전용 버프 배율도 같이 적용.
+		return FMath::Max(UpgradedTurretFireRate * FMath::Max(TurretBuffMultiplier, 0.0f), 0.0f);
 	}
 
-	// 소환자 정보가 없으면 소환 시점 스냅샷으로 대체
-	return AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+	// 소환자 정보가 없으면 터렛 Attribute 값을 그대로 사용.
+	return TurretAttributeFireRate;
 }
 
 void ANSTurret::ApplyCritOverrideToSpec(FGameplayEffectSpecHandle& SpecHandle) const

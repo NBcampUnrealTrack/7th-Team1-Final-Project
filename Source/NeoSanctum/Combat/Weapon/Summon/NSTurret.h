@@ -154,6 +154,9 @@ protected:
 
 	FGameplayTag SourceAbilityTag;
 
+	// 터렛 전용 GE가 만든 배율을 계산할 때 기준으로 쓸 소환 시점 공속.
+	float BaseFireRateAtSpawn = 0.0f;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<UCapsuleComponent> HitCollisionComponent;
