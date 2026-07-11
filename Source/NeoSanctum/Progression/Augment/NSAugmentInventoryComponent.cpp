@@ -56,6 +56,12 @@ namespace
 		float OldMaxValue = 0.0f;
 	};
 
+	bool IsAttributeEffectRow(const FNSAugmentDefinitionRow& Row)
+	{
+		// 대상 어빌리티가 없고 Attribute 매핑이 있는 행만 플레이어 Attribute에 적용.
+		return !Row.TargetAbilityTag.IsValid() && NSCombatStatAttribute::FindMapping(Row.StatTag) != nullptr;
+	}
+
 	bool HasDefinitionRowWithStatTag(
 		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
 		const FGameplayTag StatTag)
@@ -63,7 +69,7 @@ namespace
 		return DefinitionRows.ContainsByPredicate(
 			[StatTag](const FNSAugmentDefinitionRow& Row)
 			{
-				return Row.StatTag == StatTag;
+				return IsAttributeEffectRow(Row) && Row.StatTag == StatTag;
 			}
 		);
 	}
@@ -264,7 +270,7 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	const bool bHasAttributeEffectRow = DefinitionRows.ContainsByPredicate(
 		[](const FNSAugmentDefinitionRow& Row)
 		{
-			return NSCombatStatAttribute::FindMapping(Row.StatTag) != nullptr;
+			return IsAttributeEffectRow(Row);
 		}
 	);
 
@@ -372,6 +378,11 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 
 	for (const FNSAugmentDefinitionRow& Row : DefinitionRows)
 	{
+		if (!IsAttributeEffectRow(Row))
+		{
+			continue;
+		}
+
 		const bool bHasAttributeMapping = NSCombatStatAttribute::FindMapping(Row.StatTag) != nullptr;
 
 		FGameplayTag SetByCallerTag;
