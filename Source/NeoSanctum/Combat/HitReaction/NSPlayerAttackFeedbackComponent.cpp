@@ -28,15 +28,102 @@ void UNSPlayerAttackFeedbackComponent::HandleAttackHitFeedback(const FNSHitFeedb
 	{
 		return;
 	}
-	
-	if (FeedbackData->CrosshairFeedbackType != ENSCrosshairAttackFeedbackType::None)
+
+	// 그룹 ID가 없으면 기존 단일 공격이니 바로 재생.
+	if (!ResolvedContext.FeedbackGroupId.IsValid())
 	{
-		// 크로스헤어 피드백 재생
-		PlayCrosshairFeedback(FeedbackData->CrosshairFeedbackType, ResolvedContext);
+		PlayResolveAttackHitFeedback(ResolvedContext, *FeedbackData);
+		return;
 	}
-	
-	// 공격자 로컬 히트 확인 사운드 재생
-	PlaySoundFeedback(FeedbackData->SoundID);
+
+	FNSPendingAttackFeedback& PendingFeedback = PendingAttackFeedbackGroups.FindOrAdd(ResolvedContext.FeedbackGroupId);
+	const bool bShouldReplace = ShouldReplacePendingFeedback(
+		PendingFeedback,
+		ResolvedContext,
+		FeedbackData->Priority
+	);
+
+	if (bShouldReplace)
+	{
+		PendingFeedback.Context = ResolvedContext;
+		PendingFeedback.Priority = FeedbackData->Priority;
+		PendingFeedback.bHasValue = true;
+	}
+}
+
+void UNSPlayerAttackFeedbackComponent::CompleteAttackHitFeedbackGroup(const FGuid& FeedbackGroupId)
+{
+	if (!FeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	FNSPendingAttackFeedback PendingFeedback;
+
+	if (!PendingAttackFeedbackGroups.RemoveAndCopyValue(FeedbackGroupId, PendingFeedback))
+	{
+		// 아무 대상도 맞지 않았다면 대기 중인 피드백 없음.
+		return;
+	}
+
+	if (!PendingFeedback.bHasValue)
+	{
+		return;
+	}
+
+	const FNSPlayerAttackFeedbackData* FeedbackData = FindBestFeedbackData(PendingFeedback.Context);
+
+	if (!FeedbackData)
+	{
+		return;
+	}
+
+	PlayResolveAttackHitFeedback(PendingFeedback.Context, *FeedbackData);
+}
+
+void UNSPlayerAttackFeedbackComponent::PlayResolveAttackHitFeedback(
+	const FNSHitFeedbackContext& Context, const FNSPlayerAttackFeedbackData& FeedbackData) const
+{
+	if (FeedbackData.CrosshairFeedbackType != ENSCrosshairAttackFeedbackType::None)
+	{
+		PlayCrosshairFeedback(FeedbackData.CrosshairFeedbackType, Context);
+	}
+
+	PlaySoundFeedback(FeedbackData.SoundID);
+}
+
+bool UNSPlayerAttackFeedbackComponent::ShouldReplacePendingFeedback(
+	const FNSPendingAttackFeedback& PendingFeedback,
+	const FNSHitFeedbackContext& CandidateContext,
+	int32 CandidatePriority) const
+{
+	if (!PendingFeedback.bHasValue)
+	{
+		return true;
+	}
+
+	if (CandidatePriority != PendingFeedback.Priority)
+	{
+		return CandidatePriority > PendingFeedback.Priority;
+	}
+
+	const auto IsTerminalOutcome = [](const ENSHitFeedbackOutcome Outcome)
+	{
+		return Outcome == ENSHitFeedbackOutcome::Kill || Outcome == ENSHitFeedbackOutcome::Destroy;
+	};
+
+	const bool bCandidateTerminal =	IsTerminalOutcome(CandidateContext.Outcome);
+	const bool bPendingTerminal = IsTerminalOutcome(PendingFeedback.Context.Outcome);
+
+	if (bCandidateTerminal != bPendingTerminal)
+	{
+		return bCandidateTerminal;
+	}
+
+	const bool bCandidateCritical =	CandidateContext.HitQuality == ENSHitFeedbackQuality::Critical;
+	const bool bPendingCritical = PendingFeedback.Context.HitQuality ==	ENSHitFeedbackQuality::Critical;
+
+	return bCandidateCritical && !bPendingCritical;
 }
 
 FNSHitFeedbackContext UNSPlayerAttackFeedbackComponent::BuildResolvedContext(

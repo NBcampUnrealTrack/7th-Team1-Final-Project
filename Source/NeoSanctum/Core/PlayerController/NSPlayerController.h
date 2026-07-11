@@ -139,6 +139,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_PlayAttackHitFeedback(const FNSHitFeedbackContext& Context);
 
+	// 한 공격에서 발생한 모든 피드백 RPC를 보낸 뒤 호출.
+	UFUNCTION(Client, Reliable)
+	void Client_CompleteAttackHitFeedbackGroup(const FGuid& FeedbackGroupId);
+
 	// 서버에서 확정된 피격 피드백을 클라이언트에 전달하는 Client_RPC
 	UFUNCTION(Client, Reliable)
 	void Client_PlayHitTakenFeedback(const FNSHitTakenFeedbackContext& Context);

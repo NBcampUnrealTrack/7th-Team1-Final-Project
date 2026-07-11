@@ -113,6 +113,11 @@ struct NEOSANCTUM_API FNSHitFeedbackContext
 	// 타겟이 죽었는지를 판단
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
 	bool bTargetDead = false;
+
+	// 같은 공격에서 나온 피드백을 하나로 묶을 때 사용
+	// 값이 없으면 기존처럼 단일 피드백으로 처리.
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "HitFeedback")
+	FGuid FeedbackGroupId;
 };
 
 // GMS로 크로스헤어 공격 피드백을 전달할 때 사용하는 메시지

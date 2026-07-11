@@ -157,6 +157,7 @@ void UNSBaseAttributeSet::NotifyAttackFeedbackAfterHealthDamage(
 	FeedbackContext.TargetActor = TargetActor;
 	FeedbackContext.HitLocation = TargetActor->GetActorLocation();
 	FeedbackContext.bTargetDead = GetHealth() <= 0.0f;
+	FeedbackContext.FeedbackGroupId = ResolvePlayerAttackFeedbackGroupId(Data);
 
 	if (const FHitResult* HitResult = Data.EffectSpec.GetEffectContext().GetHitResult())
 	{
@@ -277,6 +278,31 @@ bool UNSBaseAttributeSet::ShouldTriggerPlayerAttackFeedback(
 	}
 	
 	return true;
+}
+
+FGuid UNSBaseAttributeSet::ResolvePlayerAttackFeedbackGroupId(const FGameplayEffectModCallbackData& Data) const
+{
+	const FGameplayEffectContextHandle& EffectContext = Data.EffectSpec.GetEffectContext();
+
+	const UObject* SourceCandidates[] =
+	{
+		EffectContext.GetEffectCauser(),
+		EffectContext.GetSourceObject(),
+		EffectContext.GetInstigator()
+	};
+
+	for (const UObject* SourceCandidate : SourceCandidates)
+	{
+		const INSPlayerAttackFeedbackSourceInterface* FeedbackSource =
+			Cast<INSPlayerAttackFeedbackSourceInterface>(SourceCandidate);
+
+		if (FeedbackSource)
+		{
+			return FeedbackSource->GetPlayerAttackFeedbackGroupId();
+		}
+	}
+
+	return FGuid();
 }
 
 ENSHitReactionAttackType UNSBaseAttributeSet::ResolveHitReactionAttackType(

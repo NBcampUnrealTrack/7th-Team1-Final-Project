@@ -85,6 +85,8 @@ protected:
 	// Damage Source가 플레이어 공격 결과 피드백을 허용하는지 확인
 	bool ShouldTriggerPlayerAttackFeedback(const FGameplayEffectModCallbackData& Data) const;
 
+	FGuid ResolvePlayerAttackFeedbackGroupId(const FGameplayEffectModCallbackData& Data) const;
+
 	// Damage Source의 피격 리액션 공격 방식 조회
 	ENSHitReactionAttackType ResolveHitReactionAttackType(const FGameplayEffectModCallbackData& Data) const;
 
