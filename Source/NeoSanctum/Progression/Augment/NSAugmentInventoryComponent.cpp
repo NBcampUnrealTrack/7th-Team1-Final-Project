@@ -9,6 +9,7 @@
 #include "NeoSanctum/Data/Augment/NSAugmentDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogCategories.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
@@ -291,6 +292,10 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 	FNSAugmentMaxDeltaSnapshot ShieldSnapshot;
 	FNSAugmentMaxDeltaSnapshot AmmoSnapshot;
 
+	FNSAugmentMaxDeltaSnapshot Skill1CountSnapshot;
+	FNSAugmentMaxDeltaSnapshot Skill2CountSnapshot;
+	FNSAugmentMaxDeltaSnapshot Skill3CountSnapshot;
+
 	// 새 증강 획득/스택 증가 시에만 Max 증가분을 Current에 더하기 위해 적용 전 값을 저장.
 	// ReapplyAll()에서는 false로 호출해 스테이지 이동 중 의도치 않은 회복/탄약 회복을 막음.
 	if (bAdjustCurrentByMaxDelta)
@@ -318,6 +323,30 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 			NSGameplayTags::CombatStat_MaxAmmo,
 			UNSPlayerAttributeSet::GetAmmoAttribute(),
 			UNSPlayerAttributeSet::GetMaxAmmoAttribute()
+		);
+
+		Skill1CountSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxSkill1Count,
+			UNSPlayerAttributeSet::GetSkill1CountAttribute(),
+			UNSPlayerAttributeSet::GetMaxSkill1CountAttribute()
+		);
+
+		Skill2CountSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxSkill2Count,
+			UNSPlayerAttributeSet::GetSkill2CountAttribute(),
+			UNSPlayerAttributeSet::GetMaxSkill2CountAttribute()
+		);
+
+		Skill3CountSnapshot = CaptureMaxDeltaSnapshot(
+			ASC,
+			DefinitionRows,
+			NSGameplayTags::CombatStat_MaxSkill3Count,
+			UNSPlayerAttributeSet::GetSkill3CountAttribute(),
+			UNSPlayerAttributeSet::GetMaxSkill3CountAttribute()
 		);
 	}
 	
@@ -388,6 +417,30 @@ void UNSAugmentInventoryComponent::ApplyStackEffect(
 		ApplyMaxDeltaSnapshot(ASC, HealthSnapshot);
 		ApplyMaxDeltaSnapshot(ASC, ShieldSnapshot);
 		ApplyMaxDeltaSnapshot(ASC, AmmoSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, Skill1CountSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, Skill2CountSnapshot);
+		ApplyMaxDeltaSnapshot(ASC, Skill3CountSnapshot);
+
+		if (UNSAbilitySystemComponent* NSASC = Cast<UNSAbilitySystemComponent>(ASC))
+		{
+			if (Skill1CountSnapshot.bShouldAdjust)
+			{
+				NSASC->NotifySkillCountChangedForMaxStat(
+					NSGameplayTags::CombatStat_MaxSkill1Count);
+			}
+
+			if (Skill2CountSnapshot.bShouldAdjust)
+			{
+				NSASC->NotifySkillCountChangedForMaxStat(
+					NSGameplayTags::CombatStat_MaxSkill2Count);
+			}
+
+			if (Skill3CountSnapshot.bShouldAdjust)
+			{
+				NSASC->NotifySkillCountChangedForMaxStat(
+					NSGameplayTags::CombatStat_MaxSkill3Count);
+			}
+		}
 	}
 }
 
