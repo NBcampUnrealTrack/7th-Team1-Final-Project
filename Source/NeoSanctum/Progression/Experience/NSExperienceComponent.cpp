@@ -46,16 +46,7 @@ int32 UNSExperienceComponent::AddExperience(float BaseAmount)
 		CurrentExp -= MaxExp;
 		++LevelUpCount;
 	}
-
-	NS_ACTOR_LOG(Owner, LogNS, Log,
-		"경험치를 지급했습니다. BaseAmount={BaseAmount}, Multiplier={Multiplier}, CurrentExp={CurrentExp}, MaxExp={MaxExp}, LevelUpCount={LevelUpCount}",
-		("BaseAmount", BaseAmount),
-		("Multiplier", Multiplier),
-		("CurrentExp", CurrentExp),
-		("MaxExp", MaxExp),
-		("LevelUpCount", LevelUpCount)
-	);
-
+	
 	OnExpChanged.Broadcast(CurrentExp, MaxExp);
 
 	return LevelUpCount;
