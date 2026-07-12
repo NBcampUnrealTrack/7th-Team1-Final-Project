@@ -20,6 +20,7 @@
 #include "NeoSanctum/Interaction/Prop/NSBossControlDevice.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/AI/Enemy/HelperActor/NSBossArenaBounds.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
 
 ANSBossMotherShip::ANSBossMotherShip()
 {
@@ -28,10 +29,25 @@ ANSBossMotherShip::ANSBossMotherShip()
 	FlyingLocomotionComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>(FName("FlyingMovementComponent"));
 }
 
+void ANSBossMotherShip::ApplyDeadState()
+{
+	Super::ApplyDeadState();
+	if (FlyingLocomotionComponent)
+	{
+		FlyingLocomotionComponent->StartDeathFall();
+	}
+}
+
 void ANSBossMotherShip::BeginPlay()
 {
 	Super::BeginPlay();
 	if (!HasAuthority()) return;
+	
+	if (PhaseComponent)
+	{
+		PhaseComponent->ResetPhaseState();
+	}
+	
 	if (!ArenaBounds)
 	{
 		for (TActorIterator<ANSBossArenaBounds> It(GetWorld()); It; ++It) { ArenaBounds = *It; break; }
@@ -55,58 +71,12 @@ UNSFlyingLocomotionComponent* ANSBossMotherShip::GetFlyingLocomotion() const
 void ANSBossMotherShip::StartDronePattern()
 {
 	if (!HasAuthority()) return;
-	LastObservedPhaseTag = PhaseComponent ? PhaseComponent->GetCurrentPhaseTag() : FGameplayTag();
 	QueueFullWave();
-	RequestSummonAbility();
-	
-	GetWorldTimerManager().SetTimer(
-		DroneSpawnTimerHandle,
-		this,
-		&ANSBossMotherShip::MaintenanceTick,
-		SpawnInterval,
-		true);
 }
 
 void ANSBossMotherShip::StopDronePattern()
 {
-	GetWorldTimerManager().ClearTimer(DroneSpawnTimerHandle);
-	bSummonInFlight = false;
-}
-
-void ANSBossMotherShip::MaintenanceTick()
-{
-	if (!HasAuthority() || IsDead())
-	{
-		StopDronePattern();
-		return;
-	}
 	
-	PruneActiveDrones();
-	const double Now = GetWorld()->GetTimeSeconds();
-	
-	const FGameplayTag CurrentTag = PhaseComponent ? PhaseComponent->GetCurrentPhaseTag() : FGameplayTag();
-	if (CurrentTag != LastObservedPhaseTag)
-	{
-		if (LastObservedPhaseTag.IsValid())   // 진짜 전환(P1→P2)만 회수. 빈→P1 초기화는 조용히 통과
-		{
-			RecallAllDrones();
-			bPendingPhaseRefill = true;
-		}
-		LastObservedPhaseTag = CurrentTag;
-	}
-	
-	if (PhaseComponent && PhaseComponent->IsPatternLocked()) return;
-	
-	if (bPendingPhaseRefill)
-	{
-		QueueFullWave();
-		bPendingPhaseRefill = false;
-	}
-	
-	if (GetActiveDroneCount() < GetCurrentMaxDrones() && CountMaturedRespawns(Now) > 0)
-	{
-		RequestSummonAbility();
-	}
 }
 
 void ANSBossMotherShip::QueueFullWave()
@@ -130,65 +100,52 @@ void ANSBossMotherShip::ScheduleRespawn()
 	PendingRespawnTimes.Add(RespawnTime);
 }
 
-void ANSBossMotherShip::RequestSummonAbility()
-{
-	if (!HasAuthority() || !SpawnDroneAbilityClass) return;
-	
-	UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent();
-	if (!MotherShipASC) return;
-	
-	if (bSummonInFlight) return;
-	
-	bSummonInFlight = true;
-	
-	bool bSuccessSpawn = MotherShipASC->TryActivateAbilityByClass(SpawnDroneAbilityClass);
-	
-	if (!bSuccessSpawn)
-	{
-		bSummonInFlight = false;
-	}
-}
-
 void ANSBossMotherShip::SpawnMaturedDrones()
 {
 	if (!HasAuthority()) return;
-	
-	bSummonInFlight = false;
-	
+
 	const double CurrentTime = GetWorld()->GetTimeSeconds();
-	
+
 	const int32 MatureRespawnCount = CountMaturedRespawns(CurrentTime);
 	const int32 RoomCount = GetCurrentMaxDrones() - GetActiveDroneCount();
-	
+
 	const int32 DesiredCount = FMath::Min(MatureRespawnCount, RoomCount);
-	if(DesiredCount <= 0) return;
-	
+	if (DesiredCount <= 0) return;
+
 	PendingRespawnTimes.Sort();
-	
+
 	TArray<FTransform> SpawnTransforms;
 	if (!BuildDroneSpawnTransforms(DesiredCount, SpawnTransforms) || SpawnTransforms.Num() == 0)
 	{
 		return;
 	}
-	
+
 	const int32 ActualCount = FMath::Min(DesiredCount, SpawnTransforms.Num());
-	
+
 	PendingRespawnTimes.RemoveAt(0, ActualCount);
-	
+
 	for (int32 i = 0; i < ActualCount; ++i)
 	{
 		ANSEnemyDrone* Drone = AcquireDroneFromPool(SpawnTransforms[i]);
 		if (!Drone) continue;
-		
+
 		if (UNSEnemyStateComponent* DroneState = Drone->GetStateComponent())
 		{
 			DroneState->OnDeathStarted.RemoveAll(this);
 			DroneState->OnDeathStarted.AddUObject(
 				this, &ANSBossMotherShip::HandleDroneDied, TWeakObjectPtr<ANSEnemyDrone>(Drone));
 		}
-		
+
 		ActiveDrones.Add(Drone);
 	}
+}
+
+bool ANSBossMotherShip::HasSpawnWorkReady() const
+{
+	const double Now = GetWorld()->GetTimeSeconds();
+	const int32 RoomCount = GetCurrentMaxDrones() - GetActiveDroneCount();
+
+	return CountMaturedRespawns(Now) > 0 && RoomCount > 0;
 }
 
 void ANSBossMotherShip::RecallAllDrones()
@@ -224,6 +181,14 @@ void ANSBossMotherShip::HandleDroneDied(TWeakObjectPtr<ANSEnemyDrone> DeadDrone)
 	if (UNSEnemyStateComponent* DroneState = DeadDrone->GetStateComponent())
 	{
 		DroneState->OnDeathStarted.RemoveAll(this);
+	}
+	
+	// 디졸브 완료 시점에 풀 반환 → 사망 몽타주 + 디졸브가 끝나는 순간과 정렬
+	if (UNSDissolveComponent* Dissolve = DeadDrone->GetDissolveComponent())
+	{
+		Dissolve->OnDissolveComplete.BindUObject(
+			this, &ANSBossMotherShip::ReturnDroneAfterDelay, DeadDrone);
+		return;
 	}
 	
 	if (ReturnToPoolDelay <= 0.f)
@@ -300,7 +265,6 @@ void ANSBossMotherShip::PruneActiveDrones()
 
 bool ANSBossMotherShip::BuildDroneSpawnTransforms(int32 Count, TArray<FTransform>& OutTransforms) const
 {
-	UE_LOG(LogTemp, Warning, TEXT("BuildDroneSpawnTransforms called !"));
 	if (Count <= 0) return false;
 
 	// 소켓 보유시 우선 사용
@@ -314,16 +278,25 @@ bool ANSBossMotherShip::BuildDroneSpawnTransforms(int32 Count, TArray<FTransform
 				if (OutTransforms.Num() >= Count) break;
 			}
 		}
-		if (!OutTransforms.IsEmpty()) return true;
 	}
 
-	// 소켓이 없다면 fallBack
-	if (SpawnRingRadius <= 0.f) return false;
+	// 소켓만으로 Count를 다 채웠으면 종료
+	if (OutTransforms.Num() >= Count)
+	{
+		return true;
+	}
+	
+	// 부족분을 링으로 보충. 링을 못 쓰면 소켓으로 담은 만큼만 반환
+	if (SpawnRingRadius <= 0.f)
+	{
+		return !OutTransforms.IsEmpty();
+	}
 
+	const int32 Remaining = Count - OutTransforms.Num();
 	const FVector Center = GetActorLocation();
-	const float AngleStep = 360.f / Count;   // 반지름과 별개의 '각도 간격(도)'
+	const float AngleStep = 360.f / Remaining;   // 부족분 기준 균등 배치
 
-	for (int32 i = 0; i < Count; ++i)
+	for (int32 i = 0; i < Remaining; ++i)
 	{
 		const float Yaw = AngleStep * i;
 
@@ -421,11 +394,6 @@ void ANSBossMotherShip::ApplyBossInvincibility()
 	UAbilitySystemComponent* MotherShipAbilitySystemComponent = GetAbilitySystemComponent();
 	if (!MotherShipAbilitySystemComponent) return;
 	
-	if (MotherShipAbilitySystemComponent->HasMatchingGameplayTag(NSGameplayTags::State_Invincible))
-	{
-		return;
-	}
-	
 	MotherShipAbilitySystemComponent->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
 }
 
@@ -463,6 +431,9 @@ void ANSBossMotherShip::BeginPhase2Transition()
 		// 연출시작시 현재 적용되어있는 연출동안 숨기려고 잠시 제거
 		MotherShipAbilitySystemComponent->RemoveLooseGameplayTag(DeferredPhase2Tag);
 	}
+	
+	RecallAllDrones();
+	QueueFullWave();
 }
 
 void ANSBossMotherShip::CompletePhase2Transition()

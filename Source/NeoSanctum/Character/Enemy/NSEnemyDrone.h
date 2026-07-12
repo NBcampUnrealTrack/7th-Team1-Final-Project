@@ -29,7 +29,23 @@ public:
 
 	// 풀로 반환하기 위해 비활성화
 	void DeactivateForPool();
+	
+	// 서버에서만 값 변경 (컨트롤러 Tick에서 호출)
+	void SetManeuvering(bool bNewManeuvering);
+	
+	// 이동 중(카이팅/배회) 여부. ABP 블렌드 판단용 복제 플래그
+	UFUNCTION(BlueprintPure, Category = "Movement")
+	bool IsManeuvering() const { return bIsManeuvering; }
+	
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	virtual void ApplyDeadState() override;
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess))
 	TObjectPtr<UNSFlyingLocomotionComponent> FlyingLocomotionComponent;
+	
+	UPROPERTY(Replicated)
+	bool bIsManeuvering = false;
 };
