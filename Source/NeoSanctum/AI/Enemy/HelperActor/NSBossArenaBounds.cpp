@@ -111,6 +111,30 @@ FVector ANSBossArenaBounds::GetDiagonalEndCorner(float AtZ) const
 	return WorldPoint;
 }
 
+FVector ANSBossArenaBounds::ClampPointToBounds(const FVector& WorldPoint) const
+{
+	// 박스의 Transform 을 가져옴
+	const FTransform& BoxTransform = AreaBox->GetComponentTransform();
+	// 박스의 언스케일 반경 가져옴
+	const FVector HalfExtent = AreaBox->GetUnscaledBoxExtent();
+
+	// 전달받은 보스의 현재위치가 현재 박스의 로컬기준으로 어디에 있는지 변환
+	FVector LocalPoint = BoxTransform.InverseTransformPosition(WorldPoint);
+	
+	// 받은 점을 경계 안쪽으로 클램프
+	LocalPoint.X = FMath::Clamp(LocalPoint.X, -HalfExtent.X, HalfExtent.X);
+	LocalPoint.Y = FMath::Clamp(LocalPoint.Y, -HalfExtent.Y, HalfExtent.Y);
+
+	// 적용된 로컬 좌표를 다시 월드좌표로 변환
+	FVector ClampedWorldPoint = BoxTransform.TransformPosition(LocalPoint);
+	
+	// Z축은 월드기준으로 유지
+	ClampedWorldPoint.Z = WorldPoint.Z;
+
+	// 변환된 좌표를 반환
+	return ClampedWorldPoint;
+}
+
 void ANSBossArenaBounds::OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight,
                                               TArray<AActor*>& OutActors) const
 {

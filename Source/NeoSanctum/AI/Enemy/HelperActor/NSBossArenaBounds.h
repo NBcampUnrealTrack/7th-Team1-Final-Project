@@ -38,6 +38,9 @@ public:
 	// 대각선 반대쪽 코너 중심을 반환. AtZ로 원하는 고도를 지정
 	FVector GetDiagonalEndCorner(float AtZ) const;
 	
+	// 임의의 월드 좌표를 룸 XY 범위 안으로 클램프 (Z는 그대로 유지)
+	FVector ClampPointToBounds(const FVector& WorldPoint) const;
+	
 	// 존 i 박스와 겹치는 플레이어 액터를 수집
 	void OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight, TArray<AActor*>& OutActors) const;
 
