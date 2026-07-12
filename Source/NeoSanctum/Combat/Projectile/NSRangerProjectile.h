@@ -29,6 +29,8 @@ public:
 
 	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return bGrantPlayerAttackFeedback; }
 
+	virtual FGuid GetPlayerAttackFeedbackGroupId() const override { return AttackFeedbackGroupId; }
+
 	void InitializeProjectile(
 		UAbilitySystemComponent* InSourceASC,
 		TSubclassOf<UGameplayEffect> InSplashDamageEffectClass,
@@ -75,8 +77,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Feedback")
 	bool bGrantPlayerAttackFeedback = true;
 
+	// 이 투사체의 스플래시 공격을 구분할 때 사용.
+	UPROPERTY(Transient)
+	FGuid AttackFeedbackGroupId;
+
 private:
 	void IgnoreSourceActorCollision();
+
+	// 이 투사체의 스플래시 피드백 묶음을 완료 처리.
+	void CompletePlayerAttackFeedbackGroup() const;
 
 	void FindSplashTargetActors(const FVector& ExplosionLocation, TArray<AActor*>& OutTargetActors) const;
 
