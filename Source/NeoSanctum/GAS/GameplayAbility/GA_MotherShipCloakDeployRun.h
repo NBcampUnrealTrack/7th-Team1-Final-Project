@@ -98,9 +98,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "CloakDeployRun|Move", meta = (ClampMin = "0.0"))
 	float RunAltitude = 2000.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "CloakDeployRun|Move", meta = (ClampMin = "0.0"))
-	float DescendAltitude = 300.f;
-
 	UPROPERTY(EditDefaultsOnly, Category = "CloakDeployRun|Move", meta = (ClampMin = "1.0"))
 	float AscendSpeed = 600.f;
 
@@ -150,6 +147,10 @@ private:
 	bool bCloaked = false;
 	bool bAllWavesDeployed = false;
 
+	// ActivateAbility 시점에 캐시한 원래 유지 고도. DescendUncloak 레그가 이 고도로 복귀
+	float CapturedAltitude = 0.f;
+
+	
 	FTimerHandle LegPollTimerHandle;
 	TArray<FTimerHandle> DeployWaveTimerHandles;
 

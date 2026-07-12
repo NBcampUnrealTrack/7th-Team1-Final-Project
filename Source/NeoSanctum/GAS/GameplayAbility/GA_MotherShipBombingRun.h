@@ -49,8 +49,11 @@ private:
 	// 저빈도 타이머 콜백: HasReachedScriptedDest() 체크 후 다음 레그 전환
 	void PollLegProgress();
 
-	// AttackRow->BombardData 기준 N개 존의 경고/폭발 타이머 예약
-	void ScheduleZonePattern();
+	// Traverse 완주 후 호출: N개 존 경고 데칼을 순차 예약, 완료 시 StartDetonationPhase 예약
+	void StartWarningPhase();
+
+	// 경고 페이즈 종료 후 호출: N개 존 폭발을 순차 예약
+	void StartDetonationPhase();
 
 	// t = i*ShotInterval: 존 i 경고 데칼 Cue 부여
 	void ShowZoneWarning(int32 ZoneIndex);
@@ -111,7 +114,11 @@ private:
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
 	TWeakObjectPtr<ANSBossArenaBounds> CachedArenaBounds;
 
+	// ActivateAbility 시점에 캐시한 원래 유지 고도. Return 레그가 이 고도로 복귀
+	float CapturedAltitude = 0.f;
+	
 	FTimerHandle LegPollTimerHandle;
+	FTimerHandle DetonationPhaseTimerHandle;
 	TArray<FTimerHandle> ZoneWarningTimerHandles;
 	TArray<FTimerHandle> ZoneImpactTimerHandles;
 

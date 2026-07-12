@@ -27,6 +27,9 @@ protected:
 private:
 	// 발동한 공격 GA 종료 콜백 (ASC->OnAbilityEnded에 바인딩)
 	void OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData);
+	
+	// RecoverTime 대기가 끝나면 태스크를 최종 완료 처리하는 함수
+	void FinishAfterRecover();
 
 	// 컨트롤러 종류(보스/드론)에 맞춰 공격 Row 선택을 위임
 	const FNSEnemyAttackRow* SelectAttackRow(AAIController* AIController) const;
@@ -41,6 +44,12 @@ private:
 	// 발동한 공격 GA 클래스 (종료 판별용)
 	TSubclassOf<UGameplayAbility> CachedAttackAbilityClass;
 
+	// 이번 공격 종료 후 다음 패턴 전 대기할 RecoverTime(초)
+	float CachedRecoverTime = 0.f;
+
+	// RecoverTime 대기 타이머 핸들
+	FTimerHandle RecoverTimerHandle;
+	
 	// 공격 진행 상태 블랙보드 키
 	FName IsAttackingKey = TEXT("bIsAttacking");
 };

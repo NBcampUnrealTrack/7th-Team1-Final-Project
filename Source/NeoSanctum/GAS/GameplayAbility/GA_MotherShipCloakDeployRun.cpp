@@ -45,6 +45,11 @@ void UGA_MotherShipCloakDeployRun::ActivateAbility(const FGameplayAbilitySpecHan
 		return;
 	}
 	
+	if (ANSBossMotherShip* Boss = GetBossMotherShip())
+	{
+		CapturedAltitude = Boss->GetFlyingLocomotion()->GetAltitude();
+	}
+	
 	EnterCloak();
 	BeginLeg(ECloakDeployLeg::CloakAscend);
 }
@@ -78,6 +83,7 @@ void UGA_MotherShipCloakDeployRun::EndAbility(const FGameplayAbilitySpecHandle H
 	ExitCloak();
 
 	CachedArenaBounds = nullptr;
+	CapturedAltitude = 0.f;
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -147,11 +153,11 @@ void UGA_MotherShipCloakDeployRun::BeginLeg(ECloakDeployLeg NewLeg)
 		break;
 	case ECloakDeployLeg::DescendUncloak :
 		{
-			const FVector Dest = CachedArenaBounds->GetDiagonalEndCorner(DescendAltitude);
+			const FVector Dest = CachedArenaBounds->GetDiagonalEndCorner(CapturedAltitude);
 			PlayLegMontage(AscendDescendMontage);
 			FlyingLocomotionComponent->BeginScriptedMove(
 				Dest,
-				DescendAltitude, 
+				CapturedAltitude, 
 				DescendSpeed);
 		}
 		break;
@@ -370,6 +376,7 @@ void UGA_MotherShipCloakDeployRun::EnterCloak()
 	}
 	
 	SourceASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+	SourceASC->AddLooseGameplayTag(NSGameplayTags::State_Enemy_MotherShip_Stealth);
 	
 	if (CloakCueTag.IsValid())
 	{
@@ -393,6 +400,7 @@ void UGA_MotherShipCloakDeployRun::ExitCloak()
 	}
 	
 	SourceASC->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+	SourceASC->RemoveLooseGameplayTag(NSGameplayTags::State_Enemy_MotherShip_Stealth);
 	
 	if (CloakCueTag.IsValid())
 	{

@@ -42,6 +42,7 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::ExecuteTask(UBehaviorTreeCom
 	
 	CachedOwnerComp = &OwnerComp;
 	CachedAttackAbilityClass = CurrentAbilityClass;
+	CachedRecoverTime = SelectedAttack->RecoverTime;
 	
 	OwnerASC->OnAbilityEnded.AddUObject(this, &ThisClass::OnAttackAbilityEnded);
 	if (!OwnerASC->TryActivateAbilityByClass(CurrentAbilityClass))
@@ -64,6 +65,8 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::ExecuteTask(UBehaviorTreeCom
 
 EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
+	OwnerComp.GetWorld()->GetTimerManager().ClearTimer(RecoverTimerHandle);
+	
 	AAIController* AIC = OwnerComp.GetAIOwner();
 	APawn* OwnerPawn = AIC ? AIC->GetPawn() : nullptr;
 	UAbilitySystemComponent* OwnerASC =
@@ -132,7 +135,27 @@ void UNSBTTask_FlyingExecuteAbility::OnAttackAbilityEnded(const FAbilityEndedDat
 	}
 
 	CachedAttackAbilityClass = nullptr; 
+	
+	if (CachedRecoverTime > 0.f)
+	{
+		if (UWorld* World = CachedOwnerComp->GetWorld())
+		{
+			World->GetTimerManager().SetTimer(
+				RecoverTimerHandle,
+				this,
+				&ThisClass::FinishAfterRecover,
+				CachedRecoverTime,
+				false);
+			return;
+		}
+	}
 
+	FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
+}
+
+void UNSBTTask_FlyingExecuteAbility::FinishAfterRecover()
+{
+	if (!CachedOwnerComp.IsValid()) return;
 	FinishLatentTask(*CachedOwnerComp, EBTNodeResult::Succeeded);
 }
 

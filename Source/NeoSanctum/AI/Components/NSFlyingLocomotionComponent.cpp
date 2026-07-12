@@ -25,6 +25,34 @@ void UNSFlyingLocomotionComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	// 서버 권한 및 오너 유효성 방어
 	if (!HasAuthorityChecked()) return;
+	
+	if (bDeathFalling)
+	{
+		APawn* OwnerPawn = GetPawnOwner();
+		if (!IsValid(OwnerPawn)) return;
+
+		// 현재 위치 아래로 지면 샘플 (GroundTraceDistance 이내에 지면이 있을 때만 true)
+		float GroundZ = 0.f;
+		const bool bHasGround = TraceGroundAt(OwnerPawn->GetActorLocation(), GroundZ);
+		const float RestZ = GroundZ;
+
+		// 지면 도달 → 위치 스냅 + 완전 정지 (Super가 먼저 이동시켜 오버슈트되므로 스냅으로 보정)
+		if (bHasGround && OwnerPawn->GetActorLocation().Z <= RestZ)
+		{
+			FVector Loc = OwnerPawn->GetActorLocation();
+			Loc.Z = RestZ;
+			OwnerPawn->SetActorLocation(Loc, false, nullptr, ETeleportType::TeleportPhysics);
+			Velocity = FVector::ZeroVector;
+			return;
+		}
+
+		// 아직 공중: 수평 감쇠 + 중력 램프
+		Velocity.X = FMath::FInterpTo(Velocity.X, 0.f, DeltaTime, DeathFallHorizontalDamp);
+		Velocity.Y = FMath::FInterpTo(Velocity.Y, 0.f, DeltaTime, DeathFallHorizontalDamp);
+		Velocity.Z = FMath::Max(Velocity.Z - DeathFallGravity * DeltaTime, -DeathFallMaxSpeed);
+		return;
+	}
+	
 	if (bScriptedMove) { ApplyScriptedMoveInput(DeltaTime); }
 	
 	// 회전 갱신 (타겟 or velocity 방향)
@@ -57,6 +85,22 @@ void UNSFlyingLocomotionComponent::ResetLocomotionState()
 	GroundSampleAccumulator = 0.f;
 	bIsRetreating = false;
 	RetreatEnteredTime = 0.f;
+	
+	if (bDeathFalling)
+	{
+		Deceleration = CachedDeceleration;
+		bDeathFalling = false;
+	}
+}
+
+void UNSFlyingLocomotionComponent::StartDeathFall()
+{
+	if (bDeathFalling) return;
+	bDeathFalling = true;
+	bScriptedMove = false;
+	RotationTarget = nullptr;
+	CachedDeceleration = Deceleration;
+	Deceleration = 0.f;
 }
 
 bool UNSFlyingLocomotionComponent::HasAuthorityChecked() const
@@ -113,8 +157,10 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 {
 	// 서버 권한 확인
 	if (!HasAuthorityChecked()) return;
+	if (bDeathFalling) return;
 	if (bScriptedMove) return;
-
+	if (bSteeringInputLocked) return;
+	
 	APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return;
 

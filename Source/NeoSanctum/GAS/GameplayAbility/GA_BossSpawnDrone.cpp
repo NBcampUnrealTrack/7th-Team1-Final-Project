@@ -17,6 +17,16 @@ UGA_BossSpawnDrone::UGA_BossSpawnDrone()
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
+bool UGA_BossSpawnDrone::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags,
+	const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
+
+	const ANSBossMotherShip* BossMotherShip = Cast<ANSBossMotherShip>(GetAvatarActorFromActorInfo());
+	return BossMotherShip && BossMotherShip->HasSpawnWorkReady();
+}
+
 void UGA_BossSpawnDrone::HandleAttackEvent(const FGameplayEventData& Payload)
 {
 	Super::HandleAttackEvent(Payload);
@@ -31,16 +41,5 @@ void UGA_BossSpawnDrone::HandleAttackEvent(const FGameplayEventData& Payload)
 	BossMotherShip->SpawnMaturedDrones();
 }
 
-void UGA_BossSpawnDrone::EndAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo,
-	bool bReplicateEndAbility, bool bWasCancelled)
-{
-	if (ANSBossMotherShip* Boss = Cast<ANSBossMotherShip>(GetAvatarActorFromActorInfo()))
-	{
-		Boss->NotifySummonEnded();
-	}
-	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
-}
 
 

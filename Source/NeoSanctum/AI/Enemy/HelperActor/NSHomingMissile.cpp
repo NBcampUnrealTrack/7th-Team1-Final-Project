@@ -293,6 +293,8 @@ void ANSHomingMissile::OnMissileHit(UPrimitiveComponent* HitComponent, AActor* O
 	FindSplashTargetActors(ExplosionLocation,FindTargetActors);
 	FilterOccludedSplashTargets(OcclusionTraceStart, FindTargetActors);
 	ApplyExplosionDamage(ExplosionLocation, FindTargetActors);
+	
+	Destroy();
 }
 
 void ANSHomingMissile::ExecuteImpactCue(const FHitResult& HitResult)

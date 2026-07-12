@@ -53,7 +53,9 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning02, "GameplayCue.MotherShip.BombingRun.Warning2");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning03, "GameplayCue.MotherShip.BombingRun.Warning3");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning04, "GameplayCue.MotherShip.BombingRun.Warning4");
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Missile, "GameplayCue.MotherShip_BombingRun_Missile");
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Impact, "GameplayCue.MotherShip_BombingRun_Impact");
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_Cloaking, "GameplayCue.MotherShip_Cloaking");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Missile, "GameplayCue.MotherShip.BombingRun.Missile");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Impact, "GameplayCue.MotherShip.BombingRun.Impact");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Decal, "GameplayCue.MotherShip.BombingRun.Decal");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_Cloaking, "GameplayCue.MotherShip.Cloaking");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_HomingMissile, "GameplayCue.MotherShip.HomingMissile");
 }

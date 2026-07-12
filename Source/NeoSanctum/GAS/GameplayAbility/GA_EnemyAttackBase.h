@@ -42,6 +42,9 @@ protected:
 
 	bool TryApplyDamageToTarget(AActor* TargetActor, const FHitResult& HitResult);
 
+	// @민재 : 공격 주체 폰의 ThreatComponent에서 가장 가까운 known 타겟을 찾는다. 후보 없으면 nullptr.
+	AActor* FindNearestKnownTarget(const APawn* AttackerPawn) const;
+	
 private:
 	UFUNCTION()
 	void OnMontageCompleted();

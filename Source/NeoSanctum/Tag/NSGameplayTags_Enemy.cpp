@@ -16,6 +16,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Phase1, "State.Enemy.MotherShip.Phase1");
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Phase2, "State.Enemy.MotherShip.Phase2");
 	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Charge, "State.Enemy.MotherShip.Charge");
+	UE_DEFINE_GAMEPLAY_TAG(State_Enemy_MotherShip_Stealth, "State.Enemy.MotherShip.Stealth");
 	
 	// Enemy MotherShip Action
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Enemy_MotherShip_SpawnDrone, "Ability.Enemy.MotherShip.SpawnDrone");

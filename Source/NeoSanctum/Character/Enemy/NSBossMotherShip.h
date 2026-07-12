@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "Engine/TimerHandle.h"
 #include "NSBossPawnBase.h"
 #include "NSBossMotherShip.generated.h"
 
@@ -24,14 +23,15 @@ class NEOSANCTUM_API ANSBossMotherShip : public ANSBossPawnBase
 public:
 	ANSBossMotherShip();
 	
+protected:
+	virtual void ApplyDeadState() override;
+	
 public:
 	virtual void BeginPlay() override;
 	virtual UNSFlyingLocomotionComponent* GetFlyingLocomotion() const override;
 	
 	// 페이즈2(이동 언락) 전까지는 고정 방향 포탑 → 회전 주시 안 함
 	virtual bool ShouldFaceCombatTarget() const override { return IsBossMovementUnlocked(); }
-	
-	void NotifySummonEnded() { bSummonInFlight = false; }
 	
 	ANSBossArenaBounds* GetArenaBounds() const { return ArenaBounds; };
 	
@@ -46,18 +46,15 @@ public:
 	// [GA_BossSpawnDrone Notify가 호출] 성숙한 재생성 예약을 최대치 한도 내에서 실제 스폰
 	void SpawnMaturedDrones();
 
+	// [GA_BossSpawnDrone::CanActivateAbility가 조회] 성숙 예약이 있고 자리가 있는지
+	bool HasSpawnWorkReady() const;
+	
 private:
-	// 유지 점검 틱: 페이즈 전환 감지 + 성숙 예약 소환 요청. 기존 TickDroneSpawn 대체
-	void MaintenanceTick();
-
 	// 현재 최대치까지 '즉시 성숙(=Now)' 예약을 채워 넣음 (초기 웨이브/페이즈 재충원)
 	void QueueFullWave();
 
 	// 재생성 예약 1건 추가 (드론 사망 시): Now + RespawnDelay
 	void ScheduleRespawn();
-
-	// 성숙 예약이 있고 자리가 있으면 소환 어빌리티 발동 (중복 발동 방지 포함)
-	void RequestSummonAbility();
 
 	// 페이즈 전환: 전개된 드론 전원 회수 + 재생성 예약 전부 폐기
 	void RecallAllDrones();
@@ -105,10 +102,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Spawn", meta = (ClampMin = "1"))
 	int32 DefaultMaxDrones = 8;
 
-	// 소환 유지 점검 주기(초)
-	UPROPERTY(EditDefaultsOnly, Category = "Spawn", meta = (ClampMin = "0.1"))
-	float SpawnInterval = 1.f;
-
 	// 소환 위치로 쓸 메시 소켓 이름들 (비어 있으면 함선 주위 원형 배치로 fallback)
 	UPROPERTY(EditDefaultsOnly, Category = "Spawn")
 	TArray<FName> SpawnSocketNames;
@@ -129,15 +122,6 @@ private:
 	// 개별 재생성 예약: 각 원소 = "이 월드 시각이 지나면 1기 재생성 가능"
 	UPROPERTY(Transient)
 	TArray<double> PendingRespawnTimes;
-
-	// 직전 틱에서 관측한 페이즈 태그 (전환 감지용)
-	FGameplayTag LastObservedPhaseTag;
-
-	// 페이즈 전환 종료 후 새 최대치로 재충원해야 하는지
-	bool bPendingPhaseRefill = false;
-
-	// 소환 어빌리티 발동 후 Notify(실제 스폰) 대기 중인지 (중복 발동 방지)
-	bool bSummonInFlight = false;
 	
 	// 보스가 소유하는 드론 전용 풀
 	UPROPERTY(Transient)
@@ -149,8 +133,6 @@ private:
 	
 	void ReturnDroneAfterDelay(TWeakObjectPtr<ANSEnemyDrone> Drone);
 
-	// 소환 유지 타이머 핸들
-	FTimerHandle DroneSpawnTimerHandle;
 #pragma endregion
 
 #pragma region ControlDevice
@@ -197,6 +179,9 @@ public:
 	// [TransitionGA 연출 종료 시] 쉴드 드레인 / 보스 쉴드 / 무적 해제 / 이동 허용
 	void CompletePhase2Transition();
 
+	// 떼어둔 Phase2 PhaseTag를 실제로 ASC에 다시 부여하는 함수. 멱등(이미 커밋됐으면 아무 것도 안 함)
+	void CommitDeferredPhase2Tag();
+	
 	// 보스 직접 이동 허용 여부 (AIController가 이동 게이트로 사용 예정)
 	bool IsBossMovementUnlocked() const { return bBossMovementUnlocked; }
 	
@@ -220,6 +205,12 @@ private:
 	// ---- Runtime ----
 	// 보스 이동 허용 플래그(연출 종료 후 true). 실제 이동 로직은 AIController에서 게이트
 	bool bBossMovementUnlocked = false;
+	
+	// BeginPhase2Transition에서 떼어낸 뒤 커밋 대기 중인 Phase2 PhaseTag
+	FGameplayTag DeferredPhase2Tag;
+
+	// DeferredPhase2Tag가 아직 ASC에 커밋되지 않았는지 여부
+	bool bPhase2TagDeferred = false;
 #pragma endregion
 	
 private:

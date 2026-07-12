@@ -17,10 +17,13 @@ class NEOSANCTUM_API UGA_BossSpawnDrone : public UGA_EnemyAttackBase
 public:
 	UGA_BossSpawnDrone();
 	
+	virtual bool CanActivateAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayTagContainer* SourceTags = nullptr,
+		const FGameplayTagContainer* TargetTags = nullptr,
+		FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	
 protected:
 	virtual void HandleAttackEvent(const FGameplayEventData& Payload) override;
-	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle,
-	const FGameplayAbilityActorInfo* ActorInfo,
-	const FGameplayAbilityActivationInfo ActivationInfo,
-	bool bReplicateEndAbility, bool bWasCancelled) override;
 };

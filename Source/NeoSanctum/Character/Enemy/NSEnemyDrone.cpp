@@ -5,6 +5,7 @@
 
 #include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
+#include "Net/UnrealNetwork.h"
 #include "AbilitySystemComponent.h"
 #include "AIController.h"
 
@@ -34,6 +35,7 @@ bool ANSEnemyDrone::IsInPool() const
 void ANSEnemyDrone::PrepareForReuse(const FVector& Location, const FRotator& Rotation)
 {
 	if (!HasAuthority()) return;
+	bIsManeuvering = false;
 	
 	UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent();
 	if (!MotherShipStateComponent) return;
@@ -42,10 +44,21 @@ void ANSEnemyDrone::PrepareForReuse(const FVector& Location, const FRotator& Rot
 	
 	SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
 	SetActorTickEnabled(true); SetActorEnableCollision(true);
+	SetActorHiddenInGame(false);
+	
+	if (USkeletalMeshComponent* Mesh = GetEnemyMesh())
+	{
+		Mesh->SetSimulatePhysics(false);
+		Mesh->SetAllBodiesSimulatePhysics(false);
+		Mesh->bBlendPhysics = false;
+		Mesh->bPauseAnims = false;
+		Mesh->SetComponentTickEnabled(true);
+	}
 	
 	if (FlyingLocomotionComponent)
 	{
 		FlyingLocomotionComponent->SetComponentTickEnabled(true);
+		FlyingLocomotionComponent->ResetLocomotionState(); 
 	}
 	
 	ApplyAliveState();
@@ -56,7 +69,7 @@ void ANSEnemyDrone::PrepareForReuse(const FVector& Location, const FRotator& Rot
 void ANSEnemyDrone::DeactivateForPool()
 {
 	if (!HasAuthority()) return;
-	
+	bIsManeuvering = false;
 	
 	if (UNSEnemyStateComponent* MotherShipStateComponent = GetStateComponent())
 	{
@@ -90,5 +103,26 @@ void ANSEnemyDrone::DeactivateForPool()
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	SetActorTickEnabled(false);
+}
+
+void ANSEnemyDrone::SetManeuvering(bool bNewManeuvering)
+{
+	if (!HasAuthority() || bIsManeuvering == bNewManeuvering) return;
+	bIsManeuvering = bNewManeuvering;
+}
+
+void ANSEnemyDrone::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ANSEnemyDrone, bIsManeuvering);
+}
+
+void ANSEnemyDrone::ApplyDeadState()
+{
+	Super::ApplyDeadState();
+	if (FlyingLocomotionComponent)
+	{
+		FlyingLocomotionComponent->StartDeathFall();
+	}
 }
 

@@ -8,6 +8,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyDrone.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -65,13 +66,16 @@ void ANSEnemyDroneAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	UpdateEnemyPhase();
-	
+
+	ANSEnemyDrone* DronePawn = Cast<ANSEnemyDrone>(GetPawn());
+
 	if (IsDroneAIBlocked())
 	{
 		SyncFlyingRotationTarget(nullptr);
+		if (DronePawn) DronePawn->SetManeuvering(false);
 		return;
 	}
-	
+
 	if (UNSEnemyThreatComponent* DroneThreatComponent = GetEnemyThreatComponent())
 	{
 		if (DroneThreatComponent->CanEvaluateTarget())
@@ -82,8 +86,15 @@ void ANSEnemyDroneAIController::Tick(float DeltaTime)
 	}
 
 	UpdateCurrentTargetBlackboard();
-	SyncFlyingRotationTarget(GetCurrentTargetActor());
 	CanUseAnyAttackByDistance();
+
+	const bool bCanAttack = CachedBBComp && CachedBBComp->GetValueAsBool(CanAttackKey);
+	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(IsAttackingKey);
+	const bool bFaceTarget = bCanAttack || bIsAttacking;
+
+	SyncFlyingRotationTarget(bFaceTarget ? GetCurrentTargetActor() : nullptr);
+
+	if (DronePawn) DronePawn->SetManeuvering(!bFaceTarget);
 
 }
 

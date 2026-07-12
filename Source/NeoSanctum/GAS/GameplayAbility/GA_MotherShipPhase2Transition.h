@@ -21,6 +21,13 @@ protected:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
 
+	// 비정상 취소 시에도 떼어둔 Phase2 태그가 유실되지 않도록 안전장치로 커밋
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
+	
 private:
 	// 연출(대기/몽타주) 종료 시 호출
 	UFUNCTION()

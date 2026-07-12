@@ -80,19 +80,23 @@ void UGA_MotherShipHomingMissile::FireOneShot()
 		return;
 	}
 	
-	ANSBossAIController* BossAIC = GetBossController();
-	if (!BossAIC) 
+	AActor* Target = FindNearestKnownTarget(Cast<APawn>(SourceActor));
+	if (!IsValid(Target))
 	{
-		CancelAttackAbility();
-		return;
+		ANSBossAIController* BossAIC = GetBossController();
+		if (!BossAIC)
+		{
+			CancelAttackAbility();
+			return;
+		}
+
+		Target = BossAIC->GetCurrentAttackActor();
+		if (!Target)
+		{
+			Target = BossAIC->GetCurrentTargetActor();
+		}
 	}
-	
-	AActor* Target = BossAIC->GetCurrentAttackActor();
-	if (!Target)
-	{
-		Target = BossAIC->GetCurrentTargetActor();
-	}
-	
+
 	if (!IsValid(Target))
 	{
 		CancelAttackAbility();

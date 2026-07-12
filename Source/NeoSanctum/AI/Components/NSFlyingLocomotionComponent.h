@@ -21,6 +21,22 @@ public:
 public:
 	// @민재 : 로코모션 내부 상태 리셋 (텔포/풀 재활용 시 호출). Velocity, 고도 스무딩, 후퇴 상태 모두 초기화
 	void ResetLocomotionState();
+	
+	// 사망 시 호출: 고도 유지/스티어링을 끄고 천천히 추락시킨다
+	void StartDeathFall();
+
+private:
+	UPROPERTY(EditAnywhere, Category="Locomotion|DeathFall", meta=(ClampMin="0.0"))
+	float DeathFallGravity = 500.f;        // 추락 가속(cm/s^2)
+
+	UPROPERTY(EditAnywhere, Category="Locomotion|DeathFall", meta=(ClampMin="0.0"))
+	float DeathFallMaxSpeed = 300.f;       // 최대 낙하 속도(cm/s, 낮을수록 천천히)
+
+	UPROPERTY(EditAnywhere, Category="Locomotion|DeathFall", meta=(ClampMin="0.0"))
+	float DeathFallHorizontalDamp = 1.5f;  // 수평 속도 감쇠(클수록 빨리 멈춤)
+
+	bool bDeathFalling = false;
+	float CachedDeceleration = 0.f;
 
 #pragma region PublicAPI
 public:
@@ -61,6 +77,12 @@ protected:
 #pragma endregion
 
 #pragma region Altitude
+public:
+	float GetAltitude() const { return Altitude; }
+
+	// @민재 : 유지 고도 오프셋을 직접 갱신. 보스 회피 서비스의 상승/하강 선택 시 사용
+	void SetAltitude(float NewAltitude) { Altitude = NewAltitude; }
+	
 protected:
 	// @민재 : 고도 유지 로직. 지형 샘플 → 목표 높이 스무딩 → Z 입력 적용
 	void MaintainAltitude(float DeltaSeconds);
@@ -218,6 +240,15 @@ private:
 	float CachedAcceleration = 0.f;
 	float CachedMaxClimbSpeed = 0.f;
 	TWeakObjectPtr<AActor> CachedRotationTarget;
+#pragma endregion
+	
+#pragma region MovementLock
+public:
+	// @민재 : 스티어링 입력(RequestMoveTowards) 차단 여부 설정. 기본 false(차단 해제) → 드론 등 다른 사용자는 영향 없음
+	void SetSteeringInputLocked(bool bLocked) { bSteeringInputLocked = bLocked; }
+
+private:
+	bool bSteeringInputLocked = false;
 #pragma endregion
 	
 private:

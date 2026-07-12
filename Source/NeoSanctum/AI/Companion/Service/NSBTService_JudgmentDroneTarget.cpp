@@ -13,6 +13,8 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UNSBTService_JudgmentDroneTarget::UNSBTService_JudgmentDroneTarget()
 {
@@ -154,6 +156,8 @@ AActor* UNSBTService_JudgmentDroneTarget::FindNearestActor(
 		
 			const float Health = EnemyASC->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
 			if (Health <= 0.f) continue;
+			
+			if (EnemyASC->HasMatchingGameplayTag(NSGameplayTags::State_Enemy_MotherShip_Stealth)) continue;
 		}
 		
 		const float DistSq = FVector::DistSquared(Origin, CandiateActor->GetActorLocation());
