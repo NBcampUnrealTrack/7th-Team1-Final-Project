@@ -148,6 +148,9 @@ void ANSGrenade::ExplodeAt(
 	FilterOccludedExplosionTargets(OcclusionTraceStart, TargetActors);
 	ApplyExplosionDamage(ExplosionLocation, TargetActors);
 
+	// 폭발 대상의 GE 적용이 전부 끝났으니 피드백 묶음을 완료.
+	CompletePlayerAttackFeedbackGroup();
+
 	Destroy();
 }
 
