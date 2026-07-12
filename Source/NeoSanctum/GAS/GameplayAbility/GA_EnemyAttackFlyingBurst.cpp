@@ -80,19 +80,27 @@ void UGA_EnemyAttackFlyingBurst::FireOneVolley()
 		return;
 	}
 	
-	AActor* TargetActor = nullptr;
-	ANSBossAIController* BossAIC = Cast<ANSBossAIController>(NSEnemyPawn->GetController());
-	if (BossAIC)
+	// 가장 가까운 공격대상 찾기 및 유효성 검사
+	AActor* TargetActor = FindNearestKnownTarget(NSEnemyPawn);
+	if (!IsValid(TargetActor))
 	{
-		TargetActor = BossAIC->GetCurrentAttackActor();
-		if (!IsValid(TargetActor))
+		// 유효하지않다면 보스 AIC 가져오기
+		ANSBossAIController* BossAIC = Cast<ANSBossAIController>(NSEnemyPawn->GetController());
+		if (BossAIC)
 		{
-			TargetActor = BossAIC->GetCurrentTargetActor();
+			// 유효하다면 현재 공격할 타겟으로 등록
+			TargetActor = BossAIC->GetCurrentAttackActor();
+			if (!IsValid(TargetActor))
+			{
+				// 공격할 대상이 유효하지않다면 현재 추적중이 대상으로 폴백
+				TargetActor = BossAIC->GetCurrentTargetActor();
+			}
 		}
-	}
-	else if (ANSEnemyDroneAIController* EnemyDroneAIC = Cast<ANSEnemyDroneAIController>(NSEnemyPawn->GetController()))
-	{
-		TargetActor = EnemyDroneAIC->GetCurrentTargetActor();
+		else if (ANSEnemyDroneAIController* EnemyDroneAIC = Cast<ANSEnemyDroneAIController>(NSEnemyPawn->GetController())) // 하위드론이라면
+		{
+			// 타겟엑터로 적용
+			TargetActor = EnemyDroneAIC->GetCurrentTargetActor();
+		}
 	}
 	
 	if (!IsValid(TargetActor))
