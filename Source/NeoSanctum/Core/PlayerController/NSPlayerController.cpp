@@ -906,6 +906,8 @@ void ANSPlayerController::BeginPlay()
 	{
 		return;
 	}
+	
+	EnsureTravelLoadingBinding();
 
 	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
 	// 클라에는 CheatManager가 기본 생성되지 않으므로 강제로 생성
@@ -1003,6 +1005,17 @@ void ANSPlayerController::BeginPlay()
 	StartSkillUIApplyRetry();
 }
 
+void ANSPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->OnTravelLoadingFinished.Remove(TravelLoadingFinishedHandle);
+	}
+	TravelLoadingFinishedHandle.Reset();
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void ANSPlayerController::GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const
 {
 	if (DeathSpectatorComponent && DeathSpectatorComponent->GetSpectatorReplicationViewPoint(Location, Rotation))
@@ -1021,9 +1034,45 @@ void ANSPlayerController::ShowTravelLoadingScreen()
 		return;
 	}
 	
+	if (APawn* P = GetPawn())
+	{
+		P->DisableInput(this);
+		InputBlockedPawn = P;
+	}
+	
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->ShowTravelLoadingScreen(this);
+	}
+}
+
+void ANSPlayerController::HandleTravelLoadingFinished()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Finished / GetPawn=%s / Blocked=%s"), *GetNameSafe(GetPawn()), *GetNameSafe(InputBlockedPawn.Get()))
+
+	if (APawn* P = InputBlockedPawn.Get())
+	{
+		P->EnableInput(this);
+	}
+	InputBlockedPawn.Reset();
+}
+
+void ANSPlayerController::EnsureTravelLoadingBinding()
+{
+	if (!IsLocalController()) return;
+	
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		// 중복 방지
+		UIManager->OnTravelLoadingFinished.RemoveAll(this);
+		TravelLoadingFinishedHandle =
+			UIManager->OnTravelLoadingFinished.AddUObject(
+				this, &ANSPlayerController::HandleTravelLoadingFinished);
 	}
 }
 
@@ -1033,21 +1082,6 @@ void ANSPlayerController::RestoreTravelLoadingScreenIfRequested()
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->RestoreTravelLoadingScreen(this);
-	}
-}
-
-void ANSPlayerController::HideTravelLoadingScreenIfPlayable(APawn* NewPawn)
-{
-	// Travel 직후 던전제너레이터 플러그인으로 인해 Spectator Pawn을 반드시 거치게 되므로
-	// 실제 플레이어 캐릭터가 붙기 전에는 로딩창을 유지하는 것이 필요했음
-	if (!IsLocalController() || !Cast<ANSPlayerCharacterBase>(NewPawn))
-	{
-		return;
-	}
-	
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-	{
-		UIManager->HideTravelLoadingScreen();
 	}
 }
 
@@ -1079,6 +1113,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
 	if (!IsLocalController()) return;
+	
+	EnsureTravelLoadingBinding();
 	
 	UE_LOG(LogTemp, Warning,
 	TEXT("[TravelLoading] ClientRestart / Map=%s / NewPawn=%s / ViewTarget=%s"),
@@ -1129,6 +1165,13 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		if (Cast<ANSPlayerCharacterBase>(NewPawn))
 		{
 			UIManager->MarkTravelPawnReady();
+			
+			if (UIManager->IsTravelLoadingScreenActive())
+			{
+				// 폰 교체 후에도 차단 유지
+				NewPawn->DisableInput(this); 
+				InputBlockedPawn = NewPawn;
+			}
 		}
 
 	if (MapName.Contains(TEXT("HideOut")))

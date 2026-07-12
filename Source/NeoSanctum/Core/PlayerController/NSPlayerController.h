@@ -224,11 +224,13 @@ private:
 
 	// Travel 호출 직전에 UIManager 로딩창을 띄움
 	void ShowTravelLoadingScreen();
+	// (이용호 추가) 로딩 스크린나올 때 인풋 제어용
+	void HandleTravelLoadingFinished();
+	// 로딩스크린 브로드캐스트 바인딩용
+	void EnsureTravelLoadingBinding();
+	FDelegateHandle TravelLoadingFinishedHandle;
 	// Seamless Travel/ClientRestart 이후 위젯이 사라진 경우에 다시 복원
 	void RestoreTravelLoadingScreenIfRequested();
-	// 현재는 Spectator 단계에서는 유지, 실제 플레이어 캐릭터를 조작할 수 있게 된 뒤에 로딩창을 닫음
-	// 추후에는 추가로 데이터가 다 로딩된 시점에 닫도록 해야하지 않을까 생각함
-	void HideTravelLoadingScreenIfPlayable(APawn* NewPawn);
 	
 	//현재 바인딩한 RunGameState를 캐싱
 	UPROPERTY()
@@ -281,6 +283,9 @@ private:
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
 	
 	TWeakObjectPtr<UNSExperienceComponent> CachedHUDExperienceComponent;
+	
+	// 로딩 중 입력을 막아둔 폰
+	TWeakObjectPtr<APawn> InputBlockedPawn;
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")
@@ -320,6 +325,7 @@ private:
 	FDelegateHandle PermanentDataLoadedHandle;
 protected:
 	virtual void BeginPlay() override;
+	void EndPlay(EEndPlayReason::Type EndPlayReason);
 	virtual void GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
 	
