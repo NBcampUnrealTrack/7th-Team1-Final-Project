@@ -2033,6 +2033,28 @@ void ANSPlayerController::Client_PlayAttackHitFeedback_Implementation(const FNSH
 	FeedbackComponent->HandleAttackHitFeedback(Context);
 }
 
+void ANSPlayerController::Client_CompleteAttackHitFeedbackGroup_Implementation(const FGuid& FeedbackGroupId)
+{
+	if (!IsLocalController() || !FeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	UNSPlayerAttackFeedbackComponent* FeedbackComponent = PlayerCharacter->GetPlayerAttackFeedbackComponent();
+
+	if (FeedbackComponent)
+	{
+		FeedbackComponent->CompleteAttackHitFeedbackGroup(FeedbackGroupId);
+	}
+}
+
 void ANSPlayerController::Client_PlayHitTakenFeedback_Implementation(
 	const FNSHitTakenFeedbackContext& Context)
 {
