@@ -11,6 +11,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Slot.h"
@@ -481,6 +482,31 @@ void UNSAbilitySystemComponent::FinishSkillRecharge(const FGameplayTag& SkillSlo
 
 	// 아직 최대치가 아니면 다음 충전을 이어서 시작
 	StartSkillRecharge(SkillSlotTag, GetCachedSkillRechargeCooldown(SkillSlotTag));
+}
+
+void UNSAbilitySystemComponent::NotifySkillCountChangedForMaxStat(const FGameplayTag& MaxSkillCountStatTag) const
+{
+	FGameplayTag SkillSlotTag;
+
+	if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill1Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill1;
+	}
+	else if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill2Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill2;
+	}
+	else if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill3Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill3;
+	}
+	else
+	{
+		return;
+	}
+
+	// 서버에서 계산한 최신 충전 수를 클리아이언트 UI에 바로 보내줌.
+	BroadcastSkillCooldownUIData(SkillSlotTag);
 }
 
 void UNSAbilitySystemComponent::BroadcastSkillCooldownUIData(const FGameplayTag& SkillSlotTag) const

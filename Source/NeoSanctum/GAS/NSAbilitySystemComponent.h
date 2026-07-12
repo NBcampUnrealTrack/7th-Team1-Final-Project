@@ -37,6 +37,9 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Skill|Cooldown")
 	bool GetSkillCooldownUIData(const FGameplayTag& SkillSlotTag, FSkillCooldownUIData& OutData) const;
 
+	// 최대 충전 수가 바뀐 슬롯의 UI를 바로 갱신.
+	void NotifySkillCountChangedForMaxStat(const FGameplayTag& MaxSkillCountStatTag) const;
+
 public:
 	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,

@@ -398,7 +398,7 @@ void UNSPlayerAttributeSet::OnRep_Skill1Count(const FGameplayAttributeData& OldS
 
 void UNSPlayerAttributeSet::OnRep_MaxSkill2Count(const FGameplayAttributeData& OldMaxSkill2Count)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Skill2Count, OldMaxSkill2Count);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxSkill2Count, OldMaxSkill2Count);
 }
 
 void UNSPlayerAttributeSet::OnRep_Skill2Count(const FGameplayAttributeData& OldSkill2Count)
@@ -408,10 +408,10 @@ void UNSPlayerAttributeSet::OnRep_Skill2Count(const FGameplayAttributeData& OldS
 
 void UNSPlayerAttributeSet::OnRep_MaxSkill3Count(const FGameplayAttributeData& OldMaxSkill3Count)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Skill3Count, OldMaxSkill3Count);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxSkill3Count, OldMaxSkill3Count);
 }
 
 void UNSPlayerAttributeSet::OnRep_Skill3Count(const FGameplayAttributeData& OldSkill3Count)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Skill2Count, OldSkill3Count);
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Skill3Count, OldSkill3Count);
 }
