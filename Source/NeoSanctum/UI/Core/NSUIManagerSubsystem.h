@@ -14,6 +14,8 @@ class UNSRunResultWidget;
 class UNSSpectatorWidget;
 class ANSRunGameState;
 
+DECLARE_MULTICAST_DELEGATE(FNSTravelLoadingFinished);
+
 
 /**
  * 게임 전체 UI 생성을 관리하는 서브시스템
@@ -102,11 +104,12 @@ public:
 	//(정주현 추가) Loading 위젯 전용
 	void CreateLoadingScreen(APlayerController* OwningPlayer);
 	void ShowLoadingScreen();
-	void HideLoadingScreen();
 	void ShowTravelLoadingScreen(APlayerController* OwningPlayer);
 	void RestoreTravelLoadingScreen(APlayerController* OwningPlayer);
 	void HideTravelLoadingScreen();
 	bool IsTravelLoadingScreenActive() const { return bTravelLoadingScreenActive; }
+	
+	FNSTravelLoadingFinished OnTravelLoadingFinished;
 	
 	//파츠 패널 열기
 	void OpenPartPanel();
