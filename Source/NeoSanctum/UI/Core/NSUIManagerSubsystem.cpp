@@ -343,6 +343,7 @@ void UNSUIManagerSubsystem::TryFinishTravelLoading()
 	}
 	
 	HideTravelLoadingScreen(); 
+	OnTravelLoadingFinished.Broadcast();
 }
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
@@ -907,14 +908,6 @@ void UNSUIManagerSubsystem::ShowLoadingScreen()
 	if (LoadingScreenWidget)
 	{
 		LoadingScreenWidget->SetVisibility(ESlateVisibility::Visible);
-	}
-}
-
-void UNSUIManagerSubsystem::HideLoadingScreen()
-{
-	if (LoadingScreenWidget)
-	{
-		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
