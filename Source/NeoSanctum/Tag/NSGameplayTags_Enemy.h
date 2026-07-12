@@ -20,6 +20,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Phase1);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Phase2);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Charge);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Stealth);
 	
 	// Enemy MotherShip Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_SpawnDrone);
