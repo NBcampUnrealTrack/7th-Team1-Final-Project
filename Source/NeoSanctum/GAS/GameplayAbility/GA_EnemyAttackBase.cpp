@@ -9,6 +9,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 {
@@ -200,4 +201,48 @@ bool UGA_EnemyAttackBase::TryApplyDamageToTarget(AActor* TargetActor, const FHit
 	}
 
 	return true;
+}
+
+AActor* UGA_EnemyAttackBase::FindNearestKnownTarget(const APawn* AttackerPawn) const
+{
+	// 공격자 유효성 검사
+	if (!IsValid(AttackerPawn))
+	{
+		return nullptr;
+	}
+
+	// ThreatComponent 찾아서 가져오기
+	UNSEnemyThreatComponent* ThreatComponent = AttackerPawn->FindComponentByClass<UNSEnemyThreatComponent>();
+	if (!ThreatComponent)
+	{
+		return nullptr;
+	}
+
+	// 공격대상 후보 변수 등록
+	TArray<AActor*> Candidates;
+	ThreatComponent->GetKnownTargets(Candidates);
+
+	// 가장 가까운 공격대상을 확정할 변수 추가
+	const FVector PawnLocation = AttackerPawn->GetActorLocation();
+	AActor* NearestTarget = nullptr;
+	float NearestDistSq = TNumericLimits<float>::Max();
+
+	// 후보군들을 돌며 가장 가까운대상 반환
+	for (AActor* Candidate : Candidates)
+	{
+		if (!IsValid(Candidate))
+		{
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(PawnLocation, Candidate->GetActorLocation());
+		if (DistSq < NearestDistSq)
+		{
+			NearestDistSq = DistSq;
+			NearestTarget = Candidate;
+		}
+	}
+
+	// 결정된 가장 가까운 대상 리턴
+	return NearestTarget;
 }
