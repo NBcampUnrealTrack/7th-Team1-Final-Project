@@ -701,7 +701,11 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 
 		if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 		{
-			ApplyDamageToActor(MuzzleObstructionHitResult);
+			// BackTrace로 늘어난 구간은 실제 명중 거리에서 제외.
+			const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+			const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
+
+			ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance);
 			ExecuteImpactCue(MuzzleObstructionHitResult);
 			continue;
 		}
@@ -711,7 +715,7 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 			continue;
 		}
 
-		ApplyDamageToActor(ServerHitResult);
+		ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance);
 		ExecuteImpactCue(ServerHitResult);
 	}
 
@@ -740,7 +744,7 @@ void UGA_EngineerShotgunFire::CompleteAttackFeedbackGroup() const
 	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
 }
 
-void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult)
+void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
 	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
@@ -767,6 +771,24 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+
+	float DamageFalloffMultiplier = 1.0f;
+
+	if (!TryCalculateDamageFalloffMultiplier(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		HitDistance,
+		DamageFalloffMultiplier))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+		"Shotgun 거리 감쇠 계산에 실패했습니다. HitDistance={HitDistance}",
+		("HitDistance", HitDistance)
+	);
+
+		return;
+	}
+
+	// 펠릿의 실제 충돌 거리에 맞춰 최종 데미지를 감쇠.
+	FinalDamage *= DamageFalloffMultiplier;
 
 	FGameplayEffectSpecHandle DamageSpecHandle =
 		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());

@@ -50,4 +50,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritChance);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritDamage);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffStartDistance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffEndDistance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffMinimumMultiplier);
 }

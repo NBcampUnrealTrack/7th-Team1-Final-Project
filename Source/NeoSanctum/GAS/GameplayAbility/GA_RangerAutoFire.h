@@ -54,11 +54,7 @@ protected:
 	// 몽타주 재생 속도. 실제 연사 간격은 FireRate CombatStat이 결정.
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	float FireMontagePlayRate = 1.0f;
-	
-	// 클라이언트 조준 Trace와 서버 Canonical Aim Trace의 최대 거리
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	float TraceRange = 10000.0f;
-	
+
 	// 클라이언트가 보낸 TraceStart와 서버 카메라 기준 시작점의 최대 허용 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerTraceStartTolerance = 300.0f;
@@ -120,9 +116,10 @@ private:
 	// 서버 Canonical Aim Trace와 총구 막힘 결과를 기준으로 실제 데미지를 적용.
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
-	void ApplyDamageToActor(const FHitResult& HitResult);
+	void ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
 	bool TryGetFinalDamage(float& OutDamage);
 	bool TryGetFinalFireInterval(float& OutFireInterval);
+	bool TryGetFinalFireRange(float& OutFireRange) const;
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 	
 	void ExecuteMuzzleFireCue();

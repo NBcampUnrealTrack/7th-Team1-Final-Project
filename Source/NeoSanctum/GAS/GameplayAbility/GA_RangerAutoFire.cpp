@@ -216,6 +216,28 @@ bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
 	return true;
 }
 
+bool UGA_RangerAutoFire::TryGetFinalFireRange(float& OutFireRange) const
+{
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_FireRange,
+		FinalFireRange))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire FireRange CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRange.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutFireRange = FMath::Max(FinalFireRange, 0.0f);
+	return true;
+}
+
 void UGA_RangerAutoFire::FireOnce()
 {
 	// 로컬 Trace는 TargetData 생성용.
@@ -480,7 +502,11 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		AimTargetActor,
 		MuzzleObstructionHitResult))
 	{
-		ApplyDamageToActor(MuzzleObstructionHitResult);
+		// BackTrace로 늘어난 구간은 실제 명중 거리에서 제외.
+		const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+		const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
+
+		ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance);
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
@@ -490,11 +516,11 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	ApplyDamageToActor(ServerHitResult);
+	ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance);
 	ExecuteImpactCue(ServerHitResult);
 }
 
-void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
+void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
 	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
@@ -521,6 +547,24 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+
+	float DamageFalloffMultiplier = 1.0f;
+
+	if (!TryCalculateDamageFalloffMultiplier(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		HitDistance,
+		DamageFalloffMultiplier))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire 거리 감쇠 계산 실패. HitDistance={HitDistance}",
+			("HitDistance", HitDistance)
+		);
+
+		return;
+	}
+
+	// 감쇠된 값을 기존 Effect.Damage.Base 흐름으로 전달.
+	FinalDamage *= DamageFalloffMultiplier;
 	
 	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달.
 	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용.
@@ -773,9 +817,15 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		return false;
 	}
 
-	// 서버 검증에서 같은 최대 사거리를 사용할 수 있도록
-	// 조준 방향과 TraceRange로 끝점을 명시적으로 구성.
-	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 클라이언트도 CombatStat에서 가져온 최대 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + TraceDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
@@ -821,8 +871,16 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 	{
 		return false;
 	}
-	
-	OutTraceEnd = OutTraceStart + ServerAimDirection * TraceRange;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 서버 판정도 클라이언트와 같은 CombatStat 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + ServerAimDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams(
 		SCENE_QUERY_STAT(RangerAutoFireServerAimTrace), false);
@@ -1099,8 +1157,15 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	{
 		return false;
 	}
-	
-	const float MaxTraceDistance = TraceRange + ServerHitLocationTolerance;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	const float MaxTraceDistance = FinalFireRange + ServerHitLocationTolerance;
 	
 	if (FVector::DistSquared(ClientTraceStart, ClientTraceEnd) > FMath::Square(MaxTraceDistance))
 	{
