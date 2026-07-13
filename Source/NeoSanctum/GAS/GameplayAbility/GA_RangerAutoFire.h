@@ -123,6 +123,7 @@ private:
 	void ApplyDamageToActor(const FHitResult& HitResult);
 	bool TryGetFinalDamage(float& OutDamage);
 	bool TryGetFinalFireInterval(float& OutFireInterval);
+	bool TryGetFinalFireRange(float& OutFireRange) const;
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
 	
 	void ExecuteMuzzleFireCue();

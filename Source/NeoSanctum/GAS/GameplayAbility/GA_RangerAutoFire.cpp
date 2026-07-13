@@ -216,6 +216,28 @@ bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
 	return true;
 }
 
+bool UGA_RangerAutoFire::TryGetFinalFireRange(float& OutFireRange) const
+{
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_FireRange,
+		FinalFireRange))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire FireRange CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRange.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutFireRange = FMath::Max(FinalFireRange, 0.0f);
+	return true;
+}
+
 void UGA_RangerAutoFire::FireOnce()
 {
 	// 로컬 Trace는 TargetData 생성용.
