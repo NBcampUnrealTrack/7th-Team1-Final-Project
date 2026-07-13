@@ -120,4 +120,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
 		meta = (AssetBundles = "CommonUI"))
 	TSoftObjectPtr<UDataTable> GoodsUIDataTable;
+	
+	// 몬스터 종류별 상태 UI 표시 정책을 정의하는 공용 UI 테이블.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> MonsterUIDataTable;
 };
