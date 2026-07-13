@@ -744,7 +744,7 @@ void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
 	// 새 Combo Window의 섹션 이동 가능 상태 초기화
 	bComboAdvancedInCurrentWindow = false;
 
-	if (bComboInputBuffered)
+	if (bComboInputBuffered || bBaseAttackInputHeld)
 	{
 		// Window 이전 선입력 또는 입력 유지 상태 소비
 		TryAdvanceGroundCombo();
@@ -813,7 +813,7 @@ void UGA_VanguardBaseAttack::StartGroundCombo()
 void UGA_VanguardBaseAttack::HandleGroundComboInput()
 {
 	if (CurrentGroundComboIndex == INDEX_NONE ||
-		CurrentGroundComboIndex >= GroundComboSectionNames.Num() - 1)
+		GroundComboSectionNames.IsEmpty())
 	{
 		return;
 	}
