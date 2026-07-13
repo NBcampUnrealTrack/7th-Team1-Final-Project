@@ -3,6 +3,8 @@
 
 #include "NSFlyingLocomotionComponent.h"
 #include "GameFramework/Pawn.h"
+#include "EngineUtils.h"
+#include "GenericTeamAgentInterface.h"
 
 
 UNSFlyingLocomotionComponent::UNSFlyingLocomotionComponent()
@@ -393,6 +395,9 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 
 	const float DeltaTime = GetWorld()->GetDeltaSeconds();
 
+	TArray<AActor*> IgnoredAllies;
+	CollectAvoidanceIgnoredActors(OwnerPawn, IgnoredAllies);
+
 	// 방향별 스윕 → raw danger → 시간 스무딩
 	for (int32 i = 0; i < SteeringDirections.Num(); ++i)
 	{
@@ -403,6 +408,7 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 		FHitResult Hit;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(OwnerPawn);
+		CollisionParams.AddIgnoredActors(IgnoredAllies);
 		CollisionParams.bTraceComplex = false;
 
 		// 이번 프레임 raw Danger 계산
@@ -524,6 +530,33 @@ FVector UNSFlyingLocomotionComponent::ChooseRetreatDirection() const
 #pragma endregion
 
 #pragma region ScriptedMove
+
+void UNSFlyingLocomotionComponent::CollectAvoidanceIgnoredActors(const APawn* OwnerPawn,
+	TArray<AActor*>& OutIgnored) const
+{
+	const IGenericTeamAgentInterface* OwnerTeamAgent = Cast<IGenericTeamAgentInterface>(OwnerPawn);
+	if (!OwnerTeamAgent) return;
+
+	const FGenericTeamId OwnerTeamId = OwnerTeamAgent->GetGenericTeamId();
+	const UClass* OwnerClass = OwnerPawn->GetClass();
+	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
+
+	for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+	{
+		APawn* OtherPawn = *It;
+		if (OtherPawn == OwnerPawn) continue;
+		if (FVector::DistSquared(OwnerLocation, OtherPawn->GetActorLocation()) > FMath::Square(AvoidanceTraceDistance)) continue;
+
+		const IGenericTeamAgentInterface* OtherTeamAgent = Cast<IGenericTeamAgentInterface>(OtherPawn);
+		const bool bSameTeam = OtherTeamAgent && OtherTeamAgent->GetGenericTeamId() == OwnerTeamId;
+		const bool bSameClass = OtherPawn->GetClass() == OwnerClass;
+
+		if (bSameTeam || bSameClass)
+		{
+			OutIgnored.Add(OtherPawn);
+		}
+	}
+}
 
 void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, float TargetAltitude, float Speed)
 {

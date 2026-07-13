@@ -205,6 +205,11 @@ protected:
 	TArray<FVector> SteeringDirections;
 	TArray<float> InterestMap;
 	TArray<float> DangerMap;
+	
+private:
+	// @민재 : 회피 스윕에서 제외할 같은 팀/같은 클래스 폰들을 근접 반경 내에서 수집 (드론끼리 상호 교착 방지)
+	void CollectAvoidanceIgnoredActors(const APawn* OwnerPawn, TArray<AActor*>& OutIgnored) const;
+	
 #pragma endregion
 
 #pragma region CachedRefs
