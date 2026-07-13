@@ -155,6 +155,71 @@ bool UGA_SkillBase::TryGetFinalSkillDamage(const FGameplayTag& AbilityTag, float
 	return true;
 }
 
+bool UGA_SkillBase::TryCalculateDamageFalloffMultiplier(
+	const FGameplayTag& AbilityTag,
+	float HitDistance,
+	float& OutDamageMultiplier) const
+{
+	OutDamageMultiplier = 1.0f;
+
+	float FalloffStartDistance = 0.0f;
+	float FalloffEndDistance = 0.0f;
+	float MinimumDamageMultiplier = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+	AbilityTag,
+	NSGameplayTags::CombatStat_DamageFalloffStartDistance,
+	FalloffStartDistance))
+	{
+		return false;
+	}
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_DamageFalloffEndDistance,
+		FalloffEndDistance))
+	{
+		return false;
+	}
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_DamageFalloffMinimumMultiplier,
+		MinimumDamageMultiplier))
+	{
+		return false;
+	}
+
+	// 감쇠 구간과 최소 배율이 올바르지 않으면 잘못된 데미지를 적용하지 않음.
+	if (FalloffStartDistance < 0.0f || FalloffEndDistance <= FalloffStartDistance ||
+		MinimumDamageMultiplier < 0.0f || MinimumDamageMultiplier > 1.0f)
+	{
+		return false;
+	}
+
+	const float ClampedHitDistance = FMath::Max(HitDistance, 0.0f);
+
+	if (ClampedHitDistance <= FalloffStartDistance)
+	{
+		OutDamageMultiplier = 1.0f;
+		return true;
+	}
+
+	if (ClampedHitDistance >= FalloffEndDistance)
+	{
+		// 종료 거리 이후에는 최소 배율을 그대로 유지.
+		OutDamageMultiplier = MinimumDamageMultiplier;
+		return true;
+	}
+
+	const float FalloffAlpha = FMath::GetRangePct(
+		FalloffStartDistance, FalloffEndDistance, ClampedHitDistance);
+
+	OutDamageMultiplier = FMath::Lerp(1.0f, MinimumDamageMultiplier, FalloffAlpha);
+
+	return true;
+}
+
 bool UGA_SkillBase::TryReportAbilityNoise(
 	const FGameplayTag& AbilityTag,
 	const FGameplayTag& LoudnessStatTag,
