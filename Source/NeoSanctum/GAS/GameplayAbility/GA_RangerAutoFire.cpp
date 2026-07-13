@@ -502,7 +502,11 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		AimTargetActor,
 		MuzzleObstructionHitResult))
 	{
-		ApplyDamageToActor(MuzzleObstructionHitResult);
+		// BackTrace로 늘어난 구간은 실제 명중 거리에서 제외.
+		const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+		const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
+
+		ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance);
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
@@ -512,11 +516,11 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	ApplyDamageToActor(ServerHitResult);
+	ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance);
 	ExecuteImpactCue(ServerHitResult);
 }
 
-void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
+void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
 	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
@@ -543,6 +547,24 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+
+	float DamageFalloffMultiplier = 1.0f;
+
+	if (!TryCalculateDamageFalloffMultiplier(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		HitDistance,
+		DamageFalloffMultiplier))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire 거리 감쇠 계산 실패. HitDistance={HitDistance}",
+			("HitDistance", HitDistance)
+		);
+
+		return;
+	}
+
+	// 감쇠된 값을 기존 Effect.Damage.Base 흐름으로 전달.
+	FinalDamage *= DamageFalloffMultiplier;
 	
 	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달.
 	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용.
