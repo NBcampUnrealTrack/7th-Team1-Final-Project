@@ -77,13 +77,24 @@ void UGA_BuffBase::ApplyBuffToTargets(const TArray<AActor*>& Targets, float Dura
 
 bool UGA_BuffBase::TryApplyBuffToTarget(AActor* TargetActor, float Duration)
 {
-	if (!TargetActor || HasBuffStateTag(TargetActor))
+	if (!TargetActor)
 	{
 		return false;
 	}
 
 	const FNSBuffApplyEntry* ApplyEntry = FindBuffApplyEntryForTarget(TargetActor);
 	if (!ApplyEntry)
+	{
+		return false;
+	}
+
+	const bool bHasActiveBuff = HasBuffStateTag(TargetActor);
+	const bool bCanRefreshActiveBuff =
+		bHasActiveBuff &&
+		bRefreshDurationOnReapply &&
+		ApplyEntry->ApplyType == ENSBuffApplyType::CombatStatModifier;
+
+	if (bHasActiveBuff && !bCanRefreshActiveBuff)
 	{
 		return false;
 	}
@@ -149,6 +160,23 @@ bool UGA_BuffBase::ApplyCombatStatModifierBuff(
 		return false;
 	}
 
+	FNSActiveBuffRuntime* ActiveRuntime = nullptr;
+
+	if (bRefreshDurationOnReapply)
+	{
+		const TWeakObjectPtr<UAbilitySystemComponent> TargetASCKey(TargetASC);
+		FNSActiveBuffRuntime& Runtime = ActiveBuffRuntimeByTarget.FindOrAdd(TargetASCKey);
+
+		// 기존 Modifier를 먼저 지워야 두 버프가 겹치지 않음.
+		for (const FGuid& ModifierHandle : Runtime.CombatStatModifierHandles)
+		{
+			TargetASC->RemoveTemporaryCombatStatModifier(ModifierHandle);
+		}
+
+		Runtime.CombatStatModifierHandles.Reset();
+		ActiveRuntime = &Runtime;
+	}
+
 	bool bApplied = false;
 	for (const FNSBuffCombatStatModifier& CombatStatModifier : ApplyEntry.CombatStatModifiers)
 	{
@@ -173,7 +201,16 @@ bool UGA_BuffBase::ApplyCombatStatModifierBuff(
 			Duration
 		);
 
-		bApplied |= ModifierHandle.IsValid();
+		if (ModifierHandle.IsValid())
+		{
+			bApplied = true;
+
+			if (ActiveRuntime)
+			{
+				// 다음 재사용 때 제거할 수 있도록 새 핸들을 기억.
+				ActiveRuntime->CombatStatModifierHandles.Add(ModifierHandle);
+			}
+		}
 	}
 
 	return bApplied;
@@ -267,7 +304,7 @@ bool UGA_BuffBase::HasBuffStateTag(const AActor* TargetActor) const
 	return TargetASC && TargetASC->HasMatchingGameplayTag(BuffStateTag);
 }
 
-void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Duration) const
+void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Duration)
 {
 	if ((!BuffStateTag.IsValid() && !BuffGameplayCueTag.IsValid()) || Duration <= 0.0f)
 	{
@@ -283,27 +320,62 @@ void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Durat
 		return;
 	}
 
-	if (BuffStateTag.IsValid())
+	UWorld* World = TargetASC->GetWorld();
+	if (!World)
 	{
-		TargetASC->AddLooseGameplayTag(BuffStateTag);
+		return;
 	}
 
-	if (BuffGameplayCueTag.IsValid())
+	const TWeakObjectPtr<UAbilitySystemComponent> TargetASCKey(TargetASC);
+	const bool bTrackRuntime = bRefreshDurationOnReapply;
+
+	FTimerHandle LocalTimerHandle;
+	FTimerHandle* TimerHandle = &LocalTimerHandle;
+	bool bPresentationAlreadyActive = false;
+
+	if (bTrackRuntime)
 	{
-		TargetASC->AddGameplayCue(BuffGameplayCueTag);
+		FNSActiveBuffRuntime& Runtime = ActiveBuffRuntimeByTarget.FindOrAdd(TargetASCKey);
+
+		bPresentationAlreadyActive = World->GetTimerManager().IsTimerActive(Runtime.PresentationTimerHandle);
+
+		if (bPresentationAlreadyActive)
+		{
+			// 첫 타이머가 버프를 먼저 끄지 않도록 취소.
+			World->GetTimerManager().ClearTimer(Runtime.PresentationTimerHandle);
+		}
+
+		TimerHandle = &Runtime.PresentationTimerHandle;
 	}
 
-	if (UWorld* World = TargetASC->GetWorld())
+	if (!bPresentationAlreadyActive)
 	{
-		FTimerHandle TimerHandle;
-		TWeakObjectPtr<UAbilitySystemComponent> WeakASC = TargetASC;
-		const FGameplayTag StateTag = BuffStateTag;
-		const FGameplayTag CueTag = BuffGameplayCueTag;
-		World->GetTimerManager().SetTimer(
-			TimerHandle,
-			FTimerDelegate::CreateWeakLambda(TargetASC, [WeakASC, StateTag, CueTag]()
+		// 재적용할 때는 태그와  Cue를 중복으로 쌓지 않음.
+		if (BuffStateTag.IsValid())
+		{
+			TargetASC->AddLooseGameplayTag(BuffStateTag);
+		}
+
+		if (BuffGameplayCueTag.IsValid())
+		{
+			TargetASC->AddGameplayCue(BuffGameplayCueTag);
+		}
+	}
+
+	const TWeakObjectPtr<UGA_BuffBase> WeakAbility(this);
+	const TWeakObjectPtr<UAbilitySystemComponent> WeakASC(TargetASC);
+	const FGameplayTag StateTag = BuffStateTag;
+	const FGameplayTag CueTag = BuffGameplayCueTag;
+
+	World->GetTimerManager().SetTimer(
+		*TimerHandle,
+		FTimerDelegate::CreateWeakLambda(
+			TargetASC,
+			[WeakAbility, WeakASC, TargetASCKey, StateTag, CueTag, bTrackRuntime]()
 			{
-				if (UAbilitySystemComponent* ASC = WeakASC.Get())
+				UAbilitySystemComponent* ASC = WeakASC.Get();
+
+				if (ASC)
 				{
 					if (StateTag.IsValid())
 					{
@@ -315,11 +387,31 @@ void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Durat
 						ASC->RemoveGameplayCue(CueTag);
 					}
 				}
-			}),
-			Duration,
-			false
-		);
-	}
+
+				UGA_BuffBase* BuffAbility = WeakAbility.Get();
+				if (!bTrackRuntime || !BuffAbility)
+				{
+					return;
+				}
+
+				if (FNSActiveBuffRuntime* Runtime = BuffAbility->ActiveBuffRuntimeByTarget.Find(TargetASCKey))
+				{
+					if (UNSAbilitySystemComponent* NSASC = Cast<UNSAbilitySystemComponent>(ASC))
+					{
+						// 수치 버프와 연출이 같은 시점에 끝나도록 정리.
+						for (const FGuid& ModifierHandle : Runtime->CombatStatModifierHandles)
+						{
+							NSASC->RemoveTemporaryCombatStatModifier(ModifierHandle);
+						}
+					}
+				}
+
+				BuffAbility->ActiveBuffRuntimeByTarget.Remove(TargetASCKey);
+			}
+		),
+		Duration,
+		false
+	);
 }
 
 bool UGA_BuffBase::TryGetBuffDuration(float& OutDuration) const
