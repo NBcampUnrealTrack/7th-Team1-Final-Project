@@ -25,8 +25,11 @@ class NEOSANCTUM_API UNSMonsterStatusViewModel : public UObject
 	GENERATED_BODY()
 
 public:
-	// 대상 몬스터 Actor와 ASC를 연결하고 Attribute Delegate를 구독하는 함수
+	// 대상 몬스터 Actor와 ASC를 일반 몬스터 기본 정책으로 연결하는 함수
 	bool Initialize(AActor* InTargetActor);
+
+	// 대상 몬스터 Actor와 ASC를 지정한 표시 정책으로 연결하는 함수
+	bool Initialize(AActor* InTargetActor, const FNSMonsterUIDisplayPolicy& InDisplayPolicy);
 
 	// Attribute Delegate 구독을 해제하고 참조를 정리하는 함수
 	void Shutdown();
@@ -38,8 +41,8 @@ public:
 	FNSMonsterUIStatusChanged OnStatusChanged;
 
 private:
-	// 일반 몬스터의 기본 표시 정책을 적용하는 함수
-	void ApplyDefaultNormalPolicy();
+	// 표시 정책을 현재 UI 상태값에 적용하는 함수
+	void ApplyDisplayPolicy();
 
 	// 현재 Attribute 값을 읽어 UI 상태값을 갱신하는 함수
 	void RefreshStatus();
@@ -57,6 +60,9 @@ private:
 	FText MakeValueText(float CurrentValue, float MaxValue) const;
 
 private:
+	// 현재 ViewModel이 사용할 표시 정책 변수
+	FNSMonsterUIDisplayPolicy DisplayPolicy;
+
 	// 상태 표시 대상 몬스터 Actor를 약하게 보관하는 변수
 	TWeakObjectPtr<AActor> TargetActor;
 

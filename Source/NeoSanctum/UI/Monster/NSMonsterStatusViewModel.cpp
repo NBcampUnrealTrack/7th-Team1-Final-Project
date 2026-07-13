@@ -11,6 +11,22 @@
 
 bool UNSMonsterStatusViewModel::Initialize(AActor* InTargetActor)
 {
+	FNSMonsterUIDisplayPolicy NormalPolicy;
+	NormalPolicy.bShowName = false;
+	NormalPolicy.bShowHealth = true;
+	NormalPolicy.bShowHealthText = false;
+	NormalPolicy.bShowShield = false;
+	NormalPolicy.bShowShieldText = false;
+	NormalPolicy.bShowHitGauge = true;
+	NormalPolicy.bShowHitGaugeText = false;
+
+	return Initialize(InTargetActor, NormalPolicy);
+}
+
+bool UNSMonsterStatusViewModel::Initialize(
+	AActor* InTargetActor,
+	const FNSMonsterUIDisplayPolicy& InDisplayPolicy)
+{
 	Shutdown();
 
 	if (!IsValid(InTargetActor))
@@ -33,8 +49,9 @@ bool UNSMonsterStatusViewModel::Initialize(AActor* InTargetActor)
 
 	TargetActor = InTargetActor;
 	TargetASC = ASC;
+	DisplayPolicy = InDisplayPolicy;
 
-	ApplyDefaultNormalPolicy();
+	ApplyDisplayPolicy();
 	BindAttributeDelegates();
 	RefreshStatus();
 
@@ -51,15 +68,21 @@ void UNSMonsterStatusViewModel::Shutdown()
 	OnStatusChanged.Clear();
 }
 
-void UNSMonsterStatusViewModel::ApplyDefaultNormalPolicy()
+void UNSMonsterStatusViewModel::ApplyDisplayPolicy()
 {
-	CachedStatus.bShowName = false;
-	CachedStatus.bShowHealth = true;
-	CachedStatus.bShowHealthText = false;
-	CachedStatus.bShowShield = false;
-	CachedStatus.bShowShieldText = false;
-	CachedStatus.bShowHitGauge = true;
-	CachedStatus.bShowHitGaugeText = false;
+	CachedStatus.bShowName = DisplayPolicy.bShowName;
+	CachedStatus.bShowHealth = DisplayPolicy.bShowHealth;
+	CachedStatus.bShowHealthText = DisplayPolicy.bShowHealthText;
+	CachedStatus.bShowShield = DisplayPolicy.bShowShield;
+	CachedStatus.bShowShieldText = DisplayPolicy.bShowShieldText;
+	CachedStatus.bShowHitGauge = DisplayPolicy.bShowHitGauge;
+	CachedStatus.bShowHitGaugeText = DisplayPolicy.bShowHitGaugeText;
+
+	if (!DisplayPolicy.OverrideName.IsEmpty())
+	{
+		CachedStatus.MonsterName = DisplayPolicy.OverrideName;
+		return;
+	}
 
 	if (const AActor* Actor = TargetActor.Get())
 	{
@@ -80,6 +103,8 @@ void UNSMonsterStatusViewModel::RefreshStatus()
 	{
 		return;
 	}
+
+	ApplyDisplayPolicy();
 
 	const float Health = ASC->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
 	const float MaxHealth = ASC->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
@@ -104,8 +129,10 @@ void UNSMonsterStatusViewModel::RefreshStatus()
 	CachedStatus.ShieldText = MakeValueText(Shield, MaxShield);
 	CachedStatus.HitGaugeText = MakeValueText(HitGauge, MaxHitGauge);
 
-	CachedStatus.bShowShield = CachedStatus.bShowShield && MaxShield > KINDA_SMALL_NUMBER;
-	CachedStatus.bShowHitGauge = CachedStatus.bShowHitGauge && MaxHitGauge > KINDA_SMALL_NUMBER;
+	CachedStatus.bShowShield = DisplayPolicy.bShowShield && MaxShield > KINDA_SMALL_NUMBER;
+	CachedStatus.bShowShieldText = DisplayPolicy.bShowShieldText && MaxShield > KINDA_SMALL_NUMBER;
+	CachedStatus.bShowHitGauge = DisplayPolicy.bShowHitGauge && MaxHitGauge > KINDA_SMALL_NUMBER;
+	CachedStatus.bShowHitGaugeText = DisplayPolicy.bShowHitGaugeText && MaxHitGauge > KINDA_SMALL_NUMBER;
 
 	OnStatusChanged.Broadcast(CachedStatus);
 }
