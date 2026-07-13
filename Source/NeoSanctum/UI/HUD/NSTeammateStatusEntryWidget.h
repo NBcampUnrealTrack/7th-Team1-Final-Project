@@ -10,6 +10,7 @@
 class UProgressBar;
 class UTextBlock;
 class UWidget;
+class UImage;
 
 /**
  * GMS를 통해 전달받은 팀원 한명의 이름, 체력, 쉴드를 표시
@@ -50,9 +51,9 @@ private:
 	//현재 쉴드 비율
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> ShieldBar;
-	//사망 상태 표시, WBP에 없으면 사용하지 않음
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UWidget> DeadOverlay;
+	//팀원의 캐릭터 초상화
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> PortraitImage;
 	//현재 표시중인 팀원의 세션 식별자
 	int32 PlayerId = INDEX_NONE;
 };
