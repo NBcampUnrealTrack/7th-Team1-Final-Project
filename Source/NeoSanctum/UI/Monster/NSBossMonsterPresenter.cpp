@@ -17,6 +17,8 @@
 #include "NSBossMonsterStatusWidget.h"
 #include "NSMonsterStatusViewModel.h"
 #include "NSMonsterUIHost.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/UI/NSMonsterUIData.h"
 
 void UNSBossMonsterPresenter::Initialize(ULocalPlayer* InLocalPlayer)
 {
@@ -177,22 +179,11 @@ void UNSBossMonsterPresenter::AddBoss(AActor* BossActor)
 		return;
 	}
 
+	const FNSMonsterUIData* ProfileRow = FindMonsterUIData(BossActor);
+	const FNSMonsterUIDisplayPolicy BossPolicy = BuildBossDisplayPolicy(ProfileRow);
+
 	UNSMonsterStatusViewModel* ViewModel = NewObject<UNSMonsterStatusViewModel>(this);
-	if (!ViewModel)
-	{
-		return;
-	}
-
-	FNSMonsterUIDisplayPolicy BossPolicy;
-	BossPolicy.bShowName = true;
-	BossPolicy.bShowHealth = true;
-	BossPolicy.bShowHealthText = true;
-	BossPolicy.bShowShield = true;
-	BossPolicy.bShowShieldText = true;
-	BossPolicy.bShowHitGauge = true;
-	BossPolicy.bShowHitGaugeText = true;
-
-	if (!ViewModel->Initialize(BossActor, BossPolicy))
+	if (!ViewModel || !ViewModel->Initialize(BossActor, BossPolicy))
 	{
 		return;
 	}
@@ -345,4 +336,45 @@ UHorizontalBox* UNSBossMonsterPresenter::GetBossMonsterBox() const
 
 	const INSMonsterUIHost* Host = Cast<INSMonsterUIHost>(HostObject);
 	return Host ? Host->GetBossMonsterLayer() : nullptr;
+}
+
+const FNSMonsterUIData* UNSBossMonsterPresenter::FindMonsterUIData(AActor* BossActor) const
+{
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(BossActor);
+	const UNSEnemyData* EnemyData = EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+	if (!EnemyData || !EnemyData->EnemyId.IsValid())
+	{
+		return nullptr;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(BossActor);
+	return DataSubsystem ? DataSubsystem->FindMonsterUIData(EnemyData->EnemyId) : nullptr;
+}
+
+FNSMonsterUIDisplayPolicy UNSBossMonsterPresenter::BuildBossDisplayPolicy(const FNSMonsterUIData* ProfileRow) const
+{
+	FNSMonsterUIDisplayPolicy Policy;
+	Policy.bShowName = true;
+	Policy.bShowHealth = true;
+	Policy.bShowHealthText = true;
+	Policy.bShowShield = true;
+	Policy.bShowShieldText = true;
+	Policy.bShowHitGauge = true;
+	Policy.bShowHitGaugeText = true;
+
+	if (!ProfileRow)
+	{
+		return Policy;
+	}
+
+	Policy.bShowName = ProfileRow->bShowName;
+	Policy.bShowHealth = ProfileRow->bShowHealth;
+	Policy.bShowHealthText = ProfileRow->bShowHealthText;
+	Policy.bShowShield = ProfileRow->bShowShield;
+	Policy.bShowShieldText = ProfileRow->bShowShieldText;
+	Policy.bShowHitGauge = ProfileRow->bShowHitGauge;
+	Policy.bShowHitGaugeText = ProfileRow->bShowHitGaugeText;
+	Policy.OverrideName = ProfileRow->DisplayName;
+
+	return Policy;
 }

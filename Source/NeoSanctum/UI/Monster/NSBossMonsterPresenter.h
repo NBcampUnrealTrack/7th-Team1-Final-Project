@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
+#include "NSMonsterUITypes.h"
 #include "NSBossMonsterPresenter.generated.h"
 
+struct FNSMonsterUIData;
 class ANSRunGameState;
 class ULocalPlayer;
 class UNSBossMonsterStatusWidget;
@@ -99,6 +101,12 @@ private:
 
 	// HUD Host에서 보스 HorizontalBox Layer를 반환하는 함수
 	class UHorizontalBox* GetBossMonsterBox() const;
+	
+	// 대상 보스의 UI 프로필 Row를 찾는 함수
+	const FNSMonsterUIData* FindMonsterUIData(AActor* BossActor) const;
+
+	// 보스 몬스터용 UI 표시 정책을 만드는 함수
+	FNSMonsterUIDisplayPolicy BuildBossDisplayPolicy(const FNSMonsterUIData* ProfileRow) const;
 
 private:
 	// Presenter가 속한 로컬 플레이어를 약하게 보관하는 변수
