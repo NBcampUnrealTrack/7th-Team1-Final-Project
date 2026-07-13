@@ -604,6 +604,11 @@ UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 	return HUDWidget;
 }
 
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetCachedWidgetClass(FName RowName) const
+{
+	return GetWidgetClassFromTable(RowName);
+}
+
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 {
 	// @원종: pending 초기화.

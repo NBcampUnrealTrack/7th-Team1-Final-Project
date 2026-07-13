@@ -67,6 +67,11 @@ void UNSMonsterUISubsystem::RegisterHUDHost(UObject* InHostObject)
 	}
 
 	HUDHostObject = InHostObject;
+
+	if (NormalMonsterPresenter)
+	{
+		NormalMonsterPresenter->SetHUDHost(InHostObject);
+	}
 }
 
 void UNSMonsterUISubsystem::UnregisterHUDHost(UObject* InHostObject)
@@ -74,6 +79,11 @@ void UNSMonsterUISubsystem::UnregisterHUDHost(UObject* InHostObject)
 	if (!InHostObject || HUDHostObject.Get() != InHostObject)
 	{
 		return;
+	}
+
+	if (NormalMonsterPresenter)
+	{
+		NormalMonsterPresenter->SetHUDHost(nullptr);
 	}
 
 	HUDHostObject.Reset();
