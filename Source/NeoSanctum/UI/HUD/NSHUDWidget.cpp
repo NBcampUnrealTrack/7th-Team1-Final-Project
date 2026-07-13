@@ -6,6 +6,8 @@
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
+#include "Components/HorizontalBox.h"
+#include "Components/PanelWidget.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
@@ -245,6 +247,16 @@ void UNSHUDWidget::UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount)
 	DashStackWidget->SetDashCount(
 	CurrentDashCount,
 	MaxDashCount);
+}
+
+UPanelWidget* UNSHUDWidget::GetNormalMonsterLayer() const
+{
+	return NormalMonsterLayer;
+}
+
+UHorizontalBox* UNSHUDWidget::GetBossMonsterLayer() const
+{
+	return BossMonsterLayer;
 }
 
 void UNSHUDWidget::RefreshHudDimBackground()
