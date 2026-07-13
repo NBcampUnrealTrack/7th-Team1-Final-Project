@@ -309,12 +309,6 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	{
 		return false;
 	}
-
-	const float MinDropBelowPawn = Altitude * 0.5f;
-	if (Hit.ImpactPoint.Z > OwnerPawn->GetActorLocation().Z - MinDropBelowPawn)
-	{
-		return false;
-	}
 	
 	OutZ = Hit.ImpactPoint.Z;
 	return true;
