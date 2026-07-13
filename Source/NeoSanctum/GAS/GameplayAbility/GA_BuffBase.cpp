@@ -43,10 +43,11 @@ void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 
 	if (!ActorInfo->IsNetAuthority())
 	{
-		if (TargetFilter.bIncludeSelf)
+		AActor* AvatarActor = ActorInfo->AvatarActor.Get();
+		if (TargetFilter.bIncludeSelf && !HasBuffStateTag(AvatarActor))
 		{
 			// LocalPredicted Self 연출도 State/Cue 수명 관리를 동일하게 사용
-			AddTemporaryBuffPresentation(ActorInfo->AvatarActor.Get(), Duration);
+			AddTemporaryBuffPresentation(AvatarActor, Duration);
 		}
 
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);

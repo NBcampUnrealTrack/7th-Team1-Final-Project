@@ -1196,10 +1196,10 @@ void ANSPlayerCharacterBase::ApplyDeathState()
 		return;
 	}
 
-	// 실행중인 Ability 전부 취소
-	NSAbilitySystemComponent->CancelAbilities();
 	// 임시 : 강제로 Dead 상태 태그 부여 -> 이후 GA_Death로 로직을 빼고 GE에서 변경하도록 할 예정 
 	NSAbilitySystemComponent->AddLooseGameplayTag(NSGameplayTags::State_Dead);
+	// 실행중인 Ability 전부 취소
+	NSAbilitySystemComponent->CancelAbilities();
 }
 
 void ANSPlayerCharacterBase::StartDeathRagdoll()

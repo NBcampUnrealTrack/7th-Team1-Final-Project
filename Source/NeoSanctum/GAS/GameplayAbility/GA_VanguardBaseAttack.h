@@ -293,7 +293,7 @@ private:
 
 	// 지상 콤보 공격속도 최대 배율
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Combo", meta = (AllowPrivateAccess = "true", ClampMin = "0.01"))
-	float MaxGroundComboPlayRate = 1.5f;
+	float MaxGroundComboPlayRate = 2.55f;
 
 	// 지상 기본 콤보 섹션 이름
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Animation", meta = (AllowPrivateAccess = "true"))
@@ -381,7 +381,7 @@ private:
 
 	// 근접 무기 소켓 궤적을 따라 Sweep할 구체 반경
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Vanguard|Melee", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
-	float MeleeTraceRadius = 18.0f;
+	float MeleeTraceRadius = 25.0f;
 
 	// 근접 공격 Sweep 디버그 표시 여부
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug", meta = (AllowPrivateAccess = "true"))
