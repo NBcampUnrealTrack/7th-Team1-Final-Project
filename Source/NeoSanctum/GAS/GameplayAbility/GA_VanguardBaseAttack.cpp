@@ -128,11 +128,19 @@ void UGA_VanguardBaseAttack::InputPressed(
 	const FGameplayAbilityActivationInfo ActivationInfo)
 {
 	// 활성화 이후 추가 입력만 지상 콤보 입력으로 처리
+	const bool bWasBaseAttackInputHeld = bBaseAttackInputHeld;
 	bBaseAttackInputHeld = true;
 
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::GroundCombo)
 	{
-		HandleGroundComboInput();
+		const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+		const bool bIsComboInputWindowOpen =
+			ASC && ASC->HasMatchingGameplayTag(NSGameplayTags::State_Vanguard_ComboInputWindow);
+
+		if (!bWasBaseAttackInputHeld || bIsComboInputWindowOpen)
+		{
+			HandleGroundComboInput();
+		}
 	}
 }
 
@@ -736,7 +744,7 @@ void UGA_VanguardBaseAttack::OnComboWindowOpened(FGameplayEventData Payload)
 	// 새 Combo Window의 섹션 이동 가능 상태 초기화
 	bComboAdvancedInCurrentWindow = false;
 
-	if (bComboInputBuffered || bBaseAttackInputHeld)
+	if (bComboInputBuffered)
 	{
 		// Window 이전 선입력 또는 입력 유지 상태 소비
 		TryAdvanceGroundCombo();
@@ -1194,7 +1202,7 @@ void UGA_VanguardBaseAttack::DrawMeleeTraceDebug(
 bool UGA_VanguardBaseAttack::TryAdvanceGroundCombo()
 {
 	if (CurrentGroundComboIndex == INDEX_NONE ||
-		CurrentGroundComboIndex >= GroundComboSectionNames.Num() - 1 ||
+		GroundComboSectionNames.IsEmpty() ||
 		!GroundComboMontage)
 	{
 		return false;
@@ -1207,7 +1215,7 @@ bool UGA_VanguardBaseAttack::TryAdvanceGroundCombo()
 		return false;
 	}
 
-	const int32 NextComboIndex = CurrentGroundComboIndex + 1;
+	const int32 NextComboIndex = (CurrentGroundComboIndex + 1) % GroundComboSectionNames.Num();
 	const FName NextSectionName = GroundComboSectionNames.IsValidIndex(NextComboIndex)
 		? GroundComboSectionNames[NextComboIndex]
 		: NAME_None;
