@@ -10,6 +10,7 @@ class USphereComponent;
 class UWidgetComponent;
 class UNSInteractionPromptWidget;
 class UMaterialInterface;
+class ANSDroppedPart;
 struct FStreamableHandle;
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
@@ -53,6 +54,9 @@ protected:
 	void ShowPromptFor(AActor* Target);
 	void HidePrompt();
 
+	// 드랍된 파츠와 현재 슬롯 장착 파츠(없으면 캐릭터 기본 스탯)를 비교해 위젯에 반영
+	void UpdateStatComparisonFor(ANSDroppedPart* DroppedPart, UNSInteractionPromptWidget* Widget);
+
 	// ActiveTarget 아웃라인
 	void SetupOutlinePostProcess();
 
@@ -77,6 +81,10 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	float DetectionRadius = 200.f;
+
+	// 프롬프트 위젯의 화면 공간 크기
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Prompt")
+	FVector2D PromptWidgetDrawSize = FVector2D(200.f, 100.f);
 
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	FText InteractionKeyText = FText::FromString(TEXT("F"));
