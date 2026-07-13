@@ -47,6 +47,19 @@ FVector ANSBossArenaBounds::GetEntranceCenter(float AtZ) const
 	return WorldPoint;
 }
 
+FVector ANSBossArenaBounds::GetArenaCenter(float AtZ) const
+{
+	// 로컬 중심 = (0,0,0)
+	const FVector LocalPoint(0.f, 0.f, 0.f);
+
+	FVector WorldPoint = AreaBox->GetComponentTransform().TransformPosition(LocalPoint);
+
+	// 고도는 룸 기하가 아니라 호출자(비행 로직)가 결정
+	WorldPoint.Z = AtZ;
+
+	return WorldPoint;
+}
+
 FVector ANSBossArenaBounds::GetZoneCenter(int32 ZoneIndex, int32 ZoneCount) const
 {
 	// 시작지점 절반의 크기

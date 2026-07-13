@@ -16,6 +16,7 @@ UNSBTTask_FlyingExecuteAbility::UNSBTTask_FlyingExecuteAbility()
 {
 	NodeName = "Flying Execute Ability";
 	bCreateNodeInstance = true;
+	bNotifyTick = true;
 }
 
 EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
@@ -55,6 +56,8 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::ExecuteTask(UBehaviorTreeCom
 	
 	NotifyAttackUsed(AIC, *SelectedAttack);
 	
+	ElapsedTime = 0.f;
+	
 	if (UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent())
 	{
 		BB->SetValueAsBool(IsAttackingKey, true);
@@ -64,6 +67,28 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::ExecuteTask(UBehaviorTreeCom
 }
 
 EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+	CleanupAndCancelAbility(OwnerComp);
+	return Super::AbortTask(OwnerComp, NodeMemory);
+}
+
+void UNSBTTask_FlyingExecuteAbility::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds)
+{
+	Super::TickTask(OwnerComp, NodeMemory, DeltaSeconds);
+
+	// 경과시간 체크
+	ElapsedTime += DeltaSeconds;
+	
+	// 테스크에 진입 후 최대 진행시간을 넘겼고 어택어빌리티가 있다면
+	if (ElapsedTime >= MaxExecutionTime && CachedAttackAbilityClass)
+	{
+		// 패턴 취소 후 실패 처리
+		CleanupAndCancelAbility(OwnerComp);
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+	}
+}
+
+void UNSBTTask_FlyingExecuteAbility::CleanupAndCancelAbility(UBehaviorTreeComponent& OwnerComp)
 {
 	OwnerComp.GetWorld()->GetTimerManager().ClearTimer(RecoverTimerHandle);
 	
@@ -77,7 +102,8 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::AbortTask(UBehaviorTreeCompo
 		OwnerASC->OnAbilityEnded.RemoveAll(this);
 		if (CachedAttackAbilityClass)
 		{
-			if (const FGameplayAbilitySpec* Spec = OwnerASC->FindAbilitySpecFromClass(CachedAttackAbilityClass))
+			if (const FGameplayAbilitySpec* Spec = 
+				OwnerASC->FindAbilitySpecFromClass(CachedAttackAbilityClass))
 			{
 				OwnerASC->CancelAbilityHandle(Spec->Handle);
 			}
@@ -97,8 +123,6 @@ EBTNodeResult::Type UNSBTTask_FlyingExecuteAbility::AbortTask(UBehaviorTreeCompo
 	
 	CachedAttackAbilityClass = nullptr;
 	CachedOwnerComp = nullptr;
-	
-	return Super::AbortTask(OwnerComp, NodeMemory);
 }
 
 void UNSBTTask_FlyingExecuteAbility::OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData)

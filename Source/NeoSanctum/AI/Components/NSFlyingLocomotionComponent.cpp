@@ -62,8 +62,8 @@ void UNSFlyingLocomotionComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	if (bScriptedMove)
 	{
-		// 스크립트 이동 중엔 매 프레임 갱신 (끊김 방지). 평상시엔 기존 스로틀링 유지
-		MaintainAltitude(DeltaTime);
+		// 스크립트 이동 중엔 매 프레임 갱신, 목표는 ScriptedTargetZ 고정값 (SampleHighestGround 미사용)
+		DriveScriptedAltitude(DeltaTime);
 	}
 	else
 	{
@@ -309,7 +309,7 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	{
 		return false;
 	}
-
+	
 	OutZ = Hit.ImpactPoint.Z;
 	return true;
 }
@@ -598,6 +598,20 @@ void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, floa
 	RotationTarget = nullptr;
 	ScriptedDestXY = DestXY;
 	bScriptedMove = true;
+	
+	// 진입 시점 1회 트레이스로 절대 목표 Z 확정 (이후 라이브 지면샘플 배제)
+	APawn* OwnerPawn = GetPawnOwner();
+	float FloorZ = 0.f;
+	if (IsValid(OwnerPawn) && TraceGroundAt(OwnerPawn->GetActorLocation(), FloorZ))
+	{
+		ScriptedTargetZ = FloorZ + TargetAltitude;
+	}
+	else if (IsValid(OwnerPawn))
+	{
+		ScriptedTargetZ = OwnerPawn->GetActorLocation().Z;
+		UE_LOG(LogTemp, Warning, TEXT("[%s] BeginScriptedMove: 지면 트레이스 실패, 현재 고도로 폴백"),
+			*GetNameSafe(OwnerPawn));
+	}
 }
 
 void UNSFlyingLocomotionComponent::EndScriptedMove()
@@ -613,12 +627,18 @@ void UNSFlyingLocomotionComponent::EndScriptedMove()
 
 bool UNSFlyingLocomotionComponent::HasReachedScriptedDest() const
 {
+	// 오너가 없다면 false
 	if (!PawnOwner) return false;
 
+	// 이 공격패턴을 정의할때 캐싱해둔 도착XY값을 통해 실제로 도착했는지 Bool 값받기
 	const bool bXYReached = HasReachedLocation(ScriptedDestXY);
-	const float AltDiff = FMath::Abs(PawnOwner->GetActorLocation().Z - SmoothedTargetHeight);
+	// 실행 높이와 현재 오너의 높이가 얼마나 차이가 있는지 계산
+	const float AltDiff = FMath::Abs(PawnOwner->GetActorLocation().Z - ScriptedTargetZ);
 
+	// 도착하지 못했다면 리턴
 	if (!bXYReached) return false;
+	
+	// 고도 차이가 데드존 이내라면 목표 고도에 도달한 것으로 판단
 	return AltDiff < AltitudeDeadZone;
 }
 
@@ -633,6 +653,27 @@ void UNSFlyingLocomotionComponent::ApplyScriptedMoveInput(float DeltaSeconds)
 	if (Dist.SizeSquared() <= FMath::Square(ArrivalRadius)) return;
 	
 	PawnOwner->AddMovementInput(Direction2D, 1.f);
+}
+
+void UNSFlyingLocomotionComponent::DriveScriptedAltitude(float DeltaSeconds)
+{
+	// 가드 체크
+	if (!HasAuthorityChecked()) return;
+	
+	// 오너 Pawn 캐스팅
+	APawn* OwnerPawn = GetPawnOwner();
+	if (!IsValid(OwnerPawn)) return;
+
+	// 목표고도 - 현재고도 = 현재위치로부터 목표위치까지의 거리 계산
+	const float DesiredMoveDis = ScriptedTargetZ - OwnerPawn->GetActorLocation().Z;
+	// 고도차가 너무 낮아서 떨리는 데드존 방지 음수면 실행x 
+	if (FMath::Abs(DesiredMoveDis) > AltitudeDeadZone)
+	{
+		// 목표 고도 를 허용고도거리로 나눈다음 내려가야하는지 올라가야하는지 클램프를통해 힘 반환
+		const float InputZ = FMath::Clamp(DesiredMoveDis / AltitudeCorrectionRange, -1.f, 1.f);
+		// 실제 고도로 움직임 실행
+		OwnerPawn->AddMovementInput(FVector::UpVector, InputZ);
+	}
 }
 
 #pragma endregion

@@ -23,8 +23,12 @@ public:
 protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 	virtual EBTNodeResult::Type AbortTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
-
+	virtual void TickTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
+	
 private:
+	// AbortTask와 워치독 타임아웃이 공유하는 정리 로직 (RecoverTimer clear, 델리게이트 해제, 어빌리티 취소, BB/캐시 초기화)
+	void CleanupAndCancelAbility(UBehaviorTreeComponent& OwnerComp);
+	
 	// 발동한 공격 GA 종료 콜백 (ASC->OnAbilityEnded에 바인딩)
 	void OnAttackAbilityEnded(const FAbilityEndedData& AbilityEndedData);
 	
@@ -52,4 +56,10 @@ private:
 	
 	// 공격 진행 상태 블랙보드 키
 	FName IsAttackingKey = TEXT("bIsAttacking");
+	
+	// 패턴 최대 실행 허용 시간(초). 이 시간 내 EndAbility가 안 오면 자동 취소+Failed 처리
+	UPROPERTY(EditAnywhere, Category="FlyingExecuteAbility")
+	float MaxExecutionTime = 15.f;
+
+	float ElapsedTime = 0.f;
 };
