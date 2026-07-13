@@ -795,9 +795,15 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		return false;
 	}
 
-	// 서버 검증에서 같은 최대 사거리를 사용할 수 있도록
-	// 조준 방향과 TraceRange로 끝점을 명시적으로 구성.
-	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 클라이언트도 CombatStat에서 가져온 최대 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + TraceDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
@@ -843,8 +849,16 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 	{
 		return false;
 	}
-	
-	OutTraceEnd = OutTraceStart + ServerAimDirection * TraceRange;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 서버 판정도 클라이언트와 같은 CombatStat 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + ServerAimDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams(
 		SCENE_QUERY_STAT(RangerAutoFireServerAimTrace), false);
@@ -1121,8 +1135,15 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	{
 		return false;
 	}
-	
-	const float MaxTraceDistance = TraceRange + ServerHitLocationTolerance;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	const float MaxTraceDistance = FinalFireRange + ServerHitLocationTolerance;
 	
 	if (FVector::DistSquared(ClientTraceStart, ClientTraceEnd) > FMath::Square(MaxTraceDistance))
 	{

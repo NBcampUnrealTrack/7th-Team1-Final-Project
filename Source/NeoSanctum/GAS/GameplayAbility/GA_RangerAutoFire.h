@@ -54,11 +54,7 @@ protected:
 	// 몽타주 재생 속도. 실제 연사 간격은 FireRate CombatStat이 결정.
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Animation")
 	float FireMontagePlayRate = 1.0f;
-	
-	// 클라이언트 조준 Trace와 서버 Canonical Aim Trace의 최대 거리
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger")
-	float TraceRange = 10000.0f;
-	
+
 	// 클라이언트가 보낸 TraceStart와 서버 카메라 기준 시작점의 최대 허용 거리
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Ranger|Validation")
 	float ServerTraceStartTolerance = 300.0f;
