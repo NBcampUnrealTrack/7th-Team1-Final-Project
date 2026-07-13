@@ -8,7 +8,9 @@
 #include "UObject/Object.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSNormalMonsterPresenter.generated.h"
+#include "NSMonsterUITypes.h"
 
+struct FNSMonsterUIData;
 class ULocalPlayer;
 class UNSMonsterStatusViewModel;
 class UNSNormalMonsterStatusWidget;
@@ -50,6 +52,14 @@ struct FNSNormalMonsterUIEntry
 	// 마지막 Occlusion Trace 결과를 보관하는 변수
 	UPROPERTY()
 	bool bOccluded = false;
+	
+	// 이 Entry가 사용할 최대 표시 거리를 보관하는 변수
+	UPROPERTY()
+	float MaxDisplayDistance = 3500.0f;
+
+	// 이 Entry가 Occlusion Trace를 사용할지 보관하는 변수
+	UPROPERTY()
+	bool bUseOcclusionTrace = true;
 };
 
 UCLASS()
@@ -124,6 +134,12 @@ private:
 
 	// 일반 몬스터 위젯 클래스를 UIManager 캐시에서 찾는 함수
 	bool ResolveWidgetClass();
+	
+	// 대상 몬스터의 UI 프로필 Row를 찾는 함수
+	const FNSMonsterUIData* FindMonsterUIData(AActor* TargetActor) const;
+
+	// 일반 몬스터용 UI 표시 정책을 만드는 함수
+	FNSMonsterUIDisplayPolicy BuildNormalDisplayPolicy(const FNSMonsterUIData* ProfileRow) const;
 
 private:
 	// Presenter가 속한 로컬 플레이어를 약하게 보관하는 변수

@@ -17,6 +17,8 @@
 #include "NSMonsterStatusViewModel.h"
 #include "NSMonsterUIHost.h"
 #include "NSNormalMonsterStatusWidget.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Data/UI/NSMonsterUIData.h"
 
 void UNSNormalMonsterPresenter::Initialize(ULocalPlayer* InLocalPlayer)
 {
@@ -73,15 +75,39 @@ void UNSNormalMonsterPresenter::RevealTarget(AActor* TargetActor)
 		return;
 	}
 
+	const FNSMonsterUIData* ProfileRow = FindMonsterUIData(TargetActor);
+	const float EntryRevealDurationSeconds =
+		ProfileRow && ProfileRow->RevealDurationSeconds > 0.0f
+			? ProfileRow->RevealDurationSeconds
+			: RevealDurationSeconds;
+
+	const float EntryMaxDisplayDistance =
+		ProfileRow && ProfileRow->MaxDisplayDistance > 0.0f
+			? ProfileRow->MaxDisplayDistance
+			: MaxDisplayDistance;
+
+	const bool bEntryUseOcclusionTrace =
+		ProfileRow ? ProfileRow->bUseOcclusionTrace : bUseOcclusionTrace;
+
 	const float NowSeconds = World->GetTimeSeconds();
 	const int32 ExistingIndex = FindEntryIndex(TargetActor);
 	if (ActiveEntries.IsValidIndex(ExistingIndex))
 	{
-		ActiveEntries[ExistingIndex].ExpireTimeSeconds = NowSeconds + RevealDurationSeconds;
-		if (ActiveEntries[ExistingIndex].Widget)
+		FNSNormalMonsterUIEntry& ExistingEntry = ActiveEntries[ExistingIndex];
+		ExistingEntry.ExpireTimeSeconds = NowSeconds + EntryRevealDurationSeconds;
+		ExistingEntry.MaxDisplayDistance = EntryMaxDisplayDistance;
+		ExistingEntry.bUseOcclusionTrace = bEntryUseOcclusionTrace;
+
+		if (!ExistingEntry.bUseOcclusionTrace)
 		{
-			ActiveEntries[ExistingIndex].Widget->SetVisibility(ESlateVisibility::HitTestInvisible);
+			ExistingEntry.bOccluded = false;
 		}
+
+		if (ExistingEntry.Widget)
+		{
+			ExistingEntry.Widget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+
 		StartPositionUpdateTimer();
 		return;
 	}
@@ -97,8 +123,10 @@ void UNSNormalMonsterPresenter::RevealTarget(AActor* TargetActor)
 		return;
 	}
 
+	const FNSMonsterUIDisplayPolicy DisplayPolicy = BuildNormalDisplayPolicy(ProfileRow);
+
 	UNSMonsterStatusViewModel* ViewModel = NewObject<UNSMonsterStatusViewModel>(this);
-	if (!ViewModel || !ViewModel->Initialize(TargetActor))
+	if (!ViewModel || !ViewModel->Initialize(TargetActor, DisplayPolicy))
 	{
 		ReleaseWidget(Widget);
 		return;
@@ -111,7 +139,9 @@ void UNSNormalMonsterPresenter::RevealTarget(AActor* TargetActor)
 	NewEntry.TargetActor = TargetActor;
 	NewEntry.Widget = Widget;
 	NewEntry.ViewModel = ViewModel;
-	NewEntry.ExpireTimeSeconds = NowSeconds + RevealDurationSeconds;
+	NewEntry.ExpireTimeSeconds = NowSeconds + EntryRevealDurationSeconds;
+	NewEntry.MaxDisplayDistance = EntryMaxDisplayDistance;
+	NewEntry.bUseOcclusionTrace = bEntryUseOcclusionTrace;
 
 	ActiveEntries.Add(NewEntry);
 	StartPositionUpdateTimer();
@@ -150,7 +180,10 @@ void UNSNormalMonsterPresenter::UpdateActiveEntries()
 				PlayerPawn->GetActorLocation(),
 				TargetActor->GetActorLocation());
 
-			if (DistanceSquared > FMath::Square(MaxDisplayDistance))
+			const float EntryMaxDisplayDistance =
+				Entry.MaxDisplayDistance > 0.0f ? Entry.MaxDisplayDistance : MaxDisplayDistance;
+
+			if (DistanceSquared > FMath::Square(EntryMaxDisplayDistance))
 			{
 				if (Entry.Widget)
 				{
@@ -162,11 +195,17 @@ void UNSNormalMonsterPresenter::UpdateActiveEntries()
 
 		const FVector AnchorLocation = ResolveAnchorLocation(TargetActor);
 
-		if (bUseOcclusionTrace &&
-			NowSeconds - Entry.LastOcclusionCheckTimeSeconds >= OcclusionTraceIntervalSeconds)
+		if (Entry.bUseOcclusionTrace)
 		{
-			Entry.LastOcclusionCheckTimeSeconds = NowSeconds;
-			Entry.bOccluded = IsTargetOccluded(TargetActor, AnchorLocation);
+			if (NowSeconds - Entry.LastOcclusionCheckTimeSeconds >= OcclusionTraceIntervalSeconds)
+			{
+				Entry.LastOcclusionCheckTimeSeconds = NowSeconds;
+				Entry.bOccluded = IsTargetOccluded(TargetActor, AnchorLocation);
+			}
+		}
+		else
+		{
+			Entry.bOccluded = false;
 		}
 
 		if (Entry.bOccluded)
@@ -511,4 +550,45 @@ bool UNSNormalMonsterPresenter::ResolveWidgetClass()
 
 	NormalMonsterWidgetClass = *WidgetClass;
 	return true;
+}
+
+const FNSMonsterUIData* UNSNormalMonsterPresenter::FindMonsterUIData(AActor* TargetActor) const
+{
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(TargetActor);
+	const UNSEnemyData* EnemyData = EnemyAgent ? EnemyAgent->GetEnemyData() : nullptr;
+	if (!EnemyData || !EnemyData->EnemyId.IsValid())
+	{
+		return nullptr;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(TargetActor);
+	return DataSubsystem ? DataSubsystem->FindMonsterUIData(EnemyData->EnemyId) : nullptr;
+}
+
+FNSMonsterUIDisplayPolicy UNSNormalMonsterPresenter::BuildNormalDisplayPolicy(const FNSMonsterUIData* ProfileRow) const
+{
+	FNSMonsterUIDisplayPolicy Policy;
+	Policy.bShowName = false;
+	Policy.bShowHealth = true;
+	Policy.bShowHealthText = false;
+	Policy.bShowShield = false;
+	Policy.bShowShieldText = false;
+	Policy.bShowHitGauge = true;
+	Policy.bShowHitGaugeText = false;
+
+	if (!ProfileRow)
+	{
+		return Policy;
+	}
+
+	Policy.bShowName = ProfileRow->bShowName;
+	Policy.bShowHealth = ProfileRow->bShowHealth;
+	Policy.bShowHealthText = ProfileRow->bShowHealthText;
+	Policy.bShowShield = ProfileRow->bShowShield;
+	Policy.bShowShieldText = ProfileRow->bShowShieldText;
+	Policy.bShowHitGauge = ProfileRow->bShowHitGauge;
+	Policy.bShowHitGaugeText = ProfileRow->bShowHitGaugeText;
+	Policy.OverrideName = ProfileRow->DisplayName;
+
+	return Policy;
 }
