@@ -10,6 +10,7 @@ class UProgressBar;
 class UTextBlock;
 class UImage;
 class UNSCharacterData;
+class UWidget;
 
 /**
  *  플레이어의 체력과 실드를 표시하는 HUD위젯
@@ -72,6 +73,9 @@ private:
 	//총알 텍스트
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> AmmoText;
+	//탄약을 사용하는 캐릭터만 표시하는 AMMO 행
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> AmmoRow;
 	
 	bool bIsReloading = false;
 	int32 CachedCurrentAmmo = 0;

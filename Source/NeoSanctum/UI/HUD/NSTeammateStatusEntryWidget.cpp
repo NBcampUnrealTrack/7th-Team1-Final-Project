@@ -5,6 +5,8 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Widget.h"
+#include "Components/Image.h"
+#include "Engine/Texture2D.h"
 
 void UNSTeammateStatusEntryWidget::ApplyStatusData(const FNSPlayerStatusViewData& StatusData)
 {
@@ -13,6 +15,34 @@ void UNSTeammateStatusEntryWidget::ApplyStatusData(const FNSPlayerStatusViewData
 	if (PlayerNameText)
 	{
 		PlayerNameText->SetText(FText::FromString(StatusData.PlayerName));
+	}
+	
+	if (PortraitImage)
+	{
+		UTexture2D* PortraitTexture =
+			StatusData.PortraitTexture.Get();
+
+		if (!PortraitTexture &&
+			!StatusData.PortraitTexture.IsNull())
+		{
+			PortraitTexture =
+				StatusData.PortraitTexture.LoadSynchronous();
+		}
+
+		if (PortraitTexture)
+		{
+			PortraitImage->SetBrushFromTexture(
+				PortraitTexture,
+				false);
+
+			PortraitImage->SetVisibility(
+				ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			PortraitImage->SetVisibility(
+				ESlateVisibility::Hidden);
+		}
 	}
 	
 	if (HealthBar)
@@ -61,14 +91,6 @@ void UNSTeammateStatusEntryWidget::ApplyStatusData(const FNSPlayerStatusViewData
 				FText::AsNumber(
 					FMath::RoundToInt(
 						StatusData.MaxShield))));
-	}
-	
-	if (DeadOverlay)
-	{
-		DeadOverlay->SetVisibility(
-			StatusData.bIsDead
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
 	}
 }
 

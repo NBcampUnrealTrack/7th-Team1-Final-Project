@@ -13,6 +13,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Type/NSPlayerStatusMessageTypes.h"
+#include "NeoSanctum/Data/Character/NSCharacterData.h"
 
 void UNSPlayerStatusBridgeSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -62,6 +63,7 @@ void UNSPlayerStatusBridgeSubsystem::HandleQueryMessage(FGameplayTag Channel,
 		{
 			Snapshot.Players.Add(MoveTemp(ViewData));
 		}
+		
 	}
 	//TMap 순회 순서는 보장되지 않으므로 PlayerId기준으로 정렬
 	Snapshot.Players.Sort(
@@ -359,6 +361,13 @@ bool UNSPlayerStatusBridgeSubsystem::BuildViewData(const ANSPlayerState* PlayerS
 	OutData = FNSPlayerStatusViewData();
 	OutData.PlayerId = PlayerState->GetPlayerId();
 	OutData.PlayerName = PlayerState->GetPlayerName();
+	
+	if (const UNSCharacterData* CharacterData =
+	PlayerState->GetCurrentCharacterData())
+	{
+		OutData.PortraitTexture =
+			CharacterData->HUDPortraitTexture;
+	}
 
 	OutData.CurrentHealth =
 		AbilitySystem->GetNumericAttribute(

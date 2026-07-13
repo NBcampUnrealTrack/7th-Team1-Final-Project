@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "NSPlayerStatusMessageTypes.generated.h"
 
+class UTexture2D;
+
 /**
  * 팀원 상태가 UI현재 팀원 목록을 요청할때 사용하는 메시지
  */
@@ -33,6 +35,10 @@ struct FNSPlayerStatusViewData
 	//UI에 표시할 플레이어 이름
 	UPROPERTY(BlueprintReadOnly)
 	FString PlayerName;
+	
+	//팀원의 캐릭터 HUD초상화
+	UPROPERTY(BlueprintReadOnly)
+	TSoftObjectPtr<UTexture2D> PortraitTexture;
 
 	//현재 체력
 	UPROPERTY(BlueprintReadOnly)

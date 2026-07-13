@@ -49,7 +49,7 @@ struct TStructOpsTypeTraits<FNSCurrencyWallet> : public TStructOpsTypeTraitsBase
 {
 	enum
 	{
-		WithNetDeltaSerialize = true,
+		WithNetDeltaSerializer = true,
 	};
 };
 

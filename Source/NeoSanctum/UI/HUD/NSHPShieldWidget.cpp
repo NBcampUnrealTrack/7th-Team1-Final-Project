@@ -7,6 +7,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
+#include "Components/Widget.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 
@@ -188,21 +189,47 @@ void UNSHPShieldWidget::RefreshPortrait()
 
 void UNSHPShieldWidget::RefreshAmmoText()
 {
+	const bool bUsesAmmo =
+		CachedMaxAmmo > 0;
+
+	if (AmmoRow)
+	{
+		AmmoRow->SetVisibility(
+			bUsesAmmo
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+	}
+
 	if (!AmmoText)
 	{
 		return;
 	}
-	
-	if (bIsReloading)
+
+	if (!bUsesAmmo)
 	{
-		AmmoText->SetText(NSLOCTEXT("PlayerStatus", "ReloadingText", "Reload"));
+		AmmoText->SetText(FText::GetEmpty());
 		return;
 	}
-	
-	AmmoText->SetText(FText::Format(
-		NSLOCTEXT("PlayerStatus", "AmmoFormat", "{0} / {1}"),
-		FText::AsNumber(CachedCurrentAmmo),
-		FText::AsNumber(CachedMaxAmmo)));
+
+	if (bIsReloading)
+	{
+		AmmoText->SetText(
+			NSLOCTEXT(
+				"PlayerStatus",
+				"ReloadingText",
+				"Reload"));
+
+		return;
+	}
+
+	AmmoText->SetText(
+		FText::Format(
+			NSLOCTEXT(
+				"PlayerStatus",
+				"AmmoFormat",
+				"{0} / {1}"),
+			FText::AsNumber(CachedCurrentAmmo),
+			FText::AsNumber(CachedMaxAmmo)));
 }
 
 void UNSHPShieldWidget::NativeConstruct()
