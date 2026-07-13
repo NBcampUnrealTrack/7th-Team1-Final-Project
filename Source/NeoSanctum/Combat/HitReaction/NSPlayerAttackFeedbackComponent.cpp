@@ -23,6 +23,9 @@ void UNSPlayerAttackFeedbackComponent::HandleAttackHitFeedback(const FNSHitFeedb
 {
 	// 실제 히트 결과를 UI 피드백 규칙에 맞게 해석
 	const FNSHitFeedbackContext ResolvedContext = BuildResolvedContext(Context);
+	
+	BroadcastNormalMonsterRevealFeedback(ResolvedContext);
+	
 	const FNSPlayerAttackFeedbackData* FeedbackData = FindBestFeedbackData(ResolvedContext);
 	if (!FeedbackData)
 	{
@@ -282,4 +285,27 @@ void UNSPlayerAttackFeedbackComponent::PlaySoundFeedback(const FName SoundID) co
 	{
 		SoundSubsystem->PlaySound2D(SoundID);
 	}
+}
+
+void UNSPlayerAttackFeedbackComponent::BroadcastNormalMonsterRevealFeedback(
+	const FNSHitFeedbackContext& Context) const
+{
+	const AActor* OwnerActor = GetOwner();
+	const APawn* OwnerPawn = Cast<APawn>(OwnerActor);
+	if (!OwnerPawn || !OwnerPawn->IsLocallyControlled())
+	{
+		return;
+	}
+
+	if (!Context.TargetActor)
+	{
+		return;
+	}
+
+	FNSNormalMonsterRevealMessage Message;
+	Message.Context = Context;
+
+	UGameplayMessageSubsystem::Get(OwnerActor).BroadcastMessage(
+		NSGameplayTags::Message_UI_NormalMonster_Reveal,
+		Message);
 }
