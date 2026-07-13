@@ -1091,6 +1091,15 @@ void UNSUIManagerSubsystem::SetReloading(bool bReloading)
 	HUDWidget->SetReloading(bReloading);
 }
 
+void UNSUIManagerSubsystem::UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount)
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateDashStack(CurrentDashCount, MaxDashCount);
+}
+
 void UNSUIManagerSubsystem::ShowInRunGoods()
 {
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] UIManager ShowInRunGoods"));

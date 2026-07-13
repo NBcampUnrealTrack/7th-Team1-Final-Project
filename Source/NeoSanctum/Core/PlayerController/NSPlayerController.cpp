@@ -221,11 +221,24 @@ void ANSPlayerController::BindAttributeToHUD()
 	EGameplayTagEventType::NewOrRemoved
 ).AddUObject(this, &ANSPlayerController::OnReloadingTagChanged);
 	
+	ASC->GetGameplayAttributeValueChangeDelegate(
+	UNSPlayerAttributeSet::GetDashCountAttribute())
+.AddUObject(
+	this,
+	&ThisClass::OnDashCountChanged);
+
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSPlayerAttributeSet::GetMaxDashCountAttribute())
+	.AddUObject(
+		this,
+		&ThisClass::OnMaxDashCountChanged);
+	
 	bHUDAttributeBound = true;
 	
 	UpdateHUDHealthAndShield();
 	BindExperienceToHUD();
 	UpdateHUDAmmo();
+	UpdateHUDDashStack();
 }
 
 void ANSPlayerController::UpdateHUDHealthAndShield()
@@ -634,6 +647,65 @@ void ANSPlayerController::OnReloadingTagChanged(const FGameplayTag CallbackTag, 
 	{
 		UpdateHUDAmmo();
 	}
+}
+
+void ANSPlayerController::OnDashCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDDashStack();
+}
+
+void ANSPlayerController::OnMaxDashCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDDashStack();
+}
+
+void ANSPlayerController::UpdateHUDDashStack()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const ANSPlayerState* NSPlayerState =
+		GetPlayerState<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	const UNSPlayerAttributeSet* AttributeSet =
+		NSPlayerState->GetPlayerAttributeSet();
+
+	if (!AttributeSet)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this);
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	const int32 MaxDashCount =
+		FMath::Max(
+			FMath::FloorToInt(
+				AttributeSet->GetMaxDashCount()),
+			0);
+
+	const int32 CurrentDashCount =
+		FMath::Clamp(
+			FMath::FloorToInt(
+				AttributeSet->GetDashCount()),
+			0,
+			MaxDashCount);
+
+	UIManager->UpdateDashStack(
+		CurrentDashCount,
+		MaxDashCount);
 }
 
 void ANSPlayerController::BindCurrencyToHUD()

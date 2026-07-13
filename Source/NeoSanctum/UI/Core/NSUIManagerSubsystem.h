@@ -152,6 +152,8 @@ public:
 	
 	//리로드 상태 UI 갱신
 	void SetReloading(bool bReloading);
+	
+	void UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount);
 
 	//인런 재화 UI 표시
 	void ShowInRunGoods();

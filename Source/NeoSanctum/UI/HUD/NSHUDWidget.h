@@ -12,13 +12,13 @@ class UNSCrosshairWidget;
 class UNSHitTakenFeedbackWidget;
 class UNSAugmentationWidget;
 class UNSPartPanelWidget;
-class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
 class UNSDifficultyTimerWidget;
 class UWidget;
 class UNSCharacterStatsWidget;
 class UNSMinimapWidget;
+class UNSDashStackWidget;
 
 
 /**
@@ -103,6 +103,8 @@ public:
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
+	
+	void UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount);
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -128,9 +130,6 @@ private:
 	// Tab 증강 선택 / C 파츠 인벤토리 패널이 열렸을 때 사용하는 공용 어두운 배경
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> HudDimBackground;
-	//탄약 HUD 위젯
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UNSAmmoWidget> AmmoWidget;
 	//1번 스킬 슬롯
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot1Widget;
@@ -147,6 +146,9 @@ private:
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSMinimapWidget> MinimapWidget;
+	
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSDashStackWidget> DashStackWidget;
 
 	void RefreshHudDimBackground();
 protected:
