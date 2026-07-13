@@ -115,7 +115,7 @@ private:
 	TWeakObjectPtr<ANSBossArenaBounds> CachedArenaBounds;
 
 	// ActivateAbility 시점에 캐시한 원래 유지 고도. Return 레그가 이 고도로 복귀
-	float CapturedAltitude = 0.f;
+	float CapturedAltitude = 600.0f;
 	
 	FTimerHandle LegPollTimerHandle;
 	FTimerHandle DetonationPhaseTimerHandle;

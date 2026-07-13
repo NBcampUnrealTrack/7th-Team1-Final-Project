@@ -45,11 +45,6 @@ void UGA_MotherShipCloakDeployRun::ActivateAbility(const FGameplayAbilitySpecHan
 		return;
 	}
 	
-	if (ANSBossMotherShip* Boss = GetBossMotherShip())
-	{
-		CapturedAltitude = Boss->GetFlyingLocomotion()->GetAltitude();
-	}
-	
 	EnterCloak();
 	BeginLeg(ECloakDeployLeg::CloakAscend);
 }
@@ -83,7 +78,6 @@ void UGA_MotherShipCloakDeployRun::EndAbility(const FGameplayAbilitySpecHandle H
 	ExitCloak();
 
 	CachedArenaBounds = nullptr;
-	CapturedAltitude = 0.f;
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -151,13 +145,14 @@ void UGA_MotherShipCloakDeployRun::BeginLeg(ECloakDeployLeg NewLeg)
 			ScheduleDeployWaves();
 		}
 		break;
-	case ECloakDeployLeg::DescendUncloak :
+	case ECloakDeployLeg::ReturnUncloak :
 		{
-			const FVector Dest = CachedArenaBounds->GetDiagonalEndCorner(CapturedAltitude);
+			ExitCloak();  // 복귀를 시작하며 모습을 드러낸다
+			const FVector Dest = CachedArenaBounds->GetArenaCenter(CapturedAltitude);
 			PlayLegMontage(AscendDescendMontage);
 			FlyingLocomotionComponent->BeginScriptedMove(
 				Dest,
-				CapturedAltitude, 
+				CapturedAltitude,
 				DescendSpeed);
 		}
 		break;
@@ -193,11 +188,10 @@ void UGA_MotherShipCloakDeployRun::PollLegProgress()
 	case ECloakDeployLeg::TraverseAndDeploy :
 		if (bAllWavesDeployed)
 		{
-			BeginLeg(ECloakDeployLeg::DescendUncloak);
+			BeginLeg(ECloakDeployLeg::ReturnUncloak);
 		}
 		break;
-	case ECloakDeployLeg::DescendUncloak :
-		ExitCloak();
+	case ECloakDeployLeg::ReturnUncloak :
 		FinishAttackAbility();
 		break;
 	}
