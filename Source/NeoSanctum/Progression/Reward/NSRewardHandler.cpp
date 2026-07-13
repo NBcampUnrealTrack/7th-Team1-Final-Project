@@ -18,6 +18,7 @@
 #include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "NeoSanctum/System/Subsystem/NSDroppedPartRegistrySubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 #include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 
@@ -549,8 +550,19 @@ void UNSRewardHandler::HandlePartDropResult(
 		}
 		
 		// 동일한 보상 결과에서 생성되는 파츠가 겹치지 않도록 개별 발사 정보를 발생
-		const FNSDropLaunchData LaunchData = MakeDropLaunchData(World, DropLocation, RandomStream);
-		
+		FNSDropLaunchData LaunchData = MakeDropLaunchData(World, DropLocation, RandomStream);
+
+		if (UNSDroppedPartRegistrySubsystem* Registry = World->GetSubsystem<UNSDroppedPartRegistrySubsystem>())
+		{
+			constexpr int32 MaxAttempts = 6;
+			for (int32 Attempt = 0;
+				Attempt < MaxAttempts && Registry->IsLocationOccupied(LaunchData.TargetLocation);
+				++Attempt)
+			{
+				LaunchData = MakeDropLaunchData(World, DropLocation, RandomStream);
+			}
+		}
+
 		ANSDroppedPart* DroppedPart = ANSDroppedPart::SpawnInWorld(
 			World,
 			DroppedPartClass,

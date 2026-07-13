@@ -13,6 +13,10 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
+#include "NeoSanctum/System/Subsystem/NSDroppedPartRegistrySubsystem.h"
+#include "TimerManager.h"
 
 ANSDroppedPart::ANSDroppedPart()
 {
@@ -126,13 +130,32 @@ void ANSDroppedPart::BeginPlay()
 	Super::BeginPlay();
 
 	SetupVisual();
+
+	// 겹침 방지용 로직, 서버 전용
+	if (HasAuthority())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UNSDroppedPartRegistrySubsystem* Registry = World->GetSubsystem<UNSDroppedPartRegistrySubsystem>())
+			{
+				Registry->RegisterDrop(this);
+			}
+		}
+	}
 }
 
 void ANSDroppedPart::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	
-	UpdateDropLaunch();
+
+	if (bIsLaunching)
+	{
+		UpdateDropLaunch();
+	}
+	else
+	{
+		UpdateBobAnimation(DeltaSeconds);
+	}
 }
 
 ANSDroppedPart* ANSDroppedPart::SpawnInWorld(UWorld* World, TSubclassOf<ANSDroppedPart> Class,
@@ -219,9 +242,9 @@ void ANSDroppedPart::UpdateDropLaunch()
 void ANSDroppedPart::FinishDropLaunch()
 {
 	bIsLaunching = false;
-	
+
 	SetActorLocation(LaunchData.TargetLocation);
-	SetActorTickEnabled(false);
+	// 착지 후에도 바운싱 애니메이션을 위해 틱은 계속 유지
 	ForceNetUpdate();
 }
 
@@ -270,7 +293,27 @@ void ANSDroppedPart::Initialize(const FNSPartData& InPart)
 		return;
 	}
 	StoredInstance = InPart;
+
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (const FNSDroppedPartConfigRow* ConfigRow = DataSubsystem->GetDroppedPartConfigRow())
+		{
+			DespawnDuration = ConfigRow->DespawnDuration;
+			BobAmplitude = ConfigRow->BobAmplitude;
+			BobSpeed = ConfigRow->BobSpeed;
+			RingVFXID = ConfigRow->RingVFXID;
+		}
+	}
+
 	SetupVisual();
+
+	GetWorldTimerManager().SetTimer(
+		DespawnTimerHandle, this, &ANSDroppedPart::HandleDespawnTimerExpired, DespawnDuration, false);
+}
+
+void ANSDroppedPart::HandleDespawnTimerExpired()
+{
+	Destroy();
 }
 
 void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
@@ -327,6 +370,19 @@ void ANSDroppedPart::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		VisualLoadHandle->CancelHandle();
 		VisualLoadHandle.Reset();
 	}
+
+	if (HasAuthority())
+	{
+		if (UWorld* World = GetWorld())
+		{
+			if (UNSDroppedPartRegistrySubsystem* Registry = World->GetSubsystem<UNSDroppedPartRegistrySubsystem>())
+			{
+				Registry->UnregisterDrop(this);
+			}
+		}
+		GetWorldTimerManager().ClearTimer(DespawnTimerHandle);
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -373,8 +429,11 @@ void ANSDroppedPart::SetupVisual()
 	// 파츠 메시는 피벗이 본 위치 기준이라 땅에 닿게 Z 보정
 	const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
 	const float BottomOffsetZ = MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z;
-	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, -BottomOffsetZ));
 	
+	// 바운싱 위해서 Z보정값을 저장
+	MeshBaseRelativeZ = -BottomOffsetZ;
+	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ));
+
 	// 위치 보정
 	const FVector MeshCenter(MeshBounds.Origin.X, MeshBounds.Origin.Y, MeshBounds.BoxExtent.Z);
 	if (DetectionCollision)
@@ -385,5 +444,39 @@ void ANSDroppedPart::SetupVisual()
 	{
 		PromptAnchor->SetRelativeLocation(MeshCenter + FVector(0.f, 0.f, MeshBounds.BoxExtent.Z + 30.f));
 	}
+
+	// 착지 후 바운싱 애니메이션을 위해 틱 유지 (발사 중이면 이미 켜져 있음)
+	SetActorTickEnabled(true);
+
+	const UWorld* World = GetWorld();
+	
+	// 다른쪽 패턴 따라서 데디케이트 블락코드
+	const bool bCanPlayVFX = World && World->GetNetMode() != NM_DedicatedServer;
+	if (!bRingVFXPlayed && !RingVFXID.IsNone() && bCanPlayVFX)
+	{
+		if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
+		{
+			VFXSubsystem->PlayVFXAttached(RingVFXID, MeshComp, NAME_None, MeshBounds.Origin);
+		}
+		bRingVFXPlayed = true;
+	}
+}
+
+void ANSDroppedPart::UpdateBobAnimation(float DeltaSeconds)
+{
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// sin이 -1 ~ 1 자연스런 왕복곡선이라 사용
+	const float BobOffsetZ = FMath::Sin(World->GetTimeSeconds() * BobSpeed) * BobAmplitude;
+	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ + BobOffsetZ));
 }
 

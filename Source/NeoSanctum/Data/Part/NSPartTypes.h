@@ -61,6 +61,29 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	// false면 카탈로그에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bEnabled = true;
+
+	// 이 파츠가 영향을 주는 스탯 (CombatStat.* 네임스페이스). 상호작용 프롬프트의 스탯 비교 UI에서 사용
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "CombatStat"))
+	FGameplayTag StatTag;
+};
+
+// StatTag 하나당 Row 하나. RowName은 StatTag와 동일해야 함.
+// 파츠 상호작용 프롬프트의 스탯 비교 UI가 표시 이름/좋은 방향을 조회하는 용도
+USTRUCT(BlueprintType)
+struct FNSStatDisplayInfoRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// FNSPartDefinitionRow::StatTag와 동일해야 함
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat", meta = (Categories = "CombatStat"))
+	FGameplayTag StatTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
+	FText DisplayName;
+
+	// true = 값이 오르면 좋음(초록 위쪽 화살표), false = 값이 내리면 좋음(초록 위쪽 화살표는 값 하락 시 표시)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
+	bool bHigherIsBetter = true;
 };
 
 /**
@@ -156,6 +179,29 @@ struct FNSPartUpgradeRow : public FTableRowBase
 	// 이 등급 파츠의 상점 구매 가격 (임시 재화)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))
 	int64 ShopPrice = 0;
+};
+
+// 드랍 파츠 액터의 디스폰/바운싱/링VFX 튜닝값. DT에 Row 하나("Default")만 두고 사용
+USTRUCT(BlueprintType)
+struct FNSDroppedPartConfigRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// 스폰 후 이 시간이 지나면 자동으로 Destroy
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|DroppedPart", meta = (ClampMin = "0"))
+	float DespawnDuration = 15.f;
+
+	// 바운싱 애니메이션 진폭
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|DroppedPart", meta = (ClampMin = "0"))
+	float BobAmplitude = 8.f;
+
+	// 바운싱 애니메이션 속도
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|DroppedPart", meta = (ClampMin = "0"))
+	float BobSpeed = 2.f;
+
+	// 파츠를 감싸는 링 VFX ID (DT_VFXDataTable의 Row Name)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|DroppedPart")
+	FName RingVFXID;
 };
 
 /**

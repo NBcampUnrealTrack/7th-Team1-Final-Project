@@ -54,6 +54,11 @@ public:
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsSlotBaseStatTable;
 
+	// StatTag별 표시 이름/좋은 방향 정의. 파츠 상호작용 프롬프트의 스탯 비교 UI가 조회
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> StatDisplayInfoTable;
+
 	// 영구 강화 DT.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",
 		meta = (AssetBundles = "CommonData"))
@@ -62,6 +67,11 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
 		meta = (AssetBundles = "CommonData"))
 	TSoftObjectPtr<UDataTable> PartsUpgradeTable;
+
+	// 드랍 파츠 디스폰/바운싱/링VFX 튜닝값 DT ("Default" Row 하나만 사용)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Parts",
+		meta = (AssetBundles = "CommonData"))
+	TSoftObjectPtr<UDataTable> DroppedPartConfigTable;
 
 	// @원종 TODO: 추후 영구 스킬 트리 데이터가 생기면 여기에 추가.
 	// UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|Progression",

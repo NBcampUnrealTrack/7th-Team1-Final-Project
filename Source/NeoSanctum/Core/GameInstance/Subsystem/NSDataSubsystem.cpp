@@ -144,6 +144,25 @@ const FNSCharacterBaseStatRow* UNSDataSubsystem::FindCharacterBaseStatRow(const 
 	return Table->FindRow<FNSCharacterBaseStatRow>(RowName, ContextString, false);
 }
 
+UDataTable* UNSDataSubsystem::GetCommonStatDisplayInfoTable() const
+{
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	return CommonConfig ? CommonConfig->StatDisplayInfoTable.Get() : nullptr;
+}
+
+const FNSStatDisplayInfoRow* UNSDataSubsystem::FindStatDisplayInfoRow(const FGameplayTag& StatTag) const
+{
+	UDataTable* Table = GetCommonStatDisplayInfoTable();
+	if (!Table || !StatTag.IsValid())
+	{
+		return nullptr;
+	}
+
+	const FName RowName = StatTag.GetTagName();
+	const FString ContextString = TEXT("FindStatDisplayInfoRow");
+	return Table->FindRow<FNSStatDisplayInfoRow>(RowName, ContextString, false);
+}
+
 TSubclassOf<UGameplayEffect> UNSDataSubsystem::GetCommonUpgradeInitEffectClass() const
 {
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
@@ -464,6 +483,7 @@ void UNSDataSubsystem::OnCommonAssetsLoaded()
 	BuildPartRowCache();
 	BuildSlotRowCache();
 	BuildPartUpgradeRowCache();
+	BuildDroppedPartConfigCache();
 	CacheCommonUpgradeNodeRows();
 	StartLoadCommonReferenceAssets();
 }
@@ -1351,4 +1371,28 @@ const FNSPartUpgradeRow* UNSDataSubsystem::GetPartUpgradeRow(ENSPartRarity Rarit
 const TMap<ENSPartRarity, FNSPartUpgradeRow>& UNSDataSubsystem::GetAllPartUpgradeRows() const
 {
 	return CachedUpgradeRowsByRarity;
+}
+
+void UNSDataSubsystem::BuildDroppedPartConfigCache()
+{
+	bDroppedPartConfigRowLoaded = false;
+
+	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
+	UDataTable* DT = CommonConfig ? CommonConfig->DroppedPartConfigTable.Get() : nullptr;
+	if (!DT)
+	{
+		return;
+	}
+
+	if (const FNSDroppedPartConfigRow* Row =
+		DT->FindRow<FNSDroppedPartConfigRow>(TEXT("Default"), TEXT("BuildDroppedPartConfigCache"), false))
+	{
+		CachedDroppedPartConfigRow = *Row;
+		bDroppedPartConfigRowLoaded = true;
+	}
+}
+
+const FNSDroppedPartConfigRow* UNSDataSubsystem::GetDroppedPartConfigRow() const
+{
+	return bDroppedPartConfigRowLoaded ? &CachedDroppedPartConfigRow : nullptr;
 }

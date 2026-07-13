@@ -15,6 +15,35 @@
 #include "Components/MeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Materials/MaterialInterface.h"
+#include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+
+// FNSCharacterBaseStatRow에서 StatTag에 해당하는 필드를 찾음, 매칭되는 필드가 없으면 0 (첫 장착 시 비교 기준값으로 사용)
+static float GetBaseStatValueForTag(const FNSCharacterBaseStatRow& Row, const FGameplayTag& StatTag)
+{
+	if (StatTag == NSGameplayTags::CombatStat_MaxHealth)             { return Row.MaxHealth; }
+	if (StatTag == NSGameplayTags::CombatStat_Damage)                { return Row.BaseDamage; }
+	if (StatTag == NSGameplayTags::CombatStat_Defense)               { return Row.Defense; }
+	if (StatTag == NSGameplayTags::CombatStat_MoveSpeed)             { return Row.MoveSpeed; }
+	if (StatTag == NSGameplayTags::CombatStat_CritChance)            { return Row.CritChance; }
+	if (StatTag == NSGameplayTags::CombatStat_CritDamage)            { return Row.CritDamage; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxShield)             { return Row.MaxShield; }
+	if (StatTag == NSGameplayTags::CombatStat_ShieldRechargeRate)    { return Row.ShieldRechargeRate; }
+	if (StatTag == NSGameplayTags::CombatStat_ShieldRechargeCooldown){ return Row.ShieldRechargeCooldown; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxDashCount)          { return Row.MaxDashCount; }
+	if (StatTag == NSGameplayTags::CombatStat_DashRegenRate)         { return Row.DashRegenRate; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxAmmo)               { return Row.MaxAmmo; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxSkill1Count)        { return Row.MaxSkill1Count; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxSkill2Count)        { return Row.MaxSkill2Count; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxSkill3Count)        { return Row.MaxSkill3Count; }
+	return 0.f;
+}
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -48,6 +77,7 @@ void UNSInteractionComponent::BeginPlay()
 	DetectionSphere->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
 	DetectionSphere->SetSphereRadius(DetectionRadius);
 	PromptWidgetComponent->AttachToComponent(Owner->GetRootComponent(), FAttachmentTransformRules::KeepRelativeTransform);
+	PromptWidgetComponent->SetDrawSize(PromptWidgetDrawSize);
 
 	// 이미 possess된 상태면 여기서 활성화, 아니면 무시됨
 	EnableLocalInteraction();
@@ -290,23 +320,80 @@ void UNSInteractionComponent::ShowPromptFor(AActor* Target)
 	{
 		const FText PromptText = INSInteractable::Execute_GetPromptText(Target);
 
-		if (Cast<ANSDroppedPart>(Target))
+		if (ANSDroppedPart* DroppedPart = Cast<ANSDroppedPart>(Target))
 		{
 			Widget->SetPromptText(
 			InteractionKeyText,
 	NSLOCTEXT("Interaction", "ReplacePart", "교체"));
 			Widget->SetPartName(PromptText);
+
+			UpdateStatComparisonFor(DroppedPart, Widget);
 		}
 		else
 		{
 			Widget->SetPromptText(InteractionKeyText, PromptText);
 			Widget->SetPartName(FText::GetEmpty());
+			Widget->ClearStatComparison();
 		}
 
 		Widget->SetPromptIcon(INSInteractable::Execute_GetPromptIcon(Target));
 		Widget->SetRarityStyle(INSInteractable::Execute_GetPromptRarityIndex(Target));
 	}
 	PromptWidgetComponent->SetVisibility(true);
+}
+
+void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPart, UNSInteractionPromptWidget* Widget)
+{
+	if (!DroppedPart || !Widget)
+	{
+		return;
+	}
+
+	const FNSPartData& NewPart = DroppedPart->GetStoredPart();
+
+	// Definition이 아직 로드 안 됐으면 비교 UI는 그냥 숨김, 다음 갱신 때 다시 시도
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, NewPart);
+	const FNSPartDefinitionRow* NewRow = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
+	if (!NewRow || !NewRow->StatTag.IsValid())
+	{
+		Widget->ClearStatComparison();
+		return;
+	}
+
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
+	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(NewRow->StatTag) : nullptr;
+	if (!StatInfo)
+	{
+		Widget->ClearStatComparison();
+		return;
+	}
+
+	// 캐릭터 기본 스탯값 (매칭되는 필드 없으면 0) — 이전/이후 수치 둘 다의 기준선으로 사용
+	float BaseValue = 0.f;
+
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerPawn))
+	{
+		if (const UNSCharacterData* CharacterData = PlayerCharacter->GetCurrentCharacterData())
+		{
+			if (const FNSCharacterBaseStatRow* BaseStatRow = DataSS
+				? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
+				: nullptr)
+			{
+				BaseValue = GetBaseStatValueForTag(*BaseStatRow, NewRow->StatTag);
+			}
+		}
+	}
+	
+	// 현재 수치 -> 장착 후 수치, 캐릭터 베이스 값을 가져옴
+	const APlayerState* PS = OwnerPawn ? OwnerPawn->GetPlayerState() : nullptr;
+	const UNSPartEquipComponent* EquipComp = PS ? PS->FindComponentByClass<UNSPartEquipComponent>() : nullptr;
+	const FNSPartData* OldPart = EquipComp ? EquipComp->GetEquippedPart(NewRow->PartSlot) : nullptr;
+
+	const float OldTotal = BaseValue + (OldPart ? OldPart->CurrentValue : 0.f);
+	const float NewTotal = BaseValue + NewPart.CurrentValue;
+
+	Widget->SetStatComparison(StatInfo->DisplayName, OldTotal, NewTotal, StatInfo->bHigherIsBetter);
 }
 
 void UNSInteractionComponent::HidePrompt()

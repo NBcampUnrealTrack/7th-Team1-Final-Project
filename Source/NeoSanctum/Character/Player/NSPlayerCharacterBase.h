@@ -109,7 +109,10 @@ public:
 
 	// 공용 업그레이드 레벨을 Attribute에 재적용. 캐릭터 초기화 시뿐만 아니라 구매 직후에도 호출.
 	void ApplyCommonUpgradeAttributeEffect();
-	
+
+	// 파츠 상호작용 프롬프트의 스탯 비교 UI 등 외부에서 CharacterTag가 필요할 때 사용
+	const UNSCharacterData* GetCurrentCharacterData() const { return CurrentCharacterData; }
+
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
