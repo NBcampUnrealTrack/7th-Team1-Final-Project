@@ -21,7 +21,7 @@ struct FNSMonsterUIData : public FTableRowBase
 	GENERATED_BODY()
 
 	// 이 Row가 적용될 몬스터 EnemyId를 보관하는 변수
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MonsterUI")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MonsterUI", meta=(Categories="Character.Enemy"))
 	FGameplayTag EnemyId;
 
 	// UI에 표시할 몬스터 이름을 보관하는 변수
