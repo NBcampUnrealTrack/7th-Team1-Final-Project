@@ -351,7 +351,7 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 
 	const FNSPartData& NewPart = DroppedPart->GetStoredPart();
 
-	// Definition이 아직 로드 안 됐으면(동기 로드 금지) 비교 UI는 그냥 숨김 — 다음 갱신 때 다시 시도
+	// Definition이 아직 로드 안 됐으면 비교 UI는 그냥 숨김, 다음 갱신 때 다시 시도
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, NewPart);
 	const FNSPartDefinitionRow* NewRow = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
 	if (!NewRow || !NewRow->StatTag.IsValid())
