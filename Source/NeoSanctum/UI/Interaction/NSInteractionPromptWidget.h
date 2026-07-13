@@ -20,7 +20,7 @@ struct FNSRarityPromptStyle
 
 	// 카드 전체 배경색
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	FLinearColor BackgroundColor = FLinearColor(0.10f, 0.10f, 0.12f, 0.90f);
+	FLinearColor BackgroundColor = FLinearColor(0.10f, 0.10f, 0.12f, 0.50f);
 
 	// 상단/좌측 강조선 색
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
@@ -46,6 +46,14 @@ public:
 	// 파츠 이름 설정
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void SetPartName(const FText& InName);
+
+	// 파츠 교체 시 스탯 비교 표시: "{StatName} : {OldValue} -> {NewValue}" + 좋아짐/나빠짐 화살표
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void SetStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter);
+
+	// 비교할 스탯 정보가 없을 때 (StatTag 매칭 실패 등) 비교 UI 숨김
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void ClearStatComparison();
 
 	// 등급 인덱스로 배경/강조 색 적용 (-1 = 기본)
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
@@ -91,6 +99,19 @@ protected:
 	// 카드 상단,좌측 강조선 Image —> 등급별 강조색 적용 대상
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UImage> RarityAccentImage;
+
+	// 스탯 비교 텍스트: "{StatName} : {OldValue} -> {NewValue}"
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UTextBlock> StatCompareText;
+
+	// 좋아짐 화살표 이미지 — 위젯 블루프린트에서 원하는 브러시(색/모양)를 직접 지정
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowUpImage;
+
+	// 나빠짐 화살표 이미지 — 위젯 블루프린트에서 원하는 브러시(색/모양)를 직접 지정
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowDownImage;
+
 private:
 	//진행 중인 아이콘 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> IconLoadHandle;
