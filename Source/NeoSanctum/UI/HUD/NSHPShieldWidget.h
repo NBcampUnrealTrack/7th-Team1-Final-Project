@@ -39,6 +39,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetExperience(float CurrentExperience, float RequiredExperience);
 	
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetAmmo(int32 CurrentAmmo, int32 MaxAmmo);
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetReloading(bool bReloading);
+	
 private:
 	//0 나누기 방지 후 ProgressBar 비율 계산
 	float GetSafePercent(float CurrentValue, float MaxValue)const;
@@ -64,11 +69,19 @@ private:
 	//캐릭터 프로필
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UImage> PortraitImage;
+	//총알 텍스트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> AmmoText;
+	
+	bool bIsReloading = false;
+	int32 CachedCurrentAmmo = 0;
+	int32 CachedMaxAmmo = 0;
 	
 	UPROPERTY()
 	TObjectPtr<const UNSCharacterData> CachedPortraitCharacterData;
 	
 	void RefreshPortrait();
+	void RefreshAmmoText();
 	
 protected:
 	virtual void NativeConstruct()override;

@@ -2,6 +2,8 @@
 
 
 #include "NSHPShieldWidget.h"
+
+#include "IMediaCache.h"
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
@@ -71,6 +73,8 @@ void UNSHPShieldWidget::ResetHealthAndShield()
 	SetHealth(0.0f, 0.0f);
 	SetShield(0.0f, 0.0f);
 	SetExperience(0.0f, 0.0f);
+	SetReloading(false);
+	SetAmmo(0, 0);
 }
 
 void UNSHPShieldWidget::SetExperience(float CurrentExperience, float RequiredExperience)
@@ -98,6 +102,21 @@ void UNSHPShieldWidget::SetExperience(float CurrentExperience, float RequiredExp
 					FMath::RoundToInt(
 						RequiredExperience))));
 	}
+}
+
+void UNSHPShieldWidget::SetAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	CachedCurrentAmmo = FMath::Max(CurrentAmmo, 0);
+	CachedMaxAmmo = FMath::Max(MaxAmmo, 0);
+	
+	RefreshAmmoText();
+}
+
+void UNSHPShieldWidget::SetReloading(bool bReloading)
+{
+	bIsReloading = bReloading;
+	
+	RefreshAmmoText();
 }
 
 float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)const
@@ -165,6 +184,25 @@ void UNSHPShieldWidget::RefreshPortrait()
 
 	PortraitImage->SetBrushFromTexture(PortraitTexture);
 	PortraitImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UNSHPShieldWidget::RefreshAmmoText()
+{
+	if (!AmmoText)
+	{
+		return;
+	}
+	
+	if (bIsReloading)
+	{
+		AmmoText->SetText(NSLOCTEXT("PlayerStatus", "ReloadingText", "Reload"));
+		return;
+	}
+	
+	AmmoText->SetText(FText::Format(
+		NSLOCTEXT("PlayerStatus", "AmmoFormat", "{0} / {1}"),
+		FText::AsNumber(CachedCurrentAmmo),
+		FText::AsNumber(CachedMaxAmmo)));
 }
 
 void UNSHPShieldWidget::NativeConstruct()

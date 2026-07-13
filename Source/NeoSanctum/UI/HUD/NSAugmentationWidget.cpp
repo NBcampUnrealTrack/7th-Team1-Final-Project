@@ -466,11 +466,12 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 	if (CardDimBackground)
 	{
 		CardDimBackground->SetVisibility(
-			bShouldShowCardSection
+			bShouldShowCardSection ||
+			bOwnedListRequested
 				? ESlateVisibility::Visible
 				: ESlateVisibility::Collapsed);
 	}
-
+	
 	if (PendingCountText)
 	{
 		PendingCountText->SetText(FText::AsNumber(PendingCount));

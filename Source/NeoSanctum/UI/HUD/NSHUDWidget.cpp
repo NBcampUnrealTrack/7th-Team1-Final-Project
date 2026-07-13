@@ -8,13 +8,13 @@
 #include "NSAugmentationWidget.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
-#include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
 #include "NeoSanctum/UI/HUD/NSSkillSlotWidget.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsWidget.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
+#include "NeoSanctum/UI/HUD/NSDashStackWidget.h"
 
 
 void UNSHUDWidget::UpdateHealthAndShield(
@@ -235,6 +235,18 @@ void UNSHUDWidget::RequestRerollAugment()
 	AugmentationWidget->RequestRerollAugment();
 }
 
+void UNSHUDWidget::UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount)
+{
+	if (!DashStackWidget)
+	{
+		return;
+	}
+	
+	DashStackWidget->SetDashCount(
+	CurrentDashCount,
+	MaxDashCount);
+}
+
 void UNSHUDWidget::RefreshHudDimBackground()
 {
 	if (!HudDimBackground)
@@ -275,22 +287,22 @@ void UNSHUDWidget::NativeConstruct()
 
 void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
 {
-	if (!AmmoWidget)
+	if (!HPShieldWidget)
 	{
 		return;
 	}
 
-	AmmoWidget->SetAmmo(CurrentAmmo, MaxAmmo);
+	HPShieldWidget->SetAmmo(CurrentAmmo, MaxAmmo);
 }
 
 void UNSHUDWidget::SetReloading(bool bReloading)
 {
-	if (!AmmoWidget)
+	if (!HPShieldWidget)
 	{
 		return;
 	}
 
-	AmmoWidget->SetReloading(bReloading);
+	HPShieldWidget->SetReloading(bReloading);
 }
 
 void UNSHUDWidget::ShowInRunGoods()

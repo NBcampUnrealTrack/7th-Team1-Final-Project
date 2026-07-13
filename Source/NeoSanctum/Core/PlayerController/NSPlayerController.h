@@ -255,6 +255,14 @@ private:
 	//리로드 태그 변경시 탄약 UI 상태 갱신
 	void OnReloadingTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
 	
+	void OnDashCountChanged(
+	const FOnAttributeChangeData& Data);
+
+	void OnMaxDashCountChanged(
+		const FOnAttributeChangeData& Data);
+
+	void UpdateHUDDashStack();
+	
 	//PlayerState의 재화 컴포넌트를 HUD에 연결
 	void BindCurrencyToHUD();
 	
