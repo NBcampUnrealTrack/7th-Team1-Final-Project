@@ -15,6 +15,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NSMonsterStatusViewModel.h"
+#include "NSMonsterUIAnchorComponent.h"
 #include "NSMonsterUIHost.h"
 #include "NSNormalMonsterStatusWidget.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
@@ -403,6 +404,12 @@ FVector UNSNormalMonsterPresenter::ResolveAnchorLocation(AActor* TargetActor) co
 	if (!IsValid(TargetActor))
 	{
 		return FVector::ZeroVector;
+	}
+
+	if (const UNSMonsterUIAnchorComponent* AnchorComponent = 
+		TargetActor->FindComponentByClass<UNSMonsterUIAnchorComponent>())
+	{
+		return AnchorComponent->GetAnchorLocation();
 	}
 
 	if (const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(TargetActor))
