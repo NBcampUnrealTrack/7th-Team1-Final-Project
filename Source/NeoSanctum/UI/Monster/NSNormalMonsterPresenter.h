@@ -7,8 +7,8 @@
 #include "GameplayTagContainer.h"
 #include "UObject/Object.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
-#include "NSNormalMonsterPresenter.generated.h"
 #include "NSMonsterUITypes.h"
+#include "NSNormalMonsterPresenter.generated.h"
 
 struct FNSMonsterUIData;
 class ULocalPlayer;
