@@ -235,10 +235,16 @@ protected:
 	// bScriptedMove 중 매 프레임 Dest를 향한 순수 수평 입력만 적용 (스티어링/회피/후퇴 미사용)
 	void ApplyScriptedMoveInput(float DeltaSeconds);
 
+	// bScriptedMove 중 매 프레임 ScriptedTargetZ(고정 목표)로만 고도 구동. SampleHighestGround 미사용
+	void DriveScriptedAltitude(float DeltaSeconds);
+
 private:
 	bool bScriptedMove = false;
 	FVector ScriptedDestXY = FVector::ZeroVector;
 
+	// BeginScriptedMove 진입 시 1회 확정하는 절대 목표 월드 Z
+	float ScriptedTargetZ = 0.f;
+	
 	// BeginScriptedMove 최초 진입 시 캐시, EndScriptedMove에서 복원
 	float CachedAltitude = 0.f;
 	float CachedMaxSpeed = 0.f;
