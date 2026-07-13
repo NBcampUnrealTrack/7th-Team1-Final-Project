@@ -3,6 +3,8 @@
 
 #include "NSFlyingLocomotionComponent.h"
 #include "GameFramework/Pawn.h"
+#include "EngineUtils.h"
+#include "GenericTeamAgentInterface.h"
 
 
 UNSFlyingLocomotionComponent::UNSFlyingLocomotionComponent()
@@ -290,12 +292,26 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(OwnerPawn);
 
-	if (GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, GroundChannel, CollisionParams))
+	if (!GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, GroundChannel, CollisionParams))
 	{
-		OutZ = Hit.ImpactPoint.Z;
-		return true;
+		return false;
 	}
-	return false;
+
+	// 지오메트리에 파고든 채 시작한 히트는 법선이 부정확 → 바닥으로 인정하지 않음
+	if (Hit.bStartPenetrating)
+	{
+		return false;
+	}
+
+	// 아래로 쐈는데 걷기 불가능한 가파른 면(=벽/장애물 옆면)에 맞으면 바닥이 아님
+	const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngle));
+	if (Hit.ImpactNormal.Z < WalkableCosThreshold)
+	{
+		return false;
+	}
+
+	OutZ = Hit.ImpactPoint.Z;
+	return true;
 }
 
 bool UNSFlyingLocomotionComponent::SampleHighestGround(float& OutGroundZ) const
@@ -393,6 +409,9 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 
 	const float DeltaTime = GetWorld()->GetDeltaSeconds();
 
+	TArray<AActor*> IgnoredAllies;
+	CollectAvoidanceIgnoredActors(OwnerPawn, IgnoredAllies);
+
 	// 방향별 스윕 → raw danger → 시간 스무딩
 	for (int32 i = 0; i < SteeringDirections.Num(); ++i)
 	{
@@ -403,6 +422,7 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 		FHitResult Hit;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(OwnerPawn);
+		CollisionParams.AddIgnoredActors(IgnoredAllies);
 		CollisionParams.bTraceComplex = false;
 
 		// 이번 프레임 raw Danger 계산
@@ -415,7 +435,15 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 			FCollisionShape::MakeSphere(AvoidanceTraceRadius),
 			CollisionParams))
 		{
-			RawDanger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+			// 완만한 경사면(=지형)은 회피 대상이 아님. 가파른 면(=벽/장애물)만 위험도 부여.
+			// 파고든 상태 시작 히트는 법선 신뢰 불가 → 보수적으로 장애물 취급
+			const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngle));
+			const bool bWalkableTerrain = !Hit.bStartPenetrating && (Hit.ImpactNormal.Z >= WalkableCosThreshold);
+
+			if (!bWalkableTerrain)
+			{
+				RawDanger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
+			}
 		}
 
 		DangerMap.Add(RawDanger);
@@ -524,6 +552,33 @@ FVector UNSFlyingLocomotionComponent::ChooseRetreatDirection() const
 #pragma endregion
 
 #pragma region ScriptedMove
+
+void UNSFlyingLocomotionComponent::CollectAvoidanceIgnoredActors(const APawn* OwnerPawn,
+	TArray<AActor*>& OutIgnored) const
+{
+	const IGenericTeamAgentInterface* OwnerTeamAgent = Cast<IGenericTeamAgentInterface>(OwnerPawn);
+	if (!OwnerTeamAgent) return;
+
+	const FGenericTeamId OwnerTeamId = OwnerTeamAgent->GetGenericTeamId();
+	const UClass* OwnerClass = OwnerPawn->GetClass();
+	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
+
+	for (TActorIterator<APawn> It(GetWorld()); It; ++It)
+	{
+		APawn* OtherPawn = *It;
+		if (OtherPawn == OwnerPawn) continue;
+		if (FVector::DistSquared(OwnerLocation, OtherPawn->GetActorLocation()) > FMath::Square(AvoidanceTraceDistance)) continue;
+
+		const IGenericTeamAgentInterface* OtherTeamAgent = Cast<IGenericTeamAgentInterface>(OtherPawn);
+		const bool bSameTeam = OtherTeamAgent && OtherTeamAgent->GetGenericTeamId() == OwnerTeamId;
+		const bool bSameClass = OtherPawn->GetClass() == OwnerClass;
+
+		if (bSameTeam || bSameClass)
+		{
+			OutIgnored.Add(OtherPawn);
+		}
+	}
+}
 
 void UNSFlyingLocomotionComponent::BeginScriptedMove(const FVector& DestXY, float TargetAltitude, float Speed)
 {
