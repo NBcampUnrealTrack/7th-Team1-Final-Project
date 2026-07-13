@@ -5,7 +5,7 @@
 #include "Engine/DataTable.h"
 #include "GameFramework/GameplayMessageSubsystem.h"
 #include "GameFramework/Pawn.h"
-#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSBarrierBase.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
@@ -147,8 +147,8 @@ ENSHitFeedbackTargetType UNSPlayerAttackFeedbackComponent::ResolveTargetType(con
 		return ENSHitFeedbackTargetType::Any;
 	}
 	
-	// 타겟이 Enemy
-	if (TargetActor->IsA<ANSEnemyCharacterBase>())
+	// Character든 Pawn이든 Enemy Agent면 같은 Enemy 피드백으로 분류.
+	if (Cast<INSEnemyAgent>(TargetActor))
 	{
 		return ENSHitFeedbackTargetType::Enemy;
 	}
