@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "NeoSanctum/UI/Monster/NSMonsterUIHost.h"
 #include "NSHUDWidget.generated.h"
 
 class UNSHPShieldWidget;
@@ -19,13 +20,16 @@ class UWidget;
 class UNSCharacterStatsWidget;
 class UNSMinimapWidget;
 class UNSDashStackWidget;
+class UHorizontalBox;
+class UPanelWidget;
 
 
 /**
  * 인게임 HUD 요소를 묶어서 관리하는 위젯
  */
 UCLASS()
-class NEOSANCTUM_API UNSHUDWidget : public UCommonUserWidget
+class NEOSANCTUM_API UNSHUDWidget : public UCommonUserWidget, 
+                                    public INSMonsterUIHost
 {
 	GENERATED_BODY()
 	
@@ -105,6 +109,12 @@ public:
 	void RequestRerollAugment();
 	
 	void UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount);
+	
+	// 일반 몬스터 상태 위젯을 배치할 패널을 반환하는 함수
+	virtual UPanelWidget* GetNormalMonsterLayer() const override;
+
+	// 보스 상태 위젯을 1:1 비율로 배치할 가로 패널을 반환하는 함수
+	virtual UHorizontalBox* GetBossMonsterLayer() const override;
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -149,6 +159,14 @@ private:
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSDashStackWidget> DashStackWidget;
+	
+	// 일반 몬스터 상태 위젯을 배치하는 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> NormalMonsterLayer;
+
+	// 보스 상태 위젯을 1:1 비율로 배치하는 가로 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> BossMonsterLayer;
 
 	void RefreshHudDimBackground();
 protected:

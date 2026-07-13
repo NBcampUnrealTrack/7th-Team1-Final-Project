@@ -238,3 +238,16 @@ struct NEOSANCTUM_API FNSDamageNumberFeedbackMessage
 	UPROPERTY(BlueprintReadOnly, Category = "HitFeedback")
 	FNSDamageNumberFeedbackContext Context;
 };
+
+/**
+ * GMS로 일반 몬스터 상태 UI 표시 요청을 전달하는 메시지입니다.
+ */
+USTRUCT(BlueprintType)
+struct NEOSANCTUM_API FNSNormalMonsterRevealMessage
+{
+	GENERATED_BODY()
+
+	// 일반 몬스터 상태 UI 표시 기준이 되는 HitFeedback Context 변수
+	UPROPERTY(BlueprintReadOnly, Category = "MonsterUI")
+	FNSHitFeedbackContext Context;
+};

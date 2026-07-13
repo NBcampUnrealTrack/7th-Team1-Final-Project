@@ -76,5 +76,7 @@ private:
 
 	// 클라이언트 로컬에 AttackFeedback Sound를 재생
 	void PlaySoundFeedback(FName SoundID) const;
-
+	
+	// 일반 몬스터 상태 UI 표시 요청 메시지를 전송하는 함수
+	void BroadcastNormalMonsterRevealFeedback(const FNSHitFeedbackContext& Context) const;
 };

@@ -34,4 +34,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Changed);
 	//캐릭터 스텟 표시 Snapshot
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_CharacterStats_Snapshot);
+	
+	// 일반 몬스터 상태 UI 표시 요청
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_NormalMonster_Reveal);
 }

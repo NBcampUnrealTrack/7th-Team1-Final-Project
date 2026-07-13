@@ -78,6 +78,9 @@ public:
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
 	
+	// 캐시된 UI 위젯 클래스를 RowName으로 조회하는 함수
+	TSubclassOf<UUserWidget> GetCachedWidgetClass(FName RowName) const;
+	
 	//(이용호 추가) Title 위젯 전용
 	void CreateTitle(APlayerController* OwningPlayer);
 	void ShowTitle();

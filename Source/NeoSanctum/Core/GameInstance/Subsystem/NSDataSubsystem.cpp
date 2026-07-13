@@ -23,6 +23,7 @@
 #include "NeoSanctum/Data/Sound/NSSoundData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+#include "NeoSanctum/Data/UI/NSMonsterUIData.h"
 #include "NeoSanctum/Data/UI/NSSkillUIData.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/Data/VFX/NSVFXDataTableRow.h"
@@ -298,6 +299,43 @@ float UNSDataSubsystem::GetMaxExperience() const
 	// 0 이하이면 AddExperience의 while이 무한 루프가 되므로 최소값 보정.
 	const float RawMax = RunConfig ? RunConfig->MaxExperience : 100.0f;
 	return FMath::Max(RawMax, 1.0f);
+}
+
+UDataTable* UNSDataSubsystem::GetCommonMonsterUIDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->MonsterUIDataTable.Get() : nullptr;
+}
+
+const FNSMonsterUIData* UNSDataSubsystem::FindMonsterUIData(const FGameplayTag& EnemyId) const
+{
+	const UDataTable* MonsterUIProfileTable = GetCommonMonsterUIDataTable();
+	if (!IsValid(MonsterUIProfileTable) ||
+		MonsterUIProfileTable->GetRowStruct() != FNSMonsterUIData::StaticStruct() ||
+		!EnemyId.IsValid())
+	{
+		return nullptr;
+	}
+
+	const FString ContextString = TEXT("FindMonsterUIProfileRow");
+	if (const FNSMonsterUIData* Row =
+		MonsterUIProfileTable->FindRow<FNSMonsterUIData>(EnemyId.GetTagName(), ContextString, false))
+	{
+		return Row;
+	}
+
+	TArray<FNSMonsterUIData*> Rows;
+	MonsterUIProfileTable->GetAllRows(ContextString, Rows);
+
+	for (const FNSMonsterUIData* Row : Rows)
+	{
+		if (Row && Row->EnemyId.IsValid() && Row->EnemyId.MatchesTagExact(EnemyId))
+		{
+			return Row;
+		}
+	}
+
+	return nullptr;
 }
 
 void UNSDataSubsystem::LoadCurrentStageSpawnerTables()

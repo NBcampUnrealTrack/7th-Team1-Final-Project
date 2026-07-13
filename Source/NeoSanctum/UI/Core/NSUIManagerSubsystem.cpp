@@ -12,6 +12,7 @@
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
 #include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
+#include "NeoSanctum/UI/Monster/NSMonsterUISubsystem.h"
 
 UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 {
@@ -355,6 +356,10 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 
 	if (HUDWidget)
 	{
+		if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+		{
+			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
+		}
 		return;
 	}
 
@@ -390,6 +395,11 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 	if (HUDWidget)
 	{
 		HUDWidget->AddToViewport();
+		
+		if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+		{
+			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
+		}
 	}
 
 	
@@ -526,6 +536,14 @@ void UNSUIManagerSubsystem::ClearHUD()
 {
 	if (HUDWidget)
 	{
+		if (APlayerController* OwningPlayer = HUDWidget->GetOwningPlayer())
+		{
+			if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+			{
+				MonsterUISubsystem->UnregisterHUDHost(HUDWidget);
+			}
+		}
+
 		HUDWidget->RemoveFromParent();
 		HUDWidget = nullptr;
 	}
@@ -584,6 +602,11 @@ void UNSUIManagerSubsystem::CloseAugmentationPanel()
 UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 {
 	return HUDWidget;
+}
+
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetCachedWidgetClass(FName RowName) const
+{
+	return GetWidgetClassFromTable(RowName);
 }
 
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)

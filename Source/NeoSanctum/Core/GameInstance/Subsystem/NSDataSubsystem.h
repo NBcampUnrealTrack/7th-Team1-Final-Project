@@ -16,6 +16,7 @@
 
 struct FNSCharacterBaseStatRow;
 struct FNSGoodsUIData;
+struct FNSMonsterUIData;
 class UNSOutGameDataConfig;
 class UNSSoundData;
 class UNSAugmentRarityRuleSet;
@@ -183,6 +184,12 @@ public:
 	float GetMaxExperience() const;
 	
 	const UNSLevelConfig* GetCurrentRunLevelConfig() const { return CurrentRunLevelConfig.Get(); }
+	
+	// 공용 몬스터 UI 프로필 테이블을 반환하는 함수
+	UDataTable* GetCommonMonsterUIDataTable() const;
+
+	// EnemyId에 해당하는 몬스터 UI 프로필 Row를 찾는 함수
+	const FNSMonsterUIData* FindMonsterUIData(const FGameplayTag& EnemyId) const;
 	
 	// 현재 스테이지의 스포너 DT가 필요할 때 한 번만 비동기 로드.
 	// 이미 로드되어 있으면 즉시 완료 델리게이트를 호출.
