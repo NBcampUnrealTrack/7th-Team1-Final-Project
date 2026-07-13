@@ -62,6 +62,7 @@ public class NeoSanctum : ModuleRules
 			// 인트로 관련 설정
 			"MediaAssets",
 			"MoviePlayer",
+			"AudioMixer",
 		});
 
 		// Uncomment if you are using Slate UI

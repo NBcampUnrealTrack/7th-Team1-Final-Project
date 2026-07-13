@@ -41,6 +41,9 @@ private:
 	void OnSkipOngoing(const FInputActionInstance& Instance);
 	void OnSkipTriggered(const FInputActionInstance& Instance);
 	void OnSkipReleased(const FInputActionInstance& Instance);
+	
+	// 마스터 볼륨을 프롤로그 사운드에 적용
+	void ApplyPrologueVolume();
 
 	UPROPERTY(EditDefaultsOnly, Category="Intro")
 	TObjectPtr<UMediaPlayer> PrologueMediaPlayer;

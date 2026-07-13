@@ -38,12 +38,6 @@ void ANSIntroPlayerController::BeginPlay()
 		}
 	}
 	
-	if (PrologueWidgetClass && !PrologueWidget)
-	{
-		PrologueWidget = CreateWidget<UNSPrologueWidget>(this, PrologueWidgetClass);
-		if (PrologueWidget) PrologueWidget->AddToViewport(500);
-	}
-	
 	SetInputMode(FInputModeGameOnly());
 
 	// 프롤로그와 병행하는 데이터 선로딩
@@ -109,7 +103,7 @@ void ANSIntroPlayerController::EndPlay(const EEndPlayReason::Type Reason)
 
 void ANSIntroPlayerController::StartPrologue()
 {
-	if (PrologueWidgetClass)
+	if (PrologueWidgetClass && !PrologueWidget)
 	{
 		PrologueWidget = CreateWidget<UNSPrologueWidget>(this, PrologueWidgetClass);
 		if (PrologueWidget) PrologueWidget->AddToViewport(500);
@@ -123,6 +117,7 @@ void ANSIntroPlayerController::StartPrologue()
 		if (PrologueMediaSound && PrologueMediaPlayer)
 		{
 			PrologueMediaSound->SetMediaPlayer(PrologueMediaPlayer);
+			ApplyPrologueVolume();
 			PrologueMediaSound->Activate(true);
 		}
 
@@ -216,4 +211,23 @@ void ANSIntroPlayerController::OnSkipReleased(const FInputActionInstance& Instan
 	{
 		PrologueWidget->SetSkipProgress(0.0f);
 	}
+}
+
+void ANSIntroPlayerController::ApplyPrologueVolume()
+{
+	if (!PrologueMediaSound)
+	{
+		return;
+	}
+
+	float MasterVolume = 1.f;
+	GConfig->GetFloat(
+		TEXT("/Script/NeoSanctum.SoundSettings"),
+		TEXT("MasterVolume"),
+		MasterVolume,
+		GGameUserSettingsIni);
+
+	PrologueMediaSound->SetVolumeMultiplier(MasterVolume);
+
+	UE_LOG(LogTemp, Warning, TEXT("[Prologue] SetVolumeMultiplier(%.3f)"), MasterVolume);
 }
