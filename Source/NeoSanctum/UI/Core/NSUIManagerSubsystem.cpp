@@ -159,7 +159,7 @@ void UNSUIManagerSubsystem::CreateSpectator(APlayerController* OwningPlayer)
 
 void UNSUIManagerSubsystem::ShowSpectator(const FString& SpectatingPlayerName)
 {
-	HideHUD();
+	ShowHUD();
 	
 	if (!SpectatorWidget)
 	{
