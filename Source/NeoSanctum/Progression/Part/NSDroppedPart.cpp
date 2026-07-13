@@ -13,6 +13,7 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 #include "NeoSanctum/System/Subsystem/NSDroppedPartRegistrySubsystem.h"
 #include "TimerManager.h"
@@ -292,6 +293,18 @@ void ANSDroppedPart::Initialize(const FNSPartData& InPart)
 		return;
 	}
 	StoredInstance = InPart;
+
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (const FNSDroppedPartConfigRow* ConfigRow = DataSubsystem->GetDroppedPartConfigRow())
+		{
+			DespawnDuration = ConfigRow->DespawnDuration;
+			BobAmplitude = ConfigRow->BobAmplitude;
+			BobSpeed = ConfigRow->BobSpeed;
+			RingVFXID = ConfigRow->RingVFXID;
+		}
+	}
+
 	SetupVisual();
 
 	GetWorldTimerManager().SetTimer(
@@ -443,7 +456,7 @@ void ANSDroppedPart::SetupVisual()
 	{
 		if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(this))
 		{
-			VFXSubsystem->PlayVFXAttached(RingVFXID, MeshComp);
+			VFXSubsystem->PlayVFXAttached(RingVFXID, MeshComp, NAME_None, MeshBounds.Origin);
 		}
 		bRingVFXPlayed = true;
 	}

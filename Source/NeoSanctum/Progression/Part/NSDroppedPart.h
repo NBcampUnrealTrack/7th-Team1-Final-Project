@@ -50,11 +50,12 @@ public:
 
 	const FNSPartData& GetStoredPart() const { return StoredInstance; }
 
+	virtual void Tick(float DeltaSeconds) override;
+	virtual void OnConstruction(const FTransform& Transform) override;
+	
 protected:
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void OnConstruction(const FTransform& Transform) override;
 
 	UFUNCTION()
 	void OnRep_StoredInstance();
@@ -79,19 +80,19 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_StoredInstance, BlueprintReadOnly, Category = "Part")
 	FNSPartData StoredInstance;
 
-	// 스폰 후 이 시간이 지나면 자동으로 Destroy
-	UPROPERTY(EditDefaultsOnly, Category = "Part")
-	float DespawnDuration = 15.f;
+	// 스폰 후 이 시간이 지나면 자동으로 Destroy, NSDroppedPartConfigTable에서 덮어씀
+	UPROPERTY(BlueprintReadOnly, Category = "Part")
+	float DespawnDuration = 60.f;
 
-	// 바운싱 애니메이션 진폭/속도
-	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	// 바운싱 애니메이션 진폭/속도, NSDroppedPartConfigTable에서 덮어씀
+	UPROPERTY(BlueprintReadOnly, Category = "Part|Visual")
 	float BobAmplitude = 8.f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	UPROPERTY(BlueprintReadOnly, Category = "Part|Visual")
 	float BobSpeed = 2.f;
 
-	// 파츠를 감싸는 링 VFX ID
-	UPROPERTY(EditDefaultsOnly, Category = "Part|Visual")
+	// 파츠를 감싸는 링 VFX ID, NSDroppedPartConfigTable에서 덮어씀
+	UPROPERTY(BlueprintReadOnly, Category = "Part|Visual")
 	FName RingVFXID;
 
 private:
