@@ -46,11 +46,6 @@ void UGA_MotherShipBombingRun::ActivateAbility(const FGameplayAbilitySpecHandle 
 		return;
 	}
 	
-	if (ANSBossMotherShip* Boss = GetBossMotherShip())
-	{
-		CapturedAltitude = Boss->GetFlyingLocomotion()->GetAltitude();
-	}
-	
 	BeginLeg(EBombingRunLeg::Ascend);
 }
 
@@ -70,7 +65,6 @@ void UGA_MotherShipBombingRun::EndAbility(const FGameplayAbilitySpecHandle Handl
 	}
 	CachedAttackRow = nullptr;
 	CachedArenaBounds = nullptr;
-	CapturedAltitude = 0.f;
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
@@ -125,7 +119,7 @@ void UGA_MotherShipBombingRun::BeginLeg(EBombingRunLeg NewLeg)
 		break;
 	case EBombingRunLeg::Return :
 		FlyingLocomotionComponent->BeginScriptedMove(
-			Arena->GetFarEndCenter(CapturedAltitude), CapturedAltitude, ReturnSpeed);
+		Arena->GetArenaCenter(CapturedAltitude), CapturedAltitude, ReturnSpeed);
 		GetWorld()->GetTimerManager().SetTimer(
 			LegPollTimerHandle, 
 			this,

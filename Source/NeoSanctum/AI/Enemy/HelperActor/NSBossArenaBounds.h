@@ -22,6 +22,9 @@ public:
 
 	// 진행축 입구 쪽 중심을 반환. AtZ로 원하는 고도를 지정
 	FVector GetEntranceCenter(float AtZ) const;
+	
+	// 룸의 로컬 중심을 반환. AtZ로 원하는 고도를 지정
+	FVector GetArenaCenter(float AtZ) const;
 
 	// 존 i(0=보스 쪽, N-1=입구 쪽)의 월드 중심을 반환
 	FVector GetZoneCenter(int32 ZoneIndex, int32 ZoneCount) const;
