@@ -48,7 +48,7 @@ UNSLevelCatalog* UNSGameFlowSubsystem::GetCatalog() const
 	return nullptr;
 }
 
-bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options)
+bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options, bool bIsInRunTravel)
 {
 	UWorld* World = GetWorld();
 	
@@ -69,6 +69,8 @@ bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Lev
 	{
 		URL += Options;
 	}
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show 호출: ServerTravelToWorld InRun=%d NetMode=%d"),
+	bIsInRunTravel ? 1 : 0, (int32)GetWorld()->GetNetMode());
 	
 	// 클라는 자동으로 따라옴
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
@@ -77,7 +79,7 @@ bool UNSGameFlowSubsystem::ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Lev
 		{
 			if (APlayerController* LocalPlayerController = GameInstance->GetFirstLocalPlayerController())
 			{
-				UIManager->ShowTravelLoadingScreen(LocalPlayerController);
+				UIManager->ShowTravelLoadingScreen(LocalPlayerController, bIsInRunTravel);
 			}
 		}
 	}
@@ -178,7 +180,7 @@ void UNSGameFlowSubsystem::HandleRunGameDataReady()
 	
 	// 서버는 travel 전에 필요한 데이터를 선로딩하고
 	// 클라이언트는 인런 월드 진입 후 RunGameState 복제를 통해 로드
-	ServerTravelToWorld(LevelConfig->TravelMap, FString());
+	ServerTravelToWorld(LevelConfig->TravelMap, FString(), true);
 }
 
 bool UNSGameFlowSubsystem::AdvanceToNextStage()
@@ -223,7 +225,8 @@ bool UNSGameFlowSubsystem::ReturnToHub()
 	
 	return Catalog ? ServerTravelToWorld(
 		Catalog->HubLevel,
-		FString()) : false;
+		FString(), 
+		false) : false;
 }
 
 int32 UNSGameFlowSubsystem::PickRandomIndexExcludingCurrent() const

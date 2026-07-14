@@ -91,7 +91,7 @@ private:
 	
 	int32 PickNextInRunIndex() const;
 	
-	bool ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options);
+	bool ServerTravelToWorld(const TSoftObjectPtr<UWorld>& Level, const FString& Options, bool bIsInRunTravel = false);
 	
 	bool RequestEnterRun(
 		const TSoftObjectPtr<UNSRunConfig>& RunConfig, const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
