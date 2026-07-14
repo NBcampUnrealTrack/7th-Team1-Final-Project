@@ -93,6 +93,17 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 		return;
 	}
 
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady())
+	{
+		if (DataSubsystem)
+		{
+			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
+			DataSubsystem->OnCommonDataReady.AddDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
+		}
+		return;
+	}
+
 	// 안내 필요 여부 판정 —> 게임시작 콘솔 안내는 캐릭터 콘솔 안내 완료 후에만
 	const bool bNeedCharacterGuide = !Save->bCharacterConsoleGuideDone;
 	const bool bNeedReadyGuide =
@@ -132,6 +143,19 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 	}
 
 	UpdateGuideText(bNeedCharacterGuide, bNeedReadyGuide, bNeedNPCGuide);
+}
+
+void UNSOutRunGuideSubsystem::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
+	}
+
+	if (bGuideStarted)
+	{
+		RefreshGuide();
+	}
 }
 
 void UNSOutRunGuideSubsystem::HandlePermanentDataLoaded(UNSPermanentSaveGame* Data)
@@ -205,15 +229,15 @@ void UNSOutRunGuideSubsystem::UpdateGuideText(
 		return;
 	}
 
-	// 텍스트는 한 줄이므로 우선순위대로 하나만 표시. RowName은 DT_GuideText 기준
+	// 텍스트는 한 줄이므로 우선순위대로 하나만 표시, RowName은 DT_GuideText 기준
 	FName RowName = NAME_None;
 	if (bNeedCharacterGuide)
 	{
-		RowName = TEXT("CharacterConsole");
+		RowName = TEXT("CharacterSelectConsole");
 	}
 	else if (bNeedReadyGuide)
 	{
-		RowName = TEXT("ReadyConsole");
+		RowName = TEXT("NSReadyStartActor");
 	}
 	else if (bNeedNPCGuide)
 	{

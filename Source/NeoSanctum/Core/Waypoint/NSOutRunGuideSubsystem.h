@@ -41,6 +41,10 @@ private:
 	// 세이브 캐시가 아직 없을 때 로드 완료를 기다렸다가 갱신
 	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);
 
+	// 안내 텍스트 DataTable(공용 CommonData)이 아직 로드 전일 때 로드 완료를 기다렸다가 갱신
+	UFUNCTION()
+	void HandleCommonDataReady();
+
 	// 안내 진행 상태를 영구 저장 (완료 콜백 불필요)
 	void SaveGuideState();
 
