@@ -37,6 +37,8 @@
 #include "NeoSanctum/Progression/Reward/NSRewardHandler.h"
 #include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
+#include "NeoSanctum/Interaction/NPC/NSRescueNPC.h"
+#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
 
 
 
@@ -1269,6 +1271,46 @@ void ANSRunGameMode::InitializeObjectiveInternal()
 
 	// 초기 목표 상태를 UI용으로 복제
 	PushObjectiveStateToGameState();
+
+	// 구출 목표면 대상 NPC 마커 활성화 (전 클라 공통, 리플리케이션)
+	ActivateRescueMarkersIfNeeded();
+}
+
+bool ANSRunGameMode::ShouldShowRescueMarker(FName InNPCId) const
+{
+	// 목표가 아직 없거나
+	if (!NSStageManager || !NSStageManager->IsObjectiveInitialized())
+	{
+		return false;
+	}
+
+	// 목표가 NPC구출이 아니면 마커 대상 아님
+	if (NSStageManager->GetObjectiveType() != ENSStageObjectiveType::RescueNPC)
+	{
+		return false;
+	}
+
+	// 지정 대상이 있으면 일치할 때만 마커 대상
+	const FName TargetNPCId = NSStageManager->GetTargetNPCId();
+	return TargetNPCId.IsNone() || TargetNPCId == InNPCId;
+}
+
+void ANSRunGameMode::ActivateRescueMarkersIfNeeded()
+{
+	// 이미 스폰돼 있는 구출 NPC들의 마커 켜기 -> 목표 초기화보다 늦게 스폰되는 NPC는 RescueNPC::BeginPlay에서 한번 더 확인
+	for (TActorIterator<ANSRescueNPC> It(GetWorld()); It; ++It)
+	{
+		if (!ShouldShowRescueMarker(It->GetNPCId()))
+		{
+			continue;
+		}
+
+		if (UNSWaypointMarkerComponent* Marker =
+			It->FindComponentByClass<UNSWaypointMarkerComponent>())
+		{
+			Marker->SetMarkerActive(true);
+		}
+	}
 }
 
 void ANSRunGameMode::HandleRunDataReadyForObjective()

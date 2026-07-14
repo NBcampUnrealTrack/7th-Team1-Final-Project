@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
 
 
 ANSBossEntryVolume::ANSBossEntryVolume()
@@ -259,6 +260,13 @@ void ANSBossEntryVolume::HandleStagePhaseChanged()
 	
 	// 연출 갱신 (표시/색)
 	UpdateVisual();
+	
+	// 보스 진입 가능해졌을때 모든 플레이어가 보스방 마커를 볼 수 있도록
+	if (UNSWaypointMarkerComponent* Marker =
+		FindComponentByClass<UNSWaypointMarkerComponent>())
+	{
+		Marker->SetMarkerActiveLocal(bBossReady);
+	}
 
 	// 감지/판정은 서버만
 	if (!HasAuthority())
