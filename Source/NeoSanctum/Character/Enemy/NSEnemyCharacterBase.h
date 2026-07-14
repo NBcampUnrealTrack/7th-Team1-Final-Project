@@ -15,6 +15,21 @@
 #include "NSEnemyCharacterBase.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnEnemyDead);
+DECLARE_DELEGATE(FNSNavLinkTraversalFinishedDelegate);
+
+// NavLink 특수 이동의 현재 진행 단계를 나타내는 열거형
+UENUM(BlueprintType)
+enum class ENSNavLinkTraversalPhase : uint8
+{
+	// NavLink 특수 이동을 수행하지 않는 상태
+	None UMETA(DisplayName = "None"),
+
+	// NavLink 목적지 방향으로 몸을 정렬하는 상태
+	Rotating UMETA(DisplayName = "Rotating"),
+
+	// LaunchCharacter 이후 착지를 기다리는 상태
+	Jumping UMETA(DisplayName = "Jumping")
+};
 
 class UNSEnemyData;
 class UGameplayAbility;
@@ -43,6 +58,7 @@ class NEOSANCTUM_API ANSEnemyCharacterBase : public ACharacter,
 public:
 	ANSEnemyCharacterBase();
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	/*
 	 * EnemyCharacter가 타겟팅 혹은 피격되었을 때 진영을 알기 위한 TeamId 조회
@@ -190,17 +206,92 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Combat|Aim")
 	float AimTargetZOffsetRatio = 0.15f;
 
-	//NavLink 점프 관련 - 이준로 추가
+#pragma region NavLink 점프 관련
+	// NavLink 점프 관련 - 이준로, 최준혁 추가
 public:
 	virtual void Landed(const FHitResult& Hit) override;
 
-	// NavLink 점프 시작: 점프 플래그를 켜고 LaunchCharacter.
+	// NavLink 점프 시작을 회전-점프 트래버설 흐름으로 요청하는 함수
 	UFUNCTION(BlueprintCallable)
 	void StartNavLinkJump(const FVector& DestPoint);
 
+	// 자동 생성 NavLink 도달 시 회전, 점프, 착지 완료까지 관리하는 함수
+	bool StartNavLinkTraversal(
+		const FVector& DestPoint,
+		FNSNavLinkTraversalFinishedDelegate OnTraversalFinished);
+
+	// 현재 NavLink 특수 이동을 수행 중인지 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Movement|NavLink")
+	bool IsTraversingNavLink() const { return bIsTraversingNavLink; }
+
+	// 현재 NavLink 특수 이동 목적지를 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Movement|NavLink")
+	FVector GetNavLinkDestination() const { return NavLinkDestination; }
+
+	// 현재 NavLink 특수 이동 단계를 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Movement|NavLink")
+	ENSNavLinkTraversalPhase GetNavLinkTraversalPhase() const { return NavLinkTraversalPhase; }
+
+protected:
+	// 현재 NavLink 특수 이동을 수행 중인지 나타내는 변수
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|NavLink")
+	bool bIsTraversingNavLink = false;
+
+	// 현재 NavLink 특수 이동 목적지를 나타내는 변수
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|NavLink")
+	FVector NavLinkDestination = FVector::ZeroVector;
+
+	// 현재 NavLink 특수 이동 단계를 나타내는 변수
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|NavLink")
+	ENSNavLinkTraversalPhase NavLinkTraversalPhase = ENSNavLinkTraversalPhase::None;
+
+	// NavLink 점프 전 목적지 방향으로 회전하는 초당 각속도 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|NavLink", meta = (ClampMin = "1.0"))
+	float NavLinkRotationSpeed = 720.0f;
+
+	// NavLink 점프 전 회전 완료로 인정할 Yaw 오차 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|NavLink",
+		meta = (ClampMin = "0.1", ClampMax = "45.0"))
+	float NavLinkRotationAcceptableYaw = 5.0f;
+
+	// NavLink 점프 전 회전을 기다릴 최대 시간 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|NavLink", meta = (ClampMin = "0.05"))
+	float NavLinkRotationTimeout = 0.7f;
+
 private:
-	// NavLink 점프로 인한 착지인지 확인 (일반 착지엔 NavMesh 보정 개입 X)
+	// NavLink 점프로 인한 착지인지 확인하는 변수
 	bool bNavLinkJumping = false;
+
+	// NavLink 회전 시작 전 bOrientRotationToMovement 값을 저장하는 변수
+	bool bCachedNavLinkOrientRotationToMovement = true;
+
+	// NavLink 회전 시작 전 bUseControllerDesiredRotation 값을 저장하는 변수
+	bool bCachedNavLinkUseControllerDesiredRotation = false;
+
+	// NavLink 회전 대기 시간을 누적하는 변수
+	float NavLinkRotationElapsed = 0.0f;
+
+	// NavLink 점프 전에 도달해야 하는 목표 회전값을 저장하는 변수
+	FRotator NavLinkTargetRotation = FRotator::ZeroRotator;
+
+	// NavLink 특수 이동 종료 시 PathFollowing 복구를 호출하는 델리게이트 변수
+	FNSNavLinkTraversalFinishedDelegate NavLinkTraversalFinishedDelegate;
+
+	// NavLink 특수 이동 회전을 매 프레임 갱신하는 함수
+	void UpdateNavLinkTraversal(float DeltaSeconds);
+
+	// NavLink 회전 완료 후 실제 점프를 시작하는 함수
+	void StartNavLinkJumpAfterRotation();
+
+	// NavLink 목적지로 LaunchCharacter를 실행하는 함수
+	bool ExecuteNavLinkJump(const FVector& DestPoint);
+
+	// NavLink 특수 이동 상태를 정리하고 필요하면 PathFollowing을 복구하는 함수
+	void FinishNavLinkTraversal(bool bNotifyPathFollowing);
+
+	// NavLink 특수 이동 상태를 Blackboard에 반영하는 함수
+	void RefreshNavLinkTraversalBlackboard();
+#pragma endregion
 
 public:
 	void SetRetreating(bool bInRetreating);
@@ -209,6 +300,7 @@ public:
 protected:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Combat|Movement")
 	bool bIsRetreating = false;
+
 
 #pragma region 피격 관리
 

@@ -114,6 +114,17 @@ void UNSEnemyMoveComponent::ApplyFacing(
 		return;
 	}
 
+	if (Enemy->IsTraversingNavLink())
+	{
+		if (Controller)
+		{
+			Controller->ClearFocus(EAIFocusPriority::Gameplay);
+		}
+
+		Enemy->ClearCombatAimTarget();
+		return;
+	}
+
 	UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
 	if (!Movement)
 	{
@@ -156,7 +167,7 @@ bool UNSEnemyMoveComponent::IsWithinAttackRange(AActor* TargetActor) const
 	const ANSEnemyCharacterBase* Enemy = GetOwnerEnemy();
 	const UNSEnemyData* EnemyData = GetEnemyData();
 
-	if (!Enemy || !EnemyData || !IsValid(TargetActor))
+	if (!Enemy || Enemy->IsTraversingNavLink() || !EnemyData || !IsValid(TargetActor))
 	{
 		return false;
 	}
@@ -231,11 +242,13 @@ float UNSEnemyMoveComponent::GetMinAttackRange() const
 	return bFoundAttack ? MinRange : 0.0f;
 }
 
-void UNSEnemyMoveComponent::UpdateNavigationRecovery(AAIController* Controller, float DeltaTime)
+void UNSEnemyMoveComponent::UpdateNavigationRecovery(
+	AAIController* Controller, 
+	float DeltaTime)
 {
 	ANSEnemyCharacterBase* Enemy = GetOwnerEnemy();
-	if (!Controller || !Enemy || !Enemy->HasAuthority() || Enemy->IsDead() || Enemy->IsInPool() || Enemy->
-		IsHitReacting())
+	if (!Controller || !Enemy || !Enemy->HasAuthority() || Enemy->IsDead() || Enemy->IsInPool() ||
+		Enemy->IsHitReacting() || Enemy->IsTraversingNavLink())
 	{
 		ResetNavigationRecovery();
 		return;
@@ -320,12 +333,16 @@ void UNSEnemyMoveComponent::UpdateNavigationRecovery(AAIController* Controller, 
 	if (!bFoundRecoveryLocation)
 	{
 		FNavLocation WideProjectedLocation;
-		if (NavSystem->ProjectPointToNavigation(CurrentLocation, WideProjectedLocation,
-		                                        FVector(2000.0f, 2000.0f, 1000.0f)))
+		if (NavSystem->ProjectPointToNavigation(
+			CurrentLocation,
+			WideProjectedLocation,
+			FVector(2000.0f, 2000.0f, 1000.0f)))
 		{
 			bFoundRecoveryLocation =
-				NavSystem->GetRandomReachablePointInRadius(WideProjectedLocation.Location, RecoverySearchRadius,
-				                                           RecoveryLocation);
+				NavSystem->GetRandomReachablePointInRadius(
+					WideProjectedLocation.Location,
+					RecoverySearchRadius,
+					RecoveryLocation);
 
 			if (!bFoundRecoveryLocation)
 			{

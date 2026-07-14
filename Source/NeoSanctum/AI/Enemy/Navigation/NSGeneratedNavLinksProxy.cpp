@@ -31,9 +31,25 @@ bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVect
 		return false;
 	}
 
-	// 위치(목적지)만 넘기고 점프 계산/실행/착지보정은 캐릭터가 담당.
-	Character->StartNavLinkJump(DestPoint);
-	
-	// 점프 도중 PathFollowing이 이동 속도를 덮어쓰지 않는다.
-	return true;
+	TWeakObjectPtr<UPathFollowingComponent> WeakPathFollowingComponent = PathFollowingComponent;
+
+	FNSNavLinkTraversalFinishedDelegate OnTraversalFinished =
+		FNSNavLinkTraversalFinishedDelegate::CreateWeakLambda(
+			this,
+			[this, WeakPathFollowingComponent]()
+			{
+				UPathFollowingComponent* ValidPathFollowingComponent =
+					WeakPathFollowingComponent.Get();
+
+				if (!ValidPathFollowingComponent)
+				{
+					return;
+				}
+
+				ValidPathFollowingComponent->FinishUsingCustomLink(this);
+			});
+
+	return Character->StartNavLinkTraversal(
+		DestPoint,
+		OnTraversalFinished);
 }

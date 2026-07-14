@@ -43,6 +43,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	}
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	const bool bIsTraversingNavLink = Enemy && Enemy->IsTraversingNavLink();
 
 	UpdateEnemyPhase();
 
@@ -68,7 +69,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 	{
-		if (IsAttackingBB())
+		if (IsAttackingBB() || bIsTraversingNavLink)
 		{
 			MoveComponent->ResetNavigationRecovery();
 		}
@@ -90,6 +91,14 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	}
 
 	AActor* TargetActor = GetCurrentTargetActor();
+
+	if (bIsTraversingNavLink)
+	{
+		ClearRetreatBB();
+		SetCanAttackBB(false);
+		SetAttackActorBlackboard(nullptr);
+		return;
+	}
 
 	if (IsValidLivingTarget(TargetActor))
 	{
@@ -155,6 +164,13 @@ bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 		return false;
 	}
 
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
+	{
+		SetCanAttackBB(false);
+		return false;
+	}
+
 	const FNSEnemyAttackRow* UsableAttack = FindAttackRowByDistance(false);
 
 	SetCanAttackBB(UsableAttack != nullptr);
@@ -185,6 +201,14 @@ const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 	if (IsControlledEnemyHitReacting())
 	{
 		SetCanAttackBB(false);
+		return nullptr;
+	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
+	{
+		SetCanAttackBB(false);
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
@@ -917,6 +941,13 @@ void ANSEnemyAIController::UpdateFacingMode(AActor* TargetActor)
 	UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent();
 	if (!MoveComponent)
 	{
+		return;
+	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
+	{
+		ClearFocus(EAIFocusPriority::Gameplay);
 		return;
 	}
 

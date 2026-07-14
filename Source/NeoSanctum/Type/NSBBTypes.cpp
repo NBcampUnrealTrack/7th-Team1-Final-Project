@@ -36,6 +36,9 @@ namespace NSBB
 		const FName ResolvedTargetMoveLocation = TEXT("ResolvedTargetMoveLocation");
 		const FName HasResolvedTargetMoveLocation = TEXT("bHasResolvedTargetMoveLocation");
 		const FName ArrivedBelowAirborneTarget = TEXT("bArrivedBelowAirborneTarget");
+		const FName IsTraversingNavLink = TEXT("bIsTraversingNavLink");
+		const FName NavLinkDestination = TEXT("NavLinkDestination");
+		const FName NavLinkTraversalPhase = TEXT("NavLinkTraversalPhase");
 	}
 
 	namespace Melee

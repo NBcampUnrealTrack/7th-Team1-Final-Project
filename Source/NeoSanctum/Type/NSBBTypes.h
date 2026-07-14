@@ -82,6 +82,15 @@ namespace NSBB
 		
 		// 현재 몬스터가 공중 타깃 아래 추적 지점에 도착했는지 저장하는 Bool 키 이름
 		extern NEOSANCTUM_API const FName ArrivedBelowAirborneTarget;
+		
+		// 현재 몬스터가 자동 생성 NavLink 특수 이동을 수행 중인지 저장하는 Bool 키 이름
+		extern NEOSANCTUM_API const FName IsTraversingNavLink;
+
+		// 현재 NavLink 특수 이동의 목적지를 저장하는 Vector 키 이름
+		extern NEOSANCTUM_API const FName NavLinkDestination;
+
+		// 현재 NavLink 특수 이동 단계를 저장하는 Enum 키 이름
+		extern NEOSANCTUM_API const FName NavLinkTraversalPhase;
 	}
 
 	// 일반 근접 몬스터 예약, 접근, EQS 상태를 저장하는 Blackboard Key 모음
