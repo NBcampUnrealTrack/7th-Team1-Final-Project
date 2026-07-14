@@ -77,7 +77,19 @@ public:
 	// 펫 관련 데이터
 	UPROPERTY(SaveGame)
 	FNSCompanionSaveData Companion;
+
+	// 아웃런 목표 안내(웨이포인트 마커 + 텍스트) 진행 상태 —> 전부 영구 1회성
 	
+	// 캐릭터 선택 콘솔과 한 번이라도 상호작용했는지
+	UPROPERTY(SaveGame)
+	bool bCharacterConsoleGuideDone = false;
+	// 게임시작 콘솔과 한 번이라도 상호작용했는지
+	UPROPERTY(SaveGame)
+	bool bReadyConsoleGuideDone = false;
+	// 해금 후 첫 상호작용(안내 완료)까지 마친 NPC 집합
+	UPROPERTY(SaveGame)
+	TSet<FName> GuidedNPCIds;
+
 	// 직업 단위
 	// Key : 캐릭터 FName, Value : 세이브 데이터
 	UPROPERTY(SaveGame)
