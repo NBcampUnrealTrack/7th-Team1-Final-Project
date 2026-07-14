@@ -23,6 +23,8 @@
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
 // 테스트용 임시 코드 (재화 드랍 테스트 — 드롭 테이블 연동 후 삭제)
+#include "Engine/AssetManager.h"
+#include "NeoSanctum/AI/Enemy/Spawner/NSMonsterSpawnType.h"
 #include "NeoSanctum/AI/Enemy/Spawner/NSSpawner.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
@@ -389,6 +391,224 @@ void ANSRunGameMode::ReturnStrayEnemiesToPool()
 		NSMonsterPoolManager->ReturnMonsterToPool(Enemy);
 	}
 	
+}
+
+void ANSRunGameMode::TryStartPrewarm()
+{
+	 if (!HasAuthority() || !NSMonsterPoolManager)
+    {
+        return;
+    }
+
+    // 스포너 순회해서 Row에서 (EnemyData, CharacterClass) 수집
+    TSet<TSoftObjectPtr<UNSEnemyData>> UniqueSet;
+    TMap<TSoftObjectPtr<UNSEnemyData>, TSoftClassPtr<APawn>> DataToClass;
+    int32 SpawnerCount = 0;
+
+    for (TActorIterator<ANSSpawner> It(GetWorld()); It; ++It)
+    {
+        ANSSpawner* Spawner = *It;
+    	// 보스는 풀링 대상 아님
+        if (!Spawner || Spawner->IsBossSpawner())
+        {
+            continue;
+        }
+    	
+        ++SpawnerCount;
+
+        UDataTable* Table = Spawner->ResolveSpawnDataTable();
+    	UE_LOG(LogTemp, Warning, TEXT("[Prewarm] Spawner=%s Table=%s"),
+	   *GetNameSafe(Spawner),
+	   *GetNameSafe(Table));
+        if (!Table)
+        {
+            continue;
+        }
+
+        TArray<FNSMonsterSpawnRow*> Rows;
+        Table->GetAllRows<FNSMonsterSpawnRow>(TEXT("Prewarm"), Rows);
+        for (const FNSMonsterSpawnRow* Row : Rows)
+        {
+            if (Row && !Row->EnemyData.IsNull() && !Row->CharacterClass.IsNull())
+            {
+                UniqueSet.Add(Row->EnemyData);
+                DataToClass.Add(Row->EnemyData, Row->CharacterClass);
+            }
+        }
+    }
+
+    // 스포너가 0개로 나온다면 던전 생성이 아직 안되었으므로 짧게 재시도
+    if (SpawnerCount == 0 && PrewarmRetryCount < 20)
+    {
+        ++PrewarmRetryCount;
+        FTimerHandle Tmp;
+        GetWorldTimerManager().SetTimer(
+        	Tmp,
+        	this,
+        	&ANSRunGameMode::TryStartPrewarm,
+        	0.1f, 
+        	false);
+        return;
+    }
+
+    if (UniqueSet.Num() == 0)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Prewarm] 열거된 EnemyData 0 — 프리워밍 스킵"));
+        return;
+    }
+
+    // EnemyData 목록 async 로드
+    TArray<TSoftObjectPtr<UNSEnemyData>> UniqueDatas = UniqueSet.Array();
+    TArray<FSoftObjectPath> Paths;
+    for (const TSoftObjectPtr<UNSEnemyData>& D : UniqueDatas)
+    {
+        Paths.Add(D.ToSoftObjectPath());
+    }
+    for (const auto& Pair : DataToClass)
+    {
+    	// 캐릭터 클래스도 로드
+        Paths.Add(Pair.Value.ToSoftObjectPath()); 
+    }
+
+    FStreamableManager& Streamable = UAssetManager::Get().GetStreamableManager();
+    PrewarmLoadHandle = Streamable.RequestAsyncLoad(
+        Paths,
+        FStreamableDelegate::CreateUObject(
+            this, 
+            &ANSRunGameMode::HandlePrewarmDataLoaded, 
+            UniqueDatas, 
+            DataToClass));
+}
+
+void ANSRunGameMode::TickPrewarmStep()
+{
+	if (!NSMonsterPoolManager || !NSMonsterPoolManager->PrewarmStep())
+	{
+		// PrewarmStep이 false 반환하거나 매니저가 없으면 타이머 정지
+		GetWorldTimerManager().ClearTimer(PrewarmStepTimerHandle);
+	}
+}
+
+void ANSRunGameMode::StartPrewarmFlow()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+
+	if (Data->AreCurrentStageSpawnerTablesLoaded())
+	{
+		TryStartPrewarm();
+	}
+	else
+	{
+		Data->OnStageSpawnerTablesReady.RemoveDynamic(
+			this, 
+			&ANSRunGameMode::HandleStageSpawnerTablesReadyForPrewarm);
+		Data->OnStageSpawnerTablesReady.AddDynamic(
+			this, 
+			&ANSRunGameMode::HandleStageSpawnerTablesReadyForPrewarm);
+		
+		Data->LoadCurrentStageSpawnerTables();
+	}
+}
+
+void ANSRunGameMode::HandleStageSpawnerTablesReadyForPrewarm()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnStageSpawnerTablesReady.RemoveDynamic(
+			this,
+			&ANSRunGameMode::HandleStageSpawnerTablesReadyForPrewarm);
+	}
+	
+	TryStartPrewarm();
+}
+
+void ANSRunGameMode::HandlePrewarmDataLoaded(TArray<TSoftObjectPtr<UNSEnemyData>> UniqueDatas,
+	TMap<TSoftObjectPtr<UNSEnemyData>, TSoftClassPtr<APawn>> DataToClass)
+{
+	 if (!NSMonsterPoolManager)
+    {
+        return;
+    }
+
+    // 랭크로 Normal, Elite 분류
+    TArray<TSoftObjectPtr<UNSEnemyData>> NormalDatas;
+    TArray<TSoftObjectPtr<UNSEnemyData>> EliteDatas;
+
+    for (const TSoftObjectPtr<UNSEnemyData>& D : UniqueDatas)
+    {
+        UNSEnemyData* Data = D.Get();
+        if (!Data)
+        {
+            continue;
+        }
+        if (Data->EnemyRank == ENSEnemyRank::Elite)
+        {
+            EliteDatas.Add(D);
+        }
+        else if (Data->EnemyRank == ENSEnemyRank::Normal)
+        {
+            NormalDatas.Add(D);
+        }
+    }
+
+    // 그룹 상한을 종류 수로 균등 분배
+    auto BuildRequests = [&](const TArray<TSoftObjectPtr<UNSEnemyData>>& Datas,
+                             int32 Total, TArray<FNSPrewarmRequest>& Out)
+    {
+        const int32 Num = Datas.Num();
+        if (Num == 0 || Total <= 0)
+        {
+            return;
+        }
+        const int32 Base = Total / Num;
+        int32 Remainder = Total % Num;
+
+        for (const TSoftObjectPtr<UNSEnemyData>& D : Datas)
+        {
+            FNSPrewarmRequest Req;
+            Req.EnemyData = D.Get();
+            if (const TSoftClassPtr<APawn>* ClassPtr = DataToClass.Find(D))
+            {
+                Req.CharacterClass = ClassPtr->Get();
+            }
+            Req.Count = Base + (Remainder > 0 ? 1 : 0);
+            if (Remainder > 0) --Remainder;
+
+            if (Req.CharacterClass && Req.EnemyData && Req.Count > 0)
+            {
+                Out.Add(Req);
+            }
+        }
+    };
+
+    TArray<FNSPrewarmRequest> Requests;
+    BuildRequests(NormalDatas, PrewarmNormalTotal, Requests);
+    BuildRequests(EliteDatas, PrewarmEliteTotal, Requests);
+
+    UE_LOG(LogTemp, Log, TEXT("[Prewarm] Normal 종류 %d(총 %d) / Elite 종류 %d(총 %d) 배분"),
+        NormalDatas.Num(), PrewarmNormalTotal, EliteDatas.Num(), PrewarmEliteTotal);
+
+    FSimpleDelegate OnDone;
+	NSMonsterPoolManager->PrewarmBegin(
+		Requests,
+		PrewarmPerTick,
+		OnDone);
+	
+	GetWorldTimerManager().SetTimer(
+	PrewarmStepTimerHandle,
+	this, 
+	&ANSRunGameMode::TickPrewarmStep,
+	0.001f, 
+	true);
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Prewarm] SetTimer 완료 Handle유효=%d Paused=%d WorldTime=%.2f"),
+	PrewarmStepTimerHandle.IsValid() ? 1 : 0,
+	GetWorld()->IsPaused() ? 1 : 0,
+	GetWorld()->GetTimeSeconds());
 }
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()
@@ -936,6 +1156,7 @@ void ANSRunGameMode::InitializeStage()
 	{
 		InitializeObjectiveInternal();
 		StartDifficultyTimerForReadyStage();
+		StartPrewarmFlow();
 	}
 	else
 	{
@@ -946,9 +1167,23 @@ void ANSRunGameMode::InitializeStage()
 		Data->OnRunGameDataReady.AddDynamic(
 			this,
 			&ANSRunGameMode::HandleRunDataReadyForObjective);
+		Data->OnRunGameDataReady.RemoveDynamic(
+			this,
+			&ANSRunGameMode::HandleRunDataReadyForPrewarm);
+		Data->OnRunGameDataReady.AddDynamic(
+			this, 
+			&ANSRunGameMode::HandleRunDataReadyForPrewarm);
 	}
 }
 
+void ANSRunGameMode::HandleRunDataReadyForPrewarm()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSRunGameMode::HandleRunDataReadyForPrewarm);
+	}
+	StartPrewarmFlow();
+}
 
 
 void ANSRunGameMode::InitializeObjectiveInternal()
