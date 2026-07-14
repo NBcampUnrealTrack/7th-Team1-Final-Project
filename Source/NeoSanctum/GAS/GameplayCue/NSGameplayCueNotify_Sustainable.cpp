@@ -67,7 +67,14 @@ bool ANSGameplayCueNotify_Sustainable::OnRemove_Implementation(
 	
 	if (LoopVFXComponent)
 	{
-		LoopVFXComponent->Deactivate();
+		if (bDeactivateLoopVFXImmediately)
+		{
+			LoopVFXComponent->DeactivateImmediate();   // 기존 파티클까지 즉시 클리어
+		}
+		else
+		{
+			LoopVFXComponent->Deactivate();            // 기존 동작 그대로
+		}
 		LoopVFXComponent = nullptr;
 	}
 	
