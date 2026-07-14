@@ -540,28 +540,9 @@ void ANSEnemyCharacterBase::Landed(const FHitResult& Hit)
 
 	bNavLinkJumping = false;
 
-	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
-	{
-		const FVector Here = GetActorLocation();
-		FNavLocation NavLoc;
-
-		if (NavSys->ProjectPointToNavigation(Here, NavLoc, FVector(100.0f, 100.0f, 200.0f)))
-		{
-			const UCapsuleComponent* Capsule = GetCapsuleComponent();
-			const float Radius = Capsule ? Capsule->GetScaledCapsuleRadius() : 50.0f;
-			const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
-
-			if (FVector::DistSquared2D(Here, NavLoc.Location) > FMath::Square(Radius))
-			{
-				SetActorLocation(
-					NavLoc.Location + FVector(0.0f, 0.0f, HalfHeight),
-					false);
-			}
-		}
-	}
-
 	if (bIsTraversingNavLink)
 	{
+		FinalizeNavLinkLanding();
 		FinishNavLinkTraversal(true);
 	}
 }
@@ -598,9 +579,29 @@ bool ANSEnemyCharacterBase::StartNavLinkTraversal(
 		FinishNavLinkTraversal(false);
 	}
 
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+	NavLinkDestination = DestPoint;
+	NavLinkActorDestination = DestPoint;
+
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		FNavLocation ProjectedDestination;
+
+		if (NavSys->ProjectPointToNavigation(
+			DestPoint,
+			ProjectedDestination,
+			FVector(100.0f, 100.0f, 200.0f)))
+		{
+			NavLinkDestination = ProjectedDestination.Location;
+			NavLinkActorDestination =
+				ProjectedDestination.Location + FVector(0.0f, 0.0f, HalfHeight);
+		}
+	}
+
 	bIsTraversingNavLink = true;
 	bNavLinkJumping = false;
-	NavLinkDestination = DestPoint;
 	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::Rotating;
 	NavLinkRotationElapsed = 0.0f;
 	NavLinkTraversalFinishedDelegate = OnTraversalFinished;
@@ -618,8 +619,9 @@ bool ANSEnemyCharacterBase::StartNavLinkTraversal(
 	}
 
 	ClearCombatAimTarget();
+	RefreshNavLinkTraversalBlackboard();
 
-	FVector Direction = NavLinkDestination - GetActorLocation();
+	FVector Direction = NavLinkActorDestination - GetActorLocation();
 	Direction.Z = 0.0f;
 
 	if (Direction.IsNearlyZero())
@@ -632,8 +634,6 @@ bool ANSEnemyCharacterBase::StartNavLinkTraversal(
 	NavLinkTargetRotation = Direction.Rotation();
 	NavLinkTargetRotation.Pitch = 0.0f;
 	NavLinkTargetRotation.Roll = 0.0f;
-
-	RefreshNavLinkTraversalBlackboard();
 
 	const float CurrentYaw = GetActorRotation().Yaw;
 	const float TargetYaw = NavLinkTargetRotation.Yaw;
@@ -692,13 +692,13 @@ void ANSEnemyCharacterBase::StartNavLinkJumpAfterRotation()
 	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::Jumping;
 	RefreshNavLinkTraversalBlackboard();
 
-	if (!ExecuteNavLinkJump(NavLinkDestination))
+	if (!ExecuteNavLinkJump())
 	{
 		FinishNavLinkTraversal(true);
 	}
 }
 
-bool ANSEnemyCharacterBase::ExecuteNavLinkJump(const FVector& DestPoint)
+bool ANSEnemyCharacterBase::ExecuteNavLinkJump()
 {
 	UCharacterMovementComponent* Movement = GetCharacterMovement();
 	if (!Movement)
@@ -712,7 +712,7 @@ bool ANSEnemyCharacterBase::ExecuteNavLinkJump(const FVector& DestPoint)
 			this,
 			LaunchVelocity,
 			GetActorLocation(),
-			DestPoint,
+			NavLinkActorDestination,
 			Movement->GetGravityZ(),
 			0.5f);
 
@@ -721,10 +721,46 @@ bool ANSEnemyCharacterBase::ExecuteNavLinkJump(const FVector& DestPoint)
 		return false;
 	}
 
+	Movement->StopMovementImmediately();
+
 	bNavLinkJumping = true;
 	LaunchCharacter(LaunchVelocity, true, true);
 
 	return true;
+}
+
+void ANSEnemyCharacterBase::FinalizeNavLinkLanding()
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+	FVector DesiredActorLocation = NavLinkActorDestination;
+
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		FNavLocation ProjectedDestination;
+
+		if (NavSys->ProjectPointToNavigation(
+			NavLinkDestination,
+			ProjectedDestination,
+			FVector(100.0f, 100.0f, 200.0f)))
+		{
+			DesiredActorLocation =
+				ProjectedDestination.Location + FVector(0.0f, 0.0f, HalfHeight);
+		}
+	}
+
+	SetActorLocation(
+		DesiredActorLocation,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->SetMovementMode(MOVE_Walking);
+	}
 }
 
 void ANSEnemyCharacterBase::FinishNavLinkTraversal(bool bNotifyPathFollowing)
@@ -750,6 +786,7 @@ void ANSEnemyCharacterBase::FinishNavLinkTraversal(bool bNotifyPathFollowing)
 	bIsTraversingNavLink = false;
 	bNavLinkJumping = false;
 	NavLinkDestination = FVector::ZeroVector;
+	NavLinkActorDestination = FVector::ZeroVector;
 	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::None;
 	NavLinkRotationElapsed = 0.0f;
 	NavLinkTargetRotation = FRotator::ZeroRotator;

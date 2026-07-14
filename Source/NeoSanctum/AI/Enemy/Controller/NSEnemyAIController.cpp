@@ -94,6 +94,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 	if (bIsTraversingNavLink)
 	{
+		ClearResolvedTargetMoveBlackboard();
 		ClearRetreatBB();
 		SetCanAttackBB(false);
 		SetAttackActorBlackboard(nullptr);

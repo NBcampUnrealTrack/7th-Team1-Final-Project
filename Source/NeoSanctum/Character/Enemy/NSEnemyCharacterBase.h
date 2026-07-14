@@ -224,7 +224,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Movement|NavLink")
 	bool IsTraversingNavLink() const { return bIsTraversingNavLink; }
 
-	// 현재 NavLink 특수 이동 목적지를 반환하는 함수
+	// 현재 NavLink 특수 이동의 NavMesh 도착 위치를 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Movement|NavLink")
 	FVector GetNavLinkDestination() const { return NavLinkDestination; }
 
@@ -237,7 +237,7 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|NavLink")
 	bool bIsTraversingNavLink = false;
 
-	// 현재 NavLink 특수 이동 목적지를 나타내는 변수
+	// 현재 NavLink 특수 이동의 NavMesh 도착 위치를 나타내는 변수
 	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|NavLink")
 	FVector NavLinkDestination = FVector::ZeroVector;
 
@@ -274,6 +274,9 @@ private:
 	// NavLink 점프 전에 도달해야 하는 목표 회전값을 저장하는 변수
 	FRotator NavLinkTargetRotation = FRotator::ZeroRotator;
 
+	// NavLink 특수 이동의 캡슐 중심 도착 위치를 나타내는 변수
+	FVector NavLinkActorDestination = FVector::ZeroVector;
+
 	// NavLink 특수 이동 종료 시 PathFollowing 복구를 호출하는 델리게이트 변수
 	FNSNavLinkTraversalFinishedDelegate NavLinkTraversalFinishedDelegate;
 
@@ -283,8 +286,11 @@ private:
 	// NavLink 회전 완료 후 실제 점프를 시작하는 함수
 	void StartNavLinkJumpAfterRotation();
 
-	// NavLink 목적지로 LaunchCharacter를 실행하는 함수
-	bool ExecuteNavLinkJump(const FVector& DestPoint);
+	// 저장된 NavLink 캡슐 중심 도착 위치로 LaunchCharacter를 실행하는 함수
+	bool ExecuteNavLinkJump();
+
+	// NavLink 착지 후 도착점 기준으로 위치와 이동 상태를 정리하는 함수
+	void FinalizeNavLinkLanding();
 
 	// NavLink 특수 이동 상태를 정리하고 필요하면 PathFollowing을 복구하는 함수
 	void FinishNavLinkTraversal(bool bNotifyPathFollowing);

@@ -8,10 +8,8 @@
 
 bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVector& DestPoint)
 {
-	// 생성 링크는 Agent 대신 Agent의 PathFollowingComponent를 전달한다.
 	UPathFollowingComponent* PathFollowingComponent = Cast<UPathFollowingComponent>(PathComp);
-
-	if (!PathComp)
+	if (!PathFollowingComponent)
 	{
 		return false;
 	}
@@ -24,10 +22,8 @@ bool UNSGeneratedNavLinksProxy::OnLinkMoveStarted(UObject* PathComp, const FVect
 	}
 
 	ANSEnemyCharacterBase* Character = Cast<ANSEnemyCharacterBase>(Agent);
-
 	if (!Character)
 	{
-		// 캐릭터가 아닌경우 점프 X
 		return false;
 	}
 
