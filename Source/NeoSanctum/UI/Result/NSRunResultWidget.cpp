@@ -24,35 +24,35 @@ void UNSRunResultWidget::SetRunResult(
 	{
 		ResultTitleText->SetText(
 			bCleared
-			? NSLOCTEXT("RunResult", "ClearTitle", "Clear")
-			: NSLOCTEXT("RunResult", "FailedTitle", "FAILED"));
+				? NSLOCTEXT("RunResult", "ClearTitle", "작전 성공")
+				: NSLOCTEXT("RunResult", "FailedTitle", "작전 실패"));
 	}
 	
 	if (EarnedGoodsText)
 	{
 		EarnedGoodsText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "EarnedGoodsFormat", "Goods : {0}"),
+			NSLOCTEXT("RunResult", "EarnedGoodsFormat", "임시 재화 : {0}"),
 			FText::AsNumber(EarnedGoods)));
 	}
 	
 	if (RunTimeText)
 	{
 		RunTimeText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "RunTimeFormat", "Time: {0}"),
+			NSLOCTEXT("RunResult", "RunTimeFormat", "진행 시간 : {0}"),
 			FormatRunTime(RunTimeSeconds)));
 	}
 	
 	if (KillCountText)
 	{
 		KillCountText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "KillCountFormat", "Kills: {0}"),
+			NSLOCTEXT("RunResult", "KillCountFormat", "처치 수 : {0}"),
 			FText::AsNumber(KillCount)));
 	}
 	
 	if (CommonGoodsText)
 	{
 		CommonGoodsText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "CommonGoodsFormat", "Common : {0}"),
+			NSLOCTEXT("RunResult", "CommonGoodsFormat", "영구 재화 : {0}"),
 			FText::AsNumber(CommonGoods)));
 	}
 
@@ -84,11 +84,7 @@ void UNSRunResultWidget::SetRunResult(
 		HubVotersText->SetVisibility(ESlateVisibility::Visible);
 	}
 	
-	if (!bCleared)
-	{
-		SetSelectedChoice(ENSRunChoice::ReturnToHub);
-	}
-	SetVoteSubmitted(false);
+	RefreshLocalVoteSelection();
 }
 
 void UNSRunResultWidget::SetVoteResult(int32 NextVotes, int32 HubVotes)
@@ -96,57 +92,39 @@ void UNSRunResultWidget::SetVoteResult(int32 NextVotes, int32 HubVotes)
 	if (NextVotesText)
 	{
 		NextVotesText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "NextVotesFormat", "Next : {0}"),
+			NSLOCTEXT(
+				"RunResult",
+				"NextVotesFormat",
+				"다음 스테이지 : {0}"),
 			FText::AsNumber(NextVotes)));
 	}
 
 	if (HubVotesText)
 	{
 		HubVotesText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "HubVotesFormat", "Hub : {0}"),
+			NSLOCTEXT(
+				"RunResult",
+				"HubVotesFormat",
+				"거점 복귀 : {0}"),
 			FText::AsNumber(HubVotes)));
 	}
 }
 
 void UNSRunResultWidget::HandleNextStageClicked()
 {
-	SetSelectedChoice(ENSRunChoice::NextStage);
+	SubmitVote(ENSRunChoice::NextStage);
 }
 
 void UNSRunResultWidget::HandleReturnToHubClicked()
 {
-	SetSelectedChoice(ENSRunChoice::ReturnToHub);
-}
-
-void UNSRunResultWidget::HandleConfirmClicked()
-{
-	ANSPlayerController* PlayerController =
-		Cast<ANSPlayerController>(GetOwningPlayer());
-	if (!PlayerController)
-	{
-		return;
-	}
-
-	if (bVoteSubmitted)
-	{
-		PlayerController->Server_CancelVote();
-		SetVoteSubmitted(false);
-		return;
-	}
-
-	if (!bHasSelectedChoice)
-	{
-		return;
-	}
-
-	PlayerController->Server_ConfirmVote(SelectedChoice);
-	SetVoteSubmitted(true);
+	SubmitVote(ENSRunChoice::ReturnToHub);
 }
 
 void UNSRunResultWidget::SetSelectedChoice(ENSRunChoice NewChoice)
 {
 	SelectedChoice = NewChoice;
 	bHasSelectedChoice = true;
+	UpdateVoteButtonState();
 }
 
 FText UNSRunResultWidget::FormatRunTime(float RunTimeSeconds) const
@@ -173,7 +151,6 @@ void UNSRunResultWidget::NativeConstruct()
 	Super::NativeConstruct();
 	
 	SetRunResult(false, 0, 0, 0.0f, 0);
-	SetVoteSubmitted(false);
 	
 	if (NextStageButton)
 	{
@@ -187,13 +164,6 @@ void UNSRunResultWidget::NativeConstruct()
 		ReturnToHubButton->OnClicked().AddUObject(
 			this,
 			&UNSRunResultWidget::HandleReturnToHubClicked);
-	}
-
-	if (ConfirmButton)
-	{
-		ConfirmButton->OnClicked().AddUObject(
-			this,
-			&UNSRunResultWidget::HandleConfirmClicked);
 	}
 	
 	BindRunEndVoteChanged();
@@ -211,39 +181,12 @@ void UNSRunResultWidget::NativeDestruct()
 	{
 		ReturnToHubButton->OnClicked().RemoveAll(this);
 	}
-
-	if (ConfirmButton)
-	{
-		ConfirmButton->OnClicked().RemoveAll(this);
-	}
 	
 	UnbindRunEndVoteChanged();
 	
 	Super::NativeDestruct();
 }
 
-void UNSRunResultWidget::SetVoteSubmitted(bool bSubmitted)
-{
-	bVoteSubmitted = bSubmitted;
-
-	if (ConfirmButtonText)
-	{
-		ConfirmButtonText->SetText(
-			bVoteSubmitted
-				? NSLOCTEXT("RunResult", "CancelVote", "취소")
-				: NSLOCTEXT("RunResult", "ConfirmVote", "확인"));
-	}
-	
-	if (NextStageButton)
-	{
-		NextStageButton->SetIsEnabled(!bVoteSubmitted);
-	}
-
-	if (ReturnToHubButton)
-	{
-		ReturnToHubButton->SetIsEnabled(!bVoteSubmitted);
-	}
-}
 void UNSRunResultWidget::NativeTick(
 	const FGeometry& MyGeometry,
 	float InDeltaTime)
@@ -299,8 +242,17 @@ void UNSRunResultWidget::RefreshVoteVoters()
 		return;
 	}
 	
-	FString NextVoters = TEXT("Next Stage\n");
-	FString HubVoters = TEXT("Hub\n");
+	FString NextVoters =
+		NSLOCTEXT(
+			"RunResult",
+			"NextStageVotersTitle",
+			"다음 스테이지\n").ToString();
+
+	FString HubVoters =
+		NSLOCTEXT(
+			"RunResult",
+			"HubVotersTitle",
+			"거점 복귀\n").ToString();
 	
 	for (APlayerState* PlayerState : GameState->PlayerArray)
 	{
@@ -356,6 +308,7 @@ void UNSRunResultWidget::RefreshVoteInfo()
 	
 	SetVoteResult(RunGameState->NextVotes, RunGameState->HubVotes);
 	RefreshVoteVoters();
+	RefreshLocalVoteSelection();
 }
 
 void UNSRunResultWidget::BindRunEndVoteChanged()
@@ -401,4 +354,72 @@ void UNSRunResultWidget::UnbindRunEndVoteChanged()
 	RunGameState->OnRunEndVoteChanged.RemoveDynamic(
 		this,
 		&UNSRunResultWidget::RefreshVoteInfo);
+}
+void UNSRunResultWidget::SubmitVote(ENSRunChoice NewChoice)
+{
+	ANSPlayerController* PlayerController =
+		Cast<ANSPlayerController>(GetOwningPlayer());
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// 실패 결과에서는 다음 스테이지 투표를 허용하지 않는다.
+	if (!bLastRunCleared && NewChoice == ENSRunChoice::NextStage)
+	{
+		return;
+	}
+
+	// 이미 선택한 버튼을 다시 누르는 경우는 무시한다.
+	if (bHasSelectedChoice && SelectedChoice == NewChoice)
+	{
+		return;
+	}
+
+	// 서버 응답을 기다리지 않고 로컬 UI를 먼저 갱신한다.
+	SetSelectedChoice(NewChoice);
+
+	// 서버에서 기존 표를 새 선택지로 변경한다.
+	PlayerController->Server_ConfirmVote(NewChoice);
+}
+
+void UNSRunResultWidget::UpdateVoteButtonState()
+{
+	if (NextStageButton)
+	{
+		const bool bCanSelectNext =
+			bLastRunCleared &&
+			(!bHasSelectedChoice ||
+				SelectedChoice != ENSRunChoice::NextStage);
+
+		NextStageButton->SetIsEnabled(bCanSelectNext);
+	}
+
+	if (ReturnToHubButton)
+	{
+		const bool bCanSelectHub =
+			!bHasSelectedChoice ||
+			SelectedChoice != ENSRunChoice::ReturnToHub;
+
+		ReturnToHubButton->SetIsEnabled(bCanSelectHub);
+	}
+}
+
+void UNSRunResultWidget::RefreshLocalVoteSelection()
+{
+	const APlayerController* PlayerController = GetOwningPlayer();
+	const ANSPlayerState* PlayerState = PlayerController
+		? PlayerController->GetPlayerState<ANSPlayerState>()
+		: nullptr;
+
+	bHasSelectedChoice =
+		PlayerState && PlayerState->bVoteConfirmed;
+
+	if (bHasSelectedChoice)
+	{
+		SelectedChoice = PlayerState->RunChoice;
+	}
+
+	UpdateVoteButtonState();
 }

@@ -65,18 +65,11 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonButtonBase> ReturnToHubButton;
 	
-	//확인 버튼
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonButtonBase> ConfirmButton;
-	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> NextVotesText;
 	
 	UPROPERTY(meta = (BindWidgetOptional))
     TObjectPtr<UCommonTextBlock> HubVotesText;
-	
-    UPROPERTY(meta = (BindWidgetOptional))
-    TObjectPtr<UCommonTextBlock> ConfirmButtonText;
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> TimerText;
@@ -96,9 +89,6 @@ private:
 	UFUNCTION()
 	void HandleReturnToHubClicked();
 
-	UFUNCTION()
-	void HandleConfirmClicked();
-
 	void SetSelectedChoice(ENSRunChoice NewChoice);
 
 	ENSRunChoice SelectedChoice = ENSRunChoice::ReturnToHub;
@@ -106,9 +96,6 @@ private:
 	
 	//초 단위 시간을 mm:ss 형식으로 변환
 	FText FormatRunTime(float RunTimeSeconds)const;
-	
-	// 투표 제출 여부에 따라 확인 버튼을 확인/취소 상태로 전환한다.
-    void SetVoteSubmitted(bool bSubmitted);
 	
 	void UpdatePhaseTimerText();
 	
@@ -119,7 +106,14 @@ private:
 	void BindRunEndVoteChanged();
 	void UnbindRunEndVoteChanged();
 	
-	bool bVoteSubmitted = false;
+	//선택한 투표를 서버에 즉시 전달한다.
+	void SubmitVote(ENSRunChoice NewChoice);
+
+	//현재 선택에 맞춰 두 투표 버튼의 활성화 상태를 갱신한다.
+	void UpdateVoteButtonState();
+
+	//로컬 PlayerState에 복제된 투표 상태를 UI에 반영한다.
+	void RefreshLocalVoteSelection();
 	
 	bool bLastRunCleared = false;
 };
