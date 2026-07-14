@@ -133,6 +133,8 @@ void UNSPartVisualComponent::EnsureSlotComponent(FGameplayTag Slot)
 	USkeletalMeshComponent* MeshComp = NewObject<USkeletalMeshComponent>(Owner);
 	MeshComp->SetupAttachment(LeaderMeshComp);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	// 통짜 매쉬 때 꺼뒀던 데칼 옵션, 여기서 한 번만 꺼두면 슬롯 컴포넌트 전부에 적용.
+	MeshComp->SetReceivesDecals(false);
 	MeshComp->RegisterComponent();
 	// 메인 바디 본 트랜스폼을 그대로 따라감
 	MeshComp->SetLeaderPoseComponent(LeaderMeshComp);
