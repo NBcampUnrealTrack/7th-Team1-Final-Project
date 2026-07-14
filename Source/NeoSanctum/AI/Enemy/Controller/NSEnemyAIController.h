@@ -139,6 +139,15 @@ private:
 
 	// 현재 타깃, 마지막 위치, 시야 여부를 Blackboard에 반영하는 함수
 	void UpdateCurrentTargetBlackboard();
+	
+	// 현재 타깃의 NavMesh 기반 이동 위치를 Blackboard에 반영하는 함수
+	void UpdateResolvedTargetMoveBlackboard(AActor* TargetActor);
+
+	// 타깃 이동 위치 관련 Blackboard 값을 초기화하는 함수
+	void ClearResolvedTargetMoveBlackboard();
+
+	// 타깃 이동 위치 해석 캐시와 Blackboard 값을 함께 초기화하는 함수
+	void ResetResolvedTargetMoveState();
 
 	// 현재 타깃이 파괴 가능한 엄폐물 뒤에 있으면 추적 포기 타이머를 멈출 수 있는지 확인하는 함수
 	bool CanMaintainCoverAttackTarget(AActor* TargetActor) const;

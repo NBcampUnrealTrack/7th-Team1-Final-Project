@@ -51,6 +51,22 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		// LaunchCharacter가 실행되면 MovementMode가 Falling으로 변경됨
 		bIsInAir = MovementComponent->IsFalling();
 
+		if (bIsInAir)
+		{
+			AirTime += DeltaSeconds;
+		}
+		else
+		{
+			AirTime = 0.0f;
+		}
+
+		const bool bPassedJumpStartTime = AirTime >= FallingStateMinAirTime;
+		const bool bStartedFalling = VerticalVelocity <= FallingStateVerticalVelocityThreshold;
+
+		// Nav Link가 길면 Jump 시작 모션 후 Falling 루프로 넘어감
+		bShouldUseFallingState = bIsInAir && (bPassedJumpStartTime || bStartedFalling);
+		bShouldUseJumpState = bIsInAir && !bShouldUseFallingState;
+
 		const FVector LocalVelocity = EnemyCharacter->GetActorTransform().InverseTransformVectorNoScale(Velocity);
 
 		LocalForwardSpeed = LocalVelocity.X - 300.0f;
@@ -64,10 +80,13 @@ void UNSEnemyAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		GroundSpeed = 0.0f;
 		VerticalVelocity = 0.0f;
 		LocalForwardSpeed = 0.0f;
-
+		AirTime = 0.0f;
+		
 		bIsMoving = false;
 		bIsInAir = false;
 		bIsRetreating = false;
+		bShouldUseJumpState = false;
+		bShouldUseFallingState = false;
 	}
 
 	UpdateAimRotation(DeltaSeconds);

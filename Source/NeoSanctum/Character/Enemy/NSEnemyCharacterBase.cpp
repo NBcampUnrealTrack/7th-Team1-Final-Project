@@ -29,10 +29,14 @@
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "NeoSanctum/Type/NSBBTypes.h"
 
 ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
+
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	bUseControllerRotationYaw = false;
@@ -66,7 +70,6 @@ ANSEnemyCharacterBase::ANSEnemyCharacterBase()
 	MinimapIconComponent->SetHideWhenOwnerHealthZero(true);
 
 	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Enemy);
-
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -111,6 +114,18 @@ void ANSEnemyCharacterBase::BeginPlay()
 	}
 }
 
+void ANSEnemyCharacterBase::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	
+	if (!HasAuthority() || !bIsTraversingNavLink)
+	{
+		return;
+	}
+
+	UpdateNavLinkTraversal(DeltaSeconds);
+}
+
 void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -118,6 +133,9 @@ void ANSEnemyCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(ANSEnemyCharacterBase, bHasCombatAimTarget);
 	DOREPLIFETIME(ANSEnemyCharacterBase, CombatAimTargetLocation);
 	DOREPLIFETIME(ANSEnemyCharacterBase, bIsRetreating);
+	DOREPLIFETIME(ANSEnemyCharacterBase, bIsTraversingNavLink);
+	DOREPLIFETIME(ANSEnemyCharacterBase, NavLinkDestination);
+	DOREPLIFETIME(ANSEnemyCharacterBase, NavLinkTraversalPhase);
 }
 
 void ANSEnemyCharacterBase::SetCurrentAttackRow(const FNSEnemyAttackRow& InAttackRow)
@@ -407,12 +425,16 @@ void ANSEnemyCharacterBase::SetEnemyData(UNSEnemyData* InEnemyData)
 	CoreComponent->SetEnemyData(InEnemyData);
 }
 
-void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const FRotator& SpawnRotation)
+void ANSEnemyCharacterBase::PrepareForReuse(
+	const FVector& SpawnLocation, 
+	const FRotator& SpawnRotation)
 {
 	if (!HasAuthority())
 	{
 		return;
 	}
+
+	FinishNavLinkTraversal(false);
 
 	if (StateComponent)
 	{
@@ -430,10 +452,9 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 		nullptr,
 		ETeleportType::TeleportPhysics);
 
-	SetActorTickEnabled(true);
+	SetActorTickEnabled(false);
 	SetActorEnableCollision(true);
 
-	// 이동을 멈췄으므로 재가동
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->SetMovementMode(MOVE_Walking);
@@ -441,19 +462,18 @@ void ANSEnemyCharacterBase::PrepareForReuse(const FVector& SpawnLocation, const 
 
 	ApplyAliveVisual();
 
-	// 종료할 때 전부 없앴으므로 전부 재주입
 	InitializeFromData(true);
 
-	// BT 정상 작동을 위해 AIControllerClass로 재빙의
 	SpawnDefaultController();
 }
-
 void ANSEnemyCharacterBase::DeactivateForPool()
 {
 	if (!HasAuthority())
 	{
 		return;
 	}
+
+	FinishNavLinkTraversal(false);
 
 	if (StateComponent)
 	{
@@ -466,14 +486,12 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
 
-	// 이동 즉시 정지 및 비활성화
 	if (UCharacterMovementComponent* Move = GetCharacterMovement())
 	{
 		Move->StopMovementImmediately();
 		Move->DisableMovement();
 	}
 
-	// 진행 중인 몽타주 정지
 	if (USkeletalMeshComponent* MeshComp = GetMesh())
 	{
 		if (UAnimInstance* Anim = MeshComp->GetAnimInstance())
@@ -482,7 +500,6 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		}
 	}
 
-	// 살아있는 채로 반환된 경우 AI, 컨트롤러 정리
 	if (AAIController* AICon = Cast<AAIController>(GetController()))
 	{
 		AICon->StopMovement();
@@ -490,7 +507,6 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		AICon->Destroy();
 	}
 
-	// GAS 정리(실행 중 어빌리티 취소,활성 이펙트 전부 제거,그랜트 해제)
 	if (ASC)
 	{
 		ASC->CancelAllAbilities();
@@ -508,7 +524,6 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 		DamageFlashComponent->CancelFlash();
 	}
 
-	// 물리적 중지
 	SetActorHiddenInGame(true);
 	SetActorEnableCollision(false);
 	SetActorTickEnabled(false);
@@ -522,56 +537,328 @@ void ANSEnemyCharacterBase::Landed(const FHitResult& Hit)
 	{
 		return;
 	}
+
 	bNavLinkJumping = false;
 
-	// NavMesh 밖 착지 복구: 가까운 NavMesh 지점으로 스냅
-	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	if (bIsTraversingNavLink)
 	{
-		const FVector Here = GetActorLocation();
-		FNavLocation NavLoc;
-		if (NavSys->ProjectPointToNavigation(Here, NavLoc, FVector(100.0f, 100.0f, 200.0f)))
-		{
-			const UCapsuleComponent* Capsule = GetCapsuleComponent();
-			const float Radius = Capsule ? Capsule->GetScaledCapsuleRadius() : 50.0f;
-			const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
-
-			// 캡슐 반경 이상 벗어났을 때만 보정 (정상 착지는 그대로 둠)
-			if (FVector::DistSquared2D(Here, NavLoc.Location) > FMath::Square(Radius))
-			{
-				// 투영점은 바닥 높이, 캡슐 절반 높이만큼 올려 박힘 방지
-				SetActorLocation(NavLoc.Location + FVector(0.0f, 0.0f, HalfHeight), false);
-			}
-		}
+		FinalizeNavLinkLanding();
+		FinishNavLinkTraversal(true);
 	}
 }
 
 void ANSEnemyCharacterBase::StartNavLinkJump(const FVector& DestPoint)
 {
-	bNavLinkJumping = true;
-	UCharacterMovementComponent* Move = GetCharacterMovement();
-	if (!Move)
+	if (!HasAuthority())
 	{
 		return;
 	}
 
-	// 점프가 순간의 실효 중력으로 계산
-	FVector LaunchVelocity = FVector::ZeroVector;
-	const bool bFoundVelocity =
-		UGameplayStatics::SuggestProjectileVelocity_CustomArc(
-			this,
-			LaunchVelocity,
-			GetActorLocation(),
+	StartNavLinkTraversal(
+		DestPoint,
+		FNSNavLinkTraversalFinishedDelegate());
+}
+
+bool ANSEnemyCharacterBase::StartNavLinkTraversal(
+	const FVector& DestPoint,
+	FNSNavLinkTraversalFinishedDelegate OnTraversalFinished)
+{
+	if (!HasAuthority() || IsDead() || IsInPool() || IsHitReacting())
+	{
+		return false;
+	}
+
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement)
+	{
+		return false;
+	}
+
+	if (bIsTraversingNavLink)
+	{
+		FinishNavLinkTraversal(false);
+	}
+
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+	NavLinkDestination = DestPoint;
+	NavLinkActorDestination = DestPoint;
+
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		FNavLocation ProjectedDestination;
+
+		if (NavSys->ProjectPointToNavigation(
 			DestPoint,
-			Move->GetGravityZ(), // 실효 중력
-			0.5f);
+			ProjectedDestination,
+			FVector(100.0f, 100.0f, 200.0f)))
+		{
+			NavLinkDestination = ProjectedDestination.Location;
+			NavLinkActorDestination =
+				ProjectedDestination.Location + FVector(0.0f, 0.0f, HalfHeight);
+		}
+	}
 
-	if (!bFoundVelocity)
+	bIsTraversingNavLink = true;
+	bNavLinkJumping = false;
+	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::Rotating;
+	NavLinkRotationElapsed = 0.0f;
+	NavLinkTraversalFinishedDelegate = OnTraversalFinished;
+
+	bCachedNavLinkOrientRotationToMovement = Movement->bOrientRotationToMovement;
+	bCachedNavLinkUseControllerDesiredRotation = Movement->bUseControllerDesiredRotation;
+
+	Movement->StopMovementImmediately();
+	Movement->bOrientRotationToMovement = false;
+	Movement->bUseControllerDesiredRotation = false;
+
+	if (AAIController* AIController = Cast<AAIController>(GetController()))
+	{
+		AIController->ClearFocus(EAIFocusPriority::Gameplay);
+	}
+
+	ClearCombatAimTarget();
+	RefreshNavLinkTraversalBlackboard();
+
+	FVector Direction = NavLinkActorDestination - GetActorLocation();
+	Direction.Z = 0.0f;
+
+	if (Direction.IsNearlyZero())
+	{
+		NavLinkTargetRotation = GetActorRotation();
+		StartNavLinkJumpAfterRotation();
+		return true;
+	}
+
+	NavLinkTargetRotation = Direction.Rotation();
+	NavLinkTargetRotation.Pitch = 0.0f;
+	NavLinkTargetRotation.Roll = 0.0f;
+
+	const float CurrentYaw = GetActorRotation().Yaw;
+	const float TargetYaw = NavLinkTargetRotation.Yaw;
+	const float YawDifference = FMath::Abs(FMath::FindDeltaAngleDegrees(CurrentYaw, TargetYaw));
+
+	if (YawDifference <= NavLinkRotationAcceptableYaw)
+	{
+		SetActorRotation(NavLinkTargetRotation);
+		StartNavLinkJumpAfterRotation();
+		return true;
+	}
+
+	SetActorTickEnabled(true);
+	return true;
+}
+
+void ANSEnemyCharacterBase::UpdateNavLinkTraversal(float DeltaSeconds)
+{
+	if (NavLinkTraversalPhase != ENSNavLinkTraversalPhase::Rotating)
 	{
 		return;
 	}
 
+	NavLinkRotationElapsed += DeltaSeconds;
+
+	const FRotator CurrentRotation = GetActorRotation();
+	const FRotator NewRotation = FMath::RInterpConstantTo(
+		CurrentRotation,
+		NavLinkTargetRotation,
+		DeltaSeconds,
+		NavLinkRotationSpeed);
+
+	SetActorRotation(FRotator(0.0f, NewRotation.Yaw, 0.0f));
+
+	const float YawDifference = FMath::Abs(
+		FMath::FindDeltaAngleDegrees(
+			NewRotation.Yaw,
+			NavLinkTargetRotation.Yaw));
+
+	if (YawDifference <= NavLinkRotationAcceptableYaw || NavLinkRotationElapsed >= NavLinkRotationTimeout)
+	{
+		SetActorRotation(NavLinkTargetRotation);
+		StartNavLinkJumpAfterRotation();
+	}
+}
+
+void ANSEnemyCharacterBase::StartNavLinkJumpAfterRotation()
+{
+	if (!bIsTraversingNavLink)
+	{
+		return;
+	}
+
+	SetActorTickEnabled(false);
+
+	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::Jumping;
+	RefreshNavLinkTraversalBlackboard();
+
+	if (!ExecuteNavLinkJump())
+	{
+		FinishNavLinkTraversal(true);
+	}
+}
+
+bool ANSEnemyCharacterBase::ExecuteNavLinkJump()
+{
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	if (!Movement)
+	{
+		return false;
+	}
+
+	const float Gravity = FMath::Abs(Movement->GetGravityZ());
+	if (Gravity <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const FVector StartLocation = GetActorLocation();
+	const FVector EndLocation = NavLinkActorDestination;
+
+	const float ApexZ =
+		FMath::Max(StartLocation.Z, EndLocation.Z) +
+		NavLinkJumpApexMargin;
+
+	const float UpHeight =
+		FMath::Max(ApexZ - StartLocation.Z, 1.0f);
+
+	const float DownHeight =
+		FMath::Max(ApexZ - EndLocation.Z, 1.0f);
+
+	const float VerticalSpeed =
+		FMath::Sqrt(2.0f * Gravity * UpHeight);
+
+	const float TimeUp =
+		VerticalSpeed / Gravity;
+
+	const float TimeDown =
+		FMath::Sqrt((2.0f * DownHeight) / Gravity);
+
+	const float TotalTime = TimeUp + TimeDown;
+	if (TotalTime <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	FVector HorizontalDelta = EndLocation - StartLocation;
+	HorizontalDelta.Z = 0.0f;
+
+	FVector LaunchVelocity = HorizontalDelta / TotalTime;
+	LaunchVelocity.Z = VerticalSpeed;
+
+	Movement->StopMovementImmediately();
+
 	bNavLinkJumping = true;
-	LaunchCharacter(LaunchVelocity, true, true); // XY/Z Override
+	LaunchCharacter(LaunchVelocity, true, true);
+
+	return true;
+}
+
+void ANSEnemyCharacterBase::FinalizeNavLinkLanding()
+{
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+	FVector DesiredActorLocation = NavLinkActorDestination;
+
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld()))
+	{
+		FNavLocation ProjectedDestination;
+
+		if (NavSys->ProjectPointToNavigation(
+			NavLinkDestination,
+			ProjectedDestination,
+			FVector(100.0f, 100.0f, 200.0f)))
+		{
+			DesiredActorLocation =
+				ProjectedDestination.Location + FVector(0.0f, 0.0f, HalfHeight);
+		}
+	}
+
+	SetActorLocation(
+		DesiredActorLocation,
+		false,
+		nullptr,
+		ETeleportType::TeleportPhysics);
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->StopMovementImmediately();
+		Movement->SetMovementMode(MOVE_Walking);
+	}
+}
+
+void ANSEnemyCharacterBase::FinishNavLinkTraversal(bool bNotifyPathFollowing)
+{
+	const bool bHadTraversalState =
+		bIsTraversingNavLink ||
+		NavLinkTraversalPhase != ENSNavLinkTraversalPhase::None ||
+		NavLinkTraversalFinishedDelegate.IsBound();
+
+	if (!bHadTraversalState)
+	{
+		return;
+	}
+
+	SetActorTickEnabled(false);
+
+	if (UCharacterMovementComponent* Movement = GetCharacterMovement())
+	{
+		Movement->bOrientRotationToMovement = bCachedNavLinkOrientRotationToMovement;
+		Movement->bUseControllerDesiredRotation = bCachedNavLinkUseControllerDesiredRotation;
+	}
+
+	bIsTraversingNavLink = false;
+	bNavLinkJumping = false;
+	NavLinkDestination = FVector::ZeroVector;
+	NavLinkActorDestination = FVector::ZeroVector;
+	NavLinkTraversalPhase = ENSNavLinkTraversalPhase::None;
+	NavLinkRotationElapsed = 0.0f;
+	NavLinkTargetRotation = FRotator::ZeroRotator;
+
+	RefreshNavLinkTraversalBlackboard();
+
+	FNSNavLinkTraversalFinishedDelegate FinishedDelegate = NavLinkTraversalFinishedDelegate;
+	NavLinkTraversalFinishedDelegate.Unbind();
+
+	if (bNotifyPathFollowing && FinishedDelegate.IsBound())
+	{
+		FinishedDelegate.Execute();
+	}
+}
+
+void ANSEnemyCharacterBase::RefreshNavLinkTraversalBlackboard()
+{
+	AAIController* AIController = Cast<AAIController>(GetController());
+	if (!AIController)
+	{
+		return;
+	}
+
+	UBlackboardComponent* Blackboard = AIController->GetBlackboardComponent();
+	if (!Blackboard)
+	{
+		return;
+	}
+
+	Blackboard->SetValueAsBool(
+		NSBB::Movement::IsTraversingNavLink,
+		bIsTraversingNavLink);
+
+	Blackboard->SetValueAsEnum(
+		NSBB::Movement::NavLinkTraversalPhase,
+		static_cast<uint8>(NavLinkTraversalPhase));
+
+	if (bIsTraversingNavLink)
+	{
+		Blackboard->SetValueAsVector(
+			NSBB::Movement::NavLinkDestination,
+			NavLinkDestination);
+	}
+	else
+	{
+		Blackboard->ClearValue(NSBB::Movement::NavLinkDestination);
+	}
 }
 
 void ANSEnemyCharacterBase::SetRetreating(bool bInRetreating)
@@ -616,6 +903,8 @@ void ANSEnemyCharacterBase::HandleDeathStarted()
 	{
 		return;
 	}
+
+	FinishNavLinkTraversal(false);
 
 	SetRetreating(false);
 	ClearCombatAimTarget();

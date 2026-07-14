@@ -28,6 +28,15 @@ namespace NSBB
 
 		// 현재 타깃에게 직접 시야가 닿는지 저장하는 Bool 키 이름
 		extern NEOSANCTUM_API const FName HasTargetLineOfSight;
+		
+		// 타깃의 실제 월드 위치를 저장하는 Vector 키 이름
+		extern NEOSANCTUM_API const FName ActualLocation;
+		
+		// 타깃 이동 위치 해석 결과 타입을 저장하는 Name 키 이름
+		extern NEOSANCTUM_API const FName MoveResolveType;
+		
+		// 현재 타깃이 공중 상태인지 저장하는 Bool 키 이름
+		extern NEOSANCTUM_API const FName IsAirborne;
 	}
 
 	// 공격 가능 여부, 공격 실행 상태, 피격 경직 상태를 저장하는 Blackboard Key 모음
@@ -64,6 +73,24 @@ namespace NSBB
 
 		// 순찰 BTTask가 선택한 순찰 위치를 저장하는 Vector 키 이름
 		extern NEOSANCTUM_API const FName PatrolLocation;
+		
+		// 현재 타깃을 추적하기 위해 사용할 NavMesh 이동 위치를 저장하는 Vector 키 이름
+		extern NEOSANCTUM_API const FName ResolvedTargetMoveLocation;
+		
+		// 현재 타깃 추적용 이동 위치가 유효한지 저장하는 Bool 키 이름
+		extern NEOSANCTUM_API const FName HasResolvedTargetMoveLocation;
+		
+		// 현재 몬스터가 공중 타깃 아래 추적 지점에 도착했는지 저장하는 Bool 키 이름
+		extern NEOSANCTUM_API const FName ArrivedBelowAirborneTarget;
+		
+		// 현재 몬스터가 자동 생성 NavLink 특수 이동을 수행 중인지 저장하는 Bool 키 이름
+		extern NEOSANCTUM_API const FName IsTraversingNavLink;
+
+		// 현재 NavLink 특수 이동의 목적지를 저장하는 Vector 키 이름
+		extern NEOSANCTUM_API const FName NavLinkDestination;
+
+		// 현재 NavLink 특수 이동 단계를 저장하는 Enum 키 이름
+		extern NEOSANCTUM_API const FName NavLinkTraversalPhase;
 	}
 
 	// 일반 근접 몬스터 예약, 접근, EQS 상태를 저장하는 Blackboard Key 모음
