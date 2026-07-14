@@ -65,7 +65,7 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 		return;
 	}
-	
+
 	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 	{
 		if (IsAttackingBB())
@@ -93,11 +93,14 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 	if (IsValidLivingTarget(TargetActor))
 	{
+		UpdateResolvedTargetMoveBlackboard(TargetActor);
 		UpdateRetreatState(TargetActor);
 		UpdateFacingMode(TargetActor);
 	}
 	else
 	{
+		ResetResolvedTargetMoveState();
+
 		if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 		{
 			MoveComponent->ApplyFacing(this, nullptr, nullptr, false);
@@ -514,6 +517,7 @@ void ANSEnemyAIController::UpdateTargetSelection()
 	{
 		CancelMeleeReservationRequest(false);
 		ResetMeleeEQSForCurrentTarget();
+		ResetResolvedTargetMoveState();
 	}
 
 	UpdateCurrentTargetBlackboard();
@@ -577,6 +581,86 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 
 	SetAttackActorBlackboard(AttackActor);
 	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
+}
+
+void ANSEnemyAIController::UpdateResolvedTargetMoveBlackboard(AActor* TargetActor)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent();
+	if (!MoveComponent || !IsValidLivingTarget(TargetActor))
+	{
+		ClearResolvedTargetMoveBlackboard();
+		return;
+	}
+
+	const FNSResolvedTargetMoveResult Result =
+		MoveComponent->ResolveTargetMoveLocation(TargetActor, this);
+
+	CachedBBComp->SetValueAsVector(
+		NSBB::Target::ActualLocation,
+		Result.ActualLocation);
+
+	CachedBBComp->SetValueAsEnum(
+		NSBB::Target::MoveResolveType,
+		static_cast<uint8>(Result.ResolveType));
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Target::IsAirborne,
+		Result.bTargetAirborne);
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Movement::HasResolvedTargetMoveLocation,
+		Result.bHasMoveLocation);
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Movement::ArrivedBelowAirborneTarget,
+		Result.bArrivedBelowAirborneTarget);
+
+	if (Result.bHasMoveLocation)
+	{
+		CachedBBComp->SetValueAsVector(
+			NSBB::Movement::ResolvedTargetMoveLocation,
+			Result.MoveLocation);
+	}
+	else
+	{
+		CachedBBComp->ClearValue(
+			NSBB::Movement::ResolvedTargetMoveLocation);
+	}
+}
+
+void ANSEnemyAIController::ClearResolvedTargetMoveBlackboard()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->ClearValue(NSBB::Target::ActualLocation);
+
+	CachedBBComp->SetValueAsEnum(
+		NSBB::Target::MoveResolveType,
+		static_cast<uint8>(ENSTargetMoveResolveType::Invalid));
+
+	CachedBBComp->SetValueAsBool(NSBB::Target::IsAirborne, false);
+
+	CachedBBComp->ClearValue(NSBB::Movement::ResolvedTargetMoveLocation);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::HasResolvedTargetMoveLocation, false);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ArrivedBelowAirborneTarget, false);
+}
+
+void ANSEnemyAIController::ResetResolvedTargetMoveState()
+{
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetTargetMoveResolveState();
+	}
+
+	ClearResolvedTargetMoveBlackboard();
 }
 
 bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
@@ -904,6 +988,7 @@ void ANSEnemyAIController::ClearAttackBB()
 void ANSEnemyAIController::ClearTargetBB(bool bClearCanAttack)
 {
 	ClearCommonTargetBB(bClearCanAttack);
+	ResetResolvedTargetMoveState();
 }
 
 void ANSEnemyAIController::ClearRetreatBB()
