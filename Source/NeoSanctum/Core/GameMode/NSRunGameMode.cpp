@@ -1535,14 +1535,36 @@ void ANSRunGameMode::ResolveVote()
 	int32 Next = 0, Hub = 0;
 	for (APlayerState* PlayerState : NSGameState->PlayerArray)
 	{
-		ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
-		// 거점 귀환을 선택한 사람만 Hub, 나머지(미투표)는 Next
-		const bool bHub = NSPlayerState && NSPlayerState->bVoteConfirmed
-						  && NSPlayerState->RunChoice == ENSRunChoice::ReturnToHub;
-		bHub ? ++Hub : ++Next;
+		ANSPlayerState* NSPlayerState =
+			Cast<ANSPlayerState>(PlayerState);
+
+		if (!NSPlayerState)
+		{
+			++Hub;
+			continue;
+		}
+
+		// 제한시간까지 투표하지 않은 플레이어는 거점 복귀로 처리한다.
+		if (!NSPlayerState->bVoteConfirmed)
+		{
+			NSPlayerState->RunChoice =
+				ENSRunChoice::ReturnToHub;
+
+			NSPlayerState->bVoteConfirmed = true;
+			NSPlayerState->ForceNetUpdate();
+		}
+
+		if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
+		{
+			++Next;
+		}
+		else
+		{
+			++Hub;
+		}
 	}
 	
-	const bool bGoNext = NSGameState->bIsClear && (Next >= Hub);
+	const bool bGoNext = NSGameState->bIsClear && (Next > Hub);
 
 	NSGameState->NextVotes = Next;
 	NSGameState->HubVotes = Hub;
@@ -1557,6 +1579,16 @@ void ANSRunGameMode::ResolveVote()
 
 	NSGameState->SetRunEndPhase(ENSRunEndPhase::Result);
 	NSGameState->ForceNetUpdate();
+
+	if (ResultDisplayDuration <= 0.0f)
+	{
+		GetWorldTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateUObject(
+				this,
+				&ANSRunGameMode::OnResultDisplayFinished));
+
+		return;
+	}
 
 	GetWorldTimerManager().SetTimer(
 		PhaseTimerHandle,
@@ -1687,16 +1719,49 @@ void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, EN
 		return;
 	}
 
-	ANSPlayerState* NSPlayerState = Voter->GetPlayerState<ANSPlayerState>();
-	if (!NSPlayerState || NSPlayerState->bVoteConfirmed)
+	ANSRunGameState* RunGameState =
+		GetGameState<ANSRunGameState>();
+
+	ANSPlayerState* NSPlayerState =
+		Voter->GetPlayerState<ANSPlayerState>();
+
+	if (!RunGameState || !NSPlayerState)
 	{
 		return;
 	}
 
-	ANSRunGameState* RunGameState = GetGameState<ANSRunGameState>();
-	if (!RunGameState)
+	// 제한 시간이 끝난 뒤 들어온 투표 요청은 처리하지 않는다.
+	if (RunGameState->RunEndPhase != ENSRunEndPhase::Voting)
 	{
 		return;
+	}
+
+	// 실패한 런에서는 거점 복귀만 선택할 수 있다.
+	if (!RunGameState->bIsClear &&
+		Choice == ENSRunChoice::NextStage)
+	{
+		return;
+	}
+
+	if (NSPlayerState->bVoteConfirmed)
+	{
+		// 이미 같은 선택지에 투표한 경우 중복 처리하지 않는다.
+		if (NSPlayerState->RunChoice == Choice)
+		{
+			return;
+		}
+
+		// 기존 선택지의 투표 수를 먼저 차감한다.
+		if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
+		{
+			RunGameState->NextVotes =
+				FMath::Max(RunGameState->NextVotes - 1, 0);
+		}
+		else
+		{
+			RunGameState->HubVotes =
+				FMath::Max(RunGameState->HubVotes - 1, 0);
+		}
 	}
 
 	NSPlayerState->RunChoice = Choice;
@@ -1711,11 +1776,12 @@ void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, EN
 		RunGameState->HubVotes++;
 	}
 
+	NSPlayerState->ForceNetUpdate();
 	RunGameState->NotifyRunVoteChanged();
 	RunGameState->ForceNetUpdate();
 
-	// 전원 확인 시 ResolveVote
-	HandlePlayerConfirmed();
+	// 제한 시간 동안 재투표할 수 있어야 하므로
+	// HandlePlayerConfirmed()는 호출하지 않는다.
 }
 
 void ANSRunGameMode::BeginReturnToHubTravel()
