@@ -128,6 +128,33 @@ void ANSPlayerCharacterBase::BeginPlay()
 	InitializeAbilitySystem();
 }
 
+void ANSPlayerCharacterBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 접속 종료처럼 캐릭터가 명시적으로 파괴될 때만 서버 소유에서 Actor를 정리.
+	if (HasAuthority() && EndPlayReason == EEndPlayReason::Destroyed)
+	{
+		if (IsValid(CurrentWeapon))
+		{
+			CurrentWeapon->Destroy();
+		}
+		CurrentWeapon = nullptr;
+
+		if (IsValid(CurrentLeftHandWeapon))
+		{
+			CurrentLeftHandWeapon->Destroy();
+		}
+		CurrentLeftHandWeapon = nullptr;
+
+		if (CompanionAI.IsValid())
+		{
+			CompanionAI->Destroy();
+		}
+		CompanionAI.Reset();
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
