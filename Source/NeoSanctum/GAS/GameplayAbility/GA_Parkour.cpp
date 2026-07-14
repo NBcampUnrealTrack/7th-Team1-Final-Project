@@ -316,19 +316,34 @@ void UGA_Parkour::RestoreMovementMode()
 
 	MovementComponent->StopMovementImmediately();
 
-	if (PreviousMovementMode.IsSet() && PreviousMovementMode.GetValue() != MOVE_Flying)
+	const bool bHasPreviousMovementMode = PreviousMovementMode.IsSet();
+	const EMovementMode PreviousMode = bHasPreviousMovementMode
+		                                   ? PreviousMovementMode.GetValue().GetValue()
+		                                   : MOVE_None;
+	PreviousMovementMode.Reset();
+
+	FFindFloorResult FloorResult;
+	MovementComponent->FindFloor(Character->GetActorLocation(), FloorResult, false);
+	const bool bHasWalkableFloor = FloorResult.IsWalkableFloor();
+
+	// Parkour는 RootMotion 이동 후 위치가 바닥에서 벗어날 수 있으므로, 이전 Mode를 복원하기 전에 현재 위치의 바닥이 존재하는지 검증
+	EMovementMode RestoreMode = MOVE_Falling;
+	if (PreviousMode == MOVE_Walking || PreviousMode == MOVE_NavWalking)
 	{
-		MovementComponent->SetMovementMode(PreviousMovementMode.GetValue());
+		RestoreMode = bHasWalkableFloor ? PreviousMode : MOVE_Falling;
+	}
+	else if (bHasPreviousMovementMode && PreviousMode != MOVE_Flying)
+	{
+		RestoreMode = PreviousMode;
 	}
 	else
 	{
-		const EMovementMode RestoreMode = MovementComponent->IsMovingOnGround()
-			? MOVE_Walking
-			: MOVE_Falling;
-		MovementComponent->SetMovementMode(RestoreMode);
+		RestoreMode = bHasWalkableFloor
+			              ? MOVE_Walking
+			              : MOVE_Falling;
 	}
 
-	PreviousMovementMode.Reset();
+	MovementComponent->SetMovementMode(RestoreMode);
 }
 
 void UGA_Parkour::UpdateMotionWarpTarget(const FNSParkourTarget& Target) const

@@ -531,8 +531,8 @@ void UGA_Flicker::PerformMeleeSocketSweeps(ANSMeleeWeapon& MeleeWeapon)
 	{
 		const FVector CurrentLocation = SocketTransforms[SocketIndex].GetLocation();
 		const FVector TraceStart = bCanUsePreviousLocations
-			? PreviousMeleeTraceSocketLocations[SocketIndex]
-			: CurrentLocation;
+			                           ? PreviousMeleeTraceSocketLocations[SocketIndex]
+			                           : CurrentLocation;
 
 		SweepMeleeTrace(TraceStart, CurrentLocation);
 	}
@@ -569,8 +569,8 @@ void UGA_Flicker::SweepMeleeTrace(
 	}
 
 	const FVector SweepEnd = TraceStart.Equals(TraceEnd)
-		? TraceEnd + FVector::UpVector * 0.1f
-		: TraceEnd;
+		                         ? TraceEnd + FVector::UpVector * 0.1f
+		                         : TraceEnd;
 
 	TArray<FHitResult> HitResults;
 	const bool bHit = World->SweepMultiByChannel(
@@ -909,8 +909,8 @@ bool UGA_Flicker::TryApplyTargetData(const FGameplayAbilityTargetDataHandle& Tar
 		}
 
 		const FVector TargetLocation = !HitResult->ImpactPoint.IsNearlyZero()
-			? FVector(HitResult->ImpactPoint)
-			: TargetActor->GetActorLocation();
+			                               ? FVector(HitResult->ImpactPoint)
+			                               : TargetActor->GetActorLocation();
 
 		SelectedTargets.Add(TargetActor);
 		SelectedTargetLocations.Add(TargetLocation);
@@ -961,8 +961,8 @@ bool UGA_Flicker::IsTargetDataValidForServer(const FGameplayAbilityTargetDataHan
 		}
 
 		const FVector TargetLocation = !HitResult->ImpactPoint.IsNearlyZero()
-			? FVector(HitResult->ImpactPoint)
-			: TargetActor->GetActorLocation();
+			                               ? FVector(HitResult->ImpactPoint)
+			                               : TargetActor->GetActorLocation();
 
 		const float AllowedDistance = DataIndex == 0 ? MaxPrimaryDistance : MaxChainDistance;
 		if (FVector::DistSquared(PreviousLocation, TargetLocation) > FMath::Square(AllowedDistance))
@@ -1209,7 +1209,7 @@ void UGA_Flicker::AdvanceToNextTarget()
 		GetCurrentActorInfo(),
 		GetCurrentActivationInfo(),
 		true,
-			false);
+		false);
 }
 
 void UGA_Flicker::ScheduleAdvanceToNextTargetAfterAttackSection()
@@ -1246,8 +1246,8 @@ FName UGA_Flicker::GetCurrentAttackSectionName() const
 
 	const int32 AttackSectionIndex = CurrentTargetIndex % AttackSectionNames.Num();
 	return AttackSectionNames.IsValidIndex(AttackSectionIndex)
-		? AttackSectionNames[AttackSectionIndex]
-		: NAME_None;
+		       ? AttackSectionNames[AttackSectionIndex]
+		       : NAME_None;
 }
 
 float UGA_Flicker::GetCurrentAttackSectionRemainingTime() const
@@ -1475,20 +1475,34 @@ void UGA_Flicker::RestoreMovementMode()
 	// RootMotion 종료 후 잔여 속도 제거
 	MovementComponent->StopMovementImmediately();
 
-	if (PreviousMovementMode.IsSet() && PreviousMovementMode.GetValue() != MOVE_Flying)
+	const bool bHasPreviousMovementMode = PreviousMovementMode.IsSet();
+	const EMovementMode PreviousMode = bHasPreviousMovementMode
+		                                   ? PreviousMovementMode.GetValue().GetValue()
+		                                   : MOVE_None;
+	PreviousMovementMode.Reset();
+
+	FFindFloorResult FloorResult;
+	MovementComponent->FindFloor(Character->GetActorLocation(), FloorResult, false);
+	const bool bHasWalkableFloor = FloorResult.IsWalkableFloor();
+
+	// Flicker는 공중 타겟에게 이동할 수 있기 때문에, 이전 Mode를 복원하기 전에 현재 위치의 바닥이 존재하는지 검증
+	EMovementMode RestoreMode = MOVE_Falling;
+	if (PreviousMode == MOVE_Walking || PreviousMode == MOVE_NavWalking)
 	{
-		MovementComponent->SetMovementMode(PreviousMovementMode.GetValue());
-		PreviousMovementMode.Reset();
+		RestoreMode = bHasWalkableFloor ? PreviousMode : MOVE_Falling;
+	}
+	else if (bHasPreviousMovementMode && PreviousMode != MOVE_Flying)
+	{
+		RestoreMode = PreviousMode;
 	}
 	else
 	{
-		PreviousMovementMode.Reset();
-		const EMovementMode RestoreMode = MovementComponent->IsMovingOnGround()
-			? MOVE_Walking
-			: MOVE_Falling;
-		MovementComponent->SetMovementMode(RestoreMode);
+		RestoreMode = bHasWalkableFloor
+			              ? MOVE_Walking
+			              : MOVE_Falling;
 	}
 
+	MovementComponent->SetMovementMode(RestoreMode);
 	MovementComponent->StopMovementImmediately();
 }
 
