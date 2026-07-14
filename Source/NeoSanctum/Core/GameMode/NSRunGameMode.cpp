@@ -593,6 +593,10 @@ void ANSRunGameMode::HandlePrewarmDataLoaded(TArray<TSoftObjectPtr<UNSEnemyData>
         NormalDatas.Num(), PrewarmNormalTotal, EliteDatas.Num(), PrewarmEliteTotal);
 
     FSimpleDelegate OnDone;
+	OnDone.BindUObject(
+		this,
+		&ANSRunGameMode::HandlePrewarmComplete);
+	
 	NSMonsterPoolManager->PrewarmBegin(
 		Requests,
 		PrewarmPerTick,
@@ -605,10 +609,54 @@ void ANSRunGameMode::HandlePrewarmDataLoaded(TArray<TSoftObjectPtr<UNSEnemyData>
 	0.001f, 
 	true);
 	
+	// 안전장치: 프리워밍이 완료 못 해도 일정 시간 후 게이트 강제 오픈
+	GetWorldTimerManager().SetTimer(
+		PrewarmTimeoutHandle,
+		this, 
+		&ANSRunGameMode::ForcePrewarmGateOpen,
+		PrewarmTimeoutSeconds,
+		false);
+	
 	UE_LOG(LogTemp, Warning, TEXT("[Prewarm] SetTimer 완료 Handle유효=%d Paused=%d WorldTime=%.2f"),
 	PrewarmStepTimerHandle.IsValid() ? 1 : 0,
 	GetWorld()->IsPaused() ? 1 : 0,
 	GetWorld()->GetTimeSeconds());
+}
+
+void ANSRunGameMode::HandlePrewarmComplete()
+{
+	// 정상 완료 → 타임아웃 취소 + 게이트 오픈
+	GetWorldTimerManager().ClearTimer(PrewarmTimeoutHandle);
+	UE_LOG(LogTemp, Warning, TEXT("[Prewarm] 완료 → 로딩 게이트 오픈"));
+	OpenPrewarmGateForAll();
+}
+
+void ANSRunGameMode::ForcePrewarmGateOpen()
+{
+	// 타임아웃 → 프리워밍 미완이어도 게임 진행 보장
+	UE_LOG(LogTemp, Warning, TEXT("[Prewarm] 타임아웃 → 게이트 강제 오픈"));
+	OpenPrewarmGateForAll();
+}
+
+void ANSRunGameMode::OpenPrewarmGateForAll()
+{
+	// 호스트 자신
+	if (UNSUIManagerSubsystem* UI = UNSUIManagerSubsystem::Get(this))
+	{
+		UI->MarkTravelPrewarmReady();
+	}
+
+	// 원격 클라 전원에 RPC
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
+		{
+			if (!PC->IsLocalController()) 
+			{
+				PC->Client_NotifyPrewarmReady();
+			}
+		}
+	}
 }
 
 void ANSRunGameMode::RequestReturnToHub_Implementation()

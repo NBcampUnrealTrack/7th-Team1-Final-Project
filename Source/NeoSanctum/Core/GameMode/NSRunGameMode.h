@@ -240,6 +240,8 @@ private:
 	void HandleStageSpawnerTablesReadyForPrewarm();
 	UFUNCTION()
 	void HandleRunDataReadyForPrewarm();
+	UFUNCTION()
+	void HandlePrewarmComplete();
 	int32 PrewarmRetryCount = 0;
 
 	// EnemyData 로드 완료 후 랭크별 배분
@@ -247,9 +249,13 @@ private:
 		TArray<TSoftObjectPtr<UNSEnemyData>> UniqueDatas,
 		TMap<TSoftObjectPtr<UNSEnemyData>,
 		TSoftClassPtr<APawn>> DataToClass);
+	void ForcePrewarmGateOpen();
+	
+	void OpenPrewarmGateForAll();
 
 	TSharedPtr<FStreamableHandle> PrewarmLoadHandle;
 	FTimerHandle PrewarmStepTimerHandle;
+	FTimerHandle PrewarmTimeoutHandle;
 
 	// 프리워밍 상한
 	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
@@ -258,5 +264,7 @@ private:
 	int32 PrewarmEliteTotal = 10;
 	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
 	int32 PrewarmPerTick = 10;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	float PrewarmTimeoutSeconds = 10.0f;  
 #pragma endregion 로딩 때 풀링용
 };
