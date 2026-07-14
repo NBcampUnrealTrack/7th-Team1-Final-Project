@@ -13,6 +13,7 @@
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
 #include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
 #include "NeoSanctum/UI/Monster/NSMonsterUISubsystem.h"
+#include "NeoSanctum/UI/Player/NSPlayerWorldStatusSubsystem.h"
 
 UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 {
@@ -367,28 +368,30 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 		{
 			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
 		}
+
+		if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+		{
+			PlayerWorldStatusSubsystem->RegisterHUDHost(HUDWidget);
+		}
+
 		return;
 	}
 
 	TSubclassOf<UNSHUDWidget> WidgetClassToUse = nullptr;
 
-	//데이터테이블에 없을경우 기존 HUD위젯으로
 	TSubclassOf<UUserWidget> LoadedWidgetClass =
 		GetWidgetClassFromTable(TEXT("HUD"));
 
-	//데이터테이블에서 타입을 검증
 	if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UNSHUDWidget::StaticClass()))
 	{
 		WidgetClassToUse = *LoadedWidgetClass;
 	}
 
-	//데이터테이블에 없을시 에디터에서 지정한 위젯을 사용
 	if (!WidgetClassToUse)
 	{
 		WidgetClassToUse = HUDWidgetClass;
 	}
 
-	//데이터테이블과 fallback에 없으면 종료
 	if (!WidgetClassToUse)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[UI Data] HUD 위젯 클래스를 찾지 못했습니다."));
@@ -402,21 +405,17 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 	if (HUDWidget)
 	{
 		HUDWidget->AddToViewport();
-		
+
 		if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
 		{
 			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
 		}
-	}
 
-	
-	/*
-	HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, HUDWidgetClass);
-	if (HUDWidget)
-	{
-		HUDWidget->AddToViewport();
+		if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+		{
+			PlayerWorldStatusSubsystem->RegisterHUDHost(HUDWidget);
+		}
 	}
-	*/
 }
 
 void UNSUIManagerSubsystem::ShowHUD()
@@ -549,11 +548,17 @@ void UNSUIManagerSubsystem::ClearHUD()
 			{
 				MonsterUISubsystem->UnregisterHUDHost(HUDWidget);
 			}
+
+			if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+			{
+				PlayerWorldStatusSubsystem->UnregisterHUDHost(HUDWidget);
+			}
 		}
 
 		HUDWidget->RemoveFromParent();
 		HUDWidget = nullptr;
 	}
+
 	bAugmentationPanelOpen = false;
 }
 

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
 #include "NeoSanctum/UI/Monster/NSMonsterUIHost.h"
+#include "NeoSanctum/UI/Player/NSPlayerWorldStatusHost.h"
 #include "NSHUDWidget.generated.h"
 
 class UNSHPShieldWidget;
@@ -30,7 +31,8 @@ class UNSGuideTextWidget;
  */
 UCLASS()
 class NEOSANCTUM_API UNSHUDWidget : public UCommonUserWidget, 
-                                    public INSMonsterUIHost
+                                    public INSMonsterUIHost,
+									public INSPlayerWorldStatusHost
 {
 	GENERATED_BODY()
 	
@@ -116,6 +118,9 @@ public:
 
 	// 보스 상태 위젯을 1:1 비율로 배치할 가로 패널을 반환하는 함수
 	virtual UHorizontalBox* GetBossMonsterLayer() const override;
+	
+	// 플레이어 월드 상태 위젯을 배치할 패널을 반환하는 함수
+	virtual UPanelWidget* GetPlayerWorldStatusLayer() const override;
 
 	// 우측 상단 목표 안내 텍스트 표시 (지속형 — HideGuideText 호출까지 유지)
 	UFUNCTION(BlueprintCallable, Category = "UI")
@@ -175,6 +180,10 @@ private:
 	// 보스 상태 위젯을 1:1 비율로 배치하는 가로 패널 변수
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHorizontalBox> BossMonsterLayer;
+	
+	// 플레이어 월드 상태 위젯을 배치하는 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> PlayerWorldStatusLayer;
 
 	// 우측 상단 목표 안내 텍스트 위젯 (WBP_HUD에서 배치, 없으면 안내 기능만 비활성)
 	UPROPERTY(meta = (BindWidgetOptional))
