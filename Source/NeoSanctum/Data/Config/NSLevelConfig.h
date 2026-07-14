@@ -44,4 +44,10 @@ public:
 	// 스테이지의 목표
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Objective")
 	TArray<FNSStageObjective> ObjectivePool;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Audio")
+	FName StageBGM = NAME_None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Audio")
+	FName BossBGM = NAME_None;
 };
