@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSReadyStartWidget.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 #include "Blueprint/UserWidget.h"
 
 ANSReadyStartActor::ANSReadyStartActor()
@@ -83,6 +84,13 @@ bool ANSReadyStartActor::OnInteract_Implementation(APlayerController* Interactor
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	InputMode.SetHideCursorDuringCapture(false);
 	Interactor->SetInputMode(InputMode);
+
+	// 첫 상호작용 → 안내 완료 처리 (이 함수는 상호작용한 플레이어의 클라에서 실행됨)
+	if (UNSOutRunGuideSubsystem* GuideSubsystem =
+		GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+	{
+		GuideSubsystem->NotifyReadyConsoleUsed();
+	}
 
 	return true;
 }

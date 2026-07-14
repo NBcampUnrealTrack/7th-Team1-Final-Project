@@ -12,6 +12,8 @@ class NEOSANCTUM_API ANSRescueNPC : public ANSInteractableNPCBase
 	GENERATED_BODY()
 
 public:
+	ANSRescueNPC();
+
 	virtual bool CanInteract_Implementation(APlayerController* Interactor) const override;
 	virtual bool OnInteract_Implementation(APlayerController* Interactor) override;
 	// 서버 처리용
@@ -20,6 +22,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
+	virtual void BeginPlay() override;
+
+
 	// 이미 구출한 적 있는 플레이어에게 줄 보상 재화량
 	UPROPERTY(EditAnywhere, Category = "Rescue", meta = (ClampMin = "0"))
 	int64 AlreadyRescuedReward = 0;
