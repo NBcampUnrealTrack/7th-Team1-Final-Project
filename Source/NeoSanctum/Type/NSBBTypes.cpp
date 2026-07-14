@@ -10,6 +10,9 @@ namespace NSBB
 		const FName AttackActor = TEXT("AttackActor");
 		const FName TargetLastKnownLocation = TEXT("TargetLastKnownLocation");
 		const FName HasTargetLineOfSight = TEXT("bHasTargetLineOfSight");
+		const FName ActualLocation = TEXT("TargetActualLocation");
+		const FName MoveResolveType = TEXT("TargetMoveResolveType");
+		const FName IsAirborne = TEXT("bTargetAirborne");
 	}
 
 	namespace Combat
@@ -30,6 +33,9 @@ namespace NSBB
 		const FName ShouldRetreat = TEXT("bShouldRetreat");
 		const FName RetreatLocation = TEXT("RetreatLocation");
 		const FName PatrolLocation = TEXT("PatrolLocation");
+		const FName ResolvedTargetMoveLocation = TEXT("ResolvedTargetMoveLocation");
+		const FName HasResolvedTargetMoveLocation = TEXT("bHasResolvedTargetMoveLocation");
+		const FName ArrivedBelowAirborneTarget = TEXT("bArrivedBelowAirborneTarget");
 	}
 
 	namespace Melee
