@@ -65,6 +65,18 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 
 		return;
 	}
+	
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		if (IsAttackingBB())
+		{
+			MoveComponent->ResetNavigationRecovery();
+		}
+		else
+		{
+			MoveComponent->UpdateNavigationRecovery(this, DeltaTime);
+		}
+	}
 
 	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
@@ -216,6 +228,11 @@ void ANSEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		return;
 	}
+	
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetNavigationRecovery();
+	}
 
 	StartEnemyBrain(EnemyData);
 
@@ -235,6 +252,11 @@ void ANSEnemyAIController::OnUnPossess()
 	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
 	{
 		PhaseComponent->ResetPhaseState();
+	}
+	
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetNavigationRecovery();
 	}
 
 	Super::OnUnPossess();

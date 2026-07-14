@@ -6,7 +6,9 @@
 #include "AIController.h"
 #include "NavigationSystem.h"
 #include "Abilities/GameplayAbility.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Navigation/PathFollowingComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
@@ -225,4 +227,136 @@ float UNSEnemyMoveComponent::GetMinAttackRange() const
 	}
 
 	return bFoundAttack ? MinRange : 0.0f;
+}
+
+void UNSEnemyMoveComponent::UpdateNavigationRecovery(AAIController* Controller, float DeltaTime)
+{
+	ANSEnemyCharacterBase* Enemy = GetOwnerEnemy();
+	if (!Controller || !Enemy || !Enemy->HasAuthority() || Enemy->IsDead() || Enemy->IsInPool() || Enemy->
+		IsHitReacting())
+	{
+		ResetNavigationRecovery();
+		return;
+	}
+
+	UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
+	UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	if (!Movement || !NavSystem || Movement->IsFalling())
+	{
+		ResetNavigationRecovery();
+		return;
+	}
+
+	const FVector CurrentLocation = Enemy->GetActorLocation();
+
+	FNavLocation ProjectedLocation;
+	const bool bProjected = NavSystem->ProjectPointToNavigation(
+		CurrentLocation,
+		ProjectedLocation,
+		NavProjectionExtent);
+
+	const bool bOnNavMesh =
+		bProjected &&
+		FVector::DistSquared2D(CurrentLocation, ProjectedLocation.Location) <= FMath::Square(NavOutsideTolerance);
+
+	if (bOnNavMesh)
+	{
+		LastValidNavLocation = ProjectedLocation.Location;
+		bHasLastValidNavLocation = true;
+	}
+
+	if (!bHasLastObservedLocation)
+	{
+		LastObservedLocation = CurrentLocation;
+		bHasLastObservedLocation = true;
+		return;
+	}
+
+	const bool bMovedEnough =
+		FVector::DistSquared2D(CurrentLocation, LastObservedLocation) > FMath::Square(StuckMoveTolerance);
+
+	const bool bNearlyStopped =
+		Movement->Velocity.SizeSquared2D() <= FMath::Square(StuckVelocityTolerance);
+
+	const bool bExpectedToMove =
+		Controller->GetMoveStatus() == EPathFollowingStatus::Moving;
+
+	if (!bOnNavMesh || (bExpectedToMove && bNearlyStopped && !bMovedEnough))
+	{
+		NavRecoveryElapsed += DeltaTime;
+	}
+	else
+	{
+		NavRecoveryElapsed = 0.0f;
+		LastObservedLocation = CurrentLocation;
+		return;
+	}
+
+	if (bMovedEnough)
+	{
+		LastObservedLocation = CurrentLocation;
+	}
+
+	if (NavRecoveryElapsed < NavRecoveryDelay)
+	{
+		return;
+	}
+
+	const FVector SearchOrigin =
+		bHasLastValidNavLocation ? LastValidNavLocation : bProjected ? ProjectedLocation.Location : CurrentLocation;
+
+	FNavLocation RecoveryLocation;
+	bool bFoundRecoveryLocation =
+		NavSystem->GetRandomReachablePointInRadius(SearchOrigin, RecoverySearchRadius, RecoveryLocation);
+
+	if (!bFoundRecoveryLocation && bProjected)
+	{
+		RecoveryLocation = ProjectedLocation;
+		bFoundRecoveryLocation = true;
+	}
+
+	if (!bFoundRecoveryLocation)
+	{
+		FNavLocation WideProjectedLocation;
+		if (NavSystem->ProjectPointToNavigation(CurrentLocation, WideProjectedLocation,
+		                                        FVector(2000.0f, 2000.0f, 1000.0f)))
+		{
+			bFoundRecoveryLocation =
+				NavSystem->GetRandomReachablePointInRadius(WideProjectedLocation.Location, RecoverySearchRadius,
+				                                           RecoveryLocation);
+
+			if (!bFoundRecoveryLocation)
+			{
+				RecoveryLocation = WideProjectedLocation;
+				bFoundRecoveryLocation = true;
+			}
+		}
+	}
+
+	if (bFoundRecoveryLocation)
+	{
+		const UCapsuleComponent* Capsule = Enemy->GetCapsuleComponent();
+		const float HalfHeight = Capsule ? Capsule->GetScaledCapsuleHalfHeight() : 88.0f;
+
+		Controller->StopMovement();
+		Movement->StopMovementImmediately();
+		Movement->SetMovementMode(MOVE_Walking);
+
+		Enemy->SetActorLocation(
+			RecoveryLocation.Location + FVector(0.0f, 0.0f, HalfHeight),
+			false,
+			nullptr,
+			ETeleportType::TeleportPhysics);
+	}
+
+	ResetNavigationRecovery();
+}
+
+void UNSEnemyMoveComponent::ResetNavigationRecovery()
+{
+	NavRecoveryElapsed = 0.0f;
+	bHasLastObservedLocation = false;
+	LastObservedLocation = FVector::ZeroVector;
+	bHasLastValidNavLocation = false;
+	LastValidNavLocation = FVector::ZeroVector;
 }
