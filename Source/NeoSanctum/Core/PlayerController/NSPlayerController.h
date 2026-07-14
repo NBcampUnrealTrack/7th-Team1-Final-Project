@@ -79,6 +79,10 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RunEnd")
 	void Server_CancelVote();
 	
+	// 서버 프리워밍 완료 시 각 클라에 로딩 게이트 오픈 통지
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyPrewarmReady();
+	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
 	void RequestEnterDeathSpectatorMode();
@@ -223,7 +227,7 @@ private:
 	void HandleRunEndPhaseChanged();
 
 	// Travel 호출 직전에 UIManager 로딩창을 띄움
-	void ShowTravelLoadingScreen();
+	void ShowTravelLoadingScreen(bool bIsInRunTravel);
 	// (이용호 추가) 로딩 스크린나올 때 인풋 제어용
 	void HandleTravelLoadingFinished();
 	// 로딩스크린 브로드캐스트 바인딩용
@@ -339,6 +343,7 @@ protected:
 	
 	// 클라이언트가 다른 맵/서버로 이동하기 직전에 호출되는 함수로, Loading창을 띄우는 시점을 관리하기 위해 가져왔음
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	bool IsInRunTravelURL(const FString& PendingURL) const;
 	virtual void SeamlessTravelTo(APlayerController* NewPC) override;
 	
 	virtual void SetupInputComponent() override;
