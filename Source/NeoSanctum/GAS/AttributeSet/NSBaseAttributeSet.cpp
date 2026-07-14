@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameplayEffectExtension.h"
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
 #include "NeoSanctum/Combat/HitReaction/NSHitReactionTypes.h"
@@ -214,6 +215,13 @@ void UNSBaseAttributeSet::NotifyDamageNumberFeedbackAfterHealthDamage(
 		TargetActor->FindComponentByClass<UNSHitReactionComponent>())
 	{
 		FeedbackContext.TargetType = HitReactionComponent->GetTargetType();
+	}
+
+	// 보스처럼 별도 피격 분류가 없는 Enemy Pawn도 Enemy로 분류.
+	if (FeedbackContext.TargetType == ENSHitFeedbackTargetType::Any &&
+		Cast<INSEnemyAgent>(TargetActor))
+	{
+		FeedbackContext.TargetType = ENSHitFeedbackTargetType::Enemy;
 	}
 
 	ViewerController->Client_PlayDamageNumberFeedback(FeedbackContext);
