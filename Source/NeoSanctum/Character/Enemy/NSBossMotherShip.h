@@ -147,6 +147,9 @@ private:
 	// 제어장치 1기 파괴 콜백. 생존 수 감소, 0이면 보스 무적 해제
 	void HandleControlDeviceDestroyed(ANSBossControlDevice* DestroyedDevice);
 
+	// [서버 전용] 소켓에서 디태치된 직후의 ControlDevice를 바닥으로 스냅. XY는 유지, Z만 트레이스로 교정.
+	void PlaceControlDeviceOnGround(ANSBossControlDevice* ControlDevice) const;
+	
 	// 보스 ASC에 State.Invincible LooseTag 부여(데미지 차단)
 	void ApplyBossInvincibility();
 
@@ -159,6 +162,16 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
 	TArray<FName> ControlDevicePartIds;
 
+	// 바닥 트레이스 최대 거리. 마더쉽이 높이 스폰되므로 FlyingLocomotion 기본값보다 길게 잡을 것.
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0"))
+	float ControlDeviceGroundTraceDistance = 5000.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	TEnumAsByte<ECollisionChannel> ControlDeviceGroundChannel = ECC_WorldStatic;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0", ClampMax = "80.0"))
+	float ControlDeviceMaxWalkableSlopeAngle = 50.f;
+	
 	// ---- Runtime ----
 	// 등록된 제어장치들 (파괴 후 자동 무효화되도록 WeakPtr)
 	UPROPERTY(Transient)

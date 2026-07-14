@@ -362,6 +362,9 @@ void ANSBossMotherShip::InitControlDevices()
 		ControlDevice->OnControlDeviceDestroyed.AddUObject(this, &ThisClass::HandleControlDeviceDestroyed);
 		
 		ControlDevice->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+		
+		// 서버 권위 바닥 스냅: 소켓 상대 배치가 만든 XY 레이아웃은 보존하고 Z만 지형에 맞게 교정
+		PlaceControlDeviceOnGround(ControlDevice);
 	}
 	
 	if (AliveControlDeviceCount > 0)
@@ -387,6 +390,42 @@ void ANSBossMotherShip::HandleControlDeviceDestroyed(ANSBossControlDevice* Destr
 		bControlDevicesCleared = true;
 		ClearBossInvincibility();
 	}
+}
+
+void ANSBossMotherShip::PlaceControlDeviceOnGround(ANSBossControlDevice* ControlDevice) const
+{
+	// 호출부(InitControlDevices)가 이미 HasAuthority() 가드를 통과한 상태에서만 여기 도달한다.
+	if (!ControlDevice) return;
+
+	const FVector CurrentLocation = ControlDevice->GetActorLocation();
+
+	// 바닥 스냅 전, 현재 피벗-바운드 관계를 먼저 캡처 (SetActorLocation으로 위치가 바뀌기 전에 계산해야 함)
+	const float PivotToBottomOffset = ControlDevice->GetPivotToMeshBottomOffset();
+
+	FHitResult Hit;
+	const bool bFoundGround = UNSFlyingLocomotionComponent::TraceGroundAtWorldLocation(
+		GetWorld(),
+		CurrentLocation,
+		ControlDeviceGroundTraceDistance,
+		ControlDeviceGroundChannel,
+		ControlDeviceMaxWalkableSlopeAngle,
+		ControlDevice,
+		Hit);
+
+	if (!bFoundGround)
+	{
+		// 트레이스 실패 폴백: 원래(소켓 상대) 위치를 그대로 유지하고 경고만 남김
+		UE_LOG(LogTemp, Warning, TEXT("[ControlDevice] %s 바닥 트레이스 실패, 원래 위치 유지"), *ControlDevice->GetName());
+		return;
+	}
+
+	// XY는 소켓/RelativeTransform이 만든 레이아웃 그대로, Z만 바닥+피벗오프셋으로 교정
+	const FVector GroundLocation(CurrentLocation.X, CurrentLocation.Y, Hit.ImpactPoint.Z + PivotToBottomOffset);
+
+	// 소켓 상대 회전에서 Yaw만 유지하고 Pitch/Roll은 버려 수평으로 앉힘
+	const FRotator LeveledRotation(0.f, ControlDevice->GetActorRotation().Yaw, 0.f);
+
+	ControlDevice->ApplyGroundPlacement(GroundLocation, LeveledRotation);
 }
 
 void ANSBossMotherShip::ApplyBossInvincibility()
