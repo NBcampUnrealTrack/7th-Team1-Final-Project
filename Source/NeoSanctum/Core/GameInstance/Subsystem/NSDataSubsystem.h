@@ -158,6 +158,8 @@ public:
 	UDataTable* GetCommonGoodsUIDataTable() const;
 	// 공통 UI 재화 테이블에서 태그에 해당하는 재화 표시 데이터를 찾음.
 	const FNSGoodsUIData* FindCommonGoodsUIDataByTag(const FGameplayTag& GoodsTag) const;
+	// 아웃런 목표 안내(웨이포인트) 텍스트 테이블
+	UDataTable* GetCommonGuideTextDataTable() const;
 
 	// 현재 프로젝트는 OutGameDataConfig를 하나만 운용.
 	// 여러 개가 등록되면 첫 번째 로드 에셋을 사용하므로 Asset Manager 등록/에셋 수를 1개로 유지해야 함.

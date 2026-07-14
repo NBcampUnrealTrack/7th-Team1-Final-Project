@@ -252,6 +252,12 @@ const FNSGoodsUIData* UNSDataSubsystem::FindCommonGoodsUIDataByTag(const FGamepl
 	return nullptr;
 }
 
+UDataTable* UNSDataSubsystem::GetCommonGuideTextDataTable() const
+{
+	const UNSCommonDataConfig* CommonDataConfig = GetCommonDataConfig();
+	return CommonDataConfig ? CommonDataConfig->GuideTextDataTable.Get() : nullptr;
+}
+
 const UNSOutGameDataConfig* UNSDataSubsystem::GetOutGameDataConfig() const
 {
 	const TArray<UNSOutGameDataConfig*> OutGameDataConfigs =

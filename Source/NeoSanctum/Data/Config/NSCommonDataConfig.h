@@ -125,4 +125,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
 		meta = (AssetBundles = "CommonUI"))
 	TSoftObjectPtr<UDataTable> MonsterUIDataTable;
+
+	// 아웃런 목표 안내(웨이포인트) 텍스트 테이블
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Common|UI",
+		meta = (AssetBundles = "CommonUI"))
+	TSoftObjectPtr<UDataTable> GuideTextDataTable;
 };
