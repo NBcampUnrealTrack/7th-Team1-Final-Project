@@ -60,4 +60,6 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Decal);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Cloaking);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase1Barrier);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase2Shield);
 }

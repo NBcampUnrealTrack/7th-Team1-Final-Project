@@ -162,6 +162,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
 	TArray<FName> ControlDevicePartIds;
 
+	// 1페이즈 무적 배리어 시각화 GameplayCue 태그 (ANSGameplayCueNotify_Sustainable 파생 BP에 매핑됨)
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	FGameplayTag Phase1BarrierCueTag;
+	
 	// 바닥 트레이스 최대 거리. 마더쉽이 높이 스폰되므로 FlyingLocomotion 기본값보다 길게 잡을 것.
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0"))
 	float ControlDeviceGroundTraceDistance = 5000.f;
@@ -204,6 +208,9 @@ private:
 
 	// 보스에게 Phase2 방어막 부여
 	void GrantBossShield();
+	
+	// [서버 전용, AttributeSet::OnOutOfShield 바인딩] Shield 0 도달 시 2페이즈 쉴드 큐 제거
+	void HandleBossOutOfShield();
 
 private:
 	// ---- Config ----
@@ -211,6 +218,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0"))
 	float Phase2ShieldAmount = 5000.f;
 
+	// 2페이즈 파괴 가능 쉴드 시각화 GameplayCue 태그
+	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition")
+	FGameplayTag Phase2ShieldCueTag;
+	
 	// 연출 종료 시 각 플레이어에게서 제거할 쉴드 비율 (0.7 = 70%)
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float PlayerShieldDrainRatio = 0.7f;

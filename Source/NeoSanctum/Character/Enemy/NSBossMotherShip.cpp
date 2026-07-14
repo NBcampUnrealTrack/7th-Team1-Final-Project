@@ -43,6 +43,11 @@ void ANSBossMotherShip::BeginPlay()
 	Super::BeginPlay();
 	if (!HasAuthority()) return;
 	
+	if (AttributeSet)
+	{
+		AttributeSet->OnOutOfShield.AddUObject(this, &ThisClass::HandleBossOutOfShield);
+	}
+	
 	if (PhaseComponent)
 	{
 		PhaseComponent->ResetPhaseState();
@@ -370,6 +375,14 @@ void ANSBossMotherShip::InitControlDevices()
 	if (AliveControlDeviceCount > 0)
 	{
 		ApplyBossInvincibility();
+		
+		// Minimal 복제 모드(NSEnemyPawnBase.cpp:42)의 보스 ASC는 평범한 AddGameplayCue로는
+		// 원격 클라에 복제되지 않음(ActiveGameplayCues는 Full 전용) → MinimalReplication 경로 사용.
+		// 서버 가드는 이미 InitControlDevices 최상단(HasAuthority)에서 통과됨.
+		if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
+		{
+			MotherShipASC->AddGameplayCue_MinimalReplication(Phase1BarrierCueTag);
+		}
 	}
 }
 
@@ -389,6 +402,12 @@ void ANSBossMotherShip::HandleControlDeviceDestroyed(ANSBossControlDevice* Destr
 	{
 		bControlDevicesCleared = true;
 		ClearBossInvincibility();
+		
+		// Add 때와 동일하게 Minimal 복제 경로로 제거해야 원격 클라에서도 사라짐
+		if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
+		{
+			MotherShipASC->RemoveGameplayCue_MinimalReplication(Phase1BarrierCueTag);
+		}
 	}
 }
 
@@ -486,6 +505,12 @@ void ANSBossMotherShip::CompletePhase2Transition()
 	// 보스 쉴드 추가
 	GrantBossShield();
 	
+	// Minimal 복제 모드이므로 반드시 MinimalReplication 경로로 큐 부여 (서버 가드는 함수 최상단에서 이미 통과)
+	if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
+	{
+		MotherShipASC->AddGameplayCue_MinimalReplication(Phase2ShieldCueTag);
+	}
+	
 	// 보스 무적 해제
 	ClearBossInvincibility();
 	
@@ -540,6 +565,21 @@ void ANSBossMotherShip::GrantBossShield()
 	if (!AttributeSet) return;
 	AttributeSet->SetMaxShield(Phase2ShieldAmount);
 	AttributeSet->SetShield(Phase2ShieldAmount);
+	
+	// 재고갈 시 OnOutOfShield가 다시 발동할 수 있도록 1회성 가드 리셋
+	AttributeSet->ResetOutOfShieldGuard();
+}
+
+void ANSBossMotherShip::HandleBossOutOfShield()
+{
+	// AttributeSet::OnOutOfShield는 서버(HandlePreHealthDamage)에서만 브로드캐스트되므로
+	// 이 콜백도 항상 서버에서만 실행됨. 별도 HasAuthority 체크 불필요하나 방어적으로 유지.
+	if (!HasAuthority()) return;
+
+	if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
+	{
+		MotherShipASC->RemoveGameplayCue_MinimalReplication(Phase2ShieldCueTag);
+	}
 }
 
 #pragma endregion
