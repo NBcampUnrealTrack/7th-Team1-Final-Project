@@ -6,6 +6,7 @@
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Core/Component/NSDeathSpectatorComponent.h"
+#include "NeoSanctum/Core/Component/NSPlayerAudioFlowComponent.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
@@ -65,6 +66,7 @@ ANSPlayerController::ANSPlayerController()
 	// 증강 선택 컴포넌트 생성
 	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
 	DeathSpectatorComponent = CreateDefaultSubobject<UNSDeathSpectatorComponent>(TEXT("DeathSpectatorComponent"));
+	PlayerAudioFlowComponent = CreateDefaultSubobject<UNSPlayerAudioFlowComponent>(TEXT("PlayerAudioFlowComponent"));
 }
 
 void ANSPlayerController::RequestReady()
@@ -495,6 +497,10 @@ void ANSPlayerController::BindRunDataConfig()
 	}
 	
 	CachedRunGameState = RunGameState;
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->BindRunGameState(RunGameState);
+	}
 	
 	RunGameState->OnRunDataConfigChanged.RemoveDynamic(this, &ThisClass::HandleRunDataConfigChanged);
 	RunGameState->OnRunDataConfigChanged.AddDynamic(this, &ThisClass::HandleRunDataConfigChanged);
@@ -1020,6 +1026,10 @@ void ANSPlayerController::BeginPlay()
 		UIManager->CreateTitle(this);
 		UIManager->ShowTitle();
 		UIManager->HideHUD();
+		if (PlayerAudioFlowComponent)
+		{
+			PlayerAudioFlowComponent->HandleTitleLevelReady();
+		}
 		
 		FInputModeUIOnly InputModeData;          
 		SetInputMode(InputModeData);            
@@ -1032,6 +1042,10 @@ void ANSPlayerController::BeginPlay()
 		UIManager->HideTitle();
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
+		if (PlayerAudioFlowComponent)
+		{
+			PlayerAudioFlowComponent->HandleOutRunLevelReady();
+		}
 
 		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
@@ -1183,6 +1197,10 @@ void ANSPlayerController::PreClientTravel(
 	const bool bIsInRun = IsInRunTravelURL(PendingURL);
 	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PreClientTravel URL=%s InRun=%d Seamless=%d"),
 		*PendingURL, bIsInRun ? 1 : 0, bIsSeamlessTravel ? 1 : 0);
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->HandlePreClientTravel();
+	}
 	ShowTravelLoadingScreen(bIsInRun);
 	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
 }
@@ -1500,6 +1518,11 @@ void ANSPlayerController::HandleClientRunDataReady()
 		UIManager->ShowHUD();
 		UIManager->ShowInRunGoods();
 		UIManager->MarkTravelLevelReady();
+	}
+
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->HandleClientRunDataReady();
 	}
 }
 

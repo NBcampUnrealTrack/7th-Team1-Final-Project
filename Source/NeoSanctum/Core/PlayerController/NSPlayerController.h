@@ -17,6 +17,7 @@ class UNSLevelConfig;
 class ANSPlayerCharacterBase;
 class ANSPlayerState;
 class UNSDeathSpectatorComponent;
+class UNSPlayerAudioFlowComponent;
 class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
@@ -327,6 +328,9 @@ private:
 	// 사망 관전자 전환 로직을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "NS|Spectator")
 	TObjectPtr<UNSDeathSpectatorComponent> DeathSpectatorComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "NS|Audio")
+	TObjectPtr<UNSPlayerAudioFlowComponent> PlayerAudioFlowComponent;
 
 	// 현재 열린 NPC 상호작용 위젯
 	UPROPERTY()
