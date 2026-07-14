@@ -21,6 +21,7 @@
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
@@ -1509,9 +1510,43 @@ void ANSPlayerController::ExitSpectatorAndRespawn()
 		UE_LOG(LogTemp, Warning, TEXT("폰 스폰 실패"));
 		return;
 	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (NSPlayerState)
+	{
+		// 새 캐릭터를 Possess하기 전에 서버의 사망 상태부터 정상 상태로 되돌림.
+		NSPlayerState->SetIsDead(false);
+
+		if (UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent())
+		{
+			// 사망 태그가 여러 번 들어갔더라도 부활 시점에는 0으로.
+			ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Dead, 0);
+		}
+	}
 	
 	Possess(NewPawn);
-	
+
+	if (ANSPlayerCharacterBase* NewPlayerCharacter = Cast<ANSPlayerCharacterBase>(NewPawn))
+	{
+		if (UAbilitySystemComponent* ASC = NewPlayerCharacter->GetAbilitySystemComponent())
+		{
+			const float CurrentShield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
+			const float MaxShield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+			if (MaxShield > 0.0f && CurrentShield + KINDA_SMALL_NUMBER < MaxShield)
+			{
+				// 사망 전에 남아 있던 재생이나 쿨다운이 있으면 먼저 정리.
+				FGameplayTagContainer RechargeTags;
+				RechargeTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				RechargeTags.AddTag(NSGameplayTags::State_Shield_RechargeCooldown);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargeTags);
+
+				// 기존 피격 처리와 같은 쿨다운 경로를 다시 시작.
+				NewPlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+			}
+		}
+	}
+
 	// 트래블 전 남아있던 회전값 초기화
 	ClientSetRotation(PlayerStartSpot->GetActorRotation(), true);
 	
@@ -1522,6 +1557,15 @@ void ANSPlayerController::Multicast_NotifyRespawn_Implementation()
 {
 	if (IsLocalController())
 	{
+		if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+		{
+			if (UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent())
+			{
+				// 사망 연출 때 클라이언트가 직접 추가한 태그도 같이 비워줌.
+				ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Dead, 0);
+			}
+		}
+
 		// 호스트 클라이언트 리스폰 처리용
 		if (GetPawn())
 		{
