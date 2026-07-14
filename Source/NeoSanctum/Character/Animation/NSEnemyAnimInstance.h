@@ -47,6 +47,26 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float LocalForwardSpeed = 0.0f;
+	
+	// 점프 시작 애니메이션을 재생할지
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	bool bShouldUseJumpState = false;
+
+	// 체공/낙하 루프 애니메이션을 재생할지
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	bool bShouldUseFallingState = false;
+
+	// 공중에 떠 있는 시간
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	float AirTime = 0.0f;
+
+	// 이 시간 이후에는 Jump 시작 모션에서 Falling 루프로 넘김
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
+	float FallingStateMinAirTime = 0.25f;
+
+	// 이 값 이하의 Z 속도면 낙하/체공 상태로 판단
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
+	float FallingStateVerticalVelocityThreshold = 0.0f;
 
 	// 이동 기준 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
