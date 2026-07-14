@@ -260,6 +260,11 @@ UHorizontalBox* UNSHUDWidget::GetBossMonsterLayer() const
 	return BossMonsterLayer;
 }
 
+UPanelWidget* UNSHUDWidget::GetPlayerWorldStatusLayer() const
+{
+	return PlayerWorldStatusLayer;
+}
+
 void UNSHUDWidget::RefreshHudDimBackground()
 {
 	if (!HudDimBackground)
