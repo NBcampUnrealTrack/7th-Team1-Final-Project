@@ -5,9 +5,9 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 #include "NeoSanctum/UI/Waypoint/NSWaypointMarkerWidget.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointSubsystem.h"
 
 void UNSWaypointContainerWidget::NativeConstruct()
 {

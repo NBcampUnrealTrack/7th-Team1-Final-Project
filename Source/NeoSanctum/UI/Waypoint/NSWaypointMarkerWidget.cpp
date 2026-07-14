@@ -6,7 +6,7 @@
 #include "Components/Image.h"
 #include "Engine/AssetManager.h"
 #include "Engine/Texture2D.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 
 void UNSWaypointMarkerWidget::InitializeMarker(UNSWaypointMarkerComponent* InMarker)
 {

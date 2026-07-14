@@ -1,9 +1,9 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 
 #include "Net/UnrealNetwork.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointSubsystem.h"
 
 UNSWaypointMarkerComponent::UNSWaypointMarkerComponent()
 {
@@ -26,7 +26,7 @@ void UNSWaypointMarkerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// 스폰 시점의 초기 상태(기본 true면 즉시 표시)를 레지스트리에 반영
+	// 스폰 시점의 초기 상태를 레지스트리에 반영
 	UpdateRegistration();
 }
 
@@ -64,9 +64,21 @@ void UNSWaypointMarkerComponent::SetMarkerActive(bool bNewActive)
 	UpdateRegistration();
 }
 
+void UNSWaypointMarkerComponent::SetMarkerActiveLocal(bool bNewActive)
+{
+	// 로컬 전용이므로 권한 확인 불필요 —> 호출한 머신에서만 반영
+	if (bMarkerActiveLocal == bNewActive)
+	{
+		return;
+	}
+
+	bMarkerActiveLocal = bNewActive;
+	UpdateRegistration();
+}
+
 void UNSWaypointMarkerComponent::OnRep_MarkerActive()
 {
-	// 접속자 클라: 서버가 바꾼 상태를 로컬 레지스트리에 반영
+	// 접속자 클라에서 서버가 바꾼 상태를 로컬 레지스트리에 반영
 	UpdateRegistration();
 }
 
@@ -84,7 +96,8 @@ void UNSWaypointMarkerComponent::UpdateRegistration()
 		return;
 	}
 
-	if (bMarkerActive)
+	// 복제 플래그(서버 구동)와 로컬 플래그(클라 구동) 중 하나라도 켜져 있으면 표시
+	if (bMarkerActive || bMarkerActiveLocal)
 	{
 		Subsystem->RegisterMarker(this);
 	}

@@ -2,6 +2,7 @@
 
 #include "NSGuideTextWidget.h"
 #include "CommonTextBlock.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 
 void UNSGuideTextWidget::NativeConstruct()
 {
@@ -9,6 +10,19 @@ void UNSGuideTextWidget::NativeConstruct()
 
 	// 안내 로직이 켜기 전까지 숨김
 	HideGuideText();
+	
+	/**
+	 * HUD는 트래블/리스폰마다 재생성(ClientRestart의 ClearHUD→CreateHUD)되므로
+	 * 표시 중이던 안내를 유실하지 않도록 서브시스템에서 현재 상태를 당겨옴
+	 */
+	if (UWorld* World = GetWorld())
+	{
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			World->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->RefreshGuideForHUD();
+		}
+	}
 }
 
 void UNSGuideTextWidget::ShowGuideText(const FText& InText)

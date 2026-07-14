@@ -1,8 +1,8 @@
 // Copyright 2026 One Team. All rights reserved.
 
-#include "NeoSanctum/UI/Waypoint/NSWaypointSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointSubsystem.h"
 
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 
 void UNSWaypointSubsystem::RegisterMarker(UNSWaypointMarkerComponent* Marker)
 {

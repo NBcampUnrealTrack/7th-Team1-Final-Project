@@ -23,16 +23,24 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 서버 권한에서 마커 표시 여부 토글 (BP 게임플레이 로직에서도 호출 가능)
+	// 서버 권한에서 마커 표시 여부 토글
 	UFUNCTION(BlueprintCallable, Category = "Waypoint")
 	void SetMarkerActive(bool bNewActive);
+
+	/**
+	 * 로컬(비복제) 마커 표시 토글
+	 * 플레이어별 안내(아웃런 콘솔/NPC)나 비복제 액터(보스 진입 볼륨)처럼
+	 * 리플리케이션을 타면 안 되는 경우에 사용. 호출한 머신에서만 반영됨
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Waypoint")
+	void SetMarkerActiveLocal(bool bNewActive);
 
 	// 마커 아이콘
 	const TSoftObjectPtr<UTexture2D>& GetMarkerIcon() const { return MarkerIcon; }
 
 	// 마커 표시 월드 위치 = 소유 액터 위치 + 오프셋
 	FVector GetMarkerWorldLocation() const;
-	
+
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
@@ -51,7 +59,10 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Waypoint")
 	FVector WorldOffset = FVector(0.f, 0.f, 50.f);
 
-	// 마커 표시 여부. 서버가 원본이고 OnRep으로 각 클라가 등록 상태를 갱신
+	// 마커 표시 여부, 서버가 원본이고 OnRep으로 각 클라가 등록 상태를 갱신
 	UPROPERTY(ReplicatedUsing = OnRep_MarkerActive, EditAnywhere, Category = "Waypoint")
 	bool bMarkerActive = true;
+
+	// 로컬 전용 표시 플래그 (복제 안 됨), 최종 표시는 bMarkerActive와 OR 판정
+	bool bMarkerActiveLocal = false;
 };
