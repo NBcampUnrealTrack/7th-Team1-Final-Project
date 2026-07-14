@@ -235,6 +235,41 @@ bool UNSFlyingLocomotionComponent::HasReachedLocation(const FVector& TargetLocat
 #pragma endregion
 
 #pragma region Altitude
+bool UNSFlyingLocomotionComponent::TraceGroundAtWorldLocation(const UWorld* World, const FVector& TraceStart,
+	float TraceDistance, ECollisionChannel Channel, float MaxWalkableSlopeAngleDeg, const AActor* IgnoreActor,
+	FHitResult& OutHit)
+{
+	if (!World) return false;
+
+	const FVector TraceEnd = TraceStart - FVector(0.f, 0.f, TraceDistance);
+
+	FCollisionQueryParams CollisionParams;
+	if (IgnoreActor)
+	{
+		CollisionParams.AddIgnoredActor(IgnoreActor);
+	}
+
+	if (!World->LineTraceSingleByChannel(OutHit, TraceStart, TraceEnd, Channel, CollisionParams))
+	{
+		return false;
+	}
+
+	// 지오메트리에 파고든 채 시작한 히트는 법선이 부정확 → 바닥으로 인정하지 않음
+	if (OutHit.bStartPenetrating)
+	{
+		return false;
+	}
+
+	// 아래로 쐈는데 걷기 불가능한 가파른 면(=벽/장애물 옆면)에 맞으면 바닥이 아님
+	const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngleDeg));
+	if (OutHit.ImpactNormal.Z < WalkableCosThreshold)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 {
 	// 서버 권한 및 오너 확보
@@ -283,33 +318,12 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	const APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return false;
 
-	// 시작/종료 위치 (아래 방향 라인 트레이스)
-	const FVector StartWorldLocation = WorldXY;
-	const FVector EndWorldLocation = WorldXY - FVector(0.f, 0.f, GroundTraceDistance);
-
-	// 트레이스 파라미터 설정 (오너 폰 무시)
 	FHitResult Hit;
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(OwnerPawn);
+	const bool bHit = TraceGroundAtWorldLocation(
+		GetWorld(), WorldXY, GroundTraceDistance, GroundChannel, MaxWalkableSlopeAngle, OwnerPawn, Hit);
 
-	if (!GetWorld()->LineTraceSingleByChannel(Hit, StartWorldLocation, EndWorldLocation, GroundChannel, CollisionParams))
-	{
-		return false;
-	}
+	if (!bHit) return false;
 
-	// 지오메트리에 파고든 채 시작한 히트는 법선이 부정확 → 바닥으로 인정하지 않음
-	if (Hit.bStartPenetrating)
-	{
-		return false;
-	}
-
-	// 아래로 쐈는데 걷기 불가능한 가파른 면(=벽/장애물 옆면)에 맞으면 바닥이 아님
-	const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngle));
-	if (Hit.ImpactNormal.Z < WalkableCosThreshold)
-	{
-		return false;
-	}
-	
 	OutZ = Hit.ImpactPoint.Z;
 	return true;
 }
