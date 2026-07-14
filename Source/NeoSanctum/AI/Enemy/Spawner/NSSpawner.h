@@ -65,6 +65,8 @@ public:
 	// 재활성화 시 새로 뽑지 않고, 살아남은 수만큼만 복원
 	UPROPERTY(EditAnywhere, Category = "SpawnerSet")
 	bool bPersistSurvivors = false;
+	
+	UDataTable* ResolveSpawnDataTable() const;
 
 private:
 	void ProcessSpawnProbability(UDataTable* SpawnTable);
@@ -72,7 +74,6 @@ private:
 	void OnLoadCompleted();
 	void ExecuteFinalSpawn();
 	
-	UDataTable* ResolveSpawnDataTable() const;
 	void RequestStageSpawnerTableLoad();
 	UFUNCTION()
 	void HandleStageSpawnerTablesReady();
