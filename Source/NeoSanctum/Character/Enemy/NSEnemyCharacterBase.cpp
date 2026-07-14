@@ -706,20 +706,45 @@ bool ANSEnemyCharacterBase::ExecuteNavLinkJump()
 		return false;
 	}
 
-	FVector LaunchVelocity = FVector::ZeroVector;
-	const bool bFoundVelocity =
-		UGameplayStatics::SuggestProjectileVelocity_CustomArc(
-			this,
-			LaunchVelocity,
-			GetActorLocation(),
-			NavLinkActorDestination,
-			Movement->GetGravityZ(),
-			0.5f);
-
-	if (!bFoundVelocity)
+	const float Gravity = FMath::Abs(Movement->GetGravityZ());
+	if (Gravity <= KINDA_SMALL_NUMBER)
 	{
 		return false;
 	}
+
+	const FVector StartLocation = GetActorLocation();
+	const FVector EndLocation = NavLinkActorDestination;
+
+	const float ApexZ =
+		FMath::Max(StartLocation.Z, EndLocation.Z) +
+		NavLinkJumpApexMargin;
+
+	const float UpHeight =
+		FMath::Max(ApexZ - StartLocation.Z, 1.0f);
+
+	const float DownHeight =
+		FMath::Max(ApexZ - EndLocation.Z, 1.0f);
+
+	const float VerticalSpeed =
+		FMath::Sqrt(2.0f * Gravity * UpHeight);
+
+	const float TimeUp =
+		VerticalSpeed / Gravity;
+
+	const float TimeDown =
+		FMath::Sqrt((2.0f * DownHeight) / Gravity);
+
+	const float TotalTime = TimeUp + TimeDown;
+	if (TotalTime <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	FVector HorizontalDelta = EndLocation - StartLocation;
+	HorizontalDelta.Z = 0.0f;
+
+	FVector LaunchVelocity = HorizontalDelta / TotalTime;
+	LaunchVelocity.Z = VerticalSpeed;
 
 	Movement->StopMovementImmediately();
 

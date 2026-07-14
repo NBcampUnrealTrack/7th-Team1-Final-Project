@@ -257,6 +257,10 @@ protected:
 	// NavLink 점프 전 회전을 기다릴 최대 시간 변수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|NavLink", meta = (ClampMin = "0.05"))
 	float NavLinkRotationTimeout = 0.7f;
+	
+	// NavLink 점프 포물선 최고점을 출발지/도착지 중 더 높은 위치보다 얼마나 위로 둘지 나타내는 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement|NavLink", meta = (ClampMin = "10.0"))
+	float NavLinkJumpApexMargin = 80.0f;
 
 private:
 	// NavLink 점프로 인한 착지인지 확인하는 변수
@@ -286,7 +290,7 @@ private:
 	// NavLink 회전 완료 후 실제 점프를 시작하는 함수
 	void StartNavLinkJumpAfterRotation();
 
-	// 저장된 NavLink 캡슐 중심 도착 위치로 LaunchCharacter를 실행하는 함수
+	// 저장된 NavLink 캡슐 중심 도착 위치로 제한된 최고점 포물선 LaunchCharacter를 실행하는 함수
 	bool ExecuteNavLinkJump();
 
 	// NavLink 착지 후 도착점 기준으로 위치와 이동 상태를 정리하는 함수
