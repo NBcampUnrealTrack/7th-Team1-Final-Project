@@ -22,6 +22,7 @@ class UNSMinimapWidget;
 class UNSDashStackWidget;
 class UHorizontalBox;
 class UPanelWidget;
+class UNSGuideTextWidget;
 
 
 /**
@@ -115,6 +116,13 @@ public:
 
 	// 보스 상태 위젯을 1:1 비율로 배치할 가로 패널을 반환하는 함수
 	virtual UHorizontalBox* GetBossMonsterLayer() const override;
+
+	// 우측 상단 목표 안내 텍스트 표시 (지속형 — HideGuideText 호출까지 유지)
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowGuideText(const FText& InText);
+	// 목표 안내 텍스트 숨김
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideGuideText();
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -167,6 +175,10 @@ private:
 	// 보스 상태 위젯을 1:1 비율로 배치하는 가로 패널 변수
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHorizontalBox> BossMonsterLayer;
+
+	// 우측 상단 목표 안내 텍스트 위젯 (WBP_HUD에서 배치, 없으면 안내 기능만 비활성)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSGuideTextWidget> GuideTextWidget;
 
 	void RefreshHudDimBackground();
 protected:
