@@ -296,9 +296,6 @@ void UNSHUDWidget::NativeConstruct()
 	{
 		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
-
-	// 안내 텍스트는 안내 로직이 켜기 전까지 숨김
-	HideGuideText();
 }
 
 void UNSHUDWidget::ShowGuideText(const FText& InText)
