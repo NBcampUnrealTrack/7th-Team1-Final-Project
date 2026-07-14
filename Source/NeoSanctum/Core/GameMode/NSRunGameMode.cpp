@@ -38,7 +38,7 @@
 #include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
 #include "NeoSanctum/Interaction/NPC/NSRescueNPC.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 
 
 

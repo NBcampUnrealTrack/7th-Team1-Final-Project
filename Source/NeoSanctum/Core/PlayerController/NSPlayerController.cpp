@@ -27,7 +27,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
-#include "NeoSanctum/UI/Waypoint/NSOutRunGuideSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"

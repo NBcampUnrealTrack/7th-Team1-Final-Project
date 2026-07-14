@@ -9,7 +9,7 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
-#include "NeoSanctum/UI/Waypoint/NSWaypointMarkerComponent.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 
 
 ANSBossEntryVolume::ANSBossEntryVolume()
