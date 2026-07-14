@@ -232,6 +232,13 @@ void UNSUIManagerSubsystem::MarkTravelViewReady()
 	TryFinishTravelLoading();
 }
 
+void UNSUIManagerSubsystem::MarkTravelPrewarmReady()
+{
+	bTravelPrewarmReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PrewarmReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
 void UNSUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 {
 	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PostLoadMap / World=%s / Active=%d"),
@@ -338,7 +345,7 @@ void UNSUIManagerSubsystem::TryFinishTravelLoading()
 		return;
 	}
 	
-	if (!bTravelPawnReady || !bTravelLevelReady || !bTravelViewReady)
+	if (!bTravelPawnReady || !bTravelLevelReady || !bTravelViewReady || !bTravelPrewarmReady)
 	{
 		return;
 	}
@@ -934,14 +941,28 @@ void UNSUIManagerSubsystem::ShowLoadingScreen()
 	}
 }
 
-void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer)
+void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer, bool bIsInRunTravel)
 {
-	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show / World=%s"), *GetNameSafe(GetWorld()));
+	const bool bWasActive = bTravelLoadingScreenActive;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show / World=%s / InRun=%d / WasActive=%d"),
+		*GetNameSafe(GetWorld()), bIsInRunTravel ? 1 : 0, bWasActive ? 1 : 0);
 	
 	bTravelLoadingScreenActive = true;
-	bTravelPawnReady = false;
-	bTravelLevelReady = false;
-	bTravelViewReady = false;
+	
+	if (!bWasActive)
+	{
+		// 이 트래블의 첫 Show → 게이트 초기화
+		bTravelPawnReady = false;
+		bTravelLevelReady = false;
+		bTravelViewReady = false;
+
+		bTravelPrewarmReady = !bIsInRunTravel;
+	}
+	else if (bIsInRunTravel)
+	{
+		bTravelPrewarmReady = false;
+	}
+	
 	CreateLoadingScreen(OwningPlayer);
 	ShowLoadingScreen();
 }
