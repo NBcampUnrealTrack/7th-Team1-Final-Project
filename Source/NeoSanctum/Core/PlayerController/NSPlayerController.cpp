@@ -1100,7 +1100,7 @@ void ANSPlayerController::GetPlayerViewPoint(FVector& Location, FRotator& Rotati
 	Super::GetPlayerViewPoint(Location, Rotation);
 }
 
-void ANSPlayerController::ShowTravelLoadingScreen()
+void ANSPlayerController::ShowTravelLoadingScreen(bool bIsInRunTravel)
 {
 	if (!IsLocalController())
 	{
@@ -1113,9 +1113,12 @@ void ANSPlayerController::ShowTravelLoadingScreen()
 		InputBlockedPawn = P;
 	}
 	
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show 호출: PreClientTravel(PC) NetMode=%d"),
+	GetWorld() ? (int32)GetWorld()->GetNetMode() : -1);
+	
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
-		UIManager->ShowTravelLoadingScreen(this);
+		UIManager->ShowTravelLoadingScreen(this, bIsInRunTravel);
 	}
 }
 
@@ -1177,8 +1180,38 @@ void ANSPlayerController::PreClientTravel(
 	bool bIsSeamlessTravel)
 {
 	// Travel 직전에 로컬 화면에 로딩창을 띄움
-	ShowTravelLoadingScreen();
+	const bool bIsInRun = IsInRunTravelURL(PendingURL);
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PreClientTravel URL=%s InRun=%d Seamless=%d"),
+		*PendingURL, bIsInRun ? 1 : 0, bIsSeamlessTravel ? 1 : 0);
+	ShowTravelLoadingScreen(bIsInRun);
 	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
+}
+
+bool ANSPlayerController::IsInRunTravelURL(const FString& PendingURL) const
+{
+	// 옵션 제거
+	FString PathPart = PendingURL;
+	int32 QuestionIdx;
+	if (PathPart.FindChar(TEXT('?'), QuestionIdx))
+	{
+		PathPart = PathPart.Left(QuestionIdx);
+	}
+
+	// 맵 이름만 추출
+	FString MapName = PathPart;
+	int32 SlashIdx;
+	if (MapName.FindLastChar(TEXT('/'), SlashIdx))
+	{
+		MapName = MapName.RightChop(SlashIdx + 1);
+	}
+
+	// 순수 맵 이름이 "Play"로 끝나는지
+	const bool bIsInRun = MapName.EndsWith(TEXT("Play"));
+
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] IsInRunTravelURL: URL=%s → MapName=%s → InRun=%d"),
+		*PendingURL, *MapName, bIsInRun ? 1 : 0);
+
+	return bIsInRun;
 }
 
 void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
@@ -1588,6 +1621,15 @@ void ANSPlayerController::Server_ConfirmVote_Implementation(ENSRunChoice Choice)
 	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
 	{
 		INSRunGameModeInterface::Execute_SubmitRunChoice(GameMode,this, Choice);
+	}
+}
+
+void ANSPlayerController::Client_NotifyPrewarmReady_Implementation()
+{
+	if (UNSUIManagerSubsystem* UIManager = 
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->MarkTravelPrewarmReady();
 	}
 }
 

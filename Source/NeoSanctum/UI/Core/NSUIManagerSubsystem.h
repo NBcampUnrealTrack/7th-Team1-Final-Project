@@ -107,7 +107,7 @@ public:
 	//(정주현 추가) Loading 위젯 전용
 	void CreateLoadingScreen(APlayerController* OwningPlayer);
 	void ShowLoadingScreen();
-	void ShowTravelLoadingScreen(APlayerController* OwningPlayer);
+	void ShowTravelLoadingScreen(APlayerController* OwningPlayer, bool bIsInRunTravel = false);
 	void RestoreTravelLoadingScreen(APlayerController* OwningPlayer);
 	void HideTravelLoadingScreen();
 	bool IsTravelLoadingScreenActive() const { return bTravelLoadingScreenActive; }
@@ -192,6 +192,7 @@ public:
 	void MarkTravelPawnReady();    // 실제 플레이어 캐릭터 빙의됨
 	void MarkTravelLevelReady();   // 도착 레벨용 데이터 로드 완료
 	void MarkTravelViewReady();
+	void MarkTravelPrewarmReady();
 	
 	// 트래블 중 새 월드가 로드될 때마다 로딩 위젯을 재확인
 	void HandlePostLoadMap(UWorld* LoadedWorld);
@@ -285,6 +286,7 @@ private:
 	bool bTravelPawnReady = false;
 	bool bTravelLevelReady = false;
 	bool bTravelViewReady = false;
+	bool bTravelPrewarmReady = false; 
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

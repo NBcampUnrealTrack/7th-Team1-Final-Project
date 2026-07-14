@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NSRunGameMode.generated.h"
 
+struct FStreamableHandle;
 class ANSDroppedPart;
 enum class ENSRunChoice : uint8;
 class UNSStageManager;
@@ -72,7 +73,7 @@ public:
 	// 스테이지 진입할 때 호출될 함수: 목표 랜덤 선택, 초기화
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void InitializeStage();
-	
+
 	void BeginReturnToHubTravel();
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
@@ -202,8 +203,8 @@ private:
 	// 전원을 PlayerBossStart%d로 이동
 	void TeleportAllPlayersToBossRoom();  
 	// 목표방 잔존 적 풀 반환
-	void ReturnStrayEnemiesToPool();          
-	
+	void ReturnStrayEnemiesToPool();
+
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;
 
@@ -229,4 +230,41 @@ private:
 	
 	UPROPERTY(Transient)
 	bool bReturnToHubTravelStarted = false;
+	
+#pragma region 로딩 때 풀링용
+	
+	void StartPrewarmFlow();
+	void TryStartPrewarm();
+	void TickPrewarmStep();
+	UFUNCTION()
+	void HandleStageSpawnerTablesReadyForPrewarm();
+	UFUNCTION()
+	void HandleRunDataReadyForPrewarm();
+	UFUNCTION()
+	void HandlePrewarmComplete();
+	int32 PrewarmRetryCount = 0;
+
+	// EnemyData 로드 완료 후 랭크별 배분
+	void HandlePrewarmDataLoaded(
+		TArray<TSoftObjectPtr<UNSEnemyData>> UniqueDatas,
+		TMap<TSoftObjectPtr<UNSEnemyData>,
+		TSoftClassPtr<APawn>> DataToClass);
+	void ForcePrewarmGateOpen();
+	
+	void OpenPrewarmGateForAll();
+
+	TSharedPtr<FStreamableHandle> PrewarmLoadHandle;
+	FTimerHandle PrewarmStepTimerHandle;
+	FTimerHandle PrewarmTimeoutHandle;
+
+	// 프리워밍 상한
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmNormalTotal = 190;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmEliteTotal = 10;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmPerTick = 10;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	float PrewarmTimeoutSeconds = 10.0f;  
+#pragma endregion 로딩 때 풀링용
 };
