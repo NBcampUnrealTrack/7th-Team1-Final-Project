@@ -29,6 +29,11 @@ public:
 	ENSStageObjectiveType GetObjectiveType() const { return CurrentObjective.Type; }
     int32 GetObjectiveCurrent() const { return ObjectiveProgress; }
     int32 GetObjectiveTarget() const;
+
+	// 목표가 초기화됐는지
+	bool IsObjectiveInitialized() const { return bObjectiveInitialized; }
+	// 구출 목표의 지정 대상 NPCId
+	FName GetTargetNPCId() const { return CurrentObjective.TargetNPCId; }
 	
 	const FText& GetObjectiveDescription() const
 	{

@@ -27,6 +27,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
@@ -1060,7 +1061,14 @@ void ANSPlayerController::BeginPlay()
 
 		// 클라이언트가 거점에 도착하면 거점용 OutGameData를 미리 준비
 		EnsureOutGameDataLoaded();
-			
+
+		// 아웃런 목표 안내 시작 (로컬 마커 + 우측 상단 텍스트)
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->StartGuide();
+		}
+
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
@@ -1829,6 +1837,13 @@ void ANSPlayerController::OpenInteractionWidget(ANSInteractableNPCBase* NPC)
 
 	ActiveInteractionWidget = Widget;
 	Widget->OpenForInteractor(this);
+
+	// 해금 NPC 첫 상호작용 → 안내 완료 처리
+	if (UNSOutRunGuideSubsystem* GuideSubsystem =
+		GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+	{
+		GuideSubsystem->NotifyNPCInteracted(NPC->GetNPCId());
+	}
 }
 
 void ANSPlayerController::CloseInteractionWidget()

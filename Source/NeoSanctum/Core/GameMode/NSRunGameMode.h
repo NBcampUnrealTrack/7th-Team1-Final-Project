@@ -78,6 +78,9 @@ public:
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
 
+	// 해당 구출 NPC가 현재 목표의 웨이포인트 마커 대상인지 판정
+	bool ShouldShowRescueMarker(FName InNPCId) const;
+
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 	
 	UPROPERTY(EditAnywhere, Category="RunEnd")
@@ -120,6 +123,9 @@ private:
 	
 	// 목표 풀에서 랜덤 선택 후 StageManager/GameState 초기화
 	void InitializeObjectiveInternal();
+
+	// 목표가 구출형이면 이미 스폰된 대상 RescueNPC들의 마커 활성화
+	void ActivateRescueMarkersIfNeeded();
 	
 	// 인런 데이터 준비 완료 후 목표를 초기화하기 위한 콜백
 	UFUNCTION()

@@ -10,11 +10,42 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "GameFramework/GameModeBase.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "NeoSanctum/Core/GameMode/NSRunGameMode.h"
+#include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
+
+ANSRescueNPC::ANSRescueNPC()
+{
+	// 목표 대상 NPC는 거리와 무관하게 모든 클라에 항상 리플리케이트돼야 웨이포인트 마커가 멀리서도 표시됨
+	bAlwaysRelevant = true;
+}
 
 void ANSRescueNPC::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ANSRescueNPC, bRescued);
+}
+
+void ANSRescueNPC::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// 스폰 순서 커버, 목표가 이미 구출형으로 초기화된 뒤 스폰된 경우 마커 켜기
+	// 반대 순서(목표 초기화가 나중)는 GameMode의 ActivateRescueMarkersIfNeeded가 커버
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSRunGameMode* RunGameMode =
+		GetWorld() ? GetWorld()->GetAuthGameMode<ANSRunGameMode>() : nullptr;
+	if (RunGameMode && RunGameMode->ShouldShowRescueMarker(NPCId))
+	{
+		if (UNSWaypointMarkerComponent* Marker =
+			FindComponentByClass<UNSWaypointMarkerComponent>())
+		{
+			Marker->SetMarkerActive(true);
+		}
+	}
 }
 
 bool ANSRescueNPC::CanInteract_Implementation(APlayerController* Interactor) const
@@ -45,8 +76,15 @@ bool ANSRescueNPC::OnInteract_Implementation(APlayerController* Interactor)
 	}
 	
 	// 중복 진입 차단
-	bRescued = true; 
+	bRescued = true;
 	ForceNetUpdate();
+
+	// 구출 완료 —> 모든 클라 화면에서 이 NPC 마커 제거
+	if (UNSWaypointMarkerComponent* Marker =
+		FindComponentByClass<UNSWaypointMarkerComponent>())
+	{
+		Marker->SetMarkerActive(false);
+	}
 
 	// 전체 공유: 접속 전원 순회하며 각자 본인 기준으로 분기
 	for (APlayerState* PS : RunGameState->PlayerArray)

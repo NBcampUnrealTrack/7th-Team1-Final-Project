@@ -17,6 +17,7 @@
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
 #include "NeoSanctum/UI/HUD/NSDashStackWidget.h"
+#include "NeoSanctum/UI/HUD/NSGuideTextWidget.h"
 
 
 void UNSHUDWidget::UpdateHealthAndShield(
@@ -295,6 +296,27 @@ void UNSHUDWidget::NativeConstruct()
 	{
 		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
+}
+
+void UNSHUDWidget::ShowGuideText(const FText& InText)
+{
+	// WBP에 GuideTextWidget이 배치되지 않았으면 안내 기능 없이 동작
+	if (!GuideTextWidget)
+	{
+		return;
+	}
+
+	GuideTextWidget->ShowGuideText(InText);
+}
+
+void UNSHUDWidget::HideGuideText()
+{
+	if (!GuideTextWidget)
+	{
+		return;
+	}
+
+	GuideTextWidget->HideGuideText();
 }
 
 void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
