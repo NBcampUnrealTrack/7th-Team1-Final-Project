@@ -652,9 +652,11 @@ FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
 	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(World, PartData.CurrentRarity);
 	if (UpgradeRow)
 	{
-		const float MinValue = FMath::Min(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-		const float MaxValue = FMath::Max(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-		PartData.CurrentValue = RandomStream.FRandRange(MinValue, MaxValue);
+		// 등급 품질(0~1) 롤 × 스탯 만점 = 최종 수치, 드롭 재현성 유지를 위해 RandomStream 사용
+		const float QualityMin = FMath::Min(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
+		const float QualityMax = FMath::Max(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
+		const float Quality = RandomStream.FRandRange(QualityMin, QualityMax);
+		PartData.CurrentValue = Quality * NSPartUtils::GetStatMaxValue(World, Pick->StatTag);
 	}
 	
 	return PartData;
