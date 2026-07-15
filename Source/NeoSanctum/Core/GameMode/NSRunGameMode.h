@@ -33,6 +33,8 @@ public:
 	ANSRunGameMode();
 
 	virtual void BeginPlay() override;
+	virtual void PreLogin(const FString& Options, const FString& Address,
+	  const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
 	// 인터페이스 구현부 오버라이드
 	virtual void NotifyStageCleared_Implementation() override;
@@ -204,6 +206,9 @@ private:
 	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
 	void HandleEnemyExperience(AActor* DeadEnemy);
 	
+	// 플레이어 생존 or 탈주 계산용 헬퍼 함수
+	bool AreAllPlayersDeadOrGone() const;
+	void CheckRunEndAfterLogout();
 	// PlayerArray 내 위치로 이 플레이어의 고정 슬롯 인덱스 결정해주는 헬퍼 함수
 	int32 GetPlayerSlotIndex(AController* Player) const;
 	// 전원을 PlayerBossStart%d로 이동
