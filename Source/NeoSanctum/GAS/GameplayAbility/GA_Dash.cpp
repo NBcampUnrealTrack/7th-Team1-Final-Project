@@ -26,6 +26,7 @@ UGA_Dash::UGA_Dash()
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 }
 
 void UGA_Dash::ActivateAbility(
