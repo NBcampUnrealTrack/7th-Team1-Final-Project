@@ -2,6 +2,7 @@
 
 #include "NSVanguardBarrierFieldProjectile.h"
 
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSVanguardBarrierField.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
@@ -42,6 +43,8 @@ void ANSVanguardBarrierFieldProjectile::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	UpdateVisualRoll(DeltaSeconds);
+
 	if (!HasAuthority() || bFieldDeployed)
 	{
 		return;
@@ -59,6 +62,17 @@ void ANSVanguardBarrierFieldProjectile::Tick(float DeltaSeconds)
 		// 충돌하지 않은 경우 최대 사거리 지점에 설치
 		DeployField(GetActorLocation(), DeployNormal.IsNearlyZero() ? FVector::UpVector : DeployNormal);
 	}
+}
+
+void ANSVanguardBarrierFieldProjectile::UpdateVisualRoll(float DeltaSeconds) const
+{
+	UStaticMeshComponent* VisualMeshComponent = GetMeshComponent();
+	if (!VisualMeshComponent || FMath::IsNearlyZero(VisualRollSpeed))
+	{
+		return;
+	}
+
+	VisualMeshComponent->AddLocalRotation(FRotator(0.0f, 0.0f, VisualRollSpeed * DeltaSeconds));
 }
 
 void ANSVanguardBarrierFieldProjectile::OnProjectileStopped(const FHitResult& ImpactResult)

@@ -27,6 +27,8 @@ protected:
 	virtual void Tick(float DeltaSeconds) override;
 
 private:
+	void UpdateVisualRoll(float DeltaSeconds) const;
+
 	UFUNCTION()
 	void OnProjectileStopped(const FHitResult& ImpactResult);
 
@@ -52,4 +54,8 @@ private:
 	FVector StartLocation = FVector::ZeroVector;
 	// 중복 설치 방지 플래그
 	bool bFieldDeployed = false;
+
+	// 투척 중 메쉬 Roll 회전 속도
+	UPROPERTY(EditDefaultsOnly, Category = "BarrierFieldProjectile|Visual")
+	float VisualRollSpeed = 1440.0f;
 };
