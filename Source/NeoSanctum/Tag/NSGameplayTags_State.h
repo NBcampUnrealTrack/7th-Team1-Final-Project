@@ -16,6 +16,8 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Input_BlockInputMove);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_Attacking);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_Guarding);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_Flickering);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_AirSlamming);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_BarrierAttackWindow);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ChargingDashAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ComboInputWindow);
