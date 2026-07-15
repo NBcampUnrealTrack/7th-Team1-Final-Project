@@ -16,6 +16,7 @@
 #include "NeoSanctum/Combat/Projectile/NSGrenade.h"
 #include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
 #include "NeoSanctum/Combat/Projectile/NSTurretSpawner.h"
+#include "NeoSanctum/Combat/Projectile/NSVanguardBarrierFieldProjectile.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
@@ -386,6 +387,16 @@ void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 			if (ANSTurretSpawner* TurretSpawner = Cast<ANSTurretSpawner>(Projectile))
 			{
 				TurretSpawner->InitializeTurretSpawner(ProjectileAbilityConfig.TurretSpawnerTypeConfig);
+			}
+		}
+		else if (ProjectileAbilityConfig.ProjectileType == EProjectileType::BarrierField)
+		{
+			if (ANSVanguardBarrierFieldProjectile* BarrierFieldProjectile =
+				Cast<ANSVanguardBarrierFieldProjectile>(Projectile))
+			{
+				BarrierFieldProjectile->InitializeBarrierFieldProjectile(
+					ProjectileAbilityConfig.ShieldFieldTypeConfig
+				);
 			}
 		}
 	}

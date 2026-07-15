@@ -16,12 +16,14 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class ANSThrowProjectileBase;
 class ANSTurret;
+class ANSVanguardBarrierField;
 
 UENUM(BlueprintType)
 enum class EProjectileType : uint8
 {
 	Explosive,
-	TurretSpawner
+	TurretSpawner,
+	BarrierField
 };
 
 USTRUCT(BlueprintType)
@@ -99,6 +101,21 @@ struct FNSTurretSpawnerTypeConfig
 };
 
 USTRUCT(BlueprintType)
+struct FNSShieldFieldTypeConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField")
+	TSubclassOf<ANSVanguardBarrierField> FieldClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField|Damage")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField|Attribute")
+	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
+};
+
+USTRUCT(BlueprintType)
 struct FNSProjectileAbilityConfig
 {
 	GENERATED_BODY()
@@ -120,6 +137,10 @@ struct FNSProjectileAbilityConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|TurretSpawner",
 		meta = (EditCondition = "ProjectileType == EProjectileType::TurretSpawner", EditConditionHides))
 	FNSTurretSpawnerTypeConfig TurretSpawnerTypeConfig;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|ShieldField",
+		meta = (EditCondition = "ProjectileType == EProjectileType::BarrierField", EditConditionHides))
+	FNSShieldFieldTypeConfig ShieldFieldTypeConfig;
 
 	// CombatStat 값을 GameplayEffect SetByCaller 값으로 넘기기 위한 매핑
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|SetByCaller")
