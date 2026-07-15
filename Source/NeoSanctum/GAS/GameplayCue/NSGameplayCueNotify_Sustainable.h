@@ -109,6 +109,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	ENSGameplayCueSpawnMode VFXSpawnMode = ENSGameplayCueSpawnMode::Location;
 
+	// OnRemove 시 루프 VFX 정리 방식.
+	// false(기본)=Deactivate로 자연 소멸(기존 큐 동작 유지)
+	// true=즉시 제거(무한/장수명 파티클 돔처럼 Deactivate로 안 사라지는 것)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	bool bDeactivateLoopVFXImmediately = false;
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX", meta = (ClampMin = "0.0"))
 	float VFXScaleMultiplier = 1.0f;
 

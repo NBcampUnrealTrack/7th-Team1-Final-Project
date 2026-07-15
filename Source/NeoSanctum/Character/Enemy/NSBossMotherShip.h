@@ -147,6 +147,9 @@ private:
 	// 제어장치 1기 파괴 콜백. 생존 수 감소, 0이면 보스 무적 해제
 	void HandleControlDeviceDestroyed(ANSBossControlDevice* DestroyedDevice);
 
+	// [서버 전용] 소켓에서 디태치된 직후의 ControlDevice를 바닥으로 스냅. XY는 유지, Z만 트레이스로 교정.
+	void PlaceControlDeviceOnGround(ANSBossControlDevice* ControlDevice) const;
+	
 	// 보스 ASC에 State.Invincible LooseTag 부여(데미지 차단)
 	void ApplyBossInvincibility();
 
@@ -159,6 +162,20 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
 	TArray<FName> ControlDevicePartIds;
 
+	// 1페이즈 무적 배리어 시각화 GameplayCue 태그 (ANSGameplayCueNotify_Sustainable 파생 BP에 매핑됨)
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	FGameplayTag Phase1BarrierCueTag;
+	
+	// 바닥 트레이스 최대 거리. 마더쉽이 높이 스폰되므로 FlyingLocomotion 기본값보다 길게 잡을 것.
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0"))
+	float ControlDeviceGroundTraceDistance = 5000.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	TEnumAsByte<ECollisionChannel> ControlDeviceGroundChannel = ECC_WorldStatic;
+
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0", ClampMax = "80.0"))
+	float ControlDeviceMaxWalkableSlopeAngle = 50.f;
+	
 	// ---- Runtime ----
 	// 등록된 제어장치들 (파괴 후 자동 무효화되도록 WeakPtr)
 	UPROPERTY(Transient)
@@ -191,6 +208,9 @@ private:
 
 	// 보스에게 Phase2 방어막 부여
 	void GrantBossShield();
+	
+	// [서버 전용, AttributeSet::OnOutOfShield 바인딩] Shield 0 도달 시 2페이즈 쉴드 큐 제거
+	void HandleBossOutOfShield();
 
 private:
 	// ---- Config ----
@@ -198,6 +218,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0"))
 	float Phase2ShieldAmount = 5000.f;
 
+	// 2페이즈 파괴 가능 쉴드 시각화 GameplayCue 태그
+	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition")
+	FGameplayTag Phase2ShieldCueTag;
+	
 	// 연출 종료 시 각 플레이어에게서 제거할 쉴드 비율 (0.7 = 70%)
 	UPROPERTY(EditDefaultsOnly, Category = "PhaseTransition", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float PlayerShieldDrainRatio = 0.7f;

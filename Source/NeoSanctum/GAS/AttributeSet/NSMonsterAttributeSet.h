@@ -8,6 +8,8 @@
 
 class UNSEnemyStateComponent;
 
+DECLARE_MULTICAST_DELEGATE(FOnOutOfShield);
+
 /**
  * 몬스터 전용 AttributeSet
  */
@@ -114,6 +116,10 @@ private:
 
 	// @민재 : 보스 쉴드 로직을 위한 임시 쉴드 옵션추가
 public:
+	// 델리게이트 
+	FOnOutOfShield OnOutOfShield;
+	
+public:
 	// TODO(refactor): 현재는 보스만 사용. 향후 UNSBossAttributeSet로 분리 예정 — 아래 Shield 블록만 이전하면 됨
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Shield, Category = "GAS|Monster|Shield")
 	FGameplayAttributeData Shield;
@@ -122,6 +128,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxShield, Category = "GAS|Monster|Shield")
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UNSMonsterAttributeSet, MaxShield);
+	
+	// Shield가 다시 0 초과로 부여될 때(GrantBossShield) bOutOfShield 가드를 리셋 — ResetHitGauge()와 동일 패턴
+	void ResetOutOfShieldGuard();
 
 protected:
 	// Health 차감 전 Shield로 데미지를 흡수 (MaxShield=0인 일반 몬스터는 즉시 통과)
@@ -132,4 +141,7 @@ private:
 	void OnRep_Shield(const FGameplayAttributeData& OldShield);
 	UFUNCTION()
 	void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
+	
+private:
+	bool bOutOfShield = false;
 };

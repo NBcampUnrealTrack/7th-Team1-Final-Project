@@ -83,6 +83,17 @@ public:
 	// @민재 : 유지 고도 오프셋을 직접 갱신. 보스 회피 서비스의 상승/하강 선택 시 사용
 	void SetAltitude(float NewAltitude) { Altitude = NewAltitude; }
 	
+	// @공유 헬퍼: 오너 폰/로코모션 컴포넌트 없이도 호출 가능한 정적 버전.
+	// ControlDevice 같은 비-Pawn 액터의 바닥 스냅에서 재사용하기 위해 TraceGroundAt의 코어 로직만 추출.
+	static bool TraceGroundAtWorldLocation(
+		const UWorld* World,
+		const FVector& TraceStart,
+		float TraceDistance,
+		ECollisionChannel Channel,
+		float MaxWalkableSlopeAngleDeg,
+		const AActor* IgnoreActor,
+		FHitResult& OutHit);
+	
 protected:
 	// @민재 : 고도 유지 로직. 지형 샘플 → 목표 높이 스무딩 → Z 입력 적용
 	void MaintainAltitude(float DeltaSeconds);

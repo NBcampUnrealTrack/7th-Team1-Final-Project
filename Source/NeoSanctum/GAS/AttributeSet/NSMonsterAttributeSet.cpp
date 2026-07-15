@@ -324,9 +324,20 @@ float UNSMonsterAttributeSet::HandlePreHealthDamage(float DamageAmount, const FG
 
 	SetShield(CurrentShield - AbsorbedDamage);
 
+	if (!bOutOfShield && GetShield() <= 0.0f)
+	{
+		bOutOfShield = true;
+		OnOutOfShield.Broadcast();
+	}
+	
 	NotifyHitReaction(Data, ENSHitReactionDamageLayer::Shield, AbsorbedDamage, false);
 
 	return DamageAmount - AbsorbedDamage;
+}
+
+void UNSMonsterAttributeSet::ResetOutOfShieldGuard()
+{
+	bOutOfShield = false;
 }
 
 void UNSMonsterAttributeSet::OnRep_Shield(const FGameplayAttributeData& OldShield)
