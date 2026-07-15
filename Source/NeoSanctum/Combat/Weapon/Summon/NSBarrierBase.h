@@ -30,6 +30,7 @@ public:
 	ANSBarrierBase();
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual FGenericTeamId GetGenericTeamId() const override
 	{
 		return FGenericTeamId(static_cast<uint8>(ETeamId::Player));
@@ -52,6 +53,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+	UFUNCTION()
+	void OnRep_CurrentRadius();
 
 	void InitializeBarrierCollisionComponent(UShapeComponent* InBarrierCollisionComponent);
 
@@ -95,7 +99,7 @@ protected:
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 	
-	UPROPERTY(Transient)
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_CurrentRadius)
 	float CurrentRadius = 150.0f;
 
 private:

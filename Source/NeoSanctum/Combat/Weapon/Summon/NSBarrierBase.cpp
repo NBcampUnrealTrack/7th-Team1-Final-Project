@@ -10,6 +10,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+#include "Net/UnrealNetwork.h"
 
 ANSBarrierBase::ANSBarrierBase()
 {
@@ -40,6 +41,13 @@ ANSBarrierBase::ANSBarrierBase()
 UAbilitySystemComponent* ANSBarrierBase::GetAbilitySystemComponent() const
 {
 	return ASC;
+}
+
+void ANSBarrierBase::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ANSBarrierBase, CurrentRadius);
 }
 
 void ANSBarrierBase::InitializeBarrier(
@@ -92,6 +100,12 @@ void ANSBarrierBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	GetWorldTimerManager().ClearTimer(DurationTimerHandle);
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void ANSBarrierBase::OnRep_CurrentRadius()
+{
+	ApplyCollisionRadius(CurrentRadius);
+	ApplyVisualRadius(CurrentRadius);
 }
 
 void ANSBarrierBase::InitializeBarrierCollisionComponent(UShapeComponent* InBarrierCollisionComponent)
