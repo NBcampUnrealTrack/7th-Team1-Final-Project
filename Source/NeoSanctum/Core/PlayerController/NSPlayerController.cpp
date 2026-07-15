@@ -1723,21 +1723,18 @@ void ANSPlayerController::ToggleAugmentationPanel()
 		return;
 	}
 
-	if (UIManager->IsAugmentationPanelOpen())
+	if (UIManager->IsFullAugmentationPanelOpen())
 	{
-		// 열려있으면 닫음 (토글)
 		UIManager->CloseAugmentationPanel();
 	}
 	else
 	{
-		// 증강 선택창을 열 때 파츠 인벤토리는 닫는다.
 		if (UIManager->IsPartPanelOpen())
 		{
 			UIManager->ClosePartPanel();
 		}
-
 		UIManager->OpenAugmentationPanel();
-
+		
 		if (AugmentSelectionComponent)
 		{
 			AugmentSelectionComponent->Server_OpenPanel();
