@@ -441,6 +441,11 @@ void ANSEnemyCharacterBase::PrepareForReuse(
 	{
 		StateComponent->ResetForReuse();
 	}
+	
+	if (MinimapIconComponent)
+	{
+		MinimapIconComponent->SetShowOnMinimap(true);
+	}
 
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
@@ -523,6 +528,11 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	if (DamageFlashComponent)
 	{
 		DamageFlashComponent->CancelFlash();
+	}
+	
+	if (MinimapIconComponent)
+	{
+		MinimapIconComponent->SetShowOnMinimap(false);
 	}
 
 	SetActorHiddenInGame(true);
