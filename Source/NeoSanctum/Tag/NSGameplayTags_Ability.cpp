@@ -26,6 +26,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_BaseAttack, "Ability.Vanguard.BaseAttack");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Flicker, "Ability.Vanguard.Flicker");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_Guard, "Ability.Vanguard.Guard");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_ThrowBarrierField, "Ability.Vanguard.ThrowBarrierField");
 	UE_DEFINE_GAMEPLAY_TAG(Ability_Vanguard_VanguardBuff, "Ability.Vanguard.VanguardBuff");
 	
 	// Engineer Ability Event Tags
