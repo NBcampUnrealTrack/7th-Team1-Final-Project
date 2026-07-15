@@ -137,10 +137,10 @@ private:
 	// DamageCoefficient 기반 최종 데미지 계산
 	bool TryGetFinalDamage(float& OutDamage) const;
 
-	// Dashing 상태 태그 부여
-	void AddDashingState();
-	// Dashing 상태 태그 제거
-	void RemoveDashingState();
+	// Flicker 진행 상태 태그 부여
+	void AddFlickeringState();
+	// Flicker 진행 상태 태그 제거
+	void RemoveFlickeringState();
 	void AddFlickerGameplayCue();
 	void RemoveFlickerGameplayCue();
 
@@ -191,10 +191,6 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker|Cue")
 	FGameplayTag FlickerGameplayCueTag;
-
-	// 돌진 중 State.Dashing 태그 사용 여부
-	UPROPERTY(EditDefaultsOnly, Category = "GAS|Flicker")
-	bool bUseDashingStateTag = true;
 
 	// 공격 위치 이동 AbilityTask
 	UPROPERTY()
