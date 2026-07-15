@@ -36,6 +36,8 @@ void UGA_Dash::ActivateAbility(
 	const FGameplayEventData* TriggerEventData
 )
 {
+	bInvincibilityStateAdded = false;
+
 	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -104,6 +106,8 @@ void UGA_Dash::ActivateAbility(
 	if (ASC)
 	{
 		ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+		bInvincibilityStateAdded = true;
 
 		// 대쉬 성공 시 Vanguard 기본공격 중단
 		FGameplayTagContainer CancelTags;
@@ -157,6 +161,11 @@ void UGA_Dash::EndAbility(
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
+		if (bInvincibilityStateAdded)
+		{
+			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+			bInvincibilityStateAdded = false;
+		}
 		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Common_Dash);
 	}
 

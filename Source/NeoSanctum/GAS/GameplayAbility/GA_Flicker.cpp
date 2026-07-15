@@ -51,6 +51,7 @@ void UGA_Flicker::ActivateAbility(
 	bReleaseRequested = false;
 	bDashStarted = false;
 	bCurrentTargetDamageApplied = false;
+	bInvincibilityStateAdded = false;
 	PreviousMovementMode.Reset();
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
@@ -67,6 +68,8 @@ void UGA_Flicker::ActivateAbility(
 
 	// Flicker Ability 전체 수명 동안 이동 입력 차단
 	AddFlickeringState();
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+	bInvincibilityStateAdded = true;
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 
 	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
@@ -170,6 +173,11 @@ void UGA_Flicker::EndAbility(
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
+		if (bInvincibilityStateAdded)
+		{
+			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+			bInvincibilityStateAdded = false;
+		}
 
 		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
 		{

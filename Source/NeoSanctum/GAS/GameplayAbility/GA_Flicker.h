@@ -215,6 +215,7 @@ private:
 	// 돌진 시작 여부
 	bool bDashStarted = false;
 	bool bFlickerGameplayCueAdded = false;
+	bool bInvincibilityStateAdded = false;
 	// 현재 타겟 데미지 적용 여부
 	bool bCurrentTargetDamageApplied = false;
 	// 직전 Trace Tick의 무기 소켓 위치 목록
