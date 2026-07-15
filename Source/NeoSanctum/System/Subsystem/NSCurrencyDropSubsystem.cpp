@@ -39,9 +39,116 @@ void UNSCurrencyDropSubsystem::RegisterProxy(ANSCurrencyReplicationProxy* Proxy)
 
 void UNSCurrencyDropSubsystem::UnregisterProxy(ANSCurrencyReplicationProxy* Proxy)
 {
+	ProxyViewPlayerState.Remove(TWeakObjectPtr<ANSCurrencyReplicationProxy>{Proxy});
+
 	Proxies.Remove(Proxy);
 }
 
+void UNSCurrencyDropSubsystem::SetProxyViewPlayerState(
+	APlayerController* ViewerController, ANSPlayerState* ViewPlayerState)
+{
+	if (!HasServerAuthority() || !IsValid(ViewerController))
+	{
+		return;
+	}
+
+	ANSCurrencyReplicationProxy* Proxy = FindProxy(ViewerController->GetPlayerState<ANSPlayerState>());
+
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	const TWeakObjectPtr<ANSCurrencyReplicationProxy> ProxyKey{Proxy};
+
+	if (IsValid(ViewPlayerState))
+	{
+		ProxyViewPlayerState.Add(ProxyKey, ViewPlayerState);
+	}
+	else
+	{
+		// 관전이 끝나면 다시 본인 기준으로 보여줌.
+		ProxyViewPlayerState.Remove(ProxyKey);
+	}
+
+	SyncProxyCurrencyVisuals(Proxy);
+}
+
+ANSPlayerState* UNSCurrencyDropSubsystem::ResolveProxyViewPlayerState(ANSCurrencyReplicationProxy* Proxy) const
+{
+	if (!IsValid(Proxy))
+	{
+		return nullptr;
+	}
+
+	const TWeakObjectPtr<ANSCurrencyReplicationProxy> ProxyKey{Proxy};
+
+	if (const TWeakObjectPtr<ANSPlayerState>* ViewPlayerState = ProxyViewPlayerState.Find(ProxyKey))
+	{
+		if (ANSPlayerState* ResolvePlayerState = ViewPlayerState->Get())
+		{
+			return ResolvePlayerState;
+		}
+	}
+
+	const APlayerController* OwnerController = Cast<APlayerController>(Proxy->GetOwner());
+
+	return OwnerController ? Cast<ANSPlayerState>(OwnerController->PlayerState) : nullptr;
+}
+
+void UNSCurrencyDropSubsystem::SyncProxyCurrencyVisuals(ANSCurrencyReplicationProxy* Proxy)
+{
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	RemoveExpiredDrops();
+
+	ANSPlayerState* ViewPlayerState = ResolveProxyViewPlayerState(Proxy);
+
+	if (!IsValid(ViewPlayerState))
+	{
+		return;
+	}
+
+	const float Now = GetWorldSeconds();
+
+	for (const TPair<int32, FNSCurrencyDropEntry>& Pair : ActiveDrops)
+	{
+		const int32 DropId = Pair.Key;
+		const FNSCurrencyDropEntry& Entry = Pair.Value;
+
+		if (Entry.CollectedPlayer.Contains(ViewPlayerState))
+		{
+			Proxy->SendRemoveEvent(DropId);
+			continue;
+		}
+
+		// 이전 관전 대상이 이미 주워서 제거했던 재화라면 다시 만들어줌.
+		Proxy->SendSpawnEvent(MakeSpawnEvent(DropId, Entry, Now));
+		Proxy->SendRestoreEvent(DropId);
+	}
+}
+
+void UNSCurrencyDropSubsystem::NotifyCurrencyCollected(int32 DropId, ANSPlayerState* Collector)
+{
+	if (!IsValid(Collector))
+	{
+		return;
+	}
+
+	for (const TWeakObjectPtr<ANSCurrencyReplicationProxy>& WeakProxy : Proxies)
+	{
+		ANSCurrencyReplicationProxy* Proxy = WeakProxy.Get();
+
+		// 획득한 플레이어 본인과 그 플레이어를 보는 관전자 화면에서 치워줌.
+		if (Proxy && ResolveProxyViewPlayerState(Proxy) == Collector)
+		{
+			Proxy->SendRemoveEvent(DropId);
+		}
+	}
+}
 
 int32 UNSCurrencyDropSubsystem::RegisterDrop(
 	FGameplayTag CurrencyType,
@@ -143,11 +250,8 @@ bool UNSCurrencyDropSubsystem::TryCollect(int32 DropId, ANSPlayerState* Collecto
 	
 	// 주운 플레이어에 등록
 	Entry->CollectedPlayer.Add(Collector);
-	// 플레이어 화면에서 삭제
-	if (ANSCurrencyReplicationProxy* Proxy = FindProxy(Collector))
-	{
-		Proxy->SendRemoveEvent(DropId);
-	}
+	// 획득자와 획득자를 보고 있는 관전자 모두에게 알려줌.
+	NotifyCurrencyCollected(DropId, Collector);
 	
 	return true;
 }
@@ -298,11 +402,8 @@ bool UNSCurrencyDropSubsystem::TryCollectByCompanion(int32 DropId, ANSPlayerStat
 	}
 	
 	Entry->CollectedPlayer.Add(CompanionOwnerPS);
-	
-	if (ANSCurrencyReplicationProxy* Proxy = FindProxy(CompanionOwnerPS))
-	{
-		Proxy->SendRemoveEvent(DropId);
-	}
+
+	NotifyCurrencyCollected(DropId, CompanionOwnerPS);
 	
 	return true;
 }

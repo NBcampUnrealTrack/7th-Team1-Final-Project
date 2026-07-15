@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 
 UNSDeathSpectatorComponent::UNSDeathSpectatorComponent()
@@ -116,6 +117,17 @@ bool UNSDeathSpectatorComponent::HandleClientRestart(APawn* NewPawn)
 void UNSDeathSpectatorComponent::ClearSpectatorState()
 {
 	ClearDeathSpectatorModeTimer();
+
+	ANSPlayerController* OwnerPlayerController = GetOwnerPlayerController();
+	if (OwnerPlayerController && OwnerPlayerController->HasAuthority())
+	{
+		if (UNSCurrencyDropSubsystem* CurrencyDrop = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>())
+		{
+			// 관전이 끝났으니 다시 본인 재화 상태를 보여줌.
+			CurrencyDrop->SetProxyViewPlayerState(OwnerPlayerController, nullptr);
+		}
+	}
+
 	SpectatingPlayerState = nullptr;
 }
 
@@ -263,6 +275,12 @@ void UNSDeathSpectatorComponent::ApplyServerSpectatorTargetChange(int32 Directio
 	if (AlivePlayerStates.IsEmpty())
 	{
 		DeathSpectatorPawn->SetSpectatorTarget(nullptr);
+
+		if (UNSCurrencyDropSubsystem* CurrencyDrop = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>())
+		{
+			CurrencyDrop->SetProxyViewPlayerState(OwnerPlayerController, nullptr);
+		}
+
 		return;
 	}
 
@@ -297,6 +315,12 @@ void UNSDeathSpectatorComponent::ApplyServerSpectatorTargetChange(int32 Directio
 		// 서버 확정 대상 복제 및 대상 위치 추적 시작
 		DeathSpectatorPawn->SetSpectatorTarget(TargetCharacter);
 
+		if (UNSCurrencyDropSubsystem* CurrencyDrop = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>())
+		{
+			// 관전자 화면은 대상 플레이어의 획득 상태를 따라감.
+			CurrencyDrop->SetProxyViewPlayerState(OwnerPlayerController, TargetPlayerState);
+		}
+
 		if (OwnerPlayerController->IsLocalController())
 		{
 			ApplyConfirmedSpectatorTarget(TargetCharacter);
@@ -305,6 +329,13 @@ void UNSDeathSpectatorComponent::ApplyServerSpectatorTargetChange(int32 Directio
 	}
 
 	DeathSpectatorPawn->SetSpectatorTarget(nullptr);
+	SpectatingPlayerState = nullptr;
+
+	if (UNSCurrencyDropSubsystem* CurrencyDrop = GetWorld()->GetSubsystem<UNSCurrencyDropSubsystem>())
+	{
+		// 유효한 관전 대상이 없으니 본인 재화 상태로 되돌려줌.
+		CurrencyDrop->SetProxyViewPlayerState(OwnerPlayerController, nullptr);
+	}
 }
 
 ANSPlayerCharacterBase* UNSDeathSpectatorComponent::ResolveServerSpectatorTargetPawn(const ANSPlayerState* TargetPlayerState) const
