@@ -12,6 +12,7 @@
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/MeshComponent.h"
 #include "Engine/AssetManager.h"
 #include "Materials/MaterialInterface.h"
@@ -141,7 +142,19 @@ void UNSInteractionComponent::UpdateActiveTarget()
 		HidePrompt();
 		return;
 	}
+	
 	const FVector OwnerLocation = Owner->GetActorLocation();
+
+	// 전방 판정 기준 -> 카메라 위치/방향
+	FVector ViewLocation = OwnerLocation;
+	FVector ViewForward = Owner->GetActorForwardVector();
+	if (PC->PlayerCameraManager)
+	{
+		ViewLocation = PC->PlayerCameraManager->GetCameraLocation();
+		ViewForward = PC->PlayerCameraManager->GetCameraRotation().Vector();
+	}
+	const float ViewCosThreshold = FMath::Cos(FMath::DegreesToRadians(InteractViewHalfAngleDeg));
+	
 	AActor* Nearest = nullptr;
 	float NearestDistSq = TNumericLimits<float>::Max();
 	
@@ -159,6 +172,14 @@ void UNSInteractionComponent::UpdateActiveTarget()
 		{
 			continue;
 		}
+
+		// 카메라 전방 시야각 밖의 대상은 후보에서 제외 (등 뒤 프롬프트 방지)
+		const FVector ToCandidate = (Candidate->GetActorLocation() - ViewLocation).GetSafeNormal();
+		if (FVector::DotProduct(ViewForward, ToCandidate) < ViewCosThreshold)
+		{
+			continue;
+		}
+
 		const float DistSq = FVector::DistSquared(OwnerLocation, Candidate->GetActorLocation());
 		if (DistSq < NearestDistSq)
 		{

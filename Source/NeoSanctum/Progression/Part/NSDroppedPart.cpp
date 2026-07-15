@@ -33,6 +33,7 @@ ANSDroppedPart::ANSDroppedPart()
 	MeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(SceneRoot);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComp->SetCanEverAffectNavigation(false);
 	
 	DetectionCollision = CreateDefaultSubobject<USphereComponent>(TEXT("DetectionCollision"));
 	DetectionCollision->SetupAttachment(SceneRoot);
@@ -358,6 +359,15 @@ void ANSDroppedPart::TryPickup(APawn* InstigatorPawn)
 		return;
 	}
 	
+	// 제자리 교체 시 자기 자신이 겹침 판정에 걸리지 않도록 먼저 레지스트리에서 해제
+	if (UWorld* World = GetWorld())
+	{
+		if (UNSDroppedPartRegistrySubsystem* Registry = World->GetSubsystem<UNSDroppedPartRegistrySubsystem>())
+		{
+			Registry->UnregisterDrop(this);
+		}
+	}
+
 	// 주운 파츠 위치에 기존 장착 파츠를 드랍 — 제자리 교체
 	EquipComp->EquipPart(StoredInstance, GetActorLocation());
 	Destroy();
