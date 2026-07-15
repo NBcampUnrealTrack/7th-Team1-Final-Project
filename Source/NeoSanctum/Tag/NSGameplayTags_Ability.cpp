@@ -44,6 +44,9 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ComboWindowOpened, "Event.Vanguard.ComboWindowOpened");
 	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_DashAttackRecoverStarted, "Event.Vanguard.DashAttackRecoverStarted");
 	
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_AttachBarrierSpawner, "Event.Vanguard.AttachBarrierSpawner");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Vanguard_ThrowBarrierSpawner, "Event.Vanguard.ThrowBarrierSpawner");
+	
 	// Common Ability Activate Fail Tags
 	UE_DEFINE_GAMEPLAY_TAG(Ability_ActivateFail_OutOfAmmo, "Ability.ActivateFail.OutOfAmmo");
 }
