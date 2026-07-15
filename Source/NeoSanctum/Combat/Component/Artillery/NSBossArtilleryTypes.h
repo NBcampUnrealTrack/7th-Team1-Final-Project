@@ -185,6 +185,130 @@ struct FNSBossArtilleryTimedShot
 	float ExplosionDelayFromStart = 0.0f;
 };
 
+// 클라이언트 경고와 폭발 연출에 필요한 포탄 하나의 경량 표시 데이터 구조체
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryPresentationShot
+{
+	GENERATED_BODY()
+
+	// 이 포탄이 속한 포격 실행 ID
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	int32 ExecutionId = 0;
+
+	// 이 포탄이 속한 포격 패턴 ID
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	ENSBossArtilleryPatternId PatternId = ENSBossArtilleryPatternId::None;
+
+	// 전체 포격 실행 안에서의 포탄 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	int32 GlobalShotIndex = 0;
+
+	// 링 또는 파동 배치에서 이 포탄이 속한 링 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	int32 RingIndex = INDEX_NONE;
+
+	// 클라이언트가 경고와 폭발 연출을 표시할 착탄 위치
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	FVector_NetQuantize ImpactLocation = FVector::ZeroVector;
+
+	// 클라이언트 경고 표시를 시작할 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float WarningStartServerTime = 0.0f;
+
+	// 클라이언트 폭발 연출을 실행할 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float ExplosionServerTime = 0.0f;
+
+	// 경고 데칼과 폭발 연출 크기에 사용할 피해 반경
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float DamageRadius = 0.0f;
+};
+
+// 포격 패턴의 피해 판정에 필요한 설정값
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryDamageData
+{
+	GENERATED_BODY()
+
+	// 포탄 폭발 시 피해를 적용할 반경
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta = (ClampMin = "0.0"))
+	float DamageRadius = 300.0f;
+
+	// 보스 기본 피해량 또는 공격 Row 피해량에 곱할 배율
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta = (ClampMin = "0.0"))
+	float DamageScale = 1.0f;
+
+	// 벽이나 장애물 뒤의 대상을 피해에서 제외할지 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage")
+	bool bRequireLineOfSight = false;
+
+	// 같은 포격 실행 안에서 같은 대상에게 여러 번 피해를 허용할지 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage")
+	bool bAllowMultipleHitsPerTarget = true;
+};
+
+// 포격 패턴 개발 중 시각화와 로그에 사용할 설정값
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryDebugData
+{
+	GENERATED_BODY()
+
+	// 에디터나 개발 빌드에서 착탄 위치와 반경을 디버그 표시할지 여부
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug")
+	bool bDrawDebug = false;
+
+	// 디버그 도형과 문자열을 화면에 유지할 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug", meta = (ClampMin = "0.0"))
+	float DrawTime = 2.0f;
+};
+
+// 포격 패턴 한 번의 실행에 필요한 서버 실행 데이터와 클라이언트 표시 데이터를 묶은 구조체
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryExecutionData
+{
+	GENERATED_BODY()
+
+	// 이번 포격 실행을 구분하는 런타임 ID
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	int32 ExecutionId = 0;
+
+	// 이번 실행에 사용된 포격 패턴 ID
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	ENSBossArtilleryPatternId PatternId = ENSBossArtilleryPatternId::None;
+
+	// 이번 포격 실행이 시작된 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float PatternStartServerTime = 0.0f;
+
+	// 가장 먼저 폭발하는 포탄의 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float FirstExplosionServerTime = 0.0f;
+
+	// 가장 늦게 폭발하는 포탄의 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	float LastExplosionServerTime = 0.0f;
+
+	// 이번 실행에서 생성된 전체 포탄 수
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	int32 TotalShotCount = 0;
+
+	// 서버 피해 판정에 사용할 포격 피해
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	FNSBossArtilleryDamageData DamageData;
+
+	// 개발 중 시각화와 로그에 사용할 디버그 
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	FNSBossArtilleryDebugData DebugData;
+
+	// 서버가 피해 판정과 실행 순서 관리에 사용할 시간 적용 포탄 목록
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	TArray<FNSBossArtilleryTimedShot> TimedShots;
+
+	// 클라이언트 경고와 폭발 연출에 전달할 경량 포탄 목록
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Execution")
+	TArray<FNSBossArtilleryPresentationShot> PresentationShots;
+};
+
 // 포격 패턴의 총 포탄 수를 계산하는 방식
 UENUM(BlueprintType)
 enum class ENSBossArtilleryShotBudgetMode : uint8
@@ -469,42 +593,4 @@ struct FNSBossArtilleryTimingData
 	// OffBeat 방식에서 포탄 순서별로 적용할 추가 지연 시간 목록
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Timing|OffBeat")
 	TArray<float> OffBeatExtraDelays = {0.0f, 0.15f, 0.8f};
-};
-
-// 포격 패턴의 피해 판정에 필요한 설정값
-USTRUCT(BlueprintType)
-struct FNSBossArtilleryDamageData
-{
-	GENERATED_BODY()
-
-	// 포탄 폭발 시 피해를 적용할 반경
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta = (ClampMin = "0.0"))
-	float DamageRadius = 300.0f;
-
-	// 보스 기본 피해량 또는 공격 Row 피해량에 곱할 배율
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage", meta = (ClampMin = "0.0"))
-	float DamageScale = 1.0f;
-
-	// 벽이나 장애물 뒤의 대상을 피해에서 제외할지 여부
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage")
-	bool bRequireLineOfSight = false;
-
-	// 같은 포격 실행 안에서 같은 대상에게 여러 번 피해를 허용할지 여부
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Damage")
-	bool bAllowMultipleHitsPerTarget = true;
-};
-
-// 포격 패턴 개발 중 시각화와 로그에 사용할 설정값
-USTRUCT(BlueprintType)
-struct FNSBossArtilleryDebugData
-{
-	GENERATED_BODY()
-
-	// 에디터나 개발 빌드에서 착탄 위치와 반경을 디버그 표시할지 여부
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug")
-	bool bDrawDebug = false;
-
-	// 디버그 도형과 문자열을 화면에 유지할 시간
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Debug", meta = (ClampMin = "0.0"))
-	float DrawTime = 2.0f;
 };

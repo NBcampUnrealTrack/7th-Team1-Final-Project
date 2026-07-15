@@ -630,6 +630,194 @@ bool UNSBossArtilleryComponent::BuildTimedShotsForPattern(
 	return bBuilt && !OutTimedShots.IsEmpty();
 }
 
+bool UNSBossArtilleryComponent::BuildExecutionDataForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	float PatternStartServerTime,
+	FNSBossArtilleryExecutionData& OutExecutionData)
+{
+	OutExecutionData = FNSBossArtilleryExecutionData();
+
+	if (!IsValid(PatternData))
+	{
+		return false;
+	}
+
+	TArray<FNSBossArtilleryTargetPoint> TargetPoints;
+	if (!CollectTargetPointsForPattern(PatternData, TargetPoints))
+	{
+		return false;
+	}
+
+	TArray<FNSBossArtilleryShotAllocation> ShotAllocations;
+	int32 TotalShotCount = 0;
+
+	if (!BuildShotAllocationsForPattern(
+		PatternData,
+		TargetPoints,
+		ShotAllocations,
+		TotalShotCount))
+	{
+		return false;
+	}
+
+	TArray<FNSBossArtilleryImpactPoint> ImpactPoints;
+	if (!BuildImpactPointsForPattern(
+		PatternData,
+		ShotAllocations,
+		ImpactPoints))
+	{
+		return false;
+	}
+
+	TArray<FNSBossArtilleryTimedShot> TimedShots;
+	if (!BuildTimedShotsForPattern(
+		PatternData,
+		ImpactPoints,
+		PatternStartServerTime,
+		TimedShots))
+	{
+		return false;
+	}
+
+	OutExecutionData.ExecutionId = AllocateArtilleryExecutionId();
+	OutExecutionData.PatternId = PatternData->PatternId;
+	OutExecutionData.PatternStartServerTime = PatternStartServerTime;
+	OutExecutionData.TotalShotCount = TimedShots.Num();
+	OutExecutionData.DamageData = PatternData->DamageData;
+	OutExecutionData.DebugData = PatternData->DebugData;
+	OutExecutionData.TimedShots = MoveTemp(TimedShots);
+
+	FillExecutionTimeRange(OutExecutionData);
+	BuildPresentationShotsFromExecutionData(
+		OutExecutionData,
+		OutExecutionData.PresentationShots);
+
+	return OutExecutionData.TotalShotCount > 0;
+}
+
+bool UNSBossArtilleryComponent::SelectAndBuildExecutionDataFromRegisteredCombatants(
+	float PatternStartServerTime,
+	FNSBossArtilleryExecutionData& OutExecutionData,
+	bool bRecordSelection)
+{
+	OutExecutionData = FNSBossArtilleryExecutionData();
+
+	const FNSBossArtillerySelectionContext Context =
+		MakeSelectionContextFromRegisteredCombatants();
+
+	UNSBossArtilleryPatternData* SelectedPattern =
+		SelectPattern(Context, false);
+
+	if (!IsValid(SelectedPattern))
+	{
+		return false;
+	}
+
+	if (!BuildExecutionDataForPattern(
+		SelectedPattern,
+		PatternStartServerTime,
+		OutExecutionData))
+	{
+		return false;
+	}
+
+	if (bRecordSelection)
+	{
+		RecordPatternUsed(SelectedPattern);
+	}
+
+	return true;
+}
+
+bool UNSBossArtilleryComponent::SelectAndBuildExecutionDataNowFromRegisteredCombatants(
+	FNSBossArtilleryExecutionData& OutExecutionData,
+	bool bRecordSelection)
+{
+	return SelectAndBuildExecutionDataFromRegisteredCombatants(
+		GetCurrentServerTimeSeconds(),
+		OutExecutionData,
+		bRecordSelection);
+}
+
+void UNSBossArtilleryComponent::BuildPresentationShotsFromExecutionData(
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	TArray<FNSBossArtilleryPresentationShot>& OutPresentationShots) const
+{
+	OutPresentationShots.Reset();
+	OutPresentationShots.Reserve(ExecutionData.TimedShots.Num());
+
+	for (const FNSBossArtilleryTimedShot& TimedShot : ExecutionData.TimedShots)
+	{
+		if (!IsValidImpactLocation(TimedShot.ImpactPoint.ImpactLocation))
+		{
+			continue;
+		}
+
+		FNSBossArtilleryPresentationShot PresentationShot;
+		PresentationShot.ExecutionId = ExecutionData.ExecutionId;
+		PresentationShot.PatternId = ExecutionData.PatternId;
+		PresentationShot.GlobalShotIndex = TimedShot.ImpactPoint.GlobalShotIndex;
+		PresentationShot.RingIndex = TimedShot.ImpactPoint.RingIndex;
+		PresentationShot.ImpactLocation = TimedShot.ImpactPoint.ImpactLocation;
+		PresentationShot.WarningStartServerTime = TimedShot.WarningStartServerTime;
+		PresentationShot.ExplosionServerTime = TimedShot.ExplosionServerTime;
+		PresentationShot.DamageRadius = ExecutionData.DamageData.DamageRadius;
+
+		OutPresentationShots.Add(PresentationShot);
+	}
+}
+
+float UNSBossArtilleryComponent::GetCurrentServerTimeSeconds() const
+{
+	const UWorld* World = GetWorld();
+
+	return World ? World->GetTimeSeconds() : 0.0f;
+}
+
+int32 UNSBossArtilleryComponent::AllocateArtilleryExecutionId()
+{
+	const int32 AllocatedExecutionId = NextArtilleryExecutionId;
+
+	++NextArtilleryExecutionId;
+
+	if (NextArtilleryExecutionId <= 0)
+	{
+		NextArtilleryExecutionId = 1;
+	}
+
+	return AllocatedExecutionId;
+}
+
+void UNSBossArtilleryComponent::FillExecutionTimeRange(
+	FNSBossArtilleryExecutionData& InOutExecutionData) const
+{
+	if (InOutExecutionData.TimedShots.IsEmpty())
+	{
+		InOutExecutionData.FirstExplosionServerTime = 0.0f;
+		InOutExecutionData.LastExplosionServerTime = 0.0f;
+		return;
+	}
+
+	InOutExecutionData.FirstExplosionServerTime =
+		InOutExecutionData.TimedShots[0].ExplosionServerTime;
+
+	InOutExecutionData.LastExplosionServerTime =
+		InOutExecutionData.TimedShots[0].ExplosionServerTime;
+
+	for (const FNSBossArtilleryTimedShot& TimedShot : InOutExecutionData.TimedShots)
+	{
+		InOutExecutionData.FirstExplosionServerTime =
+			FMath::Min(
+				InOutExecutionData.FirstExplosionServerTime,
+				TimedShot.ExplosionServerTime);
+
+		InOutExecutionData.LastExplosionServerTime =
+			FMath::Max(
+				InOutExecutionData.LastExplosionServerTime,
+				TimedShot.ExplosionServerTime);
+	}
+}
+
 bool UNSBossArtilleryComponent::BuildSequentialTimedShots(
 	const FNSBossArtilleryTimingData& TimingData,
 	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
