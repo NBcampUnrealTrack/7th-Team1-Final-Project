@@ -82,6 +82,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Interaction")
 	float DetectionRadius = 200.f;
 
+	// 상호작용 후보로 인정할 카메라 전방 시야 각도
+	UPROPERTY(EditDefaultsOnly, Category="Interaction")
+	float InteractViewHalfAngleDeg = 60.f;
+
 	// 프롬프트 위젯의 화면 공간 크기
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Prompt")
 	FVector2D PromptWidgetDrawSize = FVector2D(200.f, 100.f);
