@@ -29,6 +29,7 @@ ANSLocalCurrencyPickup::ANSLocalCurrencyPickup()
 	MeshComp->SetupAttachment(CollisionSphere);
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MeshComp->SetGenerateOverlapEvents(false);
+	MeshComp->SetCanEverAffectNavigation(false);
 }
 
 void ANSLocalCurrencyPickup::Initialize(const FNSCurrencySpawnEvent& Event, const UNSCurrencyVisualData* VisualData)
@@ -48,7 +49,12 @@ void ANSLocalCurrencyPickup::Initialize(const FNSCurrencySpawnEvent& Event, cons
 	{
 		StartDropLaunch(Event.LaunchData);
 	}
-	
+	else
+	{
+		// 발사 연출이 없어도 바운싱 애니메이션은 돌아야 하므로 틱 활성화
+		SetActorTickEnabled(true);
+	}
+
 	if (Event.Duration > 0.f)
 	{
 		GetWorldTimerManager().SetTimer(ExpireTimer, this, &ANSLocalCurrencyPickup::HandleExpire, Event.Duration, false);
@@ -74,8 +80,9 @@ void ANSLocalCurrencyPickup::RestoreVisual()
 void ANSLocalCurrencyPickup::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	
+
 	UpdateDropLaunch();
+	UpdateBobAnimation(DeltaSeconds);
 }
 
 void ANSLocalCurrencyPickup::StartDropLaunch(const FNSDropLaunchData& InLaunchData)
@@ -135,7 +142,8 @@ void ANSLocalCurrencyPickup::FinishDropLaunch()
 	bIsLaunching = false;
 	SetActorLocation(LaunchData.TargetLocation);
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	SetActorTickEnabled(false);
+	// 착지 후 바운싱 애니메이션을 위해 틱을 켜둔다
+	SetActorTickEnabled(true);
 }
 
 float ANSLocalCurrencyPickup::GetServerWorldTimeSeconds() const
@@ -148,6 +156,24 @@ float ANSLocalCurrencyPickup::GetServerWorldTimeSeconds() const
 	
 	const AGameStateBase* GameState = World->GetGameState();
 	return GameState ? GameState->GetServerWorldTimeSeconds() : World->GetTimeSeconds();
+}
+
+void ANSLocalCurrencyPickup::UpdateBobAnimation(float DeltaSeconds)
+{
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// sin이 -1 ~ 1 자연스런 왕복곡선이라 사용
+	const float BobOffsetZ = FMath::Sin(World->GetTimeSeconds() * BobSpeed) * BobAmplitude;
+	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ + BobOffsetZ));
 }
 
 void ANSLocalCurrencyPickup::StartMeshLoad(const UNSCurrencyVisualData* VisualData)
@@ -167,6 +193,10 @@ void ANSLocalCurrencyPickup::StartMeshLoad(const UNSCurrencyVisualData* VisualDa
 	if (UStaticMesh* Mesh = Row->Mesh.Get())
 	{
 		MeshComp->SetStaticMesh(Mesh);
+
+		const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
+		MeshBaseRelativeZ = -(MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z);
+		MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ));
 		return;
 	}
 
@@ -186,6 +216,10 @@ void ANSLocalCurrencyPickup::OnMeshLoaded()
 	if (Mesh)
 	{
 		MeshComp->SetStaticMesh(Mesh);
+
+		const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
+		MeshBaseRelativeZ = -(MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z);
+		MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ));
 	}
 }
 
