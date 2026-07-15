@@ -404,6 +404,349 @@ bool UNSBossArtilleryComponent::CollectTargetPointsForPattern(
 	}
 }
 
+bool UNSBossArtilleryComponent::BuildShotAllocationsForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	OutShotAllocations.Reset();
+	OutTotalShotCount = 0;
+
+	if (!IsValid(PatternData))
+	{
+		return false;
+	}
+
+	switch (PatternData->ShotBudgetData.BudgetMode)
+	{
+	case ENSBossArtilleryShotBudgetMode::PerTarget:
+		return BuildPerTargetShotAllocations(
+			PatternData->ShotBudgetData,
+			TargetPoints,
+			OutShotAllocations,
+			OutTotalShotCount);
+
+	case ENSBossArtilleryShotBudgetMode::FixedTotal:
+		return BuildFixedTotalShotAllocations(
+			PatternData->ShotBudgetData,
+			TargetPoints,
+			OutShotAllocations,
+			OutTotalShotCount);
+
+	case ENSBossArtilleryShotBudgetMode::PerRing:
+		return BuildPerRingShotAllocations(
+			PatternData->ShotBudgetData,
+			TargetPoints,
+			OutShotAllocations,
+			OutTotalShotCount);
+
+	case ENSBossArtilleryShotBudgetMode::BetweenCombatants:
+		return BuildBetweenCombatantShotAllocations(
+			PatternData->ShotBudgetData,
+			TargetPoints,
+			OutShotAllocations,
+			OutTotalShotCount);
+
+	default:
+		return false;
+	}
+}
+
+int32 UNSBossArtilleryComponent::CalculateRequestedShotCountForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints) const
+{
+	if (!IsValid(PatternData))
+	{
+		return 0;
+	}
+
+	TArray<FNSBossArtilleryTargetPoint> ValidTargetPoints;
+	CollectValidTargetPoints(TargetPoints, ValidTargetPoints);
+
+	switch (PatternData->ShotBudgetData.BudgetMode)
+	{
+	case ENSBossArtilleryShotBudgetMode::PerTarget:
+		return ValidTargetPoints.Num() * FMath::Max(PatternData->ShotBudgetData.ShotsPerTarget, 0);
+
+	case ENSBossArtilleryShotBudgetMode::FixedTotal:
+		return FMath::Max(PatternData->ShotBudgetData.FixedTotalShots, 0);
+
+	case ENSBossArtilleryShotBudgetMode::PerRing:
+		return FMath::Max(PatternData->ShotBudgetData.RingCount, 0) *
+			FMath::Max(PatternData->ShotBudgetData.ShotsPerRing, 0);
+
+	case ENSBossArtilleryShotBudgetMode::BetweenCombatants:
+		return ValidTargetPoints.Num() * FMath::Max(PatternData->ShotBudgetData.ShotsPerPair, 0);
+
+	default:
+		return 0;
+	}
+}
+
+bool UNSBossArtilleryComponent::BuildPerTargetShotAllocations(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	TArray<FNSBossArtilleryTargetPoint> ValidTargetPoints;
+	CollectValidTargetPoints(TargetPoints, ValidTargetPoints);
+
+	TArray<int32> DesiredShotCounts;
+	DesiredShotCounts.Reserve(ValidTargetPoints.Num());
+
+	for (int32 Index = 0; Index < ValidTargetPoints.Num(); ++Index)
+	{
+		DesiredShotCounts.Add(FMath::Max(ShotBudgetData.ShotsPerTarget, 0));
+	}
+
+	return BuildShotAllocationsFromDesiredCounts(
+		ValidTargetPoints,
+		DesiredShotCounts,
+		GetMaxTotalShotCount(ShotBudgetData),
+		OutShotAllocations,
+		OutTotalShotCount);
+}
+
+bool UNSBossArtilleryComponent::BuildFixedTotalShotAllocations(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	return BuildFixedShotAllocationsFromTotal(
+		TargetPoints,
+		FMath::Max(ShotBudgetData.FixedTotalShots, 0),
+		GetMaxTotalShotCount(ShotBudgetData),
+		OutShotAllocations,
+		OutTotalShotCount);
+}
+
+bool UNSBossArtilleryComponent::BuildPerRingShotAllocations(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	const int32 RequestedTotalShots =
+		FMath::Max(ShotBudgetData.RingCount, 0) *
+		FMath::Max(ShotBudgetData.ShotsPerRing, 0);
+
+	return BuildFixedShotAllocationsFromTotal(
+		TargetPoints,
+		RequestedTotalShots,
+		GetMaxTotalShotCount(ShotBudgetData),
+		OutShotAllocations,
+		OutTotalShotCount);
+}
+
+bool UNSBossArtilleryComponent::BuildBetweenCombatantShotAllocations(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	TArray<FNSBossArtilleryTargetPoint> ValidTargetPoints;
+	CollectValidTargetPoints(TargetPoints, ValidTargetPoints);
+
+	TArray<int32> DesiredShotCounts;
+	DesiredShotCounts.Reserve(ValidTargetPoints.Num());
+
+	for (int32 Index = 0; Index < ValidTargetPoints.Num(); ++Index)
+	{
+		DesiredShotCounts.Add(FMath::Max(ShotBudgetData.ShotsPerPair, 0));
+	}
+
+	return BuildShotAllocationsFromDesiredCounts(
+		ValidTargetPoints,
+		DesiredShotCounts,
+		GetMaxTotalShotCount(ShotBudgetData),
+		OutShotAllocations,
+		OutTotalShotCount);
+}
+
+bool UNSBossArtilleryComponent::BuildShotAllocationsFromDesiredCounts(
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	const TArray<int32>& DesiredShotCounts,
+	int32 MaxTotalShots,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	OutShotAllocations.Reset();
+	OutTotalShotCount = 0;
+
+	if (TargetPoints.IsEmpty() || TargetPoints.Num() != DesiredShotCounts.Num())
+	{
+		return false;
+	}
+
+	int32 RequestedTotalShots = 0;
+
+	for (const int32 DesiredShotCount : DesiredShotCounts)
+	{
+		RequestedTotalShots += FMath::Max(DesiredShotCount, 0);
+	}
+
+	const int32 ActualTotalShots =
+		FMath::Min(RequestedTotalShots, FMath::Max(MaxTotalShots, 0));
+
+	if (ActualTotalShots <= 0)
+	{
+		return false;
+	}
+
+	TArray<int32> AllocatedShotCounts;
+	AllocatedShotCounts.Init(0, TargetPoints.Num());
+
+	int32 RemainingShots = ActualTotalShots;
+
+	while (RemainingShots > 0)
+	{
+		bool bAssignedAnyShot = false;
+
+		for (int32 Index = 0; Index < TargetPoints.Num(); ++Index)
+		{
+			if (AllocatedShotCounts[Index] >= DesiredShotCounts[Index])
+			{
+				continue;
+			}
+
+			++AllocatedShotCounts[Index];
+			--RemainingShots;
+			bAssignedAnyShot = true;
+
+			if (RemainingShots <= 0)
+			{
+				break;
+			}
+		}
+
+		if (!bAssignedAnyShot)
+		{
+			break;
+		}
+	}
+
+	for (int32 Index = 0; Index < TargetPoints.Num(); ++Index)
+	{
+		const int32 ShotCount = AllocatedShotCounts[Index];
+
+		if (ShotCount <= 0)
+		{
+			continue;
+		}
+
+		FNSBossArtilleryShotAllocation Allocation;
+		Allocation.TargetPoint = TargetPoints[Index];
+		Allocation.ShotCount = ShotCount;
+		Allocation.FirstShotIndex = OutTotalShotCount;
+
+		OutShotAllocations.Add(Allocation);
+		OutTotalShotCount += ShotCount;
+	}
+
+	return OutTotalShotCount > 0;
+}
+
+bool UNSBossArtilleryComponent::BuildFixedShotAllocationsFromTotal(
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	int32 RequestedTotalShots,
+	int32 MaxTotalShots,
+	TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+	int32& OutTotalShotCount) const
+{
+	OutShotAllocations.Reset();
+	OutTotalShotCount = 0;
+
+	TArray<FNSBossArtilleryTargetPoint> ValidTargetPoints;
+	CollectValidTargetPoints(TargetPoints, ValidTargetPoints);
+
+	if (ValidTargetPoints.IsEmpty())
+	{
+		return false;
+	}
+
+	const int32 ActualTotalShots =
+		FMath::Min(FMath::Max(RequestedTotalShots, 0), FMath::Max(MaxTotalShots, 0));
+
+	if (ActualTotalShots <= 0)
+	{
+		return false;
+	}
+
+	TArray<int32> AllocatedShotCounts;
+	AllocatedShotCounts.Init(0, ValidTargetPoints.Num());
+
+	for (int32 ShotIndex = 0; ShotIndex < ActualTotalShots; ++ShotIndex)
+	{
+		const int32 TargetPointIndex = ShotIndex % ValidTargetPoints.Num();
+		++AllocatedShotCounts[TargetPointIndex];
+	}
+
+	for (int32 Index = 0; Index < ValidTargetPoints.Num(); ++Index)
+	{
+		const int32 ShotCount = AllocatedShotCounts[Index];
+
+		if (ShotCount <= 0)
+		{
+			continue;
+		}
+
+		FNSBossArtilleryShotAllocation Allocation;
+		Allocation.TargetPoint = ValidTargetPoints[Index];
+		Allocation.ShotCount = ShotCount;
+		Allocation.FirstShotIndex = OutTotalShotCount;
+
+		OutShotAllocations.Add(Allocation);
+		OutTotalShotCount += ShotCount;
+	}
+
+	return OutTotalShotCount > 0;
+}
+
+bool UNSBossArtilleryComponent::IsValidTargetPoint(
+	const FNSBossArtilleryTargetPoint& TargetPoint) const
+{
+	switch (TargetPoint.PointType)
+	{
+	case ENSBossArtilleryTargetPointType::Actor:
+		return IsValid(TargetPoint.PrimaryTarget);
+
+	case ENSBossArtilleryTargetPointType::PairMidpoint:
+		return IsValid(TargetPoint.PrimaryTarget) && IsValid(TargetPoint.SecondaryTarget);
+
+	case ENSBossArtilleryTargetPointType::ArenaCenter:
+	case ENSBossArtilleryTargetPointType::BossLocation:
+		return !TargetPoint.Location.ContainsNaN();
+
+	default:
+		return false;
+	}
+}
+
+void UNSBossArtilleryComponent::CollectValidTargetPoints(
+	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+	TArray<FNSBossArtilleryTargetPoint>& OutValidTargetPoints) const
+{
+	OutValidTargetPoints.Reset();
+
+	for (const FNSBossArtilleryTargetPoint& TargetPoint : TargetPoints)
+	{
+		if (IsValidTargetPoint(TargetPoint))
+		{
+			OutValidTargetPoints.Add(TargetPoint);
+		}
+	}
+}
+
+int32 UNSBossArtilleryComponent::GetMaxTotalShotCount(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData) const
+{
+	return FMath::Max(ShotBudgetData.MaxTotalShots, 1);
+}
+
 bool UNSBossArtilleryComponent::CollectAllCombatantTargetPoints(
 	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
 {

@@ -175,6 +175,20 @@ public:
 		const UNSBossArtilleryPatternData* PatternData,
 		TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
 
+	// 선택된 패턴과 기준점 목록으로 기준점별 포탄 배정 목록을 생성하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Shot Budget")
+	bool BuildShotAllocationsForPattern(
+		const UNSBossArtilleryPatternData* PatternData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// 선택된 패턴과 기준점 목록으로 MaxTotalShots 적용 전 요청 포탄 수를 계산하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Shot Budget")
+	int32 CalculateRequestedShotCountForPattern(
+		const UNSBossArtilleryPatternData* PatternData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints) const;
+
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
 	bool CanUsePatternData(
@@ -250,6 +264,61 @@ private:
 
 	// Owner가 가진 Threat 컴포넌트를 반환하는 함수
 	UNSEnemyThreatComponent* GetThreatComponent() const;
+
+	// PerTarget 발수 계산 방식으로 기준점별 포탄 배정을 생성하는 함수
+	bool BuildPerTargetShotAllocations(
+		const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// FixedTotal 발수 계산 방식으로 기준점별 포탄 배정을 생성하는 함수
+	bool BuildFixedTotalShotAllocations(
+		const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// PerRing 발수 계산 방식으로 기준점별 포탄 배정을 생성하는 함수
+	bool BuildPerRingShotAllocations(
+		const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// BetweenCombatants 발수 계산 방식으로 기준점별 포탄 배정을 생성하는 함수
+	bool BuildBetweenCombatantShotAllocations(
+		const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// 기준점별 희망 포탄 수와 MaxTotalShots를 이용해 최종 포탄 배정을 생성하는 함수
+	bool BuildShotAllocationsFromDesiredCounts(
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		const TArray<int32>& DesiredShotCounts,
+		int32 MaxTotalShots,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// 고정 전체 포탄 수를 유효 기준점에 순환 배분하는 함수
+	bool BuildFixedShotAllocationsFromTotal(
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		int32 RequestedTotalShots,
+		int32 MaxTotalShots,
+		TArray<FNSBossArtilleryShotAllocation>& OutShotAllocations,
+		int32& OutTotalShotCount) const;
+
+	// 지정 포격 기준점이 포탄 배정에 사용할 수 있는지 확인하는 함수
+	bool IsValidTargetPoint(const FNSBossArtilleryTargetPoint& TargetPoint) const;
+
+	// 입력 기준점 목록에서 유효한 기준점만 수집하는 함수
+	void CollectValidTargetPoints(
+		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,
+		TArray<FNSBossArtilleryTargetPoint>& OutValidTargetPoints) const;
+
+	// MaxTotalShots 설정을 최소 1 이상으로 보정해 반환하는 함수
+	int32 GetMaxTotalShotCount(const FNSBossArtilleryShotBudgetData& ShotBudgetData) const;
 
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록

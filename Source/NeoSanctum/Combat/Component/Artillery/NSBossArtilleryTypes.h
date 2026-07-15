@@ -112,6 +112,25 @@ struct FNSBossArtilleryTargetPoint
 	float Distance = 0.0f;
 };
 
+// 포격 기준점 하나에 몇 발을 배정할지 나타내는 구조체
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryShotAllocation
+{
+	GENERATED_BODY()
+
+	// 포탄을 배정받을 포격 기준점
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Shot Budget")
+	FNSBossArtilleryTargetPoint TargetPoint;
+
+	// 이 기준점에 배정된 포탄 수
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Shot Budget")
+	int32 ShotCount = 0;
+
+	// 전체 포격 실행 안에서 이 기준점의 첫 포탄 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Shot Budget")
+	int32 FirstShotIndex = 0;
+};
+
 // 포격 패턴의 총 포탄 수를 계산하는 방식
 UENUM(BlueprintType)
 enum class ENSBossArtilleryShotBudgetMode : uint8
