@@ -12,6 +12,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
@@ -145,10 +146,23 @@ void UNSPartEquipComponent::ReapplyAll()
 	{
 		return;
 	}
-
-	// 이전 ASC 기준 핸들 폐기 후 슬롯별 GE/GA 재발급
-	ActiveGEHandles.Empty();
-	GrantedAbilityHandlesBySlot.Empty();
+	
+	/**
+	 * 남아있는 기존 GE/GA를 슬롯별로 제거 후 재발급
+	 * Seamless Travel에도 PlayerState/ASC가 유지되어 이전 GE가 살아있게끔 보장
+	 */
+	TArray<FGameplayTag> GESlots;
+	ActiveGEHandles.GetKeys(GESlots);
+	for (const FGameplayTag& GESlot : GESlots)
+	{
+		RemoveGEForSlot(GESlot);
+	}
+	TArray<FGameplayTag> AbilitySlots;
+	GrantedAbilityHandlesBySlot.GetKeys(AbilitySlots);
+	for (const FGameplayTag& AbilitySlot : AbilitySlots)
+	{
+		RemoveAbilitiesForSlot(AbilitySlot);
+	}
 
 	for (const FNSPartData& Part : EquippedParts)
 	{
@@ -304,17 +318,24 @@ void UNSPartEquipComponent::ApplyPartEffect(FGameplayTag Slot)
 	}
 	
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	if (!Def || Def->EffectClass.IsNull())
+	if (!Def)
 	{
 		return;
 	}
-	
+
+	// EffectClass가 비어있으면 공용 GE + StatTag 경로
+	if (Def->EffectClass.IsNull())
+	{
+		Internal_ApplySharedGE(Slot);
+		return;
+	}
+
 	if (TSubclassOf<UGameplayEffect> Loaded = Def->EffectClass.Get())
 	{
 		Internal_ApplyGE(Slot, Loaded);
 		return;
 	}
-	
+
 	const FSoftObjectPath Path = Def->EffectClass.ToSoftObjectPath();
 	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 		Path, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnEffectLoaded, Slot));
@@ -345,6 +366,81 @@ void UNSPartEquipComponent::Internal_ApplyGE(FGameplayTag Slot, TSubclassOf<UGam
 		return;
 	}
 	Spec.Data->SetSetByCallerMagnitude(NSGameplayTags::Part_Value, Part->CurrentValue);
+	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
+}
+
+void UNSPartEquipComponent::Internal_ApplySharedGE(FGameplayTag Slot)
+{
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (!SharedPartEffectClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: SharedPartEffectClass 미설정"));
+		return;
+	}
+
+	// 이 파츠가 건드릴 스탯(StatTag)과 연산 방식(Operation)은 DT Row가 단일 소스
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
+	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
+	if (!Row || !Row->StatTag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: StatTag 없음 (Slot=%s)"), *Slot.ToString());
+		return;
+	}
+
+	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Row->StatTag);
+	if (!Mapping)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 매핑 없는 StatTag (%s)"), *Row->StatTag.ToString());
+		return;
+	}
+
+	// Operation에 맞는 SetByCaller 태그 선택, Count 계열은 Multiply 태그가 비어 있어 여기서 걸러짐
+	FGameplayTag SetByCallerTag;
+	switch (Row->Operation)
+	{
+	case ENSCombatStatModifierOperation::Add:
+		SetByCallerTag = Mapping->AddSetByCallerTag;
+		break;
+	case ENSCombatStatModifierOperation::Multiply:
+		SetByCallerTag = Mapping->MultiplySetByCallerTag;
+		break;
+	default:
+		break;
+	}
+	if (!SetByCallerTag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 지원하지 않는 연산 (StatTag=%s)"), *Row->StatTag.ToString());
+		return;
+	}
+
+	// 리롤같이 스텟변경이 있는경우 대비용으로 기존 GE먼저 제거
+	RemoveGEForSlot(Slot);
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(SharedPartEffectClass, 1.f, Context);
+	if (!Spec.IsValid())
+	{
+		return;
+	}
+	
+	/**
+	 * 공용 GE에는 모든 스탯의 Modifier가 들어 있으므로 전체를 중립값으로 채운 뒤
+	 * 이 파츠의 스탯 하나만 실제 값으로 덮어씀
+	 */
+	NSCombatStatAttribute::InitializeNeutralSetByCallers(Spec);
+	Spec.Data->SetSetByCallerMagnitude(SetByCallerTag, Part->CurrentValue);
+
 	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
 }
 
