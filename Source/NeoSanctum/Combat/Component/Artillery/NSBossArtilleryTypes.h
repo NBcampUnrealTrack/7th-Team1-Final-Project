@@ -162,6 +162,29 @@ struct FNSBossArtilleryImpactPoint
 	float DistanceFromOrigin = 0.0f;
 };
 
+// 실제 포탄 하나의 착탄 위치와 서버 기준 폭발 시간을 나타내는 구조체
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryTimedShot
+{
+	GENERATED_BODY()
+
+	// 이 시간 정보가 적용된 착탄 위치 데이터
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Timing")
+	FNSBossArtilleryImpactPoint ImpactPoint;
+
+	// 클라이언트 경고 표시를 시작할 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Timing")
+	float WarningStartServerTime = 0.0f;
+
+	// 서버 피해 판정과 클라이언트 폭발 연출을 실행할 서버 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Timing")
+	float ExplosionServerTime = 0.0f;
+
+	// 패턴 시작 시점부터 폭발까지 걸리는 지연 시간
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Timing")
+	float ExplosionDelayFromStart = 0.0f;
+};
+
 // 포격 패턴의 총 포탄 수를 계산하는 방식
 UENUM(BlueprintType)
 enum class ENSBossArtilleryShotBudgetMode : uint8

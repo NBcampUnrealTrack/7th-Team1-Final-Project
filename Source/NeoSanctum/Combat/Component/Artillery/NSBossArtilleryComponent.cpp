@@ -553,6 +553,266 @@ bool UNSBossArtilleryComponent::BuildImpactPointsForPattern(
 	}
 }
 
+bool UNSBossArtilleryComponent::BuildTimedShotsForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	OutTimedShots.Reset();
+
+	if (!IsValid(PatternData) || ImpactPoints.IsEmpty())
+	{
+		return false;
+	}
+
+	bool bBuilt = false;
+
+	switch (PatternData->TimingData.TimingMode)
+	{
+	case ENSBossArtilleryTimingMode::Sequential:
+		bBuilt = BuildSequentialTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	case ENSBossArtilleryTimingMode::RandomScatter:
+		bBuilt = BuildRandomScatterTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	case ENSBossArtilleryTimingMode::Simultaneous:
+		bBuilt = BuildSimultaneousTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	case ENSBossArtilleryTimingMode::Burst:
+		bBuilt = BuildBurstTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	case ENSBossArtilleryTimingMode::Wave:
+		bBuilt = BuildWaveTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	case ENSBossArtilleryTimingMode::OffBeat:
+		bBuilt = BuildOffBeatTimedShots(
+			PatternData->TimingData,
+			ImpactPoints,
+			PatternStartServerTime,
+			OutTimedShots);
+		break;
+
+	default:
+		return false;
+	}
+
+	if (bBuilt)
+	{
+		SortTimedShotsByExplosionTime(OutTimedShots);
+	}
+
+	return bBuilt && !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildSequentialTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+	const float Interval = FMath::Max(TimingData.SequentialInterval, 0.0f);
+
+	for (int32 Index = 0; Index < ImpactPoints.Num(); ++Index)
+	{
+		AddTimedShot(
+			ImpactPoints[Index],
+			PatternStartServerTime,
+			WarningDuration + Interval * static_cast<float>(Index),
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildRandomScatterTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+	const float MinDelay = FMath::Max(TimingData.MinRandomDelay, 0.0f);
+	const float MaxDelay = FMath::Max(TimingData.MaxRandomDelay, MinDelay);
+
+	for (const FNSBossArtilleryImpactPoint& ImpactPoint : ImpactPoints)
+	{
+		AddTimedShot(
+			ImpactPoint,
+			PatternStartServerTime,
+			WarningDuration + FMath::FRandRange(MinDelay, MaxDelay),
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildSimultaneousTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+	const float Jitter = FMath::Max(TimingData.SimultaneousJitter, 0.0f);
+
+	for (const FNSBossArtilleryImpactPoint& ImpactPoint : ImpactPoints)
+	{
+		AddTimedShot(
+			ImpactPoint,
+			PatternStartServerTime,
+			FMath::Max(WarningDuration + FMath::FRandRange(-Jitter, Jitter), 0.0f),
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildBurstTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+	const int32 ShotsPerBurst = FMath::Max(TimingData.ShotsPerBurst, 1);
+	const float BurstInterval = FMath::Max(TimingData.BurstInterval, 0.0f);
+	const float IntraBurstJitter = FMath::Max(TimingData.IntraBurstJitter, 0.0f);
+
+	for (int32 Index = 0; Index < ImpactPoints.Num(); ++Index)
+	{
+		const int32 BurstIndex = Index / ShotsPerBurst;
+
+		AddTimedShot(
+			ImpactPoints[Index],
+			PatternStartServerTime,
+			WarningDuration +
+			BurstInterval * static_cast<float>(BurstIndex) +
+			FMath::FRandRange(0.0f, IntraBurstJitter),
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildWaveTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+	const float WaveSpeed = FMath::Max(TimingData.WaveSpeed, 1.0f);
+
+	for (const FNSBossArtilleryImpactPoint& ImpactPoint : ImpactPoints)
+	{
+		AddTimedShot(
+			ImpactPoint,
+			PatternStartServerTime,
+			WarningDuration + FMath::Max(ImpactPoint.DistanceFromOrigin, 0.0f) / WaveSpeed,
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildOffBeatTimedShots(
+	const FNSBossArtilleryTimingData& TimingData,
+	const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+	float PatternStartServerTime,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	if (TimingData.OffBeatExtraDelays.IsEmpty())
+	{
+		return false;
+	}
+
+	const float WarningDuration = GetClampedWarningDuration(TimingData);
+
+	for (const FNSBossArtilleryImpactPoint& ImpactPoint : ImpactPoints)
+	{
+		const int32 DelayIndex = ImpactPoint.LocalShotIndex % TimingData.OffBeatExtraDelays.Num();
+		const float ExtraDelay = FMath::Max(TimingData.OffBeatExtraDelays[DelayIndex], 0.0f);
+
+		AddTimedShot(
+			ImpactPoint,
+			PatternStartServerTime,
+			WarningDuration + ExtraDelay,
+			OutTimedShots);
+	}
+
+	return !OutTimedShots.IsEmpty();
+}
+
+void UNSBossArtilleryComponent::AddTimedShot(
+	const FNSBossArtilleryImpactPoint& ImpactPoint,
+	float PatternStartServerTime,
+	float ExplosionDelayFromStart,
+	TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const
+{
+	if (!IsValidImpactLocation(ImpactPoint.ImpactLocation))
+	{
+		return;
+	}
+
+	const float ClampedDelay = FMath::Max(ExplosionDelayFromStart, 0.0f);
+
+	FNSBossArtilleryTimedShot TimedShot;
+	TimedShot.ImpactPoint = ImpactPoint;
+	TimedShot.WarningStartServerTime = PatternStartServerTime;
+	TimedShot.ExplosionDelayFromStart = ClampedDelay;
+	TimedShot.ExplosionServerTime = PatternStartServerTime + ClampedDelay;
+
+	OutTimedShots.Add(TimedShot);
+}
+
+void UNSBossArtilleryComponent::SortTimedShotsByExplosionTime(
+	TArray<FNSBossArtilleryTimedShot>& InOutTimedShots) const
+{
+	InOutTimedShots.Sort(
+		[](const FNSBossArtilleryTimedShot& A, const FNSBossArtilleryTimedShot& B)
+		{
+			if (FMath::IsNearlyEqual(A.ExplosionServerTime, B.ExplosionServerTime))
+			{
+				return A.ImpactPoint.GlobalShotIndex < B.ImpactPoint.GlobalShotIndex;
+			}
+
+			return A.ExplosionServerTime < B.ExplosionServerTime;
+		});
+}
+
+float UNSBossArtilleryComponent::GetClampedWarningDuration(
+	const FNSBossArtilleryTimingData& TimingData) const
+{
+	return FMath::Max(TimingData.WarningDuration, 0.0f);
+}
+
 bool UNSBossArtilleryComponent::BuildTargetCurrentImpactPoints(
 	const FNSBossArtilleryPlacementData& PlacementData,
 	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,

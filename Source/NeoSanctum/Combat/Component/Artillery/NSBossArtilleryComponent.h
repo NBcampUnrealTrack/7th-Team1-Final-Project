@@ -196,6 +196,14 @@ public:
 		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
 		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
 
+	// 선택된 패턴과 착탄 위치 목록으로 서버 기준 폭발 시간 목록을 생성하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Timing")
+	bool BuildTimedShotsForPattern(
+		const UNSBossArtilleryPatternData* PatternData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
 	bool CanUsePatternData(
@@ -414,6 +422,61 @@ private:
 		const FVector& CandidateLocation,
 		const TArray<FNSBossArtilleryImpactPoint>& ExistingImpactPoints,
 		float MinDistance) const;
+
+	// Sequential 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildSequentialTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// RandomScatter 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildRandomScatterTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// Simultaneous 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildSimultaneousTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// Burst 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildBurstTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// Wave 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildWaveTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// OffBeat 타이밍 방식으로 포탄별 폭발 시간을 생성하는 함수
+	bool BuildOffBeatTimedShots(
+		const FNSBossArtilleryTimingData& TimingData,
+		const TArray<FNSBossArtilleryImpactPoint>& ImpactPoints,
+		float PatternStartServerTime,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// 지정 착탄 위치와 지연 시간으로 서버 기준 포탄 시간 데이터를 추가하는 함수
+	void AddTimedShot(
+		const FNSBossArtilleryImpactPoint& ImpactPoint,
+		float PatternStartServerTime,
+		float ExplosionDelayFromStart,
+		TArray<FNSBossArtilleryTimedShot>& OutTimedShots) const;
+
+	// 생성된 시간 데이터 목록을 폭발 서버 시간 기준으로 정렬하는 함수
+	void SortTimedShotsByExplosionTime(TArray<FNSBossArtilleryTimedShot>& InOutTimedShots) const;
+
+	// 타이밍 계산에서 사용할 경고 시간을 0 이상으로 보정하는 함수
+	float GetClampedWarningDuration(const FNSBossArtilleryTimingData& TimingData) const;
 
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록
