@@ -41,6 +41,10 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Spawner")
 	TSoftObjectPtr<UDataTable> RangeSpawnerTable;
 	
+	// 이 스테이지에서 EnemyId와 MaterialSlotName 기준으로 적용할 몬스터 외형 파라미터 테이블
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Visual")
+	TSoftObjectPtr<UDataTable> EnemyVisualParameterTable;
+	
 	// 스테이지의 목표
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Level|Objective")
 	TArray<FNSStageObjective> ObjectivePool;
