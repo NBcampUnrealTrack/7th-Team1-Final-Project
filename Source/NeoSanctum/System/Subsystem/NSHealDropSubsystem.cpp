@@ -38,11 +38,117 @@ void UNSHealDropSubsystem::RegisterProxy(ANSHealReplicationProxy* Proxy)
 
 void UNSHealDropSubsystem::UnregisterProxy(ANSHealReplicationProxy* Proxy)
 {
+	ProxyViewPlayerState.Remove(TWeakObjectPtr<ANSHealReplicationProxy>{Proxy});
 	Proxies.Remove(Proxy);
 }
 
-int32 UNSHealDropSubsystem::RegisterDrop(FGameplayTag PotionTag, const FVector& Location, float Duration,
-	const FNSDropLaunchData& LaunchData)
+void UNSHealDropSubsystem::SetProxyViewPlayerState(APlayerController* ViewerController, ANSPlayerState* ViewPlayerState)
+{
+	if (!HasServerAuthority() || !IsValid(ViewerController))
+	{
+		return;
+	}
+
+	ANSHealReplicationProxy* Proxy =
+		FindProxy(ViewerController->GetPlayerState<ANSPlayerState>());
+
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	const TWeakObjectPtr<ANSHealReplicationProxy> ProxyKey{Proxy};
+
+	if (IsValid(ViewPlayerState))
+	{
+		ProxyViewPlayerState.Add(ProxyKey, ViewPlayerState);
+	}
+	else
+	{
+		// 관전이 끝났으니 다시 본인의 물약 상태를 보여줌.
+		ProxyViewPlayerState.Remove(ProxyKey);
+	}
+
+	SyncProxyHealVisuals(Proxy);
+}
+
+ANSPlayerState* UNSHealDropSubsystem::ResolveProxyViewPlayerState(ANSHealReplicationProxy* Proxy) const
+{
+	if (!IsValid(Proxy))
+	{
+		return nullptr;
+	}
+
+	const TWeakObjectPtr<ANSHealReplicationProxy> ProxyKey{Proxy};
+
+	if (const TWeakObjectPtr<ANSPlayerState>* ViewPlayerState = ProxyViewPlayerState.Find(ProxyKey))
+	{
+		if (ANSPlayerState* ResolvedPlayerState = ViewPlayerState->Get())
+		{
+			return ResolvedPlayerState;
+		}
+	}
+
+	const APlayerController* OwnerController = Cast<APlayerController>(Proxy->GetOwner());
+
+	return OwnerController ? Cast<ANSPlayerState>(OwnerController->PlayerState) : nullptr;
+}
+
+void UNSHealDropSubsystem::SyncProxyHealVisuals(ANSHealReplicationProxy* Proxy)
+{
+	if (!IsValid(Proxy))
+	{
+		return;
+	}
+
+	RemoveExpiredDrops();
+
+	ANSPlayerState* ViewPlayerState = ResolveProxyViewPlayerState(Proxy);
+	if (!IsValid(ViewPlayerState))
+	{
+		return;
+	}
+
+	const float Now = GetWorldSeconds();
+
+	for (const TPair<int32, FNSHealDropEntry>& Pair : ActiveDrops)
+	{
+		const int32 DropId = Pair.Key;
+		const FNSHealDropEntry& Entry = Pair.Value;
+
+		if (Entry.CollectedPlayer.Contains(ViewPlayerState))
+		{
+			Proxy->SendRemoveEvent(DropId);
+			continue;
+		}
+
+		// 이전 관전 대상이 먹었던 물약이라면 현재 대상 기준으로 다시 보여줌.
+		Proxy->SendSpawnEvent(MakeSpawnEvent(DropId, Entry, Now));
+		Proxy->SendRestoreEvent(DropId);
+	}
+}
+
+void UNSHealDropSubsystem::NotifyHealCollected(int32 DropId, ANSPlayerState* Collector)
+{
+	if (!IsValid(Collector))
+	{
+		return;
+	}
+
+	for (const TWeakObjectPtr<ANSHealReplicationProxy>& WeakProxy : Proxies)
+	{
+		ANSHealReplicationProxy* Proxy = WeakProxy.Get();
+
+		// 획득자와 그 획득자를 관전하는 화면에서 물약을 치워줌.
+		if (IsValid(Proxy) && ResolveProxyViewPlayerState(Proxy) == Collector)
+		{
+			Proxy->SendRemoveEvent(DropId);
+		}
+	}
+}
+
+int32 UNSHealDropSubsystem::RegisterDrop(
+	FGameplayTag PotionTag, const FVector& Location, float Duration, const FNSDropLaunchData& LaunchData)
 {
 	if (!HasServerAuthority() || !PotionTag.IsValid() || Duration <= 0.f)
 	{
@@ -127,11 +233,10 @@ bool UNSHealDropSubsystem::TryCollect(int32 DropId, ANSPlayerState* Collector)
 
 	// 주운 플레이어에 등록
 	Entry->CollectedPlayer.Add(Collector);
-	// 플레이어 화면에서 삭제
-	if (ANSHealReplicationProxy* Proxy = FindProxy(Collector))
-	{
-		Proxy->SendRemoveEvent(DropId);
-	}
+
+	// 획득자와 획득자를 관전하는 플레이어 모두에게 알려줌.
+	NotifyHealCollected(DropId, Collector);
+
 	return true;
 }
 

@@ -51,6 +51,9 @@ private:
 	// PlayerState에서 서버 기준 관전 대상 Pawn 확인
 	ANSPlayerCharacterBase* ResolveServerSpectatorTargetPawn(const ANSPlayerState* TargetPlayerState) const;
 
+	// 재화와 물약 표시 기준을 관전 대상에 맞춰 함께 바꿔줌.
+	void SetDropViewPlayerState(ANSPlayerController* ViewerController, ANSPlayerState* ViewPlayerState);
+
 	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
 	UFUNCTION(Server, Reliable)
 	void Server_EnterDeathSpectatorMode();
