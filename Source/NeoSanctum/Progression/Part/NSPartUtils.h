@@ -25,7 +25,10 @@ namespace NSPartUtils
 
 	// 등급별 업그레이드/상점 row를 NSDataSubsystem 캐시에서 조회. 캐시 미스 시 nullptr
 	NEOSANCTUM_API const FNSPartUpgradeRow* ResolvePartUpgradeRow(const UObject* WorldContextObject, ENSPartRarity Rarity);
-	
+
+	// StatTag의 만점 수치(MaxStatValue)를 스탯 표시 DT에서 조회, 미등록/0이면 0 반환 + 경고 로그
+	NEOSANCTUM_API float GetStatMaxValue(const UObject* WorldContextObject, const FGameplayTag& StatTag);
+
 	// Part.Rarity.* 태그를 ENSPartRarity로 변환, 매칭되는 태그가 없으면 false                              
 	NEOSANCTUM_API bool ResolveRarityFromTag(const FGameplayTag& RarityTag, ENSPartRarity& OutRarity);
 }

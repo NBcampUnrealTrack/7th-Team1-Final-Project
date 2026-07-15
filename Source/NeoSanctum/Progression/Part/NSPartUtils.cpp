@@ -80,6 +80,19 @@ const FNSPartUpgradeRow* NSPartUtils::ResolvePartUpgradeRow(const UObject* World
 	return DataSS->GetPartUpgradeRow(Rarity);
 }
 
+float NSPartUtils::GetStatMaxValue(const UObject* WorldContextObject, const FGameplayTag& StatTag)
+{
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject);
+	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(StatTag) : nullptr;
+	if (!StatInfo || StatInfo->MaxStatValue <= 0.f)
+	{
+		// 만점 미설정 스탯은 수치가 항상 0이 되므로 데이터 실수를 바로 알 수 있게 경고
+		UE_LOG(LogTemp, Warning, TEXT("[PartUtils] GetStatMaxValue: MaxStatValue 미설정 (StatTag=%s)"), *StatTag.ToString());
+		return 0.f;
+	}
+	return StatInfo->MaxStatValue;
+}
+
 bool NSPartUtils::ResolveRarityFromTag(const FGameplayTag& RarityTag, ENSPartRarity& OutRarity)
 {
 	if (RarityTag == NSGameplayTags::Part_Rarity_Common)
