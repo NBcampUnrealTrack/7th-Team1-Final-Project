@@ -40,6 +40,7 @@ UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	// 대쉬 중 기본공격 선입력 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 	// 한 사이클이 끝나기 전에 재실행 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Attacking);
 	// 대쉬공격 사이클이 끝나기 전에 재실행 방지
@@ -1887,7 +1888,7 @@ void UGA_VanguardBaseAttack::AddVanguardStateTags()
 	}
 
 	// 다른 Vanguard 기본공격 재진입 방지용 공통 공격 상태태그
-	ASC->AddLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_Attacking, 1);
 
 	if (ActiveAttackMode != ENSVanguardBaseAttackMode::GroundCombo)
 	{
@@ -1898,7 +1899,12 @@ void UGA_VanguardBaseAttack::AddVanguardStateTags()
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashCharge)
 	{
 		// 차지 중 애니메이션/이펙트 분기용 별도 상태태그
-		ASC->AddLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_ChargingDashAttack, 1);
+	}
+
+	if (ActiveAttackMode == ENSVanguardBaseAttackMode::AirSlam)
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_AirSlamming, 1);
 	}
 }
 
@@ -1910,8 +1916,9 @@ void UGA_VanguardBaseAttack::RemoveVanguardStateTags()
 		return;
 	}
 
-	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_Attacking);
-	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Vanguard_ChargingDashAttack);
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_Attacking, 0);
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_ChargingDashAttack, 0);
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_AirSlamming, 0);
 	ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 }
 
