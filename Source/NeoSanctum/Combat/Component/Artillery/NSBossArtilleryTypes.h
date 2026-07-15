@@ -61,6 +61,57 @@ enum class ENSBossArtilleryTargetMode : uint8
 	BetweenCombatants UMETA(DisplayName = "Between Combatants")
 };
 
+// 포격 위치 생성 단계에서 사용할 기준점의 종류를 정의하는 enum
+UENUM(BlueprintType)
+enum class ENSBossArtilleryTargetPointType : uint8
+{
+	// 유효하지 않은 기준점 값을 나타내는 값
+	None UMETA(DisplayName = "None"),
+
+	// 단일 Actor 위치를 기준으로 사용하는 값
+	Actor UMETA(DisplayName = "Actor"),
+
+	// 두 Actor 사이의 중간 지점을 기준으로 사용하는 값
+	PairMidpoint UMETA(DisplayName = "Pair Midpoint"),
+
+	// 보스룸 중심 위치를 기준으로 사용하는 값
+	ArenaCenter UMETA(DisplayName = "Arena Center"),
+
+	// 보스 자신의 위치를 기준으로 사용하는 값
+	BossLocation UMETA(DisplayName = "Boss Location")
+};
+
+// 포격 착탄 위치를 만들기 전에 수집되는 기준점 데이터
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryTargetPoint
+{
+	GENERATED_BODY()
+
+	// 이 기준점이 어떤 방식으로 만들어졌는지 나타냄
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	ENSBossArtilleryTargetPointType PointType = ENSBossArtilleryTargetPointType::None;
+
+	// 단일 대상 또는 플레이어 쌍의 첫 번째 대상
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	TObjectPtr<AActor> PrimaryTarget = nullptr;
+
+	// 플레이어 쌍의 두 번째 대상
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	TObjectPtr<AActor> SecondaryTarget = nullptr;
+
+	// 포격 위치 생성의 기준이 되는 월드 위치
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	FVector Location = FVector::ZeroVector;
+
+	// 보스 또는 기준점에서 대상 방향
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	FVector Direction = FVector::ForwardVector;
+
+	// 플레이어 쌍 사이 거리 또는 기준점 보조 거리로 사용
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Target")
+	float Distance = 0.0f;
+};
+
 // 포격 패턴의 총 포탄 수를 계산하는 방식
 UENUM(BlueprintType)
 enum class ENSBossArtilleryShotBudgetMode : uint8

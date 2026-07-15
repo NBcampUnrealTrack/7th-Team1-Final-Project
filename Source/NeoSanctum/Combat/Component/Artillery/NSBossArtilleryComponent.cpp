@@ -3,6 +3,9 @@
 #include "NSBossArtilleryComponent.h"
 
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/AI/Enemy/HelperActor/NSBossArenaBounds.h"
+#include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Data/AI/NSBossArtilleryPatternData.h"
 
@@ -16,6 +19,9 @@ void UNSBossArtilleryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason
 {
 	// 보스 제거 또는 레벨 종료 시 런타임 선택 상태를 정리
 	ResetArtillerySelectionState();
+
+	// 보스 제거 또는 레벨 종료 시 등록 전투 참여자 상태를 정리
+	ClearRegisteredCombatants();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -261,6 +267,397 @@ int32 UNSBossArtilleryComponent::GetHardCooldownRemaining(
 	const int32* RemainingCount = HardCooldownRemainingByPattern.Find(PatternId);
 
 	return RemainingCount ? FMath::Max(*RemainingCount, 0) : 0;
+}
+
+FNSBossArtillerySelectionContext UNSBossArtilleryComponent::MakeSelectionContextFromRegisteredCombatants() const
+{
+	return MakeSelectionContext(GetRegisteredCombatantCount());
+}
+
+UNSBossArtilleryPatternData* UNSBossArtilleryComponent::SelectPatternByRegisteredCombatants(
+	bool bRecordSelection)
+{
+	const FNSBossArtillerySelectionContext Context = MakeSelectionContextFromRegisteredCombatants();
+
+	return SelectPattern(Context, bRecordSelection);
+}
+
+void UNSBossArtilleryComponent::SetRegisteredCombatants(const TArray<AActor*>& InCombatants)
+{
+	RegisteredCombatants.Reset();
+
+	for (AActor* Combatant : InCombatants)
+	{
+		RegisterCombatant(Combatant);
+	}
+}
+
+void UNSBossArtilleryComponent::RegisterCombatant(AActor* Combatant)
+{
+	if (!IsValidCombatant(Combatant))
+	{
+		return;
+	}
+
+	for (const TWeakObjectPtr<AActor>& RegisteredCombatant : RegisteredCombatants)
+	{
+		if (RegisteredCombatant.Get() == Combatant)
+		{
+			return;
+		}
+	}
+
+	RegisteredCombatants.Add(Combatant);
+}
+
+void UNSBossArtilleryComponent::UnregisterCombatant(AActor* Combatant)
+{
+	RegisteredCombatants.RemoveAll(
+		[Combatant](const TWeakObjectPtr<AActor>& RegisteredCombatant)
+		{
+			return !RegisteredCombatant.IsValid() || RegisteredCombatant.Get() == Combatant;
+		});
+}
+
+void UNSBossArtilleryComponent::ClearRegisteredCombatants()
+{
+	RegisteredCombatants.Reset();
+}
+
+void UNSBossArtilleryComponent::CollectValidCombatants(TArray<AActor*>& OutCombatants) const
+{
+	OutCombatants.Reset();
+
+	for (const TWeakObjectPtr<AActor>& RegisteredCombatant : RegisteredCombatants)
+	{
+		AActor* Combatant = RegisteredCombatant.Get();
+
+		if (IsValidCombatant(Combatant))
+		{
+			OutCombatants.AddUnique(Combatant);
+		}
+	}
+
+	if (!OutCombatants.IsEmpty() || !bUseThreatKnownTargetsWhenNoRegisteredCombatants)
+	{
+		return;
+	}
+
+	if (const UNSEnemyThreatComponent* ThreatComponent = GetThreatComponent())
+	{
+		TArray<AActor*> KnownTargets;
+		ThreatComponent->GetKnownTargets(KnownTargets, false);
+
+		for (AActor* KnownTarget : KnownTargets)
+		{
+			if (IsValidCombatant(KnownTarget))
+			{
+				OutCombatants.AddUnique(KnownTarget);
+			}
+		}
+	}
+}
+
+int32 UNSBossArtilleryComponent::GetRegisteredCombatantCount() const
+{
+	TArray<AActor*> ValidCombatants;
+	CollectValidCombatants(ValidCombatants);
+
+	return ValidCombatants.Num();
+}
+
+void UNSBossArtilleryComponent::SetArenaBounds(ANSBossArenaBounds* InArenaBounds)
+{
+	ArenaBounds = InArenaBounds;
+}
+
+bool UNSBossArtilleryComponent::CollectTargetPointsForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	OutTargetPoints.Reset();
+
+	if (!IsValid(PatternData))
+	{
+		return false;
+	}
+
+	switch (PatternData->TargetData.TargetMode)
+	{
+	case ENSBossArtilleryTargetMode::AllCombatants:
+		return CollectAllCombatantTargetPoints(OutTargetPoints);
+
+	case ENSBossArtilleryTargetMode::HighestThreat:
+		return CollectHighestThreatTargetPoint(OutTargetPoints);
+
+	case ENSBossArtilleryTargetMode::ArenaCenter:
+		return CollectArenaCenterTargetPoint(OutTargetPoints);
+
+	case ENSBossArtilleryTargetMode::BossLocation:
+		return CollectBossLocationTargetPoint(OutTargetPoints);
+
+	case ENSBossArtilleryTargetMode::BetweenCombatants:
+		return CollectBetweenCombatantTargetPoints(PatternData->TargetData, OutTargetPoints);
+
+	default:
+		return false;
+	}
+}
+
+bool UNSBossArtilleryComponent::CollectAllCombatantTargetPoints(
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	TArray<AActor*> ValidCombatants;
+	CollectValidCombatants(ValidCombatants);
+
+	for (AActor* Combatant : ValidCombatants)
+	{
+		OutTargetPoints.Add(MakeActorTargetPoint(Combatant));
+	}
+
+	return !OutTargetPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::CollectHighestThreatTargetPoint(
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	const UNSEnemyThreatComponent* ThreatComponent = GetThreatComponent();
+	AActor* ThreatTarget = ThreatComponent ? ThreatComponent->GetCurrentTarget() : nullptr;
+
+	if (!IsValidCombatant(ThreatTarget))
+	{
+		return false;
+	}
+
+	OutTargetPoints.Add(MakeActorTargetPoint(ThreatTarget));
+	return true;
+}
+
+bool UNSBossArtilleryComponent::CollectArenaCenterTargetPoint(
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	OutTargetPoints.Add(
+		MakeLocationTargetPoint(
+			ENSBossArtilleryTargetPointType::ArenaCenter,
+			GetArenaCenterLocation()));
+
+	return true;
+}
+
+bool UNSBossArtilleryComponent::CollectBossLocationTargetPoint(
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	if (!IsValid(OwnerActor))
+	{
+		return false;
+	}
+
+	OutTargetPoints.Add(
+		MakeLocationTargetPoint(
+			ENSBossArtilleryTargetPointType::BossLocation,
+			OwnerActor->GetActorLocation()));
+
+	return true;
+}
+
+bool UNSBossArtilleryComponent::CollectBetweenCombatantTargetPoints(
+	const FNSBossArtilleryTargetData& TargetData,
+	TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const
+{
+	TArray<AActor*> ValidCombatants;
+	CollectValidCombatants(ValidCombatants);
+
+	if (ValidCombatants.Num() < 2)
+	{
+		return false;
+	}
+
+	struct FNSLocalPairCandidate
+	{
+		AActor* FirstTarget = nullptr;
+		AActor* SecondTarget = nullptr;
+
+		float Distance = 0.0f;
+	};
+
+	TArray<FNSLocalPairCandidate> PairCandidates;
+
+	for (int32 FirstIndex = 0; FirstIndex < ValidCombatants.Num(); ++FirstIndex)
+	{
+		for (int32 SecondIndex = FirstIndex + 1; SecondIndex < ValidCombatants.Num(); ++SecondIndex)
+		{
+			AActor* FirstTarget = ValidCombatants[FirstIndex];
+			AActor* SecondTarget = ValidCombatants[SecondIndex];
+
+			if (!IsValidCombatant(FirstTarget) || !IsValidCombatant(SecondTarget))
+			{
+				continue;
+			}
+
+			const float PairDistance =
+				FVector::Dist2D(
+					FirstTarget->GetActorLocation(),
+					SecondTarget->GetActorLocation());
+
+			if (PairDistance < TargetData.MinPairDistance)
+			{
+				continue;
+			}
+
+			if (TargetData.MaxPairDistance > 0.0f &&
+				PairDistance > TargetData.MaxPairDistance)
+			{
+				continue;
+			}
+
+			FNSLocalPairCandidate PairCandidate;
+			PairCandidate.FirstTarget = FirstTarget;
+			PairCandidate.SecondTarget = SecondTarget;
+			PairCandidate.Distance = PairDistance;
+
+			PairCandidates.Add(PairCandidate);
+		}
+	}
+
+	PairCandidates.Sort(
+		[](const FNSLocalPairCandidate& A, const FNSLocalPairCandidate& B)
+		{
+			return A.Distance < B.Distance;
+		});
+
+	const int32 MaxPairCount = FMath::Max(TargetData.MaxPairCount, 0);
+	const int32 PairCount = MaxPairCount > 0
+		                        ? FMath::Min(MaxPairCount, PairCandidates.Num())
+		                        : PairCandidates.Num();
+
+	for (int32 PairIndex = 0; PairIndex < PairCount; ++PairIndex)
+	{
+		const FNSLocalPairCandidate& PairCandidate = PairCandidates[PairIndex];
+
+		OutTargetPoints.Add(
+			MakePairTargetPoint(
+				PairCandidate.FirstTarget,
+				PairCandidate.SecondTarget));
+	}
+
+	return !OutTargetPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::IsValidCombatant(const AActor* Combatant) const
+{
+	if (!IsValid(Combatant))
+	{
+		return false;
+	}
+
+	if (Combatant == GetOwner())
+	{
+		return false;
+	}
+
+	if (const UNSEnemyTargetComponent* TargetComponent = GetTargetComponent())
+	{
+		return TargetComponent->IsValidLivingTarget(Combatant);
+	}
+
+	return true;
+}
+
+FNSBossArtilleryTargetPoint UNSBossArtilleryComponent::MakeActorTargetPoint(AActor* TargetActor) const
+{
+	FNSBossArtilleryTargetPoint TargetPoint;
+
+	if (!IsValid(TargetActor))
+	{
+		return TargetPoint;
+	}
+
+	TargetPoint.PointType = ENSBossArtilleryTargetPointType::Actor;
+	TargetPoint.PrimaryTarget = TargetActor;
+	TargetPoint.Location = TargetActor->GetActorLocation();
+
+	if (const AActor* OwnerActor = GetOwner())
+	{
+		TargetPoint.Direction = (TargetPoint.Location - OwnerActor->GetActorLocation()).GetSafeNormal2D();
+		TargetPoint.Distance = FVector::Dist2D(TargetPoint.Location, OwnerActor->GetActorLocation());
+	}
+
+	return TargetPoint;
+}
+
+FNSBossArtilleryTargetPoint UNSBossArtilleryComponent::MakePairTargetPoint(
+	AActor* FirstTarget,
+	AActor* SecondTarget) const
+{
+	FNSBossArtilleryTargetPoint TargetPoint;
+
+	if (!IsValid(FirstTarget) || !IsValid(SecondTarget))
+	{
+		return TargetPoint;
+	}
+
+	const FVector FirstLocation = FirstTarget->GetActorLocation();
+	const FVector SecondLocation = SecondTarget->GetActorLocation();
+
+	TargetPoint.PointType = ENSBossArtilleryTargetPointType::PairMidpoint;
+	TargetPoint.PrimaryTarget = FirstTarget;
+	TargetPoint.SecondaryTarget = SecondTarget;
+	TargetPoint.Location = (FirstLocation + SecondLocation) * 0.5f;
+	TargetPoint.Direction = (SecondLocation - FirstLocation).GetSafeNormal2D();
+	TargetPoint.Distance = FVector::Dist2D(FirstLocation, SecondLocation);
+
+	return TargetPoint;
+}
+
+FNSBossArtilleryTargetPoint UNSBossArtilleryComponent::MakeLocationTargetPoint(
+	ENSBossArtilleryTargetPointType PointType,
+	const FVector& Location) const
+{
+	FNSBossArtilleryTargetPoint TargetPoint;
+
+	TargetPoint.PointType = PointType;
+	TargetPoint.Location = Location;
+
+	if (const AActor* OwnerActor = GetOwner())
+	{
+		TargetPoint.Direction = (Location - OwnerActor->GetActorLocation()).GetSafeNormal2D();
+		TargetPoint.Distance = FVector::Dist2D(Location, OwnerActor->GetActorLocation());
+	}
+
+	return TargetPoint;
+}
+
+FVector UNSBossArtilleryComponent::GetArenaCenterLocation() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	if (IsValid(ArenaBounds))
+	{
+		const float CenterZ = OwnerActor ? OwnerActor->GetActorLocation().Z : ArenaBounds->GetActorLocation().Z;
+		return ArenaBounds->GetArenaCenter(CenterZ);
+	}
+
+	return OwnerActor ? OwnerActor->GetActorLocation() : FVector::ZeroVector;
+}
+
+UNSEnemyTargetComponent* UNSBossArtilleryComponent::GetTargetComponent() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	return OwnerActor
+		       ? OwnerActor->FindComponentByClass<UNSEnemyTargetComponent>()
+		       : nullptr;
+}
+
+UNSEnemyThreatComponent* UNSBossArtilleryComponent::GetThreatComponent() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	return OwnerActor
+		       ? OwnerActor->FindComponentByClass<UNSEnemyThreatComponent>()
+		       : nullptr;
 }
 
 bool UNSBossArtilleryComponent::CanUsePatternData(

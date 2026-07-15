@@ -10,6 +10,9 @@
 
 class UNSEnemyPhaseComponent;
 class UNSBossArtilleryPatternData;
+class ANSBossArenaBounds;
+class UNSEnemyTargetComponent;
+class UNSEnemyThreatComponent;
 
 // 포격 패턴을 선택할 때 필요한 현재 전투 상태
 USTRUCT(BlueprintType)
@@ -130,6 +133,48 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Boss|Artillery")
 	int32 GetHardCooldownRemaining(ENSBossArtilleryPatternId PatternId) const;
 
+	// 등록된 전투 참여자 수로 포격 패턴 선택 컨텍스트를 생성하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery")
+	FNSBossArtillerySelectionContext MakeSelectionContextFromRegisteredCombatants() const;
+
+	// 등록된 전투 참여자 수를 기준으로 포격 패턴을 선택하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery")
+	UNSBossArtilleryPatternData* SelectPatternByRegisteredCombatants(bool bRecordSelection = true);
+
+	// 현재 포격 시스템이 사용할 전투 참여자 목록을 교체하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void SetRegisteredCombatants(const TArray<AActor*>& InCombatants);
+
+	// 포격 시스템이 사용할 전투 참여자를 하나 추가하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void RegisterCombatant(AActor* Combatant);
+
+	// 포격 시스템이 사용하던 전투 참여자 하나를 제거하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void UnregisterCombatant(AActor* Combatant);
+
+	// 포격 시스템이 관리 중인 전투 참여자 목록을 모두 비우는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void ClearRegisteredCombatants();
+
+	// 현재 유효한 전투 참여자 목록을 반환하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void CollectValidCombatants(TArray<AActor*>& OutCombatants) const;
+
+	// 현재 유효한 전투 참여자 수를 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Boss|Artillery|Target")
+	int32 GetRegisteredCombatantCount() const;
+
+	// 파동 포격과 아레나 기준 포격에 사용할 보스룸 Bounds를 지정하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	void SetArenaBounds(ANSBossArenaBounds* InArenaBounds);
+
+	// 선택된 포격 패턴의 TargetMode에 맞는 포격 기준점 목록을 수집하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Target")
+	bool CollectTargetPointsForPattern(
+		const UNSBossArtilleryPatternData* PatternData,
+		TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
 	bool CanUsePatternData(
@@ -166,6 +211,46 @@ private:
 	// Owner가 가진 페이즈 컴포넌트를 반환하는 함수
 	UNSEnemyPhaseComponent* GetPhaseComponent() const;
 
+	// AllCombatants 대상 모드의 기준점 목록을 수집하는 함수
+	bool CollectAllCombatantTargetPoints(TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
+	// HighestThreat 대상 모드의 기준점 목록을 수집하는 함수
+	bool CollectHighestThreatTargetPoint(TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
+	// ArenaCenter 대상 모드의 기준점 목록을 수집하는 함수
+	bool CollectArenaCenterTargetPoint(TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
+	// BossLocation 대상 모드의 기준점 목록을 수집하는 함수
+	bool CollectBossLocationTargetPoint(TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
+	// BetweenCombatants 대상 모드의 기준점 목록을 수집하는 함수
+	bool CollectBetweenCombatantTargetPoints(
+		const FNSBossArtilleryTargetData& TargetData,
+		TArray<FNSBossArtilleryTargetPoint>& OutTargetPoints) const;
+
+	// 지정 Actor가 포격 대상 기준점으로 사용할 수 있는 유효 전투 참여자인지 확인하는 함수
+	bool IsValidCombatant(const AActor* Combatant) const;
+
+	// 단일 Actor 기준점을 생성하는 함수
+	FNSBossArtilleryTargetPoint MakeActorTargetPoint(AActor* TargetActor) const;
+
+	// 두 Actor 사이의 중간 기준점을 생성하는 함수
+	FNSBossArtilleryTargetPoint MakePairTargetPoint(AActor* FirstTarget, AActor* SecondTarget) const;
+
+	// 위치 기반 기준점을 생성하는 함수
+	FNSBossArtilleryTargetPoint MakeLocationTargetPoint(
+		ENSBossArtilleryTargetPointType PointType,
+		const FVector& Location) const;
+
+	// 보스룸 중심 위치를 반환하는 함수
+	FVector GetArenaCenterLocation() const;
+
+	// Owner가 가진 타깃 검증 컴포넌트를 반환하는 함수
+	UNSEnemyTargetComponent* GetTargetComponent() const;
+
+	// Owner가 가진 Threat 컴포넌트를 반환하는 함수
+	UNSEnemyThreatComponent* GetThreatComponent() const;
+
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Patterns",
@@ -194,4 +279,18 @@ private:
 	// 패턴별로 남아 있는 하드 쿨다운 선택 횟수
 	UPROPERTY(Transient)
 	TMap<ENSBossArtilleryPatternId, int32> HardCooldownRemainingByPattern;
+
+	// 현재 보스 포격 시스템이 대상으로 삼을 수 있는 전투 참여자 목록
+	UPROPERTY(Transient)
+	TArray<TWeakObjectPtr<AActor>> RegisteredCombatants;
+
+	// 아레나 중심 기준 포격에 사용할 보스룸 Bounds
+	UPROPERTY(EditInstanceOnly, BlueprintReadOnly, Category = "Boss|Artillery|Target",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<ANSBossArenaBounds> ArenaBounds;
+
+	// 등록 전투 참여자가 없을 때 ThreatComponent의 KnownTargets를 임시 fallback으로 사용할지 여부
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Target",
+		meta = (AllowPrivateAccess = "true"))
+	bool bUseThreatKnownTargetsWhenNoRegisteredCombatants = false;
 };
