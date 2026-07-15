@@ -592,7 +592,7 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 		return;
 	}
 
-	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
+	Part->CurrentValue = RollValueForPart(*Part);
 	Part->RollCount++;
 
 	ApplyPartEffect(Slot);
@@ -639,22 +639,32 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
 	Part->RollCount = 0;
 
-	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
+	Part->CurrentValue = RollValueForPart(*Part);
 
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
 	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess, Currency->GetTemp());
 }
 
-float UNSPartEquipComponent::RollValueForRarity(ENSPartRarity Rarity) const
+float UNSPartEquipComponent::RollValueForPart(const FNSPartData& Part) const
 {
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
-	if (!Row)
+	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part.CurrentRarity);
+	if (!UpgradeRow)
 	{
 		return 0.f;
 	}
 
-	return FMath::RandRange(Row->ValueRange.Min, Row->ValueRange.Max);
+	// 이 파츠가 올리는 스탯의 만점 수치 조회 (StatTag는 DT Row가 단일 소스)
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, Part);
+	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
+	if (!Row || !Row->StatTag.IsValid())
+	{
+		return 0.f;
+	}
+
+	// 등급 품질(0~1) 롤 × 스탯 만점 = 최종 수치
+	const float Quality = FMath::RandRange(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
+	return Quality * NSPartUtils::GetStatMaxValue(this, Row->StatTag);
 }
 
 int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
@@ -769,7 +779,7 @@ void UNSPartEquipComponent::GenerateShopStock()
 			Item.Slot = SlotPair.Key;
 			Item.CurrentRarity = RollShopRarity();
 
-			Item.CurrentValue = RollValueForRarity(Item.CurrentRarity);
+			Item.CurrentValue = RollValueForPart(Item);
 
 			ShopStock.Add(Item);
 		}
