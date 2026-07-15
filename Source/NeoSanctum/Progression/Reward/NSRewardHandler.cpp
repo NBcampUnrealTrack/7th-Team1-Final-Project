@@ -383,8 +383,32 @@ FNSDropLaunchData UNSRewardHandler::MakeDropLaunchData(UWorld* World,
 		0.0f
 	);
 	
-	const FVector CandidateTargetLocation = Origin + HorizontalOffset;
+	FVector CandidateTargetLocation = Origin + HorizontalOffset;
+
+	/**
+	 * 원점과 후보 착지점 사이에 벽이 있으면 착지점이 벽 안/벽 뒤로 잡히므로
+	 * 수평 트레이스로 막힘을 검사하고 막혔으면 벽 앞으로 당긴다
+	 */
+	constexpr float WallProbeHeight = 50.0f;
+	constexpr float WallBackoffDistance = 50.f;
 	
+	FCollisionQueryParams WallQueryParams(SCENE_QUERY_STAT(RewardDropWallTrace), false);
+	FCollisionObjectQueryParams WallObjectParams;
+	WallObjectParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	
+	const FVector WallTraceStart = Origin + FVector::UpVector * WallProbeHeight;
+	const FVector WallTraceEnd = CandidateTargetLocation + FVector::UpVector * WallProbeHeight;
+	
+	FHitResult WallHit;
+	if (World->LineTraceSingleByObjectType(WallHit, WallTraceStart, WallTraceEnd, WallObjectParams, WallQueryParams))
+	{
+		// 히트 지점에서 원점 방향으로 여유 거리만큼 당긴 위치를 새 후보로 사용
+		const FVector BackDirection = (WallTraceStart - WallTraceEnd).GetSafeNormal();
+		const FVector PulledLocation = WallHit.Location + BackDirection * WallBackoffDistance;
+		CandidateTargetLocation.X = PulledLocation.X;
+		CandidateTargetLocation.Y = PulledLocation.Y;
+	}
+
 	LaunchData.StartLocation = Origin + FVector(0.0f, 0.0f, StartHeightOffset);
 	
 	FVector GroundTargetLocation;
