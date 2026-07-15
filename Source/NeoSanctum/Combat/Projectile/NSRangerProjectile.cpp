@@ -399,6 +399,8 @@ void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
 	CueParameters.EffectCauser = this;
 	CueParameters.Location = HitResult.ImpactPoint;
 	CueParameters.Normal = HitResult.ImpactNormal;
+	// 이미 증강까지 적용된 실제 폭발 반경을 Cue에 넘겨줌.
+	CueParameters.RawMagnitude = ExplosionRadius;
 	
 	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_Impact, CueParameters);
 }
