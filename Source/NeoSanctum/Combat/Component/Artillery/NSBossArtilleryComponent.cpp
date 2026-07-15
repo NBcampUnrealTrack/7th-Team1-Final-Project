@@ -8,6 +8,20 @@
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Data/AI/NSBossArtilleryPatternData.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
+#include "Components/PrimitiveComponent.h"
+#include "Engine/OverlapResult.h"
+#include "Engine/World.h"
+#include "GameplayEffect.h"
+#include "TimerManager.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 
 UNSBossArtilleryComponent::UNSBossArtilleryComponent()
 {
@@ -17,10 +31,8 @@ UNSBossArtilleryComponent::UNSBossArtilleryComponent()
 
 void UNSBossArtilleryComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// 보스 제거 또는 레벨 종료 시 런타임 선택 상태를 정리
+	CancelActiveArtilleryExecutions();
 	ResetArtillerySelectionState();
-
-	// 보스 제거 또는 레벨 종료 시 등록 전투 참여자 상태를 정리
 	ClearRegisteredCombatants();
 
 	Super::EndPlay(EndPlayReason);
@@ -772,6 +784,671 @@ float UNSBossArtilleryComponent::GetCurrentServerTimeSeconds() const
 	const UWorld* World = GetWorld();
 
 	return World ? World->GetTimeSeconds() : 0.0f;
+}
+
+bool UNSBossArtilleryComponent::ExecuteArtilleryFromRegisteredCombatants(bool bRecordSelection)
+{
+	FNSBossArtilleryExecutionData ExecutionData;
+
+	if (!SelectAndBuildExecutionDataNowFromRegisteredCombatants(
+		ExecutionData,
+		bRecordSelection))
+	{
+		return false;
+	}
+
+	return ExecuteArtilleryExecutionData(ExecutionData);
+}
+
+bool UNSBossArtilleryComponent::ExecuteArtilleryExecutionData(
+	const FNSBossArtilleryExecutionData& ExecutionData)
+{
+	AActor* OwnerActor = GetOwner();
+
+	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
+	{
+		return false;
+	}
+
+	if (ExecutionData.ExecutionId <= 0 ||
+		ExecutionData.TimedShots.IsEmpty() ||
+		ExecutionData.PresentationShots.IsEmpty())
+	{
+		return false;
+	}
+
+	if (ActiveExecutions.Contains(ExecutionData.ExecutionId))
+	{
+		return false;
+	}
+
+	FNSBossArtilleryRuntimeExecution RuntimeExecution;
+	RuntimeExecution.ExecutionData = ExecutionData;
+	RuntimeExecution.PendingShotCount = ExecutionData.TimedShots.Num();
+
+	ActiveExecutions.Add(ExecutionData.ExecutionId, MoveTemp(RuntimeExecution));
+
+	ScheduleExecutionPresentation(ExecutionData);
+	ScheduleExecutionDamage(ExecutionData);
+
+	return true;
+}
+
+void UNSBossArtilleryComponent::CancelActiveArtilleryExecutions()
+{
+	UWorld* World = GetWorld();
+
+	for (TPair<int32, FNSBossArtilleryRuntimeExecution>& Pair : ActiveExecutions)
+	{
+		if (!World)
+		{
+			continue;
+		}
+
+		for (FTimerHandle& TimerHandle : Pair.Value.ExplosionTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle);
+		}
+	}
+
+	ActiveExecutions.Reset();
+}
+
+bool UNSBossArtilleryComponent::HasActiveArtilleryExecution() const
+{
+	return !ActiveExecutions.IsEmpty();
+}
+
+void UNSBossArtilleryComponent::ScheduleExecutionDamage(
+	const FNSBossArtilleryExecutionData& ExecutionData)
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		RemoveActiveExecution(ExecutionData.ExecutionId);
+		return;
+	}
+
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionData.ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	const float CurrentServerTime = GetCurrentServerTimeSeconds();
+	TArray<int32> ImmediateShotIndices;
+
+	for (int32 TimedShotIndex = 0; TimedShotIndex < ExecutionData.TimedShots.Num(); ++TimedShotIndex)
+	{
+		const FNSBossArtilleryTimedShot& TimedShot = ExecutionData.TimedShots[TimedShotIndex];
+		const float Delay = TimedShot.ExplosionServerTime - CurrentServerTime;
+
+		if (Delay <= 0.0f)
+		{
+			ImmediateShotIndices.Add(TimedShotIndex);
+			continue;
+		}
+
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindUObject(
+			this,
+			&ThisClass::HandleTimedShotExplosion,
+			ExecutionData.ExecutionId,
+			TimedShotIndex);
+
+		FTimerHandle TimerHandle;
+		World->GetTimerManager().SetTimer(
+			TimerHandle,
+			TimerDelegate,
+			Delay,
+			false);
+
+		RuntimeExecution->ExplosionTimerHandles.Add(TimerHandle);
+	}
+
+	for (const int32 TimedShotIndex : ImmediateShotIndices)
+	{
+		if (!ActiveExecutions.Contains(ExecutionData.ExecutionId))
+		{
+			break;
+		}
+
+		HandleTimedShotExplosion(ExecutionData.ExecutionId, TimedShotIndex);
+	}
+}
+
+void UNSBossArtilleryComponent::HandleTimedShotExplosion(
+	int32 ExecutionId,
+	int32 TimedShotIndex)
+{
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	if (!RuntimeExecution->ExecutionData.TimedShots.IsValidIndex(TimedShotIndex))
+	{
+		RuntimeExecution->PendingShotCount =
+			FMath::Max(RuntimeExecution->PendingShotCount - 1, 0);
+
+		FinishExecutionIfComplete(ExecutionId);
+		return;
+	}
+
+	const FNSBossArtilleryTimedShot& TimedShot =
+		RuntimeExecution->ExecutionData.TimedShots[TimedShotIndex];
+
+	ApplyTimedShotDamage(
+		RuntimeExecution->ExecutionData,
+		TimedShot,
+		RuntimeExecution->DamagedTargets);
+
+	FNSBossArtilleryPresentationShot PresentationShot;
+	if (TryGetPresentationShotByGlobalShotIndex(
+		RuntimeExecution->ExecutionData,
+		TimedShot.ImpactPoint.GlobalShotIndex,
+		PresentationShot))
+	{
+		SendArtilleryImpactCosmeticEvent(PresentationShot);
+	}
+
+	RuntimeExecution->PendingShotCount =
+		FMath::Max(RuntimeExecution->PendingShotCount - 1, 0);
+
+	FinishExecutionIfComplete(ExecutionId);
+}
+
+void UNSBossArtilleryComponent::ApplyTimedShotDamage(
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	const FNSBossArtilleryTimedShot& TimedShot,
+	TSet<TObjectKey<AActor>>& InOutDamagedTargets) const
+{
+	TArray<AActor*> DamageTargets;
+	CollectDamageTargetsAtImpact(
+		ExecutionData,
+		TimedShot,
+		DamageTargets);
+
+	for (AActor* TargetActor : DamageTargets)
+	{
+		if (!IsValid(TargetActor))
+		{
+			continue;
+		}
+
+		const TObjectKey<AActor> TargetKey(TargetActor);
+
+		if (!ExecutionData.DamageData.bAllowMultipleHitsPerTarget &&
+			InOutDamagedTargets.Contains(TargetKey))
+		{
+			continue;
+		}
+
+		if (ApplyArtilleryDamageToTarget(
+			TargetActor,
+			ExecutionData,
+			TimedShot))
+		{
+			InOutDamagedTargets.Add(TargetKey);
+		}
+	}
+}
+
+void UNSBossArtilleryComponent::CollectDamageTargetsAtImpact(
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	const FNSBossArtilleryTimedShot& TimedShot,
+	TArray<AActor*>& OutTargets) const
+{
+	OutTargets.Reset();
+
+	UWorld* World = GetWorld();
+	AActor* OwnerActor = GetOwner();
+
+	if (!World || !IsValid(OwnerActor))
+	{
+		return;
+	}
+
+	const float DamageRadius = FMath::Max(ExecutionData.DamageData.DamageRadius, 0.0f);
+
+	if (DamageRadius <= 0.0f)
+	{
+		return;
+	}
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerActor);
+
+	TArray<FOverlapResult> Overlaps;
+	const bool bHasOverlap = World->OverlapMultiByChannel(
+		Overlaps,
+		TimedShot.ImpactPoint.ImpactLocation,
+		FQuat::Identity,
+		DamageOverlapChannel,
+		FCollisionShape::MakeSphere(DamageRadius),
+		QueryParams);
+
+	if (!bHasOverlap)
+	{
+		return;
+	}
+
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		AActor* TargetActor = Overlap.GetActor();
+
+		if (!NSDamageRules::CanApplyDamage(OwnerActor, TargetActor))
+		{
+			continue;
+		}
+
+		if (ExecutionData.DamageData.bRequireLineOfSight &&
+			!HasDamageLineOfSight(
+				TimedShot.ImpactPoint.ImpactLocation,
+				TargetActor))
+		{
+			continue;
+		}
+
+		OutTargets.AddUnique(TargetActor);
+	}
+}
+
+bool UNSBossArtilleryComponent::HasDamageLineOfSight(
+	const FVector& ImpactLocation,
+	AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+	AActor* OwnerActor = GetOwner();
+
+	if (!World)
+	{
+		return false;
+	}
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerActor);
+
+	const FVector TargetLocation = GetDamageCheckLocation(TargetActor);
+
+	FHitResult HitResult;
+	const bool bHit = World->LineTraceSingleByChannel(
+		HitResult,
+		ImpactLocation + FVector::UpVector * 30.0f,
+		TargetLocation,
+		DamageLineOfSightChannel,
+		QueryParams);
+
+	if (!bHit)
+	{
+		return true;
+	}
+
+	AActor* HitActor = HitResult.GetActor();
+
+	return HitActor == TargetActor ||
+		(IsValid(HitActor) && HitActor->IsAttachedTo(TargetActor));
+}
+
+bool UNSBossArtilleryComponent::ApplyArtilleryDamageToTarget(
+	AActor* TargetActor,
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	const FNSBossArtilleryTimedShot& TimedShot) const
+{
+	AActor* OwnerActor = GetOwner();
+	UAbilitySystemComponent* SourceASC = GetOwnerAbilitySystemComponent();
+	UAbilitySystemComponent* TargetASC = GetTargetAbilitySystemComponent(TargetActor);
+
+	if (!IsValid(OwnerActor) ||
+		!IsValid(SourceASC) ||
+		!IsValid(TargetASC) ||
+		!DamageEffectClass)
+	{
+		return false;
+	}
+
+	FHitResult HitResult;
+	HitResult.Location = TimedShot.ImpactPoint.ImpactLocation;
+	HitResult.ImpactPoint = TimedShot.ImpactPoint.ImpactLocation;
+	HitResult.TraceStart = OwnerActor->GetActorLocation();
+	HitResult.TraceEnd = TimedShot.ImpactPoint.ImpactLocation;
+
+	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
+	EffectContext.AddSourceObject(OwnerActor);
+	EffectContext.AddHitResult(HitResult);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		SourceASC->MakeOutgoingSpec(
+			DamageEffectClass,
+			1.0f,
+			EffectContext);
+
+	if (!SpecHandle.IsValid())
+	{
+		return false;
+	}
+
+	const float Damage = CalculateArtilleryDamage(ExecutionData.DamageData);
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_Base,
+		Damage);
+
+	SourceASC->ApplyGameplayEffectSpecToTarget(
+		*SpecHandle.Data.Get(),
+		TargetASC);
+
+	return true;
+}
+
+float UNSBossArtilleryComponent::CalculateArtilleryDamage(
+	const FNSBossArtilleryDamageData& DamageData) const
+{
+	const UAbilitySystemComponent* SourceASC = GetOwnerAbilitySystemComponent();
+
+	if (!SourceASC)
+	{
+		return 0.0f;
+	}
+
+	const float SourceBaseDamage =
+		SourceASC->GetNumericAttribute(
+			UNSBaseAttributeSet::GetBaseDamageAttribute());
+
+	return FMath::Max(SourceBaseDamage * DamageData.DamageScale, 0.0f);
+}
+
+FVector UNSBossArtilleryComponent::GetDamageCheckLocation(
+	const AActor* TargetActor) const
+{
+	if (!IsValid(TargetActor))
+	{
+		return FVector::ZeroVector;
+	}
+
+	if (const UPrimitiveComponent* PrimitiveComponent =
+		Cast<UPrimitiveComponent>(TargetActor->GetRootComponent()))
+	{
+		return PrimitiveComponent->Bounds.Origin;
+	}
+
+	return TargetActor->GetActorLocation();
+}
+
+UAbilitySystemComponent* UNSBossArtilleryComponent::GetOwnerAbilitySystemComponent() const
+{
+	const IAbilitySystemInterface* AbilitySystemInterface =
+		Cast<IAbilitySystemInterface>(GetOwner());
+
+	return AbilitySystemInterface
+		       ? AbilitySystemInterface->GetAbilitySystemComponent()
+		       : nullptr;
+}
+
+UAbilitySystemComponent* UNSBossArtilleryComponent::GetTargetAbilitySystemComponent(
+	AActor* TargetActor) const
+{
+	const IAbilitySystemInterface* AbilitySystemInterface =
+		Cast<IAbilitySystemInterface>(TargetActor);
+
+	return AbilitySystemInterface
+		       ? AbilitySystemInterface->GetAbilitySystemComponent()
+		       : nullptr;
+}
+
+bool UNSBossArtilleryComponent::TryGetPresentationShotByGlobalShotIndex(
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	int32 GlobalShotIndex,
+	FNSBossArtilleryPresentationShot& OutPresentationShot) const
+{
+	for (const FNSBossArtilleryPresentationShot& PresentationShot : ExecutionData.PresentationShots)
+	{
+		if (PresentationShot.GlobalShotIndex == GlobalShotIndex)
+		{
+			OutPresentationShot = PresentationShot;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void UNSBossArtilleryComponent::FinishExecutionIfComplete(int32 ExecutionId)
+{
+	const FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	if (RuntimeExecution->PendingShotCount > 0)
+	{
+		return;
+	}
+
+	RemoveActiveExecution(ExecutionId);
+}
+
+void UNSBossArtilleryComponent::RemoveActiveExecution(int32 ExecutionId)
+{
+	UWorld* World = GetWorld();
+
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	if (World)
+	{
+		for (FTimerHandle& TimerHandle : RuntimeExecution->ExplosionTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle);
+		}
+	}
+
+	ActiveExecutions.Remove(ExecutionId);
+}
+
+void UNSBossArtilleryComponent::ScheduleExecutionPresentation(
+	const FNSBossArtilleryExecutionData& ExecutionData)
+{
+	UWorld* World = GetWorld();
+
+	if (!World)
+	{
+		return;
+	}
+
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionData.ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	const float CurrentServerTime = GetCurrentServerTimeSeconds();
+	TArray<int32> ImmediatePresentationIndices;
+
+	for (int32 PresentationShotIndex = 0; PresentationShotIndex < ExecutionData.PresentationShots.Num(); ++
+	     PresentationShotIndex)
+	{
+		const FNSBossArtilleryPresentationShot& PresentationShot =
+			ExecutionData.PresentationShots[PresentationShotIndex];
+
+		const float Delay = PresentationShot.WarningStartServerTime - CurrentServerTime;
+
+		if (Delay <= 0.0f)
+		{
+			ImmediatePresentationIndices.Add(PresentationShotIndex);
+			continue;
+		}
+
+		FTimerDelegate TimerDelegate;
+		TimerDelegate.BindUObject(
+			this,
+			&ThisClass::HandlePresentationShotWarning,
+			ExecutionData.ExecutionId,
+			PresentationShotIndex);
+
+		FTimerHandle TimerHandle;
+		World->GetTimerManager().SetTimer(
+			TimerHandle,
+			TimerDelegate,
+			Delay,
+			false);
+
+		RuntimeExecution->PresentationTimerHandles.Add(TimerHandle);
+	}
+
+	for (const int32 PresentationShotIndex : ImmediatePresentationIndices)
+	{
+		if (!ActiveExecutions.Contains(ExecutionData.ExecutionId))
+		{
+			break;
+		}
+
+		HandlePresentationShotWarning(ExecutionData.ExecutionId, PresentationShotIndex);
+	}
+}
+
+void UNSBossArtilleryComponent::HandlePresentationShotWarning(
+	int32 ExecutionId,
+	int32 PresentationShotIndex)
+{
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	if (!RuntimeExecution->ExecutionData.PresentationShots.IsValidIndex(PresentationShotIndex))
+	{
+		return;
+	}
+
+	const FNSBossArtilleryPresentationShot& PresentationShot =
+		RuntimeExecution->ExecutionData.PresentationShots[PresentationShotIndex];
+
+	if (PresentationShot.ExplosionServerTime <= GetCurrentServerTimeSeconds())
+	{
+		return;
+	}
+
+	SendArtilleryLaunchCosmeticEvent(PresentationShot);
+	SendArtilleryWarningCosmeticEvent(PresentationShot);
+}
+
+void UNSBossArtilleryComponent::SendArtilleryLaunchCosmeticEvent(
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	const FVector MuzzleLocation = ResolveArtilleryMuzzleLocation(PresentationShot);
+	const FVector ImpactLocation = PresentationShot.ImpactLocation;
+	const FVector Direction = (ImpactLocation - MuzzleLocation).GetSafeNormal();
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Launch;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = MuzzleLocation;
+	EventData.EndLocation = ImpactLocation;
+	EventData.Direction = Direction;
+	EventData.Range = FVector::Dist(MuzzleLocation, ImpactLocation);
+	EventData.Duration = FMath::Max(PresentationShot.ExplosionServerTime - GetCurrentServerTimeSeconds(), 0.0f);
+
+	SendArtilleryCosmeticEvent(EventData, true);
+}
+
+void UNSBossArtilleryComponent::SendArtilleryWarningCosmeticEvent(
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Warning;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = PresentationShot.ImpactLocation;
+	EventData.Direction = FVector::UpVector;
+	EventData.Radius = PresentationShot.DamageRadius;
+	EventData.Duration = FMath::Max(PresentationShot.ExplosionServerTime - GetCurrentServerTimeSeconds(), 0.01f);
+
+	SendArtilleryCosmeticEvent(EventData, true);
+}
+
+void UNSBossArtilleryComponent::SendArtilleryImpactCosmeticEvent(
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Impact;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = PresentationShot.ImpactLocation;
+	EventData.Direction = FVector::UpVector;
+	EventData.Radius = PresentationShot.DamageRadius;
+
+	SendArtilleryCosmeticEvent(EventData, true);
+}
+
+void UNSBossArtilleryComponent::SendArtilleryCosmeticEvent(
+	const FNSCosmeticEventNetData& EventData,
+	bool bReliable) const
+{
+	if (UNSEnemyCosmeticComponent* CosmeticComponent = GetEnemyCosmeticComponent())
+	{
+		CosmeticComponent->SendCosmeticEvent(EventData, bReliable);
+	}
+}
+
+UNSEnemyCosmeticComponent* UNSBossArtilleryComponent::GetEnemyCosmeticComponent() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	return OwnerActor
+		       ? OwnerActor->FindComponentByClass<UNSEnemyCosmeticComponent>()
+		       : nullptr;
+}
+
+UNSEnemyPartComponent* UNSBossArtilleryComponent::GetEnemyPartComponent() const
+{
+	const AActor* OwnerActor = GetOwner();
+
+	return OwnerActor
+		       ? OwnerActor->FindComponentByClass<UNSEnemyPartComponent>()
+		       : nullptr;
+}
+
+FVector UNSBossArtilleryComponent::ResolveArtilleryMuzzleLocation(
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	if (const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent())
+	{
+		FTransform MuzzleTransform;
+		if (PartComponent->TryGetAimMuzzleTransform(MuzzleTransform))
+		{
+			return MuzzleTransform.GetLocation();
+		}
+	}
+
+	const AActor* OwnerActor = GetOwner();
+	constexpr float FallbackMuzzleHeight = 300.0f;
+
+	return OwnerActor
+		       ? OwnerActor->GetActorLocation() + FVector::UpVector * FallbackMuzzleHeight
+		       : FVector(PresentationShot.ImpactLocation) + FVector::UpVector * FallbackMuzzleHeight;
 }
 
 int32 UNSBossArtilleryComponent::AllocateArtilleryExecutionId()

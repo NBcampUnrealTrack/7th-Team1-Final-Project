@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "NSBossArtilleryTypes.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NSBossArtilleryComponent.generated.h"
 
 class UNSEnemyPhaseComponent;
@@ -13,6 +14,11 @@ class UNSBossArtilleryPatternData;
 class ANSBossArenaBounds;
 class UNSEnemyTargetComponent;
 class UNSEnemyThreatComponent;
+class UAbilitySystemComponent;
+class UGameplayEffect;
+class UNSEnemyCosmeticComponent;
+class UNSEnemyPartComponent;
+struct FNSCosmeticEventNetData;
 
 // 포격 패턴을 선택할 때 필요한 현재 전투 상태
 USTRUCT(BlueprintType)
@@ -66,6 +72,25 @@ struct FNSBossArtilleryPatternCandidate
 	// 선택 후보에서 제외된 이유를 디버그용으로 보관
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Selection")
 	FString RejectReason;
+};
+
+// 서버에서 실행 중인 포격 실행 데이터와 타이머 상태를 보관하는 구조체
+struct FNSBossArtilleryRuntimeExecution
+{
+	// 서버 피해 판정과 클라이언트 연출에 사용할 포격 실행 데이터 변수
+	FNSBossArtilleryExecutionData ExecutionData;
+
+	// 아직 폭발 처리가 끝나지 않은 포탄 수 변수
+	int32 PendingShotCount = 0;
+
+	// 포탄 폭발 예약에 사용 중인 타이머 핸들 목록 변수
+	TArray<FTimerHandle> ExplosionTimerHandles;
+
+	// 같은 실행 안에서 이미 피해를 받은 대상을 기억하는 변수
+	TSet<TObjectKey<AActor>> DamagedTargets;
+
+	// 포격 경고/발사 코스메틱 예약에 사용 중인 타이머 핸들 목록 변수
+	TArray<FTimerHandle> PresentationTimerHandles;
 };
 
 /*
@@ -233,6 +258,22 @@ public:
 	// 현재 월드의 서버 시간을 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Boss|Artillery|Execution")
 	float GetCurrentServerTimeSeconds() const;
+
+	// 등록된 전투 참여자 기준으로 포격 데이터를 만들고 즉시 실행하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Execution")
+	bool ExecuteArtilleryFromRegisteredCombatants(bool bRecordSelection = true);
+
+	// 이미 생성된 포격 실행 데이터를 서버 기준으로 실행하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Execution")
+	bool ExecuteArtilleryExecutionData(const FNSBossArtilleryExecutionData& ExecutionData);
+
+	// 현재 실행 중인 모든 포격 실행을 취소하고 타이머를 정리하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Execution")
+	void CancelActiveArtilleryExecutions();
+
+	// 현재 실행 중인 포격이 하나 이상 있는지 반환하는 함수
+	UFUNCTION(BlueprintPure, Category = "Boss|Artillery|Execution")
+	bool HasActiveArtilleryExecution() const;
 
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
@@ -514,6 +555,86 @@ private:
 	// 시간 적용 포탄 목록으로 포격 실행 데이터의 시간 범위를 채우는 함수
 	void FillExecutionTimeRange(FNSBossArtilleryExecutionData& InOutExecutionData) const;
 
+	// 포격 실행 데이터의 포탄 폭발 타이머를 예약하는 함수
+	void ScheduleExecutionDamage(const FNSBossArtilleryExecutionData& ExecutionData);
+
+	// 지정 포격 실행의 지정 포탄 폭발을 서버에서 처리하는 함수
+	void HandleTimedShotExplosion(int32 ExecutionId, int32 TimedShotIndex);
+
+	// 지정 포탄의 범위 피해를 서버에서 적용하는 함수
+	void ApplyTimedShotDamage(
+		const FNSBossArtilleryExecutionData& ExecutionData,
+		const FNSBossArtilleryTimedShot& TimedShot,
+		TSet<TObjectKey<AActor>>& InOutDamagedTargets) const;
+
+	// 착탄 위치 주변에서 피해를 받을 수 있는 대상을 수집하는 함수
+	void CollectDamageTargetsAtImpact(
+		const FNSBossArtilleryExecutionData& ExecutionData,
+		const FNSBossArtilleryTimedShot& TimedShot,
+		TArray<AActor*>& OutTargets) const;
+
+	// 지정 대상이 착탄 위치에서 시야 차폐 없이 피해를 받을 수 있는지 확인하는 함수
+	bool HasDamageLineOfSight(
+		const FVector& ImpactLocation,
+		AActor* TargetActor) const;
+
+	// 포격 피해 GameplayEffect를 지정 대상에게 적용하는 함수
+	bool ApplyArtilleryDamageToTarget(
+		AActor* TargetActor,
+		const FNSBossArtilleryExecutionData& ExecutionData,
+		const FNSBossArtilleryTimedShot& TimedShot) const;
+
+	// 포격 피해량을 Source ASC와 포격 피해 설정으로 계산하는 함수
+	float CalculateArtilleryDamage(const FNSBossArtilleryDamageData& DamageData) const;
+
+	// 지정 Actor의 피해 판정 기준 위치를 반환하는 함수
+	FVector GetDamageCheckLocation(const AActor* TargetActor) const;
+
+	// Owner의 AbilitySystemComponent를 반환하는 함수
+	UAbilitySystemComponent* GetOwnerAbilitySystemComponent() const;
+
+	// 지정 Actor의 AbilitySystemComponent를 반환하는 함수
+	UAbilitySystemComponent* GetTargetAbilitySystemComponent(AActor* TargetActor) const;
+
+	// 포탄 표시 데이터에서 지정 인덱스에 해당하는 항목을 찾는 함수
+	bool TryGetPresentationShotByGlobalShotIndex(
+		const FNSBossArtilleryExecutionData& ExecutionData,
+		int32 GlobalShotIndex,
+		FNSBossArtilleryPresentationShot& OutPresentationShot) const;
+
+	// 지정 포격 실행의 남은 포탄 수가 0이면 실행 상태를 정리하는 함수
+	void FinishExecutionIfComplete(int32 ExecutionId);
+
+	// 지정 포격 실행의 타이머와 런타임 상태를 제거하는 함수
+	void RemoveActiveExecution(int32 ExecutionId);
+
+	// 포격 실행 데이터의 경고/발사 코스메틱 이벤트 타이머를 예약하는 함수
+	void ScheduleExecutionPresentation(const FNSBossArtilleryExecutionData& ExecutionData);
+
+	// 지정 포탄의 경고/발사 코스메틱 이벤트를 서버에서 전송하는 함수
+	void HandlePresentationShotWarning(int32 ExecutionId, int32 PresentationShotIndex);
+
+	// 기존 Bombard Launch 코스메틱 이벤트를 전송하는 함수
+	void SendArtilleryLaunchCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
+	// 기존 Bombard Warning 코스메틱 이벤트를 전송하는 함수
+	void SendArtilleryWarningCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
+	// 기존 Bombard Impact 코스메틱 이벤트를 전송하는 함수
+	void SendArtilleryImpactCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
+	// EnemyCosmeticComponent를 통해 코스메틱 이벤트를 전송하는 함수
+	void SendArtilleryCosmeticEvent(const FNSCosmeticEventNetData& EventData, bool bReliable) const;
+
+	// Owner가 가진 EnemyCosmeticComponent를 반환하는 함수
+	UNSEnemyCosmeticComponent* GetEnemyCosmeticComponent() const;
+
+	// Owner가 가진 EnemyPartComponent를 반환하는 함수
+	UNSEnemyPartComponent* GetEnemyPartComponent() const;
+
+	// 포격 발사 연출에 사용할 머즐 위치를 계산하는 함수
+	FVector ResolveArtilleryMuzzleLocation(const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Patterns",
@@ -570,4 +691,22 @@ private:
 	// 다음 포격 실행에 부여할 런타임 실행 ID 변수
 	UPROPERTY(Transient)
 	int32 NextArtilleryExecutionId = 1;
+
+	// 포격 피해를 적용할 GameplayEffect 클래스 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Artillery|Damage",
+		meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	// 포격 범위 피해 대상 수집에 사용할 충돌 채널 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Artillery|Damage",
+		meta = (AllowPrivateAccess = "true"))
+	TEnumAsByte<ECollisionChannel> DamageOverlapChannel = NSCollisionChannels::ExplosionTrace;
+
+	// 포격 시야 차폐 검사에 사용할 충돌 채널 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Boss|Artillery|Damage",
+		meta = (AllowPrivateAccess = "true"))
+	TEnumAsByte<ECollisionChannel> DamageLineOfSightChannel = NSCollisionChannels::ExplosionTrace;
+
+	// 현재 서버에서 실행 중인 포격 목록 변수
+	TMap<int32, FNSBossArtilleryRuntimeExecution> ActiveExecutions;
 };
