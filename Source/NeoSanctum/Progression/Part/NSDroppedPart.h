@@ -133,7 +133,7 @@ protected:
 
 	// 서버 줍기 재검증 시 허용 거리(변조 방지)
 	UPROPERTY(EditAnywhere, Category = "Part")
-	float InteractRadius = 100.f;
+	float InteractRadius = 220.f;
 
 	// 프롬프트 액션 문구
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Part")
