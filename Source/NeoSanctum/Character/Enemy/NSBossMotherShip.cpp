@@ -25,7 +25,7 @@
 ANSBossMotherShip::ANSBossMotherShip()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
+	bAlwaysRelevant = true;
 	FlyingLocomotionComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>(FName("FlyingMovementComponent"));
 }
 
