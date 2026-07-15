@@ -32,6 +32,7 @@ ANSBossMotherShip::ANSBossMotherShip()
 void ANSBossMotherShip::ApplyDeadState()
 {
 	Super::ApplyDeadState();
+	RecallAllDrones();
 	if (FlyingLocomotionComponent)
 	{
 		FlyingLocomotionComponent->StartDeathFall();
