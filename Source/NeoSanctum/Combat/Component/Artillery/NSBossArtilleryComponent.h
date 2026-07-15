@@ -645,6 +645,9 @@ private:
 	// 포격 발사 연출에 사용할 머즐 위치를 계산하는 함수
 	FVector ResolveArtilleryMuzzleLocation(const FNSBossArtilleryPresentationShot& PresentationShot) const;
 
+	// 착탄 위치를 지면 위 위치로 투영하는 함수
+	FVector ProjectImpactLocationToGround(const FVector& ImpactLocation) const;
+
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Patterns",
@@ -719,4 +722,29 @@ private:
 
 	// 현재 서버에서 실행 중인 포격 목록 변수
 	TMap<int32, FNSBossArtilleryRuntimeExecution> ActiveExecutions;
+
+	// 생성된 착탄 위치를 지면으로 투영할지 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true"))
+	bool bProjectImpactLocationsToGround = true;
+
+	// 착탄 위치를 지면에 맞추기 위해 위쪽으로 올릴 Trace 높이 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float ImpactGroundTraceHeight = 3000.0f;
+
+	// 착탄 위치를 지면에 맞추기 위해 아래쪽으로 내릴 Trace 깊이 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float ImpactGroundTraceDepth = 6000.0f;
+
+	// 지면 위 데칼 겹침을 막기 위해 더할 Z 보정값 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true"))
+	float ImpactGroundZOffset = 2.0f;
+
+	// 착탄 위치 지면 투영에 사용할 Trace Channel 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true"))
+	TEnumAsByte<ECollisionChannel> ImpactGroundTraceChannel = NSCollisionChannels::ExplosionTrace;
 };

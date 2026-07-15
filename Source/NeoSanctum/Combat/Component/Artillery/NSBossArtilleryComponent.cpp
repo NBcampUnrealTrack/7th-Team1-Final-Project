@@ -20,7 +20,7 @@
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"	
 #include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 
 UNSBossArtilleryComponent::UNSBossArtilleryComponent()
@@ -807,7 +807,7 @@ bool UNSBossArtilleryComponent::ExecuteArtilleryExecutionData(
 	{
 		return false;
 	}
-	
+
 	AActor* OwnerActor = GetOwner();
 
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
@@ -1476,6 +1476,56 @@ FVector UNSBossArtilleryComponent::ResolveArtilleryMuzzleLocation(
 		       : FVector(PresentationShot.ImpactLocation) + FVector::UpVector * FallbackMuzzleHeight;
 }
 
+FVector UNSBossArtilleryComponent::ProjectImpactLocationToGround(
+	const FVector& ImpactLocation) const
+{
+	if (!bProjectImpactLocationsToGround)
+	{
+		return ImpactLocation;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return ImpactLocation;
+	}
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(GetOwner());
+
+	if (AActor* OwnerActor = GetOwner())
+	{
+		TArray<AActor*> AttachedActors;
+		OwnerActor->GetAttachedActors(AttachedActors);
+
+		for (AActor* AttachedActor : AttachedActors)
+		{
+			if (IsValid(AttachedActor))
+			{
+				QueryParams.AddIgnoredActor(AttachedActor);
+			}
+		}
+	}
+
+	const FVector TraceStart = ImpactLocation + FVector::UpVector * ImpactGroundTraceHeight;
+	const FVector TraceEnd = ImpactLocation - FVector::UpVector * ImpactGroundTraceDepth;
+
+	FHitResult HitResult;
+	const bool bHitGround = World->LineTraceSingleByObjectType(
+		HitResult,
+		TraceStart,
+		TraceEnd,
+		FCollisionObjectQueryParams(ECC_WorldStatic),
+		QueryParams);
+
+	if (!bHitGround)
+	{
+		return ImpactLocation;
+	}
+
+	return HitResult.ImpactPoint + FVector::UpVector * ImpactGroundZOffset;
+}
+
 int32 UNSBossArtilleryComponent::AllocateArtilleryExecutionId()
 {
 	const int32 AllocatedExecutionId = NextArtilleryExecutionId;
@@ -1966,22 +2016,23 @@ void UNSBossArtilleryComponent::AddImpactPoint(
 	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
 {
 	const FVector ClampedImpactLocation = ClampImpactLocationToArena(ImpactLocation);
+	const FVector GroundedImpactLocation = ProjectImpactLocationToGround(ClampedImpactLocation);
 
-	if (!IsValidImpactLocation(ClampedImpactLocation))
+	if (!IsValidImpactLocation(GroundedImpactLocation))
 	{
 		return;
 	}
 
 	FNSBossArtilleryImpactPoint ImpactPoint;
 	ImpactPoint.SourceTargetPoint = SourceTargetPoint;
-	ImpactPoint.ImpactLocation = ClampedImpactLocation;
+	ImpactPoint.ImpactLocation = GroundedImpactLocation;
 	ImpactPoint.GlobalShotIndex = GlobalShotIndex;
 	ImpactPoint.LocalShotIndex = LocalShotIndex;
 	ImpactPoint.RingIndex = RingIndex;
 	ImpactPoint.DistanceFromOrigin =
 		FVector::Dist2D(
 			ResolveTargetPointLocation(SourceTargetPoint),
-			ClampedImpactLocation);
+			GroundedImpactLocation);
 
 	OutImpactPoints.Add(ImpactPoint);
 }
