@@ -11,6 +11,8 @@ class UMaterialInterface;
 class ANSBossAIController;
 class ANSAreaWarningPlaneActor;
 class UNSEnemyPartComponent;
+class UNSBossTargetComponent;
+class UNSEnemyThreatComponent;
 struct FNSEnemyAttackRow;
 
 /*
@@ -48,6 +50,18 @@ private:
 
 	// 현재 Avatar의 BossArtilleryComponent를 반환하는 함수
 	UNSBossArtilleryComponent* GetBossArtilleryComponent() const;
+
+	// 현재 Avatar의 BossTargetComponent를 반환하는 함수
+	UNSBossTargetComponent* GetBossTargetComponent() const;
+
+	// 현재 Avatar의 EnemyThreatComponent를 반환하는 함수
+	UNSEnemyThreatComponent* GetThreatComponent() const;
+
+	// 기존 보스 타깃 정보로 포격 컴포넌트의 전투 참여자 목록을 갱신하는 함수
+	void SyncArtilleryCombatants(UNSBossArtilleryComponent& ArtilleryComponent) const;
+
+	// BossTargetComponent와 ThreatComponent에서 포격 전투 참여자 후보를 수집하는 함수
+	void CollectArtilleryCombatants(TArray<AActor*>& OutCombatants) const;
 
 	// AnimNotify GameplayEvent 이후 포격 패턴을 시작하는 함수
 	void StartBombardVolley();

@@ -3,6 +3,8 @@
 #include "GA_EnemyAttackBombard.h"
 
 #include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
+#include "NeoSanctum/Combat/Component/NSBossTargetComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "NeoSanctum/Combat/Component/Artillery/NSBossArtilleryComponent.h"
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
@@ -106,6 +108,72 @@ UNSBossArtilleryComponent* UGA_EnemyAttackBombard::GetBossArtilleryComponent() c
 		       : nullptr;
 }
 
+UNSBossTargetComponent* UGA_EnemyAttackBombard::GetBossTargetComponent() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	return AvatarActor
+		       ? AvatarActor->FindComponentByClass<UNSBossTargetComponent>()
+		       : nullptr;
+}
+
+UNSEnemyThreatComponent* UGA_EnemyAttackBombard::GetThreatComponent() const
+{
+	const AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	return AvatarActor
+		       ? AvatarActor->FindComponentByClass<UNSEnemyThreatComponent>()
+		       : nullptr;
+}
+
+void UGA_EnemyAttackBombard::SyncArtilleryCombatants(
+	UNSBossArtilleryComponent& ArtilleryComponent) const
+{
+	TArray<AActor*> Combatants;
+	CollectArtilleryCombatants(Combatants);
+
+	ArtilleryComponent.SetRegisteredCombatants(Combatants);
+}
+
+void UGA_EnemyAttackBombard::CollectArtilleryCombatants(
+	TArray<AActor*>& OutCombatants) const
+{
+	OutCombatants.Reset();
+
+	if (const UNSBossTargetComponent* BossTargetComponent = GetBossTargetComponent())
+	{
+		TArray<AActor*> BossTargets;
+		BossTargetComponent->GetCurrentAttackTargets(BossTargets);
+
+		for (AActor* BossTarget : BossTargets)
+		{
+			if (IsValid(BossTarget))
+			{
+				OutCombatants.AddUnique(BossTarget);
+			}
+		}
+	}
+
+	if (!OutCombatants.IsEmpty())
+	{
+		return;
+	}
+
+	if (const UNSEnemyThreatComponent* ThreatComponent = GetThreatComponent())
+	{
+		TArray<AActor*> KnownTargets;
+		ThreatComponent->GetKnownTargets(KnownTargets, false);
+
+		for (AActor* KnownTarget : KnownTargets)
+		{
+			if (IsValid(KnownTarget))
+			{
+				OutCombatants.AddUnique(KnownTarget);
+			}
+		}
+	}
+}
+
 void UGA_EnemyAttackBombard::StartBombardVolley()
 {
 	if (!IsActive() || !CachedAttackRow || bArtilleryStarted)
@@ -125,6 +193,8 @@ void UGA_EnemyAttackBombard::StartBombardVolley()
 		CancelAttackAbility();
 		return;
 	}
+
+	SyncArtilleryCombatants(*ArtilleryComponent);
 
 	FNSBossArtilleryExecutionData ExecutionData;
 	if (!ArtilleryComponent->SelectAndBuildExecutionDataNowFromRegisteredCombatants(ExecutionData, true))
