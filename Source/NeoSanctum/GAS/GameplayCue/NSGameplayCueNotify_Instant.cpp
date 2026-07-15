@@ -152,6 +152,16 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 	{
 		return;
 	}
+
+	// 실제 폭발 반경과 기본 반경의 비율을 기존 VFX 크기에 반영해줌.
+	float FinalVFXScaleMultiplier = VFXScaleMultiplier;
+
+	if (bScaleVFXByEffectRadius && VFXBaseRadius > KINDA_SMALL_NUMBER && Parameters.RawMagnitude > 0.0f)
+	{
+		// 기본 반경과 실제 반경의 비율만 기존 이펙트 크기에 곱해줌.
+		const float RadiusScale = Parameters.RawMagnitude / VFXBaseRadius;
+		FinalVFXScaleMultiplier *= RadiusScale;
+	}
 	
 	if (SpawnMode == ENSGameplayCueSpawnMode::Attached)
 	{
@@ -171,7 +181,7 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 				ResolvedSocketName,
 				FVector::ZeroVector,
 				FRotator::ZeroRotator,
-				VFXScaleMultiplier);
+				FinalVFXScaleMultiplier);
 			return;
 		}
 		
@@ -182,5 +192,5 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 		VFXID,
 		Parameters.Location,
 		Parameters.Normal.Rotation(),
-		VFXScaleMultiplier);
+		FinalVFXScaleMultiplier);
 }

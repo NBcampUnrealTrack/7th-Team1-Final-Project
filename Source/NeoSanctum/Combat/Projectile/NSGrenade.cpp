@@ -201,6 +201,8 @@ void ANSGrenade::ExecuteExplosionCue(const FVector& ExplosionLocation, const FVe
 	CueParameters.EffectCauser = this;
 	CueParameters.Location = ExplosionLocation;
 	CueParameters.Normal = ExplosionNormal;
+	// RuntimeStat에 들어 있는 최종 폭발 반경을 Cue에 넘겨줌.
+	CueParameters.RawMagnitude = GetExplosionRadius();
 
 	SourceASC->ExecuteGameplayCue(ExplosionCueTag, CueParameters);
 }
