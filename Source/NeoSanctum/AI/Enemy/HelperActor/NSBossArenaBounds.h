@@ -47,6 +47,16 @@ public:
 	// 존 i 박스와 겹치는 플레이어 액터를 수집
 	void OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, float ZoneHeight, TArray<AActor*>& OutActors) const;
 
+	// 존 i 안에서 슬롯 s(0=한쪽 끝, M-1=반대쪽 끝)의 월드 중심을 반환
+	FVector GetSlotCenter(int32 ZoneIndex, int32 SlotIndex, int32 ZoneCount, int32 SlotCount) const;
+
+	// 슬롯 박스 1개의 half-extent (X=존폭/N, Y=룸폭/M, Z=ZoneHeight/2)
+	FVector GetSlotBoxExtent(int32 ZoneCount, int32 SlotCount, float ZoneHeight) const;
+
+	// 슬롯 박스와 겹치는 플레이어 액터를 수집
+	void OverlapPlayersInSlot(int32 ZoneIndex, int32 SlotIndex,
+		int32 ZoneCount, int32 SlotCount, float ZoneHeight, TArray<AActor*>& OutActors) const;
+	
 private:
 	// 보스룸 사각형을 정의하는 루트 컴포넌트. 디자이너가 룸에 맞춰 배치
 	UPROPERTY(VisibleAnywhere, Category = "ArenaBounds")

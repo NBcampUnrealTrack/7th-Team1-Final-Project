@@ -175,4 +175,74 @@ void ANSBossArenaBounds::OverlapPlayersInZone(int32 ZoneIndex, int32 ZoneCount, 
 	}
 }
 
+FVector ANSBossArenaBounds::GetSlotCenter(int32 ZoneIndex, int32 SlotIndex, int32 ZoneCount, int32 SlotCount) const
+{
+	// 박스 사이즈 가져오기
+	const FVector HalfExtent = AreaBox->GetUnscaledBoxExtent();
+
+	// 데칼 존 1개의 폭 구하기
+	const float ZoneWidth = (2.f * HalfExtent.X) / ZoneCount;
+	// 데칼 존 1개의 로컬 중심 좌표
+	const float ZoneLocalX = -HalfExtent.X + (ZoneIndex + 0.5f) * ZoneWidth;
+	
+	// 데칼 존 1개 를 n등분한 슬롯n의 폭
+	const float RoomWidth = 2.f * HalfExtent.Y;
+	const float SlotWidth = RoomWidth / SlotCount;
+	// 슬롯 n의 중심 Y좌표
+	const float SlotLocalY = (SlotIndex - (SlotCount - 1) / 2.f) * SlotWidth;
+
+	// 로컬 좌표 생성
+	const FVector LocalPoint(ZoneLocalX, SlotLocalY, 0.f);
+
+	// 월드 좌표 변환 후 반환
+	FVector WorldPoint = AreaBox->GetComponentTransform().TransformPosition(LocalPoint);
+
+	return WorldPoint;
+}
+
+FVector ANSBossArenaBounds::GetSlotBoxExtent(int32 ZoneCount, int32 SlotCount, float ZoneHeight) const
+{
+	const FVector HalfExtent = AreaBox->GetUnscaledBoxExtent();
+
+	// 존 1개의 가로폭
+	const float ZoneWidth = (2.f * HalfExtent.X) / ZoneCount;
+	// 존 1개의 세로폭
+	const float RoomWidth = 2.f * HalfExtent.Y;
+	
+	// 슬롯 하나의 세로폭
+	const float SlotWidth = RoomWidth / SlotCount;
+
+	const float SlotX = ZoneWidth / 2.f;
+	const float SlotY = SlotWidth / 2.f;
+	const float SlotZ = ZoneHeight / 2.f;
+
+	return FVector(SlotX, SlotY, SlotZ);
+}
+
+void ANSBossArenaBounds::OverlapPlayersInSlot(int32 ZoneIndex, int32 SlotIndex, int32 ZoneCount, int32 SlotCount,
+	float ZoneHeight, TArray<AActor*>& OutActors) const
+{
+	OutActors.Reset();
+
+	const FVector SlotCenter = GetSlotCenter(ZoneIndex, SlotIndex, ZoneCount, SlotCount);
+	const FVector SlotExtent = GetSlotBoxExtent(ZoneCount, SlotCount, ZoneHeight);
+	const FQuat SlotRotation = GetZoneBoxRotation();
+
+	TArray<FOverlapResult> Overlaps;
+	GetWorld()->OverlapMultiByChannel(
+		Overlaps,
+		SlotCenter,
+		SlotRotation,
+		PlayerOverlapChannel,
+		FCollisionShape::MakeBox(SlotExtent));
+
+	for (const FOverlapResult& Overlap : Overlaps)
+	{
+		if (AActor* OverlappedActor = Overlap.GetActor())
+		{
+			OutActors.AddUnique(OverlappedActor);
+		}
+	}
+}
+
 
