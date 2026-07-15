@@ -20,6 +20,9 @@ class UNSEnemyCosmeticComponent;
 class UNSEnemyPartComponent;
 struct FNSCosmeticEventNetData;
 
+// 포격 실행이 정상 완료됐을 때 실행 ID를 전달하는 델리게이트
+DECLARE_MULTICAST_DELEGATE_OneParam(FNSBossArtilleryExecutionFinishedDelegate, int32);
+
 // 포격 패턴을 선택할 때 필요한 현재 전투 상태
 USTRUCT(BlueprintType)
 struct FNSBossArtillerySelectionContext
@@ -274,6 +277,13 @@ public:
 	// 현재 실행 중인 포격이 하나 이상 있는지 반환하는 함수
 	UFUNCTION(BlueprintPure, Category = "Boss|Artillery|Execution")
 	bool HasActiveArtilleryExecution() const;
+
+	// 지정 포격 실행의 타이머와 런타임 상태를 취소하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Execution")
+	void CancelArtilleryExecution(int32 ExecutionId);
+
+	// 포격 실행이 정상 완료됐을 때 C++ 구독자에게 알리는 델리게이트 변수
+	FNSBossArtilleryExecutionFinishedDelegate OnArtilleryExecutionFinished;
 
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
@@ -606,7 +616,7 @@ private:
 	void FinishExecutionIfComplete(int32 ExecutionId);
 
 	// 지정 포격 실행의 타이머와 런타임 상태를 제거하는 함수
-	void RemoveActiveExecution(int32 ExecutionId);
+	void RemoveActiveExecution(int32 ExecutionId, bool bBroadcastFinished);
 
 	// 포격 실행 데이터의 경고/발사 코스메틱 이벤트 타이머를 예약하는 함수
 	void ScheduleExecutionPresentation(const FNSBossArtilleryExecutionData& ExecutionData);

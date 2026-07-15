@@ -803,6 +803,11 @@ bool UNSBossArtilleryComponent::ExecuteArtilleryFromRegisteredCombatants(bool bR
 bool UNSBossArtilleryComponent::ExecuteArtilleryExecutionData(
 	const FNSBossArtilleryExecutionData& ExecutionData)
 {
+	if (!GetWorld())
+	{
+		return false;
+	}
+	
 	AActor* OwnerActor = GetOwner();
 
 	if (!IsValid(OwnerActor) || !OwnerActor->HasAuthority())
@@ -849,6 +854,11 @@ void UNSBossArtilleryComponent::CancelActiveArtilleryExecutions()
 		{
 			World->GetTimerManager().ClearTimer(TimerHandle);
 		}
+
+		for (FTimerHandle& TimerHandle : Pair.Value.PresentationTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle);
+		}
 	}
 
 	ActiveExecutions.Reset();
@@ -859,6 +869,11 @@ bool UNSBossArtilleryComponent::HasActiveArtilleryExecution() const
 	return !ActiveExecutions.IsEmpty();
 }
 
+void UNSBossArtilleryComponent::CancelArtilleryExecution(int32 ExecutionId)
+{
+	RemoveActiveExecution(ExecutionId, false);
+}
+
 void UNSBossArtilleryComponent::ScheduleExecutionDamage(
 	const FNSBossArtilleryExecutionData& ExecutionData)
 {
@@ -866,7 +881,7 @@ void UNSBossArtilleryComponent::ScheduleExecutionDamage(
 
 	if (!World)
 	{
-		RemoveActiveExecution(ExecutionData.ExecutionId);
+		RemoveActiveExecution(ExecutionData.ExecutionId, false);
 		return;
 	}
 
@@ -1239,10 +1254,10 @@ void UNSBossArtilleryComponent::FinishExecutionIfComplete(int32 ExecutionId)
 		return;
 	}
 
-	RemoveActiveExecution(ExecutionId);
+	RemoveActiveExecution(ExecutionId, true);
 }
 
-void UNSBossArtilleryComponent::RemoveActiveExecution(int32 ExecutionId)
+void UNSBossArtilleryComponent::RemoveActiveExecution(int32 ExecutionId, bool bBroadcastFinished)
 {
 	UWorld* World = GetWorld();
 
@@ -1260,9 +1275,19 @@ void UNSBossArtilleryComponent::RemoveActiveExecution(int32 ExecutionId)
 		{
 			World->GetTimerManager().ClearTimer(TimerHandle);
 		}
+
+		for (FTimerHandle& TimerHandle : RuntimeExecution->PresentationTimerHandles)
+		{
+			World->GetTimerManager().ClearTimer(TimerHandle);
+		}
 	}
 
 	ActiveExecutions.Remove(ExecutionId);
+
+	if (bBroadcastFinished)
+	{
+		OnArtilleryExecutionFinished.Broadcast(ExecutionId);
+	}
 }
 
 void UNSBossArtilleryComponent::ScheduleExecutionPresentation(
