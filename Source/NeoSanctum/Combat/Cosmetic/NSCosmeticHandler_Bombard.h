@@ -7,6 +7,7 @@
 #include "NSCosmeticHandler_Bombard.generated.h"
 
 class ANSAreaWarningPlaneActor;
+class ANSAreaWarningInstancedActor;
 
 UCLASS(Blueprintable, BlueprintType)
 class NEOSANCTUM_API UNSCosmeticHandler_Bombard : public UNSCosmeticEventHandler
@@ -48,6 +49,18 @@ private:
 	// 경고 Plane Actor 클래스를 저장하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Bombard|Warning")
 	TSubclassOf<ANSAreaWarningPlaneActor> WarningPlaneClass;
+
+	// 대량 포격 경고를 Instanced Mesh로 표시할 Actor 클래스를 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Bombard|Warning")
+	TSubclassOf<ANSAreaWarningInstancedActor> InstancedWarningClass;
+
+	// Instanced Warning으로 전환할 최소 경고 위치 수를 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Bombard|Warning", meta = (ClampMin = "1"))
+	int32 InstancedWarningMinPointCount = 1;
+	
+	// Batch 경고에서 Instanced Warning Actor가 없을 때 기존 Plane Actor fallback을 허용할지 정하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Bombard|Warning")
+	bool bAllowPlaneFallbackForBatchedWarning = false;
 
 	// 경고 Plane 표시 시간을 저장하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Bombard|Warning", meta = (ClampMin = "0.0"))

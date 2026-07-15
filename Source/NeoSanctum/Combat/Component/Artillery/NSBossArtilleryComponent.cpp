@@ -20,7 +20,7 @@
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"	
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 
 UNSBossArtilleryComponent::UNSBossArtilleryComponent()
@@ -1290,6 +1290,215 @@ void UNSBossArtilleryComponent::RemoveActiveExecution(int32 ExecutionId, bool bB
 	}
 }
 
+void UNSBossArtilleryComponent::BuildWarningPresentationGroups(
+	const FNSBossArtilleryExecutionData& ExecutionData,
+	TArray<FNSBossArtilleryWarningPresentationGroup>& OutWarningGroups) const
+{
+	OutWarningGroups.Reset();
+
+	for (int32 PresentationShotIndex = 0; PresentationShotIndex < ExecutionData.PresentationShots.Num(); ++
+	     PresentationShotIndex)
+	{
+		const FNSBossArtilleryPresentationShot& PresentationShot =
+			ExecutionData.PresentationShots[PresentationShotIndex];
+
+		if (PresentationShot.ImpactLocation.ContainsNaN())
+		{
+			continue;
+		}
+
+		int32 WarningGroupIndex = INDEX_NONE;
+
+		if (bBatchArtilleryWarningCosmetics)
+		{
+			WarningGroupIndex =
+				FindMatchingWarningPresentationGroup(
+					OutWarningGroups,
+					PresentationShot);
+		}
+
+		if (WarningGroupIndex == INDEX_NONE)
+		{
+			FNSBossArtilleryWarningPresentationGroup WarningGroup;
+			WarningGroup.WarningStartServerTime = PresentationShot.WarningStartServerTime;
+			WarningGroup.ExplosionServerTime = PresentationShot.ExplosionServerTime;
+			WarningGroup.DamageRadius = PresentationShot.DamageRadius;
+			WarningGroup.RingIndex = PresentationShot.RingIndex;
+			WarningGroup.PresentationShotIndices.Add(PresentationShotIndex);
+
+			OutWarningGroups.Add(MoveTemp(WarningGroup));
+			continue;
+		}
+
+		FNSBossArtilleryWarningPresentationGroup& WarningGroup =
+			OutWarningGroups[WarningGroupIndex];
+
+		WarningGroup.WarningStartServerTime =
+			FMath::Min(WarningGroup.WarningStartServerTime, PresentationShot.WarningStartServerTime);
+
+		WarningGroup.ExplosionServerTime =
+			FMath::Max(WarningGroup.ExplosionServerTime, PresentationShot.ExplosionServerTime);
+
+		WarningGroup.PresentationShotIndices.Add(PresentationShotIndex);
+	}
+}
+
+int32 UNSBossArtilleryComponent::FindMatchingWarningPresentationGroup(
+	const TArray<FNSBossArtilleryWarningPresentationGroup>& WarningGroups,
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	for (int32 WarningGroupIndex = 0; WarningGroupIndex < WarningGroups.Num(); ++WarningGroupIndex)
+	{
+		if (CanAppendPresentationShotToWarningGroup(
+			WarningGroups[WarningGroupIndex],
+			PresentationShot))
+		{
+			return WarningGroupIndex;
+		}
+	}
+
+	return INDEX_NONE;
+}
+
+bool UNSBossArtilleryComponent::CanAppendPresentationShotToWarningGroup(
+	const FNSBossArtilleryWarningPresentationGroup& WarningGroup,
+	const FNSBossArtilleryPresentationShot& PresentationShot) const
+{
+	const int32 MaxPointCount = FMath::Max(MaxWarningPointsPerBatch, 1);
+
+	if (WarningGroup.PresentationShotIndices.Num() >= MaxPointCount)
+	{
+		return false;
+	}
+
+	if (WarningGroup.RingIndex != PresentationShot.RingIndex)
+	{
+		return false;
+	}
+
+	if (FMath::Abs(WarningGroup.WarningStartServerTime - PresentationShot.WarningStartServerTime) >
+		WarningBatchTimeTolerance)
+	{
+		return false;
+	}
+
+	if (FMath::Abs(WarningGroup.ExplosionServerTime - PresentationShot.ExplosionServerTime) >
+		WarningBatchExplosionTimeTolerance)
+	{
+		return false;
+	}
+
+	if (FMath::Abs(WarningGroup.DamageRadius - PresentationShot.DamageRadius) > WarningBatchRadiusTolerance)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+void UNSBossArtilleryComponent::SendArtilleryWarningCosmeticEvent(
+	const FNSBossArtilleryWarningPresentationGroup& WarningGroup,
+	const FNSBossArtilleryExecutionData& ExecutionData) const
+{
+	if (WarningGroup.PresentationShotIndices.IsEmpty())
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Warning;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Direction = FVector::UpVector;
+	EventData.Radius = WarningGroup.DamageRadius;
+	EventData.Duration = FMath::Max(WarningGroup.ExplosionServerTime - GetCurrentServerTimeSeconds(), 0.01f);
+
+	FVector AccumulatedLocation = FVector::ZeroVector;
+	int32 ValidPointCount = 0;
+
+	EventData.Points.Reserve(WarningGroup.PresentationShotIndices.Num());
+
+	for (const int32 PresentationShotIndex : WarningGroup.PresentationShotIndices)
+	{
+		if (!ExecutionData.PresentationShots.IsValidIndex(PresentationShotIndex))
+		{
+			continue;
+		}
+
+		const FNSBossArtilleryPresentationShot& PresentationShot =
+			ExecutionData.PresentationShots[PresentationShotIndex];
+
+		if (PresentationShot.ImpactLocation.ContainsNaN())
+		{
+			continue;
+		}
+
+		FNSCosmeticEventPointNetData PointData;
+		PointData.Location = PresentationShot.ImpactLocation;
+		PointData.EndLocation = PresentationShot.ImpactLocation;
+		PointData.Direction = FVector::UpVector;
+
+		EventData.Points.Add(PointData);
+
+		AccumulatedLocation += FVector(PresentationShot.ImpactLocation);
+		++ValidPointCount;
+	}
+
+	if (ValidPointCount <= 0)
+	{
+		return;
+	}
+
+	EventData.Location = AccumulatedLocation / static_cast<float>(ValidPointCount);
+
+	SendArtilleryCosmeticEvent(EventData, true);
+}
+
+void UNSBossArtilleryComponent::HandlePresentationWarningGroup(
+	int32 ExecutionId,
+	int32 WarningGroupIndex)
+{
+	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
+		ActiveExecutions.Find(ExecutionId);
+
+	if (!RuntimeExecution)
+	{
+		return;
+	}
+
+	if (!RuntimeExecution->WarningPresentationGroups.IsValidIndex(WarningGroupIndex))
+	{
+		return;
+	}
+
+	const FNSBossArtilleryWarningPresentationGroup& WarningGroup =
+		RuntimeExecution->WarningPresentationGroups[WarningGroupIndex];
+
+	if (WarningGroup.ExplosionServerTime <= GetCurrentServerTimeSeconds())
+	{
+		return;
+	}
+
+	for (const int32 PresentationShotIndex : WarningGroup.PresentationShotIndices)
+	{
+		if (!RuntimeExecution->ExecutionData.PresentationShots.IsValidIndex(PresentationShotIndex))
+		{
+			continue;
+		}
+
+		const FNSBossArtilleryPresentationShot& PresentationShot =
+			RuntimeExecution->ExecutionData.PresentationShots[PresentationShotIndex];
+
+		if (PresentationShot.ExplosionServerTime > GetCurrentServerTimeSeconds())
+		{
+			SendArtilleryLaunchCosmeticEvent(PresentationShot);
+		}
+	}
+
+	SendArtilleryWarningCosmeticEvent(
+		WarningGroup,
+		RuntimeExecution->ExecutionData);
+}
+
 void UNSBossArtilleryComponent::ScheduleExecutionPresentation(
 	const FNSBossArtilleryExecutionData& ExecutionData)
 {
@@ -1308,29 +1517,35 @@ void UNSBossArtilleryComponent::ScheduleExecutionPresentation(
 		return;
 	}
 
+	RuntimeExecution->WarningPresentationGroups.Reset();
+
+	BuildWarningPresentationGroups(
+		ExecutionData,
+		RuntimeExecution->WarningPresentationGroups);
+
 	const float CurrentServerTime = GetCurrentServerTimeSeconds();
-	TArray<int32> ImmediatePresentationIndices;
+	TArray<int32> ImmediateWarningGroupIndices;
 
-	for (int32 PresentationShotIndex = 0; PresentationShotIndex < ExecutionData.PresentationShots.Num(); ++
-	     PresentationShotIndex)
+	for (int32 WarningGroupIndex = 0; WarningGroupIndex < RuntimeExecution->WarningPresentationGroups.Num(); ++
+	     WarningGroupIndex)
 	{
-		const FNSBossArtilleryPresentationShot& PresentationShot =
-			ExecutionData.PresentationShots[PresentationShotIndex];
+		const FNSBossArtilleryWarningPresentationGroup& WarningGroup =
+			RuntimeExecution->WarningPresentationGroups[WarningGroupIndex];
 
-		const float Delay = PresentationShot.WarningStartServerTime - CurrentServerTime;
+		const float Delay = WarningGroup.WarningStartServerTime - CurrentServerTime;
 
 		if (Delay <= 0.0f)
 		{
-			ImmediatePresentationIndices.Add(PresentationShotIndex);
+			ImmediateWarningGroupIndices.Add(WarningGroupIndex);
 			continue;
 		}
 
 		FTimerDelegate TimerDelegate;
 		TimerDelegate.BindUObject(
 			this,
-			&ThisClass::HandlePresentationShotWarning,
+			&ThisClass::HandlePresentationWarningGroup,
 			ExecutionData.ExecutionId,
-			PresentationShotIndex);
+			WarningGroupIndex);
 
 		FTimerHandle TimerHandle;
 		World->GetTimerManager().SetTimer(
@@ -1342,44 +1557,15 @@ void UNSBossArtilleryComponent::ScheduleExecutionPresentation(
 		RuntimeExecution->PresentationTimerHandles.Add(TimerHandle);
 	}
 
-	for (const int32 PresentationShotIndex : ImmediatePresentationIndices)
+	for (const int32 WarningGroupIndex : ImmediateWarningGroupIndices)
 	{
 		if (!ActiveExecutions.Contains(ExecutionData.ExecutionId))
 		{
 			break;
 		}
 
-		HandlePresentationShotWarning(ExecutionData.ExecutionId, PresentationShotIndex);
+		HandlePresentationWarningGroup(ExecutionData.ExecutionId, WarningGroupIndex);
 	}
-}
-
-void UNSBossArtilleryComponent::HandlePresentationShotWarning(
-	int32 ExecutionId,
-	int32 PresentationShotIndex)
-{
-	FNSBossArtilleryRuntimeExecution* RuntimeExecution =
-		ActiveExecutions.Find(ExecutionId);
-
-	if (!RuntimeExecution)
-	{
-		return;
-	}
-
-	if (!RuntimeExecution->ExecutionData.PresentationShots.IsValidIndex(PresentationShotIndex))
-	{
-		return;
-	}
-
-	const FNSBossArtilleryPresentationShot& PresentationShot =
-		RuntimeExecution->ExecutionData.PresentationShots[PresentationShotIndex];
-
-	if (PresentationShot.ExplosionServerTime <= GetCurrentServerTimeSeconds())
-	{
-		return;
-	}
-
-	SendArtilleryLaunchCosmeticEvent(PresentationShot);
-	SendArtilleryWarningCosmeticEvent(PresentationShot);
 }
 
 void UNSBossArtilleryComponent::SendArtilleryLaunchCosmeticEvent(
@@ -1397,20 +1583,6 @@ void UNSBossArtilleryComponent::SendArtilleryLaunchCosmeticEvent(
 	EventData.Direction = Direction;
 	EventData.Range = FVector::Dist(MuzzleLocation, ImpactLocation);
 	EventData.Duration = FMath::Max(PresentationShot.ExplosionServerTime - GetCurrentServerTimeSeconds(), 0.0f);
-
-	SendArtilleryCosmeticEvent(EventData, true);
-}
-
-void UNSBossArtilleryComponent::SendArtilleryWarningCosmeticEvent(
-	const FNSBossArtilleryPresentationShot& PresentationShot) const
-{
-	FNSCosmeticEventNetData EventData;
-	EventData.EventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Bombard_Warning;
-	EventData.Phase = ENSCosmeticEventPhase::OneShot;
-	EventData.Location = PresentationShot.ImpactLocation;
-	EventData.Direction = FVector::UpVector;
-	EventData.Radius = PresentationShot.DamageRadius;
-	EventData.Duration = FMath::Max(PresentationShot.ExplosionServerTime - GetCurrentServerTimeSeconds(), 0.01f);
 
 	SendArtilleryCosmeticEvent(EventData, true);
 }

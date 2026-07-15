@@ -77,6 +77,25 @@ struct FNSBossArtilleryPatternCandidate
 	FString RejectReason;
 };
 
+// 여러 포격 경고 표시를 하나의 코스메틱 이벤트로 묶기 위한 런타임 그룹
+struct FNSBossArtilleryWarningPresentationGroup
+{
+	// 그룹 경고 표시를 시작할 서버 시간 변수
+	float WarningStartServerTime = 0.0f;
+
+	// 그룹에 포함된 포탄들이 폭발할 서버 시간 변수
+	float ExplosionServerTime = 0.0f;
+
+	// 그룹 경고 표시 반경 변수
+	float DamageRadius = 0.0f;
+
+	// 링 또는 파동 배치에서 이 그룹이 나타내는 링 인덱스 변수
+	int32 RingIndex = INDEX_NONE;
+
+	// 그룹에 포함된 PresentationShot 인덱스 목록 변수
+	TArray<int32> PresentationShotIndices;
+};
+
 // 서버에서 실행 중인 포격 실행 데이터와 타이머 상태를 보관하는 구조체
 struct FNSBossArtilleryRuntimeExecution
 {
@@ -94,6 +113,9 @@ struct FNSBossArtilleryRuntimeExecution
 
 	// 포격 경고/발사 코스메틱 예약에 사용 중인 타이머 핸들 목록 변수
 	TArray<FTimerHandle> PresentationTimerHandles;
+
+	// 포격 경고를 묶어서 전송하기 위한 런타임 그룹 목록 변수
+	TArray<FNSBossArtilleryWarningPresentationGroup> WarningPresentationGroups;
 };
 
 /*
@@ -618,17 +640,34 @@ private:
 	// 지정 포격 실행의 타이머와 런타임 상태를 제거하는 함수
 	void RemoveActiveExecution(int32 ExecutionId, bool bBroadcastFinished);
 
+	// 포격 실행 데이터의 경고 표시를 Batch 전송용 그룹으로 묶는 함수
+	void BuildWarningPresentationGroups(
+		const FNSBossArtilleryExecutionData& ExecutionData,
+		TArray<FNSBossArtilleryWarningPresentationGroup>& OutWarningGroups) const;
+
+	// 지정 포탄 표시 데이터와 합칠 수 있는 경고 그룹 인덱스를 찾는 함수
+	int32 FindMatchingWarningPresentationGroup(
+		const TArray<FNSBossArtilleryWarningPresentationGroup>& WarningGroups,
+		const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
+	// 지정 포탄 표시 데이터를 기존 경고 그룹에 추가할 수 있는지 확인하는 함수
+	bool CanAppendPresentationShotToWarningGroup(
+		const FNSBossArtilleryWarningPresentationGroup& WarningGroup,
+		const FNSBossArtilleryPresentationShot& PresentationShot) const;
+
+	// 지정 경고 그룹의 경고/발사 코스메틱 이벤트를 서버에서 전송하는 함수
+	void HandlePresentationWarningGroup(int32 ExecutionId, int32 WarningGroupIndex);
+
+	// 기존 Bombard Warning 코스메틱 이벤트를 Batch 전송하는 함수
+	void SendArtilleryWarningCosmeticEvent(
+		const FNSBossArtilleryWarningPresentationGroup& WarningGroup,
+		const FNSBossArtilleryExecutionData& ExecutionData) const;
+
 	// 포격 실행 데이터의 경고/발사 코스메틱 이벤트 타이머를 예약하는 함수
 	void ScheduleExecutionPresentation(const FNSBossArtilleryExecutionData& ExecutionData);
 
-	// 지정 포탄의 경고/발사 코스메틱 이벤트를 서버에서 전송하는 함수
-	void HandlePresentationShotWarning(int32 ExecutionId, int32 PresentationShotIndex);
-
 	// 기존 Bombard Launch 코스메틱 이벤트를 전송하는 함수
 	void SendArtilleryLaunchCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
-
-	// 기존 Bombard Warning 코스메틱 이벤트를 전송하는 함수
-	void SendArtilleryWarningCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
 
 	// 기존 Bombard Impact 코스메틱 이벤트를 전송하는 함수
 	void SendArtilleryImpactCosmeticEvent(const FNSBossArtilleryPresentationShot& PresentationShot) const;
@@ -747,4 +786,29 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
 		meta = (AllowPrivateAccess = "true"))
 	TEnumAsByte<ECollisionChannel> ImpactGroundTraceChannel = NSCollisionChannels::ExplosionTrace;
+
+	// 포격 경고 코스메틱을 여러 위치 단위로 묶어서 전송할지 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Cosmetic",
+		meta = (AllowPrivateAccess = "true"))
+	bool bBatchArtilleryWarningCosmetics = true;
+
+	// 하나의 포격 경고 Batch에 담을 최대 위치 수를 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Cosmetic",
+		meta = (AllowPrivateAccess = "true", ClampMin = "1"))
+	int32 MaxWarningPointsPerBatch = 64;
+
+	// 경고 Batch 그룹을 합칠 때 허용할 서버 시간 오차를 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Cosmetic",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float WarningBatchTimeTolerance = 0.03f;
+
+	// 경고 Batch 그룹을 합칠 때 허용할 반경 오차를 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Cosmetic",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float WarningBatchRadiusTolerance = 1.0f;
+
+	// 경고 Batch 그룹을 합칠 때 허용할 폭발 서버 시간 오차를 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Cosmetic",
+		meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float WarningBatchExplosionTimeTolerance = 0.03f;
 };
