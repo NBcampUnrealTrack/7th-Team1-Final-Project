@@ -72,14 +72,17 @@ void ANSLocalHealPickup::ConfirmCollected()
 
 void ANSLocalHealPickup::RestoreVisual()
 {
-	bCollectRequested = false;
 	SetActorHiddenInGame(false);
 	
 	// 발사중이 아닐 때만 충돌을 다시 켬
 	if (!bIsLaunching)
 	{
+		// 충돌을 켜는 순간 오버랩이 다시 들어와도 기존 요청 상태로 막아줌.
 		CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	}
+
+	// 충돌 상태가 갱신된 다음에 다음 획득 요청을 받을 수 있게 풀어줌.
+	bCollectRequested = false;
 }
 
 void ANSLocalHealPickup::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -105,9 +108,9 @@ void ANSLocalHealPickup::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedCom
 
 	bCollectRequested = true;
 	
-	// 먼저 숨기고 충돌 꺼서 반응이 빠른것처럼 유도
+	// 서버 응답을 기다리는 동안 화면과 픽업 충돌만 잠시 꺼둠.
 	SetActorHiddenInGame(true);
-	SetActorEnableCollision(false);
+	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	PS->Server_CollectHeal(DropId);
 }
@@ -128,8 +131,9 @@ void ANSLocalHealPickup::StartMeshLoad(const UDataTable* HealPotionTable)
 	{
 		return;
 	}
-	
-	SetActorScale3D(FVector(Row->Scale));
+
+	// Scale이 메시 크기용 값이니까 충돌 구체까지 같이 키우지 않음.
+	MeshComp->SetRelativeScale3D(FVector(Row->Scale));
 
 	// 이미 메모리에 로드되어 있다면(에디터 참조 등으로 상주 중인 경우) 즉시 적용하고 끝낸다.
 	if (UStaticMesh* Mesh = Row->Mesh.Get())
