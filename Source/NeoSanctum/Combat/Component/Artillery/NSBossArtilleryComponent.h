@@ -189,6 +189,13 @@ public:
 		const UNSBossArtilleryPatternData* PatternData,
 		const TArray<FNSBossArtilleryTargetPoint>& TargetPoints) const;
 
+	// 선택된 패턴과 포탄 배정 목록으로 실제 착탄 위치 목록을 생성하는 함수
+	UFUNCTION(BlueprintCallable, Category = "Boss|Artillery|Placement")
+	bool BuildImpactPointsForPattern(
+		const UNSBossArtilleryPatternData* PatternData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
 private:
 	// 지정 패턴이 현재 선택 컨텍스트에서 사용 가능한지 검사하는 함수
 	bool CanUsePatternData(
@@ -320,6 +327,94 @@ private:
 	// MaxTotalShots 설정을 최소 1 이상으로 보정해 반환하는 함수
 	int32 GetMaxTotalShotCount(const FNSBossArtilleryShotBudgetData& ShotBudgetData) const;
 
+
+	// TargetCurrent 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildTargetCurrentImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// TargetPrediction 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildTargetPredictionImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// RandomAroundTarget 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildRandomAroundTargetImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// ClusterAroundTarget 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildClusterAroundTargetImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// BetweenTargets 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildBetweenTargetsImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// Ring 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildRingImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// WaveRings 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildWaveRingImpactPoints(
+		const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// EscapeRouteBlock 배치 방식으로 착탄 위치를 생성하는 함수
+	bool BuildEscapeRouteBlockImpactPoints(
+		const FNSBossArtilleryPlacementData& PlacementData,
+		const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// 지정 위치와 메타데이터로 착탄 위치 데이터를 추가하는 함수
+	void AddImpactPoint(
+		const FNSBossArtilleryTargetPoint& SourceTargetPoint,
+		const FVector& ImpactLocation,
+		int32 GlobalShotIndex,
+		int32 LocalShotIndex,
+		int32 RingIndex,
+		TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const;
+
+	// 지정 기준점의 최신 월드 위치를 반환하는 함수
+	FVector ResolveTargetPointLocation(const FNSBossArtilleryTargetPoint& TargetPoint) const;
+
+	// 지정 기준점의 예측 월드 위치를 반환하는 함수
+	FVector ResolvePredictedTargetPointLocation(
+		const FNSBossArtilleryTargetPoint& TargetPoint,
+		float PredictionTime) const;
+
+	// 지정 기준 위치 주변의 랜덤 원형 오프셋 위치를 반환하는 함수
+	FVector MakeRandomPointAroundLocation(const FVector& BaseLocation, float Radius) const;
+
+	// 지정 기준 위치와 방향으로 이동 경로 차단 위치를 반환하는 함수
+	FVector MakeEscapeRouteBlockLocation(
+		const FNSBossArtilleryTargetPoint& TargetPoint,
+		int32 LocalShotIndex,
+		const FNSBossArtilleryPlacementData& PlacementData) const;
+
+	// 착탄 위치를 보스룸 Bounds 안으로 보정하는 함수
+	FVector ClampImpactLocationToArena(const FVector& ImpactLocation) const;
+
+	// 착탄 위치가 NaN이 아니고 포격에 사용할 수 있는지 확인하는 함수
+	bool IsValidImpactLocation(const FVector& ImpactLocation) const;
+
+	// 착탄 위치 생성 결과가 기존 착탄 위치와 너무 가까운지 확인하는 함수
+	bool IsImpactLocationTooClose(
+		const FVector& CandidateLocation,
+		const TArray<FNSBossArtilleryImpactPoint>& ExistingImpactPoints,
+		float MinDistance) const;
+
 private:
 	// 이 보스가 사용할 수 있는 포격 패턴 DataAsset 목록
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Patterns",
@@ -362,4 +457,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Target",
 		meta = (AllowPrivateAccess = "true"))
 	bool bUseThreatKnownTargetsWhenNoRegisteredCombatants = false;
+
+	// 생성된 착탄 위치를 보스룸 Bounds 안으로 보정할지 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true"))
+	bool bClampImpactLocationsToArenaBounds = true;
+
+	// 착탄 위치 중복 방지를 시도할 최대 횟수를 정하는 변수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Boss|Artillery|Placement",
+		meta = (AllowPrivateAccess = "true", ClampMin = "1"))
+	int32 MaxPlacementRetryCount = 8;
 };

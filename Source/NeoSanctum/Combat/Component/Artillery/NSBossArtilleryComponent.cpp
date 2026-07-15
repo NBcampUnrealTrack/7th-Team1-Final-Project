@@ -485,6 +485,505 @@ int32 UNSBossArtilleryComponent::CalculateRequestedShotCountForPattern(
 	}
 }
 
+bool UNSBossArtilleryComponent::BuildImpactPointsForPattern(
+	const UNSBossArtilleryPatternData* PatternData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	OutImpactPoints.Reset();
+
+	if (!IsValid(PatternData))
+	{
+		return false;
+	}
+
+	switch (PatternData->PlacementData.PlacementMode)
+	{
+	case ENSBossArtilleryPlacementMode::TargetCurrent:
+		return BuildTargetCurrentImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::TargetPrediction:
+		return BuildTargetPredictionImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::RandomAroundTarget:
+		return BuildRandomAroundTargetImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::ClusterAroundTarget:
+		return BuildClusterAroundTargetImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::BetweenTargets:
+		return BuildBetweenTargetsImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::Ring:
+		return BuildRingImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::WaveRings:
+		return BuildWaveRingImpactPoints(
+			PatternData->ShotBudgetData,
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	case ENSBossArtilleryPlacementMode::EscapeRouteBlock:
+		return BuildEscapeRouteBlockImpactPoints(
+			PatternData->PlacementData,
+			ShotAllocations,
+			OutImpactPoints);
+
+	default:
+		return false;
+	}
+}
+
+bool UNSBossArtilleryComponent::BuildTargetCurrentImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				ResolveTargetPointLocation(Allocation.TargetPoint),
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildTargetPredictionImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			const float PredictionAlpha = Allocation.ShotCount > 1
+				                              ? static_cast<float>(LocalShotIndex) / static_cast<float>(Allocation.
+					                              ShotCount - 1)
+				                              : 1.0f;
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				ResolvePredictedTargetPointLocation(
+					Allocation.TargetPoint,
+					PlacementData.PredictionTime * PredictionAlpha),
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildRandomAroundTargetImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		const FVector BaseLocation = ResolveTargetPointLocation(Allocation.TargetPoint);
+
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			FVector ImpactLocation = BaseLocation;
+
+			for (int32 RetryIndex = 0; RetryIndex < MaxPlacementRetryCount; ++RetryIndex)
+			{
+				ImpactLocation = MakeRandomPointAroundLocation(BaseLocation, PlacementData.ScatterRadius);
+
+				if (!IsImpactLocationTooClose(
+					ImpactLocation,
+					OutImpactPoints,
+					PlacementData.MinImpactLocationDistance))
+				{
+					break;
+				}
+			}
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				ImpactLocation,
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildClusterAroundTargetImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		const FVector BaseLocation = ResolveTargetPointLocation(Allocation.TargetPoint);
+
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			const FVector ImpactLocation =
+				LocalShotIndex == 0
+					? BaseLocation
+					: MakeRandomPointAroundLocation(BaseLocation, PlacementData.ClusterRadius);
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				ImpactLocation,
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildBetweenTargetsImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		const FVector BaseLocation = ResolveTargetPointLocation(Allocation.TargetPoint);
+
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			const FVector ImpactLocation =
+				LocalShotIndex == 0
+					? BaseLocation
+					: MakeRandomPointAroundLocation(BaseLocation, PlacementData.ScatterRadius);
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				ImpactLocation,
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildRingImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		const FVector Origin = ResolveTargetPointLocation(Allocation.TargetPoint);
+
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			const float AngleRadians =
+				Allocation.ShotCount > 0
+					? (2.0f * PI * static_cast<float>(LocalShotIndex)) / static_cast<float>(Allocation.ShotCount)
+					: 0.0f;
+
+			const FVector Offset(
+				FMath::Cos(AngleRadians) * PlacementData.RingStartRadius,
+				FMath::Sin(AngleRadians) * PlacementData.RingStartRadius,
+				0.0f);
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				Origin + Offset,
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				0,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildWaveRingImpactPoints(
+	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	const int32 RingCount = FMath::Max(ShotBudgetData.RingCount, 1);
+	const int32 ShotsPerRing = FMath::Max(ShotBudgetData.ShotsPerRing, 1);
+
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		const FVector Origin = ResolveTargetPointLocation(Allocation.TargetPoint);
+
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			const int32 RingIndex = FMath::Clamp(LocalShotIndex / ShotsPerRing, 0, RingCount - 1);
+			const int32 ShotIndexInRing = LocalShotIndex % ShotsPerRing;
+			const int32 CurrentRingShotCount =
+				FMath::Min(ShotsPerRing, Allocation.ShotCount - RingIndex * ShotsPerRing);
+
+			const float Radius =
+				PlacementData.RingStartRadius +
+				PlacementData.RingSpacing * static_cast<float>(RingIndex);
+
+			const float AngleRadians =
+				CurrentRingShotCount > 0
+					? (2.0f * PI * static_cast<float>(ShotIndexInRing)) / static_cast<float>(CurrentRingShotCount)
+					: 0.0f;
+
+			const FVector Offset(
+				FMath::Cos(AngleRadians) * Radius,
+				FMath::Sin(AngleRadians) * Radius,
+				0.0f);
+
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				Origin + Offset,
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				RingIndex,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+bool UNSBossArtilleryComponent::BuildEscapeRouteBlockImpactPoints(
+	const FNSBossArtilleryPlacementData& PlacementData,
+	const TArray<FNSBossArtilleryShotAllocation>& ShotAllocations,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	for (const FNSBossArtilleryShotAllocation& Allocation : ShotAllocations)
+	{
+		for (int32 LocalShotIndex = 0; LocalShotIndex < Allocation.ShotCount; ++LocalShotIndex)
+		{
+			AddImpactPoint(
+				Allocation.TargetPoint,
+				MakeEscapeRouteBlockLocation(
+					Allocation.TargetPoint,
+					LocalShotIndex,
+					PlacementData),
+				Allocation.FirstShotIndex + LocalShotIndex,
+				LocalShotIndex,
+				INDEX_NONE,
+				OutImpactPoints);
+		}
+	}
+
+	return !OutImpactPoints.IsEmpty();
+}
+
+void UNSBossArtilleryComponent::AddImpactPoint(
+	const FNSBossArtilleryTargetPoint& SourceTargetPoint,
+	const FVector& ImpactLocation,
+	int32 GlobalShotIndex,
+	int32 LocalShotIndex,
+	int32 RingIndex,
+	TArray<FNSBossArtilleryImpactPoint>& OutImpactPoints) const
+{
+	const FVector ClampedImpactLocation = ClampImpactLocationToArena(ImpactLocation);
+
+	if (!IsValidImpactLocation(ClampedImpactLocation))
+	{
+		return;
+	}
+
+	FNSBossArtilleryImpactPoint ImpactPoint;
+	ImpactPoint.SourceTargetPoint = SourceTargetPoint;
+	ImpactPoint.ImpactLocation = ClampedImpactLocation;
+	ImpactPoint.GlobalShotIndex = GlobalShotIndex;
+	ImpactPoint.LocalShotIndex = LocalShotIndex;
+	ImpactPoint.RingIndex = RingIndex;
+	ImpactPoint.DistanceFromOrigin =
+		FVector::Dist2D(
+			ResolveTargetPointLocation(SourceTargetPoint),
+			ClampedImpactLocation);
+
+	OutImpactPoints.Add(ImpactPoint);
+}
+
+FVector UNSBossArtilleryComponent::ResolveTargetPointLocation(
+	const FNSBossArtilleryTargetPoint& TargetPoint) const
+{
+	switch (TargetPoint.PointType)
+	{
+	case ENSBossArtilleryTargetPointType::Actor:
+		return IsValid(TargetPoint.PrimaryTarget)
+			       ? TargetPoint.PrimaryTarget->GetActorLocation()
+			       : TargetPoint.Location;
+
+	case ENSBossArtilleryTargetPointType::PairMidpoint:
+		if (IsValid(TargetPoint.PrimaryTarget) && IsValid(TargetPoint.SecondaryTarget))
+		{
+			return (TargetPoint.PrimaryTarget->GetActorLocation() + TargetPoint.SecondaryTarget->GetActorLocation()) *
+				0.5f;
+		}
+		return TargetPoint.Location;
+
+	case ENSBossArtilleryTargetPointType::ArenaCenter:
+	case ENSBossArtilleryTargetPointType::BossLocation:
+	default:
+		return TargetPoint.Location;
+	}
+}
+
+FVector UNSBossArtilleryComponent::ResolvePredictedTargetPointLocation(
+	const FNSBossArtilleryTargetPoint& TargetPoint,
+	float PredictionTime) const
+{
+	switch (TargetPoint.PointType)
+	{
+	case ENSBossArtilleryTargetPointType::Actor:
+		if (IsValid(TargetPoint.PrimaryTarget))
+		{
+			return TargetPoint.PrimaryTarget->GetActorLocation() +
+				TargetPoint.PrimaryTarget->GetVelocity() * FMath::Max(PredictionTime, 0.0f);
+		}
+		return TargetPoint.Location;
+
+	case ENSBossArtilleryTargetPointType::PairMidpoint:
+		if (IsValid(TargetPoint.PrimaryTarget) && IsValid(TargetPoint.SecondaryTarget))
+		{
+			const FVector FirstPredictedLocation =
+				TargetPoint.PrimaryTarget->GetActorLocation() +
+				TargetPoint.PrimaryTarget->GetVelocity() * FMath::Max(PredictionTime, 0.0f);
+
+			const FVector SecondPredictedLocation =
+				TargetPoint.SecondaryTarget->GetActorLocation() +
+				TargetPoint.SecondaryTarget->GetVelocity() * FMath::Max(PredictionTime, 0.0f);
+
+			return (FirstPredictedLocation + SecondPredictedLocation) * 0.5f;
+		}
+		return TargetPoint.Location;
+
+	case ENSBossArtilleryTargetPointType::ArenaCenter:
+	case ENSBossArtilleryTargetPointType::BossLocation:
+	default:
+		return TargetPoint.Location;
+	}
+}
+
+FVector UNSBossArtilleryComponent::MakeRandomPointAroundLocation(
+	const FVector& BaseLocation,
+	float Radius) const
+{
+	const FVector2D RandomOffset = FMath::RandPointInCircle(FMath::Max(Radius, 0.0f));
+
+	return BaseLocation + FVector(RandomOffset.X, RandomOffset.Y, 0.0f);
+}
+
+FVector UNSBossArtilleryComponent::MakeEscapeRouteBlockLocation(
+	const FNSBossArtilleryTargetPoint& TargetPoint,
+	int32 LocalShotIndex,
+	const FNSBossArtilleryPlacementData& PlacementData) const
+{
+	const FVector BaseLocation = ResolveTargetPointLocation(TargetPoint);
+
+	FVector MoveDirection = FVector::ForwardVector;
+
+	if (IsValid(TargetPoint.PrimaryTarget))
+	{
+		MoveDirection = TargetPoint.PrimaryTarget->GetVelocity().GetSafeNormal2D();
+	}
+
+	if (MoveDirection.IsNearlyZero())
+	{
+		MoveDirection = TargetPoint.Direction.GetSafeNormal2D();
+	}
+
+	if (MoveDirection.IsNearlyZero())
+	{
+		MoveDirection = FVector::ForwardVector;
+	}
+
+	const FVector SideDirection = FVector::CrossProduct(FVector::UpVector, MoveDirection).GetSafeNormal2D();
+
+	float SideSign = 0.0f;
+
+	if (LocalShotIndex % 3 == 1)
+	{
+		SideSign = -1.0f;
+	}
+	else if (LocalShotIndex % 3 == 2)
+	{
+		SideSign = 1.0f;
+	}
+
+	return BaseLocation +
+		MoveDirection * PlacementData.ForwardBlockDistance +
+		SideDirection * PlacementData.SideBlockOffset * SideSign;
+}
+
+FVector UNSBossArtilleryComponent::ClampImpactLocationToArena(const FVector& ImpactLocation) const
+{
+	if (bClampImpactLocationsToArenaBounds && IsValid(ArenaBounds))
+	{
+		return ArenaBounds->ClampPointToBounds(ImpactLocation);
+	}
+
+	return ImpactLocation;
+}
+
+bool UNSBossArtilleryComponent::IsValidImpactLocation(const FVector& ImpactLocation) const
+{
+	return !ImpactLocation.ContainsNaN();
+}
+
+bool UNSBossArtilleryComponent::IsImpactLocationTooClose(
+	const FVector& CandidateLocation,
+	const TArray<FNSBossArtilleryImpactPoint>& ExistingImpactPoints,
+	float MinDistance) const
+{
+	if (MinDistance <= 0.0f)
+	{
+		return false;
+	}
+
+	for (const FNSBossArtilleryImpactPoint& ExistingImpactPoint : ExistingImpactPoints)
+	{
+		if (FVector::Dist2D(CandidateLocation, ExistingImpactPoint.ImpactLocation) < MinDistance)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool UNSBossArtilleryComponent::BuildPerTargetShotAllocations(
 	const FNSBossArtilleryShotBudgetData& ShotBudgetData,
 	const TArray<FNSBossArtilleryTargetPoint>& TargetPoints,

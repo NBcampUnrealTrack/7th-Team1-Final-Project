@@ -131,6 +131,37 @@ struct FNSBossArtilleryShotAllocation
 	int32 FirstShotIndex = 0;
 };
 
+// 실제 포탄 하나의 착탄 위치와 배치 메타데이터를 나타내는 구조체
+USTRUCT(BlueprintType)
+struct FNSBossArtilleryImpactPoint
+{
+	GENERATED_BODY()
+
+	// 이 포탄이 만들어진 기준점
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	FNSBossArtilleryTargetPoint SourceTargetPoint;
+
+	// 포탄이 실제로 떨어질 월드 위치
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	FVector ImpactLocation = FVector::ZeroVector;
+
+	// 전체 포격 실행 안에서의 포탄 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	int32 GlobalShotIndex = 0;
+
+	// 같은 기준점 안에서의 포탄 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	int32 LocalShotIndex = 0;
+
+	// 링 또는 파동 배치에서 이 포탄이 속한 링 인덱스
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	int32 RingIndex = INDEX_NONE;
+
+	// 링 또는 파동 배치에서 기준점으로부터의 거리
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Artillery|Impact")
+	float DistanceFromOrigin = 0.0f;
+};
+
 // 포격 패턴의 총 포탄 수를 계산하는 방식
 UENUM(BlueprintType)
 enum class ENSBossArtilleryShotBudgetMode : uint8
