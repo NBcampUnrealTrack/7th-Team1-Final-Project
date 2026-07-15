@@ -89,6 +89,10 @@ struct FNSStatDisplayInfoRow : public FTableRowBase
 	// true = 값이 오르면 좋음(초록 위쪽 화살표), false = 값이 내리면 좋음(초록 위쪽 화살표는 값 하락 시 표시)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
 	bool bHigherIsBetter = true;
+
+	// 이 스탯의 만점 수치. 파츠 최종 수치 = 등급 품질 롤(0~1) × MaxStatValue
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat", meta = (ClampMin = "0"))
+	float MaxStatValue = 0.f;
 };
 
 /**
@@ -157,7 +161,7 @@ struct FNSPartUpgradeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
 	ENSPartRarity Rarity = ENSPartRarity::Common;
 
-	// 이 등급의 수치 범위 (장착/리롤/등급업 시 이 범위에서 결정)
+	// 이 등급의 품질 범위 (0~1), 최종 수치 = 품질 롤 × 스탯의 MaxStatValue(FNSStatDisplayInfoRow)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
 	FNSPartValueRange ValueRange;
 
