@@ -131,6 +131,57 @@ void ANSTurret::InitializeTurret(
 	if (const ANSPlayerState* NSPlayerState = InOwningPawn ? InOwningPawn->GetPlayerState<ANSPlayerState>() : nullptr)
 	{
 		OwningCombatStatComponent = NSPlayerState->GetCombatStatComponent();
+
+		const UNSPlayerAttributeSet* PlayerAttributeSet = NSPlayerState->GetPlayerAttributeSet();
+
+		if (PlayerAttributeSet)
+		{
+			// 전달된 SetByCaller 값을 태그로 찾아서 실제 터렛 Attribute 값으로 바꿔줌.
+			const auto FindSetByCallerMagnitude =
+				[this](const FGameplayTag& SetByCallerTag) -> FNSSetByCallerMagnitude*
+				{
+					return SetByCallerMagnitudes.FindByPredicate(
+					[&SetByCallerTag](const FNSSetByCallerMagnitude& Entry)
+					{
+						return Entry.SetByCallerTag == SetByCallerTag;
+					});
+				};
+
+			FNSSetByCallerMagnitude* MaxHealthMagnitude =
+				FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxHealth);
+
+			if (MaxHealthMagnitude)
+			{
+				// DataTable에서는 50을 50%로 사용.
+				const float MaxHealthRatio = FMath::Max(MaxHealthMagnitude->Magnitude, 0.0f) * 0.01f;
+
+				// 현재 실드가 아니라 증강까지 적용된 최대 체력과 최대 실드의 합을 사용.
+				const float OwnerMaxHealthAndShield =
+					FMath::Max(PlayerAttributeSet->GetMaxHealth(), 0.0f) +
+						FMath::Max(PlayerAttributeSet->GetMaxShield(), 0.0f);
+
+				const float TurretMaxHealth = FMath::Max(OwnerMaxHealthAndShield * MaxHealthRatio, 0.0f);
+
+				MaxHealthMagnitude->Magnitude = TurretMaxHealth;
+
+				// 터렛이 계산된 최대 체력만큼 꽉 찬 상태로 소환.
+				if (FNSSetByCallerMagnitude* HealthMagnitude =
+					FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Health))
+				{
+					HealthMagnitude->Magnitude = TurretMaxHealth;
+				}
+			}
+
+			if (FNSSetByCallerMagnitude* DefenseMagnitude =
+				FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Defense))
+			{
+				// 방어력도 동일하게 DataTable 값을 백분율로 해석.
+				const float DefenseRatio =
+					FMath::Max(DefenseMagnitude->Magnitude, 0.0f) * 0.01f;
+
+				DefenseMagnitude->Magnitude = FMath::Max(PlayerAttributeSet->GetDefense() * DefenseRatio, 0.0f);
+			}
+		}
 	}
 	
 	if (OwningPawn)
