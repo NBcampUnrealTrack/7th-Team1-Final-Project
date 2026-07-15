@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSPartTypes.generated.h"
 
 class UNSPartDefinition;
@@ -65,6 +66,10 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	// 이 파츠가 영향을 주는 스탯 (CombatStat.* 네임스페이스). 상호작용 프롬프트의 스탯 비교 UI에서 사용
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "CombatStat"))
 	FGameplayTag StatTag;
+
+	// StatTag를 공용 파츠 GE로 적용할 때의 연산 방식 (Add = 더하기, Multiply = 배율 곱하기)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
+	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
 };
 
 // StatTag 하나당 Row 하나. RowName은 StatTag와 동일해야 함.
