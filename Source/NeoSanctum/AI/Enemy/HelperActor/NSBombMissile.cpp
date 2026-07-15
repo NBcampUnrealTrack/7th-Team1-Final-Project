@@ -3,24 +3,68 @@
 
 #include "NSBombMissile.h"
 
+#include "Components/SphereComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
-// Sets default values
+
 ANSBombMissile::ANSBombMissile()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
+	bReplicates = true;
+	SetReplicateMovement(true);
+
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionComponent"));
+	SetRootComponent(CollisionComponent);
+
+	CollisionComponent->InitSphereRadius(12.0f);
+	CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	CollisionComponent->SetCanEverAffectNavigation(false);
+
+	MeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"));
+	MeshComponent->SetupAttachment(CollisionComponent);
+	MeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	MeshComponent->SetCanEverAffectNavigation(false);
+	MeshComponent->SetGenerateOverlapEvents(false);
+
+	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
+	ProjectileMovement->UpdatedComponent = CollisionComponent;
+	ProjectileMovement->bIsHomingProjectile = false;
+	ProjectileMovement->bRotationFollowsVelocity = false;
+	ProjectileMovement->bShouldBounce = false;
+	ProjectileMovement->bAutoActivate = false;
 }
 
-// Called when the game starts or when spawned
+void ANSBombMissile::InitDrop(const FVector& LandingLocation)
+{
+	TargetLandingLocation = LandingLocation;
+	bIsDropping = true;
+
+	ProjectileMovement->Velocity = FVector(0.f, 0.f, -DropSpeed);
+	ProjectileMovement->Activate();
+}
+
 void ANSBombMissile::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	ProjectileMovement->ProjectileGravityScale = DropGravityScale;
 }
 
-// Called every frame
-void ANSBombMissile::Tick(float DeltaTime)
+void ANSBombMissile::Tick(float DeltaSeconds)
 {
-	Super::Tick(DeltaTime);
-}
+	Super::Tick(DeltaSeconds);
 
+	if (!bIsDropping) return;
+
+	if (GetActorLocation().Z <= TargetLandingLocation.Z)
+	{
+		bIsDropping = false;
+		ProjectileMovement->StopMovementImmediately();
+		ProjectileMovement->Deactivate();
+
+		FVector Location = GetActorLocation();
+		Location.Z = TargetLandingLocation.Z;
+		SetActorLocation(Location);
+	}
+}

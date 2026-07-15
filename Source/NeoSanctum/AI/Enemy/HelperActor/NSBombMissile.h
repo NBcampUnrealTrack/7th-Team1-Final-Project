@@ -6,20 +6,41 @@
 #include "GameFramework/Actor.h"
 #include "NSBombMissile.generated.h"
 
+class USphereComponent;
+class UStaticMeshComponent;
+class UProjectileMovementComponent;
+
 UCLASS()
 class NEOSANCTUM_API ANSBombMissile : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
 	ANSBombMissile();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	// 현재 위치에서 수직 낙하를 시작. LandingLocation 도달 시 이동을 정지하고 대기
+	void InitDrop(const FVector& LandingLocation);
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+protected:
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BombMissile")
+	TObjectPtr<USphereComponent> CollisionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BombMissile")
+	TObjectPtr<UStaticMeshComponent> MeshComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BombMissile")
+	TObjectPtr<UProjectileMovementComponent> ProjectileMovement;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "BombMissile|Drop", meta = (ClampMin = "0.0"))
+	float DropSpeed = 1200.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "BombMissile|Drop", meta = (ClampMin = "0.0"))
+	float DropGravityScale = 1.f;
+
+private:
+	FVector TargetLandingLocation = FVector::ZeroVector;
+	bool bIsDropping = false;
 };
