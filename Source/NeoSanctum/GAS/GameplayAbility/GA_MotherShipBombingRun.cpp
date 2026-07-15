@@ -9,11 +9,11 @@
 #include "NeoSanctum/Character/Enemy/NSBossMotherShip.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/AI/Enemy/HelperActor/NSBombMissile.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
-#include "NeoSanctum/Type/NSBBTypes.h"
 
 UGA_MotherShipBombingRun::UGA_MotherShipBombingRun()
 {
@@ -56,6 +56,16 @@ void UGA_MotherShipBombingRun::EndAbility(const FGameplayAbilitySpecHandle Handl
 	ClearAllZoneTimers();
 	GetWorld()->GetTimerManager().ClearTimer(LegPollTimerHandle);
 	ClearAllZoneWarningCues();
+	
+	for (TWeakObjectPtr<ANSBombMissile>& Missile : ActiveMissiles)
+	{
+		if (Missile.IsValid())
+		{
+			Missile->Destroy();
+		}
+	}
+	ActiveMissiles.Empty();
+	
 	if (ANSBossMotherShip* Boss = GetBossMotherShip())
 	{
 		if (UNSFlyingLocomotionComponent* FlyingLocomotionComponent =Boss->GetFlyingLocomotion())
@@ -162,6 +172,8 @@ void UGA_MotherShipBombingRun::StartWarningPhase()
 
 	ZoneWarningTimerHandles.SetNum(N);
 
+	ActiveMissiles.SetNum(N * SlotsPerZone);
+	
 	for (int32 i = 0; i < N; ++i)
 	{
 		const float FireDelay = FMath::Max(i * Interval, KINDA_SMALL_NUMBER);
@@ -207,48 +219,99 @@ void UGA_MotherShipBombingRun::ShowZoneWarning(int32 ZoneIndex)
 	FGameplayCueParameters Parameters;
 	Parameters.RawMagnitude = static_cast<float>(ZoneIndex);
 	Parameters.Location = ZoneCenter;
-	// 존 박스의 forward(수평)를 Normal에 실어 데칼 Yaw 정렬에 사용
 	Parameters.Normal = CachedArenaBounds->GetZoneBoxRotation().GetForwardVector().GetSafeNormal2D();
 
-	// ↓ 추가: 데칼 크기를 아레나에서 계산할 수 있도록 참조와 존 개수를 전달
 	Parameters.SourceObject = CachedArenaBounds.Get();
-	Parameters.NormalizedMagnitude = static_cast<float>(N);   // 존 개수
-	
+	Parameters.NormalizedMagnitude = static_cast<float>(N);
+
 	UAbilitySystemComponent* BossASC = GetAbilitySystemComponentFromActorInfo();
 	if (!BossASC) return;
 	BossASC->AddGameplayCue(WarningCueTags[ZoneIndex], Parameters);
 	ActiveWarningZoneIndices.Add(ZoneIndex);
 	DrawDebugZone(ZoneIndex);
+
+	FGameplayCueParameters DropParameters;
+	DropParameters.Location = ZoneCenter;
+	BossASC->ExecuteGameplayCue(MissileDropCueTag, DropParameters);
+
+	ANSBossArenaBounds* Arena = CachedArenaBounds.Get();
+	UWorld* World = GetWorld();
+	if (!IsValid(Arena) || !World) return;
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = GetAvatarActorFromActorInfo();
+
+	AActor* BossActor = BossASC->GetAvatarActor();
+	if (!BossActor) return;
+	
+	ANSBossMotherShip* BossMotherShip = Cast<ANSBossMotherShip>(BossActor);
+	if (!BossMotherShip) return;
+	
+	for (int32 s = 0; s < SlotsPerZone; ++s)
+	{
+		const FVector SlotPos = Arena->GetSlotCenter(ZoneIndex, s, N, SlotsPerZone);
+		const FVector SpawnLocation(SlotPos.X, SlotPos.Y, BossMotherShip->GetActorLocation().Z);
+
+		ANSBombMissile* Missile = World->SpawnActor<ANSBombMissile>(
+			BombMissileClass, SpawnLocation, FRotator::ZeroRotator, SpawnParams);
+
+		if (Missile)
+		{
+			Missile->InitDrop(SlotPos);
+		}
+
+		ActiveMissiles[ZoneIndex * SlotsPerZone + s] = Missile;
+	}
 }
 
 void UGA_MotherShipBombingRun::DetonateZone(int32 ZoneIndex)
 {
+	// 공격 Row로 부터 발사 실행 횟수 가져오기
 	const int32 N = CachedAttackRow->BombardData.ShotCount;
 
+	// ASC 캐스팅
 	UAbilitySystemComponent* BossASC = GetAbilitySystemComponentFromActorInfo();
 	if (!BossASC) return;
 
-	TArray<AActor*> Targets;
+	// 패턴 영역 캐스팅
 	ANSBossArenaBounds* Arena = CachedArenaBounds.Get();
 	if (!IsValid(Arena)) return;
 
+	// 1/4 패턴 실행 존 가져오기
 	const FVector ZoneCenter = Arena->GetZoneCenter(ZoneIndex, N);
 
-	FGameplayCueParameters Parameters;
-	Parameters.Location = ZoneCenter;
-	BossASC->ExecuteGameplayCue(MissileCueTag, Parameters);
-	BossASC->ExecuteGameplayCue(ImpactCueTag, Parameters);
-	Arena->OverlapPlayersInZone(ZoneIndex, N, ZoneHeight, Targets);
+	// 폭발 효과 Cue 파라미터 생성
+	FGameplayCueParameters ExplosionSoundParameters;
+	ExplosionSoundParameters.Location = ZoneCenter;
+	BossASC->ExecuteGameplayCue(ExplosionSoundCueTag, ExplosionSoundParameters);
 
-
+	// 처리할 데미지 계산
 	const float Damage = CalculateBombardDamage(*CachedAttackRow);
 
-	for (AActor* Target : Targets)
+	for (int32 s = 0; s < SlotsPerZone; ++s)
 	{
-		FHitResult HitResult;
-		HitResult.Location = Target->GetActorLocation();
-		HitResult.ImpactPoint = Target->GetActorLocation();
-		const bool bApplied = ApplyBombardDamageToTarget(Target, HitResult, Damage);
+		const FVector SlotPos = Arena->GetSlotCenter(ZoneIndex, s, N, SlotsPerZone);
+
+		FGameplayCueParameters ImpactParameters;
+		ImpactParameters.Location = SlotPos;
+		BossASC->ExecuteGameplayCue(ImpactCueTag, ImpactParameters);
+
+		const int32 MissileIndex = ZoneIndex * SlotsPerZone + s;
+		if (ActiveMissiles.IsValidIndex(MissileIndex) && ActiveMissiles[MissileIndex].IsValid())
+		{
+			ActiveMissiles[MissileIndex]->Destroy();
+		}
+
+		TArray<AActor*> Targets;
+		Arena->OverlapPlayersInSlot(ZoneIndex, s, N, SlotsPerZone, ZoneHeight, Targets);
+
+		for (AActor* Target : Targets)
+		{
+			FHitResult HitResult;
+			HitResult.Location = Target->GetActorLocation();
+			HitResult.ImpactPoint = Target->GetActorLocation();
+			ApplyBombardDamageToTarget(Target, HitResult, Damage);
+		}
 	}
 
 	BossASC->RemoveGameplayCue(WarningCueTags[ZoneIndex]);
@@ -357,17 +420,6 @@ bool UGA_MotherShipBombingRun::ApplyBombardDamageToTarget(AActor* TargetActor, c
 	SourceASC->ApplyGameplayEffectSpecToTarget(
 		*SpecHandle.Data.Get(),
 		TargetASC);
-
-	if (GameplayCueTag.IsValid())
-	{
-		FGameplayCueParameters CueParameters;
-		CueParameters.Location = HitResult.Location;
-		CueParameters.Normal = FVector::UpVector;
-
-		SourceASC->ExecuteGameplayCue(
-			GameplayCueTag,
-			CueParameters);
-	}
 
 	return true;
 }

@@ -7,6 +7,7 @@
 
 class ANSBossMotherShip;
 class ANSBossArenaBounds;
+class ANSBombMissile;
 struct FNSEnemyAttackRow;
 
 UCLASS()
@@ -78,6 +79,9 @@ private:
 	bool ValidateAttackContext() const;
 
 private:
+	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Missile")
+	TSubclassOf<ANSBombMissile> BombMissileClass;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Move", meta = (ClampMin = "0.0"))
 	float RunAltitude = 2000.f;
 
@@ -101,12 +105,18 @@ private:
 		FLinearColor::Red, FLinearColor::Green, FLinearColor::Blue, FLinearColor(1.f, 0.5f, 0.f)
 	};
 
+	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Zone", meta = (ClampMin = "1"))
+	int32 SlotsPerZone = 4;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
 	TArray<FGameplayTag> WarningCueTags;  
 
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
-	FGameplayTag MissileCueTag;
+	FGameplayTag MissileDropCueTag;
 
+	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
+	FGameplayTag ExplosionSoundCueTag;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
 	FGameplayTag ImpactCueTag;
 
@@ -121,6 +131,9 @@ private:
 	FTimerHandle DetonationPhaseTimerHandle;
 	TArray<FTimerHandle> ZoneWarningTimerHandles;
 	TArray<FTimerHandle> ZoneImpactTimerHandles;
+	
+	UPROPERTY()
+	TArray<TWeakObjectPtr<ANSBombMissile>> ActiveMissiles;
 
 	// 아직 경고 Cue가 남아있는 존 인덱스 (취소 시 일괄 Remove용)
 	TArray<int32> ActiveWarningZoneIndices;

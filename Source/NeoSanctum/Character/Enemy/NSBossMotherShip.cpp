@@ -25,13 +25,14 @@
 ANSBossMotherShip::ANSBossMotherShip()
 {
 	PrimaryActorTick.bCanEverTick = false;
-
+	bAlwaysRelevant = true;
 	FlyingLocomotionComponent = CreateDefaultSubobject<UNSFlyingLocomotionComponent>(FName("FlyingMovementComponent"));
 }
 
 void ANSBossMotherShip::ApplyDeadState()
 {
 	Super::ApplyDeadState();
+	RecallAllDrones();
 	if (FlyingLocomotionComponent)
 	{
 		FlyingLocomotionComponent->StartDeathFall();
