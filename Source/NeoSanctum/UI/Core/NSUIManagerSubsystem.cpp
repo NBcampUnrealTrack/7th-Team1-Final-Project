@@ -585,16 +585,25 @@ void UNSUIManagerSubsystem::RequestRerollAugment()
 
 void UNSUIManagerSubsystem::OpenAugmentationPanel()
 {
-	if (bAugmentationPanelOpen)
+	if (!HUDWidget || bFullAugmentationPanelOpen)
 	{
 		return;
 	}
-	if (!HUDWidget)
+	
+	bAugmentationPanelOpen = true;
+	bFullAugmentationPanelOpen = true;
+	
+	HUDWidget->OpenAugmentationPanel();
+}
+
+void UNSUIManagerSubsystem::OpenAugmentSelectionPanel()
+{
+	if (!HUDWidget || bFullAugmentationPanelOpen)
 	{
 		return;
 	}
 	bAugmentationPanelOpen = true;
-	HUDWidget->OpenAugmentationPanel();
+	HUDWidget->OpenAugmentSelectionPanel();
 }
 
 void UNSUIManagerSubsystem::CloseAugmentationPanel()
@@ -604,6 +613,8 @@ void UNSUIManagerSubsystem::CloseAugmentationPanel()
 		return;
 	}
 	bAugmentationPanelOpen = false;
+	bFullAugmentationPanelOpen = false;
+	
 	if (!HUDWidget)
 	{
 		return;

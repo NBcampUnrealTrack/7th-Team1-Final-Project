@@ -105,6 +105,17 @@ void UNSHUDWidget::SetCrosshairColor(FLinearColor NewColor)
 	CrosshairWidget->SetCrosshairColor(NewColor);
 }
 
+void UNSHUDWidget::OpenAugmentSelectionPanel()
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+	
+	AugmentationWidget->OpenSelectionPanel();
+	RefreshHudDimBackground();
+}
+
 void UNSHUDWidget::OpenAugmentationPanel()
 {
 	if (!AugmentationWidget)
@@ -271,20 +282,14 @@ void UNSHUDWidget::RefreshHudDimBackground()
 	{
 		return;
 	}
-
-	const bool bIsAugmentationOpen =
-		AugmentationWidget &&
-		AugmentationWidget->IsPanelOpen();
-
 	const bool bIsPartPanelOpen =
 		IsValid(PartPanelWidget) &&
 		PartPanelWidget->GetVisibility() != ESlateVisibility::Collapsed &&
 		PartPanelWidget->GetVisibility() != ESlateVisibility::Hidden;
-
+	
 	HudDimBackground->SetVisibility(
-		(bIsAugmentationOpen)
-			? ESlateVisibility::Visible
-			: ESlateVisibility::Collapsed);
+		bIsPartPanelOpen
+		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
 
 void UNSHUDWidget::NativeConstruct()

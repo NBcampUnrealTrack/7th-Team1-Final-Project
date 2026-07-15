@@ -262,11 +262,13 @@ void UNSAugmentationWidget::SetRerollStatusMessage(const FText& Message)
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
 {
-	if (!OwnedAugmentWrapBox)
+	if (!AreOwnedAugmentListReady())
 	{
 		return;
 	}
-	OwnedAugmentWrapBox->ClearChildren();
+	
+	ClearOwnedAugmentLists();
+	RefreshOwnedAugmentSectionVisibility();
 
 	UNSAugmentInventoryComponent* Inv = GetInventoryComponent();
 	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
@@ -304,11 +306,13 @@ void UNSAugmentationWidget::RefreshOwnedAugmentList()
 
 void UNSAugmentationWidget::OnOwnedIconsLoaded()
 {
-	if (!OwnedAugmentWrapBox || !WidgetTree)
+	if (!AreOwnedAugmentListReady() || !WidgetTree)
 	{
 		return;
 	}
-	OwnedAugmentWrapBox->ClearChildren();
+	
+	ClearOwnedAugmentLists();
+	RefreshOwnedAugmentSectionVisibility();
 
 	UNSAugmentInventoryComponent* Inv = GetInventoryComponent();
 	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
@@ -391,10 +395,16 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 				}
 			}
 		}
+		UWrapBox* TargetWrapBox = GetOwnedAugmentWrapBox(Inst.Rarity);
+		if (!TargetWrapBox)
+		{
+			continue;
+		}
 
 		SizeBox->AddChild(Overlay);
-		OwnedAugmentWrapBox->AddChildToWrapBox(SizeBox);
+		TargetWrapBox->AddChildToWrapBox(SizeBox);
 	}
+	RefreshOwnedAugmentSectionVisibility();
 }
 
 void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
@@ -419,30 +429,47 @@ void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 
 void UNSAugmentationWidget::RefreshAugmentPanelState()
 {
-	const UNSAugmentSelectionComponent* SelComp = SelectionComponent.Get();
-	const int32 PendingCount = SelComp ? SelComp->GetPendingCount() : 0;
+	const UNSAugmentSelectionComponent* SelectionComp =
+		SelectionComponent.Get();
+
+	const int32 PendingCount =
+		SelectionComp
+			? SelectionComp->GetPendingCount()
+			: 0;
 
 	const bool bHasPendingAugment = PendingCount > 0;
-	const bool bHasOfferCards = CurrentOfferCards.Num() > 0;
-	// 위젯 자체는 Tab으로 열렸거나(bPanelOpen), C로 보유 목록이 요청됐거나(bOwnedListRequested),
-	// 새로 고를 증강이 대기 중이면(알림 뱃지) 보여준다. 셋 중 하나라도 아니면
-	// 대기 오퍼가 없을 때 Tab/C를 눌러도 보유 목록이 안 보이는 문제가 생긴다.
-	const bool bShouldShowAugmentNotice = bPanelOpen || bOwnedListRequested || bHasPendingAugment;
-	// 카드 선택 화면은 실제 카드 데이터가 있고, Tab으로 패널을 연 상태에서만 보여준다.
-	const bool bShouldShowCardSection = bPanelOpen && bHasOfferCards;
-	if (!bShouldShowAugmentNotice)
+	const bool bHasOfferCards = !CurrentOfferCards.IsEmpty();
+
+	// 위젯 자체는 다음 중 하나라도 해당하면 유지한다.
+	// Tab 또는 자동 선택으로 증강 패널이 열린 상태
+	// C 입력으로 보유 증강 목록을 표시하는 상태
+	// 아직 처리하지 않은 증강이 있는 상태
+	// 실제 선택 카드 데이터가 존재하는 상태
+	const bool bShouldShowAugmentWidget =
+		bPanelOpen ||
+		bOwnedListRequested ||
+		bHasPendingAugment ||
+		bHasOfferCards;
+
+	// Tab 안내, 안내 텍스트, 리롤 비용은
+	// 실제 선택 가능한 카드가 있을 때 기본 화면에서도 표시한다.
+	const bool bShouldShowCenterControl =
+		bHasOfferCards;
+
+	// 실제 증강 선택 카드는 선택 패널이 열린 상태에서만 표시한다.
+	const bool bShouldShowCardSection =
+		bPanelOpen &&
+		bHasOfferCards;
+
+	if (!bShouldShowAugmentWidget)
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
 		HideCardSection();
 
 		if (CenterControlRoot)
 		{
-			CenterControlRoot->SetVisibility(ESlateVisibility::Collapsed);
-		}
-		
-		if (CardDimBackground)
-		{
-			CardDimBackground->SetVisibility(ESlateVisibility::Collapsed);
+			CenterControlRoot->SetVisibility(
+				ESlateVisibility::Collapsed);
 		}
 
 		return;
@@ -452,7 +479,10 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 	if (CenterControlRoot)
 	{
-		CenterControlRoot->SetVisibility(ESlateVisibility::HitTestInvisible);
+		CenterControlRoot->SetVisibility(
+			bShouldShowCenterControl
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
 	}
 
 	if (CardSectionRoot)
@@ -463,38 +493,39 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 				: ESlateVisibility::Collapsed);
 	}
 
-	if (CardDimBackground)
-	{
-		CardDimBackground->SetVisibility(
-			bShouldShowCardSection ||
-			bOwnedListRequested
-				? ESlateVisibility::Visible
-				: ESlateVisibility::Collapsed);
-	}
-	
 	if (PendingCountText)
 	{
-		PendingCountText->SetText(FText::AsNumber(PendingCount));
+		PendingCountText->SetText(
+			FText::AsNumber(PendingCount));
 	}
 
 	if (RemainingAugmentCountText)
 	{
-		RemainingAugmentCountText->SetText(FText::AsNumber(PendingCount));
+		RemainingAugmentCountText->SetText(
+			FText::AsNumber(PendingCount));
 	}
 }
 
 void UNSAugmentationWidget::SetOwnedAugmentListVisible(bool bVisible)
 {
 	bOwnedListRequested = bVisible;
-
-	if (OwnedAugmentWrapBox)
+	
+	if (OwnedAugmentPanelRoot)
 	{
-		OwnedAugmentWrapBox->SetVisibility(
-			bVisible
-				? ESlateVisibility::HitTestInvisible
-				: ESlateVisibility::Collapsed);
+		OwnedAugmentPanelRoot->SetVisibility(bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
 	}
+	
+	RefreshAugmentPanelState();
+}
 
+void UNSAugmentationWidget::OpenSelectionPanel()
+{
+	bPanelOpen = true;
+	
+	SetVisibility(ESlateVisibility::Visible);
+	SetOwnedAugmentListVisible(false);
 	RefreshAugmentPanelState();
 }
 
@@ -827,5 +858,83 @@ void UNSAugmentationWidget::HandleInventoryChanged()
 	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
 	{
 		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
+	}
+}
+
+bool UNSAugmentationWidget::AreOwnedAugmentListReady() const
+{
+	return
+	OwnedAugmentListRoot &&
+		CommonAugmentSectionRoot &&
+			RareAugmentSectionRoot &&
+				EpicAugmentSectionRoot &&
+					LegendaryAugmentSectionRoot &&
+						CommonAugmentWrapBox &&
+							RareAugmentWrapBox &&
+								EpicAugmentWrapBox &&
+									LegendaryAugmentWrapBox;
+}
+
+void UNSAugmentationWidget::ClearOwnedAugmentLists()
+{
+	if (CommonAugmentWrapBox)
+	{
+		CommonAugmentWrapBox->ClearChildren();
+	}
+	
+	if (RareAugmentWrapBox)
+	{
+		RareAugmentWrapBox->ClearChildren();
+	}
+	
+	if (EpicAugmentWrapBox)
+	{
+		EpicAugmentWrapBox->ClearChildren();
+	}
+	
+	if (LegendaryAugmentWrapBox)
+	{
+		LegendaryAugmentWrapBox->ClearChildren();
+	}
+}
+
+void UNSAugmentationWidget::RefreshOwnedAugmentSectionVisibility()
+{
+	if (!AreOwnedAugmentListReady())
+	{
+		return;
+	}
+	
+	CommonAugmentSectionRoot->SetVisibility(CommonAugmentWrapBox->GetChildrenCount() > 0
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	
+	RareAugmentSectionRoot->SetVisibility(RareAugmentWrapBox->GetChildrenCount() > 0
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	
+	EpicAugmentSectionRoot->SetVisibility(EpicAugmentWrapBox->GetChildrenCount() > 0
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	
+	LegendaryAugmentSectionRoot->SetVisibility(LegendaryAugmentWrapBox->GetChildrenCount() > 0
+		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+}
+
+UWrapBox* UNSAugmentationWidget::GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const
+{
+	switch (Rarity)
+	{
+	case ENSAugmentRarity::Common:
+		return CommonAugmentWrapBox;
+		
+	case ENSAugmentRarity::Rare:
+		return RareAugmentWrapBox;
+		
+	case ENSAugmentRarity::Epic:
+		return EpicAugmentWrapBox;
+		
+	case ENSAugmentRarity::Legendary:
+		return LegendaryAugmentWrapBox;
+		
+	default:
+		return nullptr;
 	}
 }

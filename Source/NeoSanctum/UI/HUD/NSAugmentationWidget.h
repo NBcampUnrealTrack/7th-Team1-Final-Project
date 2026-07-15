@@ -55,6 +55,8 @@ public:
 	//현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
 	void SetOwnedAugmentListVisible(bool bVisible);
+	
+	void OpenSelectionPanel();
 
 
 private:
@@ -66,14 +68,40 @@ private:
 	//카드 영역 전체 컨테이너 (대기 유무에 따라 표시/숨김) — BP 미배치 가능성 대비 Optional
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> CardSectionRoot;
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UWidget> CardDimBackground;
 	//증강 선택 카드들이 들어가는 박스
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> ChoiceRootCanvas;
-	//보유 증강 아이콘 컨테이너 (패널 열린 동안 항상 표시)
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UWrapBox> OwnedAugmentWrapBox;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> OwnedAugmentPanelRoot;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> OwnedAugmentListRoot;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> CommonAugmentSectionRoot;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> RareAugmentSectionRoot;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> EpicAugmentSectionRoot;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWidget> LegendaryAugmentSectionRoot;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> CommonAugmentWrapBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> RareAugmentWrapBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> EpicAugmentWrapBox;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UWrapBox> LegendaryAugmentWrapBox;
+	
 	//대기 카운트 뱃지 텍스트
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> PendingCountText;
@@ -174,6 +202,11 @@ private:
 	//보유 증강 변경 수신 -> 아이콘 목록 갱신
 	UFUNCTION()
 	void HandleInventoryChanged();
+	
+	bool AreOwnedAugmentListReady() const;
+	void ClearOwnedAugmentLists();
+	void RefreshOwnedAugmentSectionVisibility();
+	UWrapBox* GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const;
 
 protected:
 	virtual void NativeConstruct() override;

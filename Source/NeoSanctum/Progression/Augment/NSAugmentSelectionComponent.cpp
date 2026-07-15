@@ -684,7 +684,7 @@ void UNSAugmentSelectionComponent::Client_AutoOpenPanel_Implementation()
 	}
 	if (UNSUIManagerSubsystem* UIManager = GameInstance->GetSubsystem<UNSUIManagerSubsystem>())
 	{
-		UIManager->OpenAugmentationPanel();
+		UIManager->OpenAugmentSelectionPanel();
 	}
 }
 

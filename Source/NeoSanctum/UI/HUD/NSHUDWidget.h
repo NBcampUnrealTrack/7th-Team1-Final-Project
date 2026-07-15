@@ -63,6 +63,7 @@ public:
 	//조준점 색상 변경
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void SetCrosshairColor(FLinearColor NewColor);
+	void OpenAugmentSelectionPanel();
 	//증강 패널 열기
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void OpenAugmentationPanel();

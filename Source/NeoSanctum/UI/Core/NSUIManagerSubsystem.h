@@ -63,6 +63,11 @@ public:
 		float RequiredExperience);
 	//증강 패널 열기 (Tab 토글 / 자동 오픈)
 	void OpenAugmentationPanel();
+	void OpenAugmentSelectionPanel();
+	bool IsFullAugmentationPanelOpen() const
+	{
+		return bFullAugmentationPanelOpen;
+	}
 	//증강 패널 닫기 (Tab 토글)
 	void CloseAugmentationPanel();
 	//증강 패널 열림 여부 (InputBinder 게이팅용)
@@ -80,6 +85,8 @@ public:
 	
 	// 캐시된 UI 위젯 클래스를 RowName으로 조회하는 함수
 	TSubclassOf<UUserWidget> GetCachedWidgetClass(FName RowName) const;
+	
+	bool bFullAugmentationPanelOpen = false;
 	
 	//(이용호 추가) Title 위젯 전용
 	void CreateTitle(APlayerController* OwningPlayer);
