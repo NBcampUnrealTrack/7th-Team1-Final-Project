@@ -12,6 +12,7 @@
 #include "NeoSanctum/Data/Combat/NSPlayerAttackFeedbackData.h"
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
+#include "NeoSanctum/Data/AI/NSEnemyVisualParameterTypes.h"
 #include "NSDataSubsystem.generated.h"
 
 struct FNSCharacterBaseStatRow;
@@ -237,6 +238,17 @@ public:
 	//저장된 플레이어 진행 데이터를 ProgressComponent에 적용
 	void ApplyCachedProgressTo(class UNSPlayerProgressComponent* ProgressComponent) const;
 	
+	// 현재 스테이지에서 사용하는 EnemyVisualParameterTable을 반환하는 함수
+	UDataTable* GetCurrentEnemyVisualParameterTable() const { return CurrentEnemyVisualParameterTable.Get(); }
+
+	// 현재 스테이지 EnemyVisualParameterTable에서 EnemyId와 일치하는 모든 Row를 수집하는 함수
+	void GetCurrentEnemyVisualParameterRows(
+		const FGameplayTag& EnemyId,
+		TArray<const FNSEnemyVisualParameterRow*>& OutRows) const;
+
+	// 현재 스테이지 EnemyVisualParameterTable 로드가 완료됐는지 반환하는 함수
+	bool IsCurrentEnemyVisualParameterTableLoaded() const { return bStageEnemyVisualParameterTableLoaded; }
+	
 	// ================================================================
 	// 델리게이트
 	// ================================================================
@@ -405,6 +417,15 @@ private:
 	
 	UFUNCTION()
 	void HandlePreloadCommonReady();
+	
+	// 현재 스테이지 LevelConfig가 가진 EnemyVisualParameterTable SoftPtr을 실제 UDataTable로 로드하는 함수
+	void StartLoadStageEnemyVisualParameterTable();
+
+	// 현재 스테이지 EnemyVisualParameterTable 로드가 끝났을 때 캐시하고 RunReady를 알리는 함수
+	void OnStageEnemyVisualParameterTableLoaded();
+
+	// 현재 스테이지 LevelConfig와 스테이지 외형 테이블 로드가 끝난 뒤 RunReady 상태로 전환하는 함수
+	void FinishStageConfigLoad();
 
 	// ================================================================
 	// 상태
@@ -463,6 +484,16 @@ private:
 
 	// 로드 페이즈 ENUM
 	ENSDataLoadPhase CurrentPhase = ENSDataLoadPhase::NotStarted;
+	
+	// 현재 스테이지에서 사용하는 몬스터 외형 파라미터 테이블을 저장하는 변수
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> CurrentEnemyVisualParameterTable;
+
+	// 현재 스테이지 EnemyVisualParameterTable 로드 완료 여부를 저장하는 변수
+	bool bStageEnemyVisualParameterTableLoaded = false;
+
+	// 현재 스테이지 EnemyVisualParameterTable 비동기 로드 핸들을 저장하는 변수
+	TSharedPtr<FStreamableHandle> StageEnemyVisualParameterTableHandle;
 };
 
 // ================================================================
