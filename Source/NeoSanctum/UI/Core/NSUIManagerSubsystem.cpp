@@ -197,17 +197,19 @@ void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameStat
 {
 	UNSRunResultWidget* RunResultWidget =
 		Cast<UNSRunResultWidget>(RunEndWidget);
+
 	if (!RunResultWidget || !RunGameState)
 	{
 		return;
 	}
 
-	const FNSRunResultData& ResultData = RunGameState->RunResultData;
+	const FNSRunResultData& ResultData =
+		RunGameState->RunResultData;
 
 	RunResultWidget->SetRunResult(
 		RunGameState->bIsClear,
-		ResultData.EarnedGoods,
-		ResultData.CommonGoods,
+		RunResultGoods,
+		RunResultCommonGoods,
 		ResultData.RunTimeSeconds,
 		ResultData.KillCount);
 }
@@ -452,12 +454,14 @@ void UNSUIManagerSubsystem::UpdateRunInGoods(int32 NewGoodsAmount)
 
 void UNSUIManagerSubsystem::UpdateRunOutGoods(int32 NewGoodsAmount)
 {
-	//TODO(영웅): 영구 재화 데이터 연동
+	RunResultCommonGoods =
+		FMath::Max(NewGoodsAmount, 0);
+	
 	if (!HUDWidget)
 	{
 		return;
 	}
-	HUDWidget->UpdateRunOutGoods(NewGoodsAmount);
+	HUDWidget->UpdateRunOutGoods(RunResultCommonGoods);
 }
 
 void UNSUIManagerSubsystem::ResetRunInGoods()
