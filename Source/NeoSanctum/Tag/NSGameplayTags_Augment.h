@@ -140,6 +140,10 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Guard_MaxHealth);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_BuffPower);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_MaxHealth);
+	
 	//Rare
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_BaseAttack_AttackSpeed);
@@ -153,6 +157,9 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Duration);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Radius);
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Radius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Duration);
+	
 	//Epic
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_DashAttack_DashSpeed);
 	
@@ -162,10 +169,15 @@ namespace NSGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Cooldown);
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Cooldown);
+	
 	//Legendary
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_IncAttackCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_IncSkillCount);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_DamageInterval);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_IncSkillCount);
 }

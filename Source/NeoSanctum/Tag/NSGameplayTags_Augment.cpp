@@ -144,6 +144,9 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_VanguardBuff_BuffPower, "Augment.Definition.Vanguard.VanguardBuff.BuffPower");
 	
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_Damage, "Augment.Definition.Vanguard.ThrowBarrierField.Damage");
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_MaxHealth, "Augment.Definition.Vanguard.ThrowBarrierField.MaxHealth");
+	
 	//Rare
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_BaseAttack_AttackSpeed, "Augment.Definition.Vanguard.BaseAttack.AttackSpeed");
 	
@@ -156,6 +159,9 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_VanguardBuff_Duration, "Augment.Definition.Vanguard.VanguardBuff.Duration");
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_VanguardBuff_Radius, "Augment.Definition.Vanguard.VanguardBuff.Radius");
 	
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_Radius, "Augment.Definition.Vanguard.ThrowBarrierField.Radius");
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_Duration, "Augment.Definition.Vanguard.ThrowBarrierField.Duration");
+	
 	//Epic
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_DashAttack_DashSpeed, "Augment.Definition.Vanguard.DashAttack.DashSpeed");
 	
@@ -165,11 +171,16 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_VanguardBuff_Cooldown, "Augment.Definition.Vanguard.VanguardBuff.Cooldown");
 	
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_Cooldown, "Augment.Definition.Vanguard.ThrowBarrierField.Cooldown");
+	
 	//Legendary
 	
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_Flicker_IncAttackCount, "Augment.Definition.Vanguard.Flicker.IncAttackCount");
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_Flicker_IncSkillCount, "Augment.Definition.Vanguard.Flicker.IncSkillCount");
 	
 	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_VanguardBuff_IncSkillCount, "Augment.Definition.Vanguard.VanguardBuff.IncSkillCount");
+	
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_DamageInterval, "Augment.Definition.Vanguard.ThrowBarrierField.DamageInterval");
+	UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_ThrowBarrierField_IncSkillCount, "Augment.Definition.Vanguard.ThrowBarrierField.IncSkillCount");
 
 }
