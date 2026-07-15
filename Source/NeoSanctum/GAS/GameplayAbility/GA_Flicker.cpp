@@ -31,6 +31,8 @@ UGA_Flicker::UGA_Flicker()
 	HitEventTag = NSGameplayTags::Event_Vanguard_Hit;
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_AirSlamming);
 }
 
 void UGA_Flicker::ActivateAbility(
@@ -49,6 +51,7 @@ void UGA_Flicker::ActivateAbility(
 	bReleaseRequested = false;
 	bDashStarted = false;
 	bCurrentTargetDamageApplied = false;
+	bInvincibilityStateAdded = false;
 	PreviousMovementMode.Reset();
 
 	UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
@@ -58,7 +61,15 @@ void UGA_Flicker::ActivateAbility(
 		return;
 	}
 
+	// Flicker 성공 시 진행 중인 Vanguard 기본공격을 중단해 공격 상태 태그가 남지 않도록 정리
+	FGameplayTagContainer CancelTags;
+	CancelTags.AddTag(NSGameplayTags::Ability_Vanguard_BaseAttack);
+	ASC->CancelAbilities(&CancelTags, nullptr, this);
+
 	// Flicker Ability 전체 수명 동안 이동 입력 차단
+	AddFlickeringState();
+	ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+	bInvincibilityStateAdded = true;
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 
 	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
@@ -162,6 +173,11 @@ void UGA_Flicker::EndAbility(
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
+		if (bInvincibilityStateAdded)
+		{
+			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+			bInvincibilityStateAdded = false;
+		}
 
 		if (OnTargetDataReadyCallbackDelegateHandle.IsValid())
 		{
@@ -181,7 +197,7 @@ void UGA_Flicker::EndAbility(
 
 	RestoreMovementMode();
 	RemoveFlickerGameplayCue();
-	RemoveDashingState();
+	RemoveFlickeringState();
 
 	bReleaseRequested = false;
 	bDashStarted = false;
@@ -1000,7 +1016,6 @@ bool UGA_Flicker::IsWaitingForRemoteClientTargetData() const
 bool UGA_Flicker::StartFlickerFromSelectedTargets()
 {
 	// 검증 완료 타겟 체인 준비 이후 이동 상태와 Cue 시작
-	AddDashingState();
 	AddFlickerGameplayCue();
 	bDashStarted = true;
 
@@ -1506,25 +1521,19 @@ void UGA_Flicker::RestoreMovementMode()
 	MovementComponent->StopMovementImmediately();
 }
 
-void UGA_Flicker::AddDashingState()
+void UGA_Flicker::AddFlickeringState()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
-		if (bUseDashingStateTag)
-		{
-			ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
-		}
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_Flickering, 1);
 	}
 }
 
-void UGA_Flicker::RemoveDashingState()
+void UGA_Flicker::RemoveFlickeringState()
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
-		if (bUseDashingStateTag)
-		{
-			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
-		}
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Vanguard_Flickering, 0);
 	}
 }
 

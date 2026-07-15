@@ -73,6 +73,8 @@ private:
 	UPROPERTY()
 	TObjectPtr<UAbilityTask_ApplyRootMotionConstantForce> DashTask;
 
+	bool bInvincibilityStateAdded = false;
+
 	// 대쉬공격 입력 가능 창 자동 종료 타이머
 	FTimerHandle DashAttackWindowTimerHandle;
 };

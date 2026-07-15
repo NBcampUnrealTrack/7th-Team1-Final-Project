@@ -29,6 +29,7 @@ UGA_Parkour::UGA_Parkour()
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 }
 
 bool UGA_Parkour::CanActivateAbility(
