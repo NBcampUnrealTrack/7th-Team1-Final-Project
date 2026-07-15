@@ -14,7 +14,6 @@
 #include "Net/UnrealNetwork.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSEnemyAIController.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
@@ -28,6 +27,7 @@
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyVisualMaterialApplier.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "NeoSanctum/Type/NSBBTypes.h"
@@ -239,8 +239,9 @@ void ANSEnemyCharacterBase::ApplyVisualData()
 	if (EnemyData->SkeletalMesh)
 	{
 		GetMesh()->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
-		InitializeRuntimeMaterials();
 	}
+
+	InitializeRuntimeMaterials();
 
 	if (EnemyData->AnimClass)
 	{
@@ -979,47 +980,15 @@ void ANSEnemyCharacterBase::InitializeRuntimeMaterials()
 		DamageFlashComponent->ClearMaterialFlashTargets();
 	}
 
-	RuntimeVisualMaterials.Reset();
-
+	// 피격 플래시 컴포넌트에 등록할 MID 목록을 저장하는 변수
 	TArray<UMaterialInstanceDynamic*> FlashTargets;
 
-	for (const FNSEnemyMaterialDefinition& Definition : EnemyData->MaterialDefinitions)
-	{
-		const int32 MaterialIndex = MeshComponent->GetMaterialIndex(Definition.MaterialSlotName);
-
-		if (MaterialIndex == INDEX_NONE)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Enemy material slot not found: %s"),
-			       *Definition.MaterialSlotName.ToString());
-
-			continue;
-		}
-
-		UMaterialInterface* InitialMaterial = Definition.InitialMaterial
-			                                      ? Definition.InitialMaterial.Get()
-			                                      : MeshComponent->GetMaterial(MaterialIndex);
-
-		if (!InitialMaterial)
-		{
-			continue;
-		}
-
-		MeshComponent->SetMaterial(MaterialIndex, InitialMaterial);
-
-		UMaterialInstanceDynamic* MID =
-			MeshComponent->CreateDynamicMaterialInstance(MaterialIndex, InitialMaterial);
-
-		if (!MID)
-		{
-			continue;
-		}
-
-		MID->SetVectorParameterValue(TEXT("MonsterTint"), Definition.MonsterTint);
-		MID->SetScalarParameterValue(TEXT("HitFlashAmount"), 0.0f);
-
-		RuntimeVisualMaterials.Add(MID);
-		FlashTargets.Add(MID);
-	}
+	FNSEnemyVisualMaterialApplier::ApplyEnemyVisualMaterials(
+		this,
+		MeshComponent,
+		EnemyData,
+		RuntimeVisualMaterials,
+		FlashTargets);
 
 	if (DamageFlashComponent)
 	{
