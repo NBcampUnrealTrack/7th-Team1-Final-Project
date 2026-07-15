@@ -45,6 +45,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Accuracy,							"CombatStat.Accuracy");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSpawnableAngle,				"CombatStat.MaxSpawnableAngle");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_Radius,							"CombatStat.Radius");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DamageInterval,					"CombatStat.DamageInterval");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_CritChance,						"CombatStat.CritChance");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_CritDamage,						"CombatStat.CritDamage");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DamageFalloffStartDistance,		"CombatStat.DamageFalloffStartDistance");

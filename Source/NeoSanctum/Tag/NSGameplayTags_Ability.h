@@ -28,6 +28,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_BaseAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_Flicker);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_Guard);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_ThrowBarrierField);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Vanguard_VanguardBuff);
 	
 	// Engineer Ability Event Tags
@@ -44,6 +45,9 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_Guard);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_ComboWindowOpened);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_DashAttackRecoverStarted);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_AttachBarrierSpawner);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Vanguard_ThrowBarrierSpawner);
 	
 	// Common Ability Activate Fail Tags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_ActivateFail_OutOfAmmo);
