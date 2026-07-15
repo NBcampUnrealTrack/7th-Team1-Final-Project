@@ -66,4 +66,7 @@ struct FNSCharacterBaseStatRow : public FTableRowBase
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Character|Attribute")
 	float MaxSkill3Count = 1.0f;
+
+	// StatTag(CombatStat.*)에 해당하는 필드 값을 반환
+	float GetValueForTag(const FGameplayTag& StatTag) const;
 };
