@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "Engine/AssetManager.h"
 #include "Kismet/GameplayStatics.h"
+#include "NeoSanctum/Data/AI/NSEnemyVisualParameterTypes.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
@@ -487,6 +488,42 @@ void UNSDataSubsystem::ApplyCachedProgressTo(class UNSPlayerProgressComponent* P
 	ProgressComponent->ApplyPayload(CachedProgressPayload);
 }
 
+void UNSDataSubsystem::GetCurrentEnemyVisualParameterRows(
+	const FGameplayTag& EnemyId,
+	TArray<const FNSEnemyVisualParameterRow*>& OutRows) const
+{
+	OutRows.Reset();
+
+	if (!EnemyId.IsValid())
+	{
+		return;
+	}
+
+	const UDataTable* Table = CurrentEnemyVisualParameterTable.Get();
+	if (!IsValid(Table) || Table->GetRowStruct() != FNSEnemyVisualParameterRow::StaticStruct())
+	{
+		return;
+	}
+
+	TArray<FNSEnemyVisualParameterRow*> Rows;
+	Table->GetAllRows<FNSEnemyVisualParameterRow>(
+		TEXT("GetCurrentEnemyVisualParameterRows"),
+		Rows);
+
+	for (const FNSEnemyVisualParameterRow* Row : Rows)
+	{
+		if (!Row || !Row->bEnabled)
+		{
+			continue;
+		}
+
+		if (Row->EnemyId.MatchesTagExact(EnemyId))
+		{
+			OutRows.Add(Row);
+		}
+	}
+}
+
 // ================================================================
 // Common 로드
 // ================================================================
@@ -946,13 +983,7 @@ void UNSDataSubsystem::OnStageConfigLoaded()
 	
 	CacheLoadedByIds(PendingStageAssetIds);
 	
-	SetPhase(ENSDataLoadPhase::RunReady);
-	NS_NET_LOG(this, LogNS, Warning,
-		"RunData 로딩 완료. RunConfig={RunConfig}, LevelConfig={LevelConfig}",
-		("RunConfig", CurrentRunConfig ? CurrentRunConfig->GetName() : FString(TEXT("None"))),
-		("LevelConfig", CurrentRunLevelConfig ? CurrentRunLevelConfig->GetName() : FString(TEXT("None")))
-	);
-	OnRunGameDataReady.Broadcast();
+	StartLoadStageEnemyVisualParameterTable();
 }
 
 void UNSDataSubsystem::StartLoadStageSpawnerTables()
@@ -1091,6 +1122,15 @@ void UNSDataSubsystem::UnloadStage()
 	CurrentMeleeSpawnerTable = nullptr;
 	CurrentRangeSpawnerTable = nullptr;
 	bStageSpawnerTablesLoaded = false;
+	
+	if (StageEnemyVisualParameterTableHandle.IsValid())
+	{
+		StageEnemyVisualParameterTableHandle->ReleaseHandle();
+		StageEnemyVisualParameterTableHandle.Reset();
+	}
+
+	CurrentEnemyVisualParameterTable = nullptr;
+	bStageEnemyVisualParameterTableLoaded = false;
 }
 
 void UNSDataSubsystem::UnloadRun()
@@ -1368,6 +1408,73 @@ void UNSDataSubsystem::HandlePreloadCommonReady()
 		this,
 		&UNSDataSubsystem::HandlePreloadCommonReady);
 	LoadOutGameData();
+}
+
+void UNSDataSubsystem::StartLoadStageEnemyVisualParameterTable()
+{
+	CurrentEnemyVisualParameterTable = nullptr;
+	bStageEnemyVisualParameterTableLoaded = false;
+
+	if (!IsValid(CurrentRunLevelConfig))
+	{
+		OnStageEnemyVisualParameterTableLoaded();
+		return;
+	}
+
+	if (CurrentRunLevelConfig->EnemyVisualParameterTable.IsNull())
+	{
+		OnStageEnemyVisualParameterTableLoaded();
+		return;
+	}
+
+	FStreamableManager& StreamableManager = UAssetManager::Get().GetStreamableManager();
+
+	// EnemyVisualParameterTable 비동기 로드 요청에 사용할 에셋 경로 변수
+	const FSoftObjectPath TablePath =
+		CurrentRunLevelConfig->EnemyVisualParameterTable.ToSoftObjectPath();
+
+	StageEnemyVisualParameterTableHandle = StreamableManager.RequestAsyncLoad(
+		TablePath,
+		FStreamableDelegate::CreateUObject(
+			this,
+			&ThisClass::OnStageEnemyVisualParameterTableLoaded));
+}
+
+void UNSDataSubsystem::OnStageEnemyVisualParameterTableLoaded()
+{
+	CurrentEnemyVisualParameterTable =
+		CurrentRunLevelConfig
+			? CurrentRunLevelConfig->EnemyVisualParameterTable.Get()
+			: nullptr;
+
+	bStageEnemyVisualParameterTableLoaded = true;
+
+	if (CurrentEnemyVisualParameterTable &&
+		CurrentEnemyVisualParameterTable->GetRowStruct() != FNSEnemyVisualParameterRow::StaticStruct())
+	{
+		NS_NET_LOG(this, LogNS, Warning,
+			"EnemyVisualParameterTable RowStruct가 FNSEnemyVisualParameterRow가 아닙니다. Table={Table}",
+			("Table", GetNameSafe(CurrentEnemyVisualParameterTable))
+		);
+
+		CurrentEnemyVisualParameterTable = nullptr;
+	}
+
+	FinishStageConfigLoad();
+}
+
+void UNSDataSubsystem::FinishStageConfigLoad()
+{
+	SetPhase(ENSDataLoadPhase::RunReady);
+
+	NS_NET_LOG(this, LogNS, Warning,
+		"RunData 로딩 완료. RunConfig={RunConfig}, LevelConfig={LevelConfig}, EnemyVisualParameterTable={EnemyVisualParameterTable}",
+		("RunConfig", CurrentRunConfig ? CurrentRunConfig->GetName() : FString(TEXT("None"))),
+		("LevelConfig", CurrentRunLevelConfig ? CurrentRunLevelConfig->GetName() : FString(TEXT("None"))),
+		("EnemyVisualParameterTable", CurrentEnemyVisualParameterTable ? CurrentEnemyVisualParameterTable->GetName() : FString(TEXT("None")))
+	);
+
+	OnRunGameDataReady.Broadcast();
 }
 
 const FNSCommonUpgradeNodeRow* UNSDataSubsystem::GetCommonUpgradeNodeRow(FName NodeId) const

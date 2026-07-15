@@ -21,6 +21,8 @@
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
+#include "NeoSanctum/Combat/Cosmetic/NSEnemyVisualMaterialApplier.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 ANSEnemyPawnBase::ANSEnemyPawnBase()
 {
@@ -233,7 +235,7 @@ void ANSEnemyPawnBase::ApplyVisualData()
 	{
 		return;
 	}
-	
+
 	EnemyMesh->SetRelativeLocation(EnemyMeshRelativeLocation);
 	EnemyMesh->SetRelativeRotation(EnemyMeshRelativeRotation);
 
@@ -241,6 +243,8 @@ void ANSEnemyPawnBase::ApplyVisualData()
 	{
 		EnemyMesh->SetSkeletalMeshAsset(EnemyData->SkeletalMesh);
 	}
+
+	InitializeRuntimeMaterials();
 
 	if (EnemyData->AnimClass)
 	{
@@ -305,4 +309,23 @@ void ANSEnemyPawnBase::HandleDeathStarted()
 	NS_ACTOR_LOG(this, LogNS, Log, "GameMode에 Pawn 사망을 알립니다.");
 
 	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+}
+
+void ANSEnemyPawnBase::InitializeRuntimeMaterials()
+{
+	UNSEnemyData* EnemyData = GetEnemyData();
+	if (!EnemyData || !EnemyMesh)
+	{
+		return;
+	}
+
+	// Pawn 기반 몬스터는 현재 피격 플래시 대상 등록을 사용하지 않으므로 빈 배열로 받는 변수
+	TArray<UMaterialInstanceDynamic*> FlashTargets;
+
+	FNSEnemyVisualMaterialApplier::ApplyEnemyVisualMaterials(
+		this,
+		EnemyMesh,
+		EnemyData,
+		RuntimeVisualMaterials,
+		FlashTargets);
 }

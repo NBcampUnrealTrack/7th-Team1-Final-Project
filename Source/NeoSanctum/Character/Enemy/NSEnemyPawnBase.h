@@ -27,6 +27,7 @@ class UNSDissolveComponent;
 class UNSFlyingLocomotionComponent;
 class UNSEnemyData;
 class UNSMinimapIconComponent;
+class UMaterialInstanceDynamic;
 
 /*
  * 작성자 : 최준혁
@@ -155,6 +156,9 @@ protected:
 	// 사망이 시작된 시점에 GameMode에 처치 알림을 보내는 함수
 	virtual void HandleDeathStarted();
 
+	// EnemyData와 현재 스테이지 외형 테이블을 바탕으로 Enemy Pawn의 런타임 MID를 생성하는 함수
+	void InitializeRuntimeMaterials();
+
 protected:
 	// Enemy Pawn의 루트 충돌 컴포넌트
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -220,4 +224,9 @@ protected:
 	// Enemy Pawn 메시의 상대 회전 보정값
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Visual")
 	FRotator EnemyMeshRelativeRotation = FRotator::ZeroRotator;
+	
+protected:
+	// 현재 Enemy Pawn 외형에 적용된 런타임 MID 배열을 저장하는 변수
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> RuntimeVisualMaterials;
 };
