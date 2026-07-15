@@ -29,12 +29,13 @@ ANSLocalHealPickup::ANSLocalHealPickup()
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	CollisionSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionSphere->SetCollisionResponseToChannel(NSCollisionChannels::Player, ECR_Overlap);
-                                                                                                                                                
+	
 	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComp"));
 	MeshComp->SetupAttachment(CollisionSphere);
 	// 비주얼 전용이라 자체 충돌/오버랩은 필요 없음 —> 판정은 CollisionSphere가 담당
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MeshComp->SetGenerateOverlapEvents(false);
+	MeshComp->SetCanEverAffectNavigation(false);
 }
 
 void ANSLocalHealPickup::Initialize(const FNSHealSpawnEvent& Event, const UDataTable* HealPotionTable)
@@ -52,6 +53,9 @@ void ANSLocalHealPickup::Initialize(const FNSHealSpawnEvent& Event, const UDataT
 	if (Event.LaunchData.IsValid())
 	{
 		StartDropLaunch(Event.LaunchData);
+	} else
+	{
+		SetActorTickEnabled(true);
 	}
 	
 	// 자동 사라지기
@@ -131,6 +135,10 @@ void ANSLocalHealPickup::StartMeshLoad(const UDataTable* HealPotionTable)
 	if (UStaticMesh* Mesh = Row->Mesh.Get())
 	{
 		MeshComp->SetStaticMesh(Mesh);
+		
+		const FBoxSphereBounds MeshBounds = Mesh->GetBounds();
+		MeshBaseRelativeZ = -(MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z);
+		MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ));
 		return;
 	}
 
@@ -152,6 +160,10 @@ void ANSLocalHealPickup::OnMeshLoaded()
 	if (Mesh)
 	{
 		MeshComp->SetStaticMesh(Mesh);
+		
+		const FBoxSphereBounds MeshBounds = Mesh->GetBounds();                                                                                                                     
+		MeshBaseRelativeZ = -(MeshBounds.Origin.Z - MeshBounds.BoxExtent.Z);                                                                                                       
+		MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ));
 	}
 }
 
@@ -188,7 +200,7 @@ void ANSLocalHealPickup::UpdateDropLaunch()
 	{
 		return;
 	}
-
+	
 	const float ElapsedTime = FMath::Max(0.0f, GetServerWorldTimeSeconds() - LaunchData.StartServerTime);
 
 	const float Alpha = FMath::Clamp(
@@ -217,7 +229,7 @@ void ANSLocalHealPickup::FinishDropLaunch()
 	bIsLaunching = false;
 	SetActorLocation(LaunchData.TargetLocation);
 	CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	SetActorTickEnabled(false);
+	SetActorTickEnabled(true);
 }
 
 float ANSLocalHealPickup::GetServerWorldTimeSeconds() const
@@ -241,5 +253,23 @@ void ANSLocalHealPickup::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	UpdateDropLaunch();
+	UpdateBobAnimation(DeltaTime);
 }
 
+void ANSLocalHealPickup::UpdateBobAnimation(float DeltaSeconds)
+{
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// sin이 -1 ~ 1 자연스런 왕복곡선이라 사용
+	const float BobOffsetZ = FMath::Sin(World->GetTimeSeconds() * BobSpeed) * BobAmplitude;
+	MeshComp->SetRelativeLocation(FVector(0.f, 0.f, MeshBaseRelativeZ + BobOffsetZ));
+}

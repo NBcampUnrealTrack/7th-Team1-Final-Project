@@ -45,6 +45,17 @@ protected:
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
 		const FHitResult& Sweep);
 	
+	// 착지 후 계속 틱을 돌며 MeshComp를 사인파로 위아래 움직임
+	void UpdateBobAnimation(float DeltaSeconds);
+	
+	// 바운싱 애니메이션 진폭/속도, NSDroppedPartConfigTable에서 덮어씀
+	UPROPERTY(BlueprintReadOnly, Category = "Part|Visual")
+	float BobAmplitude = 8.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Part|Visual")
+	float BobSpeed = 2.f;
+	
+	float MeshBaseRelativeZ = 0.f;
 private:
 	// PotionTag를 RowName으로 변환해 HealPotionTable에서 회복 포션 행을 찾아 메시 비동기 로드 시작.
 	void StartMeshLoad(const UDataTable* HealPotionTable);
