@@ -202,6 +202,68 @@ void UNSSessionSubsystem::LeaveSessionToTitle()
 	ReturnToTitle();
 }
 
+void UNSSessionSubsystem::StartRunSession()
+{
+	// 클라는 세션 상태 제어 안 함
+	UWorld* World = GetWorld();
+	if (World && World->GetNetMode() == NM_Client)
+	{
+		return; 
+	}
+	
+	if (!SessionInterface.IsValid())
+	{
+		return;
+	}
+
+	// 세션이 존재할 때만
+	FNamedOnlineSession* Session = SessionInterface->GetNamedSession(NAME_GameSession);
+	if (!Session)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[Session] 세션 없음(솔로 플레이) → StartSession 스킵"));
+		return;
+	}
+
+	// 이미 InProgress면 중복 호출 방지
+	if (Session->SessionState == EOnlineSessionState::InProgress)
+	{
+		return;
+	}
+
+	const bool bStarted = SessionInterface->StartSession(NAME_GameSession);
+	UE_LOG(LogTemp, Log, TEXT("[Session] StartSession 요청=%d (인런 진입, 참가 잠금)"), bStarted ? 1 : 0);
+}
+
+void UNSSessionSubsystem::EndRunSession()
+{
+	// 클라는 세션 상태 제어 안 함
+	UWorld* World = GetWorld();
+	if (World && World->GetNetMode() == NM_Client)
+	{
+		return; 
+	}
+	
+	if (!SessionInterface.IsValid())
+	{
+		return;
+	}
+
+	FNamedOnlineSession* Session = SessionInterface->GetNamedSession(NAME_GameSession);
+	if (!Session)
+	{
+		return;
+	}
+
+	// InProgress 상태일 때만 End (Pending 상태면 이미 열려있음)
+	if (Session->SessionState != EOnlineSessionState::InProgress)
+	{
+		return;
+	}
+
+	const bool bEnded = SessionInterface->EndSession(NAME_GameSession);
+	UE_LOG(LogTemp, Log, TEXT("[Session] EndSession 요청=%d (허브 복귀, 참가 허용)"), bEnded ? 1 : 0);
+}
+
 void UNSSessionSubsystem::OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful)
 {
 	ClearCreateSessionDelegate();
@@ -627,7 +689,7 @@ void UNSSessionSubsystem::StartCreateSession()
 	LastSessionSettings = MakeShared<FOnlineSessionSettings>();
 	LastSessionSettings->bIsLANMatch = true;
 	LastSessionSettings->NumPublicConnections = 4;
-	LastSessionSettings->bAllowJoinInProgress = true;
+	LastSessionSettings->bAllowJoinInProgress = false;
 	LastSessionSettings->bShouldAdvertise = true;
 	LastSessionSettings->bUsesPresence = false;
 
