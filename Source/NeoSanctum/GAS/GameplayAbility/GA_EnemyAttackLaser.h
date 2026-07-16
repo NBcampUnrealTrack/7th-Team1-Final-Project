@@ -118,11 +118,26 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
 	float LaserPitchFlattenTargetPitch = 0.0f;
 
+	// Beam 발사 후 좌우 방향을 타깃에게 보간할지 나타내는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking")
+	bool bTrackLockedLaserYawToTarget = true;
+
+	// Beam 발사 후 타깃 Yaw 방향까지 보간하는 데 걸리는 시간 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking", meta = (ClampMin = "0.01"))
+	float LaserYawTrackingDuration = 0.35f;
+
+	// Beam 발사 순간 Yaw 기준으로 좌우 추적 가능한 최대 각도 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking", meta = (ClampMin = "0.0"))
+	float LaserYawTrackingMaxAngle = 60.0f;
+
 	// 현재 Ability에서 사용할 AttackRow
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
 
 	// Beam 발사 순간에 고정된 레이저 조준 위치 변수
 	FVector LockedLaserAimPoint = FVector::ZeroVector;
+
+	// Beam 발사 순간에 추적 대상으로 고정한 Actor를 저장하는 변수
+	TWeakObjectPtr<AActor> LockedLaserTargetActor;
 
 	// 현재 레이저가 고정 조준 위치를 사용하는지 나타내는 변수
 	bool bHasLockedLaserAimPoint = false;
@@ -222,12 +237,20 @@ private:
 
 	// 고정된 조준 위치를 기준으로 레이저 방향을 계산하는 함수
 	FVector ResolveLockedLaserDirection(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
-	
+
+	// Beam 발사 기준 Transform을 계산하는 함수
+	bool TryBuildLaserReferenceTransform(FTransform& OutReferenceTransform) const;
+
 	// 현재 시간 기준으로 보간된 고정 레이저 Pitch를 반환하는 함수
 	float GetCurrentLockedLaserPitch() const;
 
-	// 고정된 Yaw와 보간된 Pitch 기준으로 현재 레이저 방향을 반환하는 함수
-	FVector ResolveCurrentLockedLaserDirection() const;
+	// 현재 시간과 타깃 위치 기준으로 보간된 고정 레이저 Yaw를 반환하는 함수
+	float GetCurrentLockedLaserYaw(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
+
+	// 고정된 조준 상태와 현재 Muzzle Transform 기준으로 현재 레이저 방향을 반환하는 함수
+	FVector ResolveCurrentLockedLaserDirection(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform) const;
 
 	// 클라이언트 ABP가 바라볼 고정 레이저 조준 위치를 갱신하는 함수
 	void UpdateReplicatedLockedLaserAimTargetLocation();
