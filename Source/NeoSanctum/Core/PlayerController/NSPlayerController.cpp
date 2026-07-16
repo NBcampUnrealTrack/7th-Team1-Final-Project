@@ -1290,7 +1290,13 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-		
+
+		// 새 HUD는 기존 카드 내용을 모르니 서버의 현재 오퍼를 한 번 다시 보내달라고 요청.
+		if (AugmentSelectionComponent)
+		{
+			AugmentSelectionComponent->Server_OpenPanel();
+		}
+
 		RebindHUDRuntimeState();
 
 		// 실제 플레이어 캐릭터에 붙은 순간을 게이트에 알림
