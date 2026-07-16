@@ -751,6 +751,11 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 	{
 		return;
 	}
+	
+	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+	{
+		return;
+	}
 
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
@@ -789,6 +794,9 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 
 	// 펠릿의 실제 충돌 거리에 맞춰 최종 데미지를 감쇠.
 	FinalDamage *= DamageFalloffMultiplier;
+	
+	// Physics Asset Body / BoneName 기반 부위 데미지 배율을 최종 데미지에 반영.
+	FinalDamage *= NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
 
 	FGameplayEffectSpecHandle DamageSpecHandle =
 		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());

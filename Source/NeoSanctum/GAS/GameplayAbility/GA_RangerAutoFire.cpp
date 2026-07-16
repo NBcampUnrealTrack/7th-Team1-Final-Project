@@ -528,6 +528,11 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 		return;
 	}
 	
+	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+	{
+		return;
+	}
+	
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	UAbilitySystemComponent* TargetASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	
@@ -565,6 +570,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 
 	// 감쇠된 값을 기존 Effect.Damage.Base 흐름으로 전달.
 	FinalDamage *= DamageFalloffMultiplier;
+	FinalDamage *= NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
 	
 	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달.
 	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용.

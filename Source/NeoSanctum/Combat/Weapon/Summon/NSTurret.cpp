@@ -837,7 +837,9 @@ void ANSTurret::FireHitscan()
 	);
 	
 	// 히트된 대상에 GE Damage 적용
-	if (bHit && CanDamageHitActor(HitResult.GetActor()))
+	if (bHit &&
+		NSDamageRules::IsValidDirectDamageHit(HitResult) &&
+		CanDamageHitActor(HitResult.GetActor()))
 	{
 		AActor* TargetActor = HitResult.GetActor();
 
@@ -857,8 +859,22 @@ void ANSTurret::FireHitscan()
 
 				FGameplayEffectSpecHandle NewSpecHandle = TurretASC->MakeOutgoingSpec(
 					DamageEffectClass, 1.0f, EffectContext);
-				if (NewSpecHandle.IsValid())
+				
+				if (NewSpecHandle.IsValid() && NewSpecHandle.Data.IsValid())
 				{
+					const float DirectHitDamageMultiplier =
+						NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
+
+					if (!FMath::IsNearlyEqual(DirectHitDamageMultiplier, 1.0f))
+					{
+						const float FinalBaseDamage =
+							FMath::Max(AttributeSet->GetBaseDamage() * DirectHitDamageMultiplier, 0.0f);
+
+						NewSpecHandle.Data->SetSetByCallerMagnitude(
+							NSGameplayTags::Effect_Damage_Base,
+							FinalBaseDamage);
+					}
+					
 					// 소환자의 현재 CritChance/CritDamage를 전달해 크리티컬이 적용되게 함
 					ApplyCritOverrideToSpec(NewSpecHandle);
 

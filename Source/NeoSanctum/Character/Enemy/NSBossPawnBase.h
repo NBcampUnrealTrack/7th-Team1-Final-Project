@@ -50,6 +50,9 @@ protected:
 
 	// 피격 경직 몽타주가 타깃 방향으로 재생되도록 Actor Yaw를 보정하는 함수
 	void FaceCurrentTargetForHitReaction();
+	
+	// Boss Pawn에 적용할 Collision Profile 이름을 반환하는 함수
+	virtual FName GetAliveCollisionProfileName() const override;
 
 protected:
 	// Boss의 현재 전투 Mode를 관리하는 컴포넌트

@@ -127,6 +127,12 @@ public:
 
 	// Enemy Pawn의 미니맵 아이콘 컴포넌트를 반환하는 함수
 	UNSMinimapIconComponent* GetMinimapIconComponent() const { return MinimapIconComponent; }
+	
+	// Enemy Pawn이 EnemyMesh PhysicsAsset 피격 판정을 사용하는지 반환하는 함수
+	bool UsesPhysicsAssetHurtCollision() const { return bUsePhysicsAssetHurtCollision; }
+
+	// HitResult의 BoneName을 기준으로 부위별 데미지 배율을 반환하는 함수
+	float ResolvePhysicsAssetDamageMultiplier(const FHitResult& HitResult) const;
 
 protected:
 	// EnemyData 기반으로 GAS와 외형 데이터를 초기화하는 함수
@@ -155,6 +161,28 @@ protected:
 
 	// EnemyData와 현재 스테이지 외형 테이블을 바탕으로 Enemy Pawn의 런타임 MID를 생성하는 함수
 	void InitializeRuntimeMaterials();
+	
+	// CollisionComponent와 EnemyMesh의 플레이어 공격 피격 역할을 분리하는 함수
+	void ConfigureHurtCollision();
+	
+	// 살아있는 Enemy Pawn에 적용할 Collision Profile 이름을 반환하는 함수
+	virtual FName GetAliveCollisionProfileName() const;
+
+	// EnemyMesh PhysicsAsset으로 플레이어 공격을 받을지 결정하는 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Collision")
+	bool bUsePhysicsAssetHurtCollision = false;
+
+	// PhysicsAsset 부위 배율에 매칭되지 않았을 때 사용할 기본 데미지 배율 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Collision", meta = (ClampMin = "0.0"))
+	float DefaultPhysicsAssetDamageMultiplier = 1.0f;
+
+	// BoneName이 정확히 일치할 때 적용할 데미지 배율 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Collision")
+	TMap<FName, float> ExactBoneDamageMultipliers;
+
+	// BoneName 접두사가 일치할 때 적용할 데미지 배율 변수
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Collision")
+	TMap<FName, float> BonePrefixDamageMultipliers;
 
 protected:
 	// Enemy Pawn의 루트 충돌 컴포넌트
