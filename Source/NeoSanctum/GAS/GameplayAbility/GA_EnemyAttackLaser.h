@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GA_EnemyAttackBase.h"
-#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 #include "GA_EnemyAttackLaser.generated.h"
 
@@ -107,27 +106,38 @@ private:
 		const FNSEnemyAttackRow& AttackRow) const;
 
 private:
-	// Laser Sweep에 사용할 Trace Channel
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser")
-	TEnumAsByte<ECollisionChannel> LaserTraceChannel = NSCollisionChannels::EnemyWeaponTrace;
+	// Beam 발사 후 좌우 방향을 타깃에게 보간할지 나타내는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking")
+	bool bTrackLockedLaserYawToTarget = true;
+
+	// Beam 발사 후 타깃 Yaw 방향까지 보간하는 데 걸리는 시간 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking", meta = (ClampMin = "0.01"))
+	float LaserYawTrackingDuration = 0.35f;
+
+	// Beam 발사 순간 Yaw 기준으로 좌우 추적 가능한 최대 각도 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|YawTracking", meta = (ClampMin = "0.0"))
+	float LaserYawTrackingMaxAngle = 60.0f;
 	
-	// 이 값 이하로 아래를 조준할 때만 Pitch 보간을 시작하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
-	float LaserPitchFlattenStartThreshold = -5.0f;
+	// Beam 발사 후 상하 방향을 타깃에게 보간할지 나타내는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchTracking")
+	bool bTrackLockedLaserPitchToTarget = true;
 
-	// Pitch를 목표 각도까지 보간하는 데 걸리는 시간 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection", meta = (ClampMin = "0.01"))
-	float LaserPitchFlattenDuration = 0.35f;
+	// Beam 발사 후 타깃 Pitch 방향까지 보간하는 데 걸리는 시간 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchTracking", meta = (ClampMin = "0.01"))
+	float LaserPitchTrackingDuration = 0.35f;
 
-	// 아래로 꺾인 Pitch가 최종적으로 도달할 목표 Pitch 각도 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
-	float LaserPitchFlattenTargetPitch = 0.0f;
+	// Beam 발사 순간 Pitch 기준으로 상하 추적 가능한 최대 각도 변수, 0이면 제한 없이 추적
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchTracking", meta = (ClampMin = "0.0"))
+	float LaserPitchTrackingMaxAngle = 45.0f;
 
 	// 현재 Ability에서 사용할 AttackRow
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
 
 	// Beam 발사 순간에 고정된 레이저 조준 위치 변수
 	FVector LockedLaserAimPoint = FVector::ZeroVector;
+
+	// Beam 발사 순간에 추적 대상으로 고정한 Actor를 저장하는 변수
+	TWeakObjectPtr<AActor> LockedLaserTargetActor;
 
 	// 현재 레이저가 고정 조준 위치를 사용하는지 나타내는 변수
 	bool bHasLockedLaserAimPoint = false;
@@ -140,9 +150,6 @@ private:
 
 	// Beam 발사 시작 월드 시간을 저장하는 변수
 	float LockedLaserBeamStartTime = 0.0f;
-
-	// 현재 고정 레이저 Pitch를 수평 방향으로 보간해야 하는지 나타내는 변수
-	bool bShouldFlattenLockedLaserPitch = false;
 
 	// WarnTime 대기 Timer
 	FTimerHandle LaserStartTimerHandle;
@@ -227,12 +234,20 @@ private:
 
 	// 고정된 조준 위치를 기준으로 레이저 방향을 계산하는 함수
 	FVector ResolveLockedLaserDirection(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
-	
-	// 현재 시간 기준으로 보간된 고정 레이저 Pitch를 반환하는 함수
-	float GetCurrentLockedLaserPitch() const;
 
-	// 고정된 Yaw와 보간된 Pitch 기준으로 현재 레이저 방향을 반환하는 함수
-	FVector ResolveCurrentLockedLaserDirection() const;
+	// Beam 발사 기준 Transform을 계산하는 함수
+	bool TryBuildLaserReferenceTransform(FTransform& OutReferenceTransform) const;
+
+	// 현재 시간과 타깃 위치 기준으로 보간된 고정 레이저 Pitch를 반환하는 함수
+	float GetCurrentLockedLaserPitch(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
+
+	// 현재 시간과 타깃 위치 기준으로 보간된 고정 레이저 Yaw를 반환하는 함수
+	float GetCurrentLockedLaserYaw(const FNSEnemyAttackRow& AttackRow, const FTransform& MuzzleTransform) const;
+
+	// 고정된 조준 상태와 현재 Muzzle Transform 기준으로 현재 레이저 방향을 반환하는 함수
+	FVector ResolveCurrentLockedLaserDirection(
+		const FNSEnemyAttackRow& AttackRow,
+		const FTransform& MuzzleTransform) const;
 
 	// 클라이언트 ABP가 바라볼 고정 레이저 조준 위치를 갱신하는 함수
 	void UpdateReplicatedLockedLaserAimTargetLocation();

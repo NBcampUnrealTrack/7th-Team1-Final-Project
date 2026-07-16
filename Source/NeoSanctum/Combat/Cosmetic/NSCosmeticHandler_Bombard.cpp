@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Combat/Warning/NSAreaWarningInstancedActor.h"
 
 void UNSCosmeticHandler_Bombard::GetHandledEventTags(TArray<FGameplayTag>& OutEventTags) const
 {
@@ -83,7 +84,70 @@ void UNSCosmeticHandler_Bombard::HandleLaunchEvent(AActor* OwnerActor, const FNS
 void UNSCosmeticHandler_Bombard::HandleWarningEvent(AActor* OwnerActor, const FNSCosmeticEventNetData& EventData) const
 {
 	UWorld* World = GetWorld();
-	if (!World || !WarningPlaneClass)
+	if (!World)
+	{
+		return;
+	}
+
+	const float Duration = WarningPlaneDuration > 0.0f
+		                       ? WarningPlaneDuration
+		                       : FMath::Max(EventData.Duration, 0.01f);
+
+	const int32 MinPointCount = FMath::Max(InstancedWarningMinPointCount, 1);
+	const bool bHasBatchedPoints = EventData.Points.Num() > 0;
+	const bool bUseInstancedWarning =
+		InstancedWarningClass && EventData.Points.Num() >= MinPointCount;
+
+	if (bUseInstancedWarning)
+	{
+		TArray<FVector> WarningLocations;
+		WarningLocations.Reserve(EventData.Points.Num());
+
+		for (const FNSCosmeticEventPointNetData& PointData : EventData.Points)
+		{
+			const FVector WarningLocation =
+				FVector(PointData.Location) + FVector::UpVector * WarningPlaneZOffset;
+
+			if (!WarningLocation.ContainsNaN())
+			{
+				WarningLocations.Add(WarningLocation);
+			}
+		}
+
+		if (!WarningLocations.IsEmpty())
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = OwnerActor;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+			const FVector SpawnLocation =
+				FVector(EventData.Location) + FVector::UpVector * WarningPlaneZOffset;
+
+			ANSAreaWarningInstancedActor* WarningBatch =
+				World->SpawnActor<ANSAreaWarningInstancedActor>(
+					InstancedWarningClass,
+					SpawnLocation,
+					FRotator::ZeroRotator,
+					SpawnParams);
+
+			if (WarningBatch)
+			{
+				WarningBatch->InitializeCircleWarnings(
+					WarningLocations,
+					EventData.Radius,
+					Duration);
+
+				return;
+			}
+		}
+	}
+
+	if (bHasBatchedPoints && !bAllowPlaneFallbackForBatchedWarning)
+	{
+		return;
+	}
+
+	if (!WarningPlaneClass)
 	{
 		return;
 	}
@@ -92,7 +156,11 @@ void UNSCosmeticHandler_Bombard::HandleWarningEvent(AActor* OwnerActor, const FN
 	SpawnParams.Owner = OwnerActor;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	const FVector SpawnLocation = EventData.Location + FVector::UpVector * WarningPlaneZOffset;
+	const FVector BaseLocation = EventData.Points.IsEmpty()
+		                             ? FVector(EventData.Location)
+		                             : FVector(EventData.Points[0].Location);
+
+	const FVector SpawnLocation = BaseLocation + FVector::UpVector * WarningPlaneZOffset;
 
 	ANSAreaWarningPlaneActor* WarningPlane =
 		World->SpawnActor<ANSAreaWarningPlaneActor>(
@@ -103,10 +171,6 @@ void UNSCosmeticHandler_Bombard::HandleWarningEvent(AActor* OwnerActor, const FN
 
 	if (WarningPlane)
 	{
-		const float Duration = WarningPlaneDuration > 0.0f
-			                       ? WarningPlaneDuration
-			                       : FMath::Max(EventData.Duration, 0.01f);
-
 		WarningPlane->InitializeCircleWarning(EventData.Radius, Duration);
 	}
 }

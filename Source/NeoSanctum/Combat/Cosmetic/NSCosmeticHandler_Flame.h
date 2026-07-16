@@ -91,6 +91,30 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame", meta = (ClampMin = "0.0"))
 	float SoundFadeOutTime = 0.15f;
 
+	// 거리별 좌우 방향 최대 화염 VFX 개수를 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame", meta = (ClampMin = "1"))
+	int32 MaxLateralVFXPerDistance = 9;
+
+	// 화염 VFX 줄 사이를 엇갈리게 배치할지 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame")
+	bool bStaggerFlameRows = true;
+
+	// 화염 VFX 위치에 랜덤 흔들림을 줄 비율을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float FlamePositionJitterRatio = 0.25f;
+
+	// NS_TitanWalker_FlameCone Flame Range User Parameter 이름을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame|Cone")
+	FName FlameRangeParameterName = FName(TEXT("User.Flame Range"));
+
+	// NS_TitanWalker_FlameCone Cone Half Angle User Parameter 이름을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame|Cone")
+	FName ConeHalfAngleParameterName = FName(TEXT("User.Cone Half Angle"));
+
+	// NS_TitanWalker_FlameCone Start Radius User Parameter 이름을 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Flame|Cone")
+	FName StartRadiusParameterName = FName(TEXT("User.Start Radius"));
+
 	// InstanceId별 활성 화염 코스메틱을 저장하는 변수
 	UPROPERTY(Transient)
 	TMap<int32, FNSActiveFlameCosmetic> ActiveFlames;
@@ -106,14 +130,18 @@ private:
 	void HandleStopEvent(const FNSCosmeticEventNetData& EventData);
 
 	// 현재 EventData 기준으로 화염 VFX 위치를 갱신하는 함수
-	void UpdateFlameVFX(FNSActiveFlameCosmetic& ActiveFlame, AActor* OwnerActor, const FNSCosmeticEventNetData& EventData) const;
-	
+	void UpdateFlameVFX(FNSActiveFlameCosmetic& ActiveFlame, AActor* OwnerActor,
+	                    const FNSCosmeticEventNetData& EventData) const;
+
 	// 화염 Niagara 컴포넌트를 즉시 비활성화하고 제거하는 함수
 	void DestroyFlameVFXComponent(UNiagaraComponent* VFX) const;
 
-	// EventData의 Cone 범위 안에 배치할 VFX Transform 목록을 생성하는 함수
+	// EventData의 각 화염 소켓마다 Cone Niagara Transform을 생성하는 함수
 	void BuildFlameVFXTransforms(const FNSCosmeticEventNetData& EventData, TArray<FTransform>& OutTransforms) const;
 
 	// 특정 InstanceId의 화염 코스메틱을 정리하는 함수
 	void StopFlameCosmetic(int32 InstanceId);
+
+	// 화염 Niagara User Parameter를 현재 EventData 기준으로 갱신하는 함수
+	void ApplyFlameVFXParameters(UNiagaraComponent* VFX, const FNSCosmeticEventNetData& EventData) const;
 };

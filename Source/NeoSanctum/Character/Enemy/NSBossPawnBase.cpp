@@ -8,6 +8,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "NeoSanctum/Character/Animation/NSBossAnimInstance.h"
+#include "NeoSanctum/Combat/Component/Artillery/NSBossArtilleryComponent.h"
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 
 ANSBossPawnBase::ANSBossPawnBase()
@@ -15,6 +16,7 @@ ANSBossPawnBase::ANSBossPawnBase()
 	BossModeComponent = CreateDefaultSubobject<UNSBossModeComponent>(TEXT("BossModeComponent"));
 	BossTargetComponent = CreateDefaultSubobject<UNSBossTargetComponent>(TEXT("BossTargetComponent"));
 	CosmeticComponent = CreateDefaultSubobject<UNSEnemyCosmeticComponent>(TEXT("CosmeticComponent"));
+	BossArtilleryComponent = CreateDefaultSubobject<UNSBossArtilleryComponent>(TEXT("BossArtilleryComponent"));
 }
 
 void ANSBossPawnBase::BeginPlay()

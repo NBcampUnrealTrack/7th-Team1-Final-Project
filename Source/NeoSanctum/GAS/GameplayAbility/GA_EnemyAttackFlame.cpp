@@ -791,14 +791,21 @@ void UGA_EnemyAttackFlame::BuildFlameCosmeticEvent(
 	OutEventData.EventTag = EventTag;
 	OutEventData.InstanceId = FlameCosmeticInstanceId;
 	OutEventData.Phase = Phase;
-	OutEventData.Range = FMath::Max(EffectiveRange, 0.0f);
+
+	float ClampedRange = FMath::Max(EffectiveRange, 0.0f);
 
 	if (CachedAttackRow)
 	{
+		const float FinalRange = GetFlameRange(*CachedAttackRow);
+
+		ClampedRange = FMath::Clamp(ClampedRange, 0.0f, FinalRange);
+
 		OutEventData.Radius = CachedAttackRow->AreaData.Radius;
 		OutEventData.ConeHalfAngle = CachedAttackRow->AreaData.ConeHalfAngle;
 		OutEventData.Duration = CachedAttackRow->SustainData.Duration;
 	}
+
+	OutEventData.Range = ClampedRange;
 
 	for (const FNSFlameEmitter& Emitter : Emitters)
 	{
