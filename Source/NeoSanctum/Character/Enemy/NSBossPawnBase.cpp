@@ -2,12 +2,14 @@
 
 #include "NSBossPawnBase.h"
 
+#include "Components/CapsuleComponent.h"
 #include "NeoSanctum/Combat/Component/NSBossModeComponent.h"
 #include "NeoSanctum/Combat/Component/NSBossTargetComponent.h"
 #include "GameFramework/Controller.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "NeoSanctum/Character/Animation/NSBossAnimInstance.h"
+#include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/Artillery/NSBossArtilleryComponent.h"
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
 
@@ -17,6 +19,11 @@ ANSBossPawnBase::ANSBossPawnBase()
 	BossTargetComponent = CreateDefaultSubobject<UNSBossTargetComponent>(TEXT("BossTargetComponent"));
 	CosmeticComponent = CreateDefaultSubobject<UNSEnemyCosmeticComponent>(TEXT("CosmeticComponent"));
 	BossArtilleryComponent = CreateDefaultSubobject<UNSBossArtilleryComponent>(TEXT("BossArtilleryComponent"));
+	
+	if (UCapsuleComponent* BossCollisionComponent = GetCollisionComponent())
+	{
+		BossCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyBoss);
+	}
 }
 
 void ANSBossPawnBase::BeginPlay()
@@ -89,4 +96,9 @@ void ANSBossPawnBase::FaceCurrentTargetForHitReaction()
 	{
 		OwnerController->SetControlRotation(TargetRotation);
 	}
+}
+
+FName ANSBossPawnBase::GetAliveCollisionProfileName() const
+{
+	return NSCollisionProfiles::EnemyBoss;
 }

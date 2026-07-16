@@ -11,6 +11,7 @@ namespace NSCollisionProfiles
 {
 	const inline FName PlayerCharacter(TEXT("NS_PlayerCharacter"));
 	const inline FName EnemyCharacter(TEXT("NS_EnemyCharacter"));
+	const inline FName EnemyBoss(TEXT("NS_EnemyBoss"));
 	const inline FName DestructibleObject(TEXT("NS_DestructibleObject"));
 	const inline FName PlayerTurret(TEXT("NS_PlayerTurret"));
 	const inline FName PlayerBarrier(TEXT("NS_PlayerBarrier"));

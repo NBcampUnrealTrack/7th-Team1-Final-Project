@@ -242,6 +242,11 @@ void ANSEnemyPawnBase::ConfigureHurtCollision()
 	EnemyMesh->SetCollisionResponseToChannel(NSCollisionChannels::PlayerWeaponTrace, ECR_Block);
 }
 
+FName ANSEnemyPawnBase::GetAliveCollisionProfileName() const
+{
+	return NSCollisionProfiles::EnemyCharacter;
+}
+
 void ANSEnemyPawnBase::InitializeFromData(bool bFullInit)
 {
 	UNSEnemyData* EnemyData = GetEnemyData();
@@ -323,7 +328,7 @@ void ANSEnemyPawnBase::ApplyAliveState()
 {
 	if (CollisionComponent)
 	{
-		CollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
+		CollisionComponent->SetCollisionProfileName(GetAliveCollisionProfileName());
 	}
 	
 	ConfigureHurtCollision();

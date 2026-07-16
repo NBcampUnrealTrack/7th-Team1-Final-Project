@@ -164,6 +164,9 @@ protected:
 	
 	// CollisionComponent와 EnemyMesh의 플레이어 공격 피격 역할을 분리하는 함수
 	void ConfigureHurtCollision();
+	
+	// 살아있는 Enemy Pawn에 적용할 Collision Profile 이름을 반환하는 함수
+	virtual FName GetAliveCollisionProfileName() const;
 
 	// EnemyMesh PhysicsAsset으로 플레이어 공격을 받을지 결정하는 변수
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Collision")
