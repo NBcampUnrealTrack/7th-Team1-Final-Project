@@ -14,7 +14,6 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_ThrowProjectile_Releasing, "State.ThrowProjectile.Releasing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Input_BlockInputMove, "State.Input.BlockInputMove");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Attacking, "State.Vanguard.Attacking");
-	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Guarding, "State.Vanguard.Guarding");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Flickering, "State.Vanguard.Flickering");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_AirSlamming, "State.Vanguard.AirSlamming");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_BarrierAttackWindow, "State.Vanguard.BarrierAttackWindow");
