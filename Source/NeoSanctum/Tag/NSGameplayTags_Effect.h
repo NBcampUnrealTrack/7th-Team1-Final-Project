@@ -21,6 +21,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxDashCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_DashCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_DashRegenRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxJumpCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxAmmo);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_Ammo);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_Init_MaxSkill1Count);
@@ -56,6 +57,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_ShieldRechargeCooldown_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_ShieldRechargeCooldown_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxDashCount_Add);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxJumpCount_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_DashRegenRate_Add);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_DashRegenRate_Multiply);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Effect_SetByCaller_MaxAmmo_Add);
