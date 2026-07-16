@@ -141,6 +141,9 @@ private:
 	// 죽은 적이 보스 랭크인지 판정
 	bool IsBossEnemy(const AActor* DeadEnemy) const;
 	
+	// 방금 죽은 보스를 제외하고, 월드에 살아있는 보스가 남았는지 판정
+	bool AreAllBossesDead(const AActor* JustDied) const;
+	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
 	

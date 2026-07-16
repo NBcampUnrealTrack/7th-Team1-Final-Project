@@ -198,10 +198,9 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AContro
 	if (ANSPlayerState* KillerPS =
 		Killer ? Killer->GetPlayerState<ANSPlayerState>() : nullptr)
 	{
-		const UNSEnemyCoreComponent* CoreComponent =
-			DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
-		if (const UNSEnemyData* EnemyData = 
-			CoreComponent ? CoreComponent->GetEnemyData() : nullptr)
+		const INSEnemyAgent* Agent = Cast<INSEnemyAgent>(DeadEnemy);
+		if (const UNSEnemyData* EnemyData =
+			Agent ? Agent->GetEnemyData() : nullptr)
 		{
 			KillerPS->AddKill(EnemyData->EnemyRank);
 		}
@@ -230,7 +229,10 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AContro
 	// BossFight 페이즈에서 보스 랭크 사망 시 스테이지 클리어
 	else if (RunGS && RunGS->StagePhase == ENSStagePhase::BossFight && IsBossEnemy(DeadEnemy))
 	{
-		NotifyStageCleared_Implementation();
+		if (AreAllBossesDead(DeadEnemy))
+		{
+			NotifyStageCleared_Implementation();
+		}
 	}
 }
 
@@ -1406,15 +1408,18 @@ void ANSRunGameMode::ActivateBossSpawners()
 		return;
 	}
 	// 월드의 보스 전용 스포너를 활성화
+	int32 ActivatedCount = 0;
 	for (TActorIterator<ANSSpawner> It(GetWorld()); It; ++It)
 	{
 		ANSSpawner* Spawner = *It;
 		if (Spawner && Spawner->IsBossSpawner())
 		{
 			Spawner->ActivateSpawner();
-			break;
+			++ActivatedCount;
 		}
 	}
+	
+	UE_LOG(LogTemp, Log, TEXT("[Boss] 보스 스포너 %d개 활성화"), ActivatedCount);
 }
 
 void ANSRunGameMode::StartDifficultyTimerForReadyStage()
@@ -1441,16 +1446,33 @@ void ANSRunGameMode::StartDifficultyTimerForReadyStage()
 
 bool ANSRunGameMode::IsBossEnemy(const AActor* DeadEnemy) const
 {
-	const UNSEnemyCoreComponent* CoreComponent =
-		DeadEnemy ? DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>() : nullptr;
-	if (!IsValid(CoreComponent))
+	const INSEnemyAgent* Agent = Cast<INSEnemyAgent>(DeadEnemy);
+	if (!Agent)
 	{
 		return false;
 	}
-	
-	const UNSEnemyData* EnemyData = CoreComponent->GetEnemyData();
-	
+
+	const UNSEnemyData* EnemyData = Agent->GetEnemyData();
 	return EnemyData && EnemyData->EnemyRank == ENSEnemyRank::Boss;
+}
+
+bool ANSRunGameMode::AreAllBossesDead(const AActor* JustDied) const
+{
+	for (TActorIterator<ANSEnemyPawnBase> It(GetWorld()); It; ++It)
+	{
+		ANSEnemyPawnBase* Enemy = *It;
+		if (!Enemy || Enemy == JustDied)
+		{
+			continue;
+		}
+
+		if (IsBossEnemy(Enemy) && !Enemy->IsDead())
+		{
+			return false;  
+		}
+	}
+
+	return true; 
 }
 
 AActor* ANSRunGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
