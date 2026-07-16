@@ -307,8 +307,8 @@ void ANSEnemyPawnBase::HandleDeathStarted()
 	}
 
 	NS_ACTOR_LOG(this, LogNS, Log, "GameMode에 Pawn 사망을 알립니다.");
-
-	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+	AController* Killer = StateComponent ? StateComponent->GetLastKiller() : nullptr;
+	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this, Killer);
 }
 
 void ANSEnemyPawnBase::InitializeRuntimeMaterials()

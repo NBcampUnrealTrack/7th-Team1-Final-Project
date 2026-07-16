@@ -923,7 +923,8 @@ void ANSEnemyCharacterBase::HandleDeathStarted()
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
 	{
-		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+		AController* Killer = StateComponent ? StateComponent->GetLastKiller() : nullptr;
+		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this, Killer);
 	}
 
 	OnEnemyDead.Broadcast();
