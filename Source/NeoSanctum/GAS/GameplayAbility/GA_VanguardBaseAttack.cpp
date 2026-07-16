@@ -40,6 +40,7 @@ UGA_VanguardBaseAttack::UGA_VanguardBaseAttack()
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	// 대쉬 중 기본공격 선입력 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Releasing);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 	// 한 사이클이 끝나기 전에 재실행 방지
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Attacking);
