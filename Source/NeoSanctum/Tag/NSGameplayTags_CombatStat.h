@@ -11,6 +11,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageCoefficient);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Health);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MinHealth);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Shield);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxShield);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MoveSpeed);

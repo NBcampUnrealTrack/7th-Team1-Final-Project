@@ -158,9 +158,25 @@ void ANSTurret::InitializeTurret(
 				// 현재 실드가 아니라 증강까지 적용된 최대 체력과 최대 실드의 합을 사용.
 				const float OwnerMaxHealthAndShield =
 					FMath::Max(PlayerAttributeSet->GetMaxHealth(), 0.0f) +
-						FMath::Max(PlayerAttributeSet->GetMaxShield(), 0.0f);
+					FMath::Max(PlayerAttributeSet->GetMaxShield(), 0.0f);
 
-				const float TurretMaxHealth = FMath::Max(OwnerMaxHealthAndShield * MaxHealthRatio, 0.0f);
+				const float ScaledTurretMaxHealth = FMath::Max(OwnerMaxHealthAndShield * MaxHealthRatio, 0.0f);
+
+				float MinimumTurretHealth = 0.0f;
+
+				if (OwningCombatStatComponent)
+				{
+					// 최소 체력은 증강값이 아니라 DT에 설정된 기본값을 그대로 가져옴.
+					OwningCombatStatComponent->TryGetBaseAbilityStat(
+						SourceAbilityTag,
+						NSGameplayTags::CombatStat_MinHealth,
+						MinimumTurretHealth
+					);
+				}
+
+				// 비율로 계산한 체력이 너무 낮으면 DT의 최소 체력을 보장.
+				const float TurretMaxHealth =
+					FMath::Max(ScaledTurretMaxHealth, FMath::Max(MinimumTurretHealth, 0.0f));
 
 				MaxHealthMagnitude->Magnitude = TurretMaxHealth;
 
@@ -243,6 +259,7 @@ void ANSTurret::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeAbilityActorInfo();
+	ApplyDeploymentInvincibilityEffect();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
 	StartLifetimeTimer();
@@ -418,6 +435,29 @@ void ANSTurret::ApplyInitialAttributeEffect()
 	bInitialAttributeEffectApplied = true;
 	
 	RefreshDetectionRange();
+}
+
+void ANSTurret::ApplyDeploymentInvincibilityEffect()
+{
+	if (!HasAuthority() || !ASC || !DeploymentInvincibilityEffectClass)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+		DeploymentInvincibilityEffectClass,
+		1.0f,
+		EffectContext
+	);
+
+	if (SpecHandle.IsValid())
+	{
+		// Duration GE가 만료되면 State.Invincible도 자동으로 제거됨.
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
 }
 
 void ANSTurret::ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const
