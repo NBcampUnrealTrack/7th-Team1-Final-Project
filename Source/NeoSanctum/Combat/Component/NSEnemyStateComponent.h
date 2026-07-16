@@ -45,7 +45,9 @@ public:
 	void InitState(UNSMonsterAttributeSet* InMonsterAttributes);
 
 	// Enemy를 사망 상태로 전환하고 DeathAbility를 실행하는 함수
-	void Die();
+	void Die(AController* Killer);
+	
+	AController* GetLastKiller() const { return LastKiller.Get(); }
 
 	// 풀링 또는 강제 비활성 상태를 설정하는 함수
 	void SetInactive(bool bNewInactive);
@@ -124,4 +126,6 @@ private:
 	// 피격 게이지 초기화와 조회에 사용할 몬스터 AttributeSet
 	UPROPERTY(Transient)
 	TObjectPtr<UNSMonsterAttributeSet> MonsterAttributes;
+	
+	TWeakObjectPtr<AController> LastKiller;
 };
