@@ -232,6 +232,20 @@ void UNSAbilitySystemComponent::ResetTransientAvatarState()
 	}
 }
 
+void UNSAbilitySystemComponent::ClearLocalBuffStateTags()
+{
+	FGameplayTagContainer OwnedTags;
+	GetOwnedGameplayTags(OwnedTags);
+
+	for (const FGameplayTag& OwnedTag : OwnedTags)
+	{
+		if (OwnedTag.ToString().StartsWith(TEXT("State.Buff.")))
+		{
+			SetLooseGameplayTagCount(OwnedTag, 0);
+		}
+	}
+}
+
 void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown)
 {
 	if (!IsOwnerActorAuthoritative())

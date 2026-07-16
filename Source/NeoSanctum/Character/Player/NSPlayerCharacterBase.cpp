@@ -644,6 +644,12 @@ void ANSPlayerCharacterBase::HandleCompanionDataReady()
 
 void ANSPlayerCharacterBase::OnRep_CurrentCharacterData()
 {
+	if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(GetAbilitySystemComponent()))
+	{
+		// 클라이언트 예측으로 남은 이전 캐릭터의 Buff State 태그만 정리
+		ASC->ClearLocalBuffStateTags();
+	}
+
 	ApplyCharacterVisual();
 }
 
