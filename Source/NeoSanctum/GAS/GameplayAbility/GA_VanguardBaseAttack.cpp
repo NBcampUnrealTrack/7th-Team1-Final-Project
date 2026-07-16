@@ -565,6 +565,11 @@ FGameplayAbilityTargetDataHandle UGA_VanguardBaseAttack::MakeMeleeHitTargetData(
 
 		for (const FHitResult& HitResult : HitResults)
 		{
+			if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+			{
+				continue;
+			}
+			
 			AActor* HitActor = HitResult.GetActor();
 			const TObjectKey<AActor> HitKey(HitActor);
 			if (!HitActor || AddedActors.Contains(HitKey))
@@ -1017,11 +1022,16 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+	
+	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+	{
+		return;
+	}
 
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
 	UAbilitySystemComponent* TargetASC =
 		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
-
+	
 	if (!SourceASC || !TargetASC)
 	{
 		return;
@@ -1049,6 +1059,8 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	{
 		return;
 	}
+	
+	FinalDamage *= NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
 
 	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달
 	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용

@@ -23,6 +23,7 @@
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyVisualMaterialApplier.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 
 ANSEnemyPawnBase::ANSEnemyPawnBase()
 {
@@ -82,6 +83,7 @@ void ANSEnemyPawnBase::BeginPlay()
 	}
 
 	InitializeFromData(true);
+	ConfigureHurtCollision();
 
 	if (CoreComponent)
 	{
@@ -185,6 +187,61 @@ bool ANSEnemyPawnBase::IsDead() const
 	return StateComponent && StateComponent->IsDead();
 }
 
+float ANSEnemyPawnBase::ResolvePhysicsAssetDamageMultiplier(const FHitResult& HitResult) const
+{
+	if (!bUsePhysicsAssetHurtCollision || HitResult.GetComponent() != EnemyMesh)
+	{
+		return 1.0f;
+	}
+
+	if (const float* ExactMultiplier = ExactBoneDamageMultipliers.Find(HitResult.BoneName))
+	{
+		return FMath::Max(*ExactMultiplier, 0.0f);
+	}
+
+	const FString HitBoneName = HitResult.BoneName.ToString();
+	for (const TPair<FName, float>& PrefixRule : BonePrefixDamageMultipliers)
+	{
+		if (HitBoneName.StartsWith(PrefixRule.Key.ToString()))
+		{
+			return FMath::Max(PrefixRule.Value, 0.0f);
+		}
+	}
+
+	return FMath::Max(DefaultPhysicsAssetDamageMultiplier, 0.0f);
+}
+
+void ANSEnemyPawnBase::ConfigureHurtCollision()
+{
+	const ECollisionResponse RootHitResponse =
+		bUsePhysicsAssetHurtCollision ? ECR_Ignore : ECR_Block;
+
+	if (CollisionComponent)
+	{
+		CollisionComponent->SetCollisionResponseToChannel(
+			NSCollisionChannels::PlayerWeaponTrace,
+			RootHitResponse);
+	}
+
+	if (!EnemyMesh)
+	{
+		return;
+	}
+
+	if (!bUsePhysicsAssetHurtCollision)
+	{
+		EnemyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		EnemyMesh->SetGenerateOverlapEvents(false);
+		return;
+	}
+
+	EnemyMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	EnemyMesh->SetCollisionObjectType(NSCollisionChannels::Enemy);
+	EnemyMesh->SetGenerateOverlapEvents(false);
+	EnemyMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+	EnemyMesh->SetCollisionResponseToChannel(NSCollisionChannels::PlayerWeaponTrace, ECR_Block);
+}
+
 void ANSEnemyPawnBase::InitializeFromData(bool bFullInit)
 {
 	UNSEnemyData* EnemyData = GetEnemyData();
@@ -244,6 +301,7 @@ void ANSEnemyPawnBase::ApplyVisualData()
 	}
 
 	SetActorScale3D(EnemyData->DrawScale);
+	ConfigureHurtCollision();
 }
 
 void ANSEnemyPawnBase::ApplyDeadState()
@@ -251,6 +309,11 @@ void ANSEnemyPawnBase::ApplyDeadState()
 	if (CollisionComponent)
 	{
 		CollisionComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	
+	if (EnemyMesh)
+	{
+		EnemyMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 
 	ClearCurrentAttackRow();
@@ -262,6 +325,8 @@ void ANSEnemyPawnBase::ApplyAliveState()
 	{
 		CollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyCharacter);
 	}
+	
+	ConfigureHurtCollision();
 
 	if (DissolveComponent)
 	{

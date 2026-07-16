@@ -7,6 +7,7 @@
 #include "AttributeSet.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 
 namespace
 {
@@ -90,4 +91,27 @@ bool NSDamageRules::IsAliveDamageableTarget(const UAbilitySystemComponent* Targe
 	
 	// Health Attribute가 있는지 판단
 	return HasHealth(TargetASC);
+}
+
+bool NSDamageRules::IsValidDirectDamageHit(const FHitResult& HitResult)
+{
+	AActor* TargetActor = HitResult.GetActor();
+	if (!IsValid(TargetActor) || !HitResult.bBlockingHit)
+	{
+		return false;
+	}
+
+	const ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(TargetActor);
+	if (!EnemyPawn || !EnemyPawn->UsesPhysicsAssetHurtCollision())
+	{
+		return true;
+	}
+
+	return HitResult.GetComponent() == EnemyPawn->GetEnemyMesh();
+}
+
+float NSDamageRules::ResolveDirectHitDamageMultiplier(const FHitResult& HitResult)
+{
+	const ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(HitResult.GetActor());
+	return EnemyPawn ? EnemyPawn->ResolvePhysicsAssetDamageMultiplier(HitResult) : 1.0f;
 }

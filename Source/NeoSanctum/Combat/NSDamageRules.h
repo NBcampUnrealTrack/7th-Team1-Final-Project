@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 class UAbilitySystemComponent;
+struct FHitResult;
 
 namespace NSDamageRules
 {
@@ -15,4 +16,10 @@ namespace NSDamageRules
 	// Target ASC만 알고 있을 때 생존/피해 가능 상태만 검사
 	// Health Attribute가 있고 Health가 0보다 큰 대상만 피해를 입힐 수 있는 대상으로 판단함
 	bool IsAliveDamageableTarget(const UAbilitySystemComponent* TargetASC);
+	
+	// 직접 공격 HitResult가 Enemy의 현재 피격 정책에 맞는지 확인하는 함수
+	bool IsValidDirectDamageHit(const FHitResult& HitResult);
+
+	// 직접 공격 HitResult에서 부위별 데미지 배율을 반환하는 함수
+	float ResolveDirectHitDamageMultiplier(const FHitResult& HitResult);
 }
