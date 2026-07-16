@@ -389,19 +389,26 @@ void UNSPartEquipComponent::Internal_ApplySharedGE(FGameplayTag Slot)
 		return;
 	}
 
-	// 이 파츠가 건드릴 스탯(StatTag)과 연산 방식(Operation)은 DT Row가 단일 소스
-	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
-	if (!Row || !Row->StatTag.IsValid())
+	// 스탯은 파츠 인스턴스가 단일 소스(드롭 시 확정), 연산 방식(Operation)은 DT Row가 소스
+	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, *Part);
+	if (!StatTag.IsValid())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: StatTag 없음 (Slot=%s)"), *Slot.ToString());
 		return;
 	}
 
-	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Row->StatTag);
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
+	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
+	if (!Row)
+	{
+		// Row가 없으면 Operation을 알 수 없어 적용 불가
+		return;
+	}
+
+	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(StatTag);
 	if (!Mapping)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 매핑 없는 StatTag (%s)"), *Row->StatTag.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 매핑 없는 StatTag (%s)"), *StatTag.ToString());
 		return;
 	}
 
@@ -420,7 +427,7 @@ void UNSPartEquipComponent::Internal_ApplySharedGE(FGameplayTag Slot)
 	}
 	if (!SetByCallerTag.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 지원하지 않는 연산 (StatTag=%s)"), *Row->StatTag.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 지원하지 않는 연산 (StatTag=%s)"), *StatTag.ToString());
 		return;
 	}
 
@@ -653,18 +660,17 @@ float UNSPartEquipComponent::RollValueForPart(const FNSPartData& Part) const
 	{
 		return 0.f;
 	}
-
-	// 이 파츠가 올리는 스탯의 만점 수치 조회 (StatTag는 DT Row가 단일 소스)
-	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, Part);
-	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
-	if (!Row || !Row->StatTag.IsValid())
+	
+	// 이 파츠 인스턴스가 올리는 스탯, 리롤/등급업은 여기서 스탯을 다시 뽑지 않고 값만 재선정
+	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, Part);
+	if (!StatTag.IsValid())
 	{
 		return 0.f;
 	}
 
 	// 등급 품질(0~1) 롤 × 스탯 만점 = 최종 수치
 	const float Quality = FMath::RandRange(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-	return Quality * NSPartUtils::GetStatMaxValue(this, Row->StatTag);
+	return Quality * NSPartUtils::GetStatMaxValue(this, StatTag);
 }
 
 int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
@@ -778,6 +784,13 @@ void UNSPartEquipComponent::GenerateShopStock()
 			Item.DefinitionPtr = Pick->Definition;
 			Item.Slot = SlotPair.Key;
 			Item.CurrentRarity = RollShopRarity();
+
+			// 이 재고 아이템의 스탯을 후보에서 확정
+			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(Pick->StatTags, Item.CurrentRarity);
+			if (EligibleStatTags.Num() > 0)
+			{
+				Item.StatTag = EligibleStatTags[FMath::RandRange(0, EligibleStatTags.Num() - 1)];
+			}
 
 			Item.CurrentValue = RollValueForPart(Item);
 

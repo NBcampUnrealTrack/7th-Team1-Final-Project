@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
 
 UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const TSoftObjectPtr<UNSPartDefinition>& DefinitionPtr)
@@ -91,6 +92,47 @@ float NSPartUtils::GetStatMaxValue(const UObject* WorldContextObject, const FGam
 		return 0.f;
 	}
 	return StatInfo->MaxStatValue;
+}
+
+FGameplayTag NSPartUtils::GetPartStatTag(const UObject* WorldContextObject, const FNSPartData& Part)
+{
+	// 드롭/상점 생성 시점에 확정된 인스턴스 스탯이 단일 소스
+	if (Part.StatTag.IsValid())
+	{
+		return Part.StatTag;
+	}
+
+	UNSPartDefinition* Def = ResolvePartDefinition(WorldContextObject, Part);
+	const FNSPartDefinitionRow* Row = Def ? ResolvePartRow(WorldContextObject, Def->GetPrimaryAssetId()) : nullptr;
+	if (!Row)
+	{
+		return FGameplayTag();
+	}
+
+	const TArray<FGameplayTag> EligibleStatTags = FilterStatTagsByRarity(Row->StatTags, Part.CurrentRarity);
+	if (EligibleStatTags.Num() == 0)
+	{
+		return FGameplayTag();
+	}
+	return EligibleStatTags[0];
+}
+
+TArray<FGameplayTag> NSPartUtils::FilterStatTagsByRarity(const TArray<FGameplayTag>& StatTags, ENSPartRarity Rarity)
+{
+	TArray<FGameplayTag> Eligible;
+	Eligible.Reserve(StatTags.Num());
+
+	for (const FGameplayTag& Tag : StatTags)
+	{
+		// MaxJumpCount는 Legendary 등급에서만 후보로 유효 (기획 확정, 다른 스탯엔 미적용)
+		if (Tag == NSGameplayTags::CombatStat_MaxJumpCount && Rarity != ENSPartRarity::Legendary)
+		{
+			continue;
+		}
+		Eligible.Add(Tag);
+	}
+
+	return Eligible;
 }
 
 bool NSPartUtils::ResolveRarityFromTag(const FGameplayTag& RarityTag, ENSPartRarity& OutRarity)
