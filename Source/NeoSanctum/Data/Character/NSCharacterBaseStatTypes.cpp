@@ -21,5 +21,6 @@ float FNSCharacterBaseStatRow::GetValueForTag(const FGameplayTag& StatTag) const
 	if (StatTag == NSGameplayTags::CombatStat_MaxSkill1Count)        { return MaxSkill1Count; }
 	if (StatTag == NSGameplayTags::CombatStat_MaxSkill2Count)        { return MaxSkill2Count; }
 	if (StatTag == NSGameplayTags::CombatStat_MaxSkill3Count)        { return MaxSkill3Count; }
+	if (StatTag == NSGameplayTags::CombatStat_MaxJumpCount)          { return MaxJumpCount; }
 	return 0.f;
 }
