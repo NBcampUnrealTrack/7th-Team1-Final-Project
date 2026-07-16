@@ -209,6 +209,29 @@ void UNSAbilitySystemComponent::ClearAbilityInput()
 	InputHeldSpecHandles.Reset();
 }
 
+void UNSAbilitySystemComponent::ResetTransientAvatarState()
+{
+	// 캐릭터 교체 후에도 유지되는 ASC에서 이전 Avatar의 실행 상태를 정리
+	ClearAbilityInput();
+	CancelAllAbilities();
+	RemoveAllGameplayCues();
+	RemoveActiveEffects(FGameplayEffectQuery());
+	ClearAllAbilities();
+	CachedSkillRechargeCooldowns.Reset();
+
+	FGameplayTagContainer OwnedTags;
+	GetOwnedGameplayTags(OwnedTags);
+
+	// Ability가 직접 붙인 State 계열 LooseTag는 GE 제거로 지워지지 않으므로 별도 정리
+	for (const FGameplayTag& OwnedTag : OwnedTags)
+	{
+		if (OwnedTag.ToString().StartsWith(TEXT("State.")))
+		{
+			SetLooseGameplayTagCount(OwnedTag, 0);
+		}
+	}
+}
+
 void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown)
 {
 	if (!IsOwnerActorAuthoritative())
