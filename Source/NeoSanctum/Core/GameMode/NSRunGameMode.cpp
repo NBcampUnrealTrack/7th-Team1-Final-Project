@@ -194,6 +194,19 @@ void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AContro
 		return;
 	}
 	
+	// 가해자 PlayerState에 랭크별 킬 기록
+	if (ANSPlayerState* KillerPS =
+		Killer ? Killer->GetPlayerState<ANSPlayerState>() : nullptr)
+	{
+		const UNSEnemyCoreComponent* CoreComponent =
+			DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
+		if (const UNSEnemyData* EnemyData = 
+			CoreComponent ? CoreComponent->GetEnemyData() : nullptr)
+		{
+			KillerPS->AddKill(EnemyData->EnemyRank);
+		}
+	}
+	
 	UE_LOG(LogTemp, Warning, TEXT("[Kill] DeadEnemy=%s Killer=%s"),
 	   *GetNameSafe(DeadEnemy), *GetNameSafe(Killer));
 
