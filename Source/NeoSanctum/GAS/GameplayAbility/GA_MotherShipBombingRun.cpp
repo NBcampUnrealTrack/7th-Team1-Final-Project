@@ -266,40 +266,26 @@ void UGA_MotherShipBombingRun::ShowZoneWarning(int32 ZoneIndex)
 
 void UGA_MotherShipBombingRun::DetonateZone(int32 ZoneIndex)
 {
-	// 공격 Row로 부터 발사 실행 횟수 가져오기
 	const int32 N = CachedAttackRow->BombardData.ShotCount;
 
-	// ASC 캐스팅
 	UAbilitySystemComponent* BossASC = GetAbilitySystemComponentFromActorInfo();
 	if (!BossASC) return;
 
-	// 패턴 영역 캐스팅
 	ANSBossArenaBounds* Arena = CachedArenaBounds.Get();
 	if (!IsValid(Arena)) return;
 
-	// 1/4 패턴 실행 존 가져오기
-	const FVector ZoneCenter = Arena->GetZoneCenter(ZoneIndex, N);
-
-	// 폭발 효과 Cue 파라미터 생성
 	FGameplayCueParameters ExplosionSoundParameters;
-	ExplosionSoundParameters.Location = ZoneCenter;
+	ExplosionSoundParameters.Location = Arena->GetZoneCenter(ZoneIndex, N);
 	BossASC->ExecuteGameplayCue(ExplosionSoundCueTag, ExplosionSoundParameters);
 
-	// 처리할 데미지 계산
 	const float Damage = CalculateBombardDamage(*CachedAttackRow);
 
 	for (int32 s = 0; s < SlotsPerZone; ++s)
 	{
-		const FVector SlotPos = Arena->GetSlotCenter(ZoneIndex, s, N, SlotsPerZone);
-
-		FGameplayCueParameters ImpactParameters;
-		ImpactParameters.Location = SlotPos;
-		BossASC->ExecuteGameplayCue(ImpactCueTag, ImpactParameters);
-
 		const int32 MissileIndex = ZoneIndex * SlotsPerZone + s;
 		if (ActiveMissiles.IsValidIndex(MissileIndex) && ActiveMissiles[MissileIndex].IsValid())
 		{
-			ActiveMissiles[MissileIndex]->Destroy();
+			ActiveMissiles[MissileIndex]->Detonate();
 		}
 
 		TArray<AActor*> Targets;

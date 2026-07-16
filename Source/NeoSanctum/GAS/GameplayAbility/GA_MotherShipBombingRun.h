@@ -113,12 +113,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
 	FGameplayTag MissileDropCueTag;
-
-	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
-	FGameplayTag ExplosionSoundCueTag;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "BombingRun|Cue")
-	FGameplayTag ImpactCueTag;
+	FGameplayTag ExplosionSoundCueTag;
 
 	EBombingRunLeg CurrentLeg = EBombingRunLeg::Ascend;
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;

@@ -3,6 +3,9 @@
 
 #include "NSBombMissile.h"
 
+#include "AbilitySystemGlobals.h"
+#include "GameplayCueManager.h"
+#include "GameplayEffectTypes.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 
@@ -44,6 +47,37 @@ void ANSBombMissile::InitDrop(const FVector& LandingLocation)
 	ProjectileMovement->Activate();
 }
 
+void ANSBombMissile::Detonate()
+{
+	if (!HasAuthority()) return;
+	Multicast_Detonate();
+	Destroy();
+}
+
+void ANSBombMissile::Multicast_Detonate_Implementation()
+{
+	PlayImpactCue();
+	SetActorHiddenInGame(true);
+	if (HasAuthority())
+	{
+		SetLifeSpan(ExplosionLingerSeconds);
+	}
+}
+
+void ANSBombMissile::PlayImpactCue()
+{
+	if (!ImpactCueTag.IsValid()) return;
+
+	UGameplayCueManager* CueManager = UAbilitySystemGlobals::Get().GetGameplayCueManager();
+	if (!CueManager) return;
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Location = GetActorLocation();
+	CueParameters.Normal = FVector::UpVector;
+
+	CueManager->HandleGameplayCue(this, ImpactCueTag, EGameplayCueEvent::Executed, CueParameters);
+}
+
 void ANSBombMissile::BeginPlay()
 {
 	Super::BeginPlay();
@@ -68,3 +102,5 @@ void ANSBombMissile::Tick(float DeltaSeconds)
 		SetActorLocation(Location);
 	}
 }
+
+
