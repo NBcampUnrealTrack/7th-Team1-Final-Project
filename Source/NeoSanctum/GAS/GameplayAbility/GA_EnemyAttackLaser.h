@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GA_EnemyAttackBase.h"
-#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Type/NSCosmeticEventTypes.h"
 #include "GA_EnemyAttackLaser.generated.h"
 
@@ -107,10 +106,6 @@ private:
 		const FNSEnemyAttackRow& AttackRow) const;
 
 private:
-	// Laser Sweep에 사용할 Trace Channel
-	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser")
-	TEnumAsByte<ECollisionChannel> LaserTraceChannel = NSCollisionChannels::EnemyWeaponTrace;
-	
 	// 이 값 이하로 아래를 조준할 때만 Pitch 보간을 시작하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Laser|PitchCorrection")
 	float LaserPitchFlattenStartThreshold = -5.0f;

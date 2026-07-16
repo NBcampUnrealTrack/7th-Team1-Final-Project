@@ -19,6 +19,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/AI/Enemy/Controller/NSBossAIController.h"
 #include "NeoSanctum/Combat/Component/NSEnemyCombatComponent.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 
 UGA_EnemyAttackLaser::UGA_EnemyAttackLaser()
 {
@@ -376,9 +377,9 @@ void UGA_EnemyAttackLaser::TickLaserDamage()
 			Beam,
 			TargetsThisTick);
 
-		/*DrawDebugLaserBeam(
+		DrawDebugLaserBeam(
 			Beam,
-			*CachedAttackRow);*/
+			*CachedAttackRow);
 	}
 
 	for (const TObjectKey<AActor>& TargetKey : TargetsThisTick)
@@ -432,6 +433,7 @@ void UGA_EnemyAttackLaser::CollectTargetsForBeam(
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyLaser), false);
 	QueryParams.AddIgnoredActor(AvatarActor);
+	QueryParams.bFindInitialOverlaps = true;
 
 	if (const UNSEnemyPartComponent* PartComponent = GetEnemyPartComponent())
 	{
@@ -449,13 +451,18 @@ void UGA_EnemyAttackLaser::CollectTargetsForBeam(
 		}
 	}
 
+	FCollisionObjectQueryParams ObjectQueryParams;
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::Player);
+	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::PlayerConstruct);
+
 	TArray<FHitResult> HitResults;
-	const bool bHit = World->SweepMultiByChannel(
+	const bool bHit = World->SweepMultiByObjectType(
 		HitResults,
 		Beam.Start,
 		Beam.End,
 		FQuat::Identity,
-		LaserTraceChannel,
+		ObjectQueryParams,
 		FCollisionShape::MakeSphere(Radius),
 		QueryParams);
 
