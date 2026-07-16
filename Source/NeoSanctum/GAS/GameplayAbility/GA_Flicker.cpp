@@ -1489,6 +1489,8 @@ void UGA_Flicker::RestoreMovementMode()
 	}
 
 	// RootMotion 종료 후 잔여 속도 제거
+	MovementComponent->RemoveRootMotionSource(TEXT("FlickerMove"));
+	MovementComponent->ClearAccumulatedForces();
 	MovementComponent->StopMovementImmediately();
 
 	const bool bHasPreviousMovementMode = PreviousMovementMode.IsSet();
@@ -1519,6 +1521,9 @@ void UGA_Flicker::RestoreMovementMode()
 	}
 
 	MovementComponent->SetMovementMode(RestoreMode);
+	MovementComponent->RemoveRootMotionSource(TEXT("FlickerMove"));
+	MovementComponent->ClearAccumulatedForces();
+	MovementComponent->Velocity = FVector::ZeroVector;
 	MovementComponent->StopMovementImmediately();
 }
 
