@@ -164,11 +164,8 @@ void UNSSkillSlotWidget::SetSkillUIData(
 	SetInputDisplayData(NewInputDisplayData);
 
 	//캐릭터 변경 직후 이전 스킬의 쿨타임 표시가 남지 않도록 초기화한다.
-	CooldownDuration = 0.0f;
-	RemainingCooldown = 0.0f;
+	ResetCooldown();
 	bCooldownTickActive = false;
-	
-	UpdateSkillCooldownFromASC();
 }
 
 void UNSSkillSlotWidget::HandleCooldownMessage(
