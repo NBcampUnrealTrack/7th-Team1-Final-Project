@@ -15,7 +15,6 @@
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsWidget.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
-#include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
 #include "NeoSanctum/UI/HUD/NSDashStackWidget.h"
 #include "NeoSanctum/UI/HUD/NSGuideTextWidget.h"
 

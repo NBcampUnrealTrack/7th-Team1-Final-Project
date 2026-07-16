@@ -169,7 +169,7 @@ private:
 	TObjectPtr<UNSCharacterStatsWidget> CharacterStatsWidget;
 	
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UNSMinimapWidget> MinimapWidget;
+	TObjectPtr<UCommonUserWidget> MinimapWidget;
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSDashStackWidget> DashStackWidget;
