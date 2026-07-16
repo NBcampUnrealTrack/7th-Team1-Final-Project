@@ -371,30 +371,25 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 		return;
 	}
 
-	// 캐릭터 기본 스탯값 (매칭되는 필드 없으면 0) — 이전/이후 수치 둘 다의 기준선으로 사용
-	float BaseValue = 0.f;
-
+	// 캐릭터 기본 스탯 Row — 첫 줄(새 파츠 스탯)과 두 번째 줄(잃는 스탯) 양쪽의 기준선 조회에 사용
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerPawn))
-	{
-		if (const UNSCharacterData* CharacterData = PlayerCharacter->GetCurrentCharacterData())
-		{
-			if (const FNSCharacterBaseStatRow* BaseStatRow = DataSS
-				? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
-				: nullptr)
-			{
-				BaseValue = BaseStatRow->GetValueForTag(NewStatTag);
-			}
-		}
-	}
-	
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerPawn);
+	const UNSCharacterData* CharacterData = PlayerCharacter ? PlayerCharacter->GetCurrentCharacterData() : nullptr;
+	const FNSCharacterBaseStatRow* BaseStatRow = (CharacterData && DataSS)
+		? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
+		: nullptr;
+
+	// 캐릭터 기본 스탯값 (매칭되는 필드 없으면 0) — 이전/이후 수치 둘 다의 기준선으로 사용
+	const float BaseValue = BaseStatRow ? BaseStatRow->GetValueForTag(NewStatTag) : 0.f;
+
 	const APlayerState* PS = OwnerPawn ? OwnerPawn->GetPlayerState() : nullptr;
 	const UNSPartEquipComponent* EquipComp = PS ? PS->FindComponentByClass<UNSPartEquipComponent>() : nullptr;
 	const FNSPartData* OldPart = EquipComp ? EquipComp->GetEquippedPart(NewRow->PartSlot) : nullptr;
-	
+
 	// 같은 종류 파츠라도 인스턴스마다 스탯이 다르게 뽑힐 수 있어 인스턴스 태그끼리 비교
+	const FGameplayTag OldStatTag = OldPart ? NSPartUtils::GetPartStatTag(this, *OldPart) : FGameplayTag();
 	float OldPartSameStatValue = 0.f;
-	if (OldPart && NSPartUtils::GetPartStatTag(this, *OldPart) == NewStatTag)
+	if (OldPart && OldStatTag == NewStatTag)
 	{
 		OldPartSameStatValue = OldPart->CurrentValue;
 	}
@@ -402,14 +397,14 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 	// DataTable 기본값 + 파츠 수치 (Attribute 조회가 불가능한 스탯용, 증강 등 다른 보정 미반영)
 	float OldTotal = BaseValue + OldPartSameStatValue;
 	float NewTotal = BaseValue + NewPart.CurrentValue;
- 
+
 	/**
 	 * 이전 값 : 캐릭터의 현재 실제 스탯(ASC 라이브 값, 파츠/증강/영구강화 전부 반영)
 	 * 이후 값 : 현재 스탯에서 같은 슬롯·같은 스탯 기존 파츠 기여를 뺀 뒤 새 파츠 값을 더한 예상치 (파츠 Add 연산 기준)
 	 */
 	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(PS);
 	const UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
-	
+
 	// StatTag → Attribute 변환은 공용 매핑 테이블 사용, 매핑 없는 스탯(FireRate 등)은 무효 → DataTable 폴백 유지
 	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(NewStatTag);
 	const FGameplayAttribute Attribute = Mapping ? Mapping->Attribute : FGameplayAttribute();
@@ -421,6 +416,30 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 	}
 
 	Widget->SetStatComparison(StatInfo->DisplayName, OldTotal, NewTotal, StatInfo->bHigherIsBetter);
+
+	// ===== 두 번째 줄: 스탯이 다른 기존 파츠를 버리게 될 때, 잃는 스탯의 하락 예상치 표시 =====
+	// (기존 파츠가 없거나 새 파츠와 같은 스탯이면 첫 줄이 이미 차감을 반영하므로 숨김)
+	const FNSStatDisplayInfoRow* OldStatInfo = (OldStatTag.IsValid() && OldStatTag != NewStatTag && DataSS)
+		? DataSS->FindStatDisplayInfoRow(OldStatTag)
+		: nullptr;
+	if (!OldStatInfo)
+	{
+		Widget->ClearSecondaryStatComparison();
+		return;
+	}
+
+	// 기준선은 첫 줄과 동일한 규칙: ASC 라이브 값 우선, 불가하면 DataTable 기본값 + 기존 파츠 기여
+	float OldStatCurrent = (BaseStatRow ? BaseStatRow->GetValueForTag(OldStatTag) : 0.f) + OldPart->CurrentValue;
+	const FNSCombatStatAttributeMapping* OldMapping = NSCombatStatAttribute::FindMapping(OldStatTag);
+	const FGameplayAttribute OldAttribute = OldMapping ? OldMapping->Attribute : FGameplayAttribute();
+	if (ASC && OldAttribute.IsValid() && ASC->HasAttributeSetForAttribute(OldAttribute))
+	{
+		OldStatCurrent = ASC->GetNumericAttribute(OldAttribute);
+	}
+
+	// 기존 파츠가 사라지면 그 기여만큼 빠진 값이 예상치 (파츠 Add 연산 기준)
+	Widget->SetSecondaryStatComparison(
+		OldStatInfo->DisplayName, OldStatCurrent, OldStatCurrent - OldPart->CurrentValue, OldStatInfo->bHigherIsBetter);
 }
 
 void UNSInteractionComponent::HidePrompt()

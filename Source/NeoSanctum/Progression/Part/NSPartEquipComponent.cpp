@@ -624,7 +624,7 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 		return;
 	}
 
-	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* UpgradeRow = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!UpgradeRow)
 	{
 		return;
@@ -655,12 +655,6 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 
 float UNSPartEquipComponent::RollValueForPart(const FNSPartData& Part) const
 {
-	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part.CurrentRarity);
-	if (!UpgradeRow)
-	{
-		return 0.f;
-	}
-	
 	// 이 파츠 인스턴스가 올리는 스탯, 리롤/등급업은 여기서 스탯을 다시 뽑지 않고 값만 재선정
 	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, Part);
 	if (!StatTag.IsValid())
@@ -668,9 +662,13 @@ float UNSPartEquipComponent::RollValueForPart(const FNSPartData& Part) const
 		return 0.f;
 	}
 
-	// 등급 품질(0~1) 롤 × 스탯 만점 = 최종 수치
-	const float Quality = FMath::RandRange(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-	return Quality * NSPartUtils::GetStatMaxValue(this, StatTag);
+	// 스탯 × 등급별 수치 범위에서 직접 롤 (범위 없음 = 그 등급에서 제외된 스탯 → 0)
+	FNSPartValueRange Range;
+	if (!NSPartUtils::GetStatValueRange(this, StatTag, Part.CurrentRarity, Range))
+	{
+		return 0.f;
+	}
+	return FMath::RandRange(Range.Min, Range.Max);
 }
 
 int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
@@ -681,7 +679,7 @@ int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
 		return -1;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1;
@@ -716,7 +714,7 @@ int64 UNSPartEquipComponent::GetUpgradeCost(FGameplayTag Slot) const
 		return -1;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1;
@@ -732,7 +730,7 @@ float UNSPartEquipComponent::GetUpgradeChance(FGameplayTag Slot) const
 		return -1.f;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1.f;
@@ -786,7 +784,7 @@ void UNSPartEquipComponent::GenerateShopStock()
 			Item.CurrentRarity = RollShopRarity();
 
 			// 이 재고 아이템의 스탯을 후보에서 확정
-			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(Pick->StatTags, Item.CurrentRarity);
+			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(this, Pick->StatTags, Item.CurrentRarity);
 			if (EligibleStatTags.Num() > 0)
 			{
 				Item.StatTag = EligibleStatTags[FMath::RandRange(0, EligibleStatTags.Num() - 1)];
@@ -812,7 +810,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 	}
 
 	float TotalWeight = 0.f;
-	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	for (const TPair<ENSPartRarity, FNSPartShopRerollRow>& Pair : DataSS->GetAllPartShopRerollRows())
 	{
 		TotalWeight += FMath::Max(Pair.Value.ShopWeight, 0.f);
 	}
@@ -822,7 +820,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 	}
 
 	float Roll = FMath::FRandRange(0.f, TotalWeight);
-	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	for (const TPair<ENSPartRarity, FNSPartShopRerollRow>& Pair : DataSS->GetAllPartShopRerollRows())
 	{
 		Roll -= FMath::Max(Pair.Value.ShopWeight, 0.f);
 		if (Roll <= 0.f)
@@ -835,7 +833,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 
 int64 UNSPartEquipComponent::GetShopPrice(ENSPartRarity Rarity) const
 {
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Rarity);
 	if (!Row)
 	{
 		return -1;

@@ -138,7 +138,7 @@ private:
 
 	void RerollStat(FGameplayTag Slot);
 	void UpgradeRarity(FGameplayTag Slot);
-	// 등급 품질 롤(0~1) × 파츠 스탯의 MaxStatValue = 최종 수치
+	// 파츠 스탯의 등급별 수치 범위(ValueRangesByRarity)에서 최종 수치를 직접 롤
 	float RollValueForPart(const FNSPartData& Part) const;
 
 	void GenerateShopStock();

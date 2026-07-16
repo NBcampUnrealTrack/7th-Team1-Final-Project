@@ -90,9 +90,10 @@ struct FNSStatDisplayInfoRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
 	bool bHigherIsBetter = true;
 
-	// 이 스탯의 만점 수치. 파츠 최종 수치 = 등급 품질 롤(0~1) × MaxStatValue
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat", meta = (ClampMin = "0"))
-	float MaxStatValue = 0.f;
+	// 이 스탯의 등급별 수치 범위. 파츠 최종 수치 = 해당 등급 범위에서 직접 롤
+	// 키가 없는 등급 = 그 등급에서는 이 스탯이 파츠 후보로 나오지 않음 (의도적 제외, 예: MaxJumpCount는 Legendary만)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
+	TMap<ENSPartRarity, FNSPartValueRange> ValueRangesByRarity;
 };
 
 /**
@@ -151,19 +152,15 @@ enum class ENSPartUpgradeResult : uint8
 };
 
 
-// 등급별 리롤/등급업 비용, 확률 + 인런 상점 가중치, 가격
+// 등급별 리롤/등급업 비용, 확률 + 인런 상점 가중치, 가격 (수치 범위는 FNSStatDisplayInfoRow::ValueRangesByRarity가 소유)
 USTRUCT(BlueprintType)
-struct FNSPartUpgradeRow : public FTableRowBase
+struct FNSPartShopRerollRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	// 이 row가 적용되는 현재 등급
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
 	ENSPartRarity Rarity = ENSPartRarity::Common;
-
-	// 이 등급의 품질 범위 (0~1), 최종 수치 = 품질 롤 × 스탯의 MaxStatValue(FNSStatDisplayInfoRow)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade")
-	FNSPartValueRange ValueRange;
 
 	// 리롤 기본 비용 (임시 재화)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartUpgrade", meta = (ClampMin = "0"))

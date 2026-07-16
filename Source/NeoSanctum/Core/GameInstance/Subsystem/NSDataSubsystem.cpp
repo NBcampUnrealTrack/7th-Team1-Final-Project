@@ -563,7 +563,7 @@ void UNSDataSubsystem::OnCommonAssetsLoaded()
 	);
 	BuildPartRowCache();
 	BuildSlotRowCache();
-	BuildPartUpgradeRowCache();
+	BuildPartShopRerollRowCache();
 	BuildDroppedPartConfigCache();
 	CacheCommonUpgradeNodeRows();
 	StartLoadCommonReferenceAssets();
@@ -1488,12 +1488,12 @@ const TMap<FName, FNSCommonUpgradeNodeRow>& UNSDataSubsystem::GetAllCommonUpgrad
 }
 
 // ================================================================
-// 파츠 업그레이드 row 캐시
+// 파츠 리롤/상점 row 캐시
 // ================================================================
 
-void UNSDataSubsystem::BuildPartUpgradeRowCache()
+void UNSDataSubsystem::BuildPartShopRerollRowCache()
 {
-	CachedUpgradeRowsByRarity.Empty();
+	CachedShopRerollRowsByRarity.Empty();
 
 	const UNSCommonDataConfig* CommonConfig = GetCommonDataConfig();
 	UDataTable* DT = CommonConfig ? CommonConfig->PartsUpgradeTable.Get() : nullptr;
@@ -1504,24 +1504,24 @@ void UNSDataSubsystem::BuildPartUpgradeRowCache()
 
 	for (const FName& RowName : DT->GetRowNames())
 	{
-		const FNSPartUpgradeRow* Row =
-			DT->FindRow<FNSPartUpgradeRow>(RowName, TEXT("BuildPartUpgradeRowCache"), false);
+		const FNSPartShopRerollRow* Row =
+			DT->FindRow<FNSPartShopRerollRow>(RowName, TEXT("BuildPartShopRerollRowCache"), false);
 		if (!Row)
 		{
 			continue;
 		}
-		CachedUpgradeRowsByRarity.Add(Row->Rarity, *Row);
+		CachedShopRerollRowsByRarity.Add(Row->Rarity, *Row);
 	}
 }
 
-const FNSPartUpgradeRow* UNSDataSubsystem::GetPartUpgradeRow(ENSPartRarity Rarity) const
+const FNSPartShopRerollRow* UNSDataSubsystem::GetPartShopRerollRow(ENSPartRarity Rarity) const
 {
-	return CachedUpgradeRowsByRarity.Find(Rarity);
+	return CachedShopRerollRowsByRarity.Find(Rarity);
 }
 
-const TMap<ENSPartRarity, FNSPartUpgradeRow>& UNSDataSubsystem::GetAllPartUpgradeRows() const
+const TMap<ENSPartRarity, FNSPartShopRerollRow>& UNSDataSubsystem::GetAllPartShopRerollRows() const
 {
-	return CachedUpgradeRowsByRarity;
+	return CachedShopRerollRowsByRarity;
 }
 
 void UNSDataSubsystem::BuildDroppedPartConfigCache()

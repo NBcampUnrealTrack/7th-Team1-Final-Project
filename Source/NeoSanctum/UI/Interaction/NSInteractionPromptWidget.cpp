@@ -95,9 +95,11 @@ void UNSInteractionPromptWidget::SetPartName(const FText& InName)
 	PartNameText->SetText(InName);
 }
 
-void UNSInteractionPromptWidget::SetStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+void UNSInteractionPromptWidget::ApplyStatComparisonLine(
+	UTextBlock* CompareText, UImage* UpImage, UImage* DownImage,
+	const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
 {
-	if (StatCompareText)
+	if (CompareText)
 	{
 		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
 		FNumberFormattingOptions Options;
@@ -105,28 +107,59 @@ void UNSInteractionPromptWidget::SetStatComparison(const FText& StatName, float 
 		Options.MinimumFractionalDigits = 0;
 		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 
-		StatCompareText->SetText(FText::Format(
+		CompareText->SetText(FText::Format(
 			NSLOCTEXT("InteractionPrompt", "StatCompareFormat", "{0} : {1} -> {2}"),
 			StatName,
 			FText::AsNumber(OldValue, &Options),
 			FText::AsNumber(NewValue, &Options)));
-		StatCompareText->SetVisibility(ESlateVisibility::HitTestInvisible);
+		CompareText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
 	// 값이 그대로면 화살표 둘 다 숨김, 아니면 좋아짐/나빠짐에 해당하는 이미지만 표시
 	const bool bChanged = !FMath::IsNearlyEqual(OldValue, NewValue);
 	const bool bImproved = bChanged && (bHigherIsBetter ? (NewValue > OldValue) : (NewValue < OldValue));
 
-	if (StatArrowUpImage)
+	if (UpImage)
 	{
-		StatArrowUpImage->SetVisibility(
+		UpImage->SetVisibility(
 			(bChanged && bImproved) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
-	if (StatArrowDownImage)
+	if (DownImage)
 	{
-		StatArrowDownImage->SetVisibility(
+		DownImage->SetVisibility(
 			(bChanged && !bImproved) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSInteractionPromptWidget::SetStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+{
+	ApplyStatComparisonLine(StatCompareText, StatArrowUpImage, StatArrowDownImage,
+		StatName, OldValue, NewValue, bHigherIsBetter);
+}
+
+void UNSInteractionPromptWidget::SetSecondaryStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+{
+	ApplyStatComparisonLine(StatCompareText2, StatArrowUpImage2, StatArrowDownImage2,
+		StatName, OldValue, NewValue, bHigherIsBetter);
+}
+
+void UNSInteractionPromptWidget::ClearSecondaryStatComparison()
+{
+	if (StatCompareText2)
+	{
+		StatCompareText2->SetText(FText::GetEmpty());
+		StatCompareText2->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowUpImage2)
+	{
+		StatArrowUpImage2->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowDownImage2)
+	{
+		StatArrowDownImage2->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
@@ -147,6 +180,9 @@ void UNSInteractionPromptWidget::ClearStatComparison()
 	{
 		StatArrowDownImage->SetVisibility(ESlateVisibility::Collapsed);
 	}
+
+	// 비교 UI 전체를 접는 경로에서는 두 번째 라인도 함께 숨김
+	ClearSecondaryStatComparison();
 }
 
 void UNSInteractionPromptWidget::SetRarityStyle(int32 RarityIndex)
