@@ -44,9 +44,13 @@ void UNSRunResultWidget::SetRunResult(
 	
 	if (KillCountText)
 	{
+		const APlayerController* PC = GetOwningPlayer();
+		const ANSPlayerState* LocalPS = PC ? PC->GetPlayerState<ANSPlayerState>() : nullptr;
+		const int32 MyNormalKills = LocalPS ? LocalPS->GetNormalKillCount() : 0;
+		
 		KillCountText->SetText(FText::Format(
 			NSLOCTEXT("RunResult", "KillCountFormat", "처치 수 : {0}"),
-			FText::AsNumber(KillCount)));
+			FText::AsNumber(MyNormalKills)));
 	}
 	
 	if (CommonGoodsText)
