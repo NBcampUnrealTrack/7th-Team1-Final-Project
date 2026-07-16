@@ -7,6 +7,7 @@
 #include "NeoSanctum/Combat/Component/NSEnemyStateComponent.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
+#include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
@@ -224,14 +225,19 @@ void UNSMonsterAttributeSet::HandleHitGaugeAfterDamage(
 	AccumulateHitGauge(EnemyState, AppliedHealthDamage);
 }
 
-void UNSMonsterAttributeSet::HandleDeathAfterEffect(UNSEnemyStateComponent* EnemyState) const
+void UNSMonsterAttributeSet::HandleDeathAfterEffect(
+	UNSEnemyStateComponent* EnemyState,
+	const FGameplayEffectModCallbackData& Data) const
 {
 	if (!EnemyState || GetHealth() > 0.0f)
 	{
 		return;
 	}
+	
+	AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+	AController* Killer = ResolveKillerController(InstigatorActor);
 
-	EnemyState->Die();
+	EnemyState->Die(Killer);
 }
 
 AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorActor) const
@@ -250,6 +256,43 @@ AActor* UNSMonsterAttributeSet::ResolvePerceivedInstigator(AActor* InstigatorAct
 	}
 
 	return InstigatorActor;
+}
+
+AController* UNSMonsterAttributeSet::ResolveKillerController(AActor* InstigatorActor) const
+{
+	if (!InstigatorActor)
+	{
+		return nullptr;
+	}
+
+	// 터렛은 소환자 Controller
+	if (const ANSTurret* Turret = Cast<ANSTurret>(InstigatorActor))
+	{
+		return Turret->GetOwningController();
+	}
+
+	// 드론도 소유 플레이어의 Controller
+	if (const ANSCompanionDroneAI* Drone = Cast<ANSCompanionDroneAI>(InstigatorActor))
+	{
+		if (AActor* OwnerPlayer = Drone->GetOwnerPlayer())
+		{
+			if (APawn* OwnerPawn = Cast<APawn>(OwnerPlayer))
+			{
+				return OwnerPawn->GetController();
+			}
+			return Cast<AController>(OwnerPlayer);
+		}
+		
+		return nullptr;
+	}
+
+	// 플레이어가 직접 타격한 경우
+	if (const APawn* InstigatorPawn = Cast<APawn>(InstigatorActor))
+	{
+		return InstigatorPawn->GetController();
+	}
+
+	return nullptr; 
 }
 
 void UNSMonsterAttributeSet::ExecuteDamageFlashCueAfterDamage(
@@ -301,7 +344,7 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 		HandleHitGaugeAfterDamage(EnemyState, PreviousHealth);
 	}
 
-	HandleDeathAfterEffect(EnemyState);
+	HandleDeathAfterEffect(EnemyState, Data);
 }
 
 UNSEnemyStateComponent* UNSMonsterAttributeSet::GetTargetEnemyState(

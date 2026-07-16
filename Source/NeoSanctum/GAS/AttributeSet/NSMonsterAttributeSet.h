@@ -103,11 +103,13 @@ private:
 	void HandleHitGaugeAfterDamage(UNSEnemyStateComponent* EnemyState, float PreviousHealth);
 
 	// GameplayEffect 처리 후 체력이 0 이하인 몬스터를 사망시키는 함수
-	void HandleDeathAfterEffect(UNSEnemyStateComponent* EnemyState) const;
+	void HandleDeathAfterEffect(UNSEnemyStateComponent* EnemyState, const FGameplayEffectModCallbackData& Data) const;
 
 	// 드론 공격자를 실제 어그로 대상인 소유 플레이어로 변환하는 함수
 	AActor* ResolvePerceivedInstigator(AActor* InstigatorActor) const;
-
+	
+	// 데미지 가해자를 킬 귀속 대상 Controller로 변환 (터렛/드론은 소환자)
+	AController* ResolveKillerController(AActor* InstigatorActor) const;
 private:
 	// 실제 체력 피해가 발생했을 때 몬스터 전용 피격 플래시 Cue를 실행하는 함수
 	void ExecuteDamageFlashCueAfterDamage(
