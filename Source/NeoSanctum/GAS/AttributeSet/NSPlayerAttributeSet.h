@@ -98,6 +98,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Skill3Count, Category = "GAS|Attribute")
 	FGameplayAttributeData Skill3Count;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Skill3Count);
+
+	// 최대 점프 가능 횟수 (파츠/증강으로 증감, 캐릭터의 실제 JumpMaxCount로 동기화됨)
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxJumpCount, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxJumpCount;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxJumpCount);
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
@@ -166,4 +171,7 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MaxSkill3Count(const FGameplayAttributeData& OldMaxSkill3Count);
+
+	UFUNCTION()
+	void OnRep_MaxJumpCount(const FGameplayAttributeData& OldMaxJumpCount);
 };
