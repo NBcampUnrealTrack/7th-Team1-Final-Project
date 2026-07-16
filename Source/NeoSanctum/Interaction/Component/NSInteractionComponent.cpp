@@ -353,17 +353,18 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 
 	const FNSPartData& NewPart = DroppedPart->GetStoredPart();
 
-	// Definition이 아직 로드 안 됐으면 비교 UI는 그냥 숨김, 다음 갱신 때 다시 시도
+	// Row는 PartSlot(교체 대상 슬롯) 조회용, 스탯은 드롭 인스턴스가 단일 소스
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, NewPart);
 	const FNSPartDefinitionRow* NewRow = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
-	if (!NewRow || !NewRow->StatTag.IsValid())
+	const FGameplayTag NewStatTag = NSPartUtils::GetPartStatTag(this, NewPart);
+	if (!NewRow || !NewStatTag.IsValid())
 	{
 		Widget->ClearStatComparison();
 		return;
 	}
 
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
-	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(NewRow->StatTag) : nullptr;
+	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(NewStatTag) : nullptr;
 	if (!StatInfo)
 	{
 		Widget->ClearStatComparison();
@@ -382,7 +383,7 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 				? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
 				: nullptr)
 			{
-				BaseValue = BaseStatRow->GetValueForTag(NewRow->StatTag);
+				BaseValue = BaseStatRow->GetValueForTag(NewStatTag);
 			}
 		}
 	}
@@ -390,17 +391,12 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 	const APlayerState* PS = OwnerPawn ? OwnerPawn->GetPlayerState() : nullptr;
 	const UNSPartEquipComponent* EquipComp = PS ? PS->FindComponentByClass<UNSPartEquipComponent>() : nullptr;
 	const FNSPartData* OldPart = EquipComp ? EquipComp->GetEquippedPart(NewRow->PartSlot) : nullptr;
-
-	// 기존 파츠 기여는 새 파츠와 같은 스탯일 때만 차감 대상 (다른 스탯 파츠면 이 스탯엔 기여가 없음)
+	
+	// 같은 종류 파츠라도 인스턴스마다 스탯이 다르게 뽑힐 수 있어 인스턴스 태그끼리 비교
 	float OldPartSameStatValue = 0.f;
-	if (OldPart)
+	if (OldPart && NSPartUtils::GetPartStatTag(this, *OldPart) == NewStatTag)
 	{
-		const UNSPartDefinition* OldDef = NSPartUtils::ResolvePartDefinition(this, *OldPart);
-		const FNSPartDefinitionRow* OldRow = OldDef ? NSPartUtils::ResolvePartRow(this, OldDef->GetPrimaryAssetId()) : nullptr;
-		if (OldRow && OldRow->StatTag == NewRow->StatTag)
-		{
-			OldPartSameStatValue = OldPart->CurrentValue;
-		}
+		OldPartSameStatValue = OldPart->CurrentValue;
 	}
 
 	// DataTable 기본값 + 파츠 수치 (Attribute 조회가 불가능한 스탯용, 증강 등 다른 보정 미반영)
@@ -415,7 +411,7 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 	const UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
 	
 	// StatTag → Attribute 변환은 공용 매핑 테이블 사용, 매핑 없는 스탯(FireRate 등)은 무효 → DataTable 폴백 유지
-	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(NewRow->StatTag);
+	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(NewStatTag);
 	const FGameplayAttribute Attribute = Mapping ? Mapping->Attribute : FGameplayAttribute();
 	if (ASC && Attribute.IsValid() && ASC->HasAttributeSetForAttribute(Attribute))
 	{
