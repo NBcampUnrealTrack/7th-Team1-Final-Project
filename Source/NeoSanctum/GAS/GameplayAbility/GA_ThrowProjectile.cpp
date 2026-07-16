@@ -56,18 +56,9 @@ void UGA_ThrowProjectile::ActivateAbility(
 		return;
 	}
 
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
 	// Ability가 새로 활성화될 때 이전 입력/Notify 처리 상태를 초기화
 	bReleaseRequested = false;
 	bProjectileThrown = false;
-
-	// 투척물에 전달할 CombatStat payload 생성
-	RebuildCombatStatPayloads();
 
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
 		Handle,
@@ -125,9 +116,7 @@ void UGA_ThrowProjectile::InputReleased(
 		return;
 	}
 
-	bReleaseRequested = true;
-
-	if (!TryJumpToReleaseSection())
+	if (!TryBeginReleasePhase())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
@@ -143,6 +132,7 @@ void UGA_ThrowProjectile::EndAbility(
 	// TODO : 프리뷰 종료
 	DestroyHeldMesh();
 	RemoveDeactivateHandIKTag();
+	RemoveThrowReleaseLockTag();
 
 	// Ability 종료 시 다음 활성화를 위해 입력/투척 게이트를 정리
 	bReleaseRequested = false;
@@ -202,6 +192,11 @@ void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Pay
 
 void UGA_ThrowProjectile::OnThrowProjectileEventReceived(FGameplayEventData Payload)
 {
+	if (!bReleaseRequested)
+	{
+		return;
+	}
+	
 	// Release AnimNotify가 중복 발생해도 한 번의 Ability 활성화에서 Projectile은 한 번만 던짐
 	if (bProjectileThrown)
 	{
@@ -262,7 +257,40 @@ void UGA_ThrowProjectile::StartGameplayEventTasks()
 	}
 }
 
-bool UGA_ThrowProjectile::TryJumpToReleaseSection() const
+bool UGA_ThrowProjectile::TryBeginReleasePhase()
+{
+	if (bReleaseRequested)
+	{
+		return true;
+	}
+
+	if (!CanJumpToReleaseSection())
+	{
+		return false;
+	}
+
+	if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+	{
+		return false;
+	}
+
+	// 투척 확정 시점의 CombatStat payload 생성
+	RebuildCombatStatPayloads();
+	AddThrowReleaseLockTag();
+
+	bReleaseRequested = true;
+
+	if (!TryJumpToReleaseSection())
+	{
+		RemoveThrowReleaseLockTag();
+		bReleaseRequested = false;
+		return false;
+	}
+
+	return true;
+}
+
+bool UGA_ThrowProjectile::CanJumpToReleaseSection() const
 {
 	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
@@ -271,10 +299,18 @@ bool UGA_ThrowProjectile::TryJumpToReleaseSection() const
 		return false;
 	}
 
-	if (!AnimInstance->Montage_IsPlaying(AnimMontage))
+	return AnimInstance->Montage_IsPlaying(AnimMontage);
+}
+
+bool UGA_ThrowProjectile::TryJumpToReleaseSection() const
+{
+	if (!CanJumpToReleaseSection())
 	{
 		return false;
 	}
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
 
 	AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
 	return true;
@@ -556,8 +592,7 @@ void UGA_ThrowProjectile::OnThrowProjectileTargetDataReady(const FGameplayAbilit
 	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
 		ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled() && !bReleaseRequested)
 	{
-		bReleaseRequested = true;
-		if (!TryJumpToReleaseSection())
+		if (!TryBeginReleasePhase())
 		{
 			FinishThrowProjectileAbility(true);
 			return;
@@ -694,4 +729,33 @@ void UGA_ThrowProjectile::RemoveDeactivateHandIKTag()
 	}
 
 	bDeactivateHandIKTagAdded = false;
+}
+
+void UGA_ThrowProjectile::AddThrowReleaseLockTag()
+{
+	if (bThrowReleaseLockTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_ThrowProjectile_Releasing, 1);
+		bThrowReleaseLockTagAdded = true;
+	}
+}
+
+void UGA_ThrowProjectile::RemoveThrowReleaseLockTag()
+{
+	if (!bThrowReleaseLockTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_ThrowProjectile_Releasing, 0);
+	}
+
+	bThrowReleaseLockTagAdded = false;
 }

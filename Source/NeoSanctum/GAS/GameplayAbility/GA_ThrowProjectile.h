@@ -202,6 +202,8 @@ protected:
 
 protected:
 	void StartGameplayEventTasks();
+	bool TryBeginReleasePhase();
+	bool CanJumpToReleaseSection() const;
 	bool TryJumpToReleaseSection() const;
 	void FinishThrowProjectileAbility(bool bWasCancelled);
 	void AttachHeldMesh();
@@ -234,6 +236,8 @@ protected:
 	
 	void AddDeactivateHandIKTag();
 	void RemoveDeactivateHandIKTag();
+	void AddThrowReleaseLockTag();
+	void RemoveThrowReleaseLockTag();
 	
 protected:
 	// Ability 설정모음
@@ -303,6 +307,7 @@ private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	bool bDeactivateHandIKTagAdded = false;
+	bool bThrowReleaseLockTagAdded = false;
 
 	// Release 섹션으로 한 번 진입한 뒤 반복된 입력을 통해 동일한 몽타주 섹션을 재실행하지 않기 위한 플래그
 	bool bReleaseRequested = false;

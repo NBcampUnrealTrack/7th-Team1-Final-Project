@@ -31,6 +31,7 @@ UGA_Flicker::UGA_Flicker()
 	HitEventTag = NSGameplayTags::Event_Vanguard_Hit;
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Releasing);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_AirSlamming);
 }

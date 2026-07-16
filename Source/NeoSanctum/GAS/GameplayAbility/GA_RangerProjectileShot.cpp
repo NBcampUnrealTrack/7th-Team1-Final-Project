@@ -13,6 +13,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 {
@@ -21,6 +22,8 @@ UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 	SetAssetTags(AssetTags);
 
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Releasing);
 }
 
 void UGA_RangerProjectileShot::ActivateAbility(
