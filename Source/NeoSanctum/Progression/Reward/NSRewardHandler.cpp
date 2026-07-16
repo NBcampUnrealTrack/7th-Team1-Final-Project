@@ -643,18 +643,25 @@ FNSPartData UNSRewardHandler::MakePartDataFromDropResult(
 	}
 	
 	const FNSPartDefinitionRow* Pick = Candidates[RandomStream.RandRange(0, Candidates.Num() - 1)];
-	
+
 	PartData.DefinitionPtr = Pick->Definition;
 	PartData.Slot = Pick->PartSlot;
 	PartData.CurrentRarity = Rarity;
 	PartData.RollCount = 0;
 
-	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(World, PartData.CurrentRarity);
-	if (UpgradeRow)
+	// 이 드롭 인스턴스의 스탯을 후보에서 확정 (범위 Map에 이 등급 키가 없는 스탯은 후보에서 제외)
+	const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(World, Pick->StatTags, PartData.CurrentRarity);
+	if (EligibleStatTags.Num() > 0)
 	{
-		const float MinValue = FMath::Min(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-		const float MaxValue = FMath::Max(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max);
-		PartData.CurrentValue = RandomStream.FRandRange(MinValue, MaxValue);
+		PartData.StatTag = EligibleStatTags[RandomStream.RandRange(0, EligibleStatTags.Num() - 1)];
+	}
+
+	// 스탯 × 등급별 수치 범위에서 직접 롤. 드롭 재현성 유지를 위해 RandomStream 사용
+	// 유효 후보가 없어 StatTag가 비면 값 0 (스탯 없는 파츠)
+	FNSPartValueRange Range;
+	if (PartData.StatTag.IsValid() && NSPartUtils::GetStatValueRange(World, PartData.StatTag, PartData.CurrentRarity, Range))
+	{
+		PartData.CurrentValue = RandomStream.FRandRange(Range.Min, Range.Max);
 	}
 	
 	return PartData;

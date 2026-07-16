@@ -31,9 +31,11 @@ namespace
 
 	FText FormatSummaryValue(float Value)
 	{
+		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
 		FNumberFormattingOptions Options;
-		Options.MaximumFractionalDigits = 1;
-		Options.MinimumFractionalDigits = 1;
+		Options.MaximumFractionalDigits = 0;
+		Options.MinimumFractionalDigits = 0;
+		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 		return FText::AsNumber(Value, &Options);
 	}
 }
@@ -568,14 +570,18 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
 	const int64 Balance = Currency ? Currency->GetTemp() : 0;
 
+	// 리롤/등급업 프리뷰에 표시할 수치 범위는 이 파츠 인스턴스 스탯의 등급별 범위 DT가 단일 소스
+	const FGameplayTag PartStatTag = NSPartUtils::GetPartStatTag(this, *Part);
+
 	// ---- 리롤 박스 ----
 	const int64 RerollCost = EquipComp->GetRerollCost(SelectedUpgradeSlot);
 	if (IsValid(RerollRangeText))
 	{
-		const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
-		RerollRangeText->SetText(UpgradeRow
+		FNSPartValueRange RerollRange;
+		const bool bHasRerollRange = NSPartUtils::GetStatValueRange(this, PartStatTag, Part->CurrentRarity, RerollRange);
+		RerollRangeText->SetText(bHasRerollRange
 			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollRange", "스텟 변동폭 : {0} ~ {1}"),
-				FText::AsNumber(UpgradeRow->ValueRange.Min), FText::AsNumber(UpgradeRow->ValueRange.Max))
+				FormatSummaryValue(RerollRange.Min), FormatSummaryValue(RerollRange.Max))
 			: FText::GetEmpty());
 	}
 	if (IsValid(RerollCostText))
@@ -605,12 +611,14 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		{
 			const ENSPartRarity NextRarity =
 				static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
-			const FNSPartUpgradeRow* NextUpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, NextRarity);
 			const FText RarityChange = FText::Format(NSLOCTEXT("PartUpgrade", "RarityChange", "변동 : {0} → {1}"),
 				GetRarityDisplayText(Part->CurrentRarity), GetRarityDisplayText(NextRarity));
-			const FText ValueChange = NextUpgradeRow
+			// 다음 등급의 수치 범위를 그대로 표시 (범위 없음 = 다음 등급에 이 스탯이 정의 안 됨 → 수치 줄 생략)
+			FNSPartValueRange NextRange;
+			const bool bHasNextRange = NSPartUtils::GetStatValueRange(this, PartStatTag, NextRarity, NextRange);
+			const FText ValueChange = bHasNextRange
 				? FText::Format(NSLOCTEXT("PartUpgrade", "ValueChange", "스텟 : {0} → {1} ~ {2}"),
-					FText::AsNumber(Part->CurrentValue), FText::AsNumber(NextUpgradeRow->ValueRange.Min), FText::AsNumber(NextUpgradeRow->ValueRange.Max))
+					FormatSummaryValue(Part->CurrentValue), FormatSummaryValue(NextRange.Min), FormatSummaryValue(NextRange.Max))
 				: FText::GetEmpty();
 			UpgradePreviewText->SetText(FText::Format(
 				NSLOCTEXT("PartUpgrade", "UpgradePreview", "{0}\n{1}"), RarityChange, ValueChange));

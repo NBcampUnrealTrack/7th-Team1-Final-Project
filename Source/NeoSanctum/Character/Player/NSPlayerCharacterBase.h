@@ -114,6 +114,8 @@ public:
 	// 파츠 상호작용 프롬프트의 스탯 비교 UI 등 외부에서 CharacterTag가 필요할 때 사용
 	const UNSCharacterData* GetCurrentCharacterData() const { return CurrentCharacterData; }
 
+	virtual void OnJumped_Implementation() override;
+	virtual void ClearJumpInput(float DeltaTime) override;
 protected:
 	void InitializeAbilitySystem();
 	void BindAttributeDelegates();
@@ -154,7 +156,15 @@ protected:
 protected:
 	void OnMoveSpeedChanged(const FOnAttributeChangeData& Data);
 	void ApplyMoveSpeedToCharacter(float MoveSpeed);
+
+	void OnMaxJumpCountChanged(const FOnAttributeChangeData& Data);
+	void ApplyMaxJumpCountToCharacter(float MaxJumpCount);
 	
+	virtual bool CanJumpInternal_Implementation() const override;
+	
+
+	bool bHasReleasedJumpKeySinceLastJump = true;
+
 protected:
 	void HandleOutOfHealth();
 	void Die();

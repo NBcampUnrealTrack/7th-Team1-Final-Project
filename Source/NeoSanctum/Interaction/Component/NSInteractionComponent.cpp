@@ -1,6 +1,8 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSInteractionComponent.h"
+#include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSInteractionPromptWidget.h"
@@ -23,28 +25,7 @@
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
-#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
-
-// FNSCharacterBaseStatRow에서 StatTag에 해당하는 필드를 찾음, 매칭되는 필드가 없으면 0 (첫 장착 시 비교 기준값으로 사용)
-static float GetBaseStatValueForTag(const FNSCharacterBaseStatRow& Row, const FGameplayTag& StatTag)
-{
-	if (StatTag == NSGameplayTags::CombatStat_MaxHealth)             { return Row.MaxHealth; }
-	if (StatTag == NSGameplayTags::CombatStat_Damage)                { return Row.BaseDamage; }
-	if (StatTag == NSGameplayTags::CombatStat_Defense)               { return Row.Defense; }
-	if (StatTag == NSGameplayTags::CombatStat_MoveSpeed)             { return Row.MoveSpeed; }
-	if (StatTag == NSGameplayTags::CombatStat_CritChance)            { return Row.CritChance; }
-	if (StatTag == NSGameplayTags::CombatStat_CritDamage)            { return Row.CritDamage; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxShield)             { return Row.MaxShield; }
-	if (StatTag == NSGameplayTags::CombatStat_ShieldRechargeRate)    { return Row.ShieldRechargeRate; }
-	if (StatTag == NSGameplayTags::CombatStat_ShieldRechargeCooldown){ return Row.ShieldRechargeCooldown; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxDashCount)          { return Row.MaxDashCount; }
-	if (StatTag == NSGameplayTags::CombatStat_DashRegenRate)         { return Row.DashRegenRate; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxAmmo)               { return Row.MaxAmmo; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxSkill1Count)        { return Row.MaxSkill1Count; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxSkill2Count)        { return Row.MaxSkill2Count; }
-	if (StatTag == NSGameplayTags::CombatStat_MaxSkill3Count)        { return Row.MaxSkill3Count; }
-	return 0.f;
-}
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 
 UNSInteractionComponent::UNSInteractionComponent()
 {
@@ -372,49 +353,93 @@ void UNSInteractionComponent::UpdateStatComparisonFor(ANSDroppedPart* DroppedPar
 
 	const FNSPartData& NewPart = DroppedPart->GetStoredPart();
 
-	// Definition이 아직 로드 안 됐으면 비교 UI는 그냥 숨김, 다음 갱신 때 다시 시도
+	// Row는 PartSlot(교체 대상 슬롯) 조회용, 스탯은 드롭 인스턴스가 단일 소스
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, NewPart);
 	const FNSPartDefinitionRow* NewRow = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
-	if (!NewRow || !NewRow->StatTag.IsValid())
+	const FGameplayTag NewStatTag = NSPartUtils::GetPartStatTag(this, NewPart);
+	if (!NewRow || !NewStatTag.IsValid())
 	{
 		Widget->ClearStatComparison();
 		return;
 	}
 
 	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
-	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(NewRow->StatTag) : nullptr;
+	const FNSStatDisplayInfoRow* StatInfo = DataSS ? DataSS->FindStatDisplayInfoRow(NewStatTag) : nullptr;
 	if (!StatInfo)
 	{
 		Widget->ClearStatComparison();
 		return;
 	}
 
-	// 캐릭터 기본 스탯값 (매칭되는 필드 없으면 0) — 이전/이후 수치 둘 다의 기준선으로 사용
-	float BaseValue = 0.f;
-
+	// 캐릭터 기본 스탯 Row — 첫 줄(새 파츠 스탯)과 두 번째 줄(잃는 스탯) 양쪽의 기준선 조회에 사용
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	if (const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerPawn))
-	{
-		if (const UNSCharacterData* CharacterData = PlayerCharacter->GetCurrentCharacterData())
-		{
-			if (const FNSCharacterBaseStatRow* BaseStatRow = DataSS
-				? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
-				: nullptr)
-			{
-				BaseValue = GetBaseStatValueForTag(*BaseStatRow, NewRow->StatTag);
-			}
-		}
-	}
-	
-	// 현재 수치 -> 장착 후 수치, 캐릭터 베이스 값을 가져옴
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(OwnerPawn);
+	const UNSCharacterData* CharacterData = PlayerCharacter ? PlayerCharacter->GetCurrentCharacterData() : nullptr;
+	const FNSCharacterBaseStatRow* BaseStatRow = (CharacterData && DataSS)
+		? DataSS->FindCharacterBaseStatRow(CharacterData->CharacterTag)
+		: nullptr;
+
+	// 캐릭터 기본 스탯값 (매칭되는 필드 없으면 0) — 이전/이후 수치 둘 다의 기준선으로 사용
+	const float BaseValue = BaseStatRow ? BaseStatRow->GetValueForTag(NewStatTag) : 0.f;
+
 	const APlayerState* PS = OwnerPawn ? OwnerPawn->GetPlayerState() : nullptr;
 	const UNSPartEquipComponent* EquipComp = PS ? PS->FindComponentByClass<UNSPartEquipComponent>() : nullptr;
 	const FNSPartData* OldPart = EquipComp ? EquipComp->GetEquippedPart(NewRow->PartSlot) : nullptr;
 
-	const float OldTotal = BaseValue + (OldPart ? OldPart->CurrentValue : 0.f);
-	const float NewTotal = BaseValue + NewPart.CurrentValue;
+	// 같은 종류 파츠라도 인스턴스마다 스탯이 다르게 뽑힐 수 있어 인스턴스 태그끼리 비교
+	const FGameplayTag OldStatTag = OldPart ? NSPartUtils::GetPartStatTag(this, *OldPart) : FGameplayTag();
+	float OldPartSameStatValue = 0.f;
+	if (OldPart && OldStatTag == NewStatTag)
+	{
+		OldPartSameStatValue = OldPart->CurrentValue;
+	}
+
+	// DataTable 기본값 + 파츠 수치 (Attribute 조회가 불가능한 스탯용, 증강 등 다른 보정 미반영)
+	float OldTotal = BaseValue + OldPartSameStatValue;
+	float NewTotal = BaseValue + NewPart.CurrentValue;
+
+	/**
+	 * 이전 값 : 캐릭터의 현재 실제 스탯(ASC 라이브 값, 파츠/증강/영구강화 전부 반영)
+	 * 이후 값 : 현재 스탯에서 같은 슬롯·같은 스탯 기존 파츠 기여를 뺀 뒤 새 파츠 값을 더한 예상치 (파츠 Add 연산 기준)
+	 */
+	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(PS);
+	const UAbilitySystemComponent* ASC = ASI ? ASI->GetAbilitySystemComponent() : nullptr;
+
+	// StatTag → Attribute 변환은 공용 매핑 테이블 사용, 매핑 없는 스탯(FireRate 등)은 무효 → DataTable 폴백 유지
+	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(NewStatTag);
+	const FGameplayAttribute Attribute = Mapping ? Mapping->Attribute : FGameplayAttribute();
+	if (ASC && Attribute.IsValid() && ASC->HasAttributeSetForAttribute(Attribute))
+	{
+		const float LiveValue = ASC->GetNumericAttribute(Attribute);
+		OldTotal = LiveValue;
+		NewTotal = LiveValue - OldPartSameStatValue + NewPart.CurrentValue;
+	}
 
 	Widget->SetStatComparison(StatInfo->DisplayName, OldTotal, NewTotal, StatInfo->bHigherIsBetter);
+
+	// ===== 두 번째 줄: 스탯이 다른 기존 파츠를 버리게 될 때, 잃는 스탯의 하락 예상치 표시 =====
+	// (기존 파츠가 없거나 새 파츠와 같은 스탯이면 첫 줄이 이미 차감을 반영하므로 숨김)
+	const FNSStatDisplayInfoRow* OldStatInfo = (OldStatTag.IsValid() && OldStatTag != NewStatTag && DataSS)
+		? DataSS->FindStatDisplayInfoRow(OldStatTag)
+		: nullptr;
+	if (!OldStatInfo)
+	{
+		Widget->ClearSecondaryStatComparison();
+		return;
+	}
+
+	// 기준선은 첫 줄과 동일한 규칙: ASC 라이브 값 우선, 불가하면 DataTable 기본값 + 기존 파츠 기여
+	float OldStatCurrent = (BaseStatRow ? BaseStatRow->GetValueForTag(OldStatTag) : 0.f) + OldPart->CurrentValue;
+	const FNSCombatStatAttributeMapping* OldMapping = NSCombatStatAttribute::FindMapping(OldStatTag);
+	const FGameplayAttribute OldAttribute = OldMapping ? OldMapping->Attribute : FGameplayAttribute();
+	if (ASC && OldAttribute.IsValid() && ASC->HasAttributeSetForAttribute(OldAttribute))
+	{
+		OldStatCurrent = ASC->GetNumericAttribute(OldAttribute);
+	}
+
+	// 기존 파츠가 사라지면 그 기여만큼 빠진 값이 예상치 (파츠 Add 연산 기준)
+	Widget->SetSecondaryStatComparison(
+		OldStatInfo->DisplayName, OldStatCurrent, OldStatCurrent - OldPart->CurrentValue, OldStatInfo->bHigherIsBetter);
 }
 
 void UNSInteractionComponent::HidePrompt()

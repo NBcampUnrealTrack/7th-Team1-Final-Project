@@ -19,6 +19,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxDashCount, "Effect.SetByCaller.Init.MaxDashCount");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_DashCount, "Effect.SetByCaller.Init.DashCount");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_DashRegenRate, "Effect.SetByCaller.Init.DashRegenRate");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxJumpCount, "Effect.SetByCaller.Init.MaxJumpCount");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxAmmo, "Effect.SetByCaller.Init.MaxAmmo");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_Ammo, "Effect.SetByCaller.Init.Ammo");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_Init_MaxSkill1Count, "Effect.SetByCaller.Init.MaxSkill1Count");
@@ -54,6 +55,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Add, "Effect.SetByCaller.ShieldRechargeCooldown.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_ShieldRechargeCooldown_Multiply, "Effect.SetByCaller.ShieldRechargeCooldown.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxDashCount_Add, "Effect.SetByCaller.MaxDashCount.Add");
+	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxJumpCount_Add, "Effect.SetByCaller.MaxJumpCount.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_DashRegenRate_Add, "Effect.SetByCaller.DashRegenRate.Add");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_DashRegenRate_Multiply, "Effect.SetByCaller.DashRegenRate.Multiply");
 	UE_DEFINE_GAMEPLAY_TAG(Effect_SetByCaller_MaxAmmo_Add, "Effect.SetByCaller.MaxAmmo.Add");

@@ -222,9 +222,9 @@ public:
 	UDataTable* GetCommonStatDisplayInfoTable() const;
 	const FNSStatDisplayInfoRow* FindStatDisplayInfoRow(const FGameplayTag& StatTag) const;
 
-	// 등급별 파츠 업그레이드/상점 row 조회
-	const FNSPartUpgradeRow* GetPartUpgradeRow(ENSPartRarity Rarity) const;
-	const TMap<ENSPartRarity, FNSPartUpgradeRow>& GetAllPartUpgradeRows() const;
+	// 등급별 파츠 리롤/상점(비용·확률·가중치) row 조회
+	const FNSPartShopRerollRow* GetPartShopRerollRow(ENSPartRarity Rarity) const;
+	const TMap<ENSPartRarity, FNSPartShopRerollRow>& GetAllPartShopRerollRows() const;
 
 	// 드랍 파츠 튜닝값 조회
 	const FNSDroppedPartConfigRow* GetDroppedPartConfigRow() const;
@@ -402,7 +402,7 @@ private:
 	TMap<FGameplayTag, FNSPartSlotRow> CachedSlotRowsBySlot;
 
 	// Rarity → row 캐시
-	TMap<ENSPartRarity, FNSPartUpgradeRow> CachedUpgradeRowsByRarity;
+	TMap<ENSPartRarity, FNSPartShopRerollRow> CachedShopRerollRowsByRarity;
 
 	// 드랍 파츠 튜닝값 캐시
 	FNSDroppedPartConfigRow CachedDroppedPartConfigRow;
@@ -410,7 +410,7 @@ private:
 
 	void BuildPartRowCache();
 	void BuildSlotRowCache();
-	void BuildPartUpgradeRowCache();
+	void BuildPartShopRerollRowCache();
 	void BuildDroppedPartConfigCache();
 
 	void CacheCommonUpgradeNodeRows();

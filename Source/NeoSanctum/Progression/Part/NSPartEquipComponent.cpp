@@ -12,6 +12,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
@@ -145,10 +146,23 @@ void UNSPartEquipComponent::ReapplyAll()
 	{
 		return;
 	}
-
-	// 이전 ASC 기준 핸들 폐기 후 슬롯별 GE/GA 재발급
-	ActiveGEHandles.Empty();
-	GrantedAbilityHandlesBySlot.Empty();
+	
+	/**
+	 * 남아있는 기존 GE/GA를 슬롯별로 제거 후 재발급
+	 * Seamless Travel에도 PlayerState/ASC가 유지되어 이전 GE가 살아있게끔 보장
+	 */
+	TArray<FGameplayTag> GESlots;
+	ActiveGEHandles.GetKeys(GESlots);
+	for (const FGameplayTag& GESlot : GESlots)
+	{
+		RemoveGEForSlot(GESlot);
+	}
+	TArray<FGameplayTag> AbilitySlots;
+	GrantedAbilityHandlesBySlot.GetKeys(AbilitySlots);
+	for (const FGameplayTag& AbilitySlot : AbilitySlots)
+	{
+		RemoveAbilitiesForSlot(AbilitySlot);
+	}
 
 	for (const FNSPartData& Part : EquippedParts)
 	{
@@ -304,17 +318,24 @@ void UNSPartEquipComponent::ApplyPartEffect(FGameplayTag Slot)
 	}
 	
 	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-	if (!Def || Def->EffectClass.IsNull())
+	if (!Def)
 	{
 		return;
 	}
-	
+
+	// EffectClass가 비어있으면 공용 GE + StatTag 경로
+	if (Def->EffectClass.IsNull())
+	{
+		Internal_ApplySharedGE(Slot);
+		return;
+	}
+
 	if (TSubclassOf<UGameplayEffect> Loaded = Def->EffectClass.Get())
 	{
 		Internal_ApplyGE(Slot, Loaded);
 		return;
 	}
-	
+
 	const FSoftObjectPath Path = Def->EffectClass.ToSoftObjectPath();
 	TSharedPtr<FStreamableHandle> Handle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
 		Path, FStreamableDelegate::CreateUObject(this, &UNSPartEquipComponent::OnEffectLoaded, Slot));
@@ -345,6 +366,88 @@ void UNSPartEquipComponent::Internal_ApplyGE(FGameplayTag Slot, TSubclassOf<UGam
 		return;
 	}
 	Spec.Data->SetSetByCallerMagnitude(NSGameplayTags::Part_Value, Part->CurrentValue);
+	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
+}
+
+void UNSPartEquipComponent::Internal_ApplySharedGE(FGameplayTag Slot)
+{
+	FNSPartData* Part = FindPart(Slot);
+	if (!Part)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (!SharedPartEffectClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: SharedPartEffectClass 미설정"));
+		return;
+	}
+
+	// 스탯은 파츠 인스턴스가 단일 소스(드롭 시 확정), 연산 방식(Operation)은 DT Row가 소스
+	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, *Part);
+	if (!StatTag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: StatTag 없음 (Slot=%s)"), *Slot.ToString());
+		return;
+	}
+
+	UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
+	const FNSPartDefinitionRow* Row = Def ? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId()) : nullptr;
+	if (!Row)
+	{
+		// Row가 없으면 Operation을 알 수 없어 적용 불가
+		return;
+	}
+
+	const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(StatTag);
+	if (!Mapping)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 매핑 없는 StatTag (%s)"), *StatTag.ToString());
+		return;
+	}
+
+	// Operation에 맞는 SetByCaller 태그 선택, Count 계열은 Multiply 태그가 비어 있어 여기서 걸러짐
+	FGameplayTag SetByCallerTag;
+	switch (Row->Operation)
+	{
+	case ENSCombatStatModifierOperation::Add:
+		SetByCallerTag = Mapping->AddSetByCallerTag;
+		break;
+	case ENSCombatStatModifierOperation::Multiply:
+		SetByCallerTag = Mapping->MultiplySetByCallerTag;
+		break;
+	default:
+		break;
+	}
+	if (!SetByCallerTag.IsValid())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[EquipComp] Internal_ApplySharedGE: 지원하지 않는 연산 (StatTag=%s)"), *StatTag.ToString());
+		return;
+	}
+
+	// 리롤같이 스텟변경이 있는경우 대비용으로 기존 GE먼저 제거
+	RemoveGEForSlot(Slot);
+
+	FGameplayEffectContextHandle Context = ASC->MakeEffectContext();
+	FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(SharedPartEffectClass, 1.f, Context);
+	if (!Spec.IsValid())
+	{
+		return;
+	}
+	
+	/**
+	 * 공용 GE에는 모든 스탯의 Modifier가 들어 있으므로 전체를 중립값으로 채운 뒤
+	 * 이 파츠의 스탯 하나만 실제 값으로 덮어씀
+	 */
+	NSCombatStatAttribute::InitializeNeutralSetByCallers(Spec);
+	Spec.Data->SetSetByCallerMagnitude(SetByCallerTag, Part->CurrentValue);
+
 	ActiveGEHandles.Add(Slot, ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data));
 }
 
@@ -496,7 +599,7 @@ void UNSPartEquipComponent::RerollStat(FGameplayTag Slot)
 		return;
 	}
 
-	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
+	Part->CurrentValue = RollValueForPart(*Part);
 	Part->RollCount++;
 
 	ApplyPartEffect(Slot);
@@ -521,7 +624,7 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 		return;
 	}
 
-	const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* UpgradeRow = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!UpgradeRow)
 	{
 		return;
@@ -543,22 +646,29 @@ void UNSPartEquipComponent::UpgradeRarity(FGameplayTag Slot)
 	Part->CurrentRarity = static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
 	Part->RollCount = 0;
 
-	Part->CurrentValue = RollValueForRarity(Part->CurrentRarity);
+	Part->CurrentValue = RollValueForPart(*Part);
 
 	ApplyPartEffect(Slot);
 	OnPartChanged.Broadcast(Slot, *Part);
 	Client_NotifyUpgradeResult(Slot, ENSPartUpgradeResult::UpgradeSuccess, Currency->GetTemp());
 }
 
-float UNSPartEquipComponent::RollValueForRarity(ENSPartRarity Rarity) const
+float UNSPartEquipComponent::RollValueForPart(const FNSPartData& Part) const
 {
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
-	if (!Row)
+	// 이 파츠 인스턴스가 올리는 스탯, 리롤/등급업은 여기서 스탯을 다시 뽑지 않고 값만 재선정
+	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, Part);
+	if (!StatTag.IsValid())
 	{
 		return 0.f;
 	}
 
-	return FMath::RandRange(Row->ValueRange.Min, Row->ValueRange.Max);
+	// 스탯 × 등급별 수치 범위에서 직접 롤 (범위 없음 = 그 등급에서 제외된 스탯 → 0)
+	FNSPartValueRange Range;
+	if (!NSPartUtils::GetStatValueRange(this, StatTag, Part.CurrentRarity, Range))
+	{
+		return 0.f;
+	}
+	return FMath::RandRange(Range.Min, Range.Max);
 }
 
 int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
@@ -569,7 +679,7 @@ int64 UNSPartEquipComponent::GetRerollCost(FGameplayTag Slot) const
 		return -1;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1;
@@ -604,7 +714,7 @@ int64 UNSPartEquipComponent::GetUpgradeCost(FGameplayTag Slot) const
 		return -1;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1;
@@ -620,7 +730,7 @@ float UNSPartEquipComponent::GetUpgradeChance(FGameplayTag Slot) const
 		return -1.f;
 	}
 
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Part->CurrentRarity);
 	if (!Row)
 	{
 		return -1.f;
@@ -673,7 +783,14 @@ void UNSPartEquipComponent::GenerateShopStock()
 			Item.Slot = SlotPair.Key;
 			Item.CurrentRarity = RollShopRarity();
 
-			Item.CurrentValue = RollValueForRarity(Item.CurrentRarity);
+			// 이 재고 아이템의 스탯을 후보에서 확정
+			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(this, Pick->StatTags, Item.CurrentRarity);
+			if (EligibleStatTags.Num() > 0)
+			{
+				Item.StatTag = EligibleStatTags[FMath::RandRange(0, EligibleStatTags.Num() - 1)];
+			}
+
+			Item.CurrentValue = RollValueForPart(Item);
 
 			ShopStock.Add(Item);
 		}
@@ -693,7 +810,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 	}
 
 	float TotalWeight = 0.f;
-	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	for (const TPair<ENSPartRarity, FNSPartShopRerollRow>& Pair : DataSS->GetAllPartShopRerollRows())
 	{
 		TotalWeight += FMath::Max(Pair.Value.ShopWeight, 0.f);
 	}
@@ -703,7 +820,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 	}
 
 	float Roll = FMath::FRandRange(0.f, TotalWeight);
-	for (const TPair<ENSPartRarity, FNSPartUpgradeRow>& Pair : DataSS->GetAllPartUpgradeRows())
+	for (const TPair<ENSPartRarity, FNSPartShopRerollRow>& Pair : DataSS->GetAllPartShopRerollRows())
 	{
 		Roll -= FMath::Max(Pair.Value.ShopWeight, 0.f);
 		if (Roll <= 0.f)
@@ -716,7 +833,7 @@ ENSPartRarity UNSPartEquipComponent::RollShopRarity() const
 
 int64 UNSPartEquipComponent::GetShopPrice(ENSPartRarity Rarity) const
 {
-	const FNSPartUpgradeRow* Row = NSPartUtils::ResolvePartUpgradeRow(this, Rarity);
+	const FNSPartShopRerollRow* Row = NSPartUtils::ResolvePartShopRerollRow(this, Rarity);
 	if (!Row)
 	{
 		return -1;

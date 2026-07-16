@@ -33,6 +33,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxAmmo,							"CombatStat.MaxAmmo");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxDashCount,						"CombatStat.MaxDashCount");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_DashRegenRate,					"CombatStat.DashRegenRate");
+	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxJumpCount,						"CombatStat.MaxJumpCount");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill1Count,					"CombatStat.MaxSkill1Count");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill2Count,					"CombatStat.MaxSkill2Count");
 	UE_DEFINE_GAMEPLAY_TAG(CombatStat_MaxSkill3Count,					"CombatStat.MaxSkill3Count");

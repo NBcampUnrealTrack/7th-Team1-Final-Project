@@ -105,6 +105,14 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part")
 	TSubclassOf<ANSDroppedPart> DroppedPartClass;
 
+	/**
+	 * 스탯 파츠들이 공유하는 GE
+	 * GE에는 CombatStat 매핑의 SetByCaller 태그별 Modifier가 미리 정의되어 있어야 하며 Stacking은 None
+	 * Definition의 EffectClass가 비어있는 파츠가 이 GE + StatTag 경로로 적용
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Part|Effect")
+	TSubclassOf<UGameplayEffect> SharedPartEffectClass;
+
 	// 상점 재고 -> 부위당 생성 개수, 에디터 수정가능
 	UPROPERTY(EditDefaultsOnly, Category = "Part|Shop", meta = (ClampMin = "1"))
 	int32 StockCountPerSlot = 3;
@@ -122,6 +130,7 @@ private:
 
 	void ApplyPartEffect(FGameplayTag Slot);
 	void Internal_ApplyGE(FGameplayTag Slot, TSubclassOf<UGameplayEffect> GEClass);
+	void Internal_ApplySharedGE(FGameplayTag Slot);
 	void OnEffectLoaded(FGameplayTag Slot);
 
 	void GrantAbilities(FGameplayTag Slot);
@@ -129,7 +138,8 @@ private:
 
 	void RerollStat(FGameplayTag Slot);
 	void UpgradeRarity(FGameplayTag Slot);
-	float RollValueForRarity(ENSPartRarity Rarity) const;
+	// 파츠 스탯의 등급별 수치 범위(ValueRangesByRarity)에서 최종 수치를 직접 롤
+	float RollValueForPart(const FNSPartData& Part) const;
 
 	void GenerateShopStock();
 	ENSPartRarity RollShopRarity() const;

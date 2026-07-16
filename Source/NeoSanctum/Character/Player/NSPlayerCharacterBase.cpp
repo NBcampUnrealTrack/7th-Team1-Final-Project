@@ -695,12 +695,19 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).RemoveAll(this);
-	
+
 	// 바인딩
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
-	
+
 	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
+
+	// MaxJumpCount Attribute는 CharacterMovement의 네이티브 JumpMaxCount와 별개라 변경될 때마다 직접 동기화해야 함
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMaxJumpCountAttribute()).RemoveAll(this);
+
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMaxJumpCountAttribute()).AddUObject(this, &ThisClass::OnMaxJumpCountChanged);
 }
 
 void ANSPlayerCharacterBase::ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag)
@@ -830,6 +837,7 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill2Count, StatRow->MaxSkill2Count);
 	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill3Count, StatRow->MaxSkill3Count);
 	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill3Count, StatRow->MaxSkill3Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxJumpCount, StatRow->MaxJumpCount);
 
 	const FActiveGameplayEffectHandle EffectHandle =
 		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
@@ -1185,6 +1193,46 @@ void ANSPlayerCharacterBase::ApplyMoveSpeedToCharacter(float MoveSpeed)
 	{
 		Movement->MaxWalkSpeed = MoveSpeed;
 	}
+}
+
+void ANSPlayerCharacterBase::OnMaxJumpCountChanged(const FOnAttributeChangeData& Data)
+{
+	ApplyMaxJumpCountToCharacter(Data.NewValue);
+}
+
+void ANSPlayerCharacterBase::ApplyMaxJumpCountToCharacter(float MaxJumpCount)
+{
+	JumpMaxCount = FMath::Max(FMath::FloorToInt(MaxJumpCount), 0);
+}
+
+bool ANSPlayerCharacterBase::CanJumpInternal_Implementation() const
+{
+	// 첫 점프는 원래 판정 그대로, 다단 점프는 키를 뗐다가 다시 눌러야만 허용
+	if (JumpCurrentCount > 0 && !bHasReleasedJumpKeySinceLastJump)
+	{
+		return false;
+	}
+	return Super::CanJumpInternal_Implementation();
+}
+
+void ANSPlayerCharacterBase::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+	bHasReleasedJumpKeySinceLastJump = false;
+}
+
+void ANSPlayerCharacterBase::ClearJumpInput(float DeltaTime)
+{
+	/**
+	 * 무한점프 방지용
+	 * 이번 이동 프레임에 점프 입력이 없었으면 키가 떨어진 것 -> 다음 점프 허용
+	 * 홀드중에는 착지후 다시 점프
+	 */
+	if (!bPressedJump)
+	{
+		bHasReleasedJumpKeySinceLastJump = true;
+	}
+	Super::ClearJumpInput(DeltaTime);
 }
 
 void ANSPlayerCharacterBase::HandleOutOfHealth()

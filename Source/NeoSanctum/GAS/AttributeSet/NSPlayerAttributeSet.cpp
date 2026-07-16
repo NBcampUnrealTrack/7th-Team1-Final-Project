@@ -32,6 +32,7 @@ void UNSPlayerAttributeSet::GetLifetimeReplicatedProps(TArray<class FLifetimePro
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, Skill2Count, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxSkill3Count, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, Skill3Count, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UNSPlayerAttributeSet, MaxJumpCount, COND_None, REPNOTIFY_Always);
 }
 
 void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue)
@@ -105,6 +106,10 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 	else if (Attribute == GetSkill3CountAttribute())
 	{
 		NewValue = FMath::Clamp(NewValue, 0.0f, GetMaxSkill3Count());
+	}
+	else if (Attribute == GetMaxJumpCountAttribute())
+	{
+		NewValue = FMath::Max(NewValue, 0.0f);
 	}
 }
 
@@ -197,6 +202,10 @@ void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffe
 	else if (Data.EvaluatedData.Attribute == GetSkill3CountAttribute())
 	{
 		SetSkill3Count(FMath::Clamp(GetSkill3Count(), 0.0f, GetMaxSkill3Count()));
+	}
+	else if (Data.EvaluatedData.Attribute == GetMaxJumpCountAttribute())
+	{
+		SetMaxJumpCount(FMath::Max(GetMaxJumpCount(), 0.0f));
 	}
 }
 
@@ -414,4 +423,9 @@ void UNSPlayerAttributeSet::OnRep_MaxSkill3Count(const FGameplayAttributeData& O
 void UNSPlayerAttributeSet::OnRep_Skill3Count(const FGameplayAttributeData& OldSkill3Count)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, Skill3Count, OldSkill3Count);
+}
+
+void UNSPlayerAttributeSet::OnRep_MaxJumpCount(const FGameplayAttributeData& OldMaxJumpCount)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UNSPlayerAttributeSet, MaxJumpCount, OldMaxJumpCount);
 }

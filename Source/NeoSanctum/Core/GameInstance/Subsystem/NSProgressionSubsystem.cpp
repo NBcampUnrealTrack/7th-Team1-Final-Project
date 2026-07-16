@@ -10,6 +10,7 @@
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
 
 
 
@@ -366,13 +367,21 @@ bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNS
 		return false;
 	}
 
-	const FNSPartUpgradeRow* UpgradeRow = DataSS->GetPartUpgradeRow(Rarity);
+	/**
+	 * 아웃런 구매 파츠의 초기 수치 롤.
+	 * 영구 저장 구조(FNSPartSaveData)에는 StatTag가 없어 런 시작 시 후보 첫 번째 스탯으로 폴백되므로,
+	 * 값도 같은 규칙(이 등급에서 유효한 첫 번째 후보 스탯)의 등급별 범위에서 롤해야 수치와 스탯이 어긋나지 않음
+	 */
+	const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(GetGameInstance(), Row->StatTags, Rarity);
+	FNSPartValueRange Range;
+	const bool bHasRange = (EligibleStatTags.Num() > 0)
+		&& NSPartUtils::GetStatValueRange(GetGameInstance(), EligibleStatTags[0], Rarity, Range);
 
 	FNSPartSaveData New;
 	New.Definition = Definition;
 	New.Rarity = Rarity;
 	New.EnhanceLevel = 0;
-	New.Value = UpgradeRow ? FMath::RandRange(UpgradeRow->ValueRange.Min, UpgradeRow->ValueRange.Max) : 0.f;
+	New.Value = bHasRange ? FMath::RandRange(Range.Min, Range.Max) : 0.f;
 
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);

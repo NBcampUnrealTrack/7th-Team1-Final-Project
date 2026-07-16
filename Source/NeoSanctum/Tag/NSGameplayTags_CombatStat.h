@@ -35,6 +35,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxAmmo);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxDashCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DashRegenRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxJumpCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill1Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill2Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill3Count);
