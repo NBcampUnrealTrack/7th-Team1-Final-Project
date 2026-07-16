@@ -200,14 +200,6 @@ FVector ANSEnemyCharacterBase::GetAimLocation() const
 	return GetActorLocation();
 }
 
-void ANSEnemyCharacterBase::Die()
-{
-	if (StateComponent)
-	{
-		StateComponent->Die();
-	}
-}
-
 bool ANSEnemyCharacterBase::IsDead() const
 {
 	return StateComponent && StateComponent->IsDead();

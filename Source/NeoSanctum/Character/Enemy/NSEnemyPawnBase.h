@@ -92,9 +92,6 @@ public:
 	// 난이도 배율을 CoreComponent에 전달하는 함수
 	void SetDifficultyScale(const FNSDifficultyScale& InScale);
 
-	// Enemy Pawn 사망 상태를 시작하는 함수
-	void Die();
-
 	// Enemy Pawn 생존 여부를 반환하는 함수
 	bool IsDead() const;
 

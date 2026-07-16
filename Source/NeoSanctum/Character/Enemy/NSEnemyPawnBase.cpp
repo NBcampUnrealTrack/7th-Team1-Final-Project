@@ -180,14 +180,6 @@ void ANSEnemyPawnBase::SetDifficultyScale(const FNSDifficultyScale& InScale)
 	}
 }
 
-void ANSEnemyPawnBase::Die()
-{
-	if (StateComponent)
-	{
-		StateComponent->Die();
-	}
-}
-
 bool ANSEnemyPawnBase::IsDead() const
 {
 	return StateComponent && StateComponent->IsDead();
