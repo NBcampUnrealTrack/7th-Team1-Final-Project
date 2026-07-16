@@ -62,10 +62,10 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	// false면 카탈로그에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
 	bool bEnabled = true;
-
-	// 이 파츠가 영향을 주는 스탯 (CombatStat.* 네임스페이스). 상호작용 프롬프트의 스탯 비교 UI에서 사용
+	
+	// 이 파츠가 가질 수 있는 스탯 후보
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part", meta = (Categories = "CombatStat"))
-	FGameplayTag StatTag;
+	TArray<FGameplayTag> StatTags;
 
 	// StatTag를 공용 파츠 GE로 적용할 때의 연산 방식 (Add = 더하기, Multiply = 배율 곱하기)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Part")
@@ -79,7 +79,7 @@ struct FNSStatDisplayInfoRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	// FNSPartDefinitionRow::StatTag와 동일해야 함
+	// FNSPartDefinitionRow::StatTags에 쓰이는 태그와 동일해야 함
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat", meta = (Categories = "CombatStat"))
 	FGameplayTag StatTag;
 
@@ -234,6 +234,13 @@ struct FNSPartData
 
 	UPROPERTY(BlueprintReadWrite)
 	float CurrentValue = 0.f;
+	
+	/**
+	 * 이 파츠 인스턴스의 확정 스탯
+	 * 드롭/상점 생성 시 Row의 StatTags 후보에서 하나가 뽑혀 저장됨
+	 */
+	UPROPERTY(BlueprintReadWrite)
+	FGameplayTag StatTag;
 
 	UPROPERTY(BlueprintReadWrite)
 	int32 RollCount = 0;
