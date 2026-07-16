@@ -28,6 +28,7 @@ const TArray<FNSCombatStatAttributeMapping>& NSCombatStatAttribute::GetMappings(
 		{ NSGameplayTags::CombatStat_MaxSkill1Count, NSGameplayTags::Effect_SetByCaller_MaxSkill1Count_Add, FGameplayTag(), UNSPlayerAttributeSet::GetMaxSkill1CountAttribute() },
 		{ NSGameplayTags::CombatStat_MaxSkill2Count, NSGameplayTags::Effect_SetByCaller_MaxSkill2Count_Add, FGameplayTag(), UNSPlayerAttributeSet::GetMaxSkill2CountAttribute() },
 		{ NSGameplayTags::CombatStat_MaxSkill3Count, NSGameplayTags::Effect_SetByCaller_MaxSkill3Count_Add, FGameplayTag(), UNSPlayerAttributeSet::GetMaxSkill3CountAttribute() },
+		{ NSGameplayTags::CombatStat_MaxJumpCount, NSGameplayTags::Effect_SetByCaller_MaxJumpCount_Add, FGameplayTag(), UNSPlayerAttributeSet::GetMaxJumpCountAttribute() },
 	};
 
 	return Mappings;
