@@ -187,12 +187,15 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 	}
 }
 
-void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
+void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AController* Killer)
 {
 	if (!HasAuthority() || !DeadEnemy)
 	{
 		return;
 	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Kill] DeadEnemy=%s Killer=%s"),
+	   *GetNameSafe(DeadEnemy), *GetNameSafe(Killer));
 
 	// 킬 집계,보상은 페이즈 무관하게 항상 진행
 	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();

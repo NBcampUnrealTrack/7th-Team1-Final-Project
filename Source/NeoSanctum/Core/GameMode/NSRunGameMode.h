@@ -39,7 +39,7 @@ public:
 	// 인터페이스 구현부 오버라이드
 	virtual void NotifyStageCleared_Implementation() override;
 	virtual void NotifyPlayerDied_Implementation(AController* DeadPlayer) override;
-	virtual void NotifyEnemyKilled_Implementation(AActor* DeadEnemy) override;
+	virtual void NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AController* Killer) override;
 	virtual void RequestReturnToHub_Implementation() override;
 	virtual void RequestMoveToNextStage_Implementation() override;
 	virtual void ReturnMonsterToPool_Implementation(ACharacter* Monster) override;
