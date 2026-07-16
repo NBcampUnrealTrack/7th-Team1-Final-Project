@@ -99,9 +99,11 @@ void UNSInteractionPromptWidget::SetStatComparison(const FText& StatName, float 
 {
 	if (StatCompareText)
 	{
+		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
 		FNumberFormattingOptions Options;
-		Options.MaximumFractionalDigits = 1;
+		Options.MaximumFractionalDigits = 0;
 		Options.MinimumFractionalDigits = 0;
+		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 
 		StatCompareText->SetText(FText::Format(
 			NSLOCTEXT("InteractionPrompt", "StatCompareFormat", "{0} : {1} -> {2}"),

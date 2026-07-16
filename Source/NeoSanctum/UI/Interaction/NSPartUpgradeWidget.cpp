@@ -31,9 +31,11 @@ namespace
 
 	FText FormatSummaryValue(float Value)
 	{
+		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
 		FNumberFormattingOptions Options;
-		Options.MaximumFractionalDigits = 1;
-		Options.MinimumFractionalDigits = 1;
+		Options.MaximumFractionalDigits = 0;
+		Options.MinimumFractionalDigits = 0;
+		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 		return FText::AsNumber(Value, &Options);
 	}
 }
@@ -568,6 +570,9 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 	const FNSPartDefinitionRow* Row = NSPartUtils::ResolvePartRow(this, DefId);
 	const int64 Balance = Currency ? Currency->GetTemp() : 0;
 
+	// ValueRange는 품질(0~1)이라 그대로 표시하면 의미가 없음 — 이 파츠 스탯의 만점을 곱해 실제 수치 범위로 환산
+	const float StatMax = NSPartUtils::GetStatMaxValue(this, NSPartUtils::GetPartStatTag(this, *Part));
+
 	// ---- 리롤 박스 ----
 	const int64 RerollCost = EquipComp->GetRerollCost(SelectedUpgradeSlot);
 	if (IsValid(RerollRangeText))
@@ -575,7 +580,7 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		const FNSPartUpgradeRow* UpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, Part->CurrentRarity);
 		RerollRangeText->SetText(UpgradeRow
 			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollRange", "스텟 변동폭 : {0} ~ {1}"),
-				FText::AsNumber(UpgradeRow->ValueRange.Min), FText::AsNumber(UpgradeRow->ValueRange.Max))
+				FormatSummaryValue(UpgradeRow->ValueRange.Min * StatMax), FormatSummaryValue(UpgradeRow->ValueRange.Max * StatMax))
 			: FText::GetEmpty());
 	}
 	if (IsValid(RerollCostText))
@@ -608,9 +613,10 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 			const FNSPartUpgradeRow* NextUpgradeRow = NSPartUtils::ResolvePartUpgradeRow(this, NextRarity);
 			const FText RarityChange = FText::Format(NSLOCTEXT("PartUpgrade", "RarityChange", "변동 : {0} → {1}"),
 				GetRarityDisplayText(Part->CurrentRarity), GetRarityDisplayText(NextRarity));
+			// 다음 등급 범위도 품질 × 만점으로 환산해서 실제 수치로 표시
 			const FText ValueChange = NextUpgradeRow
 				? FText::Format(NSLOCTEXT("PartUpgrade", "ValueChange", "스텟 : {0} → {1} ~ {2}"),
-					FText::AsNumber(Part->CurrentValue), FText::AsNumber(NextUpgradeRow->ValueRange.Min), FText::AsNumber(NextUpgradeRow->ValueRange.Max))
+					FormatSummaryValue(Part->CurrentValue), FormatSummaryValue(NextUpgradeRow->ValueRange.Min * StatMax), FormatSummaryValue(NextUpgradeRow->ValueRange.Max * StatMax))
 				: FText::GetEmpty();
 			UpgradePreviewText->SetText(FText::Format(
 				NSLOCTEXT("PartUpgrade", "UpgradePreview", "{0}\n{1}"), RarityChange, ValueChange));

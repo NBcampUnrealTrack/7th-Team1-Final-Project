@@ -42,9 +42,11 @@ static FString GetSlotLeafName(FGameplayTag SlotTag)
 
 static FText FormatEffectValue(float Value)
 {
+	// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
 	FNumberFormattingOptions Options;
-	Options.MaximumFractionalDigits = 1;
-	Options.MinimumFractionalDigits = 1;
+	Options.MaximumFractionalDigits = 0;
+	Options.MinimumFractionalDigits = 0;
+	Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 	return FText::AsNumber(Value, &Options);
 }
 

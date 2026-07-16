@@ -67,10 +67,16 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 
 	if (IsValid(PartValueText))
 	{
+		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
+		FNumberFormattingOptions Options;
+		Options.MaximumFractionalDigits = 0;
+		Options.MinimumFractionalDigits = 0;
+		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
+
 		PartValueText->SetText(FText::Format(
 			NSLOCTEXT("PartSlotButton", "PartValueFormat", "{0} {1}"),
 			GetRarityText(InPartData.CurrentRarity),
-			FText::AsNumber(InPartData.CurrentValue)
+			FText::AsNumber(InPartData.CurrentValue, &Options)
 		));
 		PartValueText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
