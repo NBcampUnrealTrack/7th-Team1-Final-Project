@@ -67,9 +67,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser")
 	FName LaserChargeDurationParameterName = FName(TEXT("User.ChargeDuration"));
 
-	// Beam Niagara의 끝점 User Parameter 이름을 저장하는 변수
+	// Beam Niagara의 길이 User Parameter 이름을 저장하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser")
-	FName LaserBeamEndParameterName = FName(TEXT("User.Beam End"));
+	FName LaserBeamLengthParameterName = FName(TEXT("User.Beam Length"));
 
 	// Beam Niagara의 두께 User Parameter 이름을 저장하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser")
@@ -79,13 +79,21 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser", meta = (ClampMin = "0.01"))
 	float LaserBeamVFXScale = 1.0f;
 
+	// Beam 표시 두께를 직접 지정할지 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser|VisualWidth")
+	bool bOverrideLaserBeamVisualWidth = true;
+
+	// 직접 지정할 Beam 표시 두께를 저장하는 변수
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser|VisualWidth", meta = (ClampMin = "0.0"))
+	float LaserBeamVisualWidthOverride = 80.0f;
+
 	// AreaData.Radius를 Beam 표시 두께로 변환할 배율을 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser", meta = (ClampMin = "0.0"))
-	float LaserBeamWidthRadiusMultiplier = 2.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser|VisualWidth", meta = (ClampMin = "0.0"))
+	float LaserBeamWidthRadiusMultiplier = 0.2f;
 
 	// Beam Niagara 최소 표시 두께를 저장하는 변수
-	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser", meta = (ClampMin = "0.0"))
-	float LaserBeamMinVisualWidth = 4.0f;
+	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser|VisualWidth", meta = (ClampMin = "0.0"))
+	float LaserBeamMinVisualWidth = 10.0f;
 
 	// 차징 사운드에 Beam 사운드까지 포함되어 있는지 저장하는 변수
 	UPROPERTY(EditDefaultsOnly, Category = "Cosmetic|Laser")
@@ -119,8 +127,10 @@ private:
 	void UpdateChargeVFX(FNSActiveLaserCosmetic& ActiveLaser, const FNSCosmeticEventNetData& EventData) const;
 
 	// 현재 EventData 기준으로 Beam VFX 위치와 크기를 갱신하는 함수
-	void UpdateBeamVFX(FNSActiveLaserCosmetic& ActiveLaser, AActor* OwnerActor,
-	                   const FNSCosmeticEventNetData& EventData) const;
+	void UpdateBeamVFX(
+		FNSActiveLaserCosmetic& ActiveLaser,
+		AActor* OwnerActor,
+		const FNSCosmeticEventNetData& EventData) const;
 
 	// 레이저 Niagara 컴포넌트를 즉시 비활성화하고 제거하는 함수
 	void DestroyLaserVFXComponent(UNiagaraComponent* VFX) const;
@@ -134,6 +144,15 @@ private:
 	// 특정 InstanceId의 레이저 코스메틱을 정리하는 함수
 	void StopLaserCosmetic(int32 InstanceId);
 
-	// EventData의 Radius 기준 Beam 표시 두께를 계산하는 함수
+	// EventData 기준 Beam 표시 두께를 계산하는 함수
 	float GetLaserBeamVisualWidth(const FNSCosmeticEventNetData& EventData) const;
+
+	// 레이저 Beam Niagara의 Local Y축이 진행 방향을 바라보도록 회전값을 계산하는 함수
+	FRotator GetLaserBeamVFXRotation(const FVector& Direction) const;
+
+	// Beam Niagara User Parameter를 현재 Beam 데이터 기준으로 갱신하는 함수
+	void ApplyLaserBeamVFXParameters(
+		UNiagaraComponent* VFX,
+		const FNSCosmeticEventPointNetData& PointData,
+		float BeamVisualWidth) const;
 };

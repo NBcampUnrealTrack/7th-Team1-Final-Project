@@ -66,6 +66,7 @@ void UNSCosmeticHandler_Laser::HandleChargeStartEvent(AActor* OwnerActor, const 
 	{
 		if (UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(OwnerActor))
 		{
+			
 			const FRotator Rotation = EventData.Direction.IsNearlyZero()
 				                          ? FRotator::ZeroRotator
 				                          : EventData.Direction.Rotation();
@@ -227,12 +228,15 @@ void UNSCosmeticHandler_Laser::UpdateBeamVFX(
 			Direction = (PointData.EndLocation - PointData.Location).GetSafeNormal();
 		}
 
-		const float Length = FVector::Dist(PointData.Location, PointData.EndLocation);
-		if (Direction.IsNearlyZero() || Length <= KINDA_SMALL_NUMBER)
+		const float BeamLength = FVector::Dist(PointData.Location, PointData.EndLocation);
+		if (Direction.IsNearlyZero() || BeamLength <= KINDA_SMALL_NUMBER)
 		{
+			DestroyLaserVFXComponent(ActiveLaser.BeamVFXComponents[Index].Get());
+			ActiveLaser.BeamVFXComponents[Index] = nullptr;
 			continue;
 		}
 
+		const FRotator BeamRotation = GetLaserBeamVFXRotation(Direction);
 		UNiagaraComponent* VFX = ActiveLaser.BeamVFXComponents[Index];
 
 		if (!IsValid(VFX))
@@ -240,7 +244,7 @@ void UNSCosmeticHandler_Laser::UpdateBeamVFX(
 			VFX = VFXSubsystem->SpawnVFXAtLocation(
 				LaserBeamVFXID,
 				PointData.Location,
-				Direction.Rotation(),
+				BeamRotation,
 				LaserBeamVFXScale,
 				false);
 
@@ -249,18 +253,9 @@ void UNSCosmeticHandler_Laser::UpdateBeamVFX(
 
 		if (IsValid(VFX))
 		{
-			VFX->SetWorldLocationAndRotation(PointData.Location, Direction.Rotation());
+			VFX->SetWorldLocationAndRotation(PointData.Location, BeamRotation);
 			VFX->SetWorldScale3D(FVector::OneVector * LaserBeamVFXScale);
-
-			if (!LaserBeamEndParameterName.IsNone())
-			{
-				VFX->SetVariableVec3(LaserBeamEndParameterName, PointData.EndLocation);
-			}
-
-			if (!LaserBeamWidthParameterName.IsNone())
-			{
-				VFX->SetVariableFloat(LaserBeamWidthParameterName, BeamVisualWidth);
-			}
+			ApplyLaserBeamVFXParameters(VFX, PointData, BeamVisualWidth);
 
 			if (!VFX->IsActive())
 			{
@@ -357,8 +352,24 @@ void UNSCosmeticHandler_Laser::StopLaserCosmetic(int32 InstanceId)
 
 float UNSCosmeticHandler_Laser::GetLaserBeamVisualWidth(const FNSCosmeticEventNetData& EventData) const
 {
+	if (bOverrideLaserBeamVisualWidth)
+	{
+		return FMath::Max(LaserBeamVisualWidthOverride, 0.0f);
+	}
+
 	const float Width = FMath::Max(EventData.Radius, 0.0f) * LaserBeamWidthRadiusMultiplier;
 	return FMath::Max(Width, LaserBeamMinVisualWidth);
+}
+
+FRotator UNSCosmeticHandler_Laser::GetLaserBeamVFXRotation(const FVector& Direction) const
+{
+	const FVector SafeDirection = Direction.GetSafeNormal();
+	if (SafeDirection.IsNearlyZero())
+	{
+		return FRotator::ZeroRotator;
+	}
+
+	return FRotationMatrix::MakeFromY(SafeDirection).Rotator();
 }
 
 void UNSCosmeticHandler_Laser::BeginDestroy()
@@ -372,4 +383,27 @@ void UNSCosmeticHandler_Laser::BeginDestroy()
 	}
 
 	Super::BeginDestroy();
+}
+
+void UNSCosmeticHandler_Laser::ApplyLaserBeamVFXParameters(
+	UNiagaraComponent* VFX,
+	const FNSCosmeticEventPointNetData& PointData,
+	float BeamVisualWidth) const
+{
+	if (!IsValid(VFX))
+	{
+		return;
+	}
+
+	const float BeamLength = FVector::Dist(PointData.Location, PointData.EndLocation);
+
+	if (!LaserBeamLengthParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(LaserBeamLengthParameterName, BeamLength);
+	}
+
+	if (!LaserBeamWidthParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(LaserBeamWidthParameterName, BeamVisualWidth);
+	}
 }
