@@ -15,7 +15,6 @@
 #include "GameFramework/GameModeBase.h"
 #include "MotionWarpingComponent.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
@@ -45,6 +44,7 @@
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -188,27 +188,6 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		BindPartVisual();
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
-		// 이관된 런타임 파츠가 있으면(스테이지 이동) 재적용, 없으면(허브 최초 진입/리스폰) 저장 파츠 장착
-		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
-		{
-			UNSPartEquipComponent* PartComp = PS->GetPartEquipComponent();
-			if (PartComp && PartComp->HasAnyEquipped())
-			{
-				PartComp->ReapplyAll();
-			}
-			else
-			{
-				ApplyEquippedPart();
-			}
-		}
-		// Seamless Travel로 새 ASC가 생성되었으므로 보유 증강을 재적용
-		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
-		{
-			if (UNSAugmentInventoryComponent* AugmentInventory = PS->GetAugmentInventory())
-			{
-				AugmentInventory->ReapplyAll();
-			}
-		}
 	}
 	
 	// Companion 초기화 및 스폰 시도
@@ -337,6 +316,7 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 		ApplyCommonUpgradeAttributeEffect();
 		ApplyDefaultGameplayEffects();
 		GiveCharacterDataAbilities();
+		ReapplyPersistentRunGameplayState();
 		SpawnDefaultWeapon();
 		
 		if (NSAbilitySystemComponent)
@@ -1055,6 +1035,40 @@ void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
 	}
 }
 
+void ANSPlayerCharacterBase::ReapplyPersistentRunGameplayState()
+{
+	// 캐릭터 교체로 ASC를 비운 뒤 파츠/증강처럼 런 동안 유지되는 효과를 다시 적용
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	
+	// 이관된 런타임 파츠가 있으면(스테이지 이동) 재적용, 없으면(허브 최초 진입/리스폰) 저장 파츠 장착
+	if (UNSPartEquipComponent* PartComp = PS->GetPartEquipComponent())
+	{
+		if (PartComp->HasAnyEquipped())
+		{
+			PartComp->ReapplyAll();
+		}
+		else
+		{
+			ApplyEquippedPart();
+		}
+	}
+	
+	// Seamless Travel로 새 ASC가 생성되었으므로 보유 증강을 재적용
+	if (UNSAugmentInventoryComponent* AugmentInventory = PS->GetAugmentInventory())
+	{
+		AugmentInventory->ReapplyAll();
+	}
+}
+
 void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 {
 	if (!HasAuthority() || !CurrentCharacterData)
@@ -1123,29 +1137,22 @@ void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
 	// Ability와 Effect Clear
 	if (NSAbilitySystemComponent)
 	{
-		NSAbilitySystemComponent->ClearAbilityInput();
-
-		for (const FGameplayAbilitySpecHandle& AbilityHandle : CharacterDataAbilityHandles)
-		{
-			if (!AbilityHandle.IsValid())
-			{
-				continue;
-			}
-
-			NSAbilitySystemComponent->CancelAbilityHandle(AbilityHandle);
-			NSAbilitySystemComponent->ClearAbility(AbilityHandle);
-		}
-		CharacterDataAbilityHandles.Reset();
-
-		for (const FActiveGameplayEffectHandle& EffectHandle : CharacterDataEffectHandles)
-		{
-			if (EffectHandle.IsValid())
-			{
-				NSAbilitySystemComponent->RemoveActiveGameplayEffect(EffectHandle);
-			}
-		}
-		CharacterDataEffectHandles.Reset();
+		// 이전 캐릭터의 스킬, Recharge, Buff, Cue, State가 새 캐릭터에 남지 않도록 정리
+		NSAbilitySystemComponent->ResetTransientAvatarState();
 	}
+
+	if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		if (UNSCombatStatComponent* CombatStatComp = PS->GetCombatStatComponent())
+		{
+			// BuffAbility가 CombatStatComponent에 등록한 임시 수치 보정도 함께 제거
+			CombatStatComp->ClearTemporaryCombatStatModifiers();
+		}
+	}
+
+	CharacterDataAbilityHandles.Reset();
+	CharacterDataEffectHandles.Reset();
+	CommonUpgradeEffectHandle = FActiveGameplayEffectHandle();
 	
 	// 무기를 Destroy
 	if (IsValid(CurrentWeapon))

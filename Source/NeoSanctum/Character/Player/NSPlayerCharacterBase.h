@@ -129,6 +129,8 @@ protected:
 	void ApplyDefaultGameplayEffects();
 	
 	void GiveCharacterDataAbilities();
+	// ASC 리셋 후에도 유지해야 하는 런 진행 효과를 재적용
+	void ReapplyPersistentRunGameplayState();
 	void SpawnDefaultWeapon();
 	ANSWeaponBase* SpawnWeapon(TSubclassOf<ANSWeaponBase> WeaponClass, FName AttachSocketName);
 	

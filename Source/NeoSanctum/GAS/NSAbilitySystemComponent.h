@@ -29,6 +29,9 @@ public:
 	
 	// 입력 상태를 강제로 비울 때 사용
 	void ClearAbilityInput();
+
+	// Avatar 교체 시 이전 캐릭터의 임시 GAS 상태를 제거
+	void ResetTransientAvatarState();
 	
 	// 스킬 슬롯별 재충전 진입점
 	void StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown);

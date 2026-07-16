@@ -91,6 +91,9 @@ public:
 	// TemporaryModifier 제거
 	void RemoveTemporaryCombatStatModifier(FGuid Handle);
 
+	// 캐릭터 교체 시 남아있는 임시 버프 Modifier를 모두 제거
+	void ClearTemporaryCombatStatModifiers();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

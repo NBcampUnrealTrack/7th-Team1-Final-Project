@@ -359,6 +359,26 @@ void UNSCombatStatComponent::RemoveTemporaryCombatStatModifier(FGuid Handle)
 	RebuildTemporaryModifierCache();
 }
 
+void UNSCombatStatComponent::ClearTemporaryCombatStatModifiers()
+{
+	// BuffAbility가 타이머로 등록한 Modifier가 캐릭터 교체 후 남지 않도록 정리
+	if (TemporaryModifiersByHandle.IsEmpty())
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		for (TPair<FGuid, FNSTemporaryCombatStatModifier>& Pair : TemporaryModifiersByHandle)
+		{
+			World->GetTimerManager().ClearTimer(Pair.Value.ExpireTimerHandle);
+		}
+	}
+
+	TemporaryModifiersByHandle.Reset();
+	RebuildTemporaryModifierCache();
+}
+
 void UNSCombatStatComponent::BindAugmentInventory()
 {
 	ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(GetOwner());
