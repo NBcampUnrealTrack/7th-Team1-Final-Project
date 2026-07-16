@@ -119,16 +119,7 @@ void UNSCosmeticHandler_Flame::UpdateFlameVFX(
 
 			if (IsValid(VFX))
 			{
-				if (!FlameScaleParameterName.IsNone())
-				{
-					VFX->SetVariableFloat(FlameScaleParameterName, NiagaraFlameScale);
-				}
-
-				if (!SpawnRateParameterName.IsNone())
-				{
-					VFX->SetVariableFloat(SpawnRateParameterName, NiagaraSpawnRate);
-				}
-
+				ApplyFlameVFXParameters(VFX, EventData);
 				VFX->Activate(true);
 			}
 		}
@@ -137,6 +128,7 @@ void UNSCosmeticHandler_Flame::UpdateFlameVFX(
 		{
 			VFX->SetWorldLocationAndRotation(Transform.GetLocation(), Transform.Rotator());
 			VFX->SetWorldScale3D(FVector::OneVector * FlameVFXComponentScale);
+			ApplyFlameVFXParameters(VFX, EventData);
 		}
 	}
 
@@ -166,18 +158,6 @@ void UNSCosmeticHandler_Flame::BuildFlameVFXTransforms(
 {
 	OutTransforms.Reset();
 
-	const float EffectiveRange = FMath::Max(EventData.Range, 0.0f);
-	if (EffectiveRange <= KINDA_SMALL_NUMBER)
-	{
-		return;
-	}
-
-	const float ConeHalfAngleRadians =
-		FMath::DegreesToRadians(FMath::Max(EventData.ConeHalfAngle, 0.0f));
-
-	const float ConeTan = FMath::Tan(ConeHalfAngleRadians);
-	const float BaseRadius = FMath::Max(EventData.Radius, 0.0f);
-
 	for (const FNSCosmeticEventPointNetData& Point : EventData.Points)
 	{
 		const FVector Direction = Point.Direction.GetSafeNormal();
@@ -187,91 +167,7 @@ void UNSCosmeticHandler_Flame::BuildFlameVFXTransforms(
 		}
 
 		const FRotator SpawnRotation = Direction.Rotation() + RotationOffset;
-		const FVector RightVector =
-			FRotationMatrix(Direction.Rotation()).GetUnitAxis(EAxis::Y);
-
-		TArray<FTransform> PointTransforms;
-
-		const float FirstDistance = FMath::Min(StartOffset, EffectiveRange);
-		const float SafeForwardSpacing = FMath::Max(ForwardSpacing, 1.0f);
-		const float SafeLateralSpacing = FMath::Max(LateralSpacing, 1.0f);
-
-		TArray<float> SampleDistances;
-		SampleDistances.Add(FirstDistance);
-
-		for (float Distance = FirstDistance + SafeForwardSpacing;
-		     Distance < EffectiveRange;
-		     Distance += SafeForwardSpacing)
-		{
-			SampleDistances.Add(Distance);
-		}
-
-		if (EffectiveRange > FirstDistance + KINDA_SMALL_NUMBER)
-		{
-			SampleDistances.Add(EffectiveRange);
-		}
-
-		for (const float Distance : SampleDistances)
-		{
-			const bool bSocketPoint = Distance <= FirstDistance + KINDA_SMALL_NUMBER;
-			const float HalfWidth = bSocketPoint
-				                        ? 0.0f
-				                        : BaseRadius + ConeTan * Distance;
-
-			const int32 LateralCount = HalfWidth <= KINDA_SMALL_NUMBER
-				                           ? 1
-				                           : FMath::Clamp(
-					                           FMath::FloorToInt((HalfWidth * 2.0f) / SafeLateralSpacing) + 1,
-					                           1,
-					                           3);
-
-			for (int32 Index = 0; Index < LateralCount; ++Index)
-			{
-				const float Alpha = LateralCount == 1
-					                    ? 0.5f
-					                    : static_cast<float>(Index) / static_cast<float>(LateralCount - 1);
-
-				const float LateralOffset = FMath::Lerp(-HalfWidth, HalfWidth, Alpha);
-
-				const FVector SpawnLocation =
-					Point.Location +
-					Direction * Distance +
-					RightVector * LateralOffset;
-
-				PointTransforms.Add(FTransform(SpawnRotation, SpawnLocation));
-			}
-		}
-
-		if (MaxVFXPerEmitter > 0 && PointTransforms.Num() > MaxVFXPerEmitter)
-		{
-			TArray<FTransform> SampledTransforms;
-
-			if (MaxVFXPerEmitter == 1)
-			{
-				SampledTransforms.Add(PointTransforms[0]);
-			}
-			else
-			{
-				const float Step =
-					static_cast<float>(PointTransforms.Num() - 1) /
-					static_cast<float>(MaxVFXPerEmitter - 1);
-
-				for (int32 Index = 0; Index < MaxVFXPerEmitter; ++Index)
-				{
-					const int32 SourceIndex =
-						FMath::Clamp(
-							FMath::RoundToInt(Index * Step),
-							0,
-							PointTransforms.Num() - 1);
-
-					SampledTransforms.Add(PointTransforms[SourceIndex]);
-				}
-			}
-
-			PointTransforms = MoveTemp(SampledTransforms);
-		}
-
-		OutTransforms.Append(PointTransforms);
+		OutTransforms.Add(FTransform(SpawnRotation, Point.Location));
 	}
 }
 
@@ -311,6 +207,41 @@ void UNSCosmeticHandler_Flame::StopFlameCosmetic(int32 InstanceId)
 	}
 
 	ActiveFlames.Remove(InstanceId);
+}
+
+void UNSCosmeticHandler_Flame::ApplyFlameVFXParameters(
+	UNiagaraComponent* VFX,
+	const FNSCosmeticEventNetData& EventData) const
+{
+	if (!IsValid(VFX))
+	{
+		return;
+	}
+
+	if (!FlameScaleParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(FlameScaleParameterName, NiagaraFlameScale);
+	}
+
+	if (!SpawnRateParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(SpawnRateParameterName, NiagaraSpawnRate);
+	}
+
+	if (!FlameRangeParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(FlameRangeParameterName, FMath::Max(EventData.Range, 0.0f));
+	}
+
+	if (!ConeHalfAngleParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(ConeHalfAngleParameterName, FMath::Max(EventData.ConeHalfAngle, 0.0f));
+	}
+
+	if (!StartRadiusParameterName.IsNone())
+	{
+		VFX->SetVariableFloat(StartRadiusParameterName, FMath::Max(EventData.Radius, 0.0f));
+	}
 }
 
 void UNSCosmeticHandler_Flame::BeginDestroy()
