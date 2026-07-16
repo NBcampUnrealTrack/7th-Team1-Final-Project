@@ -37,6 +37,12 @@ public:
 	// 능동적 세션 정리 함수 (일시정지 메뉴 "메인메뉴" 버튼)
 	UFUNCTION(BlueprintCallable, Category = "Session")
 	void LeaveSessionToTitle();
+	
+	// 인런 진입 시 세션을 InProgress로 전환해 중간 참가를 차단
+	void StartRunSession();
+
+	// 허브 복귀 시 세션을 다시 열어 참가를 허용
+	void EndRunSession();
 
 	UPROPERTY(BlueprintAssignable, Category = "Session")
 	FNSOnCreateSessionComplete OnCreateSessionComplete;

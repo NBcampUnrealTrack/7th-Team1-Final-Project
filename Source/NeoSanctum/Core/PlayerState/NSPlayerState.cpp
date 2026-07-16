@@ -55,6 +55,33 @@ ANSPlayerState::ANSPlayerState()
 	bIsDead = false;
 }
 
+void ANSPlayerState::AddKill(ENSEnemyRank Rank)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	switch (Rank)
+	{
+	case ENSEnemyRank::Normal:
+		++NormalKillCount;
+		break;
+	case ENSEnemyRank::Elite:
+		++EliteKillCount;
+		break;
+	case ENSEnemyRank::Boss:
+		++BossKillCount;
+		break;
+	// 혹시 모를 예외처리	
+	default:
+		return;  
+	}
+
+	// 즉시 복제
+	ForceNetUpdate(); 
+}
+
 void ANSPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -72,6 +99,9 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
 	DOREPLIFETIME(ANSPlayerState, CurrentCompanionDefinitionTag);
 	DOREPLIFETIME(ANSPlayerState, PlayerSlotIndex);
+	DOREPLIFETIME(ANSPlayerState, NormalKillCount);
+	DOREPLIFETIME(ANSPlayerState, EliteKillCount);
+	DOREPLIFETIME(ANSPlayerState, BossKillCount);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)

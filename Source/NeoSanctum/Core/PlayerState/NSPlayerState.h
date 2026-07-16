@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "UObject/PrimaryAssetId.h"
 #include "NSPlayerState.generated.h"
 
@@ -100,6 +101,14 @@ public:
 	// 투표 후 확인 버튼을 눌렀는지 확인용
 	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
 	bool bVoteConfirmed = false;
+	
+	// 랭크별 처치 수 가져올 용도
+	int32 GetNormalKillCount() const { return NormalKillCount; }
+	int32 GetEliteKillCount() const { return EliteKillCount; }
+	int32 GetBossKillCount() const { return BossKillCount; }
+	
+	// 죽은 적의 랭크에 따라 해당 카운트 증가
+	void AddKill(ENSEnemyRank Rank);
 
 protected:
 	virtual void BeginPlay() override;
@@ -165,6 +174,16 @@ private:
 	// 플레이어별 고정 스폰 슬롯
 	UPROPERTY(Replicated)
 	int32 PlayerSlotIndex = INDEX_NONE;
+	
+	UPROPERTY(Replicated)
+	int32 NormalKillCount = 0;
+
+	UPROPERTY(Replicated)
+	int32 EliteKillCount = 0;
+
+	UPROPERTY(Replicated)
+	int32 BossKillCount = 0;
+	
 	
 	UFUNCTION()
 	void OnRep_bIsReady();

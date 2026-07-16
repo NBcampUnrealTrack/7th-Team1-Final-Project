@@ -90,6 +90,15 @@ void ANSRunGameMode::BeginPlay()
 	}
 }
 
+void ANSRunGameMode::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+	
+	// 인런 진입 후 참여 막는 용도
+	ErrorMessage = TEXT("게임이 이미 진행 중이라 참가할 수 없습니다.");
+	UE_LOG(LogTemp, Warning, TEXT("[Session] 인런 진행 중 조인 거부: %s"), *Address);
+}
+
 void ANSRunGameMode::NotifyStageCleared_Implementation()
 {
 	if (!HasAuthority())
@@ -135,6 +144,36 @@ void ANSRunGameMode::NotifyStageCleared_Implementation()
 	OpenRunEndVote(false);
 }
 
+bool ANSRunGameMode::AreAllPlayersDeadOrGone() const
+{
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState)
+	{
+		return false;
+	}
+
+	bool bAnyAlive = false;
+	for (APlayerState* PS : NSGameState->PlayerArray)
+	{
+		ANSPlayerState* NSPS = Cast<ANSPlayerState>(PS);
+		// 유효하지 않은 PS는 제외
+		if (!NSPS)
+		{
+			continue;
+		}               
+		
+		if (!NSPS->IsDead())
+		{
+			// 살아있는 사람 발견
+			bAnyAlive = true; 
+			break;
+		}
+	}
+	
+	// 살아있는 사람이 없으면 전멸
+	return !bAnyAlive;   
+}
+
 void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 {
 	if (!HasAuthority())
@@ -142,37 +181,34 @@ void ANSRunGameMode::NotifyPlayerDied_Implementation(AController* DeadPlayer)
 		return;
 	}
 
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	if (AreAllPlayersDeadOrGone())
 	{
-		ANSPlayerController* NSPlayerController = Cast<ANSPlayerController>(It->Get());
-		if (!NSPlayerController)
-		{
-			continue;
-		}
-
-		// 죽은 플레이어는 제외
-		if (NSPlayerController == DeadPlayer)
-		{
-			continue;
-		}
-
-		// PlayerState 기반 생존 확인
-		ANSPlayerState* NSPlayerState = NSPlayerController->GetPlayerState<ANSPlayerState>();
-		if (NSPlayerState && !NSPlayerState->IsDead())
-		{
-			return;
-		}
+		OpenRunEndVote(true);
 	}
-
-	OpenRunEndVote(true);
 }
 
-void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy)
+void ANSRunGameMode::NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AController* Killer)
 {
 	if (!HasAuthority() || !DeadEnemy)
 	{
 		return;
 	}
+	
+	// 가해자 PlayerState에 랭크별 킬 기록
+	if (ANSPlayerState* KillerPS =
+		Killer ? Killer->GetPlayerState<ANSPlayerState>() : nullptr)
+	{
+		const UNSEnemyCoreComponent* CoreComponent =
+			DeadEnemy->FindComponentByClass<UNSEnemyCoreComponent>();
+		if (const UNSEnemyData* EnemyData = 
+			CoreComponent ? CoreComponent->GetEnemyData() : nullptr)
+		{
+			KillerPS->AddKill(EnemyData->EnemyRank);
+		}
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Kill] DeadEnemy=%s Killer=%s"),
+	   *GetNameSafe(DeadEnemy), *GetNameSafe(Killer));
 
 	// 킬 집계,보상은 페이즈 무관하게 항상 진행
 	ANSRunGameState* RunGS = GetGameState<ANSRunGameState>();
@@ -830,6 +866,43 @@ void ANSRunGameMode::Logout(AController* Exiting)
 	DestroyHealProxy(Cast<APlayerController>(Exiting));
 
 	Super::Logout(Exiting);
+	
+	// 플레이어 탈주 후 남은 플레이어가 전원 사망인지 재판정
+	if (HasAuthority())
+	{
+		GetWorldTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateUObject(
+				this,
+				&ANSRunGameMode::CheckRunEndAfterLogout));
+	}
+}
+
+void ANSRunGameMode::CheckRunEndAfterLogout()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	ANSRunGameState* NSGameState = GetGameState<ANSRunGameState>();
+	if (!NSGameState)
+	{
+		return;
+	}
+
+	const int32 PlayerCount = NSGameState->PlayerArray.Num();
+	const bool bAllDead = AreAllPlayersDeadOrGone();
+	UE_LOG(LogTemp, Warning, TEXT("[RunEnd] NextTick 판정 PlayerArray=%d AllDead=%d Phase=%d"),
+		PlayerCount, bAllDead ? 1 : 0, (int32)NSGameState->RunEndPhase);
+
+	if (NSGameState->RunEndPhase == ENSRunEndPhase::None && bAllDead)
+	{
+		OpenRunEndVote(true);
+	}
+	else if (NSGameState->RunEndPhase == ENSRunEndPhase::Voting)
+	{
+		HandlePlayerConfirmed();
+	}
 }
 
 void ANSRunGameMode::HandleSeamlessTravelPlayer(AController*& Controller)

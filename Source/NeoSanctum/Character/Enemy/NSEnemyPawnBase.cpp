@@ -180,14 +180,6 @@ void ANSEnemyPawnBase::SetDifficultyScale(const FNSDifficultyScale& InScale)
 	}
 }
 
-void ANSEnemyPawnBase::Die()
-{
-	if (StateComponent)
-	{
-		StateComponent->Die();
-	}
-}
-
 bool ANSEnemyPawnBase::IsDead() const
 {
 	return StateComponent && StateComponent->IsDead();
@@ -307,8 +299,8 @@ void ANSEnemyPawnBase::HandleDeathStarted()
 	}
 
 	NS_ACTOR_LOG(this, LogNS, Log, "GameMode에 Pawn 사망을 알립니다.");
-
-	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+	AController* Killer = StateComponent ? StateComponent->GetLastKiller() : nullptr;
+	INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this, Killer);
 }
 
 void ANSEnemyPawnBase::InitializeRuntimeMaterials()

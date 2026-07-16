@@ -4,6 +4,7 @@
 #include "NSGameFlowSubsystem.h"
 
 #include "NSDataSubsystem.h"
+#include "NSSessionSubsystem.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
@@ -164,7 +165,9 @@ void UNSGameFlowSubsystem::HandleRunGameDataReady()
 		return;
 	}
 	
-	DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &UNSGameFlowSubsystem::HandleRunGameDataReady);
+	DataSubsystem->OnRunGameDataReady.RemoveDynamic(
+		this,
+		&UNSGameFlowSubsystem::HandleRunGameDataReady);
 	
 	const UNSLevelConfig* LevelConfig = DataSubsystem->GetCurrentRunLevelConfig();
 	if (!IsValid(LevelConfig))
@@ -176,6 +179,16 @@ void UNSGameFlowSubsystem::HandleRunGameDataReady()
 	if (!World)
 	{
 		return;
+	}
+	
+	// 인런 진입 → 세션 잠금
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UNSSessionSubsystem* Session =
+			GI->GetSubsystem<UNSSessionSubsystem>())
+		{
+			Session->StartRunSession();
+		}
 	}
 	
 	// 서버는 travel 전에 필요한 데이터를 선로딩하고
@@ -220,6 +233,16 @@ bool UNSGameFlowSubsystem::AdvanceToNextStage()
 bool UNSGameFlowSubsystem::ReturnToHub()
 {
 	StopAndResetDifficultyTimer();
+	
+	// 허브 복귀하면 세션 다시 열기
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UNSSessionSubsystem* Session = 
+			GI->GetSubsystem<UNSSessionSubsystem>())
+		{
+			Session->EndRunSession();
+		}
+	}
 	
 	UNSLevelCatalog* Catalog = GetCatalog();
 	

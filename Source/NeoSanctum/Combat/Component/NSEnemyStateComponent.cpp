@@ -30,7 +30,7 @@ void UNSEnemyStateComponent::InitState(UNSMonsterAttributeSet* InMonsterAttribut
 	MonsterAttributes = InMonsterAttributes;
 }
 
-void UNSEnemyStateComponent::Die()
+void UNSEnemyStateComponent::Die(AController* Killer)
 {
 	if (!IsOwnerAuthority() || bDead)
 	{
@@ -38,6 +38,7 @@ void UNSEnemyStateComponent::Die()
 	}
 
 	bDead = true;
+	LastKiller = Killer;
 
 	FinishHitReaction();
 	ResetHitGauge();

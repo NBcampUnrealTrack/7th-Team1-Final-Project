@@ -200,14 +200,6 @@ FVector ANSEnemyCharacterBase::GetAimLocation() const
 	return GetActorLocation();
 }
 
-void ANSEnemyCharacterBase::Die()
-{
-	if (StateComponent)
-	{
-		StateComponent->Die();
-	}
-}
-
 bool ANSEnemyCharacterBase::IsDead() const
 {
 	return StateComponent && StateComponent->IsDead();
@@ -441,6 +433,11 @@ void ANSEnemyCharacterBase::PrepareForReuse(
 	{
 		StateComponent->ResetForReuse();
 	}
+	
+	if (MinimapIconComponent)
+	{
+		MinimapIconComponent->SetShowOnMinimap(true);
+	}
 
 	ClearCurrentAttackRow();
 	ClearCombatAimTarget();
@@ -523,6 +520,11 @@ void ANSEnemyCharacterBase::DeactivateForPool()
 	if (DamageFlashComponent)
 	{
 		DamageFlashComponent->CancelFlash();
+	}
+	
+	if (MinimapIconComponent)
+	{
+		MinimapIconComponent->SetShowOnMinimap(false);
 	}
 
 	SetActorHiddenInGame(true);
@@ -913,7 +915,8 @@ void ANSEnemyCharacterBase::HandleDeathStarted()
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
 	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
 	{
-		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this);
+		AController* Killer = StateComponent ? StateComponent->GetLastKiller() : nullptr;
+		INSRunGameModeInterface::Execute_NotifyEnemyKilled(GameMode, this, Killer);
 	}
 
 	OnEnemyDead.Broadcast();
