@@ -563,7 +563,9 @@ void UNSUIManagerSubsystem::ClearHUD()
 		HUDWidget = nullptr;
 	}
 
+	// HUD를 갈아끼울 때 이전 증강창 상태도 같이 정리.
 	bAugmentationPanelOpen = false;
+	bFullAugmentationPanelOpen = false;
 }
 
 void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
@@ -612,10 +614,7 @@ void UNSUIManagerSubsystem::OpenAugmentSelectionPanel()
 
 void UNSUIManagerSubsystem::CloseAugmentationPanel()
 {
-	if (!bAugmentationPanelOpen)
-	{
-		return;
-	}
+	// 위젯이 없거나 플래그가 어긋나도 다음 입력에서 복구되도록 상태부터 정리.
 	bAugmentationPanelOpen = false;
 	bFullAugmentationPanelOpen = false;
 	
