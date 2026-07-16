@@ -100,6 +100,10 @@ private:
 private:
 	void InitializeAbilityActorInfo();
 	void ApplyInitialAttributeEffect();
+
+	// 설치 중 무적 GameplayEffect를 서버에서 적용.
+	void ApplyDeploymentInvincibilityEffect();
+
 	// 초기화 GE에 SetByCaller payload 적용
 	void ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const;
 
@@ -228,6 +232,10 @@ protected:
 	// Attribute 초기화 GE
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
+
+	// 터렛 설치가 끝날 때까지 무적 상태를 부여하는 GE.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Deployment")
+	TSubclassOf<UGameplayEffect> DeploymentInvincibilityEffectClass;
 
 	// Turret을 소환한 캐릭터 Pawn
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")

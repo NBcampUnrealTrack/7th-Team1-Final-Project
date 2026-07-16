@@ -259,6 +259,7 @@ void ANSTurret::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeAbilityActorInfo();
+	ApplyDeploymentInvincibilityEffect();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
 	StartLifetimeTimer();
@@ -434,6 +435,29 @@ void ANSTurret::ApplyInitialAttributeEffect()
 	bInitialAttributeEffectApplied = true;
 	
 	RefreshDetectionRange();
+}
+
+void ANSTurret::ApplyDeploymentInvincibilityEffect()
+{
+	if (!HasAuthority() || !ASC || !DeploymentInvincibilityEffectClass)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+		DeploymentInvincibilityEffectClass,
+		1.0f,
+		EffectContext
+	);
+
+	if (SpecHandle.IsValid())
+	{
+		// Duration GE가 만료되면 State.Invincible도 자동으로 제거됨.
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
 }
 
 void ANSTurret::ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const
