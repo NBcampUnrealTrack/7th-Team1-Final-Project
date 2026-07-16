@@ -2,6 +2,8 @@
 
 #include "NeoSanctum/UI/Minimap/NSMinimapWidget.h"
 
+#include "Components/PanelWidget.h"
+#include "Components/RetainerBox.h"
 #include "Engine/DataTable.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Pawn.h"
@@ -27,6 +29,8 @@ void UNSMinimapWidget::NativeConstruct()
 			MinimapSubsystem->OnMinimapUpdated.AddDynamic(this, &ThisClass::HandleMinimapUpdated);
 		}
 	}
+
+	ApplyCircleMaskMaterial();
 }
 
 void UNSMinimapWidget::NativeDestruct()
@@ -45,6 +49,11 @@ void UNSMinimapWidget::NativeDestruct()
 void UNSMinimapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!bCircleMaskMaterialApplied)
+	{
+		ApplyCircleMaskMaterial();
+	}
 	
 	// 이 위젯의 레이아웃이나 렌더 상태가 바뀔 수 있으니 다시 계산/다시 그리도록 하는 함수
 	InvalidateLayoutAndVolatility();
@@ -53,6 +62,33 @@ void UNSMinimapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime
 void UNSMinimapWidget::HandleMinimapUpdated()
 {
 	InvalidateLayoutAndVolatility();
+}
+
+void UNSMinimapWidget::ApplyCircleMaskMaterial()
+{
+	URetainerBox* OwningRetainerBox = FindOwningRetainerBox();
+	if (!OwningRetainerBox || !MinimapConfig)
+	{
+		return;
+	}
+
+	OwningRetainerBox->SetTextureParameter(MinimapConfig->RetainerTextureParameter);
+	OwningRetainerBox->SetEffectMaterial(MinimapConfig->CircleMaskMaterial);
+	OwningRetainerBox->RequestRender();
+	bCircleMaskMaterialApplied = true;
+}
+
+URetainerBox* UNSMinimapWidget::FindOwningRetainerBox() const
+{
+	for (UPanelWidget* ParentWidget = GetParent(); ParentWidget; ParentWidget = ParentWidget->GetParent())
+	{
+		if (URetainerBox* RetainerBox = Cast<URetainerBox>(ParentWidget))
+		{
+			return RetainerBox;
+		}
+	}
+
+	return nullptr;
 }
 
 int32 UNSMinimapWidget::NativePaint(
@@ -92,7 +128,12 @@ int32 UNSMinimapWidget::NativePaint(
 	FSlateBrush BackgroundBrush;
 	BackgroundBrush.DrawAs = ESlateBrushDrawType::RoundedBox;
 	BackgroundBrush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
-	BackgroundBrush.OutlineSettings.CornerRadii = FVector4(4.0f, 4.0f, 4.0f, 4.0f);
+	const float BackgroundCornerRadius = MapSize * 0.5f;
+	BackgroundBrush.OutlineSettings.CornerRadii = FVector4(
+		BackgroundCornerRadius,
+		BackgroundCornerRadius,
+		BackgroundCornerRadius,
+		BackgroundCornerRadius);
 
 	FSlateDrawElement::MakeBox(
 		OutDrawElements,
@@ -248,6 +289,40 @@ FVector2D UNSMinimapWidget::GetMapDrawPosition(const FVector2D& ViewSize, float 
 	return FVector2D(
 		(ViewSize.X - MapSize) * 0.5f,
 		(ViewSize.Y - MapSize) * 0.5f);
+}
+
+bool UNSMinimapWidget::TryResolveIconCenterInCircle(
+	const FVector2D& InIconCenter,
+	float IconRadius,
+	const FVector2D& MapPosition,
+	float MapSize,
+	ENSMinimapIconBoundsPolicy BoundsPolicy,
+	FVector2D& OutIconCenter,
+	bool& bOutClamped) const
+{
+	bOutClamped = false;
+	const FVector2D MapCenter = MapPosition + FVector2D(MapSize * 0.5f, MapSize * 0.5f);
+	const float SafeIconRadius = FMath::Max(IconRadius, 0.0f);
+	const float Radius = FMath::Max(MapSize * 0.5f - SafeIconRadius, 0.0f);
+	const FVector2D FromCenter = InIconCenter - MapCenter;
+	const float DistanceFromCenter = FromCenter.Size();
+
+	if (DistanceFromCenter <= Radius)
+	{
+		OutIconCenter = InIconCenter;
+		return true;
+	}
+
+	if (BoundsPolicy == ENSMinimapIconBoundsPolicy::Hide)
+	{
+		return false;
+	}
+
+	OutIconCenter = DistanceFromCenter > KINDA_SMALL_NUMBER
+		? MapCenter + FromCenter * (Radius / DistanceFromCenter)
+		: MapCenter;
+	bOutClamped = true;
+	return true;
 }
 
 const FNSMinimapLayer* UNSMinimapWidget::FindNearestLowerLayer(const TArray<FNSMinimapLayer>& Layers, int32 CurrentLayerIndex) const
@@ -499,19 +574,65 @@ int32 UNSMinimapWidget::DrawMinimapIcons(
 		const float IconU = FMath::Clamp((IconWorldLocation.X - CurrentLayer.WorldBoundsMin.X) / BoundsSize.X, 0.0f, 1.0f);
 		const float IconV = FMath::Clamp(1.0f - (IconWorldLocation.Y - CurrentLayer.WorldBoundsMin.Y) / BoundsSize.Y, 0.0f, 1.0f);
 		const float IconDiameter = FMath::Max(IconData.IconRow->Diameter, 1.0f);
-		const FVector2D IconSize(IconDiameter, IconDiameter);
-		const FVector2D IconCenter = LayerDrawPosition + FVector2D(IconU * LayerDrawSize.X, IconV * LayerDrawSize.Y);
+		const FVector2D RawIconCenter = LayerDrawPosition + FVector2D(IconU * LayerDrawSize.X, IconV * LayerDrawSize.Y);
+		const FVector2D DisplayRawIconCenter =
+			MapCenter + FVector2D(TransformVector(LayerRenderTransform, RawIconCenter - MapCenter));
+
+		const float NormalIconScale = FMath::Max(IconData.IconRow->IconScale, 0.01f);
+		const float ClampIconScale = FMath::Max(IconData.IconRow->ClampIconScale, 0.01f);
+		FVector2D IconCenter = DisplayRawIconCenter;
+		bool bClamped = false;
+		if (!TryResolveIconCenterInCircle(
+			IconCenter,
+			IconDiameter * NormalIconScale * 0.5f,
+			MapPosition,
+			MapSize,
+			IconData.IconRow->BoundsPolicy,
+			IconCenter,
+			bClamped))
+		{
+			continue;
+		}
+
+		UTexture2D* IconTexture = bClamped ? IconData.IconRow->ClampIconTexture.Get() : IconData.IconRow->IconTexture.Get();
+		if (!IconTexture)
+		{
+			continue;
+		}
+
+		const float IconScale = bClamped ? ClampIconScale : NormalIconScale;
+		const FVector2D IconSize(IconDiameter * IconScale, IconDiameter * IconScale);
+		if (bClamped)
+		{
+			bool bReclamped = false;
+			if (!TryResolveIconCenterInCircle(
+				DisplayRawIconCenter,
+				IconSize.X * 0.5f,
+				MapPosition,
+				MapSize,
+				ENSMinimapIconBoundsPolicy::ClampToEdge,
+				IconCenter,
+				bReclamped))
+			{
+				continue;
+			}
+		}
+
 		const FVector2D IconPosition = IconCenter - IconSize * 0.5f;
 
 		FSlateBrush IconBrush;
+		IconBrush.SetResourceObject(IconTexture);
 		IconBrush.ImageSize = IconSize;
-		IconBrush.DrawAs = ESlateBrushDrawType::RoundedBox;
-		IconBrush.OutlineSettings.RoundingType = ESlateBrushRoundingType::FixedRadius;
-		IconBrush.OutlineSettings.CornerRadii = FVector4(
-			IconDiameter * 0.5f,
-			IconDiameter * 0.5f,
-			IconDiameter * 0.5f,
-			IconDiameter * 0.5f);
+		IconBrush.DrawAs = ESlateBrushDrawType::Image;
+
+		FSlateRenderTransform IconRenderTransform;
+		if (bClamped)
+		{
+			const FVector2D ClampDirection = DisplayRawIconCenter - MapCenter;
+			const float ClampRotationDegrees = FMath::RadiansToDegrees(FMath::Atan2(ClampDirection.Y, ClampDirection.X))
+				+ IconData.IconRow->ClampIconRotationOffsetDegrees;
+			IconRenderTransform = FSlateRenderTransform(FQuat2D(FMath::DegreesToRadians(ClampRotationDegrees)));
+		}
 
 		FSlateDrawElement::MakeBox(
 			OutDrawElements,
@@ -519,8 +640,8 @@ int32 UNSMinimapWidget::DrawMinimapIcons(
 			AllottedGeometry.ToPaintGeometry(
 				IconSize,
 				FSlateLayoutTransform(IconPosition),
-				LayerRenderTransform,
-				(MapCenter - IconPosition) / IconSize),
+				IconRenderTransform,
+				FVector2D(0.5f, 0.5f)),
 			&IconBrush,
 			ESlateDrawEffect::None,
 			IconData.IconRow->Color);

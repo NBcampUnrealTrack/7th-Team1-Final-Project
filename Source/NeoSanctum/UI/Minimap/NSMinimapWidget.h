@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "NeoSanctum/System/Minimap/NSMinimapTypes.h"
 #include "NSMinimapWidget.generated.h"
 
 class APawn;
@@ -36,6 +37,19 @@ private:
 
 	//미니맵 표시 위치 계산
 	FVector2D GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const;
+
+	void ApplyCircleMaskMaterial();
+
+	class URetainerBox* FindOwningRetainerBox() const;
+
+	bool TryResolveIconCenterInCircle(
+		const FVector2D& InIconCenter,
+		float IconRadius,
+		const FVector2D& MapPosition,
+		float MapSize,
+		ENSMinimapIconBoundsPolicy BoundsPolicy,
+		FVector2D& OutIconCenter,
+		bool& bOutClamped) const;
 
 	//미니맵 층 그리기
 	int32 DrawMinimapLayer(
@@ -73,4 +87,6 @@ private:
 	//미니맵 UI 표시 설정
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Config", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UNSMinimapConfigDataAsset> MinimapConfig;
+
+	bool bCircleMaskMaterialApplied = false;
 };
