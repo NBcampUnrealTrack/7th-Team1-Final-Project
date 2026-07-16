@@ -1,4 +1,4 @@
-﻿﻿// Copyright 2026 One Team. All rights reserved.
+﻿// Copyright 2026 One Team. All rights reserved.
 
 
 #include "NSPlayerCharacterBase.h"
@@ -15,7 +15,6 @@
 #include "GameFramework/GameModeBase.h"
 #include "MotionWarpingComponent.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"

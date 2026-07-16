@@ -1,4 +1,4 @@
-﻿﻿// Copyright 2026 One Team. All rights reserved.
+﻿// Copyright 2026 One Team. All rights reserved.
 
 #pragma once
 
