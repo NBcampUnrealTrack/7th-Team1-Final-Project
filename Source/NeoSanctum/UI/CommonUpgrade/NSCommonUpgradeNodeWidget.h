@@ -48,6 +48,9 @@ protected:
 	TObjectPtr<UImage> NodeHoveredFrameImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> NodePressedFrameImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> LevelText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
@@ -59,6 +62,8 @@ protected:
 private:
 	void HandleHovered();
 	void HandleUnhovered();
+	void HandlePressed();
+	void HandleReleased();
 	void HandleClicked();
 
 	FName BoundNodeId;

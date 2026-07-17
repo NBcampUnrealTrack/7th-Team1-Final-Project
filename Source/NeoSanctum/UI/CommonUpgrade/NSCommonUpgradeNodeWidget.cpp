@@ -80,8 +80,16 @@ void UNSCommonUpgradeNodeWidget::NativeConstruct()
 		NodeHoveredFrameImage->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
+	if (IsValid(NodePressedFrameImage))
+	{
+		// Pressed 프레임은 버튼을 누를 때만 보여줌.
+		NodePressedFrameImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
 	OnHovered().AddUObject(this, &ThisClass::HandleHovered);
 	OnUnhovered().AddUObject(this, &ThisClass::HandleUnhovered);
+	OnPressed().AddUObject(this, &ThisClass::HandlePressed);
+	OnReleased().AddUObject(this, &ThisClass::HandleReleased);
 	OnClicked().AddUObject(this, &ThisClass::HandleClicked);
 }
 
@@ -119,6 +127,22 @@ void UNSCommonUpgradeNodeWidget::HandleUnhovered()
 	if (!BoundNodeId.IsNone())
 	{
 		OnNodeUnhovered.Broadcast(BoundNodeId);
+	}
+}
+
+void UNSCommonUpgradeNodeWidget::HandlePressed()
+{
+	if (IsValid(NodePressedFrameImage))
+	{
+		NodePressedFrameImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+}
+
+void UNSCommonUpgradeNodeWidget::HandleReleased()
+{
+	if (IsValid(NodePressedFrameImage))
+	{
+		NodePressedFrameImage->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 
