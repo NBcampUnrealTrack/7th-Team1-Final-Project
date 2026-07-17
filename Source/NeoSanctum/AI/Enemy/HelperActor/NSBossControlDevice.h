@@ -1,56 +1,107 @@
-﻿// Copyright 2026 One Team. All rights reserved.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "NSDestructibleObjectBase.h"
+#include "GameFramework/Actor.h"
+#include "AbilitySystemInterface.h"
+#include "GenericTeamAgentInterface.h"
+#include "GameplayTagContainer.h"
+#include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBossControlDevice.generated.h"
 
+class USkeletalMeshComponent;
+class UAbilitySystemComponent;
+class UNSMonsterAttributeSet;
+class UNSEnemyStateComponent;
+class UNSHitReactionComponent;
+class UNSDamageFlashComponent;
+class UNSDissolveComponent;
+class UMaterialInstanceDynamic;
 class ANSBossControlDevice;
+class UCapsuleComponent;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FNSControlDeviceDestroyed, ANSBossControlDevice*);
 
 UCLASS()
-class NEOSANCTUM_API ANSBossControlDevice : public ANSDestructibleObjectBase
+class NEOSANCTUM_API ANSBossControlDevice : public AActor,
+                                            public IAbilitySystemInterface,
+                                            public IGenericTeamAgentInterface
 {
-	GENERATED_BODY()
-
+    GENERATED_BODY()
 public:
-	ANSBossControlDevice();
+    ANSBossControlDevice();
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return ASC; }
 
-public:
-	// 서버에서 이 장치가 파괴될 때 1회 발생 (보스가 바인딩)
-	FNSControlDeviceDestroyed OnControlDeviceDestroyed;
+    // 보스(Enemy)의 자기 공격을 HasSameTeam으로 걸러내기 위한 Enemy 팀 고정
+    virtual FGenericTeamId GetGenericTeamId() const override
+    {
+        return FGenericTeamId(static_cast<uint8>(ETeamId::Enemy));
+    }
 
-	// [서버 전용] MotherShip이 바닥 트레이스로 확정한 최종 위치/회전을 적용하고 복제 프로퍼티에 반영
-	// 호출부(ANSBossMotherShip::PlaceControlDeviceOnGround)가 이미 HasAuthority() 가드 안에서만 호출.
-	void ApplyGroundPlacement(const FVector& InGroundLocation, const FRotator& InGroundRotation);
+    // 서버에서 파괴 시 1회 (보스가 바인딩 → 무적 해제)
+    FNSControlDeviceDestroyed OnControlDeviceDestroyed;
 
-	// 액터 피벗에서 메시 바운드 최하단까지의 거리. 바닥 Z에 더하면 메시가 바닥에 파묻히지 않음.
-	float GetPivotToMeshBottomOffset() const;
+    void ApplyGroundPlacement(const FVector& InGroundLocation, const FRotator& InGroundRotation);
+    float GetPivotToMeshBottomOffset() const;
 
 protected:
-	// 베이스 서버 파괴 훅 오버라이드 → 소유 보스에게 파괴 통지
-	virtual void OnServerDestroyed(const FVector& Origin) override;
+    virtual void BeginPlay() override;
+
+    UFUNCTION()
+    void OnRep_GroundPlaced();
+    void ApplyPlacementTransform();
+
+    void HandleDeadStateChanged(bool bDead);  // StateComponent 사망 훅(전 머신)
+    void SetupFlashMaterials();               // 피격 플래시용 MID 생성 + 등록
+
+protected:
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UCapsuleComponent> CollisionComponent;   // 루트 겸 피격 콜라이더
+    
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<USkeletalMeshComponent> Mesh;
+
+    UPROPERTY(VisibleAnywhere, Category = "GAS")
+    TObjectPtr<UAbilitySystemComponent> ASC;
+
+    UPROPERTY()
+    TObjectPtr<UNSMonsterAttributeSet> AttributeSet;
+
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UNSEnemyStateComponent> StateComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UNSDissolveComponent> DissolveComponent;
+
+    // 존재하는 동안 자신에게 유지할 지속 GameplayCue (VFX+사운드)
+    UPROPERTY(EditDefaultsOnly, Category = "ControlDevice|Cue")
+    FGameplayTag SustainCueTag;
+
+    UPROPERTY(EditDefaultsOnly, Category = "ControlDevice|Cue")
+    FGameplayTag DestroyCueTag;
+    
+    UPROPERTY(EditAnywhere, Category = "ControlDevice", meta = (ClampMin = "1.0"))
+    float InitialHealth = 100.f;
 
 private:
-	UFUNCTION()
-	void OnRep_GroundPlaced();
+    bool bDied = false;
 
-	// 부착 해제 + 위치/회전 적용 (서버 직접 호출과 OnRep 양쪽에서 공유)
-	void ApplyPlacementTransform();
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UMaterialInstanceDynamic>> FlashMIDs;  // GC 방지 보관
 
-	// ---- Replicated: 서버가 바닥 트레이스로 확정한 최종 배치값 ----
-	// bReplicateMovement=false(NSDestructibleObjectBase)라 위치 변경이 자동 전파되지 않으므로,
-	// 기존 ImpactAnchor 패턴과 동일하게 명시적 복제 프로퍼티 + OnRep으로 전파한다.
-	UPROPERTY(ReplicatedUsing = OnRep_GroundPlaced)
-	bool bGroundPlaced = false;
+    UPROPERTY(ReplicatedUsing = OnRep_GroundPlaced)
+    bool bGroundPlaced = false;
 
-	UPROPERTY(Replicated)
-	FVector_NetQuantize GroundLocation = FVector::ZeroVector;
+    UPROPERTY(Replicated)
+    FVector_NetQuantize GroundLocation = FVector::ZeroVector;
 
-	UPROPERTY(Replicated)
-	FRotator GroundRotation = FRotator::ZeroRotator;
+    UPROPERTY(Replicated)
+    FRotator GroundRotation = FRotator::ZeroRotator;
 };
