@@ -10,6 +10,7 @@
 #include "NSCharacterSlotWidget.h"
 #include "Components/Image.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 
 void UNSCharacterSelectWidget::NativeConstruct()
@@ -22,8 +23,11 @@ void UNSCharacterSelectWidget::NativeConstruct()
 	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
 		CachedCharacters = DataSubsystem->GetCachedCharacterSelectRows();
+		UE_LOG(LogTemp, Warning, TEXT("[CharSelect] Construct Num=%d"), CachedCharacters.Num());
 	}
-
+	
+	CurrentIndex = FindInitialCharacterIndex();
+ 
 	if (NextButton)
 	{
 		NextButton->OnClicked().AddUObject(this, &UNSCharacterSelectWidget::SelectNext);
@@ -136,8 +140,12 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 
 void UNSCharacterSelectWidget::ConfirmSelection()
 {
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] Confirm 진입 Num=%d Index=%d"),
+	   CachedCharacters.Num(), CurrentIndex);
+	
 	if (!CachedCharacters.IsValidIndex(CurrentIndex))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CharSelect] return: 인덱스 무효(목록 빔/범위 밖)"));
 		return;
 	}
 
@@ -146,10 +154,12 @@ void UNSCharacterSelectWidget::ConfirmSelection()
 	UNSCharacterData* SelectedCharacterData = SelectedData.CharacterData.Get();
 	if (!SelectedCharacterData)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("[CharSelect] return: CharacterData.Get() null"));
 		UE_LOG(LogTemp, Warning, TEXT("[CharacterSelect] 선택한 캐릭터 데이터가 로드되어 있지 않습니다."));
 		return;
 	}
-
+	
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] Broadcast %s"), *SelectedCharacterData->GetName());
 	OnCharacterSelectionConfirmed.Broadcast(SelectedCharacterData);
 }
 void UNSCharacterSelectWidget::ApplyPreviewImage(const FNSCharacterSelectData& Data)
@@ -279,4 +289,50 @@ void UNSCharacterSelectWidget::ClearBaseStatTexts()
 	{
 		MaxShieldText->SetText(EmptyText);
 	}
+}
+
+int32 UNSCharacterSelectWidget::FindInitialCharacterIndex() const
+{
+	if (CachedCharacters.IsEmpty())
+	{
+		return 0;
+	}
+
+	// 현재 선택된 캐릭터 id 확보 (서버 권위 값 우선)
+	FPrimaryAssetId CurrentId;
+	if (const APlayerController* PC = GetOwningPlayer())
+	{
+		if (const ANSPlayerState* PS = PC->GetPlayerState<ANSPlayerState>())
+		{
+			CurrentId = PS->GetCurrentCharacterDataId();
+		}
+	}
+	
+	// 현재 캐릭터 정보 없으면 첫 번째
+	if (!CurrentId.IsValid())
+	{
+		return 0;  
+	}
+
+	// 목록에서 같은 캐릭터를 찾는다
+	for (int32 Index = 0; Index < CachedCharacters.Num(); ++Index)
+	{
+		const TSoftObjectPtr<UNSCharacterData>& SoftData = CachedCharacters[Index].CharacterData;
+		if (SoftData.IsNull())
+		{
+			continue;
+		}
+
+		// 소프트 레퍼런스는 로드 없이도 경로에서 PrimaryAssetId를 만들 수 있다
+		const FPrimaryAssetId RowId(
+			UNSDataSubsystem::CharacterAssetType,
+			FName(*SoftData.GetAssetName()));
+
+		if (RowId == CurrentId)
+		{
+			return Index;
+		}
+	}
+
+	return 0; 
 }
