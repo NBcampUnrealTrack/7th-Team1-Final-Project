@@ -68,4 +68,11 @@ namespace NSGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase1Barrier);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase2Shield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Tesla);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_TeslaCoil);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_PowerOff);
+	
+	// EnemyDrone
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_EnemyDrone_Fire);
 }

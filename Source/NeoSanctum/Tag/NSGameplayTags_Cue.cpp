@@ -66,4 +66,11 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_Phase1Barrier, "GameplayCue.MotherShip.Phase1Barrier");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_Phase2Shield, "GameplayCue.MotherShip.Phase2Shield");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_Tesla, "GameplayCue.MotherShip.Tesla");
+	
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_ControlDevice_TeslaCoil, "GameplayCue.MotherShip.ControlDevice.TeslaCoil");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_ControlDevice_PowerOff, "GameplayCue.MotherShip.ControlDevice.PowerOff");
+	
+	//EnemyDrone
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_EnemyDrone_Fire, "GameplayCue.EnemyDrone_Fire");
 }
