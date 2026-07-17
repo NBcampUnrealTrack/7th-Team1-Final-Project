@@ -113,7 +113,7 @@ void UNSCommonUpgradeNodeWidget::HandleHovered()
 
 	if (!BoundNodeId.IsNone())
 	{
-		OnNodeHovered.Broadcast(BoundNodeId);
+		OnNodeHovered.Broadcast(BoundNodeId, this);
 	}
 }
 

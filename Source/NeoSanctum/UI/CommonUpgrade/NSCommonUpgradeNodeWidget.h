@@ -9,7 +9,12 @@
 
 struct FStreamableHandle;
 class UImage;
+class UNSCommonUpgradeNodeWidget;
 class UTextBlock;
+
+// 상세 패널 위치 계산에 쓰도록 호버 이벤트는 NodeId와 노드 자신을 함께 전달.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FNSCommonUpgradeNodeHoveredSignature, FName, NodeId, UNSCommonUpgradeNodeWidget*, HoveredNode);
 
 // 노드가 상위 UNSCommonUpgradeWidget에 상태를 알릴 때 쓰는 이벤트. NodeId만 전달.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSCommonUpgradeNodeSignature, FName, NodeId);
@@ -31,7 +36,7 @@ public:
 		int64 NextCost
 	);
 
-	FNSCommonUpgradeNodeSignature OnNodeHovered;
+	FNSCommonUpgradeNodeHoveredSignature OnNodeHovered;
 	FNSCommonUpgradeNodeSignature OnNodeUnhovered;
 
 	// 클릭 브리지.
