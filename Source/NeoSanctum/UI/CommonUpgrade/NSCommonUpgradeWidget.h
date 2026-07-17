@@ -51,6 +51,16 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UPanelWidget> UtilityListContainer;
 
+	// 상세 패널의 세로 위치를 헤더 아래와 카테고리 하단 사이로 제한할 때 사용.
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> CombatPanelFrame;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> SurvivalPanelFrame;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> UtilityPanelFrame;
+
 	// 표시 가능한 노드 Row가 없을 때 보여줄 빈 상태 위젯 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> EmptyStateWidget;
@@ -67,34 +77,34 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "CommonUpgrade")
 	TSubclassOf<UNSCommonUpgradeNodeWidget> NodeEntryTemplate;
 
-	// 카테고리별 디테일 패널 표시 좌표 (Canvas Panel 기준, 에디터에서 눈으로 보며 조정)
-	UPROPERTY(EditDefaultsOnly, Category = "CommonUpgrade|Layout")
-	FVector2D DetailPositionForCombat = FVector2D(760.0f, 260.0f);
+	// 상세 패널과 호버 노드 사이의 기본 간격.
+	UPROPERTY(EditDefaultsOnly, Category = "CommonUpgrade|Layout", meta = (ClampMin = "0.0"))
+	float DetailWidgetGap = 12.0f;
 
+	// 좌우는 전체 창, 위아래는 카테고리 프레임을 기준으로 적용하는 안전 여백.
 	UPROPERTY(EditDefaultsOnly, Category = "CommonUpgrade|Layout")
-	FVector2D DetailPositionForSurvival = FVector2D(1550.0f, 260.0f);
-
-	UPROPERTY(EditDefaultsOnly, Category = "CommonUpgrade|Layout")
-	FVector2D DetailPositionForUtility = FVector2D(340.0f, 260.0f);
+	FMargin DetailWidgetSafePadding = FMargin(16.0f, 72.0f, 16.0f, 16.0f);
 
 private:
 	void BuildNodeCatalog();
 	void RefreshCommonCurrencyDisplay();
 	UPanelWidget* GetContainerForCategory(ENSCommonUpgradeCategory Category) const;
-	void MoveDetailWidgetToCategoryPosition(ENSCommonUpgradeCategory Category);
+	void MoveDetailWidgetToHoveredNode(const UNSCommonUpgradeNodeWidget* HoveredNode, ENSCommonUpgradeCategory Category);
 	void TryPurchase(FName NodeId);
 
 	UFUNCTION()
 	void HandleCloseButtonClicked();
 
 	UFUNCTION()
-	void HandleNodeHovered(FName NodeId);
+	void HandleNodeHovered(FName NodeId, UNSCommonUpgradeNodeWidget* HoveredNode);
 
 	UFUNCTION()
 	void HandleNodeUnhovered(FName NodeId);
 
 	UFUNCTION()
 	void HandleNodeUpgradeRequested(FName NodeId);
+
+	UWidget* GetPanelFrameForCategory(ENSCommonUpgradeCategory Category) const;
 
 	UPROPERTY()
 	TWeakObjectPtr<APlayerController> OwningController;

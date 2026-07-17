@@ -148,8 +148,12 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 		}
 
 		const int32 CurrentLevel = ProgressionSubsystem->GetCommonSkillLevel(Pair.Key);
+		const bool bIsMaxLevel = CurrentLevel >= Pair.Value.MaxLevel;
 
-		Entry->SetupEntry(Pair.Key, Pair.Value, CurrentLevel);
+		// 비용 계산은 기존 책임대로 상위 위젯이 담당.
+		const int64 NextCost = bIsMaxLevel ? 0 : ProgressionSubsystem->GetCommonUpgradeCost(Pair.Key, CurrentLevel + 1);
+
+		Entry->SetupEntry(Pair.Key, Pair.Value, CurrentLevel, NextCost);
 		Entry->OnNodeHovered.AddUniqueDynamic(this, &ThisClass::HandleNodeHovered);
 		Entry->OnNodeUnhovered.AddUniqueDynamic(this, &ThisClass::HandleNodeUnhovered);
 		Entry->OnUpgradeRequested.AddUniqueDynamic(this, &ThisClass::HandleNodeUpgradeRequested);
@@ -191,31 +195,145 @@ UPanelWidget* UNSCommonUpgradeWidget::GetContainerForCategory(ENSCommonUpgradeCa
 	}
 }
 
-void UNSCommonUpgradeWidget::MoveDetailWidgetToCategoryPosition(ENSCommonUpgradeCategory Category)
+UWidget* UNSCommonUpgradeWidget::GetPanelFrameForCategory(ENSCommonUpgradeCategory Category) const
 {
-	UCanvasPanelSlot* CanvasSlot = IsValid(DetailWidget) ? Cast<UCanvasPanelSlot>(DetailWidget->Slot) : nullptr;
-	if (!CanvasSlot)
+	switch (Category)
+	{
+	case ENSCommonUpgradeCategory::Combat:
+		return CombatPanelFrame;
+
+	case ENSCommonUpgradeCategory::Survival:
+		return SurvivalPanelFrame;
+
+	case ENSCommonUpgradeCategory::Utility:
+		return UtilityPanelFrame;
+
+	default:
+		return nullptr;
+	}
+}
+
+void UNSCommonUpgradeWidget::MoveDetailWidgetToHoveredNode(
+	const UNSCommonUpgradeNodeWidget* HoveredNode, ENSCommonUpgradeCategory Category)
+{
+	if (!IsValid(HoveredNode) || !IsValid(DetailWidget))
 	{
 		return;
 	}
 
-	switch (Category)
+	UWidget* CategoryFrame = GetPanelFrameForCategory(Category);
+	UCanvasPanelSlot* DetailCanvasSlot = Cast<UCanvasPanelSlot>(DetailWidget->Slot);
+	if (!IsValid(CategoryFrame) || !DetailCanvasSlot)
 	{
-	case ENSCommonUpgradeCategory::Combat:
-		CanvasSlot->SetPosition(DetailPositionForCombat);
-		break;
-
-	case ENSCommonUpgradeCategory::Survival:
-		CanvasSlot->SetPosition(DetailPositionForSurvival);
-		break;
-
-	case ENSCommonUpgradeCategory::Utility:
-		CanvasSlot->SetPosition(DetailPositionForUtility);
-		break;
-
-	default:
-		break;
+		return;
 	}
+
+	// 상세 패널을 표시한 직후에도 원하는 크기를 얻을 수 있게 레이아웃을 먼저 계산.
+	ForceLayoutPrepass();
+
+	const FVector2D DetailSize = DetailWidget->GetDesiredSize();
+	if (DetailSize.X <= KINDA_SMALL_NUMBER || DetailSize.Y <= KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	const FGeometry& RootGeometry = GetCachedGeometry();
+	const FGeometry& NodeGeometry = HoveredNode->GetCachedGeometry();
+	const FGeometry& FrameGeometry = CategoryFrame->GetCachedGeometry();
+
+	// 노드와 프레임은 서로 다른 패널에 있으니 루트 위젯 좌표로 맞춰서 비교.
+	const auto ConvertGeometryToRootBounds =
+		[&RootGeometry](
+			const FGeometry& Geometry,
+			FVector2D& OutMinimum,
+			FVector2D& OutMaximum)
+		{
+			OutMinimum = RootGeometry.AbsoluteToLocal(
+				Geometry.LocalToAbsolute(FVector2D::ZeroVector));
+
+			OutMaximum = RootGeometry.AbsoluteToLocal(
+				Geometry.LocalToAbsolute(Geometry.GetLocalSize()));
+		};
+
+	FVector2D NodeMinimum;
+	FVector2D NodeMaximum;
+	FVector2D FrameMinimum;
+	FVector2D FrameMaximum;
+
+	ConvertGeometryToRootBounds(NodeGeometry, NodeMinimum, NodeMaximum);
+	ConvertGeometryToRootBounds(FrameGeometry, FrameMinimum, FrameMaximum);
+
+	const FVector2D RootSize = RootGeometry.GetLocalSize();
+
+	// 좌우는 전체 창을 사용하고, 위아래만 현재 카테고리 영역 안으로 제한.
+	const FVector2D SafeMinimum(DetailWidgetSafePadding.Left, FrameMinimum.Y + DetailWidgetSafePadding.Top);
+
+	const FVector2D SafeMaximum(
+		RootSize.X - DetailWidgetSafePadding.Right, FrameMaximum.Y - DetailWidgetSafePadding.Bottom);
+
+	const float MaximumPositionX = FMath::Max(SafeMinimum.X, SafeMaximum.X - DetailSize.X);
+
+	const float MaximumPositionY = FMath::Max(SafeMinimum.Y, SafeMaximum.Y - DetailSize.Y);
+
+	const FVector2D NodeCenter = (NodeMinimum + NodeMaximum) * 0.5f;
+
+	const float CenteredX = FMath::Clamp(NodeCenter.X - DetailSize.X * 0.5f, SafeMinimum.X, MaximumPositionX);
+
+	const float CenteredY = FMath::Clamp( NodeCenter.Y - DetailSize.Y * 0.5f, SafeMinimum.Y, MaximumPositionY);
+
+	const float RightPositionX = NodeMaximum.X + DetailWidgetGap;
+	const float LeftPositionX = NodeMinimum.X - DetailWidgetGap - DetailSize.X;
+	const float BelowPositionY = NodeMaximum.Y + DetailWidgetGap;
+	const float AbovePositionY = NodeMinimum.Y - DetailWidgetGap - DetailSize.Y;
+
+	const float SafeCenterX = (SafeMinimum.X + SafeMaximum.X) * 0.5f;
+
+	// 화면 왼쪽에 있는 노드는 오른쪽을, 오른쪽에 있는 노드는 왼쪽을 먼저 사용.
+	const bool bPreferRight = NodeCenter.X <= SafeCenterX;
+
+	const bool bCanPlaceRight = RightPositionX <= MaximumPositionX;
+	const bool bCanPlaceLeft = LeftPositionX >= SafeMinimum.X;
+	const bool bCanPlaceBelow = BelowPositionY <= MaximumPositionY;
+	const bool bCanPlaceAbove = AbovePositionY >= SafeMinimum.Y;
+
+	FVector2D DetailPosition;
+
+	if (bPreferRight && bCanPlaceRight)
+	{
+		DetailPosition = FVector2D(RightPositionX, CenteredY);
+	}
+	else if (!bPreferRight && bCanPlaceLeft)
+	{
+		DetailPosition = FVector2D(LeftPositionX, CenteredY);
+	}
+	else if (bCanPlaceRight)
+	{
+		DetailPosition = FVector2D(RightPositionX, CenteredY);
+	}
+	else if (bCanPlaceLeft)
+	{
+		DetailPosition = FVector2D(LeftPositionX, CenteredY);
+	}
+	else if (bCanPlaceBelow)
+	{
+		DetailPosition = FVector2D(CenteredX, BelowPositionY);
+	}
+	else if (bCanPlaceAbove)
+	{
+		DetailPosition = FVector2D(CenteredX, AbovePositionY);
+	}
+	else
+	{
+		// 모든 방향이 좁다면 화면 제한보다 호버 노드를 가리지 않는 쪽을 우선.
+		const float RightSpace = SafeMaximum.X - NodeMaximum.X;
+		const float LeftSpace = NodeMinimum.X - SafeMinimum.X;
+
+		DetailPosition = RightSpace >= LeftSpace
+			? FVector2D(RightPositionX, CenteredY)
+			: FVector2D(LeftPositionX, CenteredY);
+	}
+
+	DetailCanvasSlot->SetPosition(DetailPosition);
 }
 
 void UNSCommonUpgradeWidget::HandleNodeUpgradeRequested(FName NodeId)
@@ -283,8 +401,13 @@ void UNSCommonUpgradeWidget::TryPurchase(FName NodeId)
 	}
 }
 
-void UNSCommonUpgradeWidget::HandleNodeHovered(FName NodeId)
+void UNSCommonUpgradeWidget::HandleNodeHovered(FName NodeId, UNSCommonUpgradeNodeWidget* HoveredNode)
 {
+	if (!IsValid(HoveredNode))
+	{
+		return;
+	}
+
 	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
 	const UNSProgressionSubsystem* ProgressionSubsystem = GetProgressionSubsystem(this);
 	if (!DataSubsystem || !ProgressionSubsystem)
@@ -312,7 +435,7 @@ void UNSCommonUpgradeWidget::HandleNodeHovered(FName NodeId)
 		DetailWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
 
-	MoveDetailWidgetToCategoryPosition(Row->Category);
+	MoveDetailWidgetToHoveredNode(HoveredNode, Row->Category);
 }
 
 void UNSCommonUpgradeWidget::HandleNodeUnhovered(FName NodeId)

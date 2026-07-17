@@ -9,14 +9,19 @@
 
 struct FStreamableHandle;
 class UImage;
+class UNSCommonUpgradeNodeWidget;
 class UTextBlock;
+
+// 상세 패널 위치 계산에 쓰도록 호버 이벤트는 NodeId와 노드 자신을 함께 전달.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(
+	FNSCommonUpgradeNodeHoveredSignature, FName, NodeId, UNSCommonUpgradeNodeWidget*, HoveredNode);
 
 // 노드가 상위 UNSCommonUpgradeWidget에 상태를 알릴 때 쓰는 이벤트. NodeId만 전달.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSCommonUpgradeNodeSignature, FName, NodeId);
 
 /**
  * 공용 업그레이드 노드 하나를 표시하는 그리드 카드.
- * 표시 (아이콘/레벨)와 호버,클릭 브리지만 담당하며, NewLevel/Cost/재화는 계산, 전달, 보관하지 않음.
+ * 비용 계산은 상위 위젯이 담당하고, 이 위젯은 전달받은 다음 비용을 표시만 함.
  */
 UCLASS()
 class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UCommonButtonBase
@@ -24,9 +29,14 @@ class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UCommonButtonBase
 	GENERATED_BODY()
 
 public:
-	void SetupEntry(FName InNodeId, const FNSCommonUpgradeNodeRow& Row, int32 CurrentLevel);
+	void SetupEntry(
+		FName InNodeId,
+		const FNSCommonUpgradeNodeRow& Row,
+		int32 CurrentLevel,
+		int64 NextCost
+	);
 
-	FNSCommonUpgradeNodeSignature OnNodeHovered;
+	FNSCommonUpgradeNodeHoveredSignature OnNodeHovered;
 	FNSCommonUpgradeNodeSignature OnNodeUnhovered;
 
 	// 클릭 브리지.
@@ -40,11 +50,25 @@ protected:
 	TObjectPtr<UImage> IconImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> NodeHoveredFrameImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> NodePressedFrameImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> LevelText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> CostCurrencyIcon;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> CostText;
 
 private:
 	void HandleHovered();
 	void HandleUnhovered();
+	void HandlePressed();
+	void HandleReleased();
 	void HandleClicked();
 
 	FName BoundNodeId;

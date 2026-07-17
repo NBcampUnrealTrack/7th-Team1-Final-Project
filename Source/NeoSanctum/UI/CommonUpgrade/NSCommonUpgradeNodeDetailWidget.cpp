@@ -28,6 +28,13 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 
 	const bool bMaxLevel = CurrentLevel >= Row.MaxLevel;
 
+	if (IsValid(PurchaseSectionContainer))
+	{
+		// 최대 등급이면 비용 구분선과 비용 행을 모두 숨김.
+		PurchaseSectionContainer->SetVisibility(
+			bMaxLevel ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
+
 	// 레벨 0(아직 안 산 노드)이면 "현재 등급" 영역은 보여줄 내용이 없으므로 숨김.
 	if (IsValid(CurrentGradeContainer))
 	{
@@ -35,19 +42,19 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 			CurrentLevel > 0 ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
+	if (IsValid(GradeDividerSizeBox))
+	{
+		// 현재 등급과 다음 등급이 모두 있을 때만 구분선을 보여줌.
+		const bool bShowGradeDivider = CurrentLevel > 0 && !bMaxLevel;
+
+		GradeDividerSizeBox->SetVisibility(
+			bShowGradeDivider ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
 	if (CurrentLevel > 0 && IsValid(CurrentGradeText))
 	{
-		// 최고 등급이면 카드 그리드에도 이미 "MaxLevel/MaxLevel"이 보이므로 숫자 대신 상태 문구로 대체.
-		const FText LevelLabel = bMaxLevel
-			? NSLOCTEXT("CommonUpgrade", "MaxGradeLabel", "최고 등급")
-			: FText::AsNumber(CurrentLevel);
-
-		CurrentGradeText->SetText(FText::Format(
-			NSLOCTEXT("CommonUpgrade", "CurrentGradeFormat", "{0} {1} {2}"),
-			LevelLabel,
-			Row.DisplayName,
-			FormatModifierValue(Row.ValuePerLevel * CurrentLevel, Row.Operation))
-		);
+		// 이름은 위쪽 제목에서 보여주니까 여기서는 현재 값만 보여줌.
+		CurrentGradeText->SetText(FormatModifierValue(Row.ValuePerLevel * CurrentLevel, Row.Operation));
 	}
 
 	// 최대 레벨이면 더 살 수 있는 다음 등급/구매 안내가 없으므로 숨김.
@@ -61,19 +68,14 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 	{
 		if (IsValid(NextGradeText))
 		{
-			NextGradeText->SetText(FText::Format(
-				NSLOCTEXT("CommonUpgrade", "NextGradeFormat", "{0} {1}"),
-				Row.DisplayName,
-				FormatModifierValue(Row.ValuePerLevel * NewLevel, Row.Operation))
-			);
+			// 다음 등급도 같은 형식으로 효과 값만 보여줌.
+			NextGradeText->SetText(FormatModifierValue(Row.ValuePerLevel * NewLevel, Row.Operation));
 		}
 
 		if (IsValid(PurchaseLabelText))
 		{
-			PurchaseLabelText->SetText(FText::Format(
-				NSLOCTEXT("CommonUpgrade", "PurchaseLabelFormat", "{0} 등급 해금"),
-				FText::AsNumber(NewLevel))
-			);
+			// 비용 영역은 구매할 등급 대신 역할을 바로 알 수 있게 표시.
+			PurchaseLabelText->SetText(NSLOCTEXT("CommonUpgrade", "PurchaseCostLabel", "업그레이드 비용"));
 		}
 
 		if (IsValid(PurchaseCostText))
@@ -85,11 +87,14 @@ void UNSCommonUpgradeNodeDetailWidget::SetupDetail(const FNSCommonUpgradeNodeRow
 
 FText UNSCommonUpgradeNodeDetailWidget::FormatModifierValue(float Value, ENSCombatStatModifierOperation Operation)
 {
-	// 증가/감소 방향은 Row.DisplayName이 이미 설명하므로(예: "~증가", "~할인", "~감소")
-	// 여기서는 절대값만 보여줘서 음수 값이 "+-0.5+"처럼 깨지는 걸 막음.
-	const float AbsValue = FMath::Abs(Value);
+	const FText NumberText = FText::AsNumber(Value);
+
+	// 양수에는 +를 붙이고, 음수의 -는 AsNumber 결과를 그대로 사용.
+	const FText SignedValueText = Value > 0
+		? FText::Format(
+			NSLOCTEXT("CommonUpgrade", "PositiveModifierValue", "+{0}"), NumberText) : NumberText;
 
 	return Operation == ENSCombatStatModifierOperation::Add
-		? FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueAdd", "{0}"), FText::AsNumber(AbsValue))
-		: FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueMultiply", "{0}%"), FText::AsNumber(AbsValue));
+		? SignedValueText
+		: FText::Format(NSLOCTEXT("CommonUpgrade", "ModifierValueMultiply", "{0}%"), SignedValueText);
 }
