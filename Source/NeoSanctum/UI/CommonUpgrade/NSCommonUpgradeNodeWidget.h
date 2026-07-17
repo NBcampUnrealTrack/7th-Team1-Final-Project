@@ -16,7 +16,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSCommonUpgradeNodeSignature, FName
 
 /**
  * 공용 업그레이드 노드 하나를 표시하는 그리드 카드.
- * 표시 (아이콘/레벨)와 호버,클릭 브리지만 담당하며, NewLevel/Cost/재화는 계산, 전달, 보관하지 않음.
+ * 비용 계산은 상위 위젯이 담당하고, 이 위젯은 전달받은 다음 비용을 표시만 함.
  */
 UCLASS()
 class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UCommonButtonBase
@@ -24,7 +24,12 @@ class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UCommonButtonBase
 	GENERATED_BODY()
 
 public:
-	void SetupEntry(FName InNodeId, const FNSCommonUpgradeNodeRow& Row, int32 CurrentLevel);
+	void SetupEntry(
+		FName InNodeId,
+		const FNSCommonUpgradeNodeRow& Row,
+		int32 CurrentLevel,
+		int64 NextCost
+	);
 
 	FNSCommonUpgradeNodeSignature OnNodeHovered;
 	FNSCommonUpgradeNodeSignature OnNodeUnhovered;
@@ -41,6 +46,12 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> LevelText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> CostCurrencyIcon;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> CostText;
 
 private:
 	void HandleHovered();

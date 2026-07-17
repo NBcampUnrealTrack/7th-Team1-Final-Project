@@ -148,8 +148,12 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 		}
 
 		const int32 CurrentLevel = ProgressionSubsystem->GetCommonSkillLevel(Pair.Key);
+		const bool bIsMaxLevel = CurrentLevel >= Pair.Value.MaxLevel;
 
-		Entry->SetupEntry(Pair.Key, Pair.Value, CurrentLevel);
+		// 비용 계산은 기존 책임대로 상위 위젯이 담당.
+		const int64 NextCost = bIsMaxLevel ? 0 : ProgressionSubsystem->GetCommonUpgradeCost(Pair.Key, CurrentLevel + 1);
+
+		Entry->SetupEntry(Pair.Key, Pair.Value, CurrentLevel, NextCost);
 		Entry->OnNodeHovered.AddUniqueDynamic(this, &ThisClass::HandleNodeHovered);
 		Entry->OnNodeUnhovered.AddUniqueDynamic(this, &ThisClass::HandleNodeUnhovered);
 		Entry->OnUpgradeRequested.AddUniqueDynamic(this, &ThisClass::HandleNodeUpgradeRequested);

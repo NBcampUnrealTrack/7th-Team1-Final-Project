@@ -7,7 +7,11 @@
 #include "Components/TextBlock.h"
 #include "Engine/AssetManager.h"
 
-void UNSCommonUpgradeNodeWidget::SetupEntry(FName InNodeId, const FNSCommonUpgradeNodeRow& Row, int32 CurrentLevel)
+void UNSCommonUpgradeNodeWidget::SetupEntry(
+	FName InNodeId,
+	const FNSCommonUpgradeNodeRow& Row,
+	int32 CurrentLevel,
+	int64 NextCost)
 {
 	BoundNodeId = InNodeId;
 
@@ -49,6 +53,20 @@ void UNSCommonUpgradeNodeWidget::SetupEntry(FName InNodeId, const FNSCommonUpgra
 			FText::AsNumber(CurrentLevel),
 			FText::AsNumber(Row.MaxLevel))
 		);
+	}
+
+	const bool bIsMaxLevel = CurrentLevel >= Row.MaxLevel;
+
+	if (IsValid(CostText))
+	{
+		CostText->SetText(bIsMaxLevel ? NSLOCTEXT("CommonUpgrade", "NodeMaxLevel", "MAX") : FText::AsNumber(NextCost));
+	}
+
+	if (IsValid(CostCurrencyIcon))
+	{
+		// 최대 레벨일 때는 MAX 글자만 가운데 남겨둠.
+		CostCurrencyIcon->SetVisibility(
+			bIsMaxLevel ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 }
 
