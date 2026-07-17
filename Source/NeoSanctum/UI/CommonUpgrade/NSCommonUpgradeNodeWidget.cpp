@@ -45,7 +45,7 @@ void UNSCommonUpgradeNodeWidget::SetupEntry(FName InNodeId, const FNSCommonUpgra
 	if (IsValid(LevelText))
 	{
 		LevelText->SetText(FText::Format(
-			NSLOCTEXT("CommonUpgrade", "NodeLevelFormat", "{0}/{1}"),
+			NSLOCTEXT("CommonUpgrade", "NodeLevelFormat", "{0} / {1}"),
 			FText::AsNumber(CurrentLevel),
 			FText::AsNumber(Row.MaxLevel))
 		);
