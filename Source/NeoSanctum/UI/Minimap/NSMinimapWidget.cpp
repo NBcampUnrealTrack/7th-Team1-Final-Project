@@ -8,7 +8,10 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/Minimap/NSMinimapConfigDataAsset.h"
+#include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "NeoSanctum/System/Minimap/NSMinimapSubsystem.h"
 #include "NeoSanctum/System/Minimap/NSMinimapTypes.h"
@@ -177,6 +180,7 @@ int32 UNSMinimapWidget::NativePaint(
 				MapPosition,
 				MapSize,
 				false,
+				false,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId);
@@ -205,7 +209,8 @@ int32 UNSMinimapWidget::NativePaint(
 				MapRotationDegrees,
 				MapPosition,
 				MapSize,
-				true,
+				false,
+				false,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId);
@@ -235,6 +240,23 @@ int32 UNSMinimapWidget::NativePaint(
 				MapPosition,
 				MapSize,
 				false,
+				false,
+				AllottedGeometry,
+				OutDrawElements,
+				DrawLayerId);
+		}
+
+		// 모든 층 표시 아이콘 최상단 렌더링
+		if (const FNSMinimapLayer* CurrentLayer = MinimapSubsystem->GetLayer(CurrentLayerIndex))
+		{
+			DrawLayerId = DrawMinimapIcons(
+				*CurrentLayer,
+				PlayerLocation,
+				MapRotationDegrees,
+				MapPosition,
+				MapSize,
+				true,
+				true,
 				AllottedGeometry,
 				OutDrawElements,
 				DrawLayerId);
@@ -282,6 +304,40 @@ const APawn* UNSMinimapWidget::GetMinimapOwningPawn() const
 	}
 
 	return nullptr;
+}
+
+// 미니맵 표시 기준 로컬 플레이어 진행도 조회
+const UNSPlayerProgressComponent* UNSMinimapWidget::GetLocalPlayerProgressComponent() const
+{
+	const APlayerController* LocalPlayerController = GetOwningPlayer();
+	if (!LocalPlayerController)
+	{
+		const UWorld* World = GetWorld();
+		LocalPlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	}
+
+	const APlayerState* PlayerState = LocalPlayerController ? LocalPlayerController->PlayerState : nullptr;
+	return PlayerState ? PlayerState->FindComponentByClass<UNSPlayerProgressComponent>() : nullptr;
+}
+
+// 로컬 플레이어 진행도 기준 미니맵 아이콘 표시 여부 판정
+bool UNSMinimapWidget::ShouldDrawIconForLocalPlayer(const UNSMinimapIconComponent& IconComponent) const
+{
+	const ANSInteractableNPCBase* NPCOwner = Cast<ANSInteractableNPCBase>(IconComponent.GetOwner());
+	if (!NPCOwner)
+	{
+		return true;
+	}
+
+	// 구조 완료 전 NPC 아이콘 표시 차단
+	const FName NPCId = NPCOwner->GetNPCId();
+	if (NPCId.IsNone())
+	{
+		return false;
+	}
+
+	const UNSPlayerProgressComponent* ProgressComponent = GetLocalPlayerProgressComponent();
+	return ProgressComponent && ProgressComponent->IsNPCUnlocked(NPCId);
 }
 
 FVector2D UNSMinimapWidget::GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const
@@ -479,6 +535,7 @@ int32 UNSMinimapWidget::DrawMinimapIcons(
 	const FVector2D& MapPosition,
 	float MapSize,
 	bool bDrawAllLayerIcons,
+	bool bDrawOnlyAllLayerIcons,
 	const FGeometry& AllottedGeometry,
 	FSlateWindowElementList& OutDrawElements,
 	int32 LayerId) const
@@ -533,11 +590,22 @@ int32 UNSMinimapWidget::DrawMinimapIcons(
 			continue;
 		}
 
+		// 로컬 플레이어 진행도 기준 표시 필터
+		if (!ShouldDrawIconForLocalPlayer(*IconComponent))
+		{
+			continue;
+		}
+
 		const FNSMinimapIconRow* IconRow = MinimapConfig->IconDataTable->FindRow<FNSMinimapIconRow>(
 			IconComponent->GetIconRowName(),
 			TEXT("MinimapIcon"),
 			false);
 		if (!IconRow)
+		{
+			continue;
+		}
+
+		if (bDrawOnlyAllLayerIcons && !IconRow->bShowOnAllLayers)
 		{
 			continue;
 		}
