@@ -442,6 +442,8 @@ void ANSPlayerController::HideCharacterSelectWidget()
 
 void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] HandleConfirmed %s"), *GetNameSafe(ConfirmedCharacterData));
+
 	if (!ConfirmedCharacterData)
 	{
 		return;
@@ -843,6 +845,11 @@ void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
 	{
 		return;
 	}
+	
+	if (NSPlayerState->HasAuthority())
+	{
+		return;
+	}
 
 	DataSubsystem->ApplyCachedProgressTo(
 		NSPlayerState->GetProgressComponent());
@@ -1048,15 +1055,7 @@ void ANSPlayerController::BeginPlay()
 			PlayerAudioFlowComponent->HandleOutRunLevelReady();
 		}
 
-		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
-		{
-			// DataSubsystem->LoadOutGameData();
-			if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
-		{
-				DataSubsystem->ApplyCachedProgressTo(
-				NSPlayerState->GetProgressComponent());
-			}
-		}
+		ApplyCachedProgressToLocalPlayerState();
 		UIManager->ShowOutRunGoods();
 
 		// 클라이언트가 거점에 도착하면 거점용 OutGameData를 미리 준비
@@ -1896,6 +1895,10 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 
 	ProgressComponent->ApplyPayload(Payload);
 	
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Upload ActiveId=%s CurrentId=%s"),
+	*Payload.ActiveCharacterId.ToString(),
+	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
+	
 	if (!Payload.ActiveCharacterId.IsNone())
 	{
 		const FPrimaryAssetType CharacterType =
@@ -2105,11 +2108,17 @@ void ANSPlayerController::SaveProgressToOwningClient()
 
 	FNSProgressPayload Payload;
 	ProgressComponent->BuildPayload(Payload);
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] RunEnd BuildPayload ActiveId=%s CurrentId=%s"),
+	*Payload.ActiveCharacterId.ToString(),
+	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
 	Client_SaveProgress(Payload);
 }
 
 void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCharacterData)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] Commit %s pawn=%s"),
+	*GetNameSafe(SelectedCharacterData), *GetNameSafe(GetPawn()));
+	
 	if (!SelectedCharacterData)
 	{
 		return;
@@ -2133,6 +2142,8 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 	}
 
 	const FName SelectedKey = SelectedCharacterData->GetPrimaryAssetId().PrimaryAssetName;
+	
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Commit key=%s"), *SelectedKey.ToString());
 	
 	// 최근 선택 캐릭터 로컬 저장
 	UGameInstance* GameInstance = GetGameInstance();
@@ -2178,6 +2189,10 @@ void ANSPlayerController::RestoreLastSelectedCharacter()
 	const FPrimaryAssetType CharacterType =
 		OwningPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
 	const FPrimaryAssetId RestoredId(CharacterType, PermanentSave->LastSelectedCharacterId);
+	
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Restore LastSel=%s PS.CurrentId=%s"),
+	*PermanentSave->LastSelectedCharacterId.ToString(),
+	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
 
 	const FSoftObjectPath DataPath = UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
 	if (!DataPath.IsValid())
