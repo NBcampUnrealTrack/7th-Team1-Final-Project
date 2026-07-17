@@ -138,6 +138,14 @@ void UGA_EnemyAttackFlyingBurst::FireOneVolley()
 		return;
 	}
 	
+	// PM 유효성 검사 직후 ~ 발사 루프
+	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
+	if (!SourceASC)
+	{
+		CancelAttackAbility();
+		return;
+	}
+	
 	const FVector AimLocation = TargetActor->GetActorLocation();
 	for (const FTransform& Muzzle : Muzzles)
 	{
@@ -145,6 +153,17 @@ void UGA_EnemyAttackFlyingBurst::FireOneVolley()
 		FVector Dir = (AimLocation - Start).GetSafeNormal();
 		if (Dir.IsNearlyZero()) Dir = Muzzle.GetRotation().GetForwardVector().GetSafeNormal();
 		if (Dir.IsNearlyZero()) continue;
+		
+		// 발사 큐 (소켓마다) — 서버에서 Execute → 전 클라 멀티캐스트
+		if (SourceASC && EnemyDroneFireCueTag.IsValid())
+		{
+			FGameplayCueParameters CueParams;
+			CueParams.Instigator = NSEnemyPawn;
+			CueParams.EffectCauser = NSEnemyPawn;
+			CueParams.Location = Start;   // 소켓 위치
+			CueParams.Normal = Dir;       // 발사 방향
+			SourceASC->ExecuteGameplayCue(EnemyDroneFireCueTag, CueParams);
+		}
 		
 		FNSProjectileFireRequest Req;
 		Req.StartLocation=Start;

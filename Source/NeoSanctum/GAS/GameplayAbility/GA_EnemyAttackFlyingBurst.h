@@ -69,6 +69,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Projectile")
 	TEnumAsByte<ECollisionChannel> ProjectileTraceChannel = NSCollisionChannels::EnemyProjectile;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cue")
+	FGameplayTag EnemyDroneFireCueTag;
+	
 private:
 	// 지금까지 발사한 볼리 수
 	int32 CurrentVolley = 0;
