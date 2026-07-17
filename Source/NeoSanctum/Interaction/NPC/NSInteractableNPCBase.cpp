@@ -22,8 +22,9 @@ ANSInteractableNPCBase::ANSInteractableNPCBase()
 	PromptAnchor->SetupAttachment(GetRootComponent());
 	PromptAnchor->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
 
+	// NPC 미니맵 아이콘 기본 행 설정
 	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
-	MinimapIconComponent->SetShowOnMinimap(false);
+	MinimapIconComponent->SetIconRowName(TEXT("NPC"));
 }
 
 void ANSInteractableNPCBase::OnConstruction(const FTransform& Transform)
