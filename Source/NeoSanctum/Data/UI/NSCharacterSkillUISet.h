@@ -41,6 +41,10 @@ struct FNSCharacterSkillUISet : public FTableRowBase
 {
 	GENERATED_BODY()
 
+	// 좌클릭 기본 공격에 표시할 스킬 UI 데이터.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
+	FDataTableRowHandle BaseAttackUIDataRow;
+
 	//1번 슬롯에 표시할 스킬 UI 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FDataTableRowHandle Skill1UIDataRow;
@@ -52,6 +56,10 @@ struct FNSCharacterSkillUISet : public FTableRowBase
 	//3번 슬롯에 표시할 스킬 UI 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FDataTableRowHandle Skill3UIDataRow;
+
+	// 좌클릭 기본 공격의 입력 표시.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	FNSInputDisplayData BaseAttackInputDisplay;
 
 	//1번 슬롯 입력 표시
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
