@@ -5,6 +5,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Components/SphereComponent.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 
 
 ANSInteractableNPCBase::ANSInteractableNPCBase()
@@ -20,6 +21,10 @@ ANSInteractableNPCBase::ANSInteractableNPCBase()
 	PromptAnchor = CreateDefaultSubobject<USceneComponent>(TEXT("PromptAnchor"));
 	PromptAnchor->SetupAttachment(GetRootComponent());
 	PromptAnchor->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
+
+	// NPC 미니맵 아이콘 기본 행 설정
+	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+	MinimapIconComponent->SetIconRowName(TEXT("NPC"));
 }
 
 void ANSInteractableNPCBase::OnConstruction(const FTransform& Transform)

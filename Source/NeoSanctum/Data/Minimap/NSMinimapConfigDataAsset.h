@@ -7,6 +7,7 @@
 #include "NSMinimapConfigDataAsset.generated.h"
 
 class UDataTable;
+class UMaterialInterface;
 
 //미니맵 UI 표시 설정
 UCLASS(BlueprintType)
@@ -20,6 +21,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap")
 	FLinearColor MinimapTint = FLinearColor::White;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Circle")
+	TObjectPtr<UMaterialInterface> CircleMaskMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Circle")
+	FName RetainerTextureParameter = TEXT("Texture");
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (ClampMin = "500.0"))
 	float VisibleWorldWidth = 10000.0f;
@@ -42,4 +49,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icons")
 	TObjectPtr<UDataTable> IconDataTable;
+
+	// 로컬 플레이어 전용 아이콘 행
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icons")
+	FName LocalPlayerIconRowName = TEXT("LocalPlayer");
 };
