@@ -37,6 +37,9 @@ private:
 	// 미니맵 기준으로 사용할 로컬 플레이어 Pawn 조회
 	const APawn* GetMinimapOwningPawn() const;
 
+	// 미니맵 회전 기준 카메라 Yaw 조회
+	float GetMinimapViewYaw() const;
+
 	// 로컬 플레이어 진행도 조회
 	const UNSPlayerProgressComponent* GetLocalPlayerProgressComponent() const;
 
