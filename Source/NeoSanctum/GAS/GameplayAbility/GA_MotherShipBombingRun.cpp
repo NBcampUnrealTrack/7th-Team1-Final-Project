@@ -11,6 +11,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/AI/Enemy/HelperActor/NSBombMissile.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -375,6 +376,13 @@ bool UGA_MotherShipBombingRun::ApplyBombardDamageToTarget(AActor* TargetActor, c
 		!IsValid(SourceASC) ||
 		!IsValid(TargetASC) ||
 		!DamageEffectClass)
+	{
+		return false;
+	}
+
+	// 피아구분: 같은 Enemy 팀(일반몹/드론/보스 파츠)·사망·무적 대상은 데미지 제외.
+	// HomingMissile과 동일하게 단일 규칙 NSDamageRules로 판정 (오버랩은 넓게 긁고 여기서 게이트).
+	if (!NSDamageRules::CanApplyDamage(SourceActor, TargetActor))
 	{
 		return false;
 	}
