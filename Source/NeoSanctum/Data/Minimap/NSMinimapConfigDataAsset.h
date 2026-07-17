@@ -49,4 +49,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icons")
 	TObjectPtr<UDataTable> IconDataTable;
+
+	// 로컬 플레이어 전용 아이콘 행
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Icons")
+	FName LocalPlayerIconRowName = TEXT("LocalPlayer");
 };
