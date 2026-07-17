@@ -1917,8 +1917,9 @@ void ANSRunGameMode::SubmitRunChoice_Implementation(APlayerController* Voter, EN
 	RunGameState->NotifyRunVoteChanged();
 	RunGameState->ForceNetUpdate();
 
-	// 제한 시간 동안 재투표할 수 있어야 하므로
-	// HandlePlayerConfirmed()는 호출하지 않는다.
+	// 전원 투표 완료하면 결과 확정
+	// 그 이후에는 투표결과 바꿀 수 없음
+	HandlePlayerConfirmed();
 }
 
 void ANSRunGameMode::BeginReturnToHubTravel()

@@ -198,6 +198,7 @@ void UNSRunResultWidget::NativeTick(
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
 	UpdatePhaseTimerText();
+	UpdateVoteButtonState(); 
 }
 void UNSRunResultWidget::UpdatePhaseTimerText()
 {
@@ -390,22 +391,37 @@ void UNSRunResultWidget::SubmitVote(ENSRunChoice NewChoice)
 
 void UNSRunResultWidget::UpdateVoteButtonState()
 {
+	// 현재 페이즈 확인
+	bool bIsVotingPhase = false;
+	if (const UWorld* World = GetWorld())
+	{
+		if (const ANSRunGameState* RunGameState = World->GetGameState<ANSRunGameState>())
+		{
+			bIsVotingPhase = (RunGameState->RunEndPhase == ENSRunEndPhase::Voting);
+		}
+	}
+
+	// 투표 페이즈가 아니면 무조건 둘 다 잠금
+	if (!bIsVotingPhase)
+	{
+		if (NextStageButton)   { NextStageButton->SetIsEnabled(false); }
+		if (ReturnToHubButton) { ReturnToHubButton->SetIsEnabled(false); }
+		return;
+	}
+
+	// Voting 페이즈일 때만 자기표 로직
 	if (NextStageButton)
 	{
 		const bool bCanSelectNext =
 			bLastRunCleared &&
-			(!bHasSelectedChoice ||
-				SelectedChoice != ENSRunChoice::NextStage);
-
+			(!bHasSelectedChoice || SelectedChoice != ENSRunChoice::NextStage);
 		NextStageButton->SetIsEnabled(bCanSelectNext);
 	}
 
 	if (ReturnToHubButton)
 	{
 		const bool bCanSelectHub =
-			!bHasSelectedChoice ||
-			SelectedChoice != ENSRunChoice::ReturnToHub;
-
+			!bHasSelectedChoice || SelectedChoice != ENSRunChoice::ReturnToHub;
 		ReturnToHubButton->SetIsEnabled(bCanSelectHub);
 	}
 }

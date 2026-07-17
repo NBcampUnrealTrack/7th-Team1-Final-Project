@@ -2,6 +2,8 @@
 
 
 #include "NSBossEntryVolume.h"
+
+#include "NiagaraComponent.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
@@ -32,22 +34,9 @@ ANSBossEntryVolume::ANSBossEntryVolume()
 	VisualRoot->SetupAttachment(TriggerBox);
 	// 자식까지 숨김, 비활성 기본
 	VisualRoot->SetVisibility(false, true);
-	OutlineMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("OutlineMesh"));
-	OutlineMesh->SetupAttachment(VisualRoot);
-	// 시각 전용
-	OutlineMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	OutlineMesh->SetCollisionProfileName(TEXT("NoCollision"));
-	OutlineMesh->SetGenerateOverlapEvents(false);
-	// 그림자 렌더 비용 제거
-	OutlineMesh->SetCastShadow(false);
-
-	// 엔진 기본 큐브 메시 지정 (BP에서 교체 가능)
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CubeMesh(
-		TEXT("/Engine/BasicShapes/Cube.Cube"));
-	if (CubeMesh.Succeeded())
-	{
-		OutlineMesh->SetStaticMesh(CubeMesh.Object);
-	}
+	BoundaryNiagara = CreateDefaultSubobject<UNiagaraComponent>(TEXT("BoundaryNiagara"));
+	BoundaryNiagara->SetupAttachment(VisualRoot);
+	BoundaryNiagara->SetAutoActivate(false); 
 }
 
 void ANSBossEntryVolume::BeginPlay()
@@ -57,13 +46,24 @@ void ANSBossEntryVolume::BeginPlay()
 	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ANSBossEntryVolume::OnBeginOverlap);
 	TriggerBox->OnComponentEndOverlap.AddDynamic(this, &ANSBossEntryVolume::OnEndOverlap);
 	
-	if (OutlineMesh && TriggerBox)
-	{
-		OutlineMesh->SetWorldScale3D(
-			TriggerBox->GetUnscaledBoxExtent() / 50.0f);
-	}
+	ApplyBoundaryDimensions();
 	
 	BindToRunGameState();
+}
+
+void ANSBossEntryVolume::ApplyBoundaryDimensions()
+{
+	if (!BoundaryNiagara || !TriggerBox)
+	{
+		return;
+	}
+	
+	const FVector Extent = TriggerBox->GetUnscaledBoxExtent();
+	const FVector Dimensions = Extent * 2.0f;
+
+	BoundaryNiagara->SetNiagaraVariableVec3(
+		DimensionsParameterName.ToString(),
+		Dimensions);
 }
 
 void ANSBossEntryVolume::Activate()
@@ -131,13 +131,8 @@ void ANSBossEntryVolume::Deactivate()
 void ANSBossEntryVolume::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-
-	// 큐브를 TriggerBox 반경에 맞춰 외곽선과 오버랩 범위 일치
-	if (OutlineMesh && TriggerBox)
-	{
-		OutlineMesh->SetWorldScale3D(
-			TriggerBox->GetUnscaledBoxExtent() / 50.0f);
-	}
+	
+	ApplyBoundaryDimensions();
 }
 
 void ANSBossEntryVolume::OnBeginOverlap(
@@ -429,31 +424,38 @@ void ANSBossEntryVolume::ClearBossGateState()
 
 void ANSBossEntryVolume::UpdateVisual()
 {
-	if (!CachedRunGameState || !OutlineMesh)
+	if (!CachedRunGameState || !BoundaryNiagara)
 	{
 		return;
 	}
 	
 	const bool bBossReady =
 		(CachedRunGameState->StagePhase == ENSStagePhase::BossReady);
+	
 	// 표시/숨김
 	VisualRoot->SetVisibility(bBossReady, true);
+	
 	if (!bBossReady)
 	{
+		BoundaryNiagara->Deactivate();
 		return;
 	}
+	
+	// 크기 먼저 적용
+	ApplyBoundaryDimensions();
 
-	// 동적 머티리얼 최초 1회 생성
-	if (!OutlineMID)
+	// 색: 전원 집결이면 노랑, 아니면 파랑
+	const FLinearColor Color =
+		CachedRunGameState->bBossGateAllPresent ? AllPresentColor : WaitingColor;
+	
+	BoundaryNiagara->SetNiagaraVariableLinearColor(
+		ColorParameterName.ToString(), 
+		Color);
+
+	// 아직 비활성이면 활성화
+	if (!BoundaryNiagara->IsActive())
 	{
-		OutlineMID = OutlineMesh->CreateDynamicMaterialInstance(0);
-	}
-	if (OutlineMID)
-	{
-		// 전원 집결이면 노랑, 아니면 파랑
-		const FLinearColor Color =
-			CachedRunGameState->bBossGateAllPresent ? AllPresentColor : WaitingColor;
-		OutlineMID->SetVectorParameterValue(ColorParameterName, Color);
+		BoundaryNiagara->Activate();
 	}
 }
 

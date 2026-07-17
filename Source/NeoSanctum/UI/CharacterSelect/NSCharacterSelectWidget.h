@@ -93,6 +93,9 @@ private:
 	void UpdateBaseStatTexts(const FNSCharacterSelectData& Data);
 	void ClearBaseStatTexts();
 	
+	// 현재 선택된 캐릭터에 해당하는 인덱스를 찾는다. 못 찾으면 0
+	int32 FindInitialCharacterIndex() const;
+	
 public:
 	UPROPERTY(BlueprintAssignable, Category = "CharacterSelect")
 	FOnCharacterSelectionConfirmed OnCharacterSelectionConfirmed;

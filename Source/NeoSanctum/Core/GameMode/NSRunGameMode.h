@@ -88,7 +88,7 @@ public:
 	UPROPERTY(EditAnywhere, Category="RunEnd")
 	float VoteDuration = 10.0f;
 	UPROPERTY(EditAnywhere, Category="RunEnd")
-	float ResultDisplayDuration = 0.0f;
+	float ResultDisplayDuration = 3.0f;
 	
 	FTimerHandle PhaseTimerHandle;
 
