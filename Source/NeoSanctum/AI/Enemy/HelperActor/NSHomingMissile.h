@@ -35,6 +35,7 @@ public:
 protected:
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
+    virtual void Destroyed() override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Missile")
     TObjectPtr<USphereComponent> CollisionComponent;
@@ -74,6 +75,10 @@ protected:
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Missile|Cue")
     FGameplayTag ImpactCueTag;
 
+    // 비행 중 꼬리에 부착·유지할 추진 GameplayCue (지속형)
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Missile|Cue")
+    FGameplayTag ThrustCueTag;
+    
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Missile|Debug")
     bool bDrawDebugExplosion = false;
 
@@ -99,6 +104,9 @@ private:
     void ApplyExplosionDamage(const FVector& ExplosionLocation, const TArray<AActor*>& TargetActors) const;
 
 private:
+    void StartThrustCue();
+    void StopThrustCue();
+    
     UPROPERTY()
     TObjectPtr<UAbilitySystemComponent> SourceASC;
 
