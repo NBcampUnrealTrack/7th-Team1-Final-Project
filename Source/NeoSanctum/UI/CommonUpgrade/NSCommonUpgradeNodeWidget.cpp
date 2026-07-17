@@ -74,6 +74,12 @@ void UNSCommonUpgradeNodeWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	if (IsValid(NodeHoveredFrameImage))
+	{
+		// 처음 열렸을 때는 일반 프레임만 보이게 해둠.
+		NodeHoveredFrameImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
 	OnHovered().AddUObject(this, &ThisClass::HandleHovered);
 	OnUnhovered().AddUObject(this, &ThisClass::HandleUnhovered);
 	OnClicked().AddUObject(this, &ThisClass::HandleClicked);
@@ -92,6 +98,11 @@ void UNSCommonUpgradeNodeWidget::NativeDestruct()
 
 void UNSCommonUpgradeNodeWidget::HandleHovered()
 {
+	if (IsValid(NodeHoveredFrameImage))
+	{
+		NodeHoveredFrameImage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+
 	if (!BoundNodeId.IsNone())
 	{
 		OnNodeHovered.Broadcast(BoundNodeId);
@@ -100,6 +111,11 @@ void UNSCommonUpgradeNodeWidget::HandleHovered()
 
 void UNSCommonUpgradeNodeWidget::HandleUnhovered()
 {
+	if (IsValid(NodeHoveredFrameImage))
+	{
+		NodeHoveredFrameImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
 	if (!BoundNodeId.IsNone())
 	{
 		OnNodeUnhovered.Broadcast(BoundNodeId);

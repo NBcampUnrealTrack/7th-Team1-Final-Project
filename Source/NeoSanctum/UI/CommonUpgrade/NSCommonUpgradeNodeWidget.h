@@ -45,6 +45,9 @@ protected:
 	TObjectPtr<UImage> IconImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UImage> NodeHoveredFrameImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> LevelText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
