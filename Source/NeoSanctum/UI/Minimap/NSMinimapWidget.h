@@ -43,6 +43,9 @@ private:
 	// 로컬 플레이어 기준 아이콘 표시 여부 판정
 	bool ShouldDrawIconForLocalPlayer(const UNSMinimapIconComponent& IconComponent) const;
 
+	// 로컬 플레이어 기준 아이콘 행 결정
+	FName ResolveIconRowName(const UNSMinimapIconComponent& IconComponent) const;
+
 	//미니맵 표시 위치 계산
 	FVector2D GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const;
 

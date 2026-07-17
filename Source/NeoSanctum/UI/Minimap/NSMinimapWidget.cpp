@@ -9,6 +9,7 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/Minimap/NSMinimapConfigDataAsset.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
@@ -340,6 +341,32 @@ bool UNSMinimapWidget::ShouldDrawIconForLocalPlayer(const UNSMinimapIconComponen
 	return ProgressComponent && ProgressComponent->IsNPCUnlocked(NPCId);
 }
 
+FName UNSMinimapWidget::ResolveIconRowName(const UNSMinimapIconComponent& IconComponent) const
+{
+	// 로컬 플레이어 식별 기준 아이콘 행 결정
+	const FName DefaultIconRowName = IconComponent.GetIconRowName();
+	// 플레이어 캐릭터 Icon이 아니면 해당 아이콘 그대로 출력
+	const ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(IconComponent.GetOwner());
+	if (!PlayerCharacter || !MinimapConfig || MinimapConfig->LocalPlayerIconRowName.IsNone())
+	{
+		return DefaultIconRowName;
+	}
+	
+	const APlayerController* LocalPlayerController = GetOwningPlayer();
+	if (!LocalPlayerController)
+	{
+		const UWorld* World = GetWorld();
+		LocalPlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	}
+	
+	// 로컬 플레이어 액터의 경우 LocalPlayer Row에 있는 아이콘 출력 (플레이어 자신)
+	// 그 외 플레이어 액터의 경우 Player Row에 있는 아이콘 출력 (다른 플레이어)
+	const APlayerState* LocalPlayerState = LocalPlayerController ? LocalPlayerController->PlayerState : nullptr;
+	return LocalPlayerState && PlayerCharacter->GetPlayerState() == LocalPlayerState
+		? MinimapConfig->LocalPlayerIconRowName
+		: DefaultIconRowName;
+}
+
 FVector2D UNSMinimapWidget::GetMapDrawPosition(const FVector2D& ViewSize, float MapSize) const
 {
 	return FVector2D(
@@ -597,7 +624,7 @@ int32 UNSMinimapWidget::DrawMinimapIcons(
 		}
 
 		const FNSMinimapIconRow* IconRow = MinimapConfig->IconDataTable->FindRow<FNSMinimapIconRow>(
-			IconComponent->GetIconRowName(),
+			ResolveIconRowName(*IconComponent),
 			TEXT("MinimapIcon"),
 			false);
 		if (!IconRow)
