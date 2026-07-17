@@ -9,8 +9,8 @@
 class UBoxComponent;
 class USceneComponent;
 class ANSRunGameState;
-class UStaticMeshComponent;
-class UMaterialInstanceDynamic;
+class UNiagaraComponent;      
+class UNiagaraSystem;   
 
 // 보스룸에 배치되는 진입 트리거
 // 목표 달성 후 활성화되며 플레이어가 일정 시간 연속 체류하면 GameMode에 전원 텔레포트를 요청한다.
@@ -32,6 +32,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void ApplyBoundaryDimensions();
 
 	// 플레이어 폰 진입: 후보 집합에 추가, 0→1이면 카운트다운 시작
 	UFUNCTION()
@@ -91,9 +92,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "BossEntry")
 	TObjectPtr<USceneComponent> VisualRoot;
 	
-	// 외곽선 표시용 박스 메시
+	// 범위 표시용 나이아가라 이펙트
 	UPROPERTY(VisibleAnywhere, Category = "BossEntry|Visual")
-	TObjectPtr<UStaticMeshComponent> OutlineMesh;
+	TObjectPtr<UNiagaraComponent> BoundaryNiagara;
 
 	// 대기 상태 색(파랑)
 	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
@@ -103,9 +104,13 @@ private:
 	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
 	FLinearColor AllPresentColor = FLinearColor(1.f, 0.85f, 0.f);
 
-	// 머티리얼의 색 파라미터 이름
+	// 색깔용 이름
 	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
 	FName ColorParameterName = TEXT("Color");
+	
+	// 크기용 이름
+	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
+	FName DimensionsParameterName = TEXT("Dimensions");
 
 	// 전원 텔레포트까지 필요한 연속 체류 시간(초)
 	UPROPERTY(EditAnywhere, Category = "BossEntry", meta = (ClampMin = "1"))
@@ -123,9 +128,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<ANSRunGameState> CachedRunGameState;
 	
-	// 런타임 색 제어용 동적 머티리얼
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInstanceDynamic> OutlineMID;
+	// BP에서 지정할 나이아가라 시스템
+	UPROPERTY(EditAnywhere, Category = "BossEntry|Visual")
+	TObjectPtr<UNiagaraSystem> BoundaryEffect;
 
 	// 볼륨 체류  카운트다운 타이머 핸들
 	FTimerHandle DwellTimerHandle;
