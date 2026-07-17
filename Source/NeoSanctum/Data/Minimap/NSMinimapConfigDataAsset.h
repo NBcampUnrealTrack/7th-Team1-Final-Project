@@ -31,10 +31,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap", meta = (ClampMin = "500.0"))
 	float VisibleWorldWidth = 10000.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation", meta = (DisplayName = "Rotate Map With Camera Forward"))
 	bool bRotateMapWithPlayerForward = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation", meta = (EditCondition = "bRotateMapWithPlayerForward"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Minimap|Orientation", meta = (DisplayName = "Camera Forward Up Rotation Offset Degrees", EditCondition = "bRotateMapWithPlayerForward"))
 	float PlayerForwardUpRotationOffsetDegrees = 0.0f;
 
 	// 캡처 텍스처의 좌우가 UI 좌표와 반대일 때 보정

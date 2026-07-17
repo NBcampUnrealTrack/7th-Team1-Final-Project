@@ -149,7 +149,7 @@ int32 UNSMinimapWidget::NativePaint(
 
 	const FVector PlayerLocation = OwningPawn->GetActorLocation();
 	const float MapRotationDegrees = MinimapConfig->bRotateMapWithPlayerForward
-		? OwningPawn->GetActorRotation().Yaw - 90.0f + MinimapConfig->PlayerForwardUpRotationOffsetDegrees
+		? GetMinimapViewYaw() - 90.0f + MinimapConfig->PlayerForwardUpRotationOffsetDegrees
 		: 0.0f;
 	const TArray<FNSMinimapLayer>& Layers = MinimapSubsystem->GetLayers();
 	if (!Layers.IsEmpty())
@@ -305,6 +305,26 @@ const APawn* UNSMinimapWidget::GetMinimapOwningPawn() const
 	}
 
 	return nullptr;
+}
+
+float UNSMinimapWidget::GetMinimapViewYaw() const
+{
+	const APlayerController* LocalPlayerController = GetOwningPlayer();
+	if (!LocalPlayerController)
+	{
+		const UWorld* World = GetWorld();
+		LocalPlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	}
+
+	if (!ensure(LocalPlayerController && LocalPlayerController->IsLocalController()))
+	{
+		return 0.0f;
+	}
+
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	LocalPlayerController->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	return ViewRotation.Yaw;
 }
 
 // 미니맵 표시 기준 로컬 플레이어 진행도 조회
