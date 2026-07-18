@@ -55,6 +55,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "UI|Part", meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> PartValueText;
 
+	// 파츠 등급만 별도로 표시하는 텍스트 (아웃런 상점 레이아웃용)
+	UPROPERTY(BlueprintReadOnly, Category = "UI|Part", meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> PartRarityText;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UI|Part", meta = (BindWidgetOptional))
 	TObjectPtr<UBorder> RarityBorder;
 

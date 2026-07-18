@@ -65,6 +65,13 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 		PartNameText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
+	if (IsValid(PartRarityText))
+	{
+		// 등급 텍스트가 WBP에 별도로 존재하면 등급을 분리 표시 (아웃런 상점 레이아웃)
+		PartRarityText->SetText(GetRarityText(InPartData.CurrentRarity));
+		PartRarityText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
 	if (IsValid(PartValueText))
 	{
 		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
@@ -73,11 +80,19 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 		Options.MinimumFractionalDigits = 0;
 		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 
-		PartValueText->SetText(FText::Format(
-			NSLOCTEXT("PartSlotButton", "PartValueFormat", "{0} {1}"),
-			GetRarityText(InPartData.CurrentRarity),
-			FText::AsNumber(InPartData.CurrentValue, &Options)
-		));
+		// 등급 텍스트가 따로 있으면 수치만, 없으면 기존 포맷("등급 수치") 유지
+		if (IsValid(PartRarityText))
+		{
+			PartValueText->SetText(FText::AsNumber(InPartData.CurrentValue, &Options));
+		}
+		else
+		{
+			PartValueText->SetText(FText::Format(
+				NSLOCTEXT("PartSlotButton", "PartValueFormat", "{0} {1}"),
+				GetRarityText(InPartData.CurrentRarity),
+				FText::AsNumber(InPartData.CurrentValue, &Options)
+			));
+		}
 		PartValueText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
@@ -113,6 +128,12 @@ void UNSPartSlotButton::ClearPart()
 	{
 		PartValueText->SetText(FText::GetEmpty());
 		PartValueText->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (IsValid(PartRarityText))
+	{
+		PartRarityText->SetText(FText::GetEmpty());
+		PartRarityText->SetVisibility(ESlateVisibility::Hidden);
 	}
 
 	RefreshEmptyState();
