@@ -65,6 +65,7 @@ void UGA_EnemyAttackFlame::ActivateAbility(
 		return;
 	}
 
+	BeginPatternDefenseWindow(ENSPatternDefenseWindow::AbilityLifetime);
 	StartFlame();
 }
 
