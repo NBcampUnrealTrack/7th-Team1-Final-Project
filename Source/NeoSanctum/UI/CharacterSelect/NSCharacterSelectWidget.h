@@ -13,7 +13,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 class UCommonAnimatedSwitcher;
 class UCommonButtonBase;
 class UCommonTextBlock;
-class UTextBlock;
 class UNSCharacterSlotWidget;
 class UImage;
 struct FNSSkillUIData;
@@ -53,7 +52,7 @@ protected:
 	TObjectPtr<UCommonButtonBase> ConfirmButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
-	TObjectPtr<UTextBlock> CharacterNameText;
+	TObjectPtr<UCommonTextBlock> CharacterNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonAnimatedSwitcher> CharacterSwitcher;
@@ -62,7 +61,7 @@ protected:
 	TObjectPtr<UImage> PreviewImage;
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> MaxHealthText;
+	TObjectPtr<UCommonTextBlock> MaxHealthText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UCommonTextBlock> CharacterDescriptionText;
@@ -96,22 +95,22 @@ protected:
 	ENSCharacterSelectSkillPreviewMode SkillPreviewMode = ENSCharacterSelectSkillPreviewMode::Hover;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> BaseDamageText;
+	TObjectPtr<UCommonTextBlock> BaseDamageText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> DefenseText;
+	TObjectPtr<UCommonTextBlock> DefenseText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> MoveSpeedText;
+	TObjectPtr<UCommonTextBlock> MoveSpeedText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> CritChanceText;
+	TObjectPtr<UCommonTextBlock> CritChanceText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> CritDamageText;
+	TObjectPtr<UCommonTextBlock> CritDamageText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
-	TObjectPtr<UTextBlock> MaxShieldText;
+	TObjectPtr<UCommonTextBlock> MaxShieldText;
 
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void SelectNext();

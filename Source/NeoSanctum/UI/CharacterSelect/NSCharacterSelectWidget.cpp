@@ -4,7 +4,6 @@
 #include "CommonAnimatedSwitcher.h"
 #include "CommonButtonBase.h"
 #include "CommonTextBlock.h"
-#include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
