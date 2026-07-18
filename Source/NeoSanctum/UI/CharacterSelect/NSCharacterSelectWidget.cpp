@@ -10,6 +10,7 @@
 #include "NSCharacterSlotWidget.h"
 #include "Components/Image.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
@@ -45,6 +46,9 @@ namespace
 void UNSCharacterSelectWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	// UIOnly 입력 모드에서도 이 위젯이 ESC 키를 받을 수 있게 함.
+	SetIsFocusable(true);
 	
 	CachedCharacters.Reset();
 	CurrentIndex = 0;
@@ -71,6 +75,14 @@ void UNSCharacterSelectWidget::NativeConstruct()
 	{
 		ConfirmButton->OnClicked().AddUObject(this, &UNSCharacterSelectWidget::ConfirmSelection);
 	}
+
+	if (CloseButton)
+	{
+		// 위젯이 다시 Construct되어도 닫기 이벤트가 중복되지 않게 정리함.
+		CloseButton->OnClicked().RemoveAll(this);
+		CloseButton->OnClicked().AddUObject(this, &ThisClass::HandleCloseButtonClicked);
+	}
+
 	BindSkillSlotEvents();
 	HandleCharacterChanged();
 }
@@ -81,6 +93,36 @@ void UNSCharacterSelectWidget::NativeOnActivated()
 
 	// 위젯을 다시 열면 기본 공격 상세정보로 돌아감.
 	PreviewSkillSlot(ENSCharacterSelectSkillSlot::BaseAttack);
+}
+
+FReply UNSCharacterSelectWidget::NativeOnKeyDown(
+	const FGeometry& InGeometry,
+	const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		// UIOnly 입력 모드에서는 위젯이 ESC를 직접 받아서 닫아야 함.
+		HandleCloseButtonClicked();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
+void UNSCharacterSelectWidget::HandleCloseButtonClicked()
+{
+	ANSPlayerController* PlayerController = Cast<ANSPlayerController>(GetOwningPlayer());
+
+	if (!PlayerController)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"[CharacterSelect] 닫기 실패: 소유 PlayerController가 유효하지 않습니다."
+		);
+		return;
+	}
+
+	// 캐릭터를 확정하지 않고 창과 입력 상태만 원래대로 되돌림.
+	PlayerController->HideCharacterSelectWidget();
 }
 
 void UNSCharacterSelectWidget::SelectNext()

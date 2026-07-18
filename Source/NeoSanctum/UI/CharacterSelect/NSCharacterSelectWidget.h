@@ -41,6 +41,7 @@ class NEOSANCTUM_API UNSCharacterSelectWidget : public UCommonActivatableWidget
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeOnActivated() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonButtonBase> NextButton;
@@ -50,6 +51,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonButtonBase> ConfirmButton;
+
+	// WBP에 닫기 버튼이 없어도 ESC 닫기는 동작하도록 Optional로 연결함.
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UCommonButtonBase> CloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonTextBlock> CharacterNameText;
@@ -123,6 +128,7 @@ protected:
 
 private:
 	void HandleCharacterChanged();
+	void HandleCloseButtonClicked();
 	void FadeAndSwitch();
 	void OnFadeOutFinished();
 
