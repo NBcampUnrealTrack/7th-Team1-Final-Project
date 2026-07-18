@@ -81,6 +81,7 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 	DetectionSphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::Enemy, ECR_Overlap);
+	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::EnemyBoss, ECR_Overlap);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
