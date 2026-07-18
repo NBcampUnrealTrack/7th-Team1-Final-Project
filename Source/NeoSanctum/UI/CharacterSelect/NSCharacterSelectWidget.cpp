@@ -36,6 +36,12 @@ namespace
 		case ENSSkillStatValueFormat::Seconds:
 			return FText::Format(NSLOCTEXT("CharacterSelect", "SkillStatSeconds", "{0}초"), NumberText);
 
+		case ENSSkillStatValueFormat::ShotsPerSecond:
+			return FText::Format(NSLOCTEXT("CharacterSelect", "SkillStatShotsPerSecond", "초당 {0}발"), NumberText);
+
+		case ENSSkillStatValueFormat::Meters:
+			return FText::Format(NSLOCTEXT("CharacterSelect", "SkillStatMeters", "{0} m"), NumberText);
+
 		case ENSSkillStatValueFormat::Number:
 		default:
 			return NumberText;

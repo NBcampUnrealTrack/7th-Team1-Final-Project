@@ -17,7 +17,9 @@ enum class ENSSkillStatValueFormat : uint8
 {
 	Number UMETA(DisplayName = "숫자"),
 	Percentage UMETA(DisplayName = "퍼센트"),
-	Seconds UMETA(DisplayName = "초")
+	Seconds UMETA(DisplayName = "초"),
+	ShotsPerSecond UMETA(DisplayName = "초당 발사 수"),
+	Meters UMETA(DisplayName = "미터")
 };
 
 /**
