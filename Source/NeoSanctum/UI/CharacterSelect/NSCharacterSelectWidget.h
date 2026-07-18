@@ -4,6 +4,7 @@
 
 #include "CommonActivatableWidget.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
+#include "NSCharacterSelectSkillSlotWidget.h"
 #include "NSCharacterSelectWidget.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
@@ -11,9 +12,21 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 
 class UCommonAnimatedSwitcher;
 class UCommonButtonBase;
+class UCommonTextBlock;
 class UTextBlock;
 class UNSCharacterSlotWidget;
 class UImage;
+struct FNSSkillUIData;
+
+/**
+ * 스킬 정보를 어떤 입력으로 변경할지 정함.
+ */
+UENUM(BlueprintType)
+enum class ENSCharacterSelectSkillPreviewMode : uint8
+{
+	Hover UMETA(DisplayName = "호버"),
+	Click UMETA(DisplayName = "클릭")
+};
 
 /**
  * 거점에서 플레이어 캐릭터를 선택하는 UI 위젯.
@@ -28,6 +41,7 @@ class NEOSANCTUM_API UNSCharacterSelectWidget : public UCommonActivatableWidget
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeOnActivated() override;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonButtonBase> NextButton;
@@ -45,10 +59,41 @@ protected:
 	TObjectPtr<UCommonAnimatedSwitcher> CharacterSwitcher;
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
-	TObjectPtr<UImage> PreviewImage;	
+	TObjectPtr<UImage> PreviewImage;
 	
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
 	TObjectPtr<UTextBlock> MaxHealthText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UCommonTextBlock> CharacterDescriptionText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UNSCharacterSelectSkillSlotWidget> BaseAttackSlot;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UNSCharacterSelectSkillSlotWidget> Skill1Slot;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UNSCharacterSelectSkillSlotWidget> Skill2Slot;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UNSCharacterSelectSkillSlotWidget> Skill3Slot;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UImage> SkillDetailIconImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UCommonTextBlock> SkillDetailNameText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UCommonTextBlock> SkillDetailDescriptionText;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UCommonTextBlock> SkillDetailStatsText;
+
+	// 기본값은 호버이며 나중에 WBP 기본값에서 클릭 방식으로 바꿀 수 있음.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect|Skill")
+	ENSCharacterSelectSkillPreviewMode SkillPreviewMode = ENSCharacterSelectSkillPreviewMode::Hover;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Stats")
 	TObjectPtr<UTextBlock> BaseDamageText;
@@ -77,7 +122,6 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "CharacterSelect")
 	void ConfirmSelection();
 
-
 private:
 	void HandleCharacterChanged();
 	void FadeAndSwitch();
@@ -95,6 +139,30 @@ private:
 	
 	// 현재 선택된 캐릭터에 해당하는 인덱스를 찾는다. 못 찾으면 0
 	int32 FindInitialCharacterIndex() const;
+
+	void BindSkillSlotEvents();
+	void RefreshSkillSection(const FNSCharacterSelectData& Data);
+	void ClearSkillSection();
+
+	void PreviewSkillSlot(ENSCharacterSelectSkillSlot SlotType);
+	void UpdateSkillSlotPreviewIndicators();
+	void UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow);
+	void ClearSkillDetailPanel();
+
+	FText BuildSkillStatsText(const FNSSkillUIData& SkillUIData);
+
+	UNSCharacterSelectSkillSlotWidget* GetSkillSlotWidget(ENSCharacterSelectSkillSlot SlotType) const;
+
+	void HandleSkillSlotHovered(ENSCharacterSelectSkillSlot SlotType);
+	void HandleSkillSlotClicked(ENSCharacterSelectSkillSlot SlotType);
+
+private:
+	ENSCharacterSelectSkillSlot PreviewedSkillSlot = ENSCharacterSelectSkillSlot::BaseAttack;
+
+	bool bHasPreviewedSkillSlot = false;
+
+	// 같은 누락 항목이 호버할 때마다 반복 출력되지 않게 기억함.
+	TSet<FString> LoggedMissingSkillStatKeys;
 	
 public:
 	UPROPERTY(BlueprintAssignable, Category = "CharacterSelect")

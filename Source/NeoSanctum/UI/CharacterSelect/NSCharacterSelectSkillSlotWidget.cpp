@@ -97,6 +97,11 @@ void UNSCharacterSelectSkillSlotWidget::SetSlotPreviewed(bool bPreviewed)
 	}
 }
 
+void UNSCharacterSelectSkillSlotWidget::ResetSlot()
+{
+	ClearSlot();
+}
+
 void UNSCharacterSelectSkillSlotWidget::HandleHovered()
 {
 	if (!SkillUIDataRow.DataTable || SkillUIDataRow.RowName.IsNone())

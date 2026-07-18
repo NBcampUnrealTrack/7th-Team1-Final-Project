@@ -3,6 +3,7 @@
 #include "NSCharacterSelectWidget.h"
 #include "CommonAnimatedSwitcher.h"
 #include "CommonButtonBase.h"
+#include "CommonTextBlock.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
@@ -12,6 +13,35 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+#include "NeoSanctum/Data/UI/NSSkillUIData.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
+
+namespace
+{
+	FText FormatSkillStatValue(float DisplayValue, ENSSkillStatValueFormat ValueFormat)
+	{
+		FNumberFormattingOptions NumberOptions;
+		NumberOptions.MinimumFractionalDigits = 0;
+		NumberOptions.MaximumFractionalDigits = 2;
+
+		const FText NumberText = FText::AsNumber(DisplayValue, &NumberOptions);
+
+		switch (ValueFormat)
+		{
+		case ENSSkillStatValueFormat::Percentage:
+			return FText::Format(NSLOCTEXT("CharacterSelect", "SkillStatPercentage", "{0}%"), NumberText);
+
+		case ENSSkillStatValueFormat::Seconds:
+			return FText::Format(NSLOCTEXT("CharacterSelect", "SkillStatSeconds", "{0}초"), NumberText);
+
+		case ENSSkillStatValueFormat::Number:
+		default:
+			return NumberText;
+		}
+	}
+}
 
 void UNSCharacterSelectWidget::NativeConstruct()
 {
@@ -42,9 +72,17 @@ void UNSCharacterSelectWidget::NativeConstruct()
 	{
 		ConfirmButton->OnClicked().AddUObject(this, &UNSCharacterSelectWidget::ConfirmSelection);
 	}
+	BindSkillSlotEvents();
 	HandleCharacterChanged();
 }
 
+void UNSCharacterSelectWidget::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+
+	// 위젯을 다시 열면 기본 공격 상세정보로 돌아감.
+	PreviewSkillSlot(ENSCharacterSelectSkillSlot::BaseAttack);
+}
 
 void UNSCharacterSelectWidget::SelectNext()
 {
@@ -86,7 +124,8 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 	
 	ApplyPreviewImage(Data);
 	UpdateBaseStatTexts(Data);
-	
+	RefreshSkillSection(Data);
+
 	if (CharacterNameText)
 	{
 		CharacterNameText->SetText(Data.CharacterName);
@@ -102,6 +141,11 @@ void UNSCharacterSelectWidget::OnFadeOutFinished()
 		{
 			CurrentSlot->SetCharacterData(Data);
 		}
+	}
+
+	if (CharacterDescriptionText)
+	{
+		CharacterDescriptionText->SetText(Data.CharacterDescription);
 	}
 
 	APlayerController* OwningPlayer = GetOwningPlayer();
@@ -126,6 +170,7 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 
 	ApplyPreviewImage(Data);
 	UpdateBaseStatTexts(Data);
+	RefreshSkillSection(Data);
 
 	if (CharacterNameText)
 	{
@@ -135,6 +180,352 @@ void UNSCharacterSelectWidget::HandleCharacterChanged()
 	if (CharacterSwitcher && CurrentIndex < CharacterSwitcher->GetChildrenCount())
 	{
 		CharacterSwitcher->SetActiveWidgetIndex(CurrentIndex);
+	}
+
+	if (CharacterDescriptionText)
+	{
+		CharacterDescriptionText->SetText(Data.CharacterDescription);
+	}
+}
+
+void UNSCharacterSelectWidget::BindSkillSlotEvents()
+{
+	UNSCharacterSelectSkillSlotWidget* SkillSlots[] =
+	{
+		BaseAttackSlot.Get(),
+		Skill1Slot.Get(),
+		Skill2Slot.Get(),
+		Skill3Slot.Get()
+	};
+
+	for (UNSCharacterSelectSkillSlotWidget* SkillSlotWidget : SkillSlots)
+	{
+		if (!SkillSlotWidget)
+		{
+			continue;
+		}
+
+		// 위젯이 다시 Construct되어도 같은 이벤트가 중복되지 않게 정리.
+		SkillSlotWidget->OnSlotHovered.RemoveAll(this);
+		SkillSlotWidget->OnSlotClicked.RemoveAll(this);
+
+		SkillSlotWidget->OnSlotHovered.AddUObject(this, &ThisClass::HandleSkillSlotHovered);
+		SkillSlotWidget->OnSlotClicked.AddUObject(this, &ThisClass::HandleSkillSlotClicked);
+	}
+
+	// 호버가 끝나도 최근 상세정보를 유지하므로 Unhovered는 연결하지 않음.
+}
+
+void UNSCharacterSelectWidget::RefreshSkillSection(const FNSCharacterSelectData& Data)
+{
+	const UNSCharacterData* CharacterData = Data.CharacterData.Get();
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	if (!CharacterData || !CharacterData->CharacterTag.IsValid() || !DataSubsystem)
+	{
+		ClearSkillSection();
+		return;
+	}
+
+	UDataTable* SkillSetTable = DataSubsystem->GetCommonCharacterSkillUISetTable();
+
+	if (!SkillSetTable || SkillSetTable->GetRowStruct() != FNSCharacterSkillUISet::StaticStruct())
+	{
+		ClearSkillSection();
+		return;
+	}
+
+	const FName SkillSetRowName = CharacterData->CharacterTag.GetTagName();
+
+	const FNSCharacterSkillUISet* SkillSet =
+		SkillSetTable->FindRow<FNSCharacterSkillUISet>(
+			SkillSetRowName, TEXT("CharacterSelectSkillSet"), false);
+
+	if (!SkillSet)
+	{
+		NS_OBJ_LOG(LogNS, Warning,
+			"[CharacterSelect] 스킬 UI Set을 찾을 수 없습니다. CharacterTag={CharacterTag}",
+			("CharacterTag", CharacterData->CharacterTag.ToString())
+		);
+
+		ClearSkillSection();
+		return;
+	}
+
+	if (BaseAttackSlot)
+	{
+		BaseAttackSlot->SetupSlot(
+			ENSCharacterSelectSkillSlot::BaseAttack,
+			SkillSet->BaseAttackUIDataRow,
+			SkillSet->BaseAttackInputDisplay
+		);
+	}
+
+	if (Skill1Slot)
+	{
+		Skill1Slot->SetupSlot(
+			ENSCharacterSelectSkillSlot::Skill1,
+			SkillSet->Skill1UIDataRow,
+			SkillSet->Skill1InputDisplay
+		);
+	}
+
+	if (Skill2Slot)
+	{
+		Skill2Slot->SetupSlot(
+			ENSCharacterSelectSkillSlot::Skill2,
+			SkillSet->Skill2UIDataRow,
+			SkillSet->Skill2InputDisplay
+		);
+	}
+
+	if (Skill3Slot)
+	{
+		Skill3Slot->SetupSlot(
+			ENSCharacterSelectSkillSlot::Skill3,
+			SkillSet->Skill3UIDataRow,
+			SkillSet->Skill3InputDisplay
+		);
+	}
+
+	// 캐릭터가 바뀌면 항상 좌클릭 기본 공격부터 보여줌.
+	PreviewSkillSlot(ENSCharacterSelectSkillSlot::BaseAttack);
+}
+
+void UNSCharacterSelectWidget::ClearSkillSection()
+{
+	if (BaseAttackSlot)
+	{
+		BaseAttackSlot->ResetSlot();
+	}
+
+	if (Skill1Slot)
+	{
+		Skill1Slot->ResetSlot();
+	}
+
+	if (Skill2Slot)
+	{
+		Skill2Slot->ResetSlot();
+	}
+
+	if (Skill3Slot)
+	{
+		Skill3Slot->ResetSlot();
+	}
+
+	PreviewedSkillSlot = ENSCharacterSelectSkillSlot::BaseAttack;
+	bHasPreviewedSkillSlot = false;
+
+	ClearSkillDetailPanel();
+}
+
+void UNSCharacterSelectWidget::HandleSkillSlotHovered(ENSCharacterSelectSkillSlot SlotType)
+{
+	if (SkillPreviewMode == ENSCharacterSelectSkillPreviewMode::Hover)
+	{
+		PreviewSkillSlot(SlotType);
+	}
+}
+
+void UNSCharacterSelectWidget::HandleSkillSlotClicked(ENSCharacterSelectSkillSlot SlotType)
+{
+	if (SkillPreviewMode == ENSCharacterSelectSkillPreviewMode::Click)
+	{
+		PreviewSkillSlot(SlotType);
+	}
+}
+
+void UNSCharacterSelectWidget::PreviewSkillSlot(ENSCharacterSelectSkillSlot SlotType)
+{
+	UNSCharacterSelectSkillSlotWidget* TargetSlot = GetSkillSlotWidget(SlotType);
+
+	if (!TargetSlot)
+	{
+		bHasPreviewedSkillSlot = false;
+		UpdateSkillSlotPreviewIndicators();
+		ClearSkillDetailPanel();
+		return;
+	}
+
+	const FDataTableRowHandle& SkillUIDataRow = TargetSlot->GetSkillUIDataRow();
+
+	if (!SkillUIDataRow.DataTable || SkillUIDataRow.RowName.IsNone())
+	{
+		bHasPreviewedSkillSlot = false;
+		UpdateSkillSlotPreviewIndicators();
+		ClearSkillDetailPanel();
+		return;
+	}
+
+	PreviewedSkillSlot = SlotType;
+	bHasPreviewedSkillSlot = true;
+
+	UpdateSkillSlotPreviewIndicators();
+	UpdateSkillDetailPanel(SkillUIDataRow);
+}
+
+void UNSCharacterSelectWidget::UpdateSkillSlotPreviewIndicators()
+{
+	if (BaseAttackSlot)
+	{
+		BaseAttackSlot->SetSlotPreviewed(
+			bHasPreviewedSkillSlot && PreviewedSkillSlot == ENSCharacterSelectSkillSlot::BaseAttack);
+	}
+
+	if (Skill1Slot)
+	{
+		Skill1Slot->SetSlotPreviewed(
+			bHasPreviewedSkillSlot && PreviewedSkillSlot == ENSCharacterSelectSkillSlot::Skill1);
+	}
+
+	if (Skill2Slot)
+	{
+		Skill2Slot->SetSlotPreviewed(
+			bHasPreviewedSkillSlot && PreviewedSkillSlot == ENSCharacterSelectSkillSlot::Skill2);
+	}
+
+	if (Skill3Slot)
+	{
+		Skill3Slot->SetSlotPreviewed(
+			bHasPreviewedSkillSlot && PreviewedSkillSlot == ENSCharacterSelectSkillSlot::Skill3);
+	}
+}
+
+UNSCharacterSelectSkillSlotWidget* UNSCharacterSelectWidget::GetSkillSlotWidget(
+	ENSCharacterSelectSkillSlot SlotType) const
+{
+	switch (SlotType)
+	{
+	case ENSCharacterSelectSkillSlot::BaseAttack:
+		return BaseAttackSlot.Get();
+
+	case ENSCharacterSelectSkillSlot::Skill1:
+		return Skill1Slot.Get();
+
+	case ENSCharacterSelectSkillSlot::Skill2:
+		return Skill2Slot.Get();
+
+	case ENSCharacterSelectSkillSlot::Skill3:
+		return Skill3Slot.Get();
+
+	default:
+		return nullptr;
+	}
+}
+
+void UNSCharacterSelectWidget::UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow)
+{
+	const FNSSkillUIData* SkillUIData =
+		SkillUIDataRow.GetRow<FNSSkillUIData>(TEXT("CharacterSelectSkillDetail"));
+
+	if (!SkillUIData)
+	{
+		ClearSkillDetailPanel();
+		return;
+	}
+
+	if (SkillDetailNameText)
+	{
+		SkillDetailNameText->SetText(SkillUIData->DisplayName);
+	}
+
+	if (SkillDetailDescriptionText)
+	{
+		SkillDetailDescriptionText->SetText(SkillUIData->Description);
+	}
+
+	if (SkillDetailIconImage)
+	{
+		// 아래 슬롯과 같은 텍스쳐 객체를 사용하므로 메모리가 중복되지 않음.
+		UTexture2D* SkillTexture = SkillUIData->SkillIcon.Get();
+
+		SkillDetailIconImage->SetBrushFromTexture(SkillTexture);
+		SkillDetailIconImage->SetVisibility(
+			SkillTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	if (SkillDetailStatsText)
+	{
+		SkillDetailStatsText->SetText(BuildSkillStatsText(*SkillUIData));
+	}
+}
+
+FText UNSCharacterSelectWidget::BuildSkillStatsText(const FNSSkillUIData& SkillUIData)
+{
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+
+	TArray<FString> StatLines;
+	StatLines.Reserve(SkillUIData.CharacterSelectStats.Num());
+
+	for (const FNSSkillStatDisplayData& DisplayData : SkillUIData.CharacterSelectStats)
+	{
+		const FNSAbilityBaseStatRow* StatRow =
+			DataSubsystem ? DataSubsystem->FindAbilityBaseStatRow(SkillUIData.SkillTag, DisplayData.StatTag) : nullptr;
+
+		FText ValueText = NSLOCTEXT("CharacterSelect", "MissingSkillStatValue", "-");
+
+		if (StatRow)
+		{
+			const float DisplayValue = StatRow->BaseValue * DisplayData.DisplayScale;
+
+			ValueText = FormatSkillStatValue(DisplayValue, DisplayData.ValueFormat);
+		}
+		else
+		{
+			const FString WarningKey = FString::Printf(
+				TEXT("%s|%s"),
+				*SkillUIData.SkillTag.ToString(),
+				*DisplayData.StatTag.ToString()
+			);
+
+			if (!LoggedMissingSkillStatKeys.Contains(WarningKey))
+			{
+				LoggedMissingSkillStatKeys.Add(WarningKey);
+
+				NS_OBJ_LOG(LogNS, Warning,
+					"[CharacterSelect] 스킬 기본 스탯을 찾을 수 없습니다. AbilityTag={AbilityTag}, StatTag={StatTag}",
+					("AbilityTag", SkillUIData.SkillTag.ToString()),
+					("StatTag", DisplayData.StatTag.ToString())
+				);
+			}
+		}
+
+		const FText StatLine = FText::Format(
+			NSLOCTEXT("CharacterSelect", "SkillStatLineFormat", "{0}: {1}"),
+				DisplayData.DisplayName,
+				ValueText
+			);
+
+		StatLines.Add(StatLine.ToString());
+	}
+
+	return FText::FromString(FString::Join(StatLines, LINE_TERMINATOR));
+}
+
+void UNSCharacterSelectWidget::ClearSkillDetailPanel()
+{
+	const FText EmptyText = FText::GetEmpty();
+
+	if (SkillDetailNameText)
+	{
+		SkillDetailNameText->SetText(EmptyText);
+	}
+
+	if (SkillDetailDescriptionText)
+	{
+		SkillDetailDescriptionText->SetText(EmptyText);
+	}
+
+	if (SkillDetailStatsText)
+	{
+		SkillDetailStatsText->SetText(EmptyText);
+	}
+
+	if (SkillDetailIconImage)
+	{
+		SkillDetailIconImage->SetBrushFromTexture(nullptr);
+		SkillDetailIconImage->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 

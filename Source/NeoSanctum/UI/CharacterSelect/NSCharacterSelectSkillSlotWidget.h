@@ -54,6 +54,9 @@ public:
 	// 현재 상세 패널에 표시 중인 슬롯인지 표현.
 	void SetSlotPreviewed(bool bPreviewed);
 
+	// 이전 캐릭터의 스킬 데이터가 남지 않도록 슬롯을 비움.
+	void ResetSlot();
+
 	ENSCharacterSelectSkillSlot GetSlotType() const { return SlotType; }
 	const FDataTableRowHandle& GetSkillUIDataRow() const { return SkillUIDataRow; }
 
