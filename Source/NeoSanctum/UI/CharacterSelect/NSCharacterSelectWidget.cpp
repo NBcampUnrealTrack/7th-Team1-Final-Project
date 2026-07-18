@@ -639,53 +639,44 @@ void UNSCharacterSelectWidget::UpdateBaseStatTexts(const FNSCharacterSelectData&
 		return;
 	}
 
+	// 라벨은 WBP에서 고정으로 보여주고, 여기서는 캐릭터마다 바뀌는 값만 전달합니다.
 	if (MaxHealthText)
 	{
-		MaxHealthText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "MaxHealthFormat", "체력: {0}"),
-			FText::AsNumber(StatRow->MaxHealth)));
+		MaxHealthText->SetText(FText::AsNumber(StatRow->MaxHealth));
+	}
+
+	if (MaxShieldText)
+	{
+		MaxShieldText->SetText(FText::AsNumber(StatRow->MaxShield));
 	}
 
 	if (BaseDamageText)
 	{
-		BaseDamageText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "BaseDamageFormat", "공격력: {0}"),
-			FText::AsNumber(StatRow->BaseDamage)));
+		BaseDamageText->SetText(FText::AsNumber(StatRow->BaseDamage));
 	}
 
 	if (DefenseText)
 	{
-		DefenseText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "DefenseFormat", "방어력: {0}"),
-			FText::AsNumber(StatRow->Defense)));
+		DefenseText->SetText(FText::AsNumber(StatRow->Defense));
 	}
 
 	if (MoveSpeedText)
 	{
-		MoveSpeedText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "MoveSpeedFormat", "이동속도: {0}"),
-			FText::AsNumber(StatRow->MoveSpeed)));
+		MoveSpeedText->SetText(FText::AsNumber(StatRow->MoveSpeed));
 	}
 
 	if (CritChanceText)
 	{
 		CritChanceText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "CritChanceFormat", "치명타 확률: {0}%"),
+			NSLOCTEXT("CharacterSelect", "CritChanceValueFormat", "{0}%"),
 			FText::AsNumber(StatRow->CritChance)));
 	}
 
 	if (CritDamageText)
 	{
 		CritDamageText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "CritDamageFormat", "치명타 피해: {0}%"),
+			NSLOCTEXT("CharacterSelect", "CritDamageValueFormat", "{0}%"),
 			FText::AsNumber(StatRow->CritDamage)));
-	}
-
-	if (MaxShieldText)
-	{
-		MaxShieldText->SetText(FText::Format(
-			NSLOCTEXT("CharacterSelect", "MaxShieldFormat", "보호막: {0}"),
-			FText::AsNumber(StatRow->MaxShield)));
 	}
 }
 
