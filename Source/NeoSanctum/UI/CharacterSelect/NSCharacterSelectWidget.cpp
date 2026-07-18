@@ -479,7 +479,7 @@ void UNSCharacterSelectWidget::UpdateSkillDetailPanel(const FDataTableRowHandle&
 	if (SkillDetailIconImage)
 	{
 		// 아래 슬롯과 같은 텍스쳐 객체를 사용하므로 메모리가 중복되지 않음.
-		UTexture2D* SkillTexture = SkillUIData->SkillIcon.Get();
+		UTexture2D* SkillTexture = SkillUIData->CharacterSelectIcon.Get();
 
 		SkillDetailIconImage->SetBrushFromTexture(SkillTexture);
 		SkillDetailIconImage->SetVisibility(

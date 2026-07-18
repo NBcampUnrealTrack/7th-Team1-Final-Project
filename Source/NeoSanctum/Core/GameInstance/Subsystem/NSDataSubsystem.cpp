@@ -728,6 +728,11 @@ void UNSDataSubsystem::CollectCommonUIIconPaths(
 			{
 				OutPaths.AddUnique(Row->SkillIcon.ToSoftObjectPath());
 			}
+
+			if (Row && !Row->CharacterSelectIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->CharacterSelectIcon.ToSoftObjectPath());
+			}
 		}
 	}
 

@@ -66,9 +66,13 @@ struct FNSSkillUIData : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	FText Description;
 
-	//스킬 슬롯 아이콘
+	// HUD 슬롯은 베젤이 포함된 기존 아이콘을 계속 사용.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill")
 	TSoftObjectPtr<UTexture2D> SkillIcon;
+
+	// 캐릭터 선택 슬롯과 상세 패널에는 무프레임 아이콘을 사용.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill|CharacterSelect")
+	TSoftObjectPtr<UTexture2D> CharacterSelectIcon;
 
 	// 캐릭터 선택 화면에 보여줄 스탯만 순서대로 넣음.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Skill|CharacterSelect")

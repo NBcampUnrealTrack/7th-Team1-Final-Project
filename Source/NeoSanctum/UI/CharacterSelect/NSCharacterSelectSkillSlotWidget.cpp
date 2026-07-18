@@ -61,7 +61,7 @@ void UNSCharacterSelectSkillSlotWidget::SetupSlot(
 	if (SkillIconImage)
 	{
 		// 아이콘은 CommonUI 단계에서 선로드했으므로 동기 로드하지 않음.
-		UTexture2D* SkillTexture = SkillUIData->SkillIcon.Get();
+		UTexture2D* SkillTexture = SkillUIData->CharacterSelectIcon.Get();
 
 		SkillIconImage->SetBrushFromTexture(SkillTexture);
 		SkillIconImage->SetVisibility(SkillTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
