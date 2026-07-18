@@ -19,6 +19,7 @@
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 
 static UNSProgressionSubsystem* GetProgressionSS(const UObject* WorldCtx)
 {
@@ -62,6 +63,17 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 	RefreshEquipButton();
 	RefreshEquippedDisplay();
+
+	/**
+	 * 캐릭터 스테이터스 패널 초기 표시: 현재 ASC 스탯 스냅샷을 1회 방송
+	 * 첫 호출에서 어트리뷰트 변경 델리게이트도 바인딩됨
+	 * 이후 파츠 장착/해제로 스탯이 바뀌면 브릿지가 자동으로 재방송
+	 */
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(OwningController.Get());
+	}
 
 	if (PreviewStageClass && !IsValid(PreviewStage))
 	{
