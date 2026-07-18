@@ -4,10 +4,12 @@
 
 #include "NeoSanctum/AI/Components/NSFlyingLocomotionComponent.h" 
 #include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/GAS/AttributeSet/NSCompanionAttributeSet.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
+#include "Components/SphereComponent.h"
 
 
 ANSCompanionDroneAI::ANSCompanionDroneAI()
@@ -17,6 +19,13 @@ ANSCompanionDroneAI::ANSCompanionDroneAI()
 	TeamId = ETeamId::Player;
 	AIControllerClass = ANSDroneAIController::StaticClass();
 	CompanionAttributeSet = CreateDefaultSubobject<UNSCompanionAttributeSet>("AttributeSet");
+	
+	if (SphereComponent)
+	{
+		SphereComponent->SetCollisionResponseToChannel(ECC_WorldStatic,  ECR_Overlap);
+		SphereComponent->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
+		SphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::DestructibleObject, ECR_Overlap);
+	}
 }
 
 void ANSCompanionDroneAI::PossessedBy(AController* NewController)
@@ -25,6 +34,13 @@ void ANSCompanionDroneAI::PossessedBy(AController* NewController)
 	
 	// 서브 로직도 서버에서만 (Super가 조용히 실패해도 여기서 필터)
 	if (!HasAuthority()) return;
+	
+	// [추가] 평상시 유지 고도를 캐시. Collect에서 낮췄다가 이 값으로 되돌린다.
+	// (BP에서 Altitude를 300과 다르게 오버라이드했어도 실제 값을 그대로 반영)
+	if (IsValid(FlyingMovementComponent))
+	{
+		DefaultAltitude = FlyingMovementComponent->GetAltitude();
+	}
 	
 	// 오너 거리 체크 타이머 (0.25초 주기)
 	GetWorldTimerManager().SetTimer(
@@ -54,7 +70,25 @@ void ANSCompanionDroneAI::InitializeFromData()
 
 void ANSCompanionDroneAI::SetCurrentState(ECompanionState NewState)
 {
+	// 이 함수는 서비스 틱(0.15초)마다 호출되므로,
+	// 상태가 실제로 바뀌는 "전이 순간"에만 고도를 재설정한다. (SetAltitude 스팸 방지)
+	if (NewState == CurrentState) return;
+
+	const ECompanionState PrevState = CurrentState;
 	CurrentState = NewState;
+
+	if (!IsValid(FlyingMovementComponent)) return;
+
+	if (NewState == ECompanionState::Collect)
+	{
+		// 재화 수집 진입 → 지상 가까이 하강 (이동/회피는 그대로 살아있음)
+		FlyingMovementComponent->SetAltitude(CollectAltitude);
+	}
+	else if (PrevState == ECompanionState::Collect)
+	{
+		// 재화 수집 이탈 → 평상 고도로 복귀
+		FlyingMovementComponent->SetAltitude(DefaultAltitude);
+	}
 }
 
 void ANSCompanionDroneAI::ApplyStatUpgrade(FGameplayTag NodeTag, int32 NewLevel)

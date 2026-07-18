@@ -139,7 +139,7 @@ protected:
 
 	// @민재 : 지면 트레이스 채널 (Drone_Ground)
 	UPROPERTY(EditAnywhere, Category="Locomotion|Altitude")
-	TEnumAsByte<ECollisionChannel> GroundChannel = ECC_WorldStatic;
+	TArray<TEnumAsByte<EObjectTypeQuery>> GroundObjectTypes;
 
 	// @민재 : 드론이 부드럽게 오를 수 있는 최대 경사각. 초과 시 수평 속도 낮춤
 	UPROPERTY(EditAnywhere, Category="Locomotion|Altitude", meta=(ClampMin="0.0", ClampMax="80.0"))
@@ -203,7 +203,7 @@ protected:
 
 	// @민재 : 회피 트레이스 채널 (Drone_Avoidance)
 	UPROPERTY(EditAnywhere, Category="Locomotion|Avoidance")
-	TEnumAsByte<ECollisionChannel> AvoidanceChannel = ECC_GameTraceChannel4;
+	TArray<TEnumAsByte<EObjectTypeQuery>> AvoidanceObjectTypes;
 
 	// @민재 : DangerMap 반응 속도 (초당 보간 비율, 클수록 빠름)
 	UPROPERTY(EditAnywhere, Category="Locomotion|Avoidance", meta=(ClampMin="1.0"))

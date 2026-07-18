@@ -4,12 +4,20 @@
 #include "NSFlyingLocomotionComponent.h"
 #include "GameFramework/Pawn.h"
 #include "EngineUtils.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "GenericTeamAgentInterface.h"
 
 
 UNSFlyingLocomotionComponent::UNSFlyingLocomotionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	
+	// 지면: WorldStatic + WorldDynamic (WorldDynamic 지형지물도 지면으로 인식)
+	GroundObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+	GroundObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+
+	// 회피: 파괴가능 오브젝트만. ↓ 아래 "확인 필요" 참고해서 실제 타입으로.
+	AvoidanceObjectTypes.Add(UEngineTypes::ConvertToObjectType(NSCollisionChannels::DestructibleObject));
 }
 
 void UNSFlyingLocomotionComponent::BeginPlay()
@@ -318,12 +326,35 @@ bool UNSFlyingLocomotionComponent::TraceGroundAt(const FVector& WorldXY, float& 
 	const APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return false;
 
+	const UWorld* World = GetWorld();
+	if (!World) return false;
+
+	// 지면 = WorldStatic / WorldDynamic 오브젝트 타입으로 직접 판정 (전용 채널 폐기)
+	FCollisionObjectQueryParams ObjectParams;
+	for (const TEnumAsByte<EObjectTypeQuery>& ObjType : GroundObjectTypes)
+	{
+		ObjectParams.AddObjectTypesToQuery(UEngineTypes::ConvertToCollisionChannel(ObjType));
+	}
+
+	const FVector TraceStart = WorldXY;
+	const FVector TraceEnd   = TraceStart - FVector(0.f, 0.f, GroundTraceDistance);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(OwnerPawn);
+
 	FHitResult Hit;
-	const bool bHit = TraceGroundAtWorldLocation(
-		GetWorld(), WorldXY, GroundTraceDistance, GroundChannel, MaxWalkableSlopeAngle, OwnerPawn, Hit);
+	if (!World->LineTraceSingleByObjectType(Hit, TraceStart, TraceEnd, ObjectParams, QueryParams))
+	{
+		return false;
+	}
 
-	if (!bHit) return false;
+	// 파고든 채 시작한 히트는 법선 신뢰 불가 → 바닥 아님
+	if (Hit.bStartPenetrating) return false;
 
+	// 걷기 불가능한 가파른 면(벽 측면 등)은 바닥 아님
+	const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngle));
+	if (Hit.ImpactNormal.Z < WalkableCosThreshold) return false;
+	
 	OutZ = Hit.ImpactPoint.Z;
 	return true;
 }
@@ -426,6 +457,12 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 	TArray<AActor*> IgnoredAllies;
 	CollectAvoidanceIgnoredActors(OwnerPawn, IgnoredAllies);
 
+	FCollisionObjectQueryParams AvoidObjectParams;
+	for (const TEnumAsByte<EObjectTypeQuery>& ObjType : AvoidanceObjectTypes)
+	{
+		AvoidObjectParams.AddObjectTypesToQuery(UEngineTypes::ConvertToCollisionChannel(ObjType));
+	}
+	
 	// 방향별 스윕 → raw danger → 시간 스무딩
 	for (int32 i = 0; i < SteeringDirections.Num(); ++i)
 	{
@@ -439,27 +476,18 @@ void UNSFlyingLocomotionComponent::BuildDangerMap()
 		CollisionParams.AddIgnoredActors(IgnoredAllies);
 		CollisionParams.bTraceComplex = false;
 
-		// 이번 프레임 raw Danger 계산
-		// 회피 채널은 지형 미응답이므로 walkable 판정 불필요
-		// 히트하면 곧 진짜 장애물 - 거리 기반 위험도만 계산
 		float RawDanger = 0.f;
-		if (GetWorld()->SweepSingleByChannel(
+		if (GetWorld()->SweepSingleByObjectType(
 			Hit, Start, End, FQuat::Identity,
-			AvoidanceChannel,
+			AvoidObjectParams,
 			FCollisionShape::MakeSphere(AvoidanceTraceRadius),
 			CollisionParams))
 		{
-			// 완만한 경사면(=지형)은 회피 대상이 아님. 가파른 면(=벽/장애물)만 위험도 부여.
-			// 파고든 상태 시작 히트는 법선 신뢰 불가 → 보수적으로 장애물 취급
-			const float WalkableCosThreshold = FMath::Cos(FMath::DegreesToRadians(MaxWalkableSlopeAngle));
-			const bool bWalkableTerrain = !Hit.bStartPenetrating && (Hit.ImpactNormal.Z >= WalkableCosThreshold);
-
-			if (!bWalkableTerrain)
-			{
-				RawDanger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
-			}
+			// 걸린 것은 곧 Destructible = 항상 장애물이므로 거리 기반 위험도만 계산.
+			// (오브젝트 타입 쿼리라 지형은 애초에 안 걸림 → 기존 walkable 판정 불필요)
+			RawDanger = 1.f - FMath::Clamp(Hit.Distance / AvoidanceTraceDistance, 0.f, 1.f);
 		}
-
+		
 		DangerMap.Add(RawDanger);
 
 		// 프레임간 튐 억제를 위한 지수 스무딩 (프레임레이트 독립)

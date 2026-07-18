@@ -349,7 +349,7 @@ bool UNSCurrencyDropSubsystem::FindNearestTrackableDrop(const ANSPlayerState* Co
 		if (!IsDropTrackableFor(Pair.Value, CompanionOwnerPS, Now)) continue;
 		
 		// 드롭물과의 거리 계산
-		const float DistSq = FVector::DistSquared(FromLocation, Pair.Value.Location);
+		const float DistSq = FVector::DistSquaredXY(FromLocation, Pair.Value.Location);
 		if (DistSq <= BestDistSq)
 		{
 			// 반경 안이라면 갱신
