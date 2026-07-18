@@ -391,7 +391,7 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 				if (BadgeSlot)
 				{
 					BadgeSlot->SetHorizontalAlignment(HAlign_Right);
-					BadgeSlot->SetVerticalAlignment(VAlign_Bottom);
+					BadgeSlot->SetVerticalAlignment(VAlign_Top);
 				}
 			}
 		}
