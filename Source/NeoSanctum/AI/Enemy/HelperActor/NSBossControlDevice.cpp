@@ -11,6 +11,7 @@
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
 #include "Components/CapsuleComponent.h"
 
 ANSBossControlDevice::ANSBossControlDevice()
@@ -43,6 +44,9 @@ ANSBossControlDevice::ANSBossControlDevice()
 
     DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
     DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+    
+    MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+    MinimapIconComponent->SetHideWhenOwnerHealthZero(true);
 }
 
 void ANSBossControlDevice::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -51,6 +55,15 @@ void ANSBossControlDevice::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
     DOREPLIFETIME(ANSBossControlDevice, bGroundPlaced);
     DOREPLIFETIME(ANSBossControlDevice, GroundLocation);
     DOREPLIFETIME(ANSBossControlDevice, GroundRotation);
+}
+
+FVector ANSBossControlDevice::GetAimLocation() const
+{
+    if (Mesh)
+    {
+        return Mesh->Bounds.Origin;
+    }
+    return GetActorLocation();
 }
 
 void ANSBossControlDevice::BeginPlay()

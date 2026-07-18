@@ -5,6 +5,7 @@
 #include "AbilitySystemInterface.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameplayTagContainer.h"
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSBossControlDevice.generated.h"
 
@@ -18,13 +19,15 @@ class UNSDissolveComponent;
 class UMaterialInstanceDynamic;
 class ANSBossControlDevice;
 class UCapsuleComponent;
+class UNSMinimapIconComponent;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FNSControlDeviceDestroyed, ANSBossControlDevice*);
 
 UCLASS()
 class NEOSANCTUM_API ANSBossControlDevice : public AActor,
                                             public IAbilitySystemInterface,
-                                            public IGenericTeamAgentInterface
+                                            public IGenericTeamAgentInterface,
+                                            public INSEnemyAgent
 {
     GENERATED_BODY()
 public:
@@ -45,6 +48,18 @@ public:
     void ApplyGroundPlacement(const FVector& InGroundLocation, const FRotator& InGroundRotation);
     float GetPivotToMeshBottomOffset() const;
 
+    // ── INSEnemyAgent 구현 ──
+    // 제어장치는 데이터 주도/공격 개체가 아니므로 대부분 미사용(no-op).
+    virtual UNSEnemyData* GetEnemyData() const override { return nullptr; }
+    virtual USkeletalMeshComponent* GetEnemyMesh() const override { return Mesh; }
+    virtual const FNSEnemyAttackRow* GetCurrentAttackRow() const override { return nullptr; }
+    virtual void SetCurrentAttackRow(const FNSEnemyAttackRow&) override {}
+    virtual void ClearCurrentAttackRow() override {}
+    virtual bool IsHitReacting() const override { return false; }
+    
+    // 유도/조준 기준점: 바닥 피벗이 아니라 메시 바운드 중심(몸통)을 반환
+    virtual FVector GetAimLocation() const override;
+    
 protected:
     virtual void BeginPlay() override;
 
@@ -79,6 +94,9 @@ protected:
 
     UPROPERTY(VisibleAnywhere, Category = "Components")
     TObjectPtr<UNSDissolveComponent> DissolveComponent;
+    
+    UPROPERTY(VisibleAnywhere, Category = "Components")
+    TObjectPtr<UNSMinimapIconComponent> MinimapIconComponent;
 
     // 존재하는 동안 자신에게 유지할 지속 GameplayCue (VFX+사운드)
     UPROPERTY(EditDefaultsOnly, Category = "ControlDevice|Cue")
