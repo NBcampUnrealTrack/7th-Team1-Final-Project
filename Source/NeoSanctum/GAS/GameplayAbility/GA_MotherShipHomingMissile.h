@@ -54,6 +54,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Missile")
 	TSubclassOf<ANSHomingMissile> MissileClass;
 
+	// 발사 시 각 Muzzle 소켓에서 실행할 발사 GameplayCue (머즐 플래시 + 발사음)
+	UPROPERTY(EditDefaultsOnly, Category = "Attack|Cue")
+	FGameplayTag FireCueTag;
+	
 	const FNSEnemyAttackRow* CachedAttackRow = nullptr;
 
 	// 재진입 가드 (Bombard 패턴): 첫 GameplayEvent에서만 연발 루프 kick off

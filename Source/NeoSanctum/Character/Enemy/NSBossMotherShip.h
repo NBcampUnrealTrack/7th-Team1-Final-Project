@@ -166,6 +166,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
 	FGameplayTag Phase1BarrierCueTag;
 	
+	// 1페이즈 무적 베리어 테슬라코일 시각화 GameplayCue 태그 (ANSGameplayCueNotify_Sustainable 파생 BP에 매핑됨)
+	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice")
+	FGameplayTag Phase1TeslaCoilCue;
+	
 	// 바닥 트레이스 최대 거리. 마더쉽이 높이 스폰되므로 FlyingLocomotion 기본값보다 길게 잡을 것.
 	UPROPERTY(EditDefaultsOnly, Category = "ControlDevice", meta = (ClampMin = "0.0"))
 	float ControlDeviceGroundTraceDistance = 5000.f;

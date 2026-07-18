@@ -5,6 +5,8 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemGlobals.h"
+#include "GameplayCueManager.h"
 #include "Components/SphereComponent.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/ProjectileMovementComponent.h"
@@ -80,6 +82,7 @@ void ANSHomingMissile::BeginPlay()
 	IgnoreCollisionForActors({GetOwner(), GetInstigator()});
 	ProjectileMovement->HomingAccelerationMagnitude = HomingAccelerationMagnitude;
 	SetLifeSpan(LifeSeconds);
+	StartThrustCue();
 }
 
 void ANSHomingMissile::Tick(float DeltaTime)
@@ -89,6 +92,12 @@ void ANSHomingMissile::Tick(float DeltaTime)
 	CurrentSpeed = FMath::Min(CurrentSpeed + Acceleration * DeltaTime, MaxSpeed);
 	ProjectileMovement->Velocity = ProjectileMovement->Velocity.GetSafeNormal() * CurrentSpeed;
 	
+}
+
+void ANSHomingMissile::Destroyed()
+{
+	StopThrustCue();
+	Super::Destroyed();
 }
 
 void ANSHomingMissile::IgnoreCollisionForActors(const TArray<AActor*>& ActorsToIgnore)
@@ -408,5 +417,48 @@ void ANSHomingMissile::ApplyExplosionDamage(const FVector& ExplosionLocation, co
 		("AppliedCount", AppliedCount),
 		("TargetCount", TargetActors.Num())
 	);
+}
+
+void ANSHomingMissile::StartThrustCue()
+{
+	if (!ThrustCueTag.IsValid())
+	{
+		return;
+	}
+
+	UGameplayCueManager* CueManager = UAbilitySystemGlobals::Get().GetGameplayCueManager();
+	if (!CueManager)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = GetInstigator();
+	CueParameters.EffectCauser = this;
+	CueParameters.Location = GetActorLocation();
+
+	// OnActive → LoopVFX가 미사일 메시 소켓에 부착되어 비행 내내 유지
+	CueManager->HandleGameplayCue(this, ThrustCueTag, EGameplayCueEvent::OnActive, CueParameters);
+}
+
+void ANSHomingMissile::StopThrustCue()
+{
+	if (!ThrustCueTag.IsValid())
+	{
+		return;
+	}
+
+	UGameplayCueManager* CueManager = UAbilitySystemGlobals::Get().GetGameplayCueManager();
+	if (!CueManager)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.EffectCauser = this;
+	CueParameters.Location = GetActorLocation();
+
+	// Removed → OnRemove에서 LoopVFX 정리 → 폭발/수명만료와 함께 소멸
+	CueManager->HandleGameplayCue(this, ThrustCueTag, EGameplayCueEvent::Removed, CueParameters);
 }
 

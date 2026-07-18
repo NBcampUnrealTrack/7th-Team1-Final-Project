@@ -59,8 +59,20 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Explosion_Sound);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Explosion_Effect);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Decal);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Cloaking);
-	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Fire);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Explosion);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Thrust);
+	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase1Barrier);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase2Shield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Tesla);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_TeslaCoil);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_PowerOff);
+	
+	// EnemyDrone
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_EnemyDrone_Fire);
 }

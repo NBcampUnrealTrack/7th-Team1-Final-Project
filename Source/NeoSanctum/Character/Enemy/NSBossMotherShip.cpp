@@ -17,9 +17,9 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/AttributeSet/NSMonsterAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
-#include "NeoSanctum/Interaction/Prop/NSBossControlDevice.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/AI/Enemy/HelperActor/NSBossArenaBounds.h"
+#include "NeoSanctum/AI/Enemy/HelperActor/NSBossControlDevice.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
 
 ANSBossMotherShip::ANSBossMotherShip()
@@ -383,6 +383,7 @@ void ANSBossMotherShip::InitControlDevices()
 		if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
 		{
 			MotherShipASC->AddGameplayCue_MinimalReplication(Phase1BarrierCueTag);
+			MotherShipASC->AddGameplayCue_MinimalReplication(Phase1TeslaCoilCue);
 		}
 	}
 }
@@ -408,6 +409,7 @@ void ANSBossMotherShip::HandleControlDeviceDestroyed(ANSBossControlDevice* Destr
 		if (UAbilitySystemComponent* MotherShipASC = GetAbilitySystemComponent())
 		{
 			MotherShipASC->RemoveGameplayCue_MinimalReplication(Phase1BarrierCueTag);
+			MotherShipASC->RemoveGameplayCue_MinimalReplication(Phase1TeslaCoilCue);
 		}
 	}
 }

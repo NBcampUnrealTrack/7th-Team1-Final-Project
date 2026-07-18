@@ -132,6 +132,16 @@ void UGA_MotherShipHomingMissile::FireOneShot()
 			Dir = Muzzle.GetRotation().GetForwardVector();
 		}
 		
+		if (FireCueTag.IsValid())
+		{
+			FGameplayCueParameters FireCueParams;
+			FireCueParams.Instigator = SourceActor;
+			FireCueParams.EffectCauser = SourceActor;
+			FireCueParams.Location = Muzzle.GetLocation();
+			FireCueParams.Normal = Dir;
+			SourceASC->ExecuteGameplayCue(FireCueTag, FireCueParams);
+		}
+		
 		ANSHomingMissile* Missile = GetWorld()->SpawnActorDeferred<ANSHomingMissile>(
 			MissileClass,
 			Muzzle,

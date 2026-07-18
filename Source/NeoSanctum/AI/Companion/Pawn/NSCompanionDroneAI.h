@@ -97,6 +97,14 @@ private:
 	UPROPERTY(EditAnywhere, Category="DroneAI|Currency", meta=(AllowPrivateAccess=true))
 	float CurrencyVacuumRadius = 250.f;
 
+	// [추가] 재화 수집(Collect) 상태일 때 하강할 목표 고도. 낮을수록 지상에 밀착.
+	UPROPERTY(EditAnywhere, Category="DroneAI|Currency", meta=(AllowPrivateAccess=true))
+	float CollectAltitude = 60.f;
+
+	// [추가] 평상시 유지 고도 캐시. Collect 이탈 시 이 값으로 복귀한다.
+	// PossessedBy에서 로코모션 컴포넌트의 실제 설정값으로 갱신됨.
+	float DefaultAltitude = 300.f;
+	
 	FTimerHandle CurrencyVacuumTimer;
 
 #pragma endregion
