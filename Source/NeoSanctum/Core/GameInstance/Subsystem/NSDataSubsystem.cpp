@@ -11,6 +11,7 @@
 #include "NeoSanctum/Data/AI/NSEnemyVisualParameterTypes.h"
 #include "NeoSanctum/Data/Augment/NSAugmentRarityRuleSet.h"
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
+#include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Config/NSCommonDataConfig.h"
 #include "NeoSanctum/Data/Config/NSLevelConfig.h"
@@ -119,6 +120,32 @@ UDataTable* UNSDataSubsystem::GetCommonAbilityBaseStatTable() const
 	}
 	
 	return CommonConfig->AbilityBaseStatTable.Get();
+}
+
+const FNSAbilityBaseStatRow* UNSDataSubsystem::FindAbilityBaseStatRow(
+	const FGameplayTag& AbilityTag, const FGameplayTag& StatTag) const
+{
+	UDataTable* Table = GetCommonAbilityBaseStatTable();
+	if (!Table || !AbilityTag.IsValid() || !StatTag.IsValid() ||
+		Table->GetRowStruct() != FNSAbilityBaseStatRow::StaticStruct())
+	{
+		return nullptr;
+	}
+
+	const FString ContextString = TEXT("FindAbilityBaseStatRow");
+
+	// RowName은 UI 식별자로 사용하지 않으므로 태그 조합으로 직접 찾음.
+	for (const FName& RowName : Table->GetRowNames())
+	{
+		const FNSAbilityBaseStatRow* Row = Table->FindRow<FNSAbilityBaseStatRow>(RowName, ContextString, false);
+
+		if (Row && Row->AbilityTag == AbilityTag && Row->StatTag == StatTag)
+		{
+			return Row;
+		}
+	}
+
+	return nullptr;
 }
 
 UDataTable* UNSDataSubsystem::GetCommonCharacterBaseStatTable() const
@@ -664,6 +691,12 @@ void UNSDataSubsystem::CollectCommonUIIconPaths(
 			if (!Row)
 			{
 				continue;
+			}
+
+			// 좌클릭 기본 공격 아이콘도 다른 스킬 입력 아이콘과 함께 미리 불러옴.
+			if (!Row->BaseAttackInputDisplay.InputIcon.IsNull())
+			{
+				OutPaths.AddUnique(Row->BaseAttackInputDisplay.InputIcon.ToSoftObjectPath());
 			}
 
 			if (!Row->Skill1InputDisplay.InputIcon.IsNull())

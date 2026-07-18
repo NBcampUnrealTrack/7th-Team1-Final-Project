@@ -15,6 +15,7 @@
 #include "NeoSanctum/Data/AI/NSEnemyVisualParameterTypes.h"
 #include "NSDataSubsystem.generated.h"
 
+struct FNSAbilityBaseStatRow;
 struct FNSCharacterBaseStatRow;
 struct FNSGoodsUIData;
 struct FNSMonsterUIData;
@@ -132,6 +133,10 @@ public:
 	// CommonDataConfig가 가진 스킬 기본 스탯 테이블.
 	// UNSCombatStatComponent는 이 테이블을 받아 BeginPlay 또는 CommonData로드 완료 시 캐싱.
 	UDataTable* GetCommonAbilityBaseStatTable() const;
+
+	// AbilityTag와 StatTag가 모두 일치하는 기본 스탯 Row를 찾음.
+	const FNSAbilityBaseStatRow* FindAbilityBaseStatRow(
+		const FGameplayTag& AbilityTag, const FGameplayTag& StatTag) const;
 
 	UDataTable* GetCommonCharacterBaseStatTable() const;
 	TSubclassOf<UGameplayEffect> GetCharacterBaseStatInitEffectClass() const;
