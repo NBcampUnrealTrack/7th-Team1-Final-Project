@@ -95,9 +95,19 @@ protected:
 	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
-	// 변경사항 있을 때 저장 확인 다이얼로그
-	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
-	void ShowSaveConfirmDialog();
+	// 닫기 시 변경사항이 있으면 "저장하는 중" 팝업을 띄우고, 저장 완료 콜백에서 실제로 닫는다
+	void HandleSaveComplete(bool bSuccess);
+
+	// 에디터 Class Defaults에서 WBP_NoticePopup 지정 (저장 진행 표시용)
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	TSubclassOf<class UNSNoticePopupWidget> NoticePopupClass;
+
+	// 재사용 캐시 (닫기 시점에 생성)
+	UPROPERTY()
+	TObjectPtr<class UNSNoticePopupWidget> NoticePopup;
+
+	// 저장 완료 대기 중 중복 닫기 요청 방지
+	bool bSavePending = false;
 
 	// 바디 카탈로그 항목을 채울 컨테이너 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))

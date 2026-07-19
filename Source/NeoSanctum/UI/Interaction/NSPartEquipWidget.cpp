@@ -330,11 +330,53 @@ void UNSPartEquipWidget::SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSP
 
 void UNSPartEquipWidget::RequestClose()
 {
-	if (bDirty)
+	// 저장 완료 대기 중이면 중복 요청 무시
+	if (bSavePending)
 	{
-		ShowSaveConfirmDialog();
 		return;
 	}
+
+	if (!bDirty)
+	{
+		CloseWidget();
+		return;
+	}
+
+	// 변경사항이 있으면 "저장하는 중" 팝업을 띄우고 저장 완료 후 닫는다
+	bSavePending = true;
+
+	if (NoticePopupClass)
+	{
+		if (!IsValid(NoticePopup))
+		{
+			NoticePopup = CreateWidget<UNSNoticePopupWidget>(OwningController.Get(), NoticePopupClass);
+		}
+		if (IsValid(NoticePopup))
+		{
+			NoticePopup->ShowBlocking(NSLOCTEXT("PartEquip", "Saving", "저장하는 중..."));
+		}
+	}
+
+	UNSProgressionSubsystem* SS = GetProgressionSS(this);
+	if (!SS)
+	{
+		// 저장 경로가 없으면 그냥 닫는다 (팝업도 정리)
+		HandleSaveComplete(false);
+		return;
+	}
+
+	SS->FlushSave(FNSSaveComplete::CreateUObject(this, &UNSPartEquipWidget::HandleSaveComplete));
+}
+
+void UNSPartEquipWidget::HandleSaveComplete(bool bSuccess)
+{
+	bSavePending = false;
+
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->Dismiss();
+	}
+
 	CloseWidget();
 }
 
