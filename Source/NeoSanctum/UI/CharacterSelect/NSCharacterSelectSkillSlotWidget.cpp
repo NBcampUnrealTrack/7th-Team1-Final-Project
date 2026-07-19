@@ -80,10 +80,12 @@ void UNSCharacterSelectSkillSlotWidget::SetupSlot(
 
 	const bool bWantsInputIcon = InInputDisplayData.bShowInputDisplay && InInputDisplayData.bUseInputIcon;
 
-	UTexture2D* InputTexture = bWantsInputIcon ? InInputDisplayData.InputIcon.Get() : nullptr;
+	CurrentInputIconTexture = bWantsInputIcon ? InInputDisplayData.InputIcon.Get() : nullptr;
 
 	if (InputIconImage)
 	{
+		UTexture2D* InputTexture = CurrentInputIconTexture.Get();
+
 		InputIconImage->SetBrushFromTexture(InputTexture);
 		InputIconImage->SetVisibility(InputTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
@@ -137,6 +139,7 @@ void UNSCharacterSelectSkillSlotWidget::HandleClicked()
 void UNSCharacterSelectSkillSlotWidget::ClearSlot()
 {
 	SkillUIDataRow = FDataTableRowHandle();
+	CurrentInputIconTexture = nullptr;
 
 	SetSlotPreviewed(false);
 	SetIsEnabled(false);

@@ -409,7 +409,7 @@ void UNSCharacterSelectWidget::PreviewSkillSlot(ENSCharacterSelectSkillSlot Slot
 	bHasPreviewedSkillSlot = true;
 
 	UpdateSkillSlotPreviewIndicators();
-	UpdateSkillDetailPanel(SkillUIDataRow);
+	UpdateSkillDetailPanel(SkillUIDataRow, TargetSlot->GetInputIconTexture());
 }
 
 void UNSCharacterSelectWidget::UpdateSkillSlotPreviewIndicators()
@@ -461,7 +461,8 @@ UNSCharacterSelectSkillSlotWidget* UNSCharacterSelectWidget::GetSkillSlotWidget(
 	}
 }
 
-void UNSCharacterSelectWidget::UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow)
+void UNSCharacterSelectWidget::UpdateSkillDetailPanel(
+	const FDataTableRowHandle& SkillUIDataRow, UTexture2D* InputIconTexture)
 {
 	const FNSSkillUIData* SkillUIData =
 		SkillUIDataRow.GetRow<FNSSkillUIData>(TEXT("CharacterSelectSkillDetail"));
@@ -490,6 +491,13 @@ void UNSCharacterSelectWidget::UpdateSkillDetailPanel(const FDataTableRowHandle&
 		SkillDetailIconImage->SetBrushFromTexture(SkillTexture);
 		SkillDetailIconImage->SetVisibility(
 			SkillTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	if (SkillDetailInputIconImage)
+	{
+		SkillDetailInputIconImage->SetBrushFromTexture(InputIconTexture);
+		SkillDetailInputIconImage->SetVisibility(
+			InputIconTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
 	if (SkillDetailStatsText)
@@ -573,6 +581,12 @@ void UNSCharacterSelectWidget::ClearSkillDetailPanel()
 	{
 		SkillDetailIconImage->SetBrushFromTexture(nullptr);
 		SkillDetailIconImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (SkillDetailInputIconImage)
+	{
+		SkillDetailInputIconImage->SetBrushFromTexture(nullptr);
+		SkillDetailInputIconImage->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
 

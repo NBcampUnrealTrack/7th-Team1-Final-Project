@@ -15,6 +15,7 @@ class UCommonButtonBase;
 class UCommonTextBlock;
 class UNSCharacterSlotWidget;
 class UImage;
+class UTexture2D;
 struct FNSSkillUIData;
 
 /**
@@ -87,6 +88,9 @@ protected:
 	TObjectPtr<UImage> SkillDetailIconImage;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
+	TObjectPtr<UImage> SkillDetailInputIconImage;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
 	TObjectPtr<UCommonTextBlock> SkillDetailNameText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
@@ -151,7 +155,7 @@ private:
 
 	void PreviewSkillSlot(ENSCharacterSelectSkillSlot SlotType);
 	void UpdateSkillSlotPreviewIndicators();
-	void UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow);
+	void UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow, UTexture2D* InputIconTexture);
 	void ClearSkillDetailPanel();
 
 	FText BuildSkillStatsText(const FNSSkillUIData& SkillUIData);

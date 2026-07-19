@@ -7,8 +7,9 @@
 #include "Engine/DataTable.h"
 #include "NSCharacterSelectSkillSlotWidget.generated.h"
 
-class UImage;
 class UCommonTextBlock;
+class UImage;
+class UTexture2D;
 class UWidget;
 struct FNSInputDisplayData;
 
@@ -60,6 +61,8 @@ public:
 	ENSCharacterSelectSkillSlot GetSlotType() const { return SlotType; }
 	const FDataTableRowHandle& GetSkillUIDataRow() const { return SkillUIDataRow; }
 
+	UTexture2D* GetInputIconTexture() const { return CurrentInputIconTexture.Get(); }
+
 	FNSCharacterSelectSkillSlotEvent OnSlotHovered;
 	FNSCharacterSelectSkillSlotEvent OnSlotUnhovered;
 	FNSCharacterSelectSkillSlotEvent OnSlotClicked;
@@ -92,4 +95,8 @@ private:
 
 	UPROPERTY(Transient)
 	FDataTableRowHandle SkillUIDataRow;
+
+	// 상세 패널에서도 같은 입력 아이콘을 사용하므로 현재 슬롯의 텍스처를 보관.
+	UPROPERTY(Transient)
+	TObjectPtr<UTexture2D> CurrentInputIconTexture;
 };
