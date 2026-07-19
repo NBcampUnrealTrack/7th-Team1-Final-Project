@@ -158,6 +158,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> CommonCurrencyText;
 
+	// 종료(X) 버튼 — ESC와 동일하게 RequestClose 경유 (저장 진행 표시 포함)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UButton> CloseButton;
+
 	// 에디터 Class Defaults에서 WBP_PartCatalogEntry 지정
 	UPROPERTY(EditDefaultsOnly, Category = "Part")
 	TSubclassOf<UNSPartCatalogEntryWidget> PartEntryTemplate;

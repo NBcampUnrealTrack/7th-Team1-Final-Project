@@ -20,6 +20,7 @@
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
+#include "NeoSanctum/UI/Common/NSNoticePopupWidget.h"
 
 static UNSProgressionSubsystem* GetProgressionSS(const UObject* WorldCtx)
 {
@@ -50,6 +51,11 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	if (IsValid(LegEquippedButton))
 	{
 		LegEquippedButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnLegEquippedClicked);
+	}
+	if (IsValid(CloseButton))
+	{
+		// ESC와 동일 경로 — 변경사항 있으면 저장 진행 표시 후 닫힘
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::RequestClose);
 	}
 	if (IsValid(EquipButton))
 	{
@@ -99,6 +105,9 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 
 	Interactor->SetShowMouseCursor(true);
+
+	// SetFocus()는 Is Focusable이 꺼져 있으면 조용히 실패해 ESC(NativeOnKeyDown)를 아예 못 받으므로 반드시 켠다
+	SetIsFocusable(true);
 
 	// 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
 	// UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
@@ -398,6 +407,12 @@ void UNSPartEquipWidget::CloseWidget()
 	{
 		PreviewStage->Destroy();
 		PreviewStage = nullptr;
+	}
+
+	// X버튼/ESC 등 위젯 자체 경로로 닫혀도 이동 매핑 복원 + ActiveInteractionWidget 정리가 되도록 통지
+	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
+	{
+		NSPC->NotifyInteractionWidgetClosed(this);
 	}
 
 	RemoveFromParent();
