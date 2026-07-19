@@ -145,6 +145,7 @@ void UNSPartPanelWidget::ApplySlot(FGameplayTag PartSlot, UNSPartSlotButton* Slo
 	const FNSPartData* PartData = PartEquipComponent->GetEquippedPart(PartSlot);
 	if (PartData == nullptr || !PartData->IsValid())
 	{
+		SlotButton->ClearPart();
 		return;
 	}
 
