@@ -1,12 +1,17 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSPartCatalogEntryWidget.h"
-#include "Components/Button.h"
 #include "Components/Image.h"
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/UI/Interaction/NSPartEquipWidget.h"
+
+UNSPartCatalogEntryWidget::UNSPartCatalogEntryWidget()
+{
+	bSelectable = true;
+	bInteractableWhenSelected = true;
+}
 
 void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, UNSPartEquipWidget* OwnerWidget)
 {
@@ -16,11 +21,6 @@ void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, UNSP
 	StoredRow = Row;
 	OwnerRef = OwnerWidget;
 
-	if (IsValid(SelectButton))
-	{
-		SelectButton->OnClicked.AddUniqueDynamic(this, &UNSPartCatalogEntryWidget::OnSelectButtonClicked);
-	}
-	
 	UNSPartDefinition* Def = Row.Definition.Get();
 	if (Def)
 	{
@@ -56,6 +56,33 @@ void UNSPartCatalogEntryWidget::SetupEntry(const FNSPartDefinitionRow& Row, FNSO
 	ClickHandler = InClickHandler;
 }
 
+void UNSPartCatalogEntryWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (IsValid(SelectedIndicator))
+	{
+		SelectedIndicator->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	OnClicked().AddUObject(this, &ThisClass::HandleClicked);
+	OnHovered().AddUObject(this, &ThisClass::HandleHovered);
+	OnUnhovered().AddUObject(this, &ThisClass::HandleUnhovered);
+	OnPressed().AddUObject(this, &ThisClass::HandlePressed);
+	OnReleased().AddUObject(this, &ThisClass::HandleReleased);
+	OnIsSelectedChanged().AddUObject(this, &ThisClass::HandleSelectionChanged);
+}
+
 void UNSPartCatalogEntryWidget::NativeDestruct()
 {
 	if (LoadHandle.IsValid())
@@ -64,7 +91,61 @@ void UNSPartCatalogEntryWidget::NativeDestruct()
 		LoadHandle.Reset();
 	}
 
+	OnClicked().RemoveAll(this);
+	OnHovered().RemoveAll(this);
+	OnUnhovered().RemoveAll(this);
+	OnPressed().RemoveAll(this);
+	OnReleased().RemoveAll(this);
+	OnIsSelectedChanged().RemoveAll(this);
+
 	Super::NativeDestruct();
+}
+
+void UNSPartCatalogEntryWidget::HandleHovered()
+{
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartCatalogEntryWidget::HandleUnhovered()
+{
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSPartCatalogEntryWidget::HandlePressed()
+{
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartCatalogEntryWidget::HandleReleased()
+{
+	// 선택된 상태(GetSelected())면 눌림 이미지를 계속 유지하고, 아니면 원래대로 해제
+	if (IsValid(PressedHighlight) && !GetSelected())
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSPartCatalogEntryWidget::HandleSelectionChanged(bool bInSelected)
+{
+	if (IsValid(SelectedIndicator))
+	{
+		SelectedIndicator->SetVisibility(bInSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	// 선택된 항목은 눌림 이미지를 고정으로 보여주고, 선택 해제되면 원래 상태로 되돌림
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(bInSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
 }
 
 void UNSPartCatalogEntryWidget::OnDefinitionLoaded()
@@ -86,6 +167,9 @@ void UNSPartCatalogEntryWidget::OnDefinitionLoaded()
 	{
 		NS_LOG(LogNS, Log, "[Catalog] Icon 이미 로드되어 있음, SetBrushFromTexture 호출: {Texture}", ("Texture", Tex->GetName()));
 		IconImage->SetBrushFromTexture(Tex);
+		// 위젯이 아직 트리에 붙기 전(AddChild 전)에 브러시가 설정되는 경우가 있어
+		// 첫 페인트 때 반영이 안 되고 남아있을 수 있음 — 명시적으로 다시 그리도록 강제
+		IconImage->InvalidateLayoutAndVolatility();
 	}
 	else if (!Def->Icon.IsNull())
 	{
@@ -105,6 +189,7 @@ void UNSPartCatalogEntryWidget::OnDefinitionLoaded()
 				{
 					NS_LOG(LogNS, Log, "[Catalog] Icon 비동기 로드 완료: {Texture}", ("Texture", Tex->GetName()));
 					WeakThis->IconImage->SetBrushFromTexture(Tex);
+					WeakThis->IconImage->InvalidateLayoutAndVolatility();
 				}
 				else
 				{
@@ -119,9 +204,9 @@ void UNSPartCatalogEntryWidget::OnDefinitionLoaded()
 	}
 }
 
-void UNSPartCatalogEntryWidget::OnSelectButtonClicked()
+void UNSPartCatalogEntryWidget::HandleClicked()
 {
-	NS_LOG(LogNS, Log, "[Catalog] SelectButton 클릭됨");
+	NS_LOG(LogNS, Log, "[Catalog] 클릭됨");
 
 	if (ClickHandler.IsBound())
 	{
@@ -137,12 +222,4 @@ void UNSPartCatalogEntryWidget::OnSelectButtonClicked()
 	}
 
 	Owner->SelectCatalogPart(StoredRow, this);
-}
-
-void UNSPartCatalogEntryWidget::SetIsSelected(bool bSelected)
-{
-	if (IsValid(SelectedIndicator))
-	{
-		SelectedIndicator->SetVisibility(bSelected ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	}
 }
