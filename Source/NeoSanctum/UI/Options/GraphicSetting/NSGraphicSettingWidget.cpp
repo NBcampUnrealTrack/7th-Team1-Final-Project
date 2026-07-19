@@ -2,30 +2,41 @@
 
 
 #include "NSGraphicSettingWidget.h"
-#include "Components/Button.h"
+#include "CommonButtonBase.h"
 #include "Components/CheckBox.h"
 #include "Components/ComboBoxString.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Internationalization/TextLocalizationManager.h"
+#include "Components/TextBlock.h"
+#include "Components/Border.h"
 
 void UNSGraphicSettingWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
+	// 항목을 추가하고 선택하기 전에 생성 이벤트를 바인딩한다.
+	BindOptionWidgetGenerators();
 	InitializeResolutionOptions();
 	InitializeWindowModeOptions();
 	InitializeFrameRateOptions();
 	InitializeQualityOptions();
+	InitializeAntiAliasingOptions();
 	SynchronizeSettings();
 	
-	ApplyButton->OnClicked.AddDynamic(
-		this,
-		&ThisClass::OnApplyClicked);
-	
-	ResetButton->OnClicked.AddDynamic(
-		this,
-		&ThisClass::OnResetClicked);
+	if (ApplyButton)
+	{
+		ApplyButton->OnClicked().AddUObject(
+			this,
+			&ThisClass::OnApplyClicked);
+	}
+
+	if (ResetButton)
+	{
+		ResetButton->OnClicked().AddUObject(
+			this,
+			&ThisClass::OnResetClicked);
+	}
 	
 	FTextLocalizationManager::Get()
 	.OnTextRevisionChangedEvent.RemoveAll(this);
@@ -38,14 +49,66 @@ void UNSGraphicSettingWidget::NativeConstruct()
 
 void UNSGraphicSettingWidget::NativeDestruct()
 {
+	UnbindOptionWidgetGenerators();
 	
 	FTextLocalizationManager::Get()
 	.OnTextRevisionChangedEvent.RemoveAll(this);
 	
-	ApplyButton->OnClicked.RemoveAll(this);
-	ResetButton->OnClicked.RemoveAll(this);
+	if (ApplyButton)
+	{
+		ApplyButton->OnClicked().RemoveAll(this);
+	}
+
+	if (ResetButton)
+	{
+		ResetButton->OnClicked().RemoveAll(this);
+	}
 	
 	Super::NativeDestruct();
+}
+
+void UNSGraphicSettingWidget::BindOptionWidgetGenerators()
+{
+	UComboBoxString* ComboBoxes[] =
+	{
+		ResolutionComboBox,
+		WindowModeComboBox,
+		FrameRateComboBox,
+		OverallQualityComboBox,
+		AntiAliasingQualityComboBox
+	};
+
+	for (UComboBoxString* ComboBox : ComboBoxes)
+	{
+		if (ComboBox)
+		{
+			ComboBox->OnGenerateWidgetEvent.BindDynamic(
+				this,
+				&ThisClass::GenerateGraphicOptionWidget);
+		}
+	}
+}
+
+void UNSGraphicSettingWidget::UnbindOptionWidgetGenerators()
+{
+	UComboBoxString* ComboBoxes[] =
+	{
+		ResolutionComboBox,
+		WindowModeComboBox,
+		FrameRateComboBox,
+		OverallQualityComboBox,
+		AntiAliasingQualityComboBox
+	};
+
+	for (UComboBoxString* ComboBox : ComboBoxes)
+	{
+		if (ComboBox)
+		{
+			ComboBox->OnGenerateWidgetEvent.Unbind();
+		}
+	}
+
+	GeneratedOptionWidgets.Reset();
 }
 
 void UNSGraphicSettingWidget::InitializeResolutionOptions()
@@ -187,6 +250,39 @@ void UNSGraphicSettingWidget::InitializeQualityOptions()
 			"최상").ToString());
 }
 
+void UNSGraphicSettingWidget::InitializeAntiAliasingOptions()
+{
+if (!AntiAliasingQualityComboBox)
+{
+	return;
+}
+
+AntiAliasingQualityComboBox->ClearOptions();
+
+AntiAliasingQualityComboBox->AddOption(
+	NSLOCTEXT(
+		"GraphicSettings",
+		"AntiAliasingLow",
+		"낮음").ToString());
+
+AntiAliasingQualityComboBox->AddOption(
+	NSLOCTEXT(
+		"GraphicSettings",
+		"AntiAliasingMedium",
+		"중간").ToString());
+
+AntiAliasingQualityComboBox->AddOption(
+	NSLOCTEXT(
+		"GraphicSettings",
+		"AntiAliasingHigh",
+		"높음").ToString());
+
+AntiAliasingQualityComboBox->AddOption(
+	NSLOCTEXT(
+		"GraphicSettings",
+		"AntiAliasingEpic",
+		"최상").ToString());
+}
 void UNSGraphicSettingWidget::SynchronizeSettings()
 {
 	UGameUserSettings* Settings =
@@ -270,16 +366,29 @@ void UNSGraphicSettingWidget::SynchronizeSettings()
 	
 	FrameRateComboBox->SetSelectedIndex(FrameRateIndex);
 	
-	const int32 QualityLevel =
-		Settings->GetOverallScalabilityLevel();
-	
+	const int32 BaseQualityLevel =
+		GetBaseQualityLevel(Settings);
+
 	OverallQualityComboBox->SetSelectedIndex(
-		QualityLevel >= 0 && QualityLevel <= 3
-			? QualityLevel
-			: 3);
+		BaseQualityLevel);
 	
-	VSyncCheckBox->SetIsChecked(
-		Settings->IsVSyncEnabled());
+	if (AntiAliasingQualityComboBox)
+	{
+		const int32 AntiAliasingQuality =
+			FMath::Clamp(
+				Settings->GetAntiAliasingQuality(),
+				0,
+				3);
+
+		AntiAliasingQualityComboBox->SetSelectedIndex(
+			AntiAliasingQuality);
+	}
+	
+	if (VSyncCheckBox)
+	{
+		VSyncCheckBox->SetIsChecked(
+			Settings->IsVSyncEnabled());
+	}
 }
 
 void UNSGraphicSettingWidget::HandleTextRevisionChanged()
@@ -287,6 +396,7 @@ void UNSGraphicSettingWidget::HandleTextRevisionChanged()
 	InitializeWindowModeOptions();
 	InitializeFrameRateOptions();
 	InitializeQualityOptions();
+	InitializeAntiAliasingOptions();
 	SynchronizeSettings();
 }
 
@@ -339,17 +449,31 @@ void UNSGraphicSettingWidget::OnApplyClicked()
 			FrameRateLimits[FrameRateIndex]);
 	}
 
-	const int32 QualityLevel =
+	const int32 BaseQualityLevel =
 		OverallQualityComboBox->GetSelectedIndex();
 
-	if (QualityLevel >= 0 &&
-		QualityLevel <= 3)
+	if (BaseQualityLevel >= 0 &&
+		BaseQualityLevel <= 3)
 	{
-		Settings->SetOverallScalabilityLevel(
-			QualityLevel);
+		SetBaseQualityLevel(
+			Settings,
+			BaseQualityLevel);
 	}
+	
+	const int32 AntiAliasingQuality =
+		AntiAliasingQualityComboBox
+			? AntiAliasingQualityComboBox->GetSelectedIndex()
+			: INDEX_NONE;
 
+	if (AntiAliasingQuality >= 0 &&
+		AntiAliasingQuality <= 3)
+	{
+		Settings->SetAntiAliasingQuality(
+			AntiAliasingQuality);
+	}
+	
 	Settings->SetVSyncEnabled(
+		VSyncCheckBox &&
 		VSyncCheckBox->IsChecked());
 
 	Settings->ApplySettings(false);
@@ -373,7 +497,8 @@ void UNSGraphicSettingWidget::OnResetClicked()
 	Settings->SetFullscreenMode(
 		EWindowMode::WindowedFullscreen);
 	Settings->SetFrameRateLimit(0.0f);
-	Settings->SetOverallScalabilityLevel(3);
+	SetBaseQualityLevel(Settings, 3);
+	Settings->SetAntiAliasingQuality(3);
 	Settings->SetVSyncEnabled(false);
 
 	Settings->ApplySettings(false);
@@ -382,8 +507,103 @@ void UNSGraphicSettingWidget::OnResetClicked()
 	
 	SynchronizeSettings();
 }
+	UWidget* UNSGraphicSettingWidget::GenerateGraphicOptionWidget(
+		FString Item)
+	{
+		UTextBlock* OptionText =
+			NewObject<UTextBlock>(this);
+
+		if (!OptionText)
+		{
+			return nullptr;
+		}
+
+		OptionText->SetText(
+			FText::FromString(Item));
+
+		OptionText->SetColorAndOpacity(
+			FSlateColor(
+				FLinearColor(
+					0.9f,
+					0.95f,
+					1.0f,
+					1.0f)));
+
+		FSlateFontInfo FontInfo =
+			OptionText->GetFont();
+
+		FontInfo.Size = 20;
+		OptionText->SetFont(FontInfo);
+
+		UBorder* OptionContainer =
+			NewObject<UBorder>(this);
+
+		if (!OptionContainer)
+		{
+			GeneratedOptionWidgets.Add(OptionText);
+			return OptionText;
+		}
+
+		// 텍스트가 목록 행 이미지의 테두리에 가려지지 않도록 여백을 준다.
+		OptionContainer->SetPadding(
+			FMargin(
+				18.0f,
+				4.0f,
+				12.0f,
+				4.0f));
+
+		// 목록 행 배경은 ComboBox의 ItemStyle이 담당한다.
+		OptionContainer->SetBrushColor(
+			FLinearColor::Transparent);
+
+		OptionContainer->AddChild(OptionText);
+
+		// 반환하는 컨테이너를 UPROPERTY 배열에 보관해 GC로부터 보호한다.
+		GeneratedOptionWidgets.Add(OptionContainer);
+
+		return OptionContainer;
+	}
 
 UGameUserSettings* UNSGraphicSettingWidget::GetGameUserSettings() const
 {
 	return UGameUserSettings::GetGameUserSettings();
+}
+
+void UNSGraphicSettingWidget::SetBaseQualityLevel(UGameUserSettings* Settings, int32 QualityLevel) const
+{
+	if (!Settings)
+	{
+		return;
+	}
+
+	const int32 ClampedQuality =
+		FMath::Clamp(QualityLevel, 0, 3);
+
+	// 안티앨리어싱은 별도 ComboBox에서 설정하므로 제외한다.
+	Settings->SetViewDistanceQuality(ClampedQuality);
+	Settings->SetShadowQuality(ClampedQuality);
+	Settings->SetGlobalIlluminationQuality(ClampedQuality);
+	Settings->SetReflectionQuality(ClampedQuality);
+	Settings->SetPostProcessingQuality(ClampedQuality);
+	Settings->SetTextureQuality(ClampedQuality);
+	Settings->SetVisualEffectQuality(ClampedQuality);
+	Settings->SetFoliageQuality(ClampedQuality);
+	Settings->SetShadingQuality(ClampedQuality);
+}
+
+int32 UNSGraphicSettingWidget::GetBaseQualityLevel(const UGameUserSettings* Settings) const
+{
+	{
+		if (!Settings)
+		{
+			return 3;
+		}
+
+		// 기본 품질 항목은 모두 동일하게 적용되므로
+		// TextureQuality를 대표값으로 사용한다.
+		return FMath::Clamp(
+			Settings->GetTextureQuality(),
+			0,
+			3);
+	}
 }
