@@ -19,7 +19,6 @@ UGA_BuffBase::UGA_BuffBase()
 {
 	DurationStatTag = NSGameplayTags::CombatStat_Duration;
 	RadiusStatTag = NSGameplayTags::CombatStat_BuffRadius;
-	RangePulseGameplayCueTag = NSGameplayTags::GameplayCue_Common_Buff_RangePulse;
 }
 
 void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
