@@ -37,6 +37,7 @@ namespace NSGameplayTags
 	// Vanguard
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BaseAttack_Flash);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_VanguardBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BuffRangePulse);
 	
 	// Engineer
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_MuzzleFire);
@@ -49,6 +50,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_BulletTrail);
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpeedBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_BuffRangePulse);
 	
 	//Enemy MotherShip
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning01);
