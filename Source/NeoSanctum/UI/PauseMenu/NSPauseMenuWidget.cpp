@@ -28,6 +28,38 @@ void UNSPauseMenuWidget::NativeConstruct()
 	{
 		QuitButton->OnClicked().AddUObject(this, &UNSPauseMenuWidget::OnQuitClicked);
 	}
+	
+	if (CloseButton)
+	{
+		CloseButton->OnClicked().AddUObject(
+			this,
+			&UNSPauseMenuWidget::OnCloseClicked);
+	}
+}
+
+void UNSPauseMenuWidget::NativeDestruct()
+{
+	if (OptionButton)
+	{
+		OptionButton->OnClicked().RemoveAll(this);
+	}
+
+	if (MainMenuButton)
+	{
+		MainMenuButton->OnClicked().RemoveAll(this);
+	}
+
+	if (QuitButton)
+	{
+		QuitButton->OnClicked().RemoveAll(this);
+	}
+
+	if (CloseButton)
+	{
+		CloseButton->OnClicked().RemoveAll(this);
+	}
+	
+	Super::NativeDestruct();
 }
 
 void UNSPauseMenuWidget::OnOptionClicked()
@@ -61,5 +93,14 @@ void UNSPauseMenuWidget::OnQuitClicked()
 			PC, 
 			EQuitPreference::Quit, 
 			false);
+	}
+}
+
+void UNSPauseMenuWidget::OnCloseClicked()
+{
+	if (ANSPlayerController* PlayerController =
+	Cast<ANSPlayerController>(GetOwningPlayer()))
+	{
+		PlayerController->TogglePauseMenu();
 	}
 }
