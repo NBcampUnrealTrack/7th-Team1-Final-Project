@@ -20,6 +20,7 @@ class UNSPartSlotButton;
 class UNSPartEquipComponent;
 class UNSCurrencyComponent;
 class ANSPartPreviewStage;
+class UNSCharacterStatsWidget;
 
 /**
  * 인런 파츠 NPC UI 루트. WidgetSwitcher 3페이지:
@@ -33,6 +34,11 @@ class NEOSANCTUM_API UNSPartUpgradeWidget : public UNSNPCInteractionWidgetBase
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
 	virtual void CloseWidget() override;
+
+protected:
+	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
+	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Part")
 	void OpenHubPage();
@@ -59,6 +65,10 @@ protected:
 	TObjectPtr<UButton> CloseButton;
 
 	// ---- Page 0: 허브 ----
+	// 허브 페이지 우상단 종료(X) 버튼
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UButton> HubCloseButton;
+
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> HubPurchaseButton;
 
@@ -75,9 +85,9 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UNSPartSlotButton> HubLegSlotButton;
 
-	// 장착중인 파츠 전체 설명 (부위 3개를 한 텍스트에 요약)
+	// 장착 결과 최종 캐릭터 스텟 표시 (WBP_CharacterStatsWidget 재사용)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> HubEquippedSummaryText;
+	TObjectPtr<UNSCharacterStatsWidget> HubCharacterStatsWidget;
 
 	// ---- Page 1: 구매 ----
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
@@ -123,6 +133,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> UpgradeBackButton;
 
+	// 업그레이드 페이지 전용 종료 버튼 (구매 페이지의 CloseButton과 별개)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UButton> UpgradeCloseButton;
+
 	// 상단 슬롯 선택 버튼 3개
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UNSPartSlotButton> UpgradeBodySlotButton;
@@ -132,10 +146,6 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UNSPartSlotButton> UpgradeLegSlotButton;
-
-	// 좌측: 장착중인 모든 파츠 목록 (부위 3개를 한 텍스트에 요약, 허브와 동일 내용)
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> ListEquippedSummaryText;
 
 	// 중앙: 선택한 파츠 상세 (3D 프리뷰 포함)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
@@ -189,9 +199,6 @@ private:
 
 	// 슬롯 버튼 하나의 표시 갱신 공용 처리
 	void ApplySlotButtonDisplay(FGameplayTag SlotTag, UNSPartSlotButton* SlotButton) const;
-
-	// 장착중인 파츠 3개를 한 텍스트로 요약 (허브 + 업그레이드 페이지 좌측, 동일 내용)
-	FText BuildEquippedSummaryText() const;
 
 	// 프리뷰 스테이지에 메시 로드/교체 후 대상 디테일 위젯에 연결 (Def가 없으면 프리뷰 숨김)
 	void UpdatePreview(const UNSPartDefinition* Def, UNSPartDetailWidget* TargetDetail);
