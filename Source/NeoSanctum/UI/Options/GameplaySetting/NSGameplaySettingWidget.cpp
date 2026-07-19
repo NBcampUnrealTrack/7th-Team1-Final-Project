@@ -5,6 +5,7 @@
 #include "Components/Image.h"
 #include "Components/Button.h"
 #include "Components/Slider.h"
+#include "Components/Border.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
@@ -131,6 +132,13 @@ void UNSGameplaySettingWidget::NativeConstruct()
 			this,
 			&ThisClass::OnMouseSensitivityCaptureEnd);
 	}
+	
+	if (LanguageComboBox)
+	{
+		LanguageComboBox->OnGenerateWidgetEvent.BindDynamic(
+			this,
+			&ThisClass::GenerateLanguageOptionWidget);
+	}
 	UpdateMouseSensitivityText();
 	UpdateApplyButtonState();
 	InitializeLanguageOptions();
@@ -161,7 +169,10 @@ void UNSGameplaySettingWidget::NativeDestruct()
 	if (LanguageComboBox)
 	{
 		LanguageComboBox->OnSelectionChanged.RemoveAll(this);
+		LanguageComboBox->OnGenerateWidgetEvent.Unbind();
 	}
+
+	GeneratedLanguageOptionWidgets.Reset();
 	
 	if (MouseSensitivitySlider)
 	{
@@ -214,6 +225,61 @@ void UNSGameplaySettingWidget::OnBlueValueChanged(float Value)
 void UNSGameplaySettingWidget::OnApplyCustomColorClicked()
 {
 	ApplyCrosshairColor(PendingCrosshairColor);
+}
+
+UWidget* UNSGameplaySettingWidget::GenerateLanguageOptionWidget(
+	FString Item)
+{
+	UTextBlock* OptionText =
+		NewObject<UTextBlock>(this);
+
+	if (!OptionText)
+	{
+		return nullptr;
+	}
+
+	OptionText->SetText(
+		FText::FromString(Item));
+
+	OptionText->SetColorAndOpacity(
+		FSlateColor(
+			FLinearColor(
+				0.9f,
+				0.95f,
+				1.0f,
+				1.0f)));
+
+	FSlateFontInfo FontInfo =
+		OptionText->GetFont();
+
+	FontInfo.Size = 20;
+	OptionText->SetFont(FontInfo);
+
+	UBorder* OptionContainer =
+		NewObject<UBorder>(this);
+
+	if (!OptionContainer)
+	{
+		GeneratedLanguageOptionWidgets.Add(OptionText);
+		return OptionText;
+	}
+
+	OptionContainer->SetPadding(
+		FMargin(
+			18.0f,
+			4.0f,
+			12.0f,
+			4.0f));
+
+	OptionContainer->SetBrushColor(
+		FLinearColor::Transparent);
+
+	OptionContainer->AddChild(OptionText);
+
+	GeneratedLanguageOptionWidgets.Add(
+		OptionContainer);
+
+	return OptionContainer;
 }
 
 void UNSGameplaySettingWidget::OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType)

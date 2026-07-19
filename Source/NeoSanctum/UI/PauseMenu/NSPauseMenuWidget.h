@@ -16,6 +16,7 @@ class NEOSANCTUM_API UNSPauseMenuWidget : public UCommonUserWidget
 	
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonButtonBase>  OptionButton;
@@ -23,6 +24,8 @@ protected:
 	TObjectPtr<UCommonButtonBase>  MainMenuButton;
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonButtonBase>  QuitButton;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCommonButtonBase>  CloseButton;
 
 	UFUNCTION()
 	void OnOptionClicked();
@@ -30,4 +33,6 @@ protected:
 	void OnMainMenuClicked();
 	UFUNCTION()
 	void OnQuitClicked();
+	UFUNCTION()
+	void OnCloseClicked();
 };

@@ -32,7 +32,8 @@ void UNSOptionWidget::NativeConstruct()
 			this,
 			&ThisClass::OnClickedGameplayCategoryButton);
 	}
-	
+	ShowOptionCategoryWidget(SoundSettingWidget);
+	UpdateCategorySelection(SoundCategoryButton);
 }
 
 void UNSOptionWidget::NativeDestruct()
@@ -62,16 +63,19 @@ void UNSOptionWidget::NativeDestruct()
 void UNSOptionWidget::OnClickedSoundCategoryButton()
 {
 	ShowOptionCategoryWidget(SoundSettingWidget);
+	UpdateCategorySelection(SoundCategoryButton);
 }
 
 void UNSOptionWidget::OnClickedGraphicCategoryButton()
 {
 	ShowOptionCategoryWidget(GraphicSettingWidget);
+	UpdateCategorySelection(GraphicCategoryButton);
 }
 
 void UNSOptionWidget::OnClickedGameplayCategoryButton()
 {
-	ShowOptionCategoryWidget(GameplaySettingWidget);
+		ShowOptionCategoryWidget(GameplaySettingWidget);
+		UpdateCategorySelection(GameplayCategoryButton);
 }
 
 void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
@@ -82,6 +86,30 @@ void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
 	}
 
 	OptionSwitcher->SetActiveWidget(OptionWidget);
+}
+
+void UNSOptionWidget::UpdateCategorySelection(UCommonButtonBase* SelectedButton)
+{
+	if (SoundCategoryButton)
+	{
+		SoundCategoryButton->SetIsSelected(
+			SoundCategoryButton == SelectedButton,
+			false);
+	}
+
+	if (GraphicCategoryButton)
+	{
+		GraphicCategoryButton->SetIsSelected(
+			GraphicCategoryButton == SelectedButton,
+			false);
+	}
+
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->SetIsSelected(
+			GameplayCategoryButton == SelectedButton,
+			false);
+	}
 }
 
 void UNSOptionWidget::OnClickedCloseButton()
