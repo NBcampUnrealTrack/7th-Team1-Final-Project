@@ -4,11 +4,13 @@
 #include "CommonAnimatedSwitcher.h"
 #include "CommonButtonBase.h"
 #include "CommonTextBlock.h"
+#include "NSCharacterSelectSkillStatRowWidget.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/UI/NSCharacterSelectData.h"
 #include "NSCharacterSlotWidget.h"
 #include "Components/Image.h"
+#include "Components/VerticalBox.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -500,21 +502,31 @@ void UNSCharacterSelectWidget::UpdateSkillDetailPanel(
 			InputIconTexture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 
-	if (SkillDetailStatsText)
-	{
-		SkillDetailStatsText->SetText(BuildSkillStatsText(*SkillUIData));
-	}
+	RefreshSkillDetailStats(*SkillUIData);
 }
 
-FText UNSCharacterSelectWidget::BuildSkillStatsText(const FNSSkillUIData& SkillUIData)
+void UNSCharacterSelectWidget::RefreshSkillDetailStats(const FNSSkillUIData& SkillUIData)
 {
-	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-
-	TArray<FString> StatLines;
-	StatLines.Reserve(SkillUIData.CharacterSelectStats.Num());
-
-	for (const FNSSkillStatDisplayData& DisplayData : SkillUIData.CharacterSelectStats)
+	if (!SkillDetailStatsBox)
 	{
+		return;
+	}
+
+	// 이전에 보고 있던 스킬의 행이 남지 않게 먼저 비움.
+	SkillDetailStatsBox->ClearChildren();
+
+	if (!SkillStatRowWidgetClass)
+	{
+		return;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const int32 StatCount = SkillUIData.CharacterSelectStats.Num();
+
+	for (int32 StatIndex = 0; StatIndex < StatCount; ++StatIndex)
+	{
+		const FNSSkillStatDisplayData& DisplayData = SkillUIData.CharacterSelectStats[StatIndex];
+
 		const FNSAbilityBaseStatRow* StatRow =
 			DataSubsystem ? DataSubsystem->FindAbilityBaseStatRow(SkillUIData.SkillTag, DisplayData.StatTag) : nullptr;
 
@@ -539,23 +551,29 @@ FText UNSCharacterSelectWidget::BuildSkillStatsText(const FNSSkillUIData& SkillU
 				LoggedMissingSkillStatKeys.Add(WarningKey);
 
 				NS_OBJ_LOG(LogNS, Warning,
-					"[CharacterSelect] 스킬 기본 스탯을 찾을 수 없습니다. AbilityTag={AbilityTag}, StatTag={StatTag}",
+					"[CharacterSelect] 스킬 기본 스탯을 찾을 수 없습니다. "
+					"AbilityTag={AbilityTag}, StatTag={StatTag}",
 					("AbilityTag", SkillUIData.SkillTag.ToString()),
 					("StatTag", DisplayData.StatTag.ToString())
 				);
 			}
 		}
 
-		const FText StatLine = FText::Format(
-			NSLOCTEXT("CharacterSelect", "SkillStatLineFormat", "{0}: {1}"),
-				DisplayData.DisplayName,
-				ValueText
-			);
+		UNSCharacterSelectSkillStatRowWidget* StatRowWidget =
+			CreateWidget<UNSCharacterSelectSkillStatRowWidget>(this, SkillStatRowWidgetClass);
 
-		StatLines.Add(StatLine.ToString());
+		if (!StatRowWidget)
+		{
+			continue;
+		}
+
+		// 마지막 스탯 아래에는 구분선을 표시하지 않음.
+		const bool bShowDivider = StatIndex < StatCount - 1;
+
+		StatRowWidget->SetStatData(DisplayData.DisplayName, ValueText, bShowDivider);
+
+		SkillDetailStatsBox->AddChildToVerticalBox(StatRowWidget);
 	}
-
-	return FText::FromString(FString::Join(StatLines, LINE_TERMINATOR));
 }
 
 void UNSCharacterSelectWidget::ClearSkillDetailPanel()
@@ -572,9 +590,10 @@ void UNSCharacterSelectWidget::ClearSkillDetailPanel()
 		SkillDetailDescriptionText->SetText(EmptyText);
 	}
 
-	if (SkillDetailStatsText)
+	if (SkillDetailStatsBox)
 	{
-		SkillDetailStatsText->SetText(EmptyText);
+		// 위젯을 닫거나 데이터가 없을 때 이전 슽새 행을 모두 제거.
+		SkillDetailStatsBox->ClearChildren();
 	}
 
 	if (SkillDetailIconImage)

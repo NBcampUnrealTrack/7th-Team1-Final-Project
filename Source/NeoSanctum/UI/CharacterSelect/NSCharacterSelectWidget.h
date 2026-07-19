@@ -7,6 +7,8 @@
 #include "NSCharacterSelectSkillSlotWidget.h"
 #include "NSCharacterSelectWidget.generated.h"
 
+class UNSCharacterSelectSkillStatRowWidget;
+class UVerticalBox;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FOnCharacterSelectionConfirmed, UNSCharacterData*, ConfirmedCharacterData);
 
@@ -96,8 +98,13 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
 	TObjectPtr<UCommonTextBlock> SkillDetailDescriptionText;
 
+	// 동적으로 생성한 스킬 스탯 행들이 들어갈 컨테이너.
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI|Skill")
-	TObjectPtr<UCommonTextBlock> SkillDetailStatsText;
+	TObjectPtr<UVerticalBox> SkillDetailStatsBox;
+
+	// WBP의 Class Defaults에서 행 위젯 클래스를 지정할 수 있게 함.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect|Skill")
+	TSubclassOf<UNSCharacterSelectSkillStatRowWidget> SkillStatRowWidgetClass;
 
 	// 기본값은 호버이며 나중에 WBP 기본값에서 클릭 방식으로 바꿀 수 있음.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CharacterSelect|Skill")
@@ -158,7 +165,8 @@ private:
 	void UpdateSkillDetailPanel(const FDataTableRowHandle& SkillUIDataRow, UTexture2D* InputIconTexture);
 	void ClearSkillDetailPanel();
 
-	FText BuildSkillStatsText(const FNSSkillUIData& SkillUIData);
+	// 선택한 스킬 데이터 개수에 맞춰 스탯 행을 다시 만듦.
+	void RefreshSkillDetailStats(const FNSSkillUIData& SkillUIData);
 
 	UNSCharacterSelectSkillSlotWidget* GetSkillSlotWidget(ENSCharacterSelectSkillSlot SlotType) const;
 
