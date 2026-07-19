@@ -138,6 +138,10 @@ struct FNSPartSlotRow : public FTableRowBase
 	// false면 언락 대상에서 제외
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot")
 	bool bEnabled = true;
+
+	// UI에서 슬롯 버튼 정렬 순서 (작을수록 위/앞. 예: 바디 0, 암 1, 레그 2)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|PartSlot")
+	int32 SortOrder = 0;
 };
 
 UENUM(BlueprintType)
