@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "NeoSanctum/System/NSSaveGameSubsystem.h"
 #include "NSProgressionSubsystem.generated.h"
 
 class UNSSaveGameSubsystem;
@@ -110,6 +111,8 @@ public:
 	bool IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const;
 	const TArray<FNSPartSaveData>& GetOwnedParts() const;
 
+	// 현재 캐시 상태를 저장하고 완료 시 콜백 호출 (저장 완료를 기다려야 하는 UI 연출용)
+	void FlushSave(FNSSaveComplete OnComplete);
 
 private:
 	UNSSaveGameSubsystem* GetSaveSubsystem() const;

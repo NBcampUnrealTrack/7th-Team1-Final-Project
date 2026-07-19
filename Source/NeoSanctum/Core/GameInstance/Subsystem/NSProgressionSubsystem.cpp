@@ -503,11 +503,19 @@ UNSPermanentSaveGame* UNSProgressionSubsystem::GetSaveData() const
 
 void UNSProgressionSubsystem::SaveNow()
 {
+	FlushSave(FNSSaveComplete());
+}
+
+void UNSProgressionSubsystem::FlushSave(FNSSaveComplete OnComplete)
+{
 	UNSSaveGameSubsystem* SaveSubsystem = GetSaveSubsystem();
 	UNSPermanentSaveGame* Save = SaveSubsystem ? SaveSubsystem->GetCachedPermanentData() : nullptr;
-	if (SaveSubsystem && Save)
+	if (!SaveSubsystem || !Save)
 	{
-		// 같은 CachedData 객체를 넘기므로 머지 분기를 건너뛰고 그대로 저장됨
-		SaveSubsystem->SavePermanent(Save, FNSSaveComplete());
+		OnComplete.ExecuteIfBound(false);
+		return;
 	}
+
+	// 같은 CachedData 객체를 넘기므로 머지 분기를 건너뛰고 그대로 저장됨
+	SaveSubsystem->SavePermanent(Save, MoveTemp(OnComplete));
 }
