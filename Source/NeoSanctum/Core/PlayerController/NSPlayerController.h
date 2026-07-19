@@ -111,6 +111,9 @@ public:
 	// NPC 상호작용 위젯 열기/닫기 (InteractionComponent가 호출)
 	void OpenInteractionWidget(ANSInteractableNPCBase* NPC);
 	void CloseInteractionWidget();
+
+	// 위젯이 자체 경로(X버튼/위젯 내부 ESC)로 닫힐 때 호출 — 이동 매핑 복원 + ActiveInteractionWidget 정리
+	void NotifyInteractionWidgetClosed(UNSNPCInteractionWidgetBase* Widget);
 	
 	// 세이브 데이터 업로드/ 저장용 RPC 함수
 	UFUNCTION(Server, Reliable)
