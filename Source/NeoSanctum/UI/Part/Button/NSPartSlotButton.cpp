@@ -2,11 +2,12 @@
 
 
 #include "NSPartSlotButton.h"
-#include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/AssetManager.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Progression/Part/NSPartUtils.h"
 
 UNSPartSlotButton::UNSPartSlotButton()
 	: bHasPart(false)
@@ -18,6 +19,69 @@ void UNSPartSlotButton::NativePreConstruct()
 	Super::NativePreConstruct();
 
 	RefreshEmptyState();
+}
+
+void UNSPartSlotButton::NativeConstruct()
+{
+	Super::NativeConstruct();
+
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	OnHovered().AddUObject(this, &ThisClass::HandleHovered);
+	OnUnhovered().AddUObject(this, &ThisClass::HandleUnhovered);
+	OnPressed().AddUObject(this, &ThisClass::HandlePressed);
+	OnReleased().AddUObject(this, &ThisClass::HandleReleased);
+}
+
+void UNSPartSlotButton::NativeDestruct()
+{
+	OnHovered().RemoveAll(this);
+	OnUnhovered().RemoveAll(this);
+	OnPressed().RemoveAll(this);
+	OnReleased().RemoveAll(this);
+
+	Super::NativeDestruct();
+}
+
+void UNSPartSlotButton::HandleHovered()
+{
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartSlotButton::HandleUnhovered()
+{
+	if (IsValid(HoverHighlight))
+	{
+		HoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSPartSlotButton::HandlePressed()
+{
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartSlotButton::HandleReleased()
+{
+	// 선택된 상태(bIsHighlighted)면 눌림 이미지를 계속 유지하고, 아니면 원래대로 해제
+	if (IsValid(PressedHighlight) && !bIsHighlighted)
+	{
+		PressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefinition* InPartDefinition)
@@ -36,6 +100,8 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 		{
 			PartIconImage->SetBrushFromTexture(LoadedIcon);
 			PartIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+			// 위젯이 화면에 처음 페인트되기 전에 브러시가 바뀌는 경우 반영이 안 되고 남을 수 있어 강제 재도장
+			PartIconImage->InvalidateLayoutAndVolatility();
 		}
 		else if (!InPartDefinition->Icon.IsNull())
 		{
@@ -53,6 +119,7 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 					{
 						WeakThis->PartIconImage->SetBrushFromTexture(Tex);
 						WeakThis->PartIconImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+						WeakThis->PartIconImage->InvalidateLayoutAndVolatility();
 					}
 					WeakThis->IconLoadHandle.Reset();
 				});
@@ -80,10 +147,28 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 		Options.MinimumFractionalDigits = 0;
 		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
 
-		// 등급 텍스트가 따로 있으면 수치만, 없으면 기존 포맷("등급 수치") 유지
+		// 등급 텍스트가 따로 있으면 "스탯이름 수치"로 표시, 없으면 기존 포맷("등급 수치") 유지
 		if (IsValid(PartRarityText))
 		{
-			PartValueText->SetText(FText::AsNumber(InPartData.CurrentValue, &Options));
+			// 어떤 스탯이 오르는지 스탯 표시 DT에서 이름을 조회해 수치 앞에 붙임 (예: "이동속도 10")
+			FText StatName;
+			const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, InPartData);
+			if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this))
+			{
+				if (const FNSStatDisplayInfoRow* StatInfo = DataSS->FindStatDisplayInfoRow(StatTag))
+				{
+					StatName = StatInfo->DisplayName;
+				}
+			}
+
+			// DT에 이름이 등록 안 된 스탯이면 기존처럼 수치만 표시 (데이터 누락이 UI를 깨지 않게)
+			PartValueText->SetText(StatName.IsEmpty()
+				? FText::AsNumber(InPartData.CurrentValue, &Options)
+				: FText::Format(
+					NSLOCTEXT("PartSlotButton", "PartStatValueFormat", "{0} {1}"),
+					StatName,
+					FText::AsNumber(InPartData.CurrentValue, &Options)
+				));
 		}
 		else
 		{
@@ -96,10 +181,6 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 		PartValueText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
-	if (IsValid(RarityBorder))
-	{
-		RarityBorder->SetVisibility(ESlateVisibility::HitTestInvisible);
-	}
 }
 
 void UNSPartSlotButton::ClearPart()
@@ -146,9 +227,17 @@ bool UNSPartSlotButton::IsEmpty() const
 
 void UNSPartSlotButton::SetHighlighted(bool bHighlighted)
 {
+	bIsHighlighted = bHighlighted;
+
 	if (IsValid(SelectedHighlight))
 	{
 		SelectedHighlight->SetVisibility(bHighlighted ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	// 선택된 항목은 눌림 이미지를 고정으로 보여주고, 선택 해제되면 원래 상태로 되돌림
+	if (IsValid(PressedHighlight))
+	{
+		PressedHighlight->SetVisibility(bHighlighted ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 }
 
@@ -159,10 +248,6 @@ void UNSPartSlotButton::RefreshEmptyState()
 		return;
 	}
 
-	if (IsValid(RarityBorder))
-	{
-		RarityBorder->SetVisibility(ESlateVisibility::Hidden);
-	}
 }
 
 FText UNSPartSlotButton::GetRarityText(ENSPartRarity Rarity) const
