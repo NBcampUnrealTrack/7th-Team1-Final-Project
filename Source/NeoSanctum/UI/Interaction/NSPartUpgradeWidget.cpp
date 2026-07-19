@@ -690,7 +690,15 @@ void UNSPartUpgradeWidget::OnStockEntryClicked(const FNSPartDefinitionRow& Row, 
 	{
 		if (IsValid(Widget))
 		{
-			Widget->SetIsSelected(Widget == Entry);
+			// SetIsSelected(false)는 bToggleable이 꺼진 버튼에서는 무시되므로, 해제는 ClearSelection() 사용
+			if (Widget == Entry)
+			{
+				Widget->SetIsSelected(true);
+			}
+			else
+			{
+				Widget->ClearSelection();
+			}
 		}
 	}
 
