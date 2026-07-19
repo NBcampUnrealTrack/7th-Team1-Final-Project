@@ -2562,10 +2562,6 @@ void ANSPlayerController::TogglePauseMenu()
 		}
 	}
 	
-	// [진단용 임시 로그]
-	UE_LOG(LogTemp, Warning, TEXT("[PlayerController] TogglePauseMenu 호출됨: ActiveInteractionWidget=%s"),
-		*GetNameSafe(ActiveInteractionWidget));
-
 	if (ActiveInteractionWidget)
 	{
 		CloseInteractionWidget();
