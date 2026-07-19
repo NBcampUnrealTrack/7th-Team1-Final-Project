@@ -128,6 +128,10 @@ public:
 	UFUNCTION(BlueprintCallable,Category="UI")
 	void ShowCharacterSelectWidget();
 
+	// 캐릭터 선택 위젯을 닫고 게임 입력으로 돌아감.
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideCharacterSelectWidget();
+
 	// 거점 입장시 가장 최근 캐릭터 데이터 읽어오는 용도
 	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
 	void RestoreLastSelectedCharacter();
@@ -207,9 +211,6 @@ private:
 		float CurrentExperience,
 		float RequiredExperience);
 	
-	// 캐릭터 선택 위젯 닫기
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void HideCharacterSelectWidget();
 	// 캐릭터 선택 후 핸들러
 	UFUNCTION()
 	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
