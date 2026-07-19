@@ -1839,6 +1839,17 @@ void ANSPlayerController::OpenInteractionWidget(ANSInteractableNPCBase* NPC)
 
 	ActiveInteractionWidget = Widget;
 	Widget->OpenForInteractor(this);
+	
+	
+	if (ANSPlayerCharacterBase* Char = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder = Char->GetInputBinderComponent())
+		{
+			FGameplayTagContainer UIOnly;
+			UIOnly.AddTag(NSGameplayTags::InputMode_UI);
+			InputBinder->SetActiveInputModeTags(UIOnly);
+		}
+	}
 
 	// 해금 NPC 첫 상호작용 → 안내 완료 처리
 	if (UNSOutRunGuideSubsystem* GuideSubsystem =
@@ -1850,10 +1861,32 @@ void ANSPlayerController::OpenInteractionWidget(ANSInteractableNPCBase* NPC)
 
 void ANSPlayerController::CloseInteractionWidget()
 {
-	if (ActiveInteractionWidget)
+	if (!ActiveInteractionWidget)
 	{
-		ActiveInteractionWidget->CloseWidget();
-		ActiveInteractionWidget = nullptr;
+		return;
+	}
+
+	// CloseWidget 내부에서 NotifyInteractionWidgetClosed가 호출되어 매핑 복원/포인터 정리까지 처리된다
+	ActiveInteractionWidget->CloseWidget();
+}
+
+void ANSPlayerController::NotifyInteractionWidgetClosed(UNSNPCInteractionWidgetBase* Widget)
+{
+	// 다른 위젯이 활성인 상태에서 이전 위젯의 늦은 알림이 오면 무시
+	if (ActiveInteractionWidget && ActiveInteractionWidget != Widget)
+	{
+		return;
+	}
+
+	ActiveInteractionWidget = nullptr;
+
+	// OpenInteractionWidget에서 제거한 이동/게임플레이 매핑 복원
+	if (ANSPlayerCharacterBase* Char = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder = Char->GetInputBinderComponent())
+		{
+			InputBinder->SetActiveInputModeTags(GetGameplayInputModeTags());
+		}
 	}
 }
 

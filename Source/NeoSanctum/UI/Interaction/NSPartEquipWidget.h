@@ -91,9 +91,23 @@ public:
 	void SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSPartCatalogEntryWidget* SourceEntry = nullptr);
 
 protected:
-	// 변경사항 있을 때 저장 확인 다이얼로그
-	UFUNCTION(BlueprintImplementableEvent, Category = "Part")
-	void ShowSaveConfirmDialog();
+	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
+	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
+
+	// 닫기 시 변경사항이 있으면 "저장하는 중" 팝업을 띄우고, 저장 완료 콜백에서 실제로 닫는다
+	void HandleSaveComplete(bool bSuccess);
+
+	// 에디터 Class Defaults에서 WBP_NoticePopup 지정 (저장 진행 표시용)
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	TSubclassOf<class UNSNoticePopupWidget> NoticePopupClass;
+
+	// 재사용 캐시 (닫기 시점에 생성)
+	UPROPERTY()
+	TObjectPtr<class UNSNoticePopupWidget> NoticePopup;
+
+	// 저장 완료 대기 중 중복 닫기 요청 방지
+	bool bSavePending = false;
 
 	// 바디 카탈로그 항목을 채울 컨테이너 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
@@ -132,6 +146,22 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> EquipButtonText;
 
+	// EquipButton 호버 시 겹쳐 보여줄 하이라이트 이미지 (WBP에서 배치, 기본 숨김)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> EquipButtonHoverHighlight;
+
+	// EquipButton을 누르고 있는 동안 보여줄 눌림 이미지 (WBP에서 배치, 기본 숨김)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> EquipButtonPressedHighlight;
+
+	// 공통 재화(영구 재화) 표시 (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> CommonCurrencyText;
+
+	// 종료(X) 버튼 — ESC와 동일하게 RequestClose 경유 (저장 진행 표시 포함)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UButton> CloseButton;
+
 	// 에디터 Class Defaults에서 WBP_PartCatalogEntry 지정
 	UPROPERTY(EditDefaultsOnly, Category = "Part")
 	TSubclassOf<UNSPartCatalogEntryWidget> PartEntryTemplate;
@@ -166,11 +196,24 @@ private:
 	UFUNCTION()
 	void OnLegEquippedClicked();
 
+	UFUNCTION()
+	void OnEquipButtonHovered();
+
+	UFUNCTION()
+	void OnEquipButtonUnhovered();
+
+	UFUNCTION()
+	void OnEquipButtonPressed();
+
+	UFUNCTION()
+	void OnEquipButtonReleased();
+
 	void OnSlotButtonClicked(FGameplayTag SlotTag);
 	void RefreshEquippedDisplay();
 	void RefreshEquippedSlotButton(UNSPartSlotButton* Button, FGameplayTag SlotTag, FGameplayTag EquippedSlot,
 		const FNSPartData& EquippedPartData, UNSPartDefinition* EquippedDef);
 	void RefreshEquipButton();
+	void RefreshCommonCurrencyDisplay();
 	void RequestUnequipPart();
 
 	// 현재 SelectionMode에 맞춰 카탈로그 항목/슬롯버튼 3개의 선택 표시를 갱신

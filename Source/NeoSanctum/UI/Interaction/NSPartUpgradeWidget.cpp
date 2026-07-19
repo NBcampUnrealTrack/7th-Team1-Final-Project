@@ -9,14 +9,17 @@
 #include "Engine/SkeletalMesh.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
+#include "NeoSanctum/UI/Common/NSNoticePopupWidget.h"
 
 namespace
 {
@@ -53,6 +56,14 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	if (IsValid(CloseButton))
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
+	}
+	if (IsValid(UpgradeCloseButton))
+	{
+		UpgradeCloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
+	}
+	if (IsValid(HubCloseButton))
+	{
+		HubCloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
 	}
 	if (IsValid(HubPurchaseButton))
 	{
@@ -106,6 +117,12 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	SelectedUpgradeSlot = FGameplayTag();
 	SelectedStockIndex = INDEX_NONE;
 
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(Interactor);
+	}
+
 	OpenHubPage();
 	RefreshBalance();
 	RefreshEquippedDisplays();
@@ -123,15 +140,46 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 
 	Interactor->SetShowMouseCursor(true);
 
-	FInputModeGameAndUI InputMode;
+	// SetFocus()는 Is Focusable이 꺼져 있으면 조용히 실패해 ESC(NativeOnKeyDown)를 아예 못 받으므로 반드시 켠다
+	SetIsFocusable(true);
+
+	// 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
+	// UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	FInputModeUIOnly InputMode;
 	InputMode.SetWidgetToFocus(TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	Interactor->SetInputMode(InputMode);
+
+	// 버튼 클릭 등으로 포커스가 이동해도 이 위젯이 ESC를 계속 받도록 보장
+	SetFocus();
+}
+
+FReply UNSPartUpgradeWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		CloseWidget();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 void UNSPartUpgradeWidget::CloseWidget()
 {
+	// 떠 있는 결과 토스트가 위젯보다 오래 남지 않도록 정리
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->Dismiss();
+	}
+
 	UnbindComponentDelegates();
+
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->StopBroadcastCharacterStats();
+	}
 
 	if (APlayerController* PC = OwningController.Get())
 	{
@@ -149,6 +197,12 @@ void UNSPartUpgradeWidget::CloseWidget()
 	{
 		PreviewStage->Destroy();
 		PreviewStage = nullptr;
+	}
+
+	// X버튼/ESC 등 위젯 자체 경로로 닫혀도 이동 매핑 복원 + ActiveInteractionWidget 정리가 되도록 통지
+	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
+	{
+		NSPC->NotifyInteractionWidgetClosed(this);
 	}
 
 	RemoveFromParent();
@@ -256,11 +310,16 @@ void UNSPartUpgradeWidget::RefreshBalance()
 
 void UNSPartUpgradeWidget::SetBalanceText(int64 Balance)
 {
-	if (!IsValid(TempBalanceText))
+	const FText BalanceText = FText::AsNumber(Balance);
+
+	if (IsValid(TempBalanceText))
 	{
-		return;
+		TempBalanceText->SetText(BalanceText);
 	}
-	TempBalanceText->SetText(FText::AsNumber(Balance));
+	if (IsValid(UpgradeBalanceText))
+	{
+		UpgradeBalanceText->SetText(BalanceText);
+	}
 }
 
 void UNSPartUpgradeWidget::ApplySlotButtonDisplay(FGameplayTag SlotTag, UNSPartSlotButton* SlotButton) const
@@ -282,44 +341,6 @@ void UNSPartUpgradeWidget::ApplySlotButtonDisplay(FGameplayTag SlotTag, UNSPartS
 	{
 		SlotButton->ClearPart();
 	}
-}
-
-FText UNSPartUpgradeWidget::BuildEquippedSummaryText() const
-{
-	const UNSPartEquipComponent* EquipComp = GetEquipComponent();
-	if (!EquipComp)
-	{
-		return FText::GetEmpty();
-	}
-
-	struct FSlotLabel
-	{
-		FGameplayTag Tag;
-		FText Label;
-	};
-	const FSlotLabel SlotLabels[] = {
-		{ BodySlotTag, NSLOCTEXT("PartUpgrade", "SlotBody", "바디") },
-		{ ArmSlotTag, NSLOCTEXT("PartUpgrade", "SlotArm", "암") },
-		{ LegSlotTag, NSLOCTEXT("PartUpgrade", "SlotLeg", "레그") },
-	};
-
-	TArray<FText> Lines;
-	for (const FSlotLabel& SlotLabel : SlotLabels)
-	{
-		const FNSPartData* Part = EquipComp->GetEquippedPart(SlotLabel.Tag);
-		if (!Part)
-		{
-			Lines.Add(FText::Format(NSLOCTEXT("PartUpgrade", "SlotEmptyLine", "{0} : 미장착"), SlotLabel.Label));
-			continue;
-		}
-
-		const UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, *Part);
-		const FText PartName = Def ? Def->PartName : FText::GetEmpty();
-		Lines.Add(FText::Format(NSLOCTEXT("PartUpgrade", "SlotSummaryLine", "{0} : {1} ({2}) 효과 {3}"),
-			SlotLabel.Label, PartName, GetRarityDisplayText(Part->CurrentRarity), FormatSummaryValue(Part->CurrentValue)));
-	}
-
-	return FText::Join(FText::FromString(TEXT("\n")), Lines);
 }
 
 void UNSPartUpgradeWidget::UpdatePreview(const UNSPartDefinition* Def, UNSPartDetailWidget* TargetDetail)
@@ -388,17 +409,6 @@ void UNSPartUpgradeWidget::RefreshEquippedDisplays()
 	ApplySlotButtonDisplay(BodySlotTag, UpgradeBodySlotButton);
 	ApplySlotButtonDisplay(ArmSlotTag, UpgradeArmSlotButton);
 	ApplySlotButtonDisplay(LegSlotTag, UpgradeLegSlotButton);
-
-	// 장착중인 모든 파츠 요약 (허브 + 업그레이드 페이지 좌측, 동일 내용)
-	const FText Summary = BuildEquippedSummaryText();
-	if (IsValid(HubEquippedSummaryText))
-	{
-		HubEquippedSummaryText->SetText(Summary);
-	}
-	if (IsValid(ListEquippedSummaryText))
-	{
-		ListEquippedSummaryText->SetText(Summary);
-	}
 }
 
 void UNSPartUpgradeWidget::RefreshStockEntries()
@@ -654,6 +664,12 @@ void UNSPartUpgradeWidget::HandlePartChanged(FGameplayTag PartSlot, const FNSPar
 		RefreshUpgradePanels();
 		RefreshSelectedSlotPreview();
 	}
+
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(OwningController.Get());
+	}
 }
 
 void UNSPartUpgradeWidget::HandleTempChanged(int64 NewAmount)
@@ -670,7 +686,49 @@ void UNSPartUpgradeWidget::HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpg
 	RefreshBuyBox();
 	RefreshUpgradePanels();
 
+	// 서버 결과별 안내 토스트 (클릭 또는 일정 시간 후 자동 소멸)
+	switch (Result)
+	{
+	case ENSPartUpgradeResult::UpgradeSuccess:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastUpgradeSuccess", "업그레이드 성공!"));
+		break;
+	case ENSPartUpgradeResult::UpgradeFail:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastUpgradeFail", "업그레이드 실패"));
+		break;
+	case ENSPartUpgradeResult::RerollDone:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastRerollDone", "리롤 완료"));
+		break;
+	case ENSPartUpgradeResult::PurchaseDone:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastPurchaseDone", "구매 완료"));
+		break;
+	case ENSPartUpgradeResult::NotEnoughCurrency:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastNotEnoughCurrency", "재화가 부족합니다"));
+		break;
+	case ENSPartUpgradeResult::SoldOut:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastSoldOut", "품절된 상품입니다"));
+		break;
+	default:
+		break;
+	}
+
 	OnUpgradeResultReceived(PartSlot, Result);
+}
+
+void UNSPartUpgradeWidget::ShowResultToast(const FText& Message)
+{
+	if (!NoticePopupClass)
+	{
+		return;
+	}
+
+	if (!IsValid(NoticePopup))
+	{
+		NoticePopup = CreateWidget<UNSNoticePopupWidget>(OwningController.Get(), NoticePopupClass);
+	}
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->ShowToast(Message, 1.5f);
+	}
 }
 
 void UNSPartUpgradeWidget::HandleShopStockChanged()
@@ -690,7 +748,15 @@ void UNSPartUpgradeWidget::OnStockEntryClicked(const FNSPartDefinitionRow& Row, 
 	{
 		if (IsValid(Widget))
 		{
-			Widget->SetIsSelected(Widget == Entry);
+			// SetIsSelected(false)는 bToggleable이 꺼진 버튼에서는 무시되므로, 해제는 ClearSelection() 사용
+			if (Widget == Entry)
+			{
+				Widget->SetIsSelected(true);
+			}
+			else
+			{
+				Widget->ClearSelection();
+			}
 		}
 	}
 

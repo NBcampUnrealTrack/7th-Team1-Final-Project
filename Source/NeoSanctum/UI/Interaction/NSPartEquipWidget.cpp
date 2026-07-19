@@ -19,6 +19,8 @@
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
+#include "NeoSanctum/UI/Common/NSNoticePopupWidget.h"
 
 static UNSProgressionSubsystem* GetProgressionSS(const UObject* WorldCtx)
 {
@@ -50,9 +52,27 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	{
 		LegEquippedButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnLegEquippedClicked);
 	}
+	if (IsValid(CloseButton))
+	{
+		// ESC와 동일 경로 — 변경사항 있으면 저장 진행 표시 후 닫힘
+		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::RequestClose);
+	}
 	if (IsValid(EquipButton))
 	{
 		EquipButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonClicked);
+		EquipButton->OnHovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonHovered);
+		EquipButton->OnUnhovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonUnhovered);
+		EquipButton->OnPressed.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonPressed);
+		EquipButton->OnReleased.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonReleased);
+	}
+
+	if (IsValid(EquipButtonHoverHighlight))
+	{
+		EquipButtonHoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	if (IsValid(EquipButtonPressedHighlight))
+	{
+		EquipButtonPressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	SelectionMode = ENSPartSelectionMode::None;
@@ -62,6 +82,18 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 	RefreshEquipButton();
 	RefreshEquippedDisplay();
+	RefreshCommonCurrencyDisplay();
+
+	/**
+	 * 캐릭터 스테이터스 패널 초기 표시: 현재 ASC 스탯 스냅샷을 1회 방송
+	 * 첫 호출에서 어트리뷰트 변경 델리게이트도 바인딩됨
+	 * 이후 파츠 장착/해제로 스탯이 바뀌면 브릿지가 자동으로 재방송
+	 */
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(OwningController.Get());
+	}
 
 	if (PreviewStageClass && !IsValid(PreviewStage))
 	{
@@ -74,10 +106,29 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 
 	Interactor->SetShowMouseCursor(true);
 
-	FInputModeGameAndUI InputMode;
+	// SetFocus()는 Is Focusable이 꺼져 있으면 조용히 실패해 ESC(NativeOnKeyDown)를 아예 못 받으므로 반드시 켠다
+	SetIsFocusable(true);
+
+	// 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
+	// UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	FInputModeUIOnly InputMode;
 	InputMode.SetWidgetToFocus(TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 	Interactor->SetInputMode(InputMode);
+
+	// 카탈로그 버튼 클릭 등으로 포커스가 이동해도 이 위젯이 ESC를 계속 받도록 보장
+	SetFocus();
+}
+
+FReply UNSPartEquipWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		RequestClose();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
 bool UNSPartEquipWidget::RequestUnlockSlot(FGameplayTag PartSlot)
@@ -216,7 +267,8 @@ void UNSPartEquipWidget::SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSP
 
 	if (IsValid(SelectedCatalogEntryWidget.Get()) && SelectedCatalogEntryWidget.Get() != SourceEntry)
 	{
-		SelectedCatalogEntryWidget->SetIsSelected(false);
+		// SetIsSelected(false)는 bToggleable이 꺼진 버튼에서는 무시되므로, 강제 해제는 ClearSelection() 사용
+		SelectedCatalogEntryWidget->ClearSelection();
 	}
 	SelectedCatalogEntryWidget = SourceEntry;
 	if (IsValid(SourceEntry))
@@ -287,11 +339,53 @@ void UNSPartEquipWidget::SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSP
 
 void UNSPartEquipWidget::RequestClose()
 {
-	if (bDirty)
+	// 저장 완료 대기 중이면 중복 요청 무시
+	if (bSavePending)
 	{
-		ShowSaveConfirmDialog();
 		return;
 	}
+
+	if (!bDirty)
+	{
+		CloseWidget();
+		return;
+	}
+
+	// 변경사항이 있으면 "저장하는 중" 팝업을 띄우고 저장 완료 후 닫는다
+	bSavePending = true;
+
+	if (NoticePopupClass)
+	{
+		if (!IsValid(NoticePopup))
+		{
+			NoticePopup = CreateWidget<UNSNoticePopupWidget>(OwningController.Get(), NoticePopupClass);
+		}
+		if (IsValid(NoticePopup))
+		{
+			NoticePopup->ShowBlocking(NSLOCTEXT("PartEquip", "Saving", "저장하는 중..."));
+		}
+	}
+
+	UNSProgressionSubsystem* SS = GetProgressionSS(this);
+	if (!SS)
+	{
+		// 저장 경로가 없으면 그냥 닫는다 (팝업도 정리)
+		HandleSaveComplete(false);
+		return;
+	}
+
+	SS->FlushSave(FNSSaveComplete::CreateUObject(this, &UNSPartEquipWidget::HandleSaveComplete));
+}
+
+void UNSPartEquipWidget::HandleSaveComplete(bool bSuccess)
+{
+	bSavePending = false;
+
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->Dismiss();
+	}
+
 	CloseWidget();
 }
 
@@ -313,6 +407,12 @@ void UNSPartEquipWidget::CloseWidget()
 	{
 		PreviewStage->Destroy();
 		PreviewStage = nullptr;
+	}
+
+	// X버튼/ESC 등 위젯 자체 경로로 닫혀도 이동 매핑 복원 + ActiveInteractionWidget 정리가 되도록 통지
+	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
+	{
+		NSPC->NotifyInteractionWidgetClosed(this);
 	}
 
 	RemoveFromParent();
@@ -503,6 +603,16 @@ void UNSPartEquipWidget::RefreshEquipButton()
 	}
 }
 
+void UNSPartEquipWidget::RefreshCommonCurrencyDisplay()
+{
+	if (!IsValid(CommonCurrencyText))
+	{
+		return;
+	}
+
+	CommonCurrencyText->SetText(FText::AsNumber(GetCommonCurrency()));
+}
+
 void UNSPartEquipWidget::RequestUnequipPart()
 {
 	UNSProgressionSubsystem* SS = GetProgressionSS(this);
@@ -517,6 +627,38 @@ void UNSPartEquipWidget::RequestUnequipPart()
 	PC->EquipPartLive(CharId, TSoftObjectPtr<UNSPartDefinition>(), ENSPartRarity::Common);
 	NS_LOG(LogNS, Log, "[Equip] EquipPartLive 호출(해제): CharId={CharId}", ("CharId", CharId.ToString()));
 	bDirty = true;
+}
+
+void UNSPartEquipWidget::OnEquipButtonHovered()
+{
+	if (IsValid(EquipButtonHoverHighlight))
+	{
+		EquipButtonHoverHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartEquipWidget::OnEquipButtonUnhovered()
+{
+	if (IsValid(EquipButtonHoverHighlight))
+	{
+		EquipButtonHoverHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSPartEquipWidget::OnEquipButtonPressed()
+{
+	if (IsValid(EquipButtonPressedHighlight))
+	{
+		EquipButtonPressedHighlight->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UNSPartEquipWidget::OnEquipButtonReleased()
+{
+	if (IsValid(EquipButtonPressedHighlight))
+	{
+		EquipButtonPressedHighlight->SetVisibility(ESlateVisibility::Collapsed);
+	}
 }
 
 void UNSPartEquipWidget::OnEquipButtonClicked()
@@ -572,6 +714,7 @@ void UNSPartEquipWidget::OnEquipButtonClicked()
 
 	RefreshSelectionHighlights();
 	RefreshEquipButton();
+	RefreshCommonCurrencyDisplay();
 }
 
 void UNSPartEquipWidget::OnBodyEquippedClicked()
@@ -639,7 +782,8 @@ void UNSPartEquipWidget::RefreshSelectionHighlights()
 {
 	if (SelectionMode != ENSPartSelectionMode::Part && IsValid(SelectedCatalogEntryWidget.Get()))
 	{
-		SelectedCatalogEntryWidget->SetIsSelected(false);
+		// SetIsSelected(false)는 bToggleable이 꺼진 버튼에서는 무시되므로, 강제 해제는 ClearSelection() 사용
+		SelectedCatalogEntryWidget->ClearSelection();
 		SelectedCatalogEntryWidget = nullptr;
 	}
 

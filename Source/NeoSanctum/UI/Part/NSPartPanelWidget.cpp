@@ -115,7 +115,18 @@ void UNSPartPanelWidget::BuildSlotButtons()
 		return;
 	}
 
+	// TMap 순회 순서는 보장되지 않으므로 DT의 SortOrder 기준으로 정렬 후 생성 (바디 > 암 > 레그)
+	TArray<TPair<FGameplayTag, FNSPartSlotRow>> SortedRows;
 	for (const auto& Pair : DataSS->GetAllSlotRows())
+	{
+		SortedRows.Add(Pair);
+	}
+	SortedRows.Sort([](const TPair<FGameplayTag, FNSPartSlotRow>& A, const TPair<FGameplayTag, FNSPartSlotRow>& B)
+	{
+		return A.Value.SortOrder < B.Value.SortOrder;
+	});
+
+	for (const auto& Pair : SortedRows)
 	{
 		UNSPartSlotButton* Btn = CreateWidget<UNSPartSlotButton>(this, SlotButtonTemplate);
 		if (!Btn)
@@ -145,6 +156,7 @@ void UNSPartPanelWidget::ApplySlot(FGameplayTag PartSlot, UNSPartSlotButton* Slo
 	const FNSPartData* PartData = PartEquipComponent->GetEquippedPart(PartSlot);
 	if (PartData == nullptr || !PartData->IsValid())
 	{
+		SlotButton->ClearPart();
 		return;
 	}
 

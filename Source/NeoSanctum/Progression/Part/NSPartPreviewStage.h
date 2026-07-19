@@ -74,7 +74,7 @@ protected:
 
 	// 메시 바운즈 반지름 대비 카메라 거리 배수
 	UPROPERTY(EditDefaultsOnly, Category = "Preview")
-	float CameraDistanceMultiplier = 2.5f;
+	float CameraDistanceMultiplier = 3.2f;
 
 	// 휠 한 칸당 줌 배율 변화량
 	UPROPERTY(EditDefaultsOnly, Category = "Preview")
