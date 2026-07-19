@@ -149,6 +149,8 @@ protected:
 
 	// 버프 지속시간 조회
 	bool TryGetBuffDuration(float& OutDuration) const;
+	// 버프 범위 시각화 Cue 실행
+	void ExecuteRangePulseGameplayCue(float Radius) const;
 
 protected:
 	// 버프 대상 수집
@@ -176,6 +178,11 @@ protected:
 	// 버프 유지 중 재생할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cue")
 	FGameplayTag BuffGameplayCueTag;
+
+	// Radius 타입 버프 범위 시각화 Cue 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cue",
+		meta = (EditCondition = "TargetType == ENSBuffTargetType::Radius", EditConditionHides))
+	FGameplayTag RangePulseGameplayCueTag;
 	
 	// 버프 대상 수집 방식
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target")
