@@ -74,9 +74,6 @@ protected:
 	TObjectPtr<UTextBlock> CostText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> CanRerollText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RarityText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
