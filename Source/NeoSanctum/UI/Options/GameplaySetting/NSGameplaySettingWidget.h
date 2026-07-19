@@ -49,6 +49,9 @@ private:
 	void OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType);
 	
 	UFUNCTION()
+	UWidget* GenerateLanguageOptionWidget(FString Item);
+	
+	UFUNCTION()
 	void OnMouseSensitivityChanged(float Value);
 	
 	UFUNCTION()
@@ -101,6 +104,10 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UTextBlock> MouseSensitivityValueText;
+	
+	// 생성한 언어 항목 위젯을 위젯 수명 동안 보관한다.
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UWidget>> GeneratedLanguageOptionWidgets;
 
 	float PendingMouseSensitivity = 1.0f;
 
