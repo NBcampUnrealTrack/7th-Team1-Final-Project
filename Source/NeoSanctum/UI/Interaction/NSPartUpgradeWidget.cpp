@@ -167,7 +167,19 @@ FReply UNSPartUpgradeWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 
 void UNSPartUpgradeWidget::CloseWidget()
 {
+	// 떠 있는 결과 토스트가 위젯보다 오래 남지 않도록 정리
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->Dismiss();
+	}
+
 	UnbindComponentDelegates();
+
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->StopBroadcastCharacterStats();
+	}
 
 	if (APlayerController* PC = OwningController.Get())
 	{
@@ -298,11 +310,16 @@ void UNSPartUpgradeWidget::RefreshBalance()
 
 void UNSPartUpgradeWidget::SetBalanceText(int64 Balance)
 {
-	if (!IsValid(TempBalanceText))
+	const FText BalanceText = FText::AsNumber(Balance);
+
+	if (IsValid(TempBalanceText))
 	{
-		return;
+		TempBalanceText->SetText(BalanceText);
 	}
-	TempBalanceText->SetText(FText::AsNumber(Balance));
+	if (IsValid(UpgradeBalanceText))
+	{
+		UpgradeBalanceText->SetText(BalanceText);
+	}
 }
 
 void UNSPartUpgradeWidget::ApplySlotButtonDisplay(FGameplayTag SlotTag, UNSPartSlotButton* SlotButton) const
@@ -669,7 +686,49 @@ void UNSPartUpgradeWidget::HandleUpgradeResult(FGameplayTag PartSlot, ENSPartUpg
 	RefreshBuyBox();
 	RefreshUpgradePanels();
 
+	// 서버 결과별 안내 토스트 (클릭 또는 일정 시간 후 자동 소멸)
+	switch (Result)
+	{
+	case ENSPartUpgradeResult::UpgradeSuccess:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastUpgradeSuccess", "업그레이드 성공!"));
+		break;
+	case ENSPartUpgradeResult::UpgradeFail:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastUpgradeFail", "업그레이드 실패"));
+		break;
+	case ENSPartUpgradeResult::RerollDone:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastRerollDone", "리롤 완료"));
+		break;
+	case ENSPartUpgradeResult::PurchaseDone:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastPurchaseDone", "구매 완료"));
+		break;
+	case ENSPartUpgradeResult::NotEnoughCurrency:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastNotEnoughCurrency", "재화가 부족합니다"));
+		break;
+	case ENSPartUpgradeResult::SoldOut:
+		ShowResultToast(NSLOCTEXT("PartUpgrade", "ToastSoldOut", "품절된 상품입니다"));
+		break;
+	default:
+		break;
+	}
+
 	OnUpgradeResultReceived(PartSlot, Result);
+}
+
+void UNSPartUpgradeWidget::ShowResultToast(const FText& Message)
+{
+	if (!NoticePopupClass)
+	{
+		return;
+	}
+
+	if (!IsValid(NoticePopup))
+	{
+		NoticePopup = CreateWidget<UNSNoticePopupWidget>(OwningController.Get(), NoticePopupClass);
+	}
+	if (IsValid(NoticePopup))
+	{
+		NoticePopup->ShowToast(Message, 1.5f);
+	}
 }
 
 void UNSPartUpgradeWidget::HandleShopStockChanged()

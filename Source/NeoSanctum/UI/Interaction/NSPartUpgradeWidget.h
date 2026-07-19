@@ -61,6 +61,10 @@ protected:
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> TempBalanceText;
 
+	// 업그레이드/리롤 페이지의 임시 재화 표시 (TempBalanceText와 동일 값으로 함께 갱신)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> UpgradeBalanceText;
+
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> CloseButton;
 
@@ -124,6 +128,10 @@ protected:
 	// 재고 1칸 위젯 (에디터 Class Defaults에서 WBP_PartCatalogEntry 지정)
 	UPROPERTY(EditDefaultsOnly, Category = "Part")
 	TSubclassOf<UNSPartCatalogEntryWidget> StockEntryTemplate;
+
+	// 결과 토스트("업그레이드 성공", "재화 부족" 등) 위젯 (에디터 Class Defaults에서 WBP_NoticePopup 지정)
+	UPROPERTY(EditDefaultsOnly, Category = "Part")
+	TSubclassOf<class UNSNoticePopupWidget> NoticePopupClass;
 
 	// 에디터 Class Defaults에서 BP_PartPreviewStage 지정 (구매/업그레이드 3D 프리뷰용)
 	UPROPERTY(EditDefaultsOnly, Category = "Part")
@@ -245,8 +253,14 @@ private:
 	UFUNCTION()
 	void OnUpgradeClicked();
 
+	// 결과 토스트 표시 (팝업 인스턴스는 최초 1회 생성 후 재사용)
+	void ShowResultToast(const FText& Message);
+
 	UPROPERTY()
 	TWeakObjectPtr<APlayerController> OwningController;
+
+	UPROPERTY()
+	TObjectPtr<class UNSNoticePopupWidget> NoticePopup;
 
 	UPROPERTY()
 	TArray<TObjectPtr<UNSPartCatalogEntryWidget>> StockEntryWidgets;
