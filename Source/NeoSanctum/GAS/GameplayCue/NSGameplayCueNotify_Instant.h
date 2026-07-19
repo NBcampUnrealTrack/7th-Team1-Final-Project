@@ -91,6 +91,11 @@ protected:
 		meta = (EditCondition = "bScaleVFXByEffectRadius", ClampMin = "1.0"))
 	float VFXBaseRadius = 300.0f;
 
+	// RawMagnitude를 전달할 Niagara User Float 이름 : None이면 컴포넌트 스케일 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
+		meta = (EditCondition = "bScaleVFXByEffectRadius", EditConditionHides))
+	FName VFXRadiusUserParameterName = NAME_None;
+
 	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
 		meta = (EditCondition = "VFXSpawnMode == ENSGameplayCueSpawnMode::Attached", EditConditionHides))

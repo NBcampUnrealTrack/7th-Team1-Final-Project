@@ -5,6 +5,7 @@
 
 #include "Components/MeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "NiagaraComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 
@@ -154,9 +155,12 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 	}
 
 	// 실제 폭발 반경과 기본 반경의 비율을 기존 VFX 크기에 반영해줌.
+	const bool bHasValidEffectRadius = bScaleVFXByEffectRadius && Parameters.RawMagnitude > 0.0f;
+	const bool bUseNiagaraRadiusParameter = bHasValidEffectRadius && !VFXRadiusUserParameterName.IsNone();
+
 	float FinalVFXScaleMultiplier = VFXScaleMultiplier;
 
-	if (bScaleVFXByEffectRadius && VFXBaseRadius > KINDA_SMALL_NUMBER && Parameters.RawMagnitude > 0.0f)
+	if (bHasValidEffectRadius && !bUseNiagaraRadiusParameter && VFXBaseRadius > KINDA_SMALL_NUMBER)
 	{
 		// 기본 반경과 실제 반경의 비율만 기존 이펙트 크기에 곱해줌.
 		const float RadiusScale = Parameters.RawMagnitude / VFXBaseRadius;
@@ -175,6 +179,24 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 		
 		if (AttachComponent)
 		{
+			if (bUseNiagaraRadiusParameter)
+			{
+				if (UNiagaraComponent* NiagaraComponent = VFXSubsystem->SpawnVFXAttached(
+					VFXID,
+					AttachComponent,
+					ResolvedSocketName,
+					FVector::ZeroVector,
+					FRotator::ZeroRotator,
+					FinalVFXScaleMultiplier,
+					false))
+				{
+					NiagaraComponent->SetVariableFloat(VFXRadiusUserParameterName, Parameters.RawMagnitude);
+					NiagaraComponent->Activate(true);
+				}
+
+				return;
+			}
+
 			VFXSubsystem->PlayVFXAttached(
 				VFXID,
 				AttachComponent,
@@ -188,6 +210,22 @@ void UNSGameplayCueNotify_Instant::SpawnVFX(
 		return;
 	}
 	
+	if (bUseNiagaraRadiusParameter)
+	{
+		if (UNiagaraComponent* NiagaraComponent = VFXSubsystem->SpawnVFXAtLocation(
+			VFXID,
+			Parameters.Location,
+			Parameters.Normal.Rotation(),
+			FinalVFXScaleMultiplier,
+			false))
+		{
+			NiagaraComponent->SetVariableFloat(VFXRadiusUserParameterName, Parameters.RawMagnitude);
+			NiagaraComponent->Activate(true);
+		}
+
+		return;
+	}
+
 	VFXSubsystem->PlayVFXAtLocation(
 		VFXID,
 		Parameters.Location,
