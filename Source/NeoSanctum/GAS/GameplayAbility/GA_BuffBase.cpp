@@ -8,15 +8,18 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_BuffBase::UGA_BuffBase()
 {
 	DurationStatTag = NSGameplayTags::CombatStat_Duration;
 	RadiusStatTag = NSGameplayTags::CombatStat_BuffRadius;
+	RangePulseGameplayCueTag = NSGameplayTags::GameplayCue_Common_Buff_RangePulse;
 }
 
 void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -39,6 +42,15 @@ void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
+	}
+
+	if (TargetType == ENSBuffTargetType::Radius)
+	{
+		float Radius = 0.0f;
+		if (TryGetBuffRadius(Radius) && Radius > 0.0f)
+		{
+			ExecuteRangePulseGameplayCue(Radius);
+		}
 	}
 
 	if (!ActorInfo->IsNetAuthority())
@@ -424,6 +436,69 @@ bool UGA_BuffBase::TryGetBuffDuration(float& OutDuration) const
 	return TryGetFinalAbilityStat(SkillAbilityTag, DurationStatTag, OutDuration);
 }
 
+void UGA_BuffBase::ExecuteRangePulseGameplayCue(const float Radius) const
+{
+	if (Radius <= 0.0f)
+	{
+		return;
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!AvatarActor || !ASC)
+	{
+		return;
+	}
+	
+	const FGameplayTag CueTag = RangePulseGameplayCueTag;
+	if (!CueTag.IsValid())
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.RawMagnitude = Radius;
+	
+	const FVector AvatarLocation = AvatarActor->GetActorLocation();
+	FVector CueLocation = AvatarLocation;
+	FVector CueNormal = FVector::UpVector;
+	
+	if (UWorld* World = AvatarActor->GetWorld())
+	{
+		constexpr float TraceStartOffset = 100.0f;
+		constexpr float TraceDownDistance = 500.0f;
+		constexpr float SurfaceOffset = 2.0f;
+
+		const FVector TraceStart = AvatarLocation + FVector::UpVector * TraceStartOffset;
+		const FVector TraceEnd = AvatarLocation - FVector::UpVector * TraceDownDistance;
+
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(BuffRangePulseGroundTrace), false, AvatarActor);
+		QueryParams.AddIgnoredActor(AvatarActor);
+
+		FHitResult GroundHit;
+		if (World->LineTraceSingleByChannel(GroundHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams)
+			&& GroundHit.bBlockingHit)
+		{
+			CueNormal = GroundHit.ImpactNormal.GetSafeNormal();
+			if (CueNormal.IsNearlyZero())
+			{
+				CueNormal = FVector::UpVector;
+			}
+
+			// 정밀도 문제를 피하기 위해 표면에서 약간 띄움
+			CueLocation = GroundHit.ImpactPoint + CueNormal * SurfaceOffset;
+		}
+	}
+
+	CueParameters.Location = CueLocation;
+	// Decal Renderer의 투영 방향을 유지하도록 회전값 초기화
+	CueParameters.Normal = FVector::ZeroVector;
+
+	ASC->ExecuteGameplayCue(CueTag, CueParameters);
+}
+
 void UGA_BuffBase::CollectBuffTargets(TArray<AActor*>& OutTargets) const
 {
 	// TargetType별 후보 수집 진입점
@@ -470,11 +545,12 @@ void UGA_BuffBase::CollectRadiusTargets(TArray<AActor*>& OutTargets) const
 		return;
 	}
 	
-	// Pawn과 WorldDynamic Actor를 후보로 수집
+	// Pawn과 PlayerConstruct Actor를 후보로 수집
+	// 터렛 탐지 Sphere 대신 본체 충돌을 범위 판정에 사용
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::PlayerConstruct);
 	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(BuffRadiusOverlap), false, AvatarActor);
 	
