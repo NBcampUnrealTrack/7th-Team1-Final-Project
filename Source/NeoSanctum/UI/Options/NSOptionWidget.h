@@ -37,6 +37,9 @@ private:
 private:
 	void ShowOptionCategoryWidget(UWidget* OptionWidget);
 	
+	// 선택한 카테고리 버튼만 선택 상태로 유지한다.
+	void UpdateCategorySelection(UCommonButtonBase* SelectedButton);
+	
 private:
 	// 활성화 위젯을 변경하는 Switcher
 	UPROPERTY(meta = (BindWidget))
