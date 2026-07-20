@@ -90,8 +90,10 @@ protected:
 	// 실제 닫기 + 입력모드 복구
 	virtual void OnCloseWidget() override;
 
-	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
-	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	/**
+	 * FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
+	 * 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	 */
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	// 닫기 시 변경사항이 있으면 "저장하는 중" 팝업을 띄우고, 저장 완료 콜백에서 실제로 닫는다
