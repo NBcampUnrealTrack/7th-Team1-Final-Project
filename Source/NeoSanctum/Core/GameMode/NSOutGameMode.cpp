@@ -89,6 +89,14 @@ AActor* ANSOutGameMode::FindPlayerStart_Implementation(AController* Player, cons
 void ANSOutGameMode::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+	
+	if (UNSSessionSubsystem* SessionSubsystem =
+		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
+	{
+		if (NewPlayer && NewPlayer->PlayerState)
+			SessionSubsystem->RegisterPlayerInSession(
+				NewPlayer->PlayerState->GetUniqueId());
+	}
 
 	if (!HasAuthority() || !NewPlayer)
 	{
@@ -140,15 +148,6 @@ int32 ANSOutGameMode::FindFreeSlotIndex(const APlayerState* Requester) const
 		++Candidate;
 	}
 	
-	if (UNSSessionSubsystem* SessionSubsystem =
-		GetGameInstance()->GetSubsystem<UNSSessionSubsystem>())
-	{
-		if (NewPlayer && NewPlayer->PlayerState)
-			SessionSubsystem->RegisterPlayerInSession(
-				NewPlayer->PlayerState->GetUniqueId());
-	}
-	
-	// TODO: 플레이어 입장 시 SaveData에서 진행도 받아서 연동해야함
 	return Candidate;
 }
 
