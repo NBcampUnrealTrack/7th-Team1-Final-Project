@@ -12,6 +12,8 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeUtilityHelper.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
+#include "NeoSanctum/Debug/Logging/NSLogCategories.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Progression/Part/NSDroppedPart.h"
@@ -759,36 +761,42 @@ void UNSPartEquipComponent::GenerateShopStock()
 
 	for (const TPair<FGameplayTag, FNSPartSlotRow>& SlotPair : DataSS->GetAllSlotRows())
 	{
-		// 이 부위의 등장 후보 (카탈로그 캐시는 bEnabled 필터 완료 상태)
-		TArray<const FNSPartDefinitionRow*> Candidates;
-		for (const TPair<FPrimaryAssetId, FNSPartDefinitionRow>& PartPair : DataSS->GetAllPartRows())
-		{
-			if (PartPair.Value.PartSlot == SlotPair.Key)
-			{
-				Candidates.Add(&PartPair.Value);
-			}
-		}
-		if (Candidates.Num() == 0)
-		{
-			continue;
-		}
-
 		for (int32 Index = 0; Index < StockCountPerSlot; ++Index)
 		{
+			/**
+			 * 1. 등급 먼저 돌림
+			 * 2. 그 등급에서 유효한 스탯이 있는 파츠만 후보로 수집
+			 * 파츠 선택단계에서 미리 거름으로써 해당 등급 키가 없는 파츠가 스탯없는 재고로 생성되는것을 방지
+			 */
+			const ENSPartRarity Rarity = RollShopRarity();
+
+			TArray<const FNSPartDefinitionRow*> Candidates;
+			for (const TPair<FPrimaryAssetId, FNSPartDefinitionRow>& PartPair : DataSS->GetAllPartRows())
+			{
+				if (PartPair.Value.PartSlot == SlotPair.Key
+					&& NSPartUtils::FilterStatTagsByRarity(this, PartPair.Value.StatTags, Rarity).Num() > 0)
+				{
+					Candidates.Add(&PartPair.Value);
+				}
+			}
+			if (Candidates.Num() == 0)
+			{
+				NS_LOG(LogNS, Warning, "[Shop] 재고 생성 실패: Slot={Slot}, Rarity={Rarity}에 유효한 파츠 후보가 없습니다.",
+					("Slot", SlotPair.Key.ToString()), ("Rarity", static_cast<int32>(Rarity)));
+				continue;
+			}
+
 			// 중복 허용 랜덤 선택
 			const FNSPartDefinitionRow* Pick = Candidates[FMath::RandRange(0, Candidates.Num() - 1)];
 
 			FNSPartData Item;
 			Item.DefinitionPtr = Pick->Definition;
 			Item.Slot = SlotPair.Key;
-			Item.CurrentRarity = RollShopRarity();
+			Item.CurrentRarity = Rarity;
 
-			// 이 재고 아이템의 스탯을 후보에서 확정
-			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(this, Pick->StatTags, Item.CurrentRarity);
-			if (EligibleStatTags.Num() > 0)
-			{
-				Item.StatTag = EligibleStatTags[FMath::RandRange(0, EligibleStatTags.Num() - 1)];
-			}
+			// 이 재고 아이템의 스탯을 후보에서 확정 (후보 필터를 통과했으므로 반드시 1개 이상)
+			const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(this, Pick->StatTags, Rarity);
+			Item.StatTag = EligibleStatTags[FMath::RandRange(0, EligibleStatTags.Num() - 1)];
 
 			Item.CurrentValue = RollValueForPart(Item);
 

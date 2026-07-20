@@ -378,11 +378,17 @@ bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNS
 	const bool bHasRange = (EligibleStatTags.Num() > 0)
 		&& NSPartUtils::GetStatValueRange(GetGameInstance(), EligibleStatTags[0], Rarity, Range);
 
+	// 이 등급에서 유효한 스탯이 없는 파츠는 구매 자체를 차단 (카탈로그 필터를 우회해 호출돼도 스탯 없는 파츠가 저장되지 않도록)
+	if (!bHasRange)
+	{
+		return false;
+	}
+
 	FNSPartSaveData New;
 	New.Definition = Definition;
 	New.Rarity = Rarity;
 	New.EnhanceLevel = 0;
-	New.Value = bHasRange ? Range.Max : 0.f;
+	New.Value = Range.Max;
 
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
