@@ -35,6 +35,8 @@ public:
 	
 	ANSBossArenaBounds* GetArenaBounds() const { return ArenaBounds; };
 	
+	void SetTerrainCollisionIgnored(bool bIgnore);
+	
 #pragma region SpawnDrone
 public:
 	// 전투 진입 시 패턴 개시 (초기 웨이브 + 유지 타이머). 기존 StartDroneSpawnLoop 대체
@@ -247,4 +249,11 @@ private:
 	
 	UPROPERTY(EditInstanceOnly, Category = "BombingRun")
 	TObjectPtr<ANSBossArenaBounds> ArenaBounds;
+	
+	// 지형 충돌 무시가 현재 적용돼 있는지 (이중 진입/이중 복원 가드)
+	bool bTerrainCollisionIgnored = false;
+
+	// Ignore 진입 시 캐시해 둔 원래 응답 (복원용)
+	TEnumAsByte<ECollisionResponse> CachedWorldStaticResponse = ECR_Block;
+	TEnumAsByte<ECollisionResponse> CachedWorldDynamicResponse = ECR_Block;
 };
