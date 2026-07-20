@@ -10,6 +10,8 @@
 #include "Internationalization/TextLocalizationManager.h"
 #include "Components/TextBlock.h"
 #include "Components/Border.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
 
 void UNSGraphicSettingWidget::NativeConstruct()
 {
@@ -23,6 +25,27 @@ void UNSGraphicSettingWidget::NativeConstruct()
 	InitializeQualityOptions();
 	InitializeAntiAliasingOptions();
 	SynchronizeSettings();
+	
+	UComboBoxString* ComboBoxes[] =
+	{
+		ResolutionComboBox,
+		WindowModeComboBox,
+		FrameRateComboBox,
+		OverallQualityComboBox,
+		AntiAliasingQualityComboBox
+	};
+
+	for (UComboBoxString* ComboBox : ComboBoxes)
+	{
+		if (ComboBox)
+		{
+			ComboBox->OnSelectionChanged.AddUniqueDynamic(
+				this,
+				&ThisClass::HandleComboBoxSelectionChanged);
+		}
+	}
+
+	CenterAllSelectedOptionTexts();
 	
 	if (ApplyButton)
 	{
@@ -398,6 +421,7 @@ void UNSGraphicSettingWidget::HandleTextRevisionChanged()
 	InitializeQualityOptions();
 	InitializeAntiAliasingOptions();
 	SynchronizeSettings();
+	CenterAllSelectedOptionTexts();
 }
 
 void UNSGraphicSettingWidget::OnApplyClicked()
@@ -605,5 +629,97 @@ int32 UNSGraphicSettingWidget::GetBaseQualityLevel(const UGameUserSettings* Sett
 			Settings->GetTextureQuality(),
 			0,
 			3);
+	}
+}
+
+void UNSGraphicSettingWidget::HandleComboBoxSelectionChanged(FString SelectedItem, ESelectInfo::Type SelectInfo)
+{
+	CenterAllSelectedOptionTexts();
+}
+
+void UNSGraphicSettingWidget::CenterSelectedOptionText(UComboBoxString* ComboBox)
+{
+	if (!ComboBox || !FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+
+	const FString SelectedOption =
+		ComboBox->GetSelectedOption();
+
+	if (SelectedOption.IsEmpty())
+	{
+		return;
+	}
+
+	const TSharedRef<FSlateFontMeasure> FontMeasure =
+		FSlateApplication::Get()
+		.GetRenderer()
+		->GetFontMeasureService();
+
+	FSlateFontInfo FontInfo = ComboBox->GetFont();
+
+	// GenerateGraphicOptionWidget()에서 사용하는 크기와 일치시킨다.
+	FontInfo.Size = 20;
+
+	const FVector2D TextSize =
+		FontMeasure->Measure(
+			FStringView(SelectedOption),
+			FontInfo,
+			1.0f);
+
+	const float CachedWidth =
+		ComboBox->GetCachedGeometry()
+		.GetLocalSize()
+		.X;
+
+	// WBP의 SizeBox Width Override가 360이므로,
+	// 첫 레이아웃 전에는 360을 사용한다.
+	const float ComboBoxWidth =
+		CachedWidth > 0.0f
+			? CachedWidth
+			: 360.0f;
+
+	const FMargin ButtonPadding =
+		ComboBox->GetWidgetStyle()
+		.ComboButtonStyle
+		.ContentPadding;
+
+	// GenerateGraphicOptionWidget()의 Border 왼쪽 Padding 18을 반영한다.
+	constexpr float GeneratedTextLeftPadding = 18.0f;
+	constexpr float MinimumContentPadding = 4.0f;
+
+	const float CenteredLeftPadding =
+		((ComboBoxWidth - TextSize.X) * 0.5f)
+		- ButtonPadding.Left
+		- GeneratedTextLeftPadding;
+
+	FMargin ContentPadding =
+		ComboBox->GetContentPadding();
+
+	ContentPadding.Left =
+		FMath::Max(
+			MinimumContentPadding,
+			CenteredLeftPadding);
+
+	ComboBox->SetContentPadding(ContentPadding);
+}
+
+void UNSGraphicSettingWidget::CenterAllSelectedOptionTexts()
+{
+	{
+		UComboBoxString* ComboBoxes[] =
+		{
+			ResolutionComboBox,
+			WindowModeComboBox,
+			FrameRateComboBox,
+			OverallQualityComboBox,
+			AntiAliasingQualityComboBox
+		};
+
+		for (UComboBoxString* ComboBox : ComboBoxes)
+		{
+			CenterSelectedOptionText(ComboBox);
+		}
 	}
 }

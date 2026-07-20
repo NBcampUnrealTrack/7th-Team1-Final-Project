@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
 #include "Components/ComboBoxString.h"
+#include "Components/EditableTextBox.h"
 #include "NSGameplaySettingWidget.generated.h"
 
 class UImage;
@@ -57,6 +58,9 @@ private:
 	UFUNCTION()
 	void OnMouseSensitivityCaptureEnd();
 	
+	UFUNCTION()
+	void OnMouseSensitivityTextCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+	
 	void UpdateMouseSensitivityText();
 	
     void SynchronizeSliders(const FLinearColor& Color);
@@ -66,6 +70,13 @@ private:
 	void UpdateApplyButtonState();
 	
 	void InitializeLanguageOptions();
+	
+	void CenterSelectedOptionText(UComboBoxString* ComboBox);
+	
+	void ApplyCrosshairSettingsLayout();
+	
+	void MakeComboBoxPopupTransparent(
+	UComboBoxString* ComboBox);
 
 	
 private:
@@ -103,7 +114,7 @@ private:
 	TObjectPtr<USlider> MouseSensitivitySlider;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> MouseSensitivityValueText;
+	TObjectPtr<UEditableTextBox> MouseSensitivityValueText;
 	
 	// 생성한 언어 항목 위젯을 위젯 수명 동안 보관한다.
 	UPROPERTY(Transient)

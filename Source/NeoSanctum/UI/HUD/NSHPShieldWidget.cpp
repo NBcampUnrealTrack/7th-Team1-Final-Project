@@ -120,6 +120,19 @@ void UNSHPShieldWidget::SetReloading(bool bReloading)
 	RefreshAmmoText();
 }
 
+void UNSHPShieldWidget::SetCharacterInputIconVisible(bool bVisible)
+{
+	if (!CharacterInputSizeBox)
+	{
+		return;
+	}
+
+	CharacterInputSizeBox->SetVisibility(
+		bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+}
+
 float UNSHPShieldWidget::GetSafePercent(float CurrentValue, float MaxValue)const
 {
 	//최대값이 0 이하일때 비율 계산 X
@@ -238,4 +251,6 @@ void UNSHPShieldWidget::NativeConstruct()
 	//실제 값이 들어오기 전 기본상태
 	ResetHealthAndShield();
 	RefreshPortrait();
+	// 인런 여부를 전달받기 전까지는 기본적으로 숨김
+	SetCharacterInputIconVisible(false);
 }

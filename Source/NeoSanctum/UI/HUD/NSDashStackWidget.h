@@ -7,6 +7,7 @@
 #include "NSDashStackWidget.generated.h"
 
 class UHorizontalBox;
+class UVerticalBox;
 class UNSDashStackEntryWidget;
 
 UCLASS()
@@ -22,7 +23,7 @@ public:
 
 private:
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UHorizontalBox> DashStackBox;
+	TObjectPtr<UVerticalBox> DashStackBox;
 
 	UPROPERTY(
 		EditDefaultsOnly,
