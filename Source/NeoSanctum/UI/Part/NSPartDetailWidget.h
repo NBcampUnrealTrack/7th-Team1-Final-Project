@@ -30,8 +30,11 @@ public:
 	// 실제 장착중인 파츠 표시 (인스턴스 정보: 현재 등급/현재 수치)
 	void SetupFromEquipped(const FNSPartSaveData& SaveData, const UNSPartDefinition* Def);
 
-	// 인런 인스턴스(FNSPartData) 표시: 이름 + 현재 등급 + 현재 수치
-	void SetupFromInstance(const FNSPartData& Part, const UNSPartDefinition* Def);
+	/**
+	 * 인런 인스턴스(FNSPartData) 표시: 이름 + 현재 등급 + 현재 수치
+	 * Price >= 0이면 CostText에 "비용 : {Price}" 표시(인런 상점 재고 클릭), 음수면 비용 줄 생략(장착중인 파츠는 판매 대상이 아님)
+	 */
+	void SetupFromInstance(const FNSPartData& Part, const UNSPartDefinition* Def, int64 Price = -1);
 
 	// 잠긴 슬롯의 언락 정보 표시 (슬롯 이름 + 언락 비용). 3D 프리뷰 없음
 	void SetupFromSlotLock(const FNSPartSlotRow& SlotRow);
