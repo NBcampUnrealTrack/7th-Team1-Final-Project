@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "Components/ComboBoxString.h"
 #include "NSGraphicSettingWidget.generated.h"
 
 class UCommonButtonBase;
@@ -58,6 +59,8 @@ private:
     int32 GetBaseQualityLevel(
     	const UGameUserSettings* Settings) const;
 	
+	void MakeComboBoxPopupTransparent(UComboBoxString* ComboBox);
+	
 private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> ResolutionComboBox;
@@ -84,5 +87,14 @@ private:
 	
 	TArray<FIntPoint> SupportedResolutions;
 	TArray<float> FrameRateLimits;
+	
+	UFUNCTION()
+	void HandleComboBoxSelectionChanged(
+		FString SelectedItem,
+		ESelectInfo::Type SelectInfo);
+	
+	void CenterSelectedOptionText(UComboBoxString* ComboBox);
+	
+	void CenterAllSelectedOptionTexts();
 	
 };
