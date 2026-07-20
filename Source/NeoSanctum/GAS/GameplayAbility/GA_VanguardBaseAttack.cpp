@@ -888,7 +888,9 @@ void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Paylo
 	// NotifyState 인스턴스가 바뀌면 새로운 공격 판정 구간으로 보고 이전 소켓 위치를 초기화
 	const UObject* TraceWindow = Payload.OptionalObject.Get();
 	const uint32 TraceWindowId = IsValid(TraceWindow) ? TraceWindow->GetUniqueID() : 0;
-	if (TraceWindowId != 0 && TraceWindowId != CurrentMeleeTraceWindowId)
+	const bool bNewTraceWindow =
+		(TraceWindowId != 0 && TraceWindowId != CurrentMeleeTraceWindowId); 
+	if (bNewTraceWindow)
 	{
 		PreviousMeleeTraceSocketLocations.Reset();
 		bHasPreviousMeleeTraceSocketLocations = false;
@@ -900,6 +902,11 @@ void UGA_VanguardBaseAttack::HandleMeleeHitEvent(const FGameplayEventData& Paylo
 	{
 		OnTargetDataReadyCallback(MakeMeleeHitTargetData(), FGameplayTag());
 		return;
+	}
+	
+	if (bNewTraceWindow)
+	{
+		ReportShotsFired(1);
 	}
 
 	ANSMeleeWeapon* MeleeWeapon = GetCurrentMeleeWeapon();
@@ -1073,7 +1080,12 @@ void UGA_VanguardBaseAttack::ApplyDamageToActor(const FHitResult& HitResult)
 	}
 
 	DamageSpecHandle.Data->GetContext().AddSourceObject(this);
-
+	
+	// 이 스윙 윈도우가 최소 1명 맞힘
+	if (DamagedActorsInTraceWindow.Num() == 0)
+	{
+		ReportShotsHit(1);  
+	}
 	DamagedActorsInTraceWindow.Add(TargetKey);
 	if (ActiveAttackMode == ENSVanguardBaseAttackMode::DashAttack)
 	{
