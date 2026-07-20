@@ -109,8 +109,10 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	// SetFocus()는 Is Focusable이 꺼져 있으면 조용히 실패해 ESC(NativeOnKeyDown)를 아예 못 받으므로 반드시 켠다
 	SetIsFocusable(true);
 
-	// 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
-	// UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	/**
+	 * 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
+	 * UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	 */
 	FInputModeUIOnly InputMode;
 	InputMode.SetWidgetToFocus(TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -456,6 +458,15 @@ void UNSPartEquipWidget::BuildPartEntries()
 	for (const auto& Pair : DataSS->GetAllPartRows())
 	{
 		if (!Pair.Value.bEnabled)
+		{
+			continue;
+		}
+
+		/**
+		 * 아웃런 구매는 항상 Common 등급 — Common에서 유효한 스탯(ValueRangesByRarity에 Common 키 존재)이
+		 * 하나도 없는 파츠는 구매 대상이 아니므로 카탈로그에서 제외 (드랍/인런 상점과 동일 규칙)
+		 */
+		if (NSPartUtils::FilterStatTagsByRarity(this, Pair.Value.StatTags, ENSPartRarity::Common).Num() == 0)
 		{
 			continue;
 		}

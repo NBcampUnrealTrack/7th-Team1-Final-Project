@@ -42,16 +42,6 @@ static FString GetSlotLeafName(FGameplayTag SlotTag)
 	return TagString;
 }
 
-static FText FormatEffectValue(float Value)
-{
-	// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
-	FNumberFormattingOptions Options;
-	Options.MaximumFractionalDigits = 0;
-	Options.MinimumFractionalDigits = 0;
-	Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
-	return FText::AsNumber(Value, &Options);
-}
-
 // 스탯 표시 DT에서 이름 조회, 등록 안 된 스탯이면 빈 텍스트 (호출부가 폴백 처리)
 static FText GetStatDisplayName(const UObject* WorldContextObject, const FGameplayTag& StatTag)
 {
@@ -65,23 +55,13 @@ static FText GetStatDisplayName(const UObject* WorldContextObject, const FGamepl
 	return FText::GetEmpty();
 }
 
-// "효과 : {스탯이름} {수치}" 포맷. 스탯 이름을 못 찾으면 기존처럼 수치만 표시
-static FText FormatEffectLabel(const FText& StatName, float Value)
+// "효과 : {스탯이름} {수치}(단위 + 증가/감소)" 포맷. 스탯 이름을 못 찾으면 기존처럼 수치만 표시
+static FText FormatEffectLabel(const UObject* WorldContextObject, const FGameplayTag& StatTag, const FText& StatName, float Value)
 {
-	const FText ValueText = FormatEffectValue(Value);
+	const FText ValueText = NSPartUtils::FormatStatValueText(WorldContextObject, StatTag, Value);
 	return StatName.IsEmpty()
 		? FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"), ValueText)
 		: FText::Format(NSLOCTEXT("PartDetail", "EffectLabelWithStat", "효과 : {0} {1}"), StatName, ValueText);
-}
-
-// 카탈로그 후보용 "효과 : {스탯이름} {최소}~{최대}" 포맷 (아직 안 산 상태라 확정 수치 대신 롤 범위 표시)
-static FText FormatEffectRangeLabel(const FText& StatName, float Min, float Max)
-{
-	const FText RangeText = FText::Format(NSLOCTEXT("PartDetail", "EffectRange", "{0}~{1}"),
-		FormatEffectValue(Min), FormatEffectValue(Max));
-	return StatName.IsEmpty()
-		? FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"), RangeText)
-		: FText::Format(NSLOCTEXT("PartDetail", "EffectLabelWithStat", "효과 : {0} {1}"), StatName, RangeText);
 }
 
 
@@ -118,8 +98,10 @@ void UNSPartDetailWidget::SetupFromDefinition(const FNSPartDefinitionRow& Row, c
 	SetOptionalText(CostText, FText::Format(NSLOCTEXT("PartDetail", "CostLabel", "비용 : {0}"),
 		FText::AsNumber(Row.UnlockCost)));
 
-	// 아웃런 구매는 항상 Common 등급 + StatTags 후보 중 첫 번째로 고정 롤된다 (NSProgressionSubsystem::PurchasePart)
-	// 그러니 구매 전에도 "어떤 스탯이 몇~몇으로 나올지"는 100% 확정된 정보라 미리 보여줄 수 있다
+	/**
+	 * 아웃런 구매는 항상 Common 등급 + StatTags 후보 중 첫 번째 스탯의 범위 최대값으로 고정된다 (NSProgressionSubsystem::PurchasePart)
+	 * 그러니 구매 전에도 확정 수치를 그대로 보여줄 수 있다
+	 */
 	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
 		GetPartRarityText(ENSPartRarity::Common)));
 
@@ -135,7 +117,7 @@ void UNSPartDetailWidget::SetupFromDefinition(const FNSPartDefinitionRow& Row, c
 	}
 
 	SetOptionalText(ValueText, bHasRange
-		? FormatEffectRangeLabel(GetStatDisplayName(this, StatTag), Range.Min, Range.Max)
+		? FormatEffectLabel(this, StatTag, GetStatDisplayName(this, StatTag), Range.Max)
 		: FText::GetEmpty());
 }
 
@@ -150,8 +132,10 @@ void UNSPartDetailWidget::SetupFromEquipped(const FNSPartSaveData& SaveData, con
 	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
 		GetPartRarityText(SaveData.Rarity)));
 
-	// 저장 데이터엔 StatTag가 없으므로 Definition Row의 StatTags를 등급 필터링해서 첫 값 사용
-	// (NSPartUtils::GetPartStatTag의 폴백 로직과 동일한 규칙)
+	/**
+	 * 저장 데이터엔 StatTag가 없으므로 Definition Row의 StatTags를 등급 필터링해서 첫 값 사용
+	 * (NSPartUtils::GetPartStatTag의 폴백 로직과 동일한 규칙)
+	 */
 	FGameplayTag StatTag;
 	if (const FNSPartDefinitionRow* Row = Def
 		? NSPartUtils::ResolvePartRow(this, Def->GetPrimaryAssetId())
@@ -165,12 +149,12 @@ void UNSPartDetailWidget::SetupFromEquipped(const FNSPartSaveData& SaveData, con
 		}
 	}
 
-	SetOptionalText(ValueText, FormatEffectLabel(GetStatDisplayName(this, StatTag), SaveData.Value));
+	SetOptionalText(ValueText, FormatEffectLabel(this, StatTag, GetStatDisplayName(this, StatTag), SaveData.Value));
 
 	ClearPreview();
 }
 
-void UNSPartDetailWidget::SetupFromInstance(const FNSPartData& Part, const UNSPartDefinition* Def)
+void UNSPartDetailWidget::SetupFromInstance(const FNSPartData& Part, const UNSPartDefinition* Def, int64 Price)
 {
 	const FText Name = Def ? Def->PartName : FText::GetEmpty();
 	SetOptionalText(PartNameText, FText::Format(NSLOCTEXT("PartDetail", "NameLabel", "이름 : {0}"), Name));
@@ -178,13 +162,15 @@ void UNSPartDetailWidget::SetupFromInstance(const FNSPartData& Part, const UNSPa
 	SetOptionalText(SlotText, FText::Format(NSLOCTEXT("PartDetail", "SlotLabel", "슬롯 : {0}"),
 		FText::FromString(GetSlotLeafName(Part.Slot))));
 
-	SetOptionalText(CostText, FText::GetEmpty());
+	SetOptionalText(CostText, Price >= 0
+		? FText::Format(NSLOCTEXT("PartDetail", "CostLabel", "비용 : {0}"), FText::AsNumber(Price))
+		: FText::GetEmpty());
 
 	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
 		GetPartRarityText(Part.CurrentRarity)));
 
 	const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, Part);
-	SetOptionalText(ValueText, FormatEffectLabel(GetStatDisplayName(this, StatTag), Part.CurrentValue));
+	SetOptionalText(ValueText, FormatEffectLabel(this, StatTag, GetStatDisplayName(this, StatTag), Part.CurrentValue));
 
 	ClearPreview();
 }

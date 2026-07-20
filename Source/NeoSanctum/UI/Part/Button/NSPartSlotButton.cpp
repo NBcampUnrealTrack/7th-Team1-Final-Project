@@ -141,18 +141,14 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 
 	if (IsValid(PartValueText))
 	{
-		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
-		FNumberFormattingOptions Options;
-		Options.MaximumFractionalDigits = 0;
-		Options.MinimumFractionalDigits = 0;
-		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
+		const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, InPartData);
+		const FText ValueText = NSPartUtils::FormatStatValueText(this, StatTag, InPartData.CurrentValue);
 
 		// 등급 텍스트가 따로 있으면 "스탯이름 수치"로 표시, 없으면 기존 포맷("등급 수치") 유지
 		if (IsValid(PartRarityText))
 		{
-			// 어떤 스탯이 오르는지 스탯 표시 DT에서 이름을 조회해 수치 앞에 붙임 (예: "이동속도 10")
+			// 어떤 스탯이 오르는지 스탯 표시 DT에서 이름을 조회해 수치 앞에 붙임 (예: "이동속도 10 증가")
 			FText StatName;
-			const FGameplayTag StatTag = NSPartUtils::GetPartStatTag(this, InPartData);
 			if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this))
 			{
 				if (const FNSStatDisplayInfoRow* StatInfo = DataSS->FindStatDisplayInfoRow(StatTag))
@@ -163,11 +159,11 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 
 			// DT에 이름이 등록 안 된 스탯이면 기존처럼 수치만 표시 (데이터 누락이 UI를 깨지 않게)
 			PartValueText->SetText(StatName.IsEmpty()
-				? FText::AsNumber(InPartData.CurrentValue, &Options)
+				? ValueText
 				: FText::Format(
 					NSLOCTEXT("PartSlotButton", "PartStatValueFormat", "{0} {1}"),
 					StatName,
-					FText::AsNumber(InPartData.CurrentValue, &Options)
+					ValueText
 				));
 		}
 		else
@@ -175,7 +171,7 @@ void UNSPartSlotButton::SetPart(const FNSPartData& InPartData, const UNSPartDefi
 			PartValueText->SetText(FText::Format(
 				NSLOCTEXT("PartSlotButton", "PartValueFormat", "{0} {1}"),
 				GetRarityText(InPartData.CurrentRarity),
-				FText::AsNumber(InPartData.CurrentValue, &Options)
+				ValueText
 			));
 		}
 		PartValueText->SetVisibility(ESlateVisibility::HitTestInvisible);

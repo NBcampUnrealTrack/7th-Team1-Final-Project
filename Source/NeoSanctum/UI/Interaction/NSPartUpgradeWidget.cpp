@@ -31,16 +31,6 @@ namespace
 	{
 		return UEnum::GetDisplayValueAsText(Rarity);
 	}
-
-	FText FormatSummaryValue(float Value)
-	{
-		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
-		FNumberFormattingOptions Options;
-		Options.MaximumFractionalDigits = 0;
-		Options.MinimumFractionalDigits = 0;
-		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
-		return FText::AsNumber(Value, &Options);
-	}
 }
 
 void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
@@ -143,8 +133,10 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	// SetFocus()는 Is Focusable이 꺼져 있으면 조용히 실패해 ESC(NativeOnKeyDown)를 아예 못 받으므로 반드시 켠다
 	SetIsFocusable(true);
 
-	// 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
-	// UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	/**
+	 * 게임 키보드 입력을 완전히 차단하고 마우스만 받도록 UIOnly로 전환.
+	 * UIOnly는 ANSPlayerController의 네이티브 Escape 바인딩도 막으므로 NativeOnKeyDown에서 직접 처리한다.
+	 */
 	FInputModeUIOnly InputMode;
 	InputMode.SetWidgetToFocus(TakeWidget());
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
@@ -488,10 +480,6 @@ void UNSPartUpgradeWidget::RefreshBuyBox()
 		Price = EquipComp->GetShopPrice((*Stock)[SelectedStockIndex].CurrentRarity);
 	}
 
-	if (IsValid(BuyPriceText))
-	{
-		BuyPriceText->SetText(Price >= 0 ? FText::AsNumber(Price) : FText::GetEmpty());
-	}
 	if (IsValid(BuyButton))
 	{
 		const int64 Balance = Currency ? Currency->GetTemp() : 0;
@@ -545,6 +533,10 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		{
 			RerollCostText->SetText(FText::GetEmpty());
 		}
+		if (IsValid(RerollCurrentValueText))
+		{
+			RerollCurrentValueText->SetText(FText::GetEmpty());
+		}
 		if (IsValid(RerollButton))
 		{
 			RerollButton->SetIsEnabled(false);
@@ -581,9 +573,11 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 	{
 		FNSPartValueRange RerollRange;
 		const bool bHasRerollRange = NSPartUtils::GetStatValueRange(this, PartStatTag, Part->CurrentRarity, RerollRange);
+		// 범위 프리뷰는 방향이 아직 확정되지 않았으므로 단위만 적용(bShowDirection=false), 증가/감소는 안 붙임
 		RerollRangeText->SetText(bHasRerollRange
 			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollRange", "스텟 변동폭 : {0} ~ {1}"),
-				FormatSummaryValue(RerollRange.Min), FormatSummaryValue(RerollRange.Max))
+				NSPartUtils::FormatStatValueText(this, PartStatTag, RerollRange.Min, false),
+				NSPartUtils::FormatStatValueText(this, PartStatTag, RerollRange.Max, false))
 			: FText::GetEmpty());
 	}
 	if (IsValid(RerollCostText))
@@ -591,6 +585,13 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 		RerollCostText->SetText(RerollCost >= 0
 			? FText::Format(NSLOCTEXT("PartUpgrade", "RerollCost", "리롤 비용 : {0}"), FText::AsNumber(RerollCost))
 			: FText::GetEmpty());
+	}
+	if (IsValid(RerollCurrentValueText))
+	{
+		// 리롤로 바뀌기 전의 현재 수치를 함께 보여줘서 변동폭과 비교할 수 있게 함
+		RerollCurrentValueText->SetText(FText::Format(
+			NSLOCTEXT("PartUpgrade", "RerollCurrentValue", "기존 수치 : {0}"),
+			NSPartUtils::FormatStatValueText(this, PartStatTag, Part->CurrentValue)));
 	}
 	if (IsValid(RerollButton))
 	{
@@ -615,12 +616,17 @@ void UNSPartUpgradeWidget::RefreshUpgradePanels()
 				static_cast<ENSPartRarity>(static_cast<uint8>(Part->CurrentRarity) + 1);
 			const FText RarityChange = FText::Format(NSLOCTEXT("PartUpgrade", "RarityChange", "변동 : {0} → {1}"),
 				GetRarityDisplayText(Part->CurrentRarity), GetRarityDisplayText(NextRarity));
-			// 다음 등급의 수치 범위를 그대로 표시 (범위 없음 = 다음 등급에 이 스탯이 정의 안 됨 → 수치 줄 생략)
+			/**
+			 * 다음 등급의 수치 범위를 그대로 표시 (범위 없음 = 다음 등급에 이 스탯이 정의 안 됨 → 수치 줄 생략)
+			 * 현재 수치는 확정된 실제값이라 증가/감소를 붙이고, 다음 등급 범위는 방향 미확정이라 단위만 적용
+			 */
 			FNSPartValueRange NextRange;
 			const bool bHasNextRange = NSPartUtils::GetStatValueRange(this, PartStatTag, NextRarity, NextRange);
 			const FText ValueChange = bHasNextRange
 				? FText::Format(NSLOCTEXT("PartUpgrade", "ValueChange", "스텟 : {0} → {1} ~ {2}"),
-					FormatSummaryValue(Part->CurrentValue), FormatSummaryValue(NextRange.Min), FormatSummaryValue(NextRange.Max))
+					NSPartUtils::FormatStatValueText(this, PartStatTag, Part->CurrentValue),
+					NSPartUtils::FormatStatValueText(this, PartStatTag, NextRange.Min, false),
+					NSPartUtils::FormatStatValueText(this, PartStatTag, NextRange.Max, false))
 				: FText::GetEmpty();
 			UpgradePreviewText->SetText(FText::Format(
 				NSLOCTEXT("PartUpgrade", "UpgradePreview", "{0}\n{1}"), RarityChange, ValueChange));
@@ -760,7 +766,8 @@ void UNSPartUpgradeWidget::OnStockEntryClicked(const FNSPartDefinitionRow& Row, 
 		UNSPartDefinition* Def = NSPartUtils::ResolvePartDefinition(this, Item);
 		if (IsValid(StockDetailWidget))
 		{
-			StockDetailWidget->SetupFromInstance(Item, Def);
+			const int64 Price = EquipComp ? EquipComp->GetShopPrice(Item.CurrentRarity) : -1;
+			StockDetailWidget->SetupFromInstance(Item, Def, Price);
 		}
 		UpdatePreview(Def, StockDetailWidget);
 	}

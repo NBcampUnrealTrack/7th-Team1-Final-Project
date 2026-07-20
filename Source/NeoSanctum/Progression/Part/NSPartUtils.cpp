@@ -136,8 +136,10 @@ TArray<FGameplayTag> NSPartUtils::FilterStatTagsByRarity(
 
 	for (const FGameplayTag& Tag : StatTags)
 	{
-		// 스탯의 ValueRangesByRarity에 이 등급 키가 있어야 후보로 유효 — 등급 제한이 전부 DT 데이터로 표현됨
-		// (예: MaxJumpCount에 Legendary 키만 넣으면 레전더리 전용 스탯이 됨)
+		/**
+		 * 스탯의 ValueRangesByRarity에 이 등급 키가 있어야 후보로 유효 — 등급 제한이 전부 DT 데이터로 표현됨
+		 * (예: MaxJumpCount에 Legendary 키만 넣으면 레전더리 전용 스탯이 됨)
+		 */
 		FNSPartValueRange Range;
 		if (!GetStatValueRange(WorldContextObject, Tag, Rarity, Range))
 		{
@@ -147,6 +149,49 @@ TArray<FGameplayTag> NSPartUtils::FilterStatTagsByRarity(
 	}
 
 	return Eligible;
+}
+
+FText NSPartUtils::FormatStatValueText(
+	const UObject* WorldContextObject, const FGameplayTag& StatTag, float Value, bool bShowDirection)
+{
+	FNumberFormattingOptions Options;
+	Options.MaximumFractionalDigits = 0;
+	Options.MinimumFractionalDigits = 0;
+	Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
+
+	ENSStatDisplayUnit Unit = ENSStatDisplayUnit::None;
+	if (StatTag.IsValid())
+	{
+		if (const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(WorldContextObject))
+		{
+			if (const FNSStatDisplayInfoRow* StatInfo = DataSS->FindStatDisplayInfoRow(StatTag))
+			{
+				Unit = StatInfo->DisplayUnit;
+			}
+		}
+	}
+
+	// 방향 라벨을 붙일 땐 부호 대신 단어로 표현하므로 절댓값으로 표시 (예: -2 -> "2 감소")
+	const bool bIsZero = FMath::IsNearlyZero(Value);
+	const float DisplayValue = (bShowDirection && !bIsZero) ? FMath::Abs(Value) : Value;
+	const FText NumberText = FText::AsNumber(DisplayValue, &Options);
+
+	const FText UnitText = Unit == ENSStatDisplayUnit::Percent
+		? FText::Format(NSLOCTEXT("PartUtils", "StatUnitPercent", "{0}%"), NumberText)
+		: Unit == ENSStatDisplayUnit::Seconds
+			? FText::Format(NSLOCTEXT("PartUtils", "StatUnitSeconds", "{0}초"), NumberText)
+			: NumberText;
+
+	if (!bShowDirection || bIsZero)
+	{
+		return UnitText;
+	}
+
+	return FText::Format(
+		Value > 0.f
+			? NSLOCTEXT("PartUtils", "StatDirectionIncrease", "{0} 증가")
+			: NSLOCTEXT("PartUtils", "StatDirectionDecrease", "{0} 감소"),
+		UnitText);
 }
 
 bool NSPartUtils::ResolveRarityFromTag(const FGameplayTag& RarityTag, ENSPartRarity& OutRarity)

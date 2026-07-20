@@ -368,20 +368,27 @@ bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNS
 	}
 
 	/**
-	 * 아웃런 구매 파츠의 초기 수치 롤.
+	 * 아웃런 구매 파츠의 초기 수치.
 	 * 영구 저장 구조(FNSPartSaveData)에는 StatTag가 없어 런 시작 시 후보 첫 번째 스탯으로 폴백되므로,
-	 * 값도 같은 규칙(이 등급에서 유효한 첫 번째 후보 스탯)의 등급별 범위에서 롤해야 수치와 스탯이 어긋나지 않음
+	 * 값도 같은 규칙(이 등급에서 유효한 첫 번째 후보 스탯)의 등급별 범위를 기준으로 삼아야 수치와 스탯이 어긋나지 않음.
+	 * 아웃런 구매는 랜덤 롤이 아니라 해당 등급 범위의 최대값으로 고정한다(인런 상점/드랍은 기존 랜덤 롤 유지).
 	 */
 	const TArray<FGameplayTag> EligibleStatTags = NSPartUtils::FilterStatTagsByRarity(GetGameInstance(), Row->StatTags, Rarity);
 	FNSPartValueRange Range;
 	const bool bHasRange = (EligibleStatTags.Num() > 0)
 		&& NSPartUtils::GetStatValueRange(GetGameInstance(), EligibleStatTags[0], Rarity, Range);
 
+	// 이 등급에서 유효한 스탯이 없는 파츠는 구매 자체를 차단 (카탈로그 필터를 우회해 호출돼도 스탯 없는 파츠가 저장되지 않도록)
+	if (!bHasRange)
+	{
+		return false;
+	}
+
 	FNSPartSaveData New;
 	New.Definition = Definition;
 	New.Rarity = Rarity;
 	New.EnhanceLevel = 0;
-	New.Value = bHasRange ? FMath::RandRange(Range.Min, Range.Max) : 0.f;
+	New.Value = Range.Max;
 
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
