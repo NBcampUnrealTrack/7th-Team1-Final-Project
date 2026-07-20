@@ -14,67 +14,137 @@ class UButton;
 class UCanvasPanel;
 class USizeBox;
 class UTextBlock;
-class UWrapBox;
 class UWidget;
+class UWrapBox;
 class UNSAugmentCardWidget;
 class UNSAugmentInventoryComponent;
 class UNSCurrencyComponent;
 
 /**
- *  인게임 중 증강 통합 패널 (보유 증강 아이콘 상시 + 대기 시 선택 카드)
+ * 인게임 중 증강 통합 패널입니다.
+ * 보유 증강 목록, 대기 중인 증강 수, 선택 카드, 리롤 UI를 관리합니다.
  */
 UCLASS()
 class NEOSANCTUM_API UNSAugmentationWidget : public UCommonUserWidget
 {
 	GENERATED_BODY()
+
 public:
-	//증강 패널 열기 (보유 아이콘 갱신 + 서버에 대기 오퍼 표시 요청)
-	UFUNCTION(BlueprintCallable,Category = "UI")
+	// 증강 패널 열기
+	UFUNCTION(BlueprintCallable, Category = "UI")
 	void OpenPanel();
-	//증강 패널 닫기
-	UFUNCTION(BlueprintCallable,Category = "UI")
+
+	// 증강 패널 닫기
+	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ClosePanel();
-	//패널 열림 상태
-	UFUNCTION(BlueprintPure,Category = "UI")
+
+	// 패널 열림 상태
+	UFUNCTION(BlueprintPure, Category = "UI")
 	bool IsPanelOpen() const { return bPanelOpen; }
-	//선택지의 개수만큼 증강 선택지 생성
-	UFUNCTION(BlueprintCallable,Category = "UI")
+
+	// 선택지 개수만큼 증강 선택 카드 생성
+	UFUNCTION(BlueprintCallable, Category = "UI")
 	void CreateChoiceCard(int32 NewChoiceCount);
-	//키 입력으로 카드 선택
+
+	// 숫자 입력으로 카드 선택
 	void SelectCardByIndex(int32 CardIndex);
-	//선택한 증강 적용 요청
+
+	// 선택한 증강 적용 요청
 	void ConfirmAugmentSelection(int32 CardIndex);
-	//증강 선택지 리롤 요청
+
+	// 증강 선택지 리롤 요청
 	UFUNCTION()
 	void RequestRerollAugment();
+
 	// 현재 리롤 비용을 감당할 수 있는지
 	bool CanAffordReroll();
-	// 리롤 요청 중이 아니면서 재화도 충분하고 지금 리롤 가능한지 (WBP RerollButton에서 IsEnable Bind 용)
+
+	// 리롤 요청 중이 아니면서 재화가 충분한지
 	UFUNCTION(BlueprintPure, Category = "UI")
 	bool IsRerollAvailable();
-	//현재 보유 증강 목록 갱신
+
+	// 현재 보유 증강 목록 갱신
 	void RefreshOwnedAugmentList();
+
 	void SetOwnedAugmentListVisible(bool bVisible);
-	
+
 	void OpenSelectionPanel();
 
-
 private:
-	//카드 영역 표시 (대기 > 0)
+	// 카드 영역 표시
 	void ShowCardSection();
-	//카드 영역 숨김 (대기 = 0 / 선택 완료 후, 패널 자체는 유지)
+
+	// 카드 영역 숨김
 	void HideCardSection();
 
-	//카드 영역 전체 컨테이너 (대기 유무에 따라 표시/숨김) — BP 미배치 가능성 대비 Optional
+	// 현재 선택지 개수와 패널 상태에 맞춰 3장/4장 입력 가이드 표시를 갱신합니다.
+	void RefreshChoiceGuideVisibility();
+
+	// WBP에 배치된 입력 아이콘 박스 위치를 기준으로 카드 위치를 갱신합니다.
+	void RefreshChoiceCardPositions();
+
+	// 카드 인덱스에 대응하는 카드 위치를 계산합니다.
+	FVector2D GetChoiceCardPosition(int32 Index) const;
+	
+	// Canvas Panel 좌표계에서 위젯의 TopLeft/Size를 조회합니다.
+	bool TryGetWidgetCanvasRect(
+		const UWidget* Widget,
+		FVector2D& OutTopLeft,
+		FVector2D& OutSize) const;
+
+	// 현재 ChoiceCount와 카드 인덱스에 맞는 입력 아이콘 박스를 반환합니다.
+	USizeBox* GetChoiceGuideInputIconBox(int32 CardIndex) const;
+	
+	void QueueChoiceCardPositionRefresh();
+	void HandleDeferredChoiceCardPositionRefresh();
+
+	// 카드 영역 전체 컨테이너
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> CardSectionRoot;
-	//증강 선택 카드들이 들어가는 박스
+
+	// 증강 선택 카드가 들어가는 Canvas Panel
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCanvasPanel> ChoiceRootCanvas;
-	
+
+	// 3장 선택지 입력 가이드 루트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> ChoiceGuide3Root;
+
+	// 4장 선택지 입력 가이드 루트
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> ChoiceGuide4Root;
+
+	// 3장 선택지의 1번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice3InputIcon1Box;
+
+	// 3장 선택지의 2번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice3InputIcon2Box;
+
+	// 3장 선택지의 3번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice3InputIcon3Box;
+
+	// 4장 선택지의 1번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice4InputIcon1Box;
+
+	// 4장 선택지의 2번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice4InputIcon2Box;
+
+	// 4장 선택지의 3번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice4InputIcon3Box;
+
+	// 4장 선택지의 4번 입력 아이콘 박스
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<USizeBox> Choice4InputIcon4Box;
+
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> OwnedAugmentPanelRoot;
-	
+
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> OwnedAugmentListRoot;
 
@@ -101,77 +171,111 @@ private:
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWrapBox> LegendaryAugmentWrapBox;
-	
-	//대기 카운트 뱃지 텍스트
+
+	// 대기 카운트 텍스트
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> PendingCountText;
-	//생성된 증강 카드 목록
+
+	// 생성된 증강 카드 위젯 목록
 	UPROPERTY()
 	TArray<TObjectPtr<UNSAugmentCardWidget>> AugmentCardWidgets;
-	// 리롤 버튼 (없어도 T키로는 계속 리롤 가능)
+
+	// 리롤 버튼
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UButton> RerollButton;
+
+	// 리롤 T 입력 아이콘
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> RerollInputIcon;
+
 	// 현재 리롤 비용 표시
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollCostText;
-	// 리롤 진행 상태와 실패 문구 표시
+
+	// 리롤 진행 상태/실패 메시지 표시. WBP에 없어도 동작합니다.
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollStatusText;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> CenterControlRoot;
-	//남은 증강 개수 표시
+
+	// 남은 증강 개수 표시
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RemainingAugmentCountText;
-	//기본 증강 선택지 개수
+
+	// Tab 입력 안내 아이콘/버튼
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> TabButton;
+
+	// 기본 증강 선택지 개수
 	int32 ChoiceCount = 3;
-	//현재 하이라이트된 카드 인덱스
+
+	// 현재 하이라이트된 카드 인덱스
 	int32 HighlightedCardIndex = INDEX_NONE;
-	//패널 열림 여부
+
+	// 패널 열림 여부
 	bool bPanelOpen = false;
-	// C키 등으로 보유 증강 목록이 요청된 상태인지 (Tab 없어도 위젯을 보여줘야 함)
+
+	// C 입력으로 보유 증강 목록을 요청한 상태인지
 	bool bOwnedListRequested = false;
-	//선택한 카드만 하이라이트 처리
+
+	// 선택한 카드만 하이라이트 처리
 	void HighLightCard(int32 CardIndex);
-	// 카드 슬롯 위치 조회 (좌/우 끝은 공용, 가운데만 3장/4장 별도)
-	FVector2D GetChoiceCardPosition(int32 Index) const;
 
 	void RefreshAugmentPanelState();
-	
-	//현재 오퍼의 증강 ID 목록
+
+	// 현재 오퍼의 증강 ID 목록
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
-	// 마지막으로 받은 오퍼 번호 (Server_Choose/Server_RerollCard 보낼 때 같이 실어 보냄)
+
+	// 마지막으로 받은 오퍼 번호
 	int32 CurrentOfferRevision = 0;
-	// 리롤 요청을 보내고 서버 응답을 기다리는 중이면 true. 이 동안 카드 선택, 추가 리롤을 막음.
+
+	// 리롤 요청을 보내고 서버 응답을 기다리는 중인지
 	bool bRerollRequestPending = false;
-	// 서버가 마지막으로 알려준 리롤 비용.
+
+	// 서버가 마지막으로 알려준 리롤 비용
 	int64 CurrentRerollCost = 0;
-	// 지금 오퍼에서 리롤이 가능한지 (규칙 없는 트리거이거나 부분 오퍼면 false)
+
+	// 지금 오퍼에서 리롤이 가능한지
 	bool bCanRerollCurrentOffer = false;
+
 	// Bridge가 생성한 현재 오퍼 카드 표시 데이터
 	UPROPERTY(Transient)
 	TArray<FNSAugmentCardViewData> CurrentOfferViewData;
-	//오퍼 카드 아이콘 비동기 로드 핸들 (리롤 시 이전 로드 취소용)
+
+	// 오퍼 카드 아이콘 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> IconLoadHandle;
-	//보유 아이콘 비동기 로드 핸들
+
+	// 보유 아이콘 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> OwnedIconLoadHandle;
+
 	//오퍼 아이콘 로드 완료 → 카드 채우기
 	void OnIconsLoaded();
+
 	//보유 아이콘 로드 완료 → 아이콘 위젯 생성
 	void OnOwnedIconsLoaded();
+
 	//현재 오퍼 ID들을 Definition으로 풀어 각 카드에 이름/설명/아이콘 표시
 	void PopulateOfferCards();
-	//바인딩한 선택 컴포넌트 캐시 (소멸 시 언바인드용)ㄹ
+
+	//바인딩한 선택 컴포넌트 캐시 (소멸 시 언바인드용)
 	TWeakObjectPtr<UNSAugmentSelectionComponent> SelectionComponent;
+
 	//바인딩한 인벤토리 컴포넌트 캐시 (소멸 시 언바인드용)
 	TWeakObjectPtr<UNSAugmentInventoryComponent> InventoryComponent;
+
 	// 바인딩한 재화 컴포넌트 캐시 (소멸 시 언바인드용)
 	TWeakObjectPtr<UNSCurrencyComponent> CurrencyComponent;
+
 	//오너 PlayerController의 선택 컴포넌트를 찾아 캐시
 	UNSAugmentSelectionComponent* GetSelectionComponent();
+
 	//오너 PlayerState의 인벤토리 컴포넌트를 찾아 캐시
 	UNSAugmentInventoryComponent* GetInventoryComponent();
+
 	// 오너 PlayerState의 재화 컴포넌트를 찾아 캐시
 	UNSCurrencyComponent* GetCurrencyComponent();
+
 	//오퍼 제시 수신 -> 카드 생성 및 표시
 	UFUNCTION()
 	void HandleOfferPresented(
@@ -180,6 +284,7 @@ private:
 		bool bCanReroll,
 		int32 OfferRevision
 	);
+
 	// 리롤 실패 결과 수신 -> 잠금 해제 + 문구 갱신
 	UFUNCTION()
 	void HandleRerollResult(
@@ -189,23 +294,31 @@ private:
 		int32 RequestRevision,
 		int32 ServerOfferRevision
 	);
+
 	// 리롤 버튼/힌트/비용 텍스트를 지금 상태에 맞게 갱신
 	void RefreshRerollControls();
+
 	// 상태 또는 실패 문구를 보여주거나(비어있으면) 숨김
 	void SetRerollStatusMessage(const FText& Message);
+
 	//오퍼 종료 수신 -> 카드 영역 숨김 (패널은 유지)
 	UFUNCTION()
 	void HandleOfferClosed();
+
 	//대기 카운트 변경 수신 -> 뱃지 갱신
 	UFUNCTION()
 	void HandlePendingCountChanged(int32 NewCount);
+
 	//보유 증강 변경 수신 -> 아이콘 목록 갱신
 	UFUNCTION()
 	void HandleInventoryChanged();
-	
+
 	bool AreOwnedAugmentListReady() const;
+
 	void ClearOwnedAugmentLists();
+
 	void RefreshOwnedAugmentSectionVisibility();
+
 	UWrapBox* GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const;
 
 protected:
@@ -215,23 +328,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UNSAugmentCardWidget> AugmentCardWidgetClass;
 
-	// 보유 증강 아이콘 크기 (에디터에서 BP별 조정 가능)
+	// 보유 증강 아이콘 크기
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	FVector2D OwnedIconSize = FVector2D(48.f, 48.f);
 
-	// 좌/우 끝 카드 슬롯 좌표 (3장/4장 공용, 에디터에서 BP별 조정 가능)
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	FVector2D LeftCardPosition = FVector2D(-540.f, 200.f);
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	FVector2D RightCardPosition = FVector2D(540.f, 200.f);
+	// 입력 가이드 아이콘과 카드 사이 간격
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment")
+	float ChoiceCardGuideGap = 25.f;
 
-	// 3장일 때 가운데 슬롯 좌표
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	FVector2D ThreeCardCenterPosition = FVector2D(0.f, 100.f);
-
-	// 4장일 때 가운데 두 슬롯 좌표
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	FVector2D FourCardCenterLeftPosition = FVector2D(-180.f, 100.f);
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	FVector2D FourCardCenterRightPosition = FVector2D(180.f, 100.f);
+	// 선택 카드의 실제 표시 크기
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment")
+	FVector2D ChoiceCardSize = FVector2D(330.f, 118.f);
+	
+	bool bChoiceCardPositionRefreshQueued = false;
 };
