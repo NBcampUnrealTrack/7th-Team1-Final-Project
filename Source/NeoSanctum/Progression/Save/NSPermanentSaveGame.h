@@ -79,7 +79,16 @@ public:
 	FNSCompanionSaveData Companion;
 
 	// 아웃런 목표 안내(웨이포인트 마커 + 텍스트) 진행 상태 —> 전부 영구 1회성
-	
+
+	// 이동 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bMoveGuideDone = false;
+	// 점프 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bJumpGuideDone = false;
+	// 대시 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bDashGuideDone = false;
 	// 캐릭터 선택 콘솔과 한 번이라도 상호작용했는지
 	UPROPERTY(SaveGame)
 	bool bCharacterConsoleGuideDone = false;
