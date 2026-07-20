@@ -74,5 +74,8 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_ControlDevice_PowerOff, "GameplayCue.MotherShip.ControlDevice.PowerOff");
 	
 	//EnemyDrone
-	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_EnemyDrone_Fire, "GameplayCue.EnemyDrone_Fire");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_EnemyDrone_Fire, "GameplayCue.EnemyDrone.Fire");
+	
+	// CompanionDrone
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Companion_BasicFire, "GameplayCue.Companion.BasicFire");
 }

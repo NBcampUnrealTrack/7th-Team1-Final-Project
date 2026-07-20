@@ -26,6 +26,12 @@ namespace NSGameplayTags
 	// 특정 노드 강화 결과
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_PetUpgrade_Upgrade_Result);
 	
+	// 드론 선택(종류 변경) 요청
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_PetUpgrade_Select_Request);
+	
+	// 드론 선택 결과
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_PetUpgrade_Select_Result);
+	
 	//팀원 상태 목록 조회 요청
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Message_UI_TeammateStatus_Query);
 	//팀원 상태 전체 Snapshot응답

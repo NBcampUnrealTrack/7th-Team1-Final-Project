@@ -20,6 +20,10 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(Message_UI_PetUpgrade_Upgrade_Request,"Message.UI.PetUpgrade.Upgrade.Request");
 	// 강화 성공 또는 실패 결과 채널	
 	UE_DEFINE_GAMEPLAY_TAG(Message_UI_PetUpgrade_Upgrade_Result,"Message.UI.PetUpgrade.Upgrade.Result");
+	// 드론 선택 요청 채널
+	UE_DEFINE_GAMEPLAY_TAG(Message_UI_PetUpgrade_Select_Request,"Message.UI.PetUpgrade.Select.Request");
+	// 드론 선택 결과 채널
+	UE_DEFINE_GAMEPLAY_TAG(Message_UI_PetUpgrade_Select_Result,"Message.UI.PetUpgrade.Select.Result");
 	//팀원 상태 목록 조회 요청
 	UE_DEFINE_GAMEPLAY_TAG(Message_UI_TeammateStatus_Query,"Message.UI.TeammateStatus.Query");
 	//팀원 상태 전체 Snapshot응답 채널
