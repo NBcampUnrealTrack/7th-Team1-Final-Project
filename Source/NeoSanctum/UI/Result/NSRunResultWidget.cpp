@@ -95,6 +95,39 @@ void UNSRunResultWidget::SetRunResult(
 				: ESlateVisibility::Collapsed);
 	}
 	
+	if (DamageText || AccuracyText)
+	{
+		const APlayerController* PC = GetOwningPlayer();
+		const ANSPlayerState* LocalPS = PC ? PC->GetPlayerState<ANSPlayerState>() : nullptr;
+
+		// 가한 피해
+		if (DamageText)
+		{
+			const int64 MyDamage = LocalPS ? LocalPS->GetTotalDamageDealt() : 0;
+			DamageText->SetText(FText::Format(
+				NSLOCTEXT("RunResult", "DamageFormat", "가한 피해량 : {0}"),
+				FText::AsNumber(MyDamage)));
+		}
+
+		// 명중률
+		if (AccuracyText)
+		{
+			const int32 Fired = LocalPS ? LocalPS->GetShotsFired() : 0;
+			const int32 Hit   = LocalPS ? LocalPS->GetShotsHit()   : 0;
+
+			const float AccuracyPercent =
+				(Fired > 0) ? (static_cast<float>(Hit) / Fired) * 100.0f : 0.0f;
+
+			FNumberFormattingOptions NumberFormat;
+			NumberFormat.MinimumFractionalDigits = 1;
+			NumberFormat.MaximumFractionalDigits = 1;
+
+			AccuracyText->SetText(FText::Format(
+				NSLOCTEXT("RunResult", "AccuracyFormat", "주무기 명중률 : {0}%"),
+				FText::AsNumber(AccuracyPercent, &NumberFormat)));
+		}
+	}
+	
 	if (NextVotePanel)
 	{
 		NextVotePanel->SetVisibility(

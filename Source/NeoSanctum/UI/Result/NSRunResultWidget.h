@@ -92,6 +92,12 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> VoteCountText;
 	
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> DamageText;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> AccuracyText;
+	
 	// 다음 스테이지 슬롯 4개
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSVoterEntry> NextRow0;
