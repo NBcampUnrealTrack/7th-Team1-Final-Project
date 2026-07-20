@@ -146,11 +146,9 @@ void UNSCheatManager::Debug_ResetCompanionUpgrades()
 		return;
 	}
 
-	// 노드별 저장 레벨 초기화
-	PermanentSave->Companion.NodeLevels.Reset();
-
-	// 펫별 누적 강화 횟수와 해금 진행도 초기화
-	PermanentSave->Companion.UpgradeCounts.Reset();
+	// 노드별 저장 레벨 초기화 (드론별 + 공유)
+	PermanentSave->Companion.DroneNodes.Reset();
+	PermanentSave->Companion.SharedNodeLevels.Reset();
 
 	// 변경된 캐시 데이터를 영구 저장
 	SaveSubsystem->SavePermanent(
