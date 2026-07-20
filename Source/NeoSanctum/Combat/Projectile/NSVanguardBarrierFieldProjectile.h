@@ -34,6 +34,8 @@ private:
 
 	// 배리어 필드 설치
 	void DeployField(const FVector& DeployLocation, const FVector& DeployNormal);
+	// 배리어 필드 설치 연출 Cue 실행
+	void ExecuteDeployCue(const FVector& DeployLocation, const FVector& DeployNormal, float FieldRadius) const;
 
 private:
 	// CombatStat.Radius 기반 필드 반경 조회

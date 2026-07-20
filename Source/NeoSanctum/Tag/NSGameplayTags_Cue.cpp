@@ -36,12 +36,14 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_BaseAttack_Flash, "GameplayCue.Vanguard.BaseAttack.Flash");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_VanguardBuff, "GameplayCue.Vanguard.VanguardBuff");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_BuffRangePulse, "GameplayCue.Vanguard.BuffRangePulse");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Vanguard_BarrierField_Deploy, "GameplayCue.Vanguard.BarrierField.Deploy");
 
 	// Engineer
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_MuzzleFire, "GameplayCue.Engineer.ShotgunFire.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_Impact, "GameplayCue.Engineer.ShotgunFire.Impact");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_BulletTrail, "GameplayCue.Engineer.ShotgunFire.BulletTrail");
 	
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Deploy, "GameplayCue.Engineer.SpawnTurret.Deploy");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Deactivate, "GameplayCue.Engineer.SpawnTurret.Deactivate");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_MuzzleFire, "GameplayCue.Engineer.SpawnTurret.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Impact, "GameplayCue.Engineer.SpawnTurret.Impact");
@@ -49,6 +51,7 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpeedBuff, "GameplayCue.Engineer.SpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_BuffRangePulse, "GameplayCue.Engineer.BuffRangePulse");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_Barrier_Deploy, "GameplayCue.Engineer.Barrier.Deploy");
 	
 	//Enemy MotherShip
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning01, "GameplayCue.MotherShip.BombingRun.Warning1");

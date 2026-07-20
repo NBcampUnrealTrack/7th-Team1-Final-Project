@@ -3,6 +3,10 @@
 
 #include "GA_EngineerBarrier.h"
 
+#include "AbilitySystemComponent.h"
+#include "NeoSanctum/Combat/Weapon/Summon/NSBarrierBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+
 UGA_EngineerBarrier::UGA_EngineerBarrier()
 {
 }
@@ -54,6 +58,17 @@ void UGA_EngineerBarrier::ActivateAbility(
 	}
 
 	RebuildSetByCallerMagnitudes();
-	SpawnBarrierActor(ActorInfo, BarrierRadius, BarrierDuration, GetSetByCallerMagnitudes());
+	if (ANSBarrierBase* SpawnedBarrier =
+		SpawnBarrierActor(ActorInfo, BarrierRadius, BarrierDuration, GetSetByCallerMagnitudes()))
+	{
+		FGameplayCueParameters CueParameters;
+		CueParameters.Instigator = ActorInfo->AvatarActor.Get();
+		CueParameters.Location = SpawnedBarrier->GetActorLocation();
+		CueParameters.Normal = SpawnedBarrier->GetActorUpVector();
+		CueParameters.RawMagnitude = BarrierRadius;
+
+		ASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Engineer_Barrier_Deploy, CueParameters);
+	}
+
 	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
