@@ -171,6 +171,9 @@ void UNSPetUpgradeBridgeSubsystem::HandleQueryMessage(FGameplayTag Channel, cons
 				CompanionCatalog->FindByTag(Definition->RequiredCompanionTag);
 			const bool bUnlocked = ProgressionSubsystem->CanSelectCompanion(RequiredDrone);
 			const bool bSelected = (Definition->CompanionTag == SelectedTag);
+			const bool bDroneOwned =
+		!Definition->RequiredCompanionTag.IsValid()
+		|| ProgressionSubsystem->IsCompanionUnlocked(Definition->CompanionTag);
 
 			// (1) 드론 선택 노드 (Definition 파생)
 			{
@@ -211,7 +214,7 @@ void UNSPetUpgradeBridgeSubsystem::HandleQueryMessage(FGameplayTag Channel, cons
 				NodeView.UpgradeCost = UpgradeNode.BaseCost + UpgradeNode.CostPerLevel * NodeView.CurrentLevel;
 				NodeView.Icon     = UpgradeNode.Icon; 
 				NodeView.StateTag =
-					!bUnlocked                                  ? NSGameplayTags::UI_PetUpgrade_State_Locked
+					!bDroneOwned                                  ? NSGameplayTags::UI_PetUpgrade_State_Locked
 					: (NodeView.CurrentLevel >= NodeView.MaxLevel) ? NSGameplayTags::UI_PetUpgrade_State_Maxed
 					:                                             NSGameplayTags::UI_PetUpgrade_State_Upgradable;
 			}
@@ -280,23 +283,20 @@ void UNSPetUpgradeBridgeSubsystem::HandleUpgradeRequestMessage(FGameplayTag Chan
 
 	if (ProgressionSubsystem && Definition && UpgradeNode)
 	{
-		// UI 표시 상태를 신뢰하지 않고 기존 진행도 시스템에서 해금조건 재검사
-		const UNSCompanionDefinition* RequiredDrone =
-	CompanionCatalog ? CompanionCatalog->FindByTag(Definition->RequiredCompanionTag) : nullptr;
+		// UI를 신뢰하지 않고 서버측 재검사: 이 드론을 실제로 소유(구매)했는지
+		const bool bDroneOwned =
+			!Definition->RequiredCompanionTag.IsValid()
+			|| ProgressionSubsystem->IsCompanionUnlocked(Definition->CompanionTag);
 
-		const bool bConditionMet = ProgressionSubsystem->CanSelectCompanion(RequiredDrone);
-		if (bConditionMet)
+		if (bDroneOwned)
 		{
 			const int32 CurLevel = ProgressionSubsystem->GetCompanionNodeLevel(
-			Message.CompanionTag, Message.NodeTag, UpgradeNode->bSharedAcrossDrones);
+				Message.CompanionTag, Message.NodeTag, UpgradeNode->bSharedAcrossDrones);
 			const int64 Cost = UpgradeNode->BaseCost + UpgradeNode->CostPerLevel * CurLevel;
 
 			Result.bSuccess = ProgressionSubsystem->UpgradeCompanionNode(
-				Message.CompanionTag,
-				Message.NodeTag,
-				UpgradeNode->bSharedAcrossDrones,
-				UpgradeNode->MaxLevel,
-				Cost);
+				Message.CompanionTag, Message.NodeTag,
+				UpgradeNode->bSharedAcrossDrones, UpgradeNode->MaxLevel, Cost);
 		}
 	}
 
