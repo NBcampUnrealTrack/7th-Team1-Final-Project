@@ -116,7 +116,7 @@ private:
 	void CompleteAttackFeedbackGroup() const;
 
 	// 대상 Actor에게 GameplayEffect 대미지를 적용
-	void ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
+	bool ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
 
 	// Damage GameplayEffect의 SetByCaller 값을 설정
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
