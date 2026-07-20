@@ -74,16 +74,6 @@ static FText FormatEffectLabel(const FText& StatName, float Value)
 		: FText::Format(NSLOCTEXT("PartDetail", "EffectLabelWithStat", "효과 : {0} {1}"), StatName, ValueText);
 }
 
-// 카탈로그 후보용 "효과 : {스탯이름} {최소}~{최대}" 포맷 (아직 안 산 상태라 확정 수치 대신 롤 범위 표시)
-static FText FormatEffectRangeLabel(const FText& StatName, float Min, float Max)
-{
-	const FText RangeText = FText::Format(NSLOCTEXT("PartDetail", "EffectRange", "{0}~{1}"),
-		FormatEffectValue(Min), FormatEffectValue(Max));
-	return StatName.IsEmpty()
-		? FText::Format(NSLOCTEXT("PartDetail", "EffectLabel", "효과 : {0}"), RangeText)
-		: FText::Format(NSLOCTEXT("PartDetail", "EffectLabelWithStat", "효과 : {0} {1}"), StatName, RangeText);
-}
-
 
 /**
  * 텍스트가 비어있으면 줄 자체를 접어서(Collapsed) 빈 줄이 남지 않게 하는 하뭇
@@ -118,8 +108,8 @@ void UNSPartDetailWidget::SetupFromDefinition(const FNSPartDefinitionRow& Row, c
 	SetOptionalText(CostText, FText::Format(NSLOCTEXT("PartDetail", "CostLabel", "비용 : {0}"),
 		FText::AsNumber(Row.UnlockCost)));
 
-	// 아웃런 구매는 항상 Common 등급 + StatTags 후보 중 첫 번째로 고정 롤된다 (NSProgressionSubsystem::PurchasePart)
-	// 그러니 구매 전에도 "어떤 스탯이 몇~몇으로 나올지"는 100% 확정된 정보라 미리 보여줄 수 있다
+	// 아웃런 구매는 항상 Common 등급 + StatTags 후보 중 첫 번째 스탯의 범위 최대값으로 고정된다 (NSProgressionSubsystem::PurchasePart)
+	// 그러니 구매 전에도 확정 수치를 그대로 보여줄 수 있다
 	SetOptionalText(RarityText, FText::Format(NSLOCTEXT("PartDetail", "RarityLabel", "등급 : {0}"),
 		GetPartRarityText(ENSPartRarity::Common)));
 
@@ -135,7 +125,7 @@ void UNSPartDetailWidget::SetupFromDefinition(const FNSPartDefinitionRow& Row, c
 	}
 
 	SetOptionalText(ValueText, bHasRange
-		? FormatEffectRangeLabel(GetStatDisplayName(this, StatTag), Range.Min, Range.Max)
+		? FormatEffectLabel(GetStatDisplayName(this, StatTag), Range.Max)
 		: FText::GetEmpty());
 }
 
