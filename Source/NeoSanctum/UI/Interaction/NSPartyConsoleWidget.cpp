@@ -82,7 +82,7 @@ void UNSPartyConsoleWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 }
 
-void UNSPartyConsoleWidget::CloseWidget()
+void UNSPartyConsoleWidget::OnCloseWidget()
 {
 	if (UNSSessionSubsystem* Session =
 		GetGameInstance() ?
