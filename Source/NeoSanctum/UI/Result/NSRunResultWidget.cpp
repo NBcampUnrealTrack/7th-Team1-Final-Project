@@ -51,7 +51,7 @@ void UNSRunResultWidget::SetRunResult(
 	if (EarnedGoodsText)
 	{
 		EarnedGoodsText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "EarnedGoodsFormat", "임시 재화 : {0}"),
+			NSLOCTEXT("RunResult", "EarnedGoodsFormat", "보급 코인 : {0}"),
 			FText::AsNumber(EarnedGoods)));
 	}
 	
@@ -76,7 +76,7 @@ void UNSRunResultWidget::SetRunResult(
 	if (CommonGoodsText)
 	{
 		CommonGoodsText->SetText(FText::Format(
-			NSLOCTEXT("RunResult", "CommonGoodsFormat", "영구 재화 : {0}"),
+			NSLOCTEXT("RunResult", "CommonGoodsFormat", "네오 크리스털 : {0}"),
 			FText::AsNumber(CommonGoods)));
 	}
 
