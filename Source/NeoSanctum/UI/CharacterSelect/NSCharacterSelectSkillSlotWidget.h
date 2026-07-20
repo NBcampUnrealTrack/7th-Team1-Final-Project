@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "Engine/DataTable.h"
 #include "NSCharacterSelectSkillSlotWidget.generated.h"
 
@@ -40,7 +40,7 @@ DECLARE_MULTICAST_DELEGATE_OneParam(FNSCharacterSelectSkillSlotEvent, ENSCharact
  * 캐릭터별 스킬 조회와 설명 및 스탯 표시는 담당하지 않음.
  */
 UCLASS()
-class NEOSANCTUM_API UNSCharacterSelectSkillSlotWidget : public UCommonButtonBase
+class NEOSANCTUM_API UNSCharacterSelectSkillSlotWidget : public UNSButtonBase
 {
 	GENERATED_BODY()
 

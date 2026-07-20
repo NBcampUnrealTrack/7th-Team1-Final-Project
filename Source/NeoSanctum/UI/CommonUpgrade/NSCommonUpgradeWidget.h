@@ -87,7 +87,7 @@ protected:
 	FMargin DetailWidgetSafePadding = FMargin(16.0f, 72.0f, 16.0f, 16.0f);
 
 private:
-	void BuildNodeCatalog();
+	void BuildNodeCatalog(FName HoverSoundSuppressionNodeId = NAME_None);
 	void RefreshCommonCurrencyDisplay();
 	UPanelWidget* GetContainerForCategory(ENSCommonUpgradeCategory Category) const;
 	void MoveDetailWidgetToHoveredNode(const UNSCommonUpgradeNodeWidget* HoveredNode, ENSCommonUpgradeCategory Category);
