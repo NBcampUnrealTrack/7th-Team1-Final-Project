@@ -2083,12 +2083,26 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 	}
 	
 	Payload.SelectedCompanionTag = PermanentSave->Companion.SelectedCompanionTag;
-	for (const TPair<FGameplayTag, int32>& NodeLevelPair : PermanentSave->Companion.NodeLevels)
+	// 선택 드론의 독립 노드 + 공유 노드를 병합해 런타임 페이로드로
+	auto AddNode = [&Payload](FGameplayTag Tag, int32 Level)
 	{
 		FNSCompanionNodeLevel NodeLevelEntry;
-		NodeLevelEntry.Tag   = NodeLevelPair.Key;
-		NodeLevelEntry.Level = NodeLevelPair.Value;
+		NodeLevelEntry.Tag   = Tag;
+		NodeLevelEntry.Level = Level;
 		Payload.CompanionNodeLevels.Add(NodeLevelEntry);
+	};
+
+	if (const FNSCompanionDroneNodeSaveData* SelectedDrone =
+			PermanentSave->Companion.DroneNodes.Find(PermanentSave->Companion.SelectedCompanionTag))
+	{
+		for (const TPair<FGameplayTag, int32>& Pair : SelectedDrone->NodeLevels)
+		{
+			AddNode(Pair.Key, Pair.Value);
+		}
+	}
+	for (const TPair<FGameplayTag, int32>& Pair : PermanentSave->Companion.SharedNodeLevels)
+	{
+		AddNode(Pair.Key, Pair.Value);
 	}
 
 	// 활성 캐릭터 슬롯
@@ -2503,7 +2517,7 @@ void ANSPlayerController::CompanionCheatUpgrade(FGameplayTag NodeTag)
 
 	const FGameplayTag SelectedCompanionTag = Prog->GetSelectedCompanion();
 	// 치트: Max/Cost 게이트 통과용 임의값. NodeTag와 CompanionTag(=선택드론)는 분리해 전달
-	Prog->UpgradeCompanionNode(SelectedCompanionTag, NodeTag, /*MaxLevel*/9999, /*Cost*/0);
+	Prog->UpgradeCompanionNode(SelectedCompanionTag, NodeTag, /*bShared*/false, /*MaxLevel*/9999, /*Cost*/0);
 	UploadLocalProgress(GetActiveCharacterIdForUpload());  
 }
 
@@ -2522,7 +2536,7 @@ void ANSPlayerController::CompanionCheatSelect(FGameplayTag CompanionTag)
 	}
 
 	// 치트: 해금 게이트 무시 위해 RequiredTag 무효 + Count 0
-	Prog->SelectCompanion(CompanionTag, FGameplayTag(), 0);
+	Prog->SelectCompanion(CompanionTag, /*RequiredDrone*/nullptr,/*UnlockCost*/0);
 	UploadLocalProgress(GetActiveCharacterIdForUpload());
 }
 

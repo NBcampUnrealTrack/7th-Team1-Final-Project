@@ -151,7 +151,7 @@ void ANSPlayerCharacterBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 		CompanionAI.Reset();
 	}
-
+	
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -192,6 +192,19 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 	
 	// Companion 초기화 및 스폰 시도
 	TryInitializeCompanion();
+	
+	// @민재 추가 : 데이터가 늦게/재로딩되어도 드론을 다시 맞추는 안전망
+	if (HasAuthority())
+	{
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSPlayerProgressComponent* Progress = PS->GetProgressComponent())
+			{
+				Progress->OnProgressChanged.RemoveAll(this);
+				Progress->OnProgressChanged.AddUObject(this, &ThisClass::HandleCompanionDataReady);
+			}
+		}
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -623,19 +636,34 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 void ANSPlayerCharacterBase::HandleCompanionDataReady()
 {
 	if (!HasAuthority()) return;
-	
+
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
 	if (!PS) return;
-	
-	UNSCompanionDefinition* CurrentDefinition = PS->GetCurrentCompanionDefinition();
-	if (!CurrentDefinition) return;
-	
+
+	UNSPlayerProgressComponent* Progress = PS->GetProgressComponent();
+	if (!Progress) return;
+
+	// 선택 드론이 아직 없으면 재적용할 게 없음 (기본 드론 유지가 정상)
+	const FGameplayTag SelectedTag = Progress->GetSelectedCompanion();
+	if (!SelectedTag.IsValid()) return;
+
+	// 스폰이 빈 데이터로 먼저 돌았어도 여기서 선택 태그를 확정 동기화
+	PS->SetCurrentCompanionDefinitionTag(SelectedTag);
+
+	UNSCompanionDefinition* SelectedDefinition = PS->GetCurrentCompanionDefinition();
+	if (!SelectedDefinition) return;
+
+	UNSCompanionProgressionComponent* CompanionProg = PS->GetCompanionProgressionComponent();
+	if (!CompanionProg) return;
+
 	if (CompanionAI.IsValid())
 	{
-		CompanionAI->ApplyDroneDefinition(CurrentDefinition);
+		// 이미 스폰된 드론에 정의+노드 재적용 (기본→선택 드론 스왑 포함)
+		CompanionProg->ApplySelectedAndNodes(SelectedDefinition, Progress->GetCompanionNodeLevels());
 	}
 	else
 	{
+		// 아직 없으면 스폰 (올바른 정의로 생성 + 노드 적용)
 		TryInitializeCompanion();
 	}
 }

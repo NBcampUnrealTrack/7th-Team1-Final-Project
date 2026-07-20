@@ -29,4 +29,10 @@ namespace NSGameplayTags
 	
 	// 공통 사용 업그레이드 태그
 	UE_DEFINE_GAMEPLAY_TAG(Data_Upgrade, "Data.Upgrade");
+	
+	UE_DEFINE_GAMEPLAY_TAG(UI_PetUpgrade_State_Locked,     "UI.PetUpgrade.State.Locked");
+	UE_DEFINE_GAMEPLAY_TAG(UI_PetUpgrade_State_Upgradable, "UI.PetUpgrade.State.Upgradable");
+	UE_DEFINE_GAMEPLAY_TAG(UI_PetUpgrade_State_Maxed,      "UI.PetUpgrade.State.Maxed");
+	UE_DEFINE_GAMEPLAY_TAG(UI_PetUpgrade_State_Selectable, "UI.PetUpgrade.State.Selectable");
+	UE_DEFINE_GAMEPLAY_TAG(UI_PetUpgrade_State_Selected,   "UI.PetUpgrade.State.Selected");
 }

@@ -39,7 +39,7 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo) const override;
 	
 	// Getter
-	FVector GetMuzzleSocketLocation() const;
+	FVector GetMuzzleSocketLocation(FName SocketName) const;
 	const UNSCompanionAttributeSet* GetCompanionSet() const;
 	AActor* GetCombatTarget() const;
 	
@@ -57,7 +57,7 @@ protected:
 	FGameplayTag CoolDownTag;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
-	FName MuzzleSocketName;
+	TArray<FName> MuzzleSocketNames;
 	
 	UPROPERTY(EditDefaultsOnly, Category="Combat")
 	FName EnemyTargetKey;
@@ -71,9 +71,12 @@ protected:
 	// @민재 : 타겟 움직임 예측 발사
 	FVector ComputeAimDirection(const FVector& Muzzle, AActor* Target) const;
 	
-	// @민재 : 조준성공 발사위치 반환
-	bool CanFireAt(AActor* Target, FVector& OutMuzzle, FVector& OutDir) const;
-	
-	// @민재 : 실제 탄 발사 함수
-	void FireProjectile(const FVector& Muzzle, const FVector& Dir, AActor* Target);
+	// 변경: 드론 기준 1회 검증 (out 파라미터 제거)
+	bool CanFireAt(AActor* Target) const;
+
+	// 변경: 소켓 수(MuzzleCount)로 데미지 분할
+	void FireProjectile(const FVector& Muzzle, const FVector& Dir, AActor* Target, int32 MuzzleCount);
+
+	// 추가: 소켓별 발사 이펙트(GameplayCue) 실행
+	void PlayFireCue(const FVector& Location, const FVector& Dir) const;
 };

@@ -77,4 +77,8 @@ namespace NSGameplayTags
 	
 	// EnemyDrone
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_EnemyDrone_Fire);
+	
+	// CompanionDrone
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Companion_BasicFire);
+	
 }

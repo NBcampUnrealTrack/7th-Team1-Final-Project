@@ -6,8 +6,16 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Type/NSPetUpgradeMessageTypes.h"
 #include "NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.h"
+#include "CommonButtonBase.h"
+#include "NSCompanionUpgradeDetailWidget.h"
+#include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Widget.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Blueprint/SlateBlueprintLibrary.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 
 void UNSPetUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 {
@@ -18,6 +26,11 @@ void UNSPetUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 
 	OwningController = Interactor;
 	AddToViewport();
+	
+	if (IsValid(CloseButton))
+	{
+		CloseButton->OnClicked().AddUObject(this, &ThisClass::CloseWidget);
+	}
 	
 	RequestPetUpgradeSnapshot();
 
@@ -37,6 +50,35 @@ void UNSPetUpgradeWidget::OnCloseWidget()
 		PC->SetInputMode(FInputModeGameOnly());
 	}
 }
+
+void UNSPetUpgradeWidget::HandleNodeHovered(const FNSPetUpgradeNodeViewData& NodeData,
+	UNSPetUpgradeNodeWidget* HoveredNode)
+{
+	if (!IsValid(DetailWidget)) { return; }
+
+	// 스탯 노드가 아니면(드론 선택 노드면) 상세창 자체를 안 띄움
+	if (NodeData.bIsDroneSelectNode)
+	{
+		DetailWidget->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+
+	DetailWidget->ApplyDetail(NodeData);
+	DetailWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+
+	// 마우스 오른쪽 배치
+	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(DetailWidget->Slot))
+	{
+		const FVector2D MousePos = UWidgetLayoutLibrary::GetMousePositionOnViewport(this);
+		DetailSlot->SetPosition(MousePos + FVector2D(16.f, 0.f));
+	}
+}
+
+void UNSPetUpgradeWidget::HandleNodeUnhovered(FGameplayTag NodeTag)
+{
+	if (IsValid(DetailWidget)) { DetailWidget->SetVisibility(ESlateVisibility::Collapsed); }
+}
+
 void UNSPetUpgradeWidget::CacheNodeWidgets()
 {
 	NodeWidgetMap.Reset();
@@ -75,6 +117,29 @@ void UNSPetUpgradeWidget::CacheNodeWidgets()
 			this,
 			&ThisClass::HandleNodeUpgradeRequested);
 
+		NodeWidget->OnSelectRequested.RemoveDynamic(
+			this,
+			&ThisClass::HandleNodeSelectRequested);
+		
+		NodeWidget->OnSelectRequested.AddUniqueDynamic(
+			this,
+			&ThisClass::HandleNodeSelectRequested);
+		
+		NodeWidget->OnNodeHovered.RemoveDynamic(
+			this, 
+			&ThisClass::HandleNodeHovered);
+		
+		NodeWidget->OnNodeHovered.AddUniqueDynamic(
+			this, 
+			&ThisClass::HandleNodeHovered);
+		NodeWidget->OnNodeUnhovered.RemoveDynamic(
+			this, 
+			&ThisClass::HandleNodeUnhovered);
+		
+		NodeWidget->OnNodeUnhovered.AddUniqueDynamic(
+			this, 
+			&ThisClass::HandleNodeUnhovered);
+		
 		NodeWidgetMap.FindOrAdd(NodeTag) = NodeWidget;
 	}
 }
@@ -91,6 +156,18 @@ void UNSPetUpgradeWidget::UnbindNodeWidgets()
 			Pair.Value->OnUpgradeRequested.RemoveDynamic(
 				this,
 				&ThisClass::HandleNodeUpgradeRequested);
+			
+			Pair.Value->OnSelectRequested.RemoveDynamic(
+				this, 
+				&ThisClass::HandleNodeSelectRequested);
+			
+			Pair.Value->OnNodeHovered.RemoveDynamic(
+				this, 
+				&ThisClass::HandleNodeHovered);
+			
+			Pair.Value->OnNodeUnhovered.RemoveDynamic(
+				this,
+				&ThisClass::HandleNodeUnhovered);
 		}
 	}
 
@@ -144,6 +221,43 @@ void UNSPetUpgradeWidget::RequestNodeUpgrade(
 		RequestMessage);
 }
 
+void UNSPetUpgradeWidget::HandleNodeSelectRequested(FGameplayTag CompanionTag)
+{
+	RequestDroneSelect(CompanionTag);
+}
+
+void UNSPetUpgradeWidget::RequestDroneSelect(FGameplayTag CompanionTag)
+{
+	if (!CompanionTag.IsValid())
+	{
+		return;
+	}
+	// 여러 요청 중 현재 요청의 결과만 처리하기 위한 식별자 생성
+	PendingSelectRequestId = FGuid::NewGuid();
+
+	FNSPetUpgradeSelectRequestMessage RequestMessage;
+	RequestMessage.RequestId    = PendingSelectRequestId;
+	RequestMessage.CompanionTag = CompanionTag;
+
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_PetUpgrade_Select_Request,
+		RequestMessage);
+}
+
+void UNSPetUpgradeWidget::HandleSelectResultMessage(FGameplayTag Channel, const FNSPetUpgradeResultMessage& Message)
+{
+	// 이 위젯에서 보낸 선택 요청의 결과만 처리
+	if (Message.RequestId != PendingSelectRequestId)
+	{
+		return;
+	}
+	if (Message.bSuccess)
+	{
+		// 선택 변경을 즉시 반영하기 위해 최신 Snapshot 재요청
+		RequestPetUpgradeSnapshot();
+	}
+}
+
 void UNSPetUpgradeWidget::RequestPetUpgradeSnapshot()
 {
 	// 현재 Snapshot 요청의 응답만 처리하기 위한 식별자 생성
@@ -166,6 +280,29 @@ void UNSPetUpgradeWidget::HandleSnapshotMessage(FGameplayTag Channel, const FNSP
 		return;
 	}
 	ApplySnapshotToNodeWidgets(Message);
+	
+	if (SelectedDroneName)
+	{
+		SelectedDroneName->SetText(Message.SelectedDisplayName);
+	}
+	
+	if (SelectedDroneIcon)
+	{
+		if (!Message.SelectedIcon.IsNull())
+		{
+			SelectedDroneIcon->SetBrushFromSoftTexture(Message.SelectedIcon);
+			SelectedDroneIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			SelectedDroneIcon->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+	
+	if (CurrencyText)
+	{
+		CurrencyText->SetText(FText::AsNumber(Message.CurrentCurrency));
+	}
 }
 
 void UNSPetUpgradeWidget::HandleUpgradeResultMessage(FGameplayTag Channel, const FNSPetUpgradeResultMessage& Message)
@@ -187,6 +324,8 @@ void UNSPetUpgradeWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 	
+	if (IsValid(DetailWidget)) { DetailWidget->SetVisibility(ESlateVisibility::Collapsed); }
+	
 	CacheNodeWidgets();
 	
 	// 펫 강화 트리 전체 상태 응답 구독
@@ -204,6 +343,16 @@ void UNSPetUpgradeWidget::NativeConstruct()
 		NSGameplayTags::Message_UI_PetUpgrade_Upgrade_Result,
 		this,
 		&ThisClass::HandleUpgradeResultMessage);
+	
+	// @민재 노드 선택 추가
+	SelectResultListenerHandle =
+		UGameplayMessageSubsystem::Get(this)
+		.RegisterListener<FNSPetUpgradeResultMessage>(
+			NSGameplayTags::Message_UI_PetUpgrade_Select_Result,
+			this,
+			&ThisClass::HandleSelectResultMessage);
+	
+	
 }
 
 
@@ -214,6 +363,7 @@ void UNSPetUpgradeWidget::NativeDestruct()
 	// 위젯 재생성 시 메시지가 중복 처리되지 않도록 리스너 해제
 	SnapshotListenerHandle.Unregister();
 	UpgradeResultListenerHandle.Unregister();
-
+	SelectResultListenerHandle.Unregister();
+	
 	Super::NativeDestruct();
 }

@@ -34,6 +34,27 @@ struct FNSCompanionUpgradeNode
 	// 레벨당 증가량
 	UPROPERTY(EditDefaultsOnly)
 	float MagnitudePerLevel = 0.f;
+	
+	// 전 드론 공유 노드(재화 탐지 범위)면 true. 기본 false = 드론별 독립
+	UPROPERTY(EditDefaultsOnly)
+	bool bSharedAcrossDrones = false;
+	
+	// UI에 표시할 노드 아이콘
+	UPROPERTY(EditDefaultsOnly)
+	TSoftObjectPtr<UTexture2D> Icon;
+	
+	// 0→1레벨 = BaseCost, 이후 레벨당 CostPerLevel 가산
+	UPROPERTY(EditDefaultsOnly)
+	int64 BaseCost = 0;
+
+	UPROPERTY(EditDefaultsOnly)
+	int64 CostPerLevel = 0;
+	
+	UPROPERTY(EditDefaultsOnly)
+	FText DisplayName;   // "드론 공격력 증가"
+	
+	UPROPERTY(EditDefaultsOnly) 
+	FText Description;    // "공격 드론의 공격력이 증가합니다"
 };
 
 UCLASS(BlueprintType)
@@ -64,5 +85,10 @@ public:
 	UPROPERTY(EditDefaultsOnly)
 	TArray<FNSCompanionUpgradeNode> UpgradeNodes;
 	
-
+	// 최초 해금 시 소모 재화
+	UPROPERTY(EditDefaultsOnly)
+	int64 UnlockCost = 0;
+	
+	UPROPERTY(EditDefaultsOnly) 
+	FText Description;
 };

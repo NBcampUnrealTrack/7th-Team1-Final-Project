@@ -31,4 +31,11 @@ namespace NSGameplayTags
 	
 	// 공통 사용 업그레이드 태그
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Data_Upgrade);
+	
+	// 펫 강화 노드 UI 상태
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_PetUpgrade_State_Locked);      // 잠김(해금 조건 미충족)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_PetUpgrade_State_Upgradable);  // 강화 가능(스탯 노드)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_PetUpgrade_State_Maxed);       // 만렙(스탯 노드, 버튼 off)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_PetUpgrade_State_Selectable);  // 선택 가능(드론 노드)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(UI_PetUpgrade_State_Selected);    // 현재 선택됨(드론 노드)
 }

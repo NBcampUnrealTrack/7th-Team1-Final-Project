@@ -10,6 +10,7 @@
 
 class UNSSaveGameSubsystem;
 class UNSPermanentSaveGame;
+class UNSCompanionDefinition;
 
 /**
  *	아웃게임 진행도 쓰는 용도의 서브시스템
@@ -58,14 +59,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	void SetEquippedPart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);
 	
+	// @민재 : 업그레이드 노드 리팩토링 개편
 	UFUNCTION(BlueprintCallable, Category="Progression|Companion")
-	bool UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, int32 MaxLevel, int64 Cost);
-	
-	UFUNCTION(BlueprintCallable, Category="Progression|Companion")
-	bool SelectCompanion(FGameplayTag CompanionTag, FGameplayTag RequiredCompanionTag, int32 RequiredCount);
-	
+	bool UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, bool bShared, int32 MaxLevel, int64 Cost);
+
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
-	bool CanSelectCompanion(FGameplayTag RequiredCompanionTag, int32 RequiredCount) const;
+	bool IsCompanionUnlocked(FGameplayTag CompanionTag) const;
+	
+	// 게이트/선택은 선행 드론 Definition을 받는 C++ 전용으로 (UObject* 인자라 BP 노출 제거)
+	bool SelectCompanion(FGameplayTag CompanionTag, const UNSCompanionDefinition* RequiredDrone, int64 UnlockCost);
+	bool CanSelectCompanion(const UNSCompanionDefinition* RequiredDrone) const;
+
+	UFUNCTION(BlueprintPure, Category="Progression|Companion")
+	int32 GetCompanionNodeLevel(FGameplayTag CompanionTag, FGameplayTag NodeTag, bool bShared) const;
 	
 	// ---------- 조회 (UI 표시용) ----------
 	
@@ -101,9 +107,6 @@ public:
 	
 	UFUNCTION(BlueprintPure, Category="Progression|Companion")
 	FGameplayTag GetSelectedCompanion() const;
-	
-	UFUNCTION(BlueprintPure, Category="Progression|Companion")
-	int32 GetCompanionNodeLevel(FGameplayTag NodeTag) const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Progression|Part")
 	bool PurchasePart(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity);

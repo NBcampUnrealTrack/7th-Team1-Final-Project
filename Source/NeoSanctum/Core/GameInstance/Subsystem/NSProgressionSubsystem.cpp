@@ -11,6 +11,7 @@
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 
 
 
@@ -244,13 +245,6 @@ FGameplayTag UNSProgressionSubsystem::GetSelectedCompanion() const
 	return Save ? Save->Companion.SelectedCompanionTag : FGameplayTag();
 }
 
-int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag NodeTag) const
-{
-	const UNSPermanentSaveGame* Save = GetSaveData();
-	
-	return Save ? Save->Companion.NodeLevels.FindRef(NodeTag) : 0;
-}
-
 bool UNSProgressionSubsystem::UnlockSlot(FName CharacterId, FGameplayTag Slot)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
@@ -414,64 +408,102 @@ void UNSProgressionSubsystem::SetEquippedPart(FName CharacterId, TSoftObjectPtr<
 	SaveNow();
 }
 
-bool UNSProgressionSubsystem::UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, int32 MaxLevel, int64 Cost)
+#pragma region 펫 업그레이드
+
+bool UNSProgressionSubsystem::UpgradeCompanionNode(FGameplayTag CompanionTag, FGameplayTag NodeTag, bool bShared,
+	int32 MaxLevel, int64 Cost)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
 	if (!Save || !NodeTag.IsValid() || Cost < 0)
 	{
 		return false;
 	}
-	
-	// UI가 넘긴 Max로 게이트
-	const int32 NewLevel = Save->Companion.NodeLevels.FindRef(NodeTag) + 1;
+
+	// 현재 레벨 +1, UI가 넘긴 Max로 게이트 (공유 노드면 SharedNodeLevels로 라우팅)
+	const int32 NewLevel = Save->Companion.GetNodeLevel(CompanionTag, NodeTag, bShared) + 1;
 	if (NewLevel > MaxLevel)
 	{
 		return false;
-	}   
-	
-	// 공통재화
+	}
+
 	if (Save->CommonCurrency < Cost)
 	{
 		return false;
-	}   
+	}
 
 	Save->CommonCurrency -= Cost;
-	Save->Companion.NodeLevels.Add(NodeTag, NewLevel);
-	Save->Companion.UpgradeCounts.FindOrAdd(CompanionTag)++;
+	Save->Companion.SetNodeLevel(CompanionTag, NodeTag, bShared, NewLevel);
 	SaveNow();
-	
 	return true;
 }
 
-bool UNSProgressionSubsystem::SelectCompanion(
-	FGameplayTag CompanionTag,
-	FGameplayTag RequiredCompanionTag, 
-	int32 RequiredCount)
+bool UNSProgressionSubsystem::IsCompanionUnlocked(FGameplayTag CompanionTag) const
+{
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	return Save && Save->Companion.UnlockedCompanions.Contains(CompanionTag);
+}
+
+bool UNSProgressionSubsystem::SelectCompanion(FGameplayTag CompanionTag, const UNSCompanionDefinition* RequiredDrone, int64 UnlockCost)
 {
 	UNSPermanentSaveGame* Save = GetSaveData();
-	if (!Save || !CompanionTag.IsValid() || !CanSelectCompanion(RequiredCompanionTag, RequiredCount))
+	if (!Save || !CompanionTag.IsValid())
 	{
 		return false;
 	}
-	
+
+	const bool bAlreadyUnlocked = Save->Companion.UnlockedCompanions.Contains(CompanionTag);
+
+	if (!bAlreadyUnlocked)
+	{
+		// 최초 해금: 선행 게이트 + 재화 검사
+		if (!CanSelectCompanion(RequiredDrone)) { return false; }
+		if (UnlockCost < 0 || Save->CommonCurrency < UnlockCost) { return false; }
+
+		Save->CommonCurrency -= UnlockCost;
+		Save->Companion.UnlockedCompanions.Add(CompanionTag);
+	}
+	// 이미 해금된 드론은 무료·게이트 없이 전환
+
 	Save->Companion.SelectedCompanionTag = CompanionTag;
 	SaveNow();
-	
 	return true;
 }
 
-bool UNSProgressionSubsystem::CanSelectCompanion(FGameplayTag RequiredCompanionTag, int32 RequiredCount) const
+bool UNSProgressionSubsystem::CanSelectCompanion(const UNSCompanionDefinition* RequiredDrone) const
 {
-	// 전제 없음 = 항상 가능
-	if (!RequiredCompanionTag.IsValid())
+	// 선행 드론이 없으면(기본 드론) 항상 가능
+	if (!RequiredDrone)
 	{
 		return true;
-	} 
-	
+	}
+
 	const UNSPermanentSaveGame* Save = GetSaveData();
-	
-	return Save && Save->Companion.UpgradeCounts.FindRef(RequiredCompanionTag) >= RequiredCount;
+	if (!Save)
+	{
+		return false;
+	}
+
+	// 선행 드론의 모든 노드가 각각 MaxLevel이어야 해금 (체인 게이트)
+	for (const FNSCompanionUpgradeNode& Node : RequiredDrone->UpgradeNodes)
+	{
+		const int32 Level = Save->Companion.GetNodeLevel(
+			RequiredDrone->CompanionTag, Node.NodeTag, Node.bSharedAcrossDrones);
+		if (Level < Node.MaxLevel)
+		{
+			return false;
+		}
+	}
+	return true;
 }
+
+int32 UNSProgressionSubsystem::GetCompanionNodeLevel(FGameplayTag CompanionTag, FGameplayTag NodeTag,
+	bool bShared) const
+{
+	const UNSPermanentSaveGame* Save = GetSaveData();
+	return Save ? Save->Companion.GetNodeLevel(CompanionTag, NodeTag, bShared) : 0;
+}
+
+#pragma endregion
 
 bool UNSProgressionSubsystem::IsPartOwned(TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity) const
 {

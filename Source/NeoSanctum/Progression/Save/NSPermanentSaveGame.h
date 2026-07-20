@@ -33,20 +33,57 @@ struct FNSCharacterSaveData
 	TSet<FGameplayTag> UnlockedSlots;
 };
 
+// 한 드론이 독립적으로 보유하는 노드 레벨 묶음 (중첩 TMap 회피용 래퍼)
+USTRUCT(BlueprintType)
+struct FNSCompanionDroneNodeSaveData
+{
+	GENERATED_BODY()
+
+	// 이 드론 전용 노드태그 → 레벨 (공유 노드는 여기 넣지 않음)
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	TMap<FGameplayTag, int32> NodeLevels;
+};
+
 USTRUCT(BlueprintType)
 struct FNSCompanionSaveData
 {
 	GENERATED_BODY()
+	
+	// 선택된 드론 태그
 	UPROPERTY(SaveGame, BlueprintReadOnly)
 	FGameplayTag SelectedCompanionTag;
 	
-	// 노드태그 → 레벨
+	// 드론태그 → 그 드론의 독립 노드 레벨들
 	UPROPERTY(SaveGame, BlueprintReadOnly)
-	TMap<FGameplayTag, int32> NodeLevels;
+	TMap<FGameplayTag, FNSCompanionDroneNodeSaveData> DroneNodes;
 	
-	// 드론태그 → 누적
+	// 전 드론 공유 노드 (현재: Upgrade.Companion.Basic = 재화 탐지 범위) 노드태그 → 레벨
 	UPROPERTY(SaveGame, BlueprintReadOnly)
-	TMap<FGameplayTag, int32> UpgradeCounts;
+	TMap<FGameplayTag, int32> SharedNodeLevels;
+	
+	// 이미 해금(구매)된 드론들
+	UPROPERTY(SaveGame, BlueprintReadOnly)
+	TSet<FGameplayTag> UnlockedCompanions;
+	
+	int32 GetNodeLevel(FGameplayTag DroneTag, FGameplayTag NodeTag, bool bShared) const
+	{
+		if (bShared)
+		{
+			return SharedNodeLevels.FindRef(NodeTag);
+		}
+		const FNSCompanionDroneNodeSaveData* Drone = DroneNodes.Find(DroneTag);
+		return Drone ? Drone->NodeLevels.FindRef(NodeTag) : 0;
+	}
+
+	void SetNodeLevel(FGameplayTag DroneTag, FGameplayTag NodeTag, bool bShared, int32 Level)
+	{
+		if (bShared)
+		{
+			SharedNodeLevels.Add(NodeTag, Level);
+			return;
+		}
+		DroneNodes.FindOrAdd(DroneTag).NodeLevels.Add(NodeTag, Level);
+	}
 };
 
 UCLASS()
