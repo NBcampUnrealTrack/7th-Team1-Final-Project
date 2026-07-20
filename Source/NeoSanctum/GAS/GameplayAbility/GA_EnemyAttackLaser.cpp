@@ -78,6 +78,7 @@ void UGA_EnemyAttackLaser::ActivateAbility(
 		return;
 	}
 
+	BeginPatternDefenseWindow(ENSPatternDefenseWindow::AbilityLifetime);
 	StartLaser();
 }
 

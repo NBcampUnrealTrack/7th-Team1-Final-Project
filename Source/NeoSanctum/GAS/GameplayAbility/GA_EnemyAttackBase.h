@@ -4,10 +4,19 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "GameplayEffectTypes.h"
 #include "NeoSanctum/Core/Interface/NSHitReactionSourceInterface.h"
 #include "GA_EnemyAttackBase.generated.h"
 
 class UNSEnemyData;
+
+UENUM(BlueprintType)
+enum class ENSPatternDefenseWindow : uint8
+{
+	None,
+	AbilityLifetime,
+	AttackMontage
+};
 
 /**
  * 모든 적 AI 공격 어빌리티의 최상위 부모 C++ 클래스
@@ -29,11 +38,20 @@ public:
 		const FGameplayAbilityActorInfo* ActorInfo,
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
+	
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
 
 protected:
 	bool PlayAttackMontage();
 	void FinishAttackAbility();
 	void CancelAttackAbility();
+	void BeginPatternDefenseWindow(ENSPatternDefenseWindow Window);
+	void EndPatternDefenseWindow(ENSPatternDefenseWindow Window);
 
 	virtual void InitializeAttack();
 	virtual void PrepareForAttackMontage();
@@ -54,6 +72,12 @@ private:
 
 	UFUNCTION()
 	void OnAttackEventReceived(FGameplayEventData Payload);
+	
+	UFUNCTION()
+	void OnMontageBlendOut();
+	
+	void ApplyPatternDefenseEffect();
+	void RemovePatternDefenseEffect();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Assets")
@@ -67,4 +91,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Attack|Config")
 	FGameplayTag HitCheckEventTag;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack|Pattern Defense")
+	ENSPatternDefenseWindow PatternDefenseWindow = ENSPatternDefenseWindow::None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack|Pattern Defense")
+	TSubclassOf<UGameplayEffect> PatternDefenseEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Attack|Pattern Defense", meta = (ClampMin = "0.0"))
+	float PatternDefenseBonus = 0.0f;
+	
+private:
+	FActiveGameplayEffectHandle PatternDefenseEffectHandle;
 };

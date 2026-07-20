@@ -27,6 +27,14 @@ public:
 		const FGameplayAbilityActivationInfo ActivationInfo,
 		const FGameplayEventData* TriggerEventData) override;
 
+	// Ability 종료 시 사망 연출 지연 타이머와 포즈 고정 타이머를 정리하는 함수
+	virtual void EndAbility(
+		const FGameplayAbilitySpecHandle Handle,
+		const FGameplayAbilityActorInfo* ActorInfo,
+		const FGameplayAbilityActivationInfo ActivationInfo,
+		bool bReplicateEndAbility,
+		bool bWasCancelled) override;
+
 protected:
 	// 몬스터별로 재생할 사망 몽타주. 없으면 Ragdoll 실행.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death|Animation")
@@ -47,6 +55,10 @@ protected:
 	// 디졸브 완료 후 Actor를 Destroy할지 여부. 풀링 몬스터는 false로 둡니다.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death|Dissolve")
 	bool bDestroyAfterDissolve = false;
+
+	// 사망 Ability 활성화 후 실제 사망 애니메이션 또는 래그돌을 시작하기까지 기다릴 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Death|Timing", meta = (ClampMin = "0.0"))
+	float DeathPresentationStartDelay = 0.0f;
 
 private:
 	// DeathMontage가 정상 종료되었을 때 Ability를 종료하는 함수
@@ -71,9 +83,15 @@ private:
 
 	// 사망 Ability를 종료하는 공통 함수
 	void FinishDeathAbility(bool bWasCancelled);
-	
+
 	void FreezeDeathPose();
-	
+
+	// 지연 시간이 지난 뒤 사망 몽타주 또는 래그돌을 실제로 시작하는 함수
+	void StartDeathPresentation();
+
 private:
 	FTimerHandle DeathFreezeTimerHandle;
+
+	// 사망 연출 시작 지연을 관리하는 타이머 핸들
+	FTimerHandle DeathPresentationStartTimerHandle;
 };

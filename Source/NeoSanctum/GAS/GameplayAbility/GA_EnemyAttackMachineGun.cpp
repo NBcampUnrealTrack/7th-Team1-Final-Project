@@ -66,6 +66,7 @@ void UGA_EnemyAttackMachineGun::ActivateAbility(
 		return;
 	}
 
+	BeginPatternDefenseWindow(ENSPatternDefenseWindow::AbilityLifetime);
 	StartPreAimOrBurst();
 }
 

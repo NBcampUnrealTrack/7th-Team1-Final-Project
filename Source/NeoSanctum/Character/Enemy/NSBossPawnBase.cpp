@@ -12,6 +12,8 @@
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/Component/Artillery/NSBossArtilleryComponent.h"
 #include "NeoSanctum/Combat/Cosmetic/NSEnemyCosmeticComponent.h"
+#include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 
 ANSBossPawnBase::ANSBossPawnBase()
 {
@@ -19,11 +21,13 @@ ANSBossPawnBase::ANSBossPawnBase()
 	BossTargetComponent = CreateDefaultSubobject<UNSBossTargetComponent>(TEXT("BossTargetComponent"));
 	CosmeticComponent = CreateDefaultSubobject<UNSEnemyCosmeticComponent>(TEXT("CosmeticComponent"));
 	BossArtilleryComponent = CreateDefaultSubobject<UNSBossArtilleryComponent>(TEXT("BossArtilleryComponent"));
-	
+
 	if (UCapsuleComponent* BossCollisionComponent = GetCollisionComponent())
 	{
 		BossCollisionComponent->SetCollisionProfileName(NSCollisionProfiles::EnemyBoss);
 	}
+
+	DeathExplosionCosmeticEventTag = NSGameplayTags::Cosmetic_Enemy_TitanWalker_Death_Explosion;
 }
 
 void ANSBossPawnBase::BeginPlay()
@@ -35,6 +39,39 @@ void ANSBossPawnBase::BeginPlay()
 		BossModeComponent->InitializeMode();
 	}
 }
+
+void ANSBossPawnBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(DeathDissolveTimerHandle);
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ANSBossPawnBase::HandleDeathStarted()
+{
+	Super::HandleDeathStarted();
+
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	SendDeathExplosionCosmeticEvent();
+
+	if (bStartDissolveAfterDeathExplosion)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			DeathDissolveTimerHandle,
+			this,
+			&ThisClass::StartDelayedDeathDissolve,
+			DeathDissolveDelay,
+			false);
+	}
+}
+
 
 void ANSBossPawnBase::ApplyDeadState()
 {
@@ -101,4 +138,32 @@ void ANSBossPawnBase::FaceCurrentTargetForHitReaction()
 FName ANSBossPawnBase::GetAliveCollisionProfileName() const
 {
 	return NSCollisionProfiles::EnemyBoss;
+}
+
+
+void ANSBossPawnBase::SendDeathExplosionCosmeticEvent()
+{
+	if (!bPlayDeathExplosionCosmetic || !CosmeticComponent)
+	{
+		return;
+	}
+
+	FNSCosmeticEventNetData EventData;
+	EventData.EventTag = DeathExplosionCosmeticEventTag.IsValid()
+		                     ? DeathExplosionCosmeticEventTag
+		                     : NSGameplayTags::Cosmetic_Enemy_TitanWalker_Death_Explosion;
+	EventData.Phase = ENSCosmeticEventPhase::OneShot;
+	EventData.Location = GetActorLocation();
+	EventData.Direction = GetActorForwardVector();
+	EventData.Duration = DeathDissolveDelay;
+
+	CosmeticComponent->SendCosmeticEvent(EventData, true);
+}
+
+void ANSBossPawnBase::StartDelayedDeathDissolve()
+{
+	if (DissolveComponent)
+	{
+		DissolveComponent->StartDissolve(bDestroyAfterDeathDissolve);
+	}
 }

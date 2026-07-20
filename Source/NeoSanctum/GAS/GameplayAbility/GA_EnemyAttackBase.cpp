@@ -9,6 +9,7 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
@@ -21,13 +22,13 @@ UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 
 	bServerRespectsRemoteAbilityCancellation = false;
 	bRetriggerInstancedAbility = false;
-	
+
 	FGameplayTagContainer AssetTags = GetAssetTags();
 	AssetTags.AddTag(NSGameplayTags::Ability_Enemy_Attack);
 	SetAssetTags(AssetTags);
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Enemy_HitReacting);
-	
+
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
@@ -65,6 +66,93 @@ void UGA_EnemyAttackBase::ActivateAbility(
 	}
 }
 
+void UGA_EnemyAttackBase::EndAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
+{
+	RemovePatternDefenseEffect();
+
+	Super::EndAbility(
+		Handle,
+		ActorInfo,
+		ActivationInfo,
+		bReplicateEndAbility,
+		bWasCancelled);
+}
+
+void UGA_EnemyAttackBase::BeginPatternDefenseWindow(ENSPatternDefenseWindow Window)
+{
+	if (PatternDefenseWindow != Window)
+	{
+		return;
+	}
+
+	ApplyPatternDefenseEffect();
+}
+
+void UGA_EnemyAttackBase::EndPatternDefenseWindow(ENSPatternDefenseWindow Window)
+{
+	if (PatternDefenseWindow != Window)
+	{
+		return;
+	}
+
+	RemovePatternDefenseEffect();
+}
+
+void UGA_EnemyAttackBase::ApplyPatternDefenseEffect()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!ASC || !IsValid(AvatarActor) || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	if (!PatternDefenseEffect || PatternDefenseBonus <= 0.0f)
+	{
+		return;
+	}
+
+	RemovePatternDefenseEffect();
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddInstigator(AvatarActor, AvatarActor);
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		ASC->MakeOutgoingSpec(PatternDefenseEffect, GetAbilityLevel(), EffectContext);
+
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_SetByCaller_Defense_Add,
+		PatternDefenseBonus);
+
+	PatternDefenseEffectHandle =
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+}
+
+void UGA_EnemyAttackBase::RemovePatternDefenseEffect()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (ASC && PatternDefenseEffectHandle.IsValid())
+	{
+		ASC->RemoveActiveGameplayEffect(PatternDefenseEffectHandle);
+	}
+
+	PatternDefenseEffectHandle = FActiveGameplayEffectHandle();
+}
+
+
 bool UGA_EnemyAttackBase::PlayAttackMontage()
 {
 	if (!IsValid(AttackMontage))
@@ -91,8 +179,11 @@ bool UGA_EnemyAttackBase::PlayAttackMontage()
 	}
 
 	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnMontageCompleted);
+	MontageTask->OnBlendOut.AddDynamic(this, &ThisClass::OnMontageBlendOut);
 	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnMontageInterrupted);
 	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+
+	BeginPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 
 	MontageTask->ReadyForActivation();
 	return true;
@@ -122,11 +213,18 @@ void UGA_EnemyAttackBase::OnAttackEventReceived(FGameplayEventData Payload)
 
 void UGA_EnemyAttackBase::OnMontageCompleted()
 {
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 	HandleAttackMontageCompleted();
+}
+
+void UGA_EnemyAttackBase::OnMontageBlendOut()
+{
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 }
 
 void UGA_EnemyAttackBase::OnMontageInterrupted()
 {
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 	CancelAttackAbility();
 }
 

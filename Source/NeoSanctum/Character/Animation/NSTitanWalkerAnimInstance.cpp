@@ -470,6 +470,12 @@ void UNSTitanWalkerAnimInstance::UpdateControlRigBlend(float DeltaSeconds)
 
 void UNSTitanWalkerAnimInstance::UpdateCombatPoseHold()
 {
+	if (bIsDead)
+	{
+		bUseCombatBasePose = true;
+		return;
+	}
+
 	const UWorld* World = GetWorld();
 	const float CurrentTime = World ? World->GetTimeSeconds() : 0.0f;
 
@@ -484,7 +490,6 @@ void UNSTitanWalkerAnimInstance::UpdateCombatPoseHold()
 	bUseCombatBasePose =
 		bWantsCombatBasePose &&
 		!bIsMoving &&
-		!bIsDead &&
 		!bIsHitReacting;
 }
 
