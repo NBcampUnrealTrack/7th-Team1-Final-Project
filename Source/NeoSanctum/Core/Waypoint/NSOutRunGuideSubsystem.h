@@ -23,13 +23,13 @@ public:
 	// 아웃런 진입 시 PlayerController가 호출 —> 세이브 기준으로 안내 시작
 	void StartGuide();
 
-	// 이동 입력 1회 발동 (NSInputBinderComponent::Input_Move에서 호출)
+	// 이동 입력 발동 (NSInputBinderComponent::Input_Move에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
 	void NotifyMoveInput();
 
-	// 점프 입력 1회 발동 (NSInputBinderComponent::Input_Jump에서 호출)
+	// 점프 입력 발동 (NSInputBinderComponent::Input_Jump에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
 	void NotifyJumpInput();
 
-	// 대시 어빌리티 입력 1회 발동 (NSInputBinderComponent::Input_AbilityPressed에서 호출)
+	// 대시 어빌리티 입력 발동 (NSInputBinderComponent::Input_AbilityPressed에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
 	void NotifyDashInput();
 
 	// 캐릭터 선택 콘솔과 첫 상호작용 (NSCharacterSelectNPC::OnInteract에서 호출)
@@ -48,10 +48,13 @@ private:
 	// 세이브 상태 기준으로 대상 액터 마커/HUD 텍스트 전체 갱신
 	void RefreshGuide();
 
-	// 이동/점프/대시 단계 완료 처리 (입력 또는 타임아웃 만료에서 공통 호출)
+	// 이동/점프/대시 단계 완료 처리 (StartStageTimeout의 타이머 만료 시 호출)
 	void CompleteMoveGuide();
 	void CompleteJumpGuide();
 	void CompleteDashGuide();
+
+	// 입력을 받은 시점부터 DT_GuideText의 AutoAdvanceSeconds만큼 대기 후 완료 처리 (이미 대기 중이면 무시 —> 반복 입력에 재시작되지 않음)
+	void StartStageTimeout(FName RowName, void (UNSOutRunGuideSubsystem::* CompleteFunc)());
 
 	// 세이브 캐시가 아직 없을 때 로드 완료를 기다렸다가 갱신
 	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);

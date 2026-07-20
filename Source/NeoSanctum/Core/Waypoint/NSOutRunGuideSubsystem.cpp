@@ -84,7 +84,7 @@ void UNSOutRunGuideSubsystem::NotifyMoveInput()
 		return;
 	}
 
-	CompleteMoveGuide();
+	StartStageTimeout(TEXT("MoveInput"), &UNSOutRunGuideSubsystem::CompleteMoveGuide);
 }
 
 void UNSOutRunGuideSubsystem::NotifyJumpInput()
@@ -96,7 +96,7 @@ void UNSOutRunGuideSubsystem::NotifyJumpInput()
 		return;
 	}
 
-	CompleteJumpGuide();
+	StartStageTimeout(TEXT("JumpInput"), &UNSOutRunGuideSubsystem::CompleteJumpGuide);
 }
 
 void UNSOutRunGuideSubsystem::NotifyDashInput()
@@ -108,7 +108,7 @@ void UNSOutRunGuideSubsystem::NotifyDashInput()
 		return;
 	}
 
-	CompleteDashGuide();
+	StartStageTimeout(TEXT("DashInput"), &UNSOutRunGuideSubsystem::CompleteDashGuide);
 }
 
 void UNSOutRunGuideSubsystem::NotifyCharacterConsoleUsed()
@@ -194,10 +194,11 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 
 	const bool bNeedReadyGuide = bCharacterStageDone && !Save->bReadyConsoleGuideDone;
 
-	// 캐릭터 선택 콘솔 마커
+	// 캐릭터 선택 콘솔 마커 —> 같은 BP가 여러 곳에 배치되므로, 레벨에서 "GuideTutorial" 태그를 붙인 인스턴스(게임 시작 옆)만 튜토리얼 대상
 	for (TActorIterator<ANSCharacterSelectNPC> It(GetWorld()); It; ++It)
 	{
-		SetActorMarkerLocal(*It, bNeedCharacterGuide);
+		const bool bIsTutorialConsole = It->ActorHasTag(TEXT("GuideTutorial"));
+		SetActorMarkerLocal(*It, bNeedCharacterGuide && bIsTutorialConsole);
 	}
 
 	// 게임시작 콘솔 마커
@@ -348,7 +349,6 @@ void UNSOutRunGuideSubsystem::UpdateGuideText(
 
 	if (RowName.IsNone())
 	{
-		GetWorld()->GetTimerManager().ClearTimer(GuideTimeoutHandle);
 		HUDWidget->HideGuideText();
 		return;
 	}
@@ -363,38 +363,39 @@ void UNSOutRunGuideSubsystem::UpdateGuideText(
 
 	if (!Row)
 	{
-		GetWorld()->GetTimerManager().ClearTimer(GuideTimeoutHandle);
 		HUDWidget->HideGuideText();
 		return;
 	}
 
 	HUDWidget->ShowGuideText(Row->GuideText);
+}
 
-	// 조작법 단계는 AutoAdvanceSeconds가 설정돼 있으면 행동 없이도 시간 경과로 자동 완료
-	GetWorld()->GetTimerManager().ClearTimer(GuideTimeoutHandle);
-	if (Row->AutoAdvanceSeconds > 0.0f)
+void UNSOutRunGuideSubsystem::StartStageTimeout(FName RowName, void (UNSOutRunGuideSubsystem::* CompleteFunc)())
+{
+	// 이미 대기 중이면 재시작하지 않음 —> 같은 단계에서 반복 입력이 들어와도 카운트다운 유지
+	if (GetWorld()->GetTimerManager().IsTimerActive(GuideTimeoutHandle))
 	{
-		void (UNSOutRunGuideSubsystem::* CompleteFunc)() = nullptr;
-		if (bNeedMoveGuide)
-		{
-			CompleteFunc = &UNSOutRunGuideSubsystem::CompleteMoveGuide;
-		}
-		else if (bNeedJumpGuide)
-		{
-			CompleteFunc = &UNSOutRunGuideSubsystem::CompleteJumpGuide;
-		}
-		else if (bNeedDashGuide)
-		{
-			CompleteFunc = &UNSOutRunGuideSubsystem::CompleteDashGuide;
-		}
-
-		if (CompleteFunc)
-		{
-			GetWorld()->GetTimerManager().SetTimer(
-				GuideTimeoutHandle,
-				FTimerDelegate::CreateUObject(this, CompleteFunc),
-				Row->AutoAdvanceSeconds,
-				false);
-		}
+		return;
 	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* GuideTextTable =
+		DataSubsystem ? DataSubsystem->GetCommonGuideTextDataTable() : nullptr;
+	const FNSGuideTextData* Row =
+		GuideTextTable
+			? GuideTextTable->FindRow<FNSGuideTextData>(RowName, TEXT("StartStageTimeout"))
+			: nullptr;
+	const float DelaySeconds = Row ? Row->AutoAdvanceSeconds : 0.0f;
+
+	if (DelaySeconds <= 0.0f)
+	{
+		(this->*CompleteFunc)();
+		return;
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		GuideTimeoutHandle,
+		FTimerDelegate::CreateUObject(this, CompleteFunc),
+		DelaySeconds,
+		false);
 }
