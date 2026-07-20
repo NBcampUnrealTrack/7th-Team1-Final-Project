@@ -110,7 +110,7 @@ FText UNSCharacterStatsWidget::FormatStatValue(
 		FormattingOptions.MaximumFractionalDigits = 1;
 
 		return FText::Format(
-			NSLOCTEXT("CharacterStats", "SecondsFormat", "{0}\uCD08"),
+			NSLOCTEXT("CharacterStats", "SecondsFormat", "{0}초"),
 			FText::AsNumber(Value, &FormattingOptions));
 	}
 
