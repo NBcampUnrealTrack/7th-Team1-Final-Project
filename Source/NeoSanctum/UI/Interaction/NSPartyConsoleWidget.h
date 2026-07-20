@@ -23,7 +23,7 @@ public:
 	// 진입점
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
 	// 닫기 시 호출
-	virtual void CloseWidget() override;
+	virtual void OnCloseWidget() override;
 
 protected:
 	// 세션 생성
