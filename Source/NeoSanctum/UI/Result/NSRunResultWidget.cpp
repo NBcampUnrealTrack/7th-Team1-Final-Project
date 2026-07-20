@@ -10,6 +10,9 @@
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "GameFramework/GameStateBase.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NSVoterEntry.h"
+#include "Components/Image.h"
+#include "Components/Widget.h"
 
 void UNSRunResultWidget::SetRunResult(
 	bool bCleared,
@@ -26,6 +29,23 @@ void UNSRunResultWidget::SetRunResult(
 			bCleared
 				? NSLOCTEXT("RunResult", "ClearTitle", "작전 성공")
 				: NSLOCTEXT("RunResult", "FailedTitle", "작전 실패"));
+	}
+	
+	if (StageInfoText)
+	{
+		int32 StageNumber = 0;
+		if (const UWorld* World = GetWorld())
+		{
+			if (const ANSRunGameState* RunGameState =
+				World->GetGameState<ANSRunGameState>())
+			{
+				StageNumber = RunGameState->GetDifficultyStageNumber();
+			}
+		}
+
+		StageInfoText->SetText(FText::Format(
+			NSLOCTEXT("RunResult", "StageInfoFormat", "스테이지 {0}"),
+			FText::AsNumber(StageNumber)));
 	}
 	
 	if (EarnedGoodsText)
@@ -75,17 +95,12 @@ void UNSRunResultWidget::SetRunResult(
 				: ESlateVisibility::Collapsed);
 	}
 	
-	if (NextVotersText)
+	if (NextVotePanel)
 	{
-		NextVotersText->SetVisibility(
+		NextVotePanel->SetVisibility(
 			bCleared
 				? ESlateVisibility::Visible
-				: ESlateVisibility::Collapsed);
-	}
-	
-	if (HubVotersText)
-	{
-		HubVotersText->SetVisibility(ESlateVisibility::Visible);
+				: ESlateVisibility::Hidden);
 	}
 	
 	RefreshLocalVoteSelection();
@@ -150,30 +165,6 @@ void UNSRunResultWidget::NativePreConstruct()
 	SetRunResult(false, 0, 0, 0.0f, 0);
 }
 
-void UNSRunResultWidget::NativeConstruct()
-{
-	Super::NativeConstruct();
-	
-	SetRunResult(false, 0, 0, 0.0f, 0);
-	
-	if (NextStageButton)
-	{
-		NextStageButton->OnClicked().AddUObject(
-			this,
-			&UNSRunResultWidget::HandleNextStageClicked);
-	}
-
-	if (ReturnToHubButton)
-	{
-		ReturnToHubButton->OnClicked().AddUObject(
-			this,
-			&UNSRunResultWidget::HandleReturnToHubClicked);
-	}
-	
-	BindRunEndVoteChanged();
-	RefreshVoteInfo();
-}
-
 void UNSRunResultWidget::NativeDestruct()
 {
 	if (NextStageButton)
@@ -200,6 +191,48 @@ void UNSRunResultWidget::NativeTick(
 	UpdatePhaseTimerText();
 	UpdateVoteButtonState(); 
 }
+
+void UNSRunResultWidget::NativeOnInitialized()
+{
+	Super::NativeOnInitialized();
+	
+	if (RunEndButtonStyle)
+	{
+		if (NextStageButton)
+		{
+			NextStageButton->SetStyle(RunEndButtonStyle);
+		}
+
+		if (ReturnToHubButton)
+		{
+			ReturnToHubButton->SetStyle(RunEndButtonStyle);
+		}
+	}
+	
+	NextRows = { NextRow0, NextRow1, NextRow2, NextRow3 };
+	HubRows  = { HubRow0,  HubRow1,  HubRow2,  HubRow3  };
+	VoteImages = { VoteImage0, VoteImage1, VoteImage2, VoteImage3 };
+	
+	SetRunResult(false, 0, 0, 0.0f, 0);
+	
+	if (NextStageButton)
+	{
+		NextStageButton->OnClicked().AddUObject(
+			this,
+			&UNSRunResultWidget::HandleNextStageClicked);
+	}
+
+	if (ReturnToHubButton)
+	{
+		ReturnToHubButton->OnClicked().AddUObject(
+			this,
+			&UNSRunResultWidget::HandleReturnToHubClicked);
+	}
+	
+	BindRunEndVoteChanged();
+	RefreshVoteInfo();
+}
+
 void UNSRunResultWidget::UpdatePhaseTimerText()
 {
 	if (!TimerText)
@@ -236,63 +269,51 @@ void UNSRunResultWidget::UpdatePhaseTimerText()
 void UNSRunResultWidget::RefreshVoteVoters()
 {
 	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-	
-	AGameStateBase* GameState = World->GetGameState();
-	if (!GameState)
-	{
-		return;
-	}
-	
-	FString NextVoters =
-		NSLOCTEXT(
-			"RunResult",
-			"NextStageVotersTitle",
-			"다음 스테이지\n").ToString();
+	if (!World) { return; }
 
-	FString HubVoters =
-		NSLOCTEXT(
-			"RunResult",
-			"HubVotersTitle",
-			"거점 복귀\n").ToString();
-	
+	AGameStateBase* GameState = World->GetGameState();
+	if (!GameState) { return; }
+
+	// 투표자 이름 두 그룹으로 수집
+	TArray<FString> NextNames;
+	TArray<FString> HubNames;
+
 	for (APlayerState* PlayerState : GameState->PlayerArray)
 	{
 		const ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(PlayerState);
-		if (!NSPlayerState || !NSPlayerState->bVoteConfirmed)
-		{
-			continue;
-		}
-		
+		if (!NSPlayerState || !NSPlayerState->bVoteConfirmed) { continue; }
+
 		const FString PlayerName = NSPlayerState->GetPlayerName();
-		
+
 		if (NSPlayerState->RunChoice == ENSRunChoice::NextStage)
 		{
-			NextVoters += FString::Printf(TEXT("%s\n"), *PlayerName);
+			NextNames.Add(PlayerName);
 		}
 		else if (NSPlayerState->RunChoice == ENSRunChoice::ReturnToHub)
 		{
-			HubVoters += FString::Printf(TEXT("%s\n"), *PlayerName);
+			HubNames.Add(PlayerName);
 		}
 	}
-	
-	if (NextVotersText)
+
+	// 표시 순서 안정화
+	NextNames.Sort();
+	HubNames.Sort();
+
+	// 위에서부터 채우고 남는 칸은 비움
+	auto FillRows = [](const TArray<TObjectPtr<UNSVoterEntry>>& Rows,
+					   const TArray<FString>& Names)
 	{
-		NextVotersText->SetText(FText::FromString(NextVoters));
-		NextVotersText->SetVisibility(
-			bLastRunCleared
-				? ESlateVisibility::Visible
-				: ESlateVisibility::Collapsed);
-	}
-	
-	if (HubVotersText)
-	{
-		HubVotersText->SetText(FText::FromString(HubVoters));
-		HubVotersText->SetVisibility(ESlateVisibility::Visible);
-	}
+		for (int32 i = 0; i < Rows.Num(); ++i)
+		{
+			if (!Rows[i]) { continue; }
+
+			if (i < Names.Num()) { Rows[i]->SetVoter(Names[i]); }
+			else                 { Rows[i]->ClearVoter(); }
+		}
+	};
+
+	FillRows(NextRows, NextNames);
+	FillRows(HubRows,  HubNames);
 }
 
 void UNSRunResultWidget::RefreshVoteInfo()
@@ -313,7 +334,61 @@ void UNSRunResultWidget::RefreshVoteInfo()
 	
 	SetVoteResult(RunGameState->NextVotes, RunGameState->HubVotes);
 	RefreshVoteVoters();
+	RefreshVoteSummary();
 	RefreshLocalVoteSelection();
+}
+
+void UNSRunResultWidget::RefreshVoteSummary()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	AGameStateBase* GameState = World->GetGameState();
+	if (!GameState)
+	{
+		return;
+	}
+
+	// 분자: 투표 확정 인원
+	int32 VotedCount = 0;
+	for (APlayerState* PS : GameState->PlayerArray)
+	{
+		const ANSPlayerState* NSPS = Cast<ANSPlayerState>(PS);
+		if (NSPS && NSPS->bVoteConfirmed)
+		{
+			++VotedCount;
+		}
+	}
+
+	// 분모: 접속 인원
+	const int32 TotalCount = GameState->PlayerArray.Num();
+
+	// 텍스트 ex) 2 / 4
+	if (VoteCountText)
+	{
+		VoteCountText->SetText(FText::Format(
+			NSLOCTEXT("RunResult", "VoteCountFormat", "투표 참여 {0} / {1}"),
+			FText::AsNumber(VotedCount),
+			FText::AsNumber(TotalCount)));
+	}
+
+	// 투표한 수만큼만 아이콘을 보이게
+	for (int32 i = 0; i < VoteImages.Num(); ++i)
+	{
+		if (!VoteImages[i])
+		{
+			continue;
+		}
+
+		const bool bShow = (i < VotedCount);
+		VoteImages[i]->SetVisibility(
+			bShow
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Hidden);
+	}
 }
 
 void UNSRunResultWidget::BindRunEndVoteChanged()
