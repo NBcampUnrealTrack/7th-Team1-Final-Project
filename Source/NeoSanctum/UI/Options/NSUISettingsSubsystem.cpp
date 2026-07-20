@@ -107,7 +107,10 @@ void UNSUISettingsSubsystem::SetMouseSensitivity(
 	float NewMouseSensitivity) 
 {
 	const float ClampedSensitivity =
-		FMath::Clamp(NewMouseSensitivity, 0.1f, 2.0f);
+		FMath::Clamp(
+			NewMouseSensitivity,
+			0.10f,
+			10.00f);
 
 	if (FMath::IsNearlyEqual(
 		MouseSensitivity,
@@ -162,7 +165,10 @@ void UNSUISettingsSubsystem::LoadSettings()
 		GGameUserSettingsIni);
 	
 	MouseSensitivity =
-		FMath::Clamp(MouseSensitivity, 0.1f, 2.0f);
+		FMath::Clamp(
+			MouseSensitivity,
+			0.10f,
+			10.00f);
 }
 
 void UNSUISettingsSubsystem::SaveSettings() const
