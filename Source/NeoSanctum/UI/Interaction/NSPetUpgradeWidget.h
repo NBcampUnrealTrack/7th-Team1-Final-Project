@@ -79,7 +79,6 @@ private:
 	void HandleSelectResultMessage(FGameplayTag Channel, const FNSPetUpgradeResultMessage& Message);
 
 private:
-	TWeakObjectPtr<APlayerController> OwningController;
 	// 펫 강화 Snapshot 메시지 리스너
 	FGameplayMessageListenerHandle SnapshotListenerHandle;
 	// 현재 Snapshot 요청 식별자
