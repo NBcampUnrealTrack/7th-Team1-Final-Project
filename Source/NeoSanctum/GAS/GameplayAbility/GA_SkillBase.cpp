@@ -305,6 +305,30 @@ ANSPlayerState* UGA_SkillBase::GetNSPlayerState() const
 	return Cast<ANSPlayerState>(GetOwningActorFromActorInfo());
 }
 
+void UGA_SkillBase::ReportShotsFired(int32 Count)
+{
+	if (!HasAuthority(&CurrentActivationInfo))
+	{
+		return;
+	}
+	if (ANSPlayerState* NSPS = GetNSPlayerState())
+	{
+		NSPS->AddShotsFired(Count);
+	}
+}
+
+void UGA_SkillBase::ReportShotsHit(int32 Count)
+{
+	if (!HasAuthority(&CurrentActivationInfo))
+	{
+		return;
+	}
+	if (ANSPlayerState* NSPS = GetNSPlayerState())
+	{
+		NSPS->AddShotsHit(Count);
+	}
+}
+
 FString UGA_SkillBase::GetCurrentPredictionKeyStatus()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();

@@ -82,6 +82,39 @@ void ANSPlayerState::AddKill(ENSEnemyRank Rank)
 	ForceNetUpdate(); 
 }
 
+void ANSPlayerState::AddShotsFired(int32 Count)
+{
+	if (!HasAuthority() || Count <= 0)
+	{
+		return;
+	}
+	
+	ShotsFired += Count;
+	ForceNetUpdate();
+}
+
+void ANSPlayerState::AddShotsHit(int32 Count)
+{
+	if (!HasAuthority() || Count <= 0)
+	{
+		return;
+	}
+	
+	ShotsHit += Count;
+	ForceNetUpdate();
+}
+
+void ANSPlayerState::AddDamageDealt(int64 Amount)
+{
+	if (!HasAuthority() || Amount <= 0.0f)
+	{
+		return;
+	}
+	
+	TotalDamageDealt += Amount;
+	ForceNetUpdate();
+}
+
 void ANSPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
@@ -102,6 +135,9 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, NormalKillCount);
 	DOREPLIFETIME(ANSPlayerState, EliteKillCount);
 	DOREPLIFETIME(ANSPlayerState, BossKillCount);
+	DOREPLIFETIME(ANSPlayerState, ShotsFired);
+	DOREPLIFETIME(ANSPlayerState, ShotsHit);
+	DOREPLIFETIME(ANSPlayerState, TotalDamageDealt);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)

@@ -102,14 +102,19 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
 	bool bVoteConfirmed = false;
 	
-	// 랭크별 처치 수 가져올 용도
+	// 결과창에 관련된 데이터 표시용
 	int32 GetNormalKillCount() const { return NormalKillCount; }
 	int32 GetEliteKillCount() const { return EliteKillCount; }
 	int32 GetBossKillCount() const { return BossKillCount; }
+	int32 GetShotsFired() const { return ShotsFired; }
+	int64 GetShotsHit() const { return ShotsHit; }
+	float GetTotalDamageDealt() const { return TotalDamageDealt; }
 	
 	// 죽은 적의 랭크에 따라 해당 카운트 증가
 	void AddKill(ENSEnemyRank Rank);
-
+	void AddShotsFired(int32 Count);
+	void AddShotsHit(int32 Count);
+	void AddDamageDealt(int64 Amount);
 protected:
 	virtual void BeginPlay() override;
 
@@ -184,6 +189,14 @@ private:
 	UPROPERTY(Replicated)
 	int32 BossKillCount = 0;
 	
+	UPROPERTY(Replicated)
+	int32 ShotsFired = 0;
+
+	UPROPERTY(Replicated)
+	int32 ShotsHit = 0;
+	
+	UPROPERTY(Replicated)
+	int64 TotalDamageDealt = 0.0f;
 	
 	UFUNCTION()
 	void OnRep_bIsReady();

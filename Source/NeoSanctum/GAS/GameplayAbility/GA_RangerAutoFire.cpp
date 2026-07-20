@@ -491,6 +491,8 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 	
+	ReportShotsFired(1); 
+	
 	// 조준 Trace가 빗나가도 서버 기준 TraceEnd까지 총구 막힘 검사는 수행.
 	const FVector AimPoint = bServerAimHit ? FVector(ServerHitResult.ImpactPoint) : ServerTraceEnd;
 	const AActor* AimTargetActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
@@ -506,7 +508,10 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
 		const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
 
-		ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance);
+		if (ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance))
+		{
+			ReportShotsHit(1);
+		}
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
@@ -516,21 +521,24 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance);
+	if (ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance))
+	{
+		ReportShotsHit(1);
+	}
 	ExecuteImpactCue(ServerHitResult);
 }
 
-void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
+bool  UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
 	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
 	{
-		return;
+		return false;
 	}
 	
 	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
 	{
-		return;
+		return false;
 	}
 	
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
@@ -538,19 +546,19 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 	
 	if (!SourceASC || !TargetASC)
 	{
-		return;
+		return false;
 	}
 
 	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
 	{
-		return;
+		return false;
 	}
 	
 	float FinalDamage = 0.0f;
 	
 	if (!TryGetFinalDamage(FinalDamage))
 	{
-		return;
+		return false;
 	}
 
 	float DamageFalloffMultiplier = 1.0f;
@@ -565,7 +573,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 			("HitDistance", HitDistance)
 		);
 
-		return;
+		return false;
 	}
 
 	// 감쇠된 값을 기존 Effect.Damage.Base 흐름으로 전달.
@@ -579,7 +587,7 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 	
 	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
 	{
-		return;
+		return false;
 	}
 	
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
@@ -590,6 +598,8 @@ void UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float H
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+	
+	return true;
 }
 
 bool UGA_RangerAutoFire::TryGetFinalDamage(float& OutDamage)

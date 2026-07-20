@@ -116,7 +116,7 @@ private:
 	// 서버 Canonical Aim Trace와 총구 막힘 결과를 기준으로 실제 데미지를 적용.
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 	
-	void ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
+	bool ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
 	bool TryGetFinalDamage(float& OutDamage);
 	bool TryGetFinalFireInterval(float& OutFireInterval);
 	bool TryGetFinalFireRange(float& OutFireRange) const;

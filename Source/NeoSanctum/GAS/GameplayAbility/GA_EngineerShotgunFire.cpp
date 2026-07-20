@@ -649,7 +649,9 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 	{
 		return;
 	}
-
+	
+	ReportShotsFired(TargetDataHandle.Num());
+	int32 PelletHitCount = 0;
 	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
 	{
 		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
@@ -705,7 +707,10 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 			const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
 			const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
 
-			ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance);
+			if (ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance))
+			{
+				++PelletHitCount;
+			}
 			ExecuteImpactCue(MuzzleObstructionHitResult);
 			continue;
 		}
@@ -715,10 +720,14 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 			continue;
 		}
 
-		ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance);
+		if (ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance))
+		{
+			++PelletHitCount;
+		}
 		ExecuteImpactCue(ServerHitResult);
 	}
-
+	
+	ReportShotsHit(PelletHitCount);
 	// 모든 펠릿 GE 적용이 끝난 다음에 완료 신호를 보냄.
 	CompleteAttackFeedbackGroup();
 }
@@ -744,17 +753,17 @@ void UGA_EngineerShotgunFire::CompleteAttackFeedbackGroup() const
 	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
 }
 
-void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
+bool UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
 	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
 	{
-		return;
+		return false;
 	}
 	
 	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
 	{
-		return;
+		return false;
 	}
 
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
@@ -762,19 +771,19 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 
 	if (!SourceASC || !TargetASC)
 	{
-		return;
+		return false;
 	}
 
 	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
 	{
-		return;
+		return false;
 	}
 
 	float FinalDamage = 0.0f;
 
 	if (!TryGetFinalDamage(FinalDamage))
 	{
-		return;
+		return false;
 	}
 
 	float DamageFalloffMultiplier = 1.0f;
@@ -789,7 +798,7 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 		("HitDistance", HitDistance)
 	);
 
-		return;
+		return false;
 	}
 
 	// 펠릿의 실제 충돌 거리에 맞춰 최종 데미지를 감쇠.
@@ -803,7 +812,7 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 
 	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
 	{
-		return;
+		return false;
 	}
 
 	FGameplayEffectContextHandle EffectContext = DamageSpecHandle.Data->GetContext();
@@ -816,6 +825,8 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, fl
 	AssignDamageInstigator(DamageSpecHandle);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+	
+	return true;
 }
 
 void UGA_EngineerShotgunFire::ApplyDamageSetByCaller(
