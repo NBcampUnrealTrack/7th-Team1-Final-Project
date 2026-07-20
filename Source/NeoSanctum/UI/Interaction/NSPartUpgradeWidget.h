@@ -37,8 +37,10 @@ public:
 protected:
 	virtual void OnCloseWidget() override;
 
-	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
-	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	/**
+	 * FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
+	 * 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
+	 */
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Part")
@@ -121,9 +123,6 @@ protected:
 	TObjectPtr<UNSPartDetailWidget> StockDetailWidget;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UTextBlock> BuyPriceText;
-
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> BuyButton;
 
 	// 재고 1칸 위젯 (에디터 Class Defaults에서 WBP_PartCatalogEntry 지정)
@@ -166,6 +165,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> RerollCostText;
+
+	// 리롤 비용 아래에 표시하는 "기존 수치 : {현재값}" (선택된 파츠의 현재 스탯 수치)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UTextBlock> RerollCurrentValueText;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> RerollButton;
