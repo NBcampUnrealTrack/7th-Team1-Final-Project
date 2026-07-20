@@ -21,6 +21,15 @@ enum class ENSPartRarity : uint8
 	Legendary   UMETA(DisplayName = "레전더리"),
 };
 
+// 스탯 수치 표시에 붙는 단위. 실제 계산에는 영향 없는 UI 전용 값
+UENUM(BlueprintType)
+enum class ENSStatDisplayUnit : uint8
+{
+	None      UMETA(DisplayName = "없음"),
+	Percent   UMETA(DisplayName = "% (확률 등)"),
+	Seconds   UMETA(DisplayName = "초 (쿨다운 등)"),
+};
+
 USTRUCT(BlueprintType)
 struct FNSPartValueRange
 {
@@ -72,8 +81,10 @@ struct FNSPartDefinitionRow : public FTableRowBase
 	ENSCombatStatModifierOperation Operation = ENSCombatStatModifierOperation::Add;
 };
 
-// StatTag 하나당 Row 하나. RowName은 StatTag와 동일해야 함.
-// 파츠 상호작용 프롬프트의 스탯 비교 UI가 표시 이름/좋은 방향을 조회하는 용도
+/**
+ * StatTag 하나당 Row 하나. RowName은 StatTag와 동일해야 함.
+ * 파츠 상호작용 프롬프트의 스탯 비교 UI가 표시 이름/좋은 방향을 조회하는 용도
+ */
 USTRUCT(BlueprintType)
 struct FNSStatDisplayInfoRow : public FTableRowBase
 {
@@ -90,10 +101,16 @@ struct FNSStatDisplayInfoRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
 	bool bHigherIsBetter = true;
 
-	// 이 스탯의 등급별 수치 범위. 파츠 최종 수치 = 해당 등급 범위에서 직접 롤
-	// 키가 없는 등급 = 그 등급에서는 이 스탯이 파츠 후보로 나오지 않음 (의도적 제외, 예: MaxJumpCount는 Legendary만)
+	/**
+	 * 이 스탯의 등급별 수치 범위. 파츠 최종 수치 = 해당 등급 범위에서 직접 롤
+	 * 키가 없는 등급 = 그 등급에서는 이 스탯이 파츠 후보로 나오지 않음 (의도적 제외, 예: MaxJumpCount는 Legendary만)
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
 	TMap<ENSPartRarity, FNSPartValueRange> ValueRangesByRarity;
+
+	// 수치 표시에 붙일 단위 (예: 크리티컬 확률 = %, 쿨다운 감소 = 초). UI 전용, 실제 계산 무관
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "NS|Stat")
+	ENSStatDisplayUnit DisplayUnit = ENSStatDisplayUnit::None;
 };
 
 /**
