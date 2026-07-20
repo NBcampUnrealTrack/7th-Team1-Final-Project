@@ -4,6 +4,8 @@
 
 #include "Components/HorizontalBox.h"
 #include "Components/HorizontalBoxSlot.h"
+#include "Components/VerticalBox.h"
+#include "Components/VerticalBoxSlot.h"
 #include "NSDashStackEntryWidget.h"
 
 void UNSDashStackWidget::SetDashCount(
@@ -61,14 +63,28 @@ void UNSDashStackWidget::RebuildEntries(
 			continue;
 		}
 
-		UHorizontalBoxSlot* EntrySlot =
-			DashStackBox->AddChildToHorizontalBox(
-				Entry);
+		UVerticalBoxSlot* EntrySlot =
+			DashStackBox->AddChildToVerticalBox(Entry);
 
 		if (EntrySlot)
 		{
+			const float BottomPadding =
+				Index < MaxDashCount - 1
+					? 2.0f
+					: 0.0f;
+
 			EntrySlot->SetPadding(
-				FMargin(0.0f, 0.0f, 6.0f, 0.0f));
+				FMargin(
+					0.0f,
+					0.0f,
+					0.0f,
+					BottomPadding));
+
+			EntrySlot->SetHorizontalAlignment(
+				HAlign_Center);
+
+			EntrySlot->SetVerticalAlignment(
+				VAlign_Center);
 		}
 
 		DashStackEntries.Add(Entry);

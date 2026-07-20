@@ -9,6 +9,14 @@
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Fonts/FontMeasure.h"
+#include "Engine/World.h"
+#include "TimerManager.h"
+#include "Components/HorizontalBox.h"
+#include "Components/ButtonSlot.h"
+#include "Components/ComboBoxString.h"
+#include "Styling/SlateTypes.h"
 
 void UNSGameplaySettingWidget::ApplyCrosshairColor(FLinearColor NewColor)
 {
@@ -105,32 +113,46 @@ void UNSGameplaySettingWidget::NativeConstruct()
 			&ThisClass::OnApplyCustomColorClicked);
 	}
 	
-	if (UNSUISettingsSubsystem* Settings =
+	if (MouseSensitivitySlider)
+	{
+		MouseSensitivitySlider->SetMinValue(0.10f);
+		MouseSensitivitySlider->SetMaxValue(10.00f);
+		MouseSensitivitySlider->SetStepSize(0.01f);
+	}
+
+	if (const UNSUISettingsSubsystem* Settings =
 		GetUISettingSubsystem())
 	{
 		PendingMouseSensitivity =
 			Settings->GetMouseSensitivity();
-		
+
 		if (MouseSensitivitySlider)
 		{
 			MouseSensitivitySlider->SetValue(
 				PendingMouseSensitivity);
 		}
 	}
-	
+
 	if (MouseSensitivitySlider)
 	{
 		MouseSensitivitySlider->OnValueChanged.AddDynamic(
 			this,
 			&ThisClass::OnMouseSensitivityChanged);
-		
+
 		MouseSensitivitySlider->OnMouseCaptureEnd.AddDynamic(
 			this,
 			&ThisClass::OnMouseSensitivityCaptureEnd);
-		
+
 		MouseSensitivitySlider->OnControllerCaptureEnd.AddDynamic(
 			this,
 			&ThisClass::OnMouseSensitivityCaptureEnd);
+	}
+
+	if (MouseSensitivityValueText)
+	{
+		MouseSensitivityValueText->OnTextCommitted.AddUniqueDynamic(
+			this,
+			&ThisClass::OnMouseSensitivityTextCommitted);
 	}
 	
 	if (LanguageComboBox)
@@ -138,10 +160,33 @@ void UNSGameplaySettingWidget::NativeConstruct()
 		LanguageComboBox->OnGenerateWidgetEvent.BindDynamic(
 			this,
 			&ThisClass::GenerateLanguageOptionWidget);
+
+		MakeComboBoxPopupTransparent(
+			LanguageComboBox);
 	}
+
 	UpdateMouseSensitivityText();
 	UpdateApplyButtonState();
 	InitializeLanguageOptions();
+
+	CenterSelectedOptionText(
+		LanguageComboBox);
+	
+	// 초기 표시용
+	CenterSelectedOptionText(LanguageComboBox);
+
+	// 실제 레이아웃 너비가 결정된 다음 다시 중앙 정렬
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimerForNextTick(
+			FTimerDelegate::CreateWeakLambda(
+				this,
+				[this]()
+				{
+					CenterSelectedOptionText(LanguageComboBox);
+				}));
+	}
+	ApplyCrosshairSettingsLayout();
 }
 
 void UNSGameplaySettingWidget::NativeDestruct()
@@ -179,6 +224,11 @@ void UNSGameplaySettingWidget::NativeDestruct()
 		MouseSensitivitySlider->OnValueChanged.RemoveAll(this);
 		MouseSensitivitySlider->OnMouseCaptureEnd.RemoveAll(this);
 		MouseSensitivitySlider->OnControllerCaptureEnd.RemoveAll(this);
+	}
+	
+	if (MouseSensitivityValueText)
+	{
+		MouseSensitivityValueText->OnTextCommitted.RemoveAll(this);
 	}
 	Super::NativeDestruct();
 }
@@ -284,6 +334,8 @@ UWidget* UNSGameplaySettingWidget::GenerateLanguageOptionWidget(
 
 void UNSGameplaySettingWidget::OnLanguageSelectionChanged(FString SelectionItem, ESelectInfo::Type SelectionType)
 {
+	CenterSelectedOptionText(LanguageComboBox);
+	
 	UNSUISettingsSubsystem* Settings =
 		GetUISettingSubsystem();
 	
@@ -302,9 +354,12 @@ void UNSGameplaySettingWidget::OnLanguageSelectionChanged(FString SelectionItem,
 
 void UNSGameplaySettingWidget::OnMouseSensitivityChanged(float Value)
 {
-	PendingMouseSensitivity = 
-		FMath::Clamp(Value, 0.1f, 2.0f);
-	
+	const float ClampedValue =
+		FMath::Clamp(Value, 0.10f, 10.00f);
+
+	PendingMouseSensitivity =
+		FMath::RoundToFloat(ClampedValue * 100.0f) / 100.0f;
+
 	UpdateMouseSensitivityText();
 }
 
@@ -320,15 +375,68 @@ void UNSGameplaySettingWidget::OnMouseSensitivityCaptureEnd()
 	Settings->SetMouseSensitivity(PendingMouseSensitivity);
 }
 
+void UNSGameplaySettingWidget::OnMouseSensitivityTextCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	FString InputString =
+		Text.ToString().TrimStartAndEnd();
+
+	// 1,25처럼 입력해도 1.25로 처리
+	InputString.ReplaceInline(
+		TEXT(","),
+		TEXT("."));
+
+	float InputValue = 0.0f;
+
+	if (!LexTryParseString(InputValue, *InputString) ||
+		!FMath::IsFinite(InputValue))
+	{
+		// 잘못된 입력이면 현재 정상값으로 복구
+		UpdateMouseSensitivityText();
+		return;
+	}
+
+	InputValue =
+		FMath::Clamp(
+			InputValue,
+			0.10f,
+			10.00f);
+
+	PendingMouseSensitivity =
+		FMath::RoundToFloat(InputValue * 100.0f) / 100.0f;
+
+	if (MouseSensitivitySlider)
+	{
+		MouseSensitivitySlider->SetValue(
+			PendingMouseSensitivity);
+	}
+
+	UpdateMouseSensitivityText();
+
+	if (UNSUISettingsSubsystem* Settings =
+		GetUISettingSubsystem())
+	{
+		Settings->SetMouseSensitivity(
+			PendingMouseSensitivity);
+	}
+}
 void UNSGameplaySettingWidget::UpdateMouseSensitivityText()
 {
 	if (!MouseSensitivityValueText)
 	{
 		return;
 	}
-	
+
+	FNumberFormattingOptions FormattingOptions;
+	FormattingOptions.SetUseGrouping(false);
+	FormattingOptions.SetMinimumIntegralDigits(1);
+	FormattingOptions.SetMaximumIntegralDigits(2);
+	FormattingOptions.SetMinimumFractionalDigits(2);
+	FormattingOptions.SetMaximumFractionalDigits(2);
+
 	MouseSensitivityValueText->SetText(
-		FText::AsPercent(PendingMouseSensitivity));
+		FText::AsNumber(
+			PendingMouseSensitivity,
+			&FormattingOptions));
 }
 
 void UNSGameplaySettingWidget::SynchronizeSliders(
@@ -423,22 +531,167 @@ void UNSGameplaySettingWidget::InitializeLanguageOptions()
 	{
 		return;
 	}
-	
+
+	// 재초기화 과정에서 기존 선택 이벤트가 호출되지 않도록 먼저 해제
+	LanguageComboBox->OnSelectionChanged.RemoveDynamic(
+		this,
+		&ThisClass::OnLanguageSelectionChanged);
+
 	LanguageComboBox->ClearOptions();
 	LanguageComboBox->AddOption(TEXT("한국어"));
 	LanguageComboBox->AddOption(TEXT("English"));
-	
+
 	const UNSUISettingsSubsystem* Settings =
 		GetUISettingSubsystem();
-	
+
 	const bool bIsEnglish =
 		Settings &&
-			Settings->GetLanguageCode().StartsWith(TEXT("en"));
-	
+		Settings->GetLanguageCode().StartsWith(
+			TEXT("en"));
+
 	LanguageComboBox->SetSelectedOption(
-		bIsEnglish ? TEXT("English") : TEXT("한국어"));
-	
-	LanguageComboBox->OnSelectionChanged.AddDynamic(
+		bIsEnglish
+			? TEXT("English")
+			: TEXT("한국어"));
+
+	LanguageComboBox->OnSelectionChanged.AddUniqueDynamic(
 		this,
 		&ThisClass::OnLanguageSelectionChanged);
+}
+
+void UNSGameplaySettingWidget::CenterSelectedOptionText(UComboBoxString* ComboBox)
+{
+	if (!ComboBox || !FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+
+	const FString SelectedOption =
+		ComboBox->GetSelectedOption();
+
+	if (SelectedOption.IsEmpty())
+	{
+		return;
+	}
+
+	const TSharedRef<FSlateFontMeasure> FontMeasure =
+		FSlateApplication::Get()
+		.GetRenderer()
+		->GetFontMeasureService();
+
+	FSlateFontInfo FontInfo =
+		ComboBox->GetFont();
+
+	// GenerateLanguageOptionWidget()에서 사용하는 글자 크기
+	FontInfo.Size = 20;
+
+	const FVector2D TextSize =
+		FontMeasure->Measure(
+			FStringView(SelectedOption),
+			FontInfo,
+			1.0f);
+
+	const float CachedWidth =
+		ComboBox->GetCachedGeometry()
+		.GetLocalSize()
+		.X;
+
+	// WBP의 SizeBox_387 Width Override가 250
+	const float ComboBoxWidth =
+		CachedWidth > 0.0f
+			? CachedWidth
+			: 360.0f;
+
+	const FMargin ButtonPadding =
+		ComboBox->GetWidgetStyle()
+		.ComboButtonStyle
+		.ContentPadding;
+
+	// GenerateLanguageOptionWidget()의 Border 왼쪽 Padding
+	constexpr float GeneratedTextLeftPadding = 18.0f;
+	constexpr float MinimumContentPadding = 4.0f;
+
+	const float CenteredLeftPadding =
+		((ComboBoxWidth - TextSize.X) * 0.5f)
+		- ButtonPadding.Left
+		- GeneratedTextLeftPadding;
+
+	FMargin ContentPadding =
+		ComboBox->GetContentPadding();
+
+	ContentPadding.Left =
+		FMath::Max(
+			MinimumContentPadding,
+			CenteredLeftPadding);
+
+	ComboBox->SetContentPadding(ContentPadding);
+}
+
+void UNSGameplaySettingWidget::ApplyCrosshairSettingsLayout()
+{
+	auto CenterButtonText =
+		[this](const FName TextWidgetName)
+		{
+			UTextBlock* ButtonText =
+				Cast<UTextBlock>(
+					GetWidgetFromName(TextWidgetName));
+
+			if (!ButtonText)
+			{
+				return;
+			}
+
+			ButtonText->SetJustification(
+				ETextJustify::Center);
+
+			if (UButtonSlot* ButtonSlot =
+				Cast<UButtonSlot>(
+					ButtonText->Slot))
+			{
+				// TextBlock이 버튼 전체 너비를 차지하게 한 뒤
+				// 텍스트를 그 영역의 중앙에 배치한다.
+				ButtonSlot->SetHorizontalAlignment(
+					HAlign_Fill);
+
+				ButtonSlot->SetVerticalAlignment(
+					VAlign_Center);
+
+				ButtonSlot->SetPadding(
+					FMargin(0.0f));
+			}
+		};
+
+	CenterButtonText(TEXT("TextBlock_472"));
+	CenterButtonText(TEXT("TextBlock_574"));
+}
+
+void UNSGameplaySettingWidget::MakeComboBoxPopupTransparent(UComboBoxString* ComboBox)
+{
+	if (!ComboBox)
+	{
+		return;
+	}
+
+	FComboBoxStyle ComboBoxStyle = ComboBox->GetWidgetStyle();
+	FTableRowStyle ItemStyle = ComboBox->GetItemStyle();
+
+	auto MakeBrushTransparent = [](FSlateBrush& Brush)
+	{
+		Brush.DrawAs = ESlateBrushDrawType::NoDrawType;
+		Brush.TintColor = FSlateColor(FLinearColor::Transparent);
+	};
+
+	// 콤보박스를 열었을 때 나타나는 외부 회색 배경
+	MakeBrushTransparent(
+		ComboBoxStyle.ComboButtonStyle.MenuBorderBrush);
+
+	// 목록 항목의 기본 회색 배경
+	MakeBrushTransparent(
+		ItemStyle.EvenRowBackgroundBrush);
+
+	MakeBrushTransparent(
+		ItemStyle.OddRowBackgroundBrush);
+
+	ComboBox->SetWidgetStyle(ComboBoxStyle);
+	ComboBox->SetItemStyle(ItemStyle);
 }
