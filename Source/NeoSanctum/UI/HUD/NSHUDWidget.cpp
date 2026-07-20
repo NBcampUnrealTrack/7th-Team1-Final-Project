@@ -353,12 +353,19 @@ void UNSHUDWidget::ShowInRunGoods()
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowInRunGoods"));
 	if (GoodsWidget)
 	{
-		GoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		GoodsWidget->SetVisibility(
+			ESlateVisibility::HitTestInvisible);
 	}
 
 	if (OutRunGoodsWidget)
 	{
-		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+		OutRunGoodsWidget->SetVisibility(
+			ESlateVisibility::Collapsed);
+	}
+
+	if (HPShieldWidget)
+	{
+		HPShieldWidget->SetCharacterInputIconVisible(true);
 	}
 }
 
@@ -367,13 +374,20 @@ void UNSHUDWidget::ShowOutRunGoods()
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowOutRunGoods"));
 	if (GoodsWidget)
 	{
-		GoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+		GoodsWidget->SetVisibility(
+			ESlateVisibility::Collapsed);
 	}
 
 	if (OutRunGoodsWidget)
 	{
 		OutRunGoodsWidget->RefreshGoods();
-		OutRunGoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		OutRunGoodsWidget->SetVisibility(
+			ESlateVisibility::HitTestInvisible);
+	}
+
+	if (HPShieldWidget)
+	{
+		HPShieldWidget->SetCharacterInputIconVisible(false);
 	}
 }
 

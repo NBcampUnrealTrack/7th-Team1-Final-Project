@@ -44,6 +44,8 @@ public:
 	void SetAmmo(int32 CurrentAmmo, int32 MaxAmmo);
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetReloading(bool bReloading);
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void SetCharacterInputIconVisible(bool bVisible);
 	
 private:
 	//0 나누기 방지 후 ProgressBar 비율 계산
@@ -76,6 +78,9 @@ private:
 	//탄약을 사용하는 캐릭터만 표시하는 AMMO 행
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> AmmoRow;
+	// 캐릭터 메뉴 C 단축키 아이콘
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> CharacterInputSizeBox;
 	
 	bool bIsReloading = false;
 	int32 CachedCurrentAmmo = 0;
