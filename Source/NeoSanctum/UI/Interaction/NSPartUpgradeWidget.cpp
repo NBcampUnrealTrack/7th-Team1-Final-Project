@@ -165,7 +165,7 @@ FReply UNSPartUpgradeWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
-void UNSPartUpgradeWidget::CloseWidget()
+void UNSPartUpgradeWidget::OnCloseWidget()
 {
 	// 떠 있는 결과 토스트가 위젯보다 오래 남지 않도록 정리
 	if (IsValid(NoticePopup))
@@ -198,14 +198,6 @@ void UNSPartUpgradeWidget::CloseWidget()
 		PreviewStage->Destroy();
 		PreviewStage = nullptr;
 	}
-
-	// X버튼/ESC 등 위젯 자체 경로로 닫혀도 이동 매핑 복원 + ActiveInteractionWidget 정리가 되도록 통지
-	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
-	{
-		NSPC->NotifyInteractionWidgetClosed(this);
-	}
-
-	RemoveFromParent();
 }
 
 // ================================================================

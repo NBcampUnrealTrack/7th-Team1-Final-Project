@@ -26,9 +26,10 @@ class NEOSANCTUM_API UNSCommonUpgradeWidget : public UNSNPCInteractionWidgetBase
 
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
-	virtual void CloseWidget() override;
 
 protected:
+	virtual void OnCloseWidget() override;
+
 	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
 	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
@@ -105,9 +106,6 @@ private:
 	void HandleNodeUpgradeRequested(FName NodeId);
 
 	UWidget* GetPanelFrameForCategory(ENSCommonUpgradeCategory Category) const;
-
-	UPROPERTY()
-	TWeakObjectPtr<APlayerController> OwningController;
 
 	// 현재 디테일 패널이 표시 중인 노드. 호버 종료 이벤트가 늦게 도착해 다른 노드의 패널을 잘못 닫는 것을 방지.
 	FName CurrentlyHoveredNodeId;

@@ -23,9 +23,8 @@ class NEOSANCTUM_API UNSPetUpgradeWidget : public UNSNPCInteractionWidgetBase
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
 
-	UFUNCTION(BlueprintCallable, Category = "Pet")
-	virtual void CloseWidget() override;
-	
+protected:
+	virtual void OnCloseWidget() override;
 
 private:
 	//현재 선택된 펫의 강화 상태를 요청
@@ -61,7 +60,6 @@ private:
 		FGameplayTag NodeTag);
 	
 private:
-	TWeakObjectPtr<APlayerController> OwningController;
 	// 펫 강화 Snapshot 메시지 리스너
 	FGameplayMessageListenerHandle SnapshotListenerHandle;
 	// 현재 Snapshot 요청 식별자

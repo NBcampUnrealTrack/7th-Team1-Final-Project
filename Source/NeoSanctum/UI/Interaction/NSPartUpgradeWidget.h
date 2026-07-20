@@ -33,9 +33,10 @@ class NEOSANCTUM_API UNSPartUpgradeWidget : public UNSNPCInteractionWidgetBase
 
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
-	virtual void CloseWidget() override;
 
 protected:
+	virtual void OnCloseWidget() override;
+
 	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
 	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
@@ -255,9 +256,6 @@ private:
 
 	// 결과 토스트 표시 (팝업 인스턴스는 최초 1회 생성 후 재사용)
 	void ShowResultToast(const FText& Message);
-
-	UPROPERTY()
-	TWeakObjectPtr<APlayerController> OwningController;
 
 	UPROPERTY()
 	TObjectPtr<class UNSNoticePopupWidget> NoticePopup;

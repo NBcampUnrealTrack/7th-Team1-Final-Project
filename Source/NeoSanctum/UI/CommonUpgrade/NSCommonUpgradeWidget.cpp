@@ -42,15 +42,13 @@ void UNSCommonUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	Interactor->SetInputMode(InputMode);
 }
 
-void UNSCommonUpgradeWidget::CloseWidget()
+void UNSCommonUpgradeWidget::OnCloseWidget()
 {
 	if (APlayerController* PC = OwningController.Get())
 	{
 		PC->SetShowMouseCursor(false);
 		PC->SetInputMode(FInputModeGameOnly());
 	}
-
-	RemoveFromParent();
 }
 
 FReply UNSCommonUpgradeWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)

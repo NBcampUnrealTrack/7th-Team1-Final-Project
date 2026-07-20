@@ -38,10 +38,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Part")
 	void RequestClose();
 
-	// 실제 닫기 + 입력모드 복구
-	UFUNCTION(BlueprintCallable, Category = "Part")
-	virtual void CloseWidget() override;
-
 	// 슬롯 언락 요청 (활성 캐릭터 기준)
 	UFUNCTION(BlueprintCallable, Category = "Part")
 	bool RequestUnlockSlot(FGameplayTag PartSlot);
@@ -91,6 +87,9 @@ public:
 	void SelectCatalogPart(const FNSPartDefinitionRow& Row, UNSPartCatalogEntryWidget* SourceEntry = nullptr);
 
 protected:
+	// 실제 닫기 + 입력모드 복구
+	virtual void OnCloseWidget() override;
+
 	// FInputModeUIOnly가 게임 입력을 완전히 차단해 ANSPlayerController의 네이티브 ESC 바인딩이
 	// 도달하지 못하므로, 포커스를 가진 이 위젯이 직접 ESC를 가로채 닫기 처리.
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
@@ -218,9 +217,6 @@ private:
 
 	// 현재 SelectionMode에 맞춰 카탈로그 항목/슬롯버튼 3개의 선택 표시를 갱신
 	void RefreshSelectionHighlights();
-
-	UPROPERTY()
-	TWeakObjectPtr<APlayerController> OwningController;
 
 	bool bDirty = false;
 
