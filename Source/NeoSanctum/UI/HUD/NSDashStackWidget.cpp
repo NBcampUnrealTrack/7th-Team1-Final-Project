@@ -25,6 +25,9 @@ void UNSDashStackWidget::SetDashCount(
 	{
 		RebuildEntries(SafeMaxCount);
 	}
+	
+	const int32 FirstActiveIndex =
+		SafeMaxCount - SafeCurrentCount;
 
 	for (int32 Index = 0;
 		 Index < DashStackEntries.Num();
@@ -33,7 +36,7 @@ void UNSDashStackWidget::SetDashCount(
 		if (DashStackEntries[Index])
 		{
 			DashStackEntries[Index]->SetActive(
-				Index < SafeCurrentCount);
+				Index >= FirstActiveIndex);
 		}
 	}
 }
