@@ -2,10 +2,13 @@
 
 #include "NSVanguardBarrierFieldProjectile.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSVanguardBarrierField.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 ANSVanguardBarrierFieldProjectile::ANSVanguardBarrierFieldProjectile()
 {
@@ -137,10 +140,34 @@ void ANSVanguardBarrierFieldProjectile::DeployField(
 			GetSetByCallerMagnitudes()
 		);
 		Field->ForceNetUpdate();
+
+		ExecuteDeployCue(Field->GetActorLocation(), DeployNormal, FieldRadius);
 	}
 
 	CompletePlayerAttackFeedbackGroup();
 	Destroy();
+}
+
+void ANSVanguardBarrierFieldProjectile::ExecuteDeployCue(
+	const FVector& DeployLocation,
+	const FVector& DeployNormal,
+	float FieldRadius) const
+{
+	UAbilitySystemComponent* SourceASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwningPawn());
+
+	if (!SourceASC)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = GetOwningPawn();
+	CueParameters.Location = DeployLocation;
+	CueParameters.Normal = DeployNormal;
+	CueParameters.RawMagnitude = FieldRadius;
+
+	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Vanguard_BarrierField_Deploy, CueParameters);
 }
 
 float ANSVanguardBarrierFieldProjectile::GetFieldRadius() const
