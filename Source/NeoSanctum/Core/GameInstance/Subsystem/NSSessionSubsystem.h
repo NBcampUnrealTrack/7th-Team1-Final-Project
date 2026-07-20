@@ -49,10 +49,6 @@ public:
 	// 인런 진입 시 세션을 InProgress로 전환해 중간 참가를 차단
 	void StartRunSession();
 	
-	// 임시 검증용 함수
-	UFUNCTION(BlueprintCallable, Category = "Session")
-	void FindAndJoinFirstSession();
-	
 	// GameMode가 호출하는 세션 인원 등록,해제용 함수
 	void RegisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
 	void UnregisterPlayerInSession(const FUniqueNetIdRepl& PlayerId);
