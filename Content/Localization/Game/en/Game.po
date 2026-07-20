@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-07-19 10:17\n"
-"PO-Revision-Date: 2026-07-19 10:17\n"
+"POT-Creation-Date: 2026-07-20 12:55\n"
+"PO-Revision-Date: 2026-07-20 12:55\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -83,6 +83,62 @@ msgctxt ",40B6A1144717F6D510C3BA850F9DEE7F"
 msgid "엇박 포격"
 msgstr "Offbeat Barrage"
 
+#. Key:	49115A3640A41B242EDD0BB0F78330DE
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(0).UpgradeNodes.Description
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(0).UpgradeNodes.Description
+msgctxt ",49115A3640A41B242EDD0BB0F78330DE"
+msgid "공격드론의 공격력이 증가합니다"
+msgstr "Increases the attack drone's damage."
+
+#. Key:	DE4AC9D64928DFCAE6E59287D12ED181
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(0).UpgradeNodes.DisplayName
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(0).UpgradeNodes.DisplayName
+msgctxt ",DE4AC9D64928DFCAE6E59287D12ED181"
+msgid "공격력 증가"
+msgstr "Attack Damage Increase"
+
+#. Key:	AD720B64451F4FF98E28359007807790
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(1).UpgradeNodes.Description
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(1).UpgradeNodes.Description
+msgctxt ",AD720B64451F4FF98E28359007807790"
+msgid "공격드론의 공격사거리가 증가합니다"
+msgstr "Increases the attack drone's attack range."
+
+#. Key:	75C91F7243979C87CA606F8DDF82F700
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(1).UpgradeNodes.DisplayName
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(1).UpgradeNodes.DisplayName
+msgctxt ",75C91F7243979C87CA606F8DDF82F700"
+msgid "사거리 증가"
+msgstr "Range Increase"
+
+#. Key:	2053861B419F745A5F24A997C82C1BF5
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(2).UpgradeNodes.Description
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(2).UpgradeNodes.Description
+msgctxt ",2053861B419F745A5F24A997C82C1BF5"
+msgid "공격드론의 초당 공격속도가 증가합니다"
+msgstr "Increases the attack drone's attacks per second."
+
+#. Key:	F2E8E9F34715F67C1E775B971B9824DB
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(2).UpgradeNodes.DisplayName
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Attack.DA_Companion_Attack.UpgradeNodes(2).UpgradeNodes.DisplayName
+msgctxt ",F2E8E9F34715F67C1E775B971B9824DB"
+msgid "공격속도 증가"
+msgstr "Attack Speed Increase"
+
+#. Key:	747838FC4E9C9D97F7C039A7D2E217AE
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Basic.DA_Companion_Basic.UpgradeNodes(0).UpgradeNodes.Description
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Basic.DA_Companion_Basic.UpgradeNodes(0).UpgradeNodes.Description
+msgctxt ",747838FC4E9C9D97F7C039A7D2E217AE"
+msgid "드론의 재화 획득 범위가 늘어납니다"
+msgstr "Increases the drone's currency pickup range."
+
+#. Key:	E1B24F7640D9587FDCADB6AE7BC45E23
+#. SourceLocation:	/Game/NeoSanctum/Data/AI/DA_Companion_Basic.DA_Companion_Basic.UpgradeNodes(0).UpgradeNodes.DisplayName
+#: /Game/NeoSanctum/Data/AI/DA_Companion_Basic.DA_Companion_Basic.UpgradeNodes(0).UpgradeNodes.DisplayName
+msgctxt ",E1B24F7640D9587FDCADB6AE7BC45E23"
+msgid "탐사드론 업그레이드"
+msgstr "Exploration Drone Upgrade"
+
 #. Key:	29179274435924BEA842E5A295F94D4B
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_BaseDamage.DA_Augment_Common_BaseDamage.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_BaseDamage.DA_Augment_Common_BaseDamage.Description
@@ -157,7 +213,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_CritChanUpShdDown.DA_Augment_Common_CritChanUpShdDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_CritChanUpShdDown.DA_Augment_Common_CritChanUpShdDown.Description
 msgctxt ",787DE4CF4A480D7F73C4C299C5DDBA93"
-msgid "치명타 확률 +{CritChance}\r\n실드 -{MaxShield}"
+msgid "치명타 확률 +{CritChance}\r\n보호막 -{MaxShield}"
 msgstr "Critical Chance +{CritChance}\r\nShield -{MaxShield}"
 
 #. Key:	5B9AE14F4EB27B03385B2F81407BF7EF
@@ -213,7 +269,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_CritDmgShdDown.DA_Augment_Common_CritDmgShdDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_CritDmgShdDown.DA_Augment_Common_CritDmgShdDown.Description
 msgctxt ",230E61A44A9BB13067EAED85C86BFD37"
-msgid "치명타 데미지 +{CritDamage}\r\n실드 -{MaxShield}"
+msgid "치명타 데미지 +{CritDamage}\r\n보호막 -{MaxShield}"
 msgstr "Critical Damage +{CritDamage}\r\nShield -{MaxShield}"
 
 #. Key:	4F866A6241097C34107D139C6ADF99C1
@@ -283,7 +339,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_DmgUpShdDown.DA_Augment_Common_DmgUpShdDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_DmgUpShdDown.DA_Augment_Common_DmgUpShdDown.Description
 msgctxt ",A4186F3949774BE0749DF8A5B15632CB"
-msgid "기본 공격력 +{Damage}\r\n실드 -{MaxShield}"
+msgid "기본 공격력 +{Damage}\r\n보호막 -{MaxShield}"
 msgstr "Base Damage +{Damage}\r\nShield -{MaxShield}"
 
 #. Key:	27D3138A41F3DC8BF739949A87E12F4A
@@ -311,7 +367,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_HpUpShdDown.DA_Augment_Common_HpUpShdDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_HpUpShdDown.DA_Augment_Common_HpUpShdDown.Description
 msgctxt ",2F3626C444A06D89D94B0B8C5C764A95"
-msgid "체력 +{MaxHealth}\r\n실드 -{MaxShield}"
+msgid "체력 +{MaxHealth}\r\n보호막 -{MaxShield}"
 msgstr "Health +{MaxHealth}\r\nShield -{MaxShield}"
 
 #. Key:	62B4B1864ADBDFE3AEDE68AE660C7086
@@ -339,7 +395,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_MaxShield.DA_Augment_Common_MaxShield.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_MaxShield.DA_Augment_Common_MaxShield.Description
 msgctxt ",5828E1F5491ED083171A0CAB141F8570"
-msgid "실드 +{Value}"
+msgid "보호막 +{Value}"
 msgstr "Shield +{Value}"
 
 #. Key:	0E576DAF4E95CFA25C67ED87751E48AD
@@ -367,7 +423,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdRgnUpHpDown.DA_Augment_Common_ShdRgnUpHpDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdRgnUpHpDown.DA_Augment_Common_ShdRgnUpHpDown.Description
 msgctxt ",979E317C441A794DBD6228AAF16CCD40"
-msgid "실드 재생량 +{ShieldRechargeRate}\r\n체력 -{MaxHealth}"
+msgid "보호막 재생량 +{ShieldRechargeRate}\r\n체력 -{MaxHealth}"
 msgstr "Shield Regeneration +{ShieldRechargeRate}\r\nHealth -{MaxHealth}"
 
 #. Key:	CB55B1C34704C45A3EFA18A96F687E0A
@@ -381,7 +437,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdUpDefDown.DA_Augment_Common_ShdUpDefDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdUpDefDown.DA_Augment_Common_ShdUpDefDown.Description
 msgctxt ",F7870E514464F5863953B58D3DDE3A3A"
-msgid "실드 +{Value}\r\n방어력 -{Defense}"
+msgid "보호막 +{Value}\r\n방어력 -{Defense}"
 msgstr "Shield +{Value}\r\nDefense -{Defense}"
 
 #. Key:	18974679437A9AF9935049BE52FEB29E
@@ -395,7 +451,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdUpHpDown.DA_Augment_Common_ShdUpHpDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShdUpHpDown.DA_Augment_Common_ShdUpHpDown.Description
 msgctxt ",1E14EFC647F860FE2D51389631B65387"
-msgid "실드 +{Value}\r\n체력 -{MaxHealth}"
+msgid "보호막 +{Value}\r\n체력 -{MaxHealth}"
 msgstr "Shield +{Value}\r\nHealth -{MaxHealth}"
 
 #. Key:	4BF982D2455631F4D2E38C8DAF92E7EF
@@ -409,7 +465,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShieldRegen.DA_Augment_Common_ShieldRegen.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_Common_ShieldRegen.DA_Augment_Common_ShieldRegen.Description
 msgctxt ",8BF81BC94E334CE033C7AB8FFD483913"
-msgid "실드 재생량 +{Value}"
+msgid "보호막 재생량 +{Value}"
 msgstr "Shield Regeneration +{Value}"
 
 #. Key:	4F819D6F48D66AD929B9C7A425106A88
@@ -465,7 +521,7 @@ msgstr "Player"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Common/DA_Augment_DefUpShdRgnDown.DA_Augment_DefUpShdRgnDown.Description
 #: /Game/NeoSanctum/Data/Augment/Common/DA_Augment_DefUpShdRgnDown.DA_Augment_DefUpShdRgnDown.Description
 msgctxt ",3684F6AF45ED23AA14478C92CC49EC65"
-msgid "방어력 +{Defense}\r\n실드 재생량 -{ShieldRechargeRate}"
+msgid "방어력 +{Defense}\r\n보호막 재생량 -{ShieldRechargeRate}"
 msgstr "Defense +{Defense}\r\nShield Regeneration -{ShieldRechargeRate}"
 
 #. Key:	DB559F944A500E7DD06B8B851C30D477
@@ -591,7 +647,7 @@ msgstr "Overload"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_EngineerSpeedBuff_Duration.DA_Augment_EngineerSpeedBuff_Duration.Description
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_EngineerSpeedBuff_Duration.DA_Augment_EngineerSpeedBuff_Duration.Description
 msgctxt ",90B05656497FE9003D1481A9E4437A78"
-msgid "지속시간 +{Value}"
+msgid "지속 시간 +{Value}"
 msgstr "Duration +{Value}"
 
 #. Key:	BFDE3E8B45A5F0345BF45A8F5096C317
@@ -696,8 +752,8 @@ msgstr "Accuracy +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Accuracy.DA_Augment_SpawnTurret_Accuracy.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Accuracy.DA_Augment_SpawnTurret_Accuracy.DisplayName
 msgctxt ",7A1105D54F7AF802D16B6AADB6488847"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	5622272F4176AF69DEAE22A542A21BF8
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Cooldown.DA_Augment_SpawnTurret_Cooldown.Description
@@ -710,8 +766,8 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Cooldown.DA_Augment_SpawnTurret_Cooldown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Cooldown.DA_Augment_SpawnTurret_Cooldown.DisplayName
 msgctxt ",AC504B9D44F6B4F5E3DBD49E1F96E408"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	5DAC370F4BD4C90A479787B20059DB5F
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Damage.DA_Augment_SpawnTurret_Damage.Description
@@ -724,8 +780,8 @@ msgstr "Damage Multiplier +{Value}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Damage.DA_Augment_SpawnTurret_Damage.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_Damage.DA_Augment_SpawnTurret_Damage.DisplayName
 msgctxt ",DDDDB0C8492BA05F11C3689CD110888E"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	47861AA445782E16F6D115AE1D17D510
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_DetAtkRange.DA_Augment_SpawnTurret_DetAtkRange.Description
@@ -738,8 +794,8 @@ msgstr "Firing Range +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_DetAtkRange.DA_Augment_SpawnTurret_DetAtkRange.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_DetAtkRange.DA_Augment_SpawnTurret_DetAtkRange.DisplayName
 msgctxt ",C3CB737E4531AA55CD1C748D18900D46"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	FF5CDAEE483AD2D6F35A8DAB558C0D62
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_FireRate.DA_Augment_SpawnTurret_FireRate.Description
@@ -752,8 +808,8 @@ msgstr "Fire Rate +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_FireRate.DA_Augment_SpawnTurret_FireRate.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_FireRate.DA_Augment_SpawnTurret_FireRate.DisplayName
 msgctxt ",A108B31F42CD11B288707F86AF30EB05"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	1609BD384AFC6ACD97D731A091AC134F
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_IncSkillCount.DA_Augment_SpawnTurret_IncSkillCount.Description
@@ -766,8 +822,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_IncSkillCount.DA_Augment_SpawnTurret_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Engineer/DA_Augment_SpawnTurret_IncSkillCount.DA_Augment_SpawnTurret_IncSkillCount.DisplayName
 msgctxt ",8DA680064754A12866A407A271FF740B"
-msgid "터렛"
-msgstr "Turret"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
 
 #. Key:	16CF79884AA50004D5BE8084198AA72D
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_AutoFire_Damage.DA_Augment_AutoFire_Damage.Description
@@ -808,8 +864,8 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_Cooldown.DA_Augment_Grenade_Cooldown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_Cooldown.DA_Augment_Grenade_Cooldown.DisplayName
 msgctxt ",9F938BE84A8E6209CA1BAF9C9CE495BB"
-msgid "수류탄"
-msgstr "Grenade"
+msgid "고폭 수류탄"
+msgstr "High-Explosive Grenade"
 
 #. Key:	D86ACD5D4A3EA08900D7D7A4F3AA09A2
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_Damage.DA_Augment_Grenade_Damage.Description
@@ -822,8 +878,8 @@ msgstr "Damage Multiplier +{Value}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_Damage.DA_Augment_Grenade_Damage.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_Damage.DA_Augment_Grenade_Damage.DisplayName
 msgctxt ",7290559F4A2363FBB704468E89183C75"
-msgid "수류탄"
-msgstr "Grenade"
+msgid "고폭 수류탄"
+msgstr "High-Explosive Grenade"
 
 #. Key:	8F113EDA4E61BDB69D546E8B16668BF5
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_IncSkillCount.DA_Augment_Grenade_IncSkillCount.Description
@@ -836,8 +892,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_IncSkillCount.DA_Augment_Grenade_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_IncSkillCount.DA_Augment_Grenade_IncSkillCount.DisplayName
 msgctxt ",9D923A0E407E9A7E2A0E938EA62AD588"
-msgid "수류탄"
-msgstr "Grenade"
+msgid "고폭 수류탄"
+msgstr "High-Explosive Grenade"
 
 #. Key:	501CDD2C4A58D4C2657F83A06A4A6BCF
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_SplashRadius.DA_Augment_Grenade_SplashRadius.Description
@@ -850,8 +906,8 @@ msgstr "Explosion Radius +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_SplashRadius.DA_Augment_Grenade_SplashRadius.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Grenade_SplashRadius.DA_Augment_Grenade_SplashRadius.DisplayName
 msgctxt ",46377C7A4D0D4A9C444859831DFDB8AD"
-msgid "수류탄"
-msgstr "Grenade"
+msgid "고폭 수류탄"
+msgstr "High-Explosive Grenade"
 
 #. Key:	BE003975485D378EFD445A80F2914BAD
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Cooldown.DA_Augment_Projectile_Cooldown.Description
@@ -864,8 +920,8 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Cooldown.DA_Augment_Projectile_Cooldown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Cooldown.DA_Augment_Projectile_Cooldown.DisplayName
 msgctxt ",8E11A4AC459B056FE7F87F97104FEA2C"
-msgid "나선 로켓"
-msgstr "Spiral Rocket"
+msgid "마이크로 로켓"
+msgstr "Micro Rocket"
 
 #. Key:	CE74D0AB47AA5173426700A553E6ACFE
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Damage.DA_Augment_Projectile_Damage.Description
@@ -878,8 +934,8 @@ msgstr "Damage Multiplier +{Value}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Damage.DA_Augment_Projectile_Damage.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_Damage.DA_Augment_Projectile_Damage.DisplayName
 msgctxt ",38F013AB4EE20E05136D1F8E16C74F07"
-msgid "나선 로켓"
-msgstr "Spiral Rocket"
+msgid "마이크로 로켓"
+msgstr "Micro Rocket"
 
 #. Key:	851A84FD4D275F0B23D2E284F2889E9D
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_IncSkillCount.DA_Augment_Projectile_IncSkillCount.Description
@@ -892,8 +948,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_IncSkillCount.DA_Augment_Projectile_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_IncSkillCount.DA_Augment_Projectile_IncSkillCount.DisplayName
 msgctxt ",7F45963B4B05560BC88E86BBC7ECE551"
-msgid "나선 로켓"
-msgstr "Spiral Rocket"
+msgid "마이크로 로켓"
+msgstr "Micro Rocket"
 
 #. Key:	CC94A98243222DD6305AD5828F016C3D
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_SplashRadius.DA_Augment_Projectile_SplashRadius.Description
@@ -906,8 +962,8 @@ msgstr "Explosion Radius +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_SplashRadius.DA_Augment_Projectile_SplashRadius.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Projectile_SplashRadius.DA_Augment_Projectile_SplashRadius.DisplayName
 msgctxt ",F01060F64A8690C883B7F39AE9D67CF1"
-msgid "나선 로켓"
-msgstr "Spiral Rocket"
+msgid "마이크로 로켓"
+msgstr "Micro Rocket"
 
 #. Key:	211E43F24E1D79E5582E559DC51C7EA5
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_Ranger_Ammo.DA_Augment_Ranger_Ammo.Description
@@ -934,8 +990,8 @@ msgstr "Attack Speed Increase +{FireRateBuff}%p\r\nReload Speed Increase +{Reloa
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_BuffPower.DA_Augment_RangerSpeedBuff_BuffPower.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_BuffPower.DA_Augment_RangerSpeedBuff_BuffPower.DisplayName
 msgctxt ",D4854DA44C40E4F45D5628A107333474"
-msgid "속사 강화"
-msgstr "Rapid Fire Enhancement"
+msgid "전투 가속"
+msgstr "Combat Acceleration"
 
 #. Key:	AE71C2324B8E79231617B4B342B3201C
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_CoolDown.DA_Augment_RangerSpeedBuff_CoolDown.Description
@@ -948,22 +1004,22 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_CoolDown.DA_Augment_RangerSpeedBuff_CoolDown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_CoolDown.DA_Augment_RangerSpeedBuff_CoolDown.DisplayName
 msgctxt ",B90AE96F46BD246168D892898FE8A792"
-msgid "속사 강화"
-msgstr "Rapid Fire Enhancement"
+msgid "전투 가속"
+msgstr "Combat Acceleration"
 
 #. Key:	F00A2665410829B7FA07639D98E56EF3
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_Duration.DA_Augment_RangerSpeedBuff_Duration.Description
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_Duration.DA_Augment_RangerSpeedBuff_Duration.Description
 msgctxt ",F00A2665410829B7FA07639D98E56EF3"
-msgid "지속시간 +{Value} "
+msgid "지속 시간 +{Value} "
 msgstr "Duration +{Value} "
 
 #. Key:	5CA228E24B1B7FD5A4D5899555CEEB6E
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_Duration.DA_Augment_RangerSpeedBuff_Duration.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_Duration.DA_Augment_RangerSpeedBuff_Duration.DisplayName
 msgctxt ",5CA228E24B1B7FD5A4D5899555CEEB6E"
-msgid "속사 강화"
-msgstr "Rapid Fire Enhancement"
+msgid "전투 가속"
+msgstr "Combat Acceleration"
 
 #. Key:	FBFDF0164A0F765FA6CE348C668FFF2B
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_IncSkillCount.DA_Augment_RangerSpeedBuff_IncSkillCount.Description
@@ -976,8 +1032,8 @@ msgstr "Skill Stacks {Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_IncSkillCount.DA_Augment_RangerSpeedBuff_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Ranger/DA_Augment_RangerSpeedBuff_IncSkillCount.DA_Augment_RangerSpeedBuff_IncSkillCount.DisplayName
 msgctxt ",1EC652274E70A370EC51AF8C487E4D20"
-msgid "속사 강화"
-msgstr "Rapid Fire Enhancement"
+msgid "전투 가속"
+msgstr "Combat Acceleration"
 
 #. Key:	492CF0AA46E94D99DEF18D8B78F82756
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_BaseAttack_AttackSpeed.DA_Augment_BaseAttack_AttackSpeed.Description
@@ -1032,8 +1088,8 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_CoolDown.DA_Augment_Flicker_CoolDown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_CoolDown.DA_Augment_Flicker_CoolDown.DisplayName
 msgctxt ",75454E864F696ADBA43D0A9DEAE89E20"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
 #. Key:	AF58001B467DEB0C0F19CBA44D7EB463
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Damage.DA_Augment_Flicker_Damage.Description
@@ -1046,8 +1102,8 @@ msgstr "Damage Multiplier +{Value}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Damage.DA_Augment_Flicker_Damage.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Damage.DA_Augment_Flicker_Damage.DisplayName
 msgctxt ",D7CE24A64A21992ADC7919B4E6FCD1E0"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
 #. Key:	A2A35D2A48561D9C91A9D2806C2B0C02
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncAttackCount.DA_Augment_Flicker_IncAttackCount.Description
@@ -1060,8 +1116,8 @@ msgstr "Hit Count +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncAttackCount.DA_Augment_Flicker_IncAttackCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncAttackCount.DA_Augment_Flicker_IncAttackCount.DisplayName
 msgctxt ",C4A977474DD00B39C8C7B9BBF19CBC2C"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
 #. Key:	E4EED3CB4E16E14B7DBBE880ED71F91C
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncSkillCount.DA_Augment_Flicker_IncSkillCount.Description
@@ -1074,8 +1130,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncSkillCount.DA_Augment_Flicker_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_IncSkillCount.DA_Augment_Flicker_IncSkillCount.DisplayName
 msgctxt ",B477F6E242BA928A83A78BA8C64C8BEF"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
 #. Key:	E2A7D8484C6580B1655D69BA13D4040A
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Radius.DA_Augment_Flicker_Radius.Description
@@ -1088,8 +1144,8 @@ msgstr "Attack Range +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Radius.DA_Augment_Flicker_Radius.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_Flicker_Radius.DA_Augment_Flicker_Radius.DisplayName
 msgctxt ",76324D1D44C12A2CAA5B32A110481CA1"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
 #. Key:	4BECDCAD4B4F1E731D71C0AAF9233048
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Cooldown.DA_Augment_ThrowBarrierField_Cooldown.Description
@@ -1102,8 +1158,8 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Cooldown.DA_Augment_ThrowBarrierField_Cooldown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Cooldown.DA_Augment_ThrowBarrierField_Cooldown.DisplayName
 msgctxt ",9AEA1DC3456200408D28D2BEF3C0F63B"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	57CEF71B461D658AFEB8D68830B8373A
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Damage.DA_Augment_ThrowBarrierField_Damage.Description
@@ -1116,8 +1172,8 @@ msgstr "Damage Multiplier +{Value}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Damage.DA_Augment_ThrowBarrierField_Damage.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Damage.DA_Augment_ThrowBarrierField_Damage.DisplayName
 msgctxt ",924A82184E24FFBBA3E7DA9EEC17DAAB"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	BB02E95E4923A77925EAE0BB452B9935
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_DamageInterval.DA_Augment_ThrowBarrierField_DamageInterval.Description
@@ -1130,22 +1186,22 @@ msgstr "Damage Interval -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_DamageInterval.DA_Augment_ThrowBarrierField_DamageInterval.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_DamageInterval.DA_Augment_ThrowBarrierField_DamageInterval.DisplayName
 msgctxt ",6C1F9E2B4B710216092670BB8DDE8679"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	766076B044111E09B63409B120EEC02F
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Duration.DA_Augment_ThrowBarrierField_Duration.Description
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Duration.DA_Augment_ThrowBarrierField_Duration.Description
 msgctxt ",766076B044111E09B63409B120EEC02F"
-msgid "지속시간 +{Value}"
+msgid "지속 시간 +{Value}"
 msgstr "Duration +{Value}"
 
 #. Key:	8C3245F94A74953A817A4C9294D69922
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Duration.DA_Augment_ThrowBarrierField_Duration.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Duration.DA_Augment_ThrowBarrierField_Duration.DisplayName
 msgctxt ",8C3245F94A74953A817A4C9294D69922"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	09566ACE48CB86E31E3BFEA4C0F797A8
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Health.DA_Augment_ThrowBarrierField_Health.Description
@@ -1158,8 +1214,8 @@ msgstr "Health +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Health.DA_Augment_ThrowBarrierField_Health.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Health.DA_Augment_ThrowBarrierField_Health.DisplayName
 msgctxt ",5C8AC62C49D0520B32746F9D64C2A361"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	D5E85ABC40AE511E42DDBFAFACEC058D
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_IncSkillCount.DA_Augment_ThrowBarrierField_IncSkillCount.Description
@@ -1172,8 +1228,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_IncSkillCount.DA_Augment_ThrowBarrierField_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_IncSkillCount.DA_Augment_ThrowBarrierField_IncSkillCount.DisplayName
 msgctxt ",F904EA4F47E8265A2AC8CAB7416CD0E6"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	832C3CB14056E3E591EBDEB5DD64119A
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Radius.DA_Augment_ThrowBarrierField_Radius.Description
@@ -1186,8 +1242,8 @@ msgstr "Range +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Radius.DA_Augment_ThrowBarrierField_Radius.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_ThrowBarrierField_Radius.DA_Augment_ThrowBarrierField_Radius.DisplayName
 msgctxt ",3F5C10F8473D86FBAE648D8ABAC93694"
-msgid "방패 필드 투척"
-msgstr "Deploy Shield Field"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	ED8C073D42686AF5BFD96EA06C2ABF73
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_BuffPower.DA_Augment_VanguardBuff_BuffPower.Description
@@ -1200,8 +1256,8 @@ msgstr "Movement Speed Increase +{MoveSpeed}%p\r\nDefense Increase +{Defense}%p"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_BuffPower.DA_Augment_VanguardBuff_BuffPower.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_BuffPower.DA_Augment_VanguardBuff_BuffPower.DisplayName
 msgctxt ",4F6E12104AC8EA2E6D8650B4298A91D3"
-msgid "아드레날린"
-msgstr "Adrenaline"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
 
 #. Key:	88BC908742686467C99BDC951125B134
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Cooldown.DA_Augment_VanguardBuff_Cooldown.Description
@@ -1214,22 +1270,22 @@ msgstr "Cooldown -{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Cooldown.DA_Augment_VanguardBuff_Cooldown.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Cooldown.DA_Augment_VanguardBuff_Cooldown.DisplayName
 msgctxt ",D8D9084C4822CCCE4C9169870F5074EA"
-msgid "아드레날린"
-msgstr "Adrenaline"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
 
 #. Key:	B4B985F245721BCDBAAFB09D390E6BAA
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Duration.DA_Augment_VanguardBuff_Duration.Description
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Duration.DA_Augment_VanguardBuff_Duration.Description
 msgctxt ",B4B985F245721BCDBAAFB09D390E6BAA"
-msgid "지속시간 +{Value}"
+msgid "지속 시간 +{Value}"
 msgstr "Duration +{Value}"
 
 #. Key:	C79A109F4547C393481460990C62F963
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Duration.DA_Augment_VanguardBuff_Duration.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Duration.DA_Augment_VanguardBuff_Duration.DisplayName
 msgctxt ",C79A109F4547C393481460990C62F963"
-msgid "아드레날린"
-msgstr "Adrenaline"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
 
 #. Key:	56A57E974D53325AB11AE3871FCAE3A2
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_IncSkillCount.DA_Augment_VanguardBuff_IncSkillCount.Description
@@ -1242,8 +1298,8 @@ msgstr "Skill Stacks +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_IncSkillCount.DA_Augment_VanguardBuff_IncSkillCount.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_IncSkillCount.DA_Augment_VanguardBuff_IncSkillCount.DisplayName
 msgctxt ",45613EE14080B525FD94BA926B66D5DE"
-msgid "아드레날린"
-msgstr "Adrenaline"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
 
 #. Key:	3D75254F41A4287962F42AB02BA33E30
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Radius.DA_Augment_VanguardBuff_Radius.Description
@@ -1256,8 +1312,8 @@ msgstr "Effect Radius +{Value}"
 #. SourceLocation:	/Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Radius.DA_Augment_VanguardBuff_Radius.DisplayName
 #: /Game/NeoSanctum/Data/Augment/Vanguard/DA_Augment_VanguardBuff_Radius.DA_Augment_VanguardBuff_Radius.DisplayName
 msgctxt ",12EA75EF4795946F3E66F5B841FCDC6A"
-msgid "아드레날린"
-msgstr "Adrenaline"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
 
 #. Key:	5D00070C4A230489C4F52685268D5414
 #. SourceLocation:	/Game/NeoSanctum/Data/CommonUpgrade/DT_CommonUpgradeNode.DT_CommonUpgradeNode.AugmentChoiceCount.Description
@@ -1518,12 +1574,33 @@ msgctxt ",3D0C78674E4C9064E6ECBDB3529F02E2"
 msgid "캐릭터 선택 콘솔에서 캐릭터를 변경할 수 있습니다"
 msgstr "You can change your character at the character selection console."
 
+#. Key:	A8DC5B6547AE67640BD3BEB38491851D
+#. SourceLocation:	/Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.DashInput.GuideText
+#: /Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.DashInput.GuideText
+msgctxt ",A8DC5B6547AE67640BD3BEB38491851D"
+msgid "Shift로 대시하기"
+msgstr "Dash with Shift"
+
+#. Key:	8F3F4D6F413453E40F31F5B293481217
+#. SourceLocation:	/Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.JumpInput.GuideText
+#: /Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.JumpInput.GuideText
+msgctxt ",8F3F4D6F413453E40F31F5B293481217"
+msgid "Space를 이용하여 점프하기"
+msgstr "Jump with Space"
+
+#. Key:	27504F2D4565EE055CCF44A236963019
+#. SourceLocation:	/Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.MoveInput.GuideText
+#: /Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.MoveInput.GuideText
+msgctxt ",27504F2D4565EE055CCF44A236963019"
+msgid "WASD를 이용하여 이동하기"
+msgstr "Move with WASD"
+
 #. Key:	544BEB5847E173A2A83A8080BDA8E92A
 #. SourceLocation:	/Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.NewNPC.GuideText
 #: /Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.NewNPC.GuideText
 msgctxt ",544BEB5847E173A2A83A8080BDA8E92A"
-msgid "구출한 NPC와 새로운 상호작용이 가능합니다."
-msgstr "New interactions are available with rescued NPCs."
+msgid "구출한 NPC와 새로운 상호작용이 가능합니다"
+msgstr "New interactions are available with rescued NPCs"
 
 #. Key:	096D171B4C30213B5F29E4B0B7B3F775
 #. SourceLocation:	/Game/NeoSanctum/Data/Guide/DT_GuideText.DT_GuideText.NSReadyStartActor.GuideText
@@ -1641,8 +1718,8 @@ msgstr "Critical Damage"
 #. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.Damage.DisplayName
 #: /Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.Damage.DisplayName
 msgctxt "NewDataTable,CombatStat.Damage_DisplayName"
-msgid "공격력"
-msgstr "Attack Damage"
+msgid "기본 공격력"
+msgstr "Base Damage"
 
 #. Key:	CombatStat.Defense_DisplayName
 #. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.Defense.DisplayName
@@ -1655,7 +1732,7 @@ msgstr "Defense"
 #. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.MaxDashCount.DisplayName
 #: /Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.MaxDashCount.DisplayName
 msgctxt ",6D91899E43D1BE54F583329703358B46"
-msgid "대쉬 횟수 증가"
+msgid "대시 횟수 증가"
 msgstr "Increase Dash Charges"
 
 #. Key:	CombatStat.MaxHealth_DisplayName
@@ -1676,7 +1753,7 @@ msgstr "Increase Jump Charges"
 #. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.MaxShield.DisplayName
 #: /Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.MaxShield.DisplayName
 msgctxt "NewDataTable,CombatStat.MaxShield_DisplayName"
-msgid "실드"
+msgid "보호막"
 msgstr "Shield"
 
 #. Key:	CombatStat.MoveSpeed_DisplayName
@@ -1697,50 +1774,57 @@ msgstr "Shield Recharge Delay"
 #. SourceLocation:	/Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.ShieldRechargeRate.DisplayName
 #: /Game/NeoSanctum/Data/Reward/Part/DT_PartStatDisplay.DT_PartStatDisplay.CombatStat.ShieldRechargeRate.DisplayName
 msgctxt "NewDataTable,CombatStat.ShieldRechargeRate_DisplayName"
-msgid "실드 재생 속도"
-msgstr "Shield Regeneration Speed"
-
-#. Key:	98221C7148679DA3C5ACCBAC16A72FAC
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterDescription
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterDescription
-msgctxt ",98221C7148679DA3C5ACCBAC16A72FAC"
-msgid "레인저"
-msgstr "Ranger"
-
-#. Key:	54A91232428FABE69E03F4BE04402703
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterName
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow.CharacterName
-msgctxt ",54A91232428FABE69E03F4BE04402703"
-msgid "레인저"
-msgstr "Ranger"
+msgid "보호막 재생량"
+msgstr "Shield Regeneration"
 
 #. Key:	C0C9F7E24FFB36B7AB6FE492E62A092E
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterDescription
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterDescription
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Engineer.CharacterDescription
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Engineer.CharacterDescription
 msgctxt ",C0C9F7E24FFB36B7AB6FE492E62A092E"
-msgid "엔지니어"
-msgstr "Engineer"
+msgid "연발 샷건과 자동 터렛으로 전장을 장악하고, 방어막으로 자신 및 터렛을 보호하는 설치형 전투원입니다. 오버클럭으로 자신과 터렛의 화력을 함께 끌어올립니다."
+msgstr "A deployable-focused combatant who controls the battlefield with a rapid-fire shotgun and automated turret, protecting both with a barrier. Overclock boosts the firepower of the player and their turret."
 
 #. Key:	1FC30E364EBB3EC1D546E5A5C5B01A52
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterName
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_0.CharacterName
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Engineer.CharacterName
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Engineer.CharacterName
 msgctxt ",1FC30E364EBB3EC1D546E5A5C5B01A52"
 msgid "엔지니어"
 msgstr "Engineer"
 
+#. Key:	98221C7148679DA3C5ACCBAC16A72FAC
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Ranger.CharacterDescription
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Ranger.CharacterDescription
+msgctxt ",98221C7148679DA3C5ACCBAC16A72FAC"
+msgid "연발 소총과 폭발 무기로 지속 화력과 범위 피해를 제공하는 원거리 전투원입니다. 전투 가속으로 발사 및 재장전 속도를 높여 끊임없이 적을 압박합니다."
+msgstr "A ranged combatant who provides sustained firepower and area damage with an automatic rifle and explosive weapons. Combat Acceleration increases fire and reload speeds to maintain relentless pressure."
+
+#. Key:	54A91232428FABE69E03F4BE04402703
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Ranger.CharacterName
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Ranger.CharacterName
+msgctxt ",54A91232428FABE69E03F4BE04402703"
+msgid "레인저"
+msgstr "Ranger"
+
 #. Key:	BC48DB3A4F2C7B6F75FF27B7ABF22D32
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterDescription
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterDescription
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Vanguard.CharacterDescription
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Vanguard.CharacterDescription
 msgctxt ",BC48DB3A4F2C7B6F75FF27B7ABF22D32"
-msgid "뱅가드"
-msgstr "Vanguard"
+msgid "광선검 공격과 다양한 기동 공격으로 적진을 돌파하는 근접 선봉장입니다. 배리어 필드로 전장을 지키고, 자신과 주변 아군을 강화해 전선을 이끕니다."
+msgstr "A melee vanguard who breaks through enemy lines with beam sword attacks and agile maneuvers. Holds the battlefield with a barrier field and leads the front by empowering the player and nearby allies."
 
 #. Key:	9D8395E14601AD8AA4BB40AB669B9FE5
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterName
-#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.NewRow_1.CharacterName
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Vanguard.CharacterName
+#: /Game/NeoSanctum/Data/UI/DT_CharacterList.DT_CharacterList.Vanguard.CharacterName
 msgctxt ",9D8395E14601AD8AA4BB40AB669B9FE5"
 msgid "뱅가드"
 msgstr "Vanguard"
+
+#. Key:	F0EF7FB545D10B359DF31697B20B8C6D
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.BaseAttackInputDisplay.InputText
+#: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.BaseAttackInputDisplay.InputText
+msgctxt ",F0EF7FB545D10B359DF31697B20B8C6D"
+msgid "LMB"
+msgstr "LMB"
 
 #. Key:	97C809DD4CC842EF94C82E9FA85AB145
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Engineer.Skill1InputDisplay.InputText
@@ -1763,6 +1847,13 @@ msgctxt ",CAF656FF4C04040BCEA7D78FDDBFDC94"
 msgid "E"
 msgstr "E"
 
+#. Key:	181AFB754718EE42959ADBB735886C1E
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.BaseAttackInputDisplay.InputText
+#: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.BaseAttackInputDisplay.InputText
+msgctxt ",181AFB754718EE42959ADBB735886C1E"
+msgid "LMB"
+msgstr "LMB"
+
 #. Key:	C708DBD740A1A7F544BAF2B82B9BD904
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill1InputDisplay.InputText
 #: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Ranger.Skill1InputDisplay.InputText
@@ -1783,6 +1874,13 @@ msgstr "Q"
 msgctxt ",DDF4382A4E67DD7AEA2E3AB5ED956E0F"
 msgid "E"
 msgstr "E"
+
+#. Key:	6437F2584505187710398583B6344D8F
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Vanguard.BaseAttackInputDisplay.InputText
+#: /Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Vanguard.BaseAttackInputDisplay.InputText
+msgctxt ",6437F2584505187710398583B6344D8F"
+msgid "LMB"
+msgstr "LMB"
 
 #. Key:	57F1FE17493F0EECA9DA4596589F29C2
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_CharacterSkillUISet.DT_CharacterSkillUISet.Character.Player.Vanguard.Skill1InputDisplay.InputText
@@ -1861,12 +1959,12 @@ msgctxt ",9189D9E449F321141F847D85474D6ABE"
 msgid "TitanWalker"
 msgstr "TitanWalker"
 
-#. Key:	429841F74A1FD5D20A39CBB819D8D6CB
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Barrier.DisplayName
-#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Barrier.DisplayName
-msgctxt ",429841F74A1FD5D20A39CBB819D8D6CB"
-msgid "방어막"
-msgstr "Barrier"
+#. Key:	C170A3F64BCFE5C0E9EB9FB5B308D311
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Dash.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Dash.Description
+msgctxt ",C170A3F64BCFE5C0E9EB9FB5B308D311"
+msgid "짧은 거리를 빠르게 이동해 적의 공격을 회피합니다."
+msgstr "Quickly moves a short distance to evade enemy attacks."
 
 #. Key:	7CF277DA42D6A5FC13782F8FE3F3136C
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Dash.DisplayName
@@ -1875,61 +1973,481 @@ msgctxt ",7CF277DA42D6A5FC13782F8FE3F3136C"
 msgid "대시"
 msgstr "Dash"
 
+#. Key:	4398A7CD4C814BBA79EF158A19E65834
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",4398A7CD4C814BBA79EF158A19E65834"
+msgid "기본 체력"
+msgstr "Base Health"
+
+#. Key:	0D39ED2F43CBD0E2D03DF8BB600BE9A2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",0D39ED2F43CBD0E2D03DF8BB600BE9A2"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	6659DE174B567CEFD4172A93B23D34F1
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",6659DE174B567CEFD4172A93B23D34F1"
+msgid "범위"
+msgstr "Range"
+
+#. Key:	9DCBD2054401711E026E6187FABEAD43
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",9DCBD2054401711E026E6187FABEAD43"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	2068971149D286CB6EE539BEBDEF3023
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.Description
+msgctxt ",2068971149D286CB6EE539BEBDEF3023"
+msgid "자신의 주변에 적의 공격을 막아주는 방어막을 펼칩니다."
+msgstr "Deploys a barrier around the player that blocks enemy attacks."
+
+#. Key:	429841F74A1FD5D20A39CBB819D8D6CB
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBarrier.DisplayName
+msgctxt ",429841F74A1FD5D20A39CBB819D8D6CB"
+msgid "배리어"
+msgstr "Barrier"
+
+#. Key:	9F29BEE64327AFB4618913A6CA3CDFF7
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",9F29BEE64327AFB4618913A6CA3CDFF7"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	161DFD074B6D5E164D07B296714DA199
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",161DFD074B6D5E164D07B296714DA199"
+msgid "연사 속도"
+msgstr "Fire Rate"
+
+#. Key:	B3FA15444B30F76E578994AC54C309F3
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",B3FA15444B30F76E578994AC54C309F3"
+msgid "유효 사정거리"
+msgstr "Effective Range"
+
+#. Key:	C6F3579B4B2206423E086786992EFEAA
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.Description
+msgctxt ",C6F3579B4B2206423E086786992EFEAA"
+msgid "에너지 샷건으로 여러 발의 펠릿을 연속 발사해 근거리 적을 제압합니다."
+msgstr "Fires multiple pellets in rapid succession from an energy shotgun, suppressing enemies at close range."
+
+#. Key:	44EBE1E2400D276E18E19681549E5C6E
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerBaseAttack.DisplayName
+msgctxt ",44EBE1E2400D276E18E19681549E5C6E"
+msgid "펄스 샷건"
+msgstr "Pulse Shotgun"
+
+#. Key:	811A8DE847C0AE8C39A5EEAD5A51D7AE
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",811A8DE847C0AE8C39A5EEAD5A51D7AE"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	F6F20FD34E90B038A45E1BA502F0697F
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",F6F20FD34E90B038A45E1BA502F0697F"
+msgid "연사 속도"
+msgstr "Fire Rate"
+
+#. Key:	E465D9414835D9F76DC9F3A49666AAA3
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",E465D9414835D9F76DC9F3A49666AAA3"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	A52FFD4945A172D4CF061EB190D2A412
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",A52FFD4945A172D4CF061EB190D2A412"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	ACD04D99424A019B32401FB742AF1148
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.Description
+msgctxt ",ACD04D99424A019B32401FB742AF1148"
+msgid "주변의 적을 자동으로 탐지하고 사격하는 터렛을 설치합니다."
+msgstr "Deploys a turret that automatically detects and fires at nearby enemies."
+
+#. Key:	7E10C81C4462D67561A8C1B0535DA79A
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpawnTurret.DisplayName
+msgctxt ",7E10C81C4462D67561A8C1B0535DA79A"
+msgid "터렛 설치"
+msgstr "Deploy Turret"
+
+#. Key:	DB42EDCD4D2A7E52EA7A0FA6E3F627B2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",DB42EDCD4D2A7E52EA7A0FA6E3F627B2"
+msgid "공격 속도 상승량"
+msgstr "Attack Speed Increase"
+
+#. Key:	B9633666453667381BF1E7A075DDD6E2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",B9633666453667381BF1E7A075DDD6E2"
+msgid "버프 적용 범위"
+msgstr "Buff Range"
+
+#. Key:	67A4846A468A1EE1FD730E81C7631C03
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",67A4846A468A1EE1FD730E81C7631C03"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	94950B8549517BC05A3B54B93A353DDE
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",94950B8549517BC05A3B54B93A353DDE"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	81B8C7E5473FD0FF2EB61D880C623BB3
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.Description
+msgctxt ",81B8C7E5473FD0FF2EB61D880C623BB3"
+msgid "일정 시간 동안 자신과 설치한 터렛의 발사 속도를 증가시킵니다."
+msgstr "Increases the fire rate of the player and deployed turrets for a duration."
+
 #. Key:	16929BE84456DF8EFA3616A20D7E7128
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.DisplayName
 #: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.EngineerSpeedBuff.DisplayName
 msgctxt ",16929BE84456DF8EFA3616A20D7E7128"
-msgid "공속버프"
-msgstr "Attack Speed Buff"
+msgid "오버클럭"
+msgstr "Overclock"
+
+#. Key:	EF016B4845F1E5751AB9298D2D52F9E2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",EF016B4845F1E5751AB9298D2D52F9E2"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	A4A102624E8FA3C1709B57AE74DFF1F2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",A4A102624E8FA3C1709B57AE74DFF1F2"
+msgid "연사 속도"
+msgstr "Fire Rate"
+
+#. Key:	210C319A476498FEB79BEBB07CEFB099
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",210C319A476498FEB79BEBB07CEFB099"
+msgid "유효 사정거리"
+msgstr "Effective Range"
+
+#. Key:	C21F585346173D81F0BEDA8F385AEDCC
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.Description
+msgctxt ",C21F585346173D81F0BEDA8F385AEDCC"
+msgid "연발 에너지 소총으로 전방의 적을 빠르게 사격합니다."
+msgstr "Rapidly fires at enemies ahead with a fully automatic energy rifle."
+
+#. Key:	B9EC1C1942B6C6F8389BD682130075B1
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerBaseAttack.DisplayName
+msgctxt ",B9EC1C1942B6C6F8389BD682130075B1"
+msgid "펄스 라이플"
+msgstr "Pulse Rifle"
+
+#. Key:	37E071214226EB2C4B50FBB09FA9F2A3
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",37E071214226EB2C4B50FBB09FA9F2A3"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	1D5368FE44B5120E436C18AD631A5639
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",1D5368FE44B5120E436C18AD631A5639"
+msgid "폭발 범위"
+msgstr "Explosion Radius"
+
+#. Key:	DC888B2C405E76EF8A287BB93D67AA44
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",DC888B2C405E76EF8A287BB93D67AA44"
+msgid "쿨다운"
+msgstr "Cooldown"
+
+#. Key:	4E8A8E7C482E95405730C4AC6FA1594A
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.Description
+msgctxt ",4E8A8E7C482E95405730C4AC6FA1594A"
+msgid "수류탄을 던져 폭발 범위 안의 적들에게 피해를 줍니다."
+msgstr "Throws a grenade that damages enemies within its blast radius."
 
 #. Key:	A71B4043451E94E4891DCCB67038C247
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Grenade.DisplayName
-#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.Grenade.DisplayName
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerGrenade.DisplayName
 msgctxt ",A71B4043451E94E4891DCCB67038C247"
-msgid "수류탄"
-msgstr "Grenade"
+msgid "고폭 수류탄"
+msgstr "High-Explosive Grenade"
+
+#. Key:	663E9AEE4EA9FB495AD1AABF12F2DD53
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",663E9AEE4EA9FB495AD1AABF12F2DD53"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	60A00F524A529A88B29CC7A6409AB4C8
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",60A00F524A529A88B29CC7A6409AB4C8"
+msgid "폭발 범위"
+msgstr "Explosion Radius"
+
+#. Key:	1A7528674003FEBEED9F499DC43FAA3E
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",1A7528674003FEBEED9F499DC43FAA3E"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	3AEF74BB40A795A812CEF2B67D8C5C94
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.Description
+msgctxt ",3AEF74BB40A795A812CEF2B67D8C5C94"
+msgid "소형 로켓을 직선으로 발사합니다. 로켓은 적이나 지형에 닿으면 폭발해 주변 적에게 피해를 줍니다."
+msgstr "Fires a small rocket in a straight line. The rocket explodes on contact with an enemy or terrain, damaging nearby enemies."
 
 #. Key:	431217AB429B6CCCC3F7ECB5C0800645
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.DisplayName
 #: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerProjectileShot.DisplayName
 msgctxt ",431217AB429B6CCCC3F7ECB5C0800645"
-msgid "나선로켓"
-msgstr "Spiral Rocket"
+msgid "마이크로 로켓"
+msgstr "Micro Rocket"
+
+#. Key:	B7FEBBA24BDCD2EB847CE89E0D30C099
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",B7FEBBA24BDCD2EB847CE89E0D30C099"
+msgid "공격 속도 상승량"
+msgstr "Attack Speed Increase"
+
+#. Key:	7A341F9C4EB563F6944B8686C3E844E2
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",7A341F9C4EB563F6944B8686C3E844E2"
+msgid "재장전 속도 상승량"
+msgstr "Reload Speed Increase"
+
+#. Key:	9481E40E49EA1A297E1E9CAF9E5F9A8B
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",9481E40E49EA1A297E1E9CAF9E5F9A8B"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	89DBF8BB4047677E4412CDA5705B67E1
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",89DBF8BB4047677E4412CDA5705B67E1"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	5A45E62D4F3F0C7F8FACA79C2CF6C326
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.Description
+msgctxt ",5A45E62D4F3F0C7F8FACA79C2CF6C326"
+msgid "일정 시간 동안 자신의 발사 속도와 재장전 속도를 증가시킵니다."
+msgstr "Increases the player's fire rate and reload speed for a duration."
 
 #. Key:	126757AB44C02782D70600B9FA2C704D
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.DisplayName
 #: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.RangerSpeedBuff.DisplayName
 msgctxt ",126757AB44C02782D70600B9FA2C704D"
-msgid "공속버프"
-msgstr "Attack Speed Buff"
+msgid "전투 가속"
+msgstr "Combat Acceleration"
 
-#. Key:	7E10C81C4462D67561A8C1B0535DA79A
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.SpawnTurret.DisplayName
-#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.SpawnTurret.DisplayName
-msgctxt ",7E10C81C4462D67561A8C1B0535DA79A"
-msgid "터렛 소환"
-msgstr "Summon Turret"
+#. Key:	CD1B2DCD41A85182AFD590988AEC23E7
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",CD1B2DCD41A85182AFD590988AEC23E7"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	52B534BE455B3C53FC7B6F9E104BBE04
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",52B534BE455B3C53FC7B6F9E104BBE04"
+msgid "차지 시간"
+msgstr "Charge Time"
+
+#. Key:	E7BEB5C64528AA548A87309F17F99598
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",E7BEB5C64528AA548A87309F17F99598"
+msgid "최대 돌진 거리"
+msgstr "Maximum Dash Distance"
+
+#. Key:	F13CA9B64F3DD6D7BF338A883DFCF42C
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.Description
+msgctxt ",F13CA9B64F3DD6D7BF338A883DFCF42C"
+msgid "광선검으로 최대 3연격을 펼칩니다. 대시 중에는 돌진 베기, 공중에서는 낙하 공격으로 이어집니다."
+msgstr "Unleashes up to a three-hit combo with a beam sword. While dashing, it becomes a lunging slash; while airborne, it transitions into a plunging attack."
+
+#. Key:	A3A9BBC8429D8757AF5A2FA8FFF2AEFE
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardBaseAttack.DisplayName
+msgctxt ",A3A9BBC8429D8757AF5A2FA8FFF2AEFE"
+msgid "빔 소드"
+msgstr "Beam Sword"
+
+#. Key:	5D0A4A7B41BC01870B2C07923882662D
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",5D0A4A7B41BC01870B2C07923882662D"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	D13BEB2B47DF18553E6040A95F645035
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",D13BEB2B47DF18553E6040A95F645035"
+msgid "공격 횟수"
+msgstr "Attack Count"
+
+#. Key:	5ADC189D4063FBF15CE7AEA21D0D5CB8
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",5ADC189D4063FBF15CE7AEA21D0D5CB8"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	A43E05254705A725B8BB1FA47B2F61BE
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.Description
+msgctxt ",A43E05254705A725B8BB1FA47B2F61BE"
+msgid "순간 이동해 주변의 적들을 빠르게 베어 피해를 줍니다."
+msgstr "Teleports and rapidly slashes nearby enemies, dealing damage."
 
 #. Key:	6C86DA9743222D31E5FF0C9F7D809CA0
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.DisplayName
 #: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardFlicker.DisplayName
 msgctxt ",6C86DA9743222D31E5FF0C9F7D809CA0"
-msgid "플리커"
-msgstr "Flicker"
+msgid "점멸 참격"
+msgstr "Flicker Slash"
 
-#. Key:	FFE4F1A14B25AA5B9083479E1D13F6AC
-#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardGuard.DisplayName
-#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardGuard.DisplayName
-msgctxt ",FFE4F1A14B25AA5B9083479E1D13F6AC"
-msgid "가드"
-msgstr "Guard"
+#. Key:	5AD168C34208CAA7A87E4C842980F11B
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",5AD168C34208CAA7A87E4C842980F11B"
+msgid "이동 속도 상승량"
+msgstr "Move Speed Increase"
+
+#. Key:	160E5033416DD23B23FA6080371F24F6
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",160E5033416DD23B23FA6080371F24F6"
+msgid "방어력 상승량"
+msgstr "Defense Increase"
+
+#. Key:	0D0161F143B86E6094195E86AC86D511
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",0D0161F143B86E6094195E86AC86D511"
+msgid "버프 적용 범위"
+msgstr "Buff Range"
+
+#. Key:	0FC7280D489E57C7F3BFA38DB112E005
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",0FC7280D489E57C7F3BFA38DB112E005"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	BD8D965846A9ECCF7F894A9C9227FBBA
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(4).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.CharacterSelectStats(4).CharacterSelectStats.DisplayName
+msgctxt ",BD8D965846A9ECCF7F894A9C9227FBBA"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	929963E14A822338F2E2908EB20E1B69
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.Description
+msgctxt ",929963E14A822338F2E2908EB20E1B69"
+msgid "일정 시간 동안 자신과 주변 아군의 이동 속도와 방어력을 증가시킵니다."
+msgstr "Increases the move speed and defense of the player and nearby allies for a duration."
 
 #. Key:	B514FA154AD06A99D06D258E75066DE0
 #. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.DisplayName
 #: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardSpeedBuff.DisplayName
 msgctxt ",B514FA154AD06A99D06D258E75066DE0"
-msgid "공속버프"
-msgstr "Attack Speed Buff"
+msgid "선봉 지휘"
+msgstr "Vanguard Command"
+
+#. Key:	52F7251D4F8C3A533442499F54DE6BFC
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(0).CharacterSelectStats.DisplayName
+msgctxt ",52F7251D4F8C3A533442499F54DE6BFC"
+msgid "데미지 계수"
+msgstr "Damage Multiplier"
+
+#. Key:	F64E63414694AC5EBA6B91B9B139EF65
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(1).CharacterSelectStats.DisplayName
+msgctxt ",F64E63414694AC5EBA6B91B9B139EF65"
+msgid "기본 체력"
+msgstr "Base Health"
+
+#. Key:	AA9D9D304BE3A1E33BBACCAA2D1DAE3C
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(2).CharacterSelectStats.DisplayName
+msgctxt ",AA9D9D304BE3A1E33BBACCAA2D1DAE3C"
+msgid "공격 및 실드 범위"
+msgstr "Attack and Shield Range"
+
+#. Key:	C58B02524C741E2B475C928A334488A6
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(3).CharacterSelectStats.DisplayName
+msgctxt ",C58B02524C741E2B475C928A334488A6"
+msgid "지속 시간"
+msgstr "Duration"
+
+#. Key:	5AC6965147C61EDDB3329387C65ED91F
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(4).CharacterSelectStats.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.CharacterSelectStats(4).CharacterSelectStats.DisplayName
+msgctxt ",5AC6965147C61EDDB3329387C65ED91F"
+msgid "쿨타임"
+msgstr "Cooldown"
+
+#. Key:	19E7C59748F4A8D71D83AE8AC605A0FD
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.Description
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.Description
+msgctxt ",19E7C59748F4A8D71D83AE8AC605A0FD"
+msgid "방패를 던져 적의 공격을 막는 영역을 만들고, 영역 안의 적에게 일정 시간마다 피해를 줍니다."
+msgstr "Throws a shield to create a field that blocks enemy attacks and periodically damages enemies within it."
+
+#. Key:	FFE4F1A14B25AA5B9083479E1D13F6AC
+#. SourceLocation:	/Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.DisplayName
+#: /Game/NeoSanctum/Data/UI/DT_SkillUI.DT_SkillUI.VanguardThrowBarrierField.DisplayName
+msgctxt ",FFE4F1A14B25AA5B9083479E1D13F6AC"
+msgid "배리어 필드"
+msgstr "Barrier Field"
 
 #. Key:	B6A25CFD44BCC50EB50FE8866259FE50
 #. SourceLocation:	/Game/NeoSanctum/Input/AbilityInputAction/IA_NS_ActiveSkill1.IA_NS_ActiveSkill1.ActionDescription
@@ -1988,53 +2506,179 @@ msgid "입장"
 msgstr "Enter"
 
 #. Key:	25F6EC9441FCCC23BAA769BF5E608758
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.BaseDamageText.Text
 msgctxt ",25F6EC9441FCCC23BAA769BF5E608758"
-msgid "공격력: "
-msgstr "Damage: "
+msgid "50"
+msgstr "50"
 
-#. Key:	C3CC05464DF945EAF21E7596817F10D7
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
-msgctxt ",C3CC05464DF945EAF21E7596817F10D7"
-msgid "치명타 확률:"
-msgstr "Critical Chance:"
+#. Key:	5D4F5BAA4DD0B884F4EADB8BC9746677
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CharacterDescriptionText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CharacterDescriptionText.Text
+msgctxt ",5D4F5BAA4DD0B884F4EADB8BC9746677"
+msgid "균형 잡힌 능력치를 가진 전천후 전투 병사.\r\n정밀 사격과 기동성을 겸비한 유연한 전투 스타일."
+msgstr "A versatile combat soldier with balanced attributes.\r\nCombines precision shooting and mobility for a flexible combat style."
 
-#. Key:	C5BA00C94400B11D980E358E381E1397
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
-msgctxt ",C5BA00C94400B11D980E358E381E1397"
-msgid "치명타 피해:"
-msgstr "Critical Damage:"
+#. Key:	FA9E1B954F766A5A70E3B5A2B7EE8E36
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CharacterNameText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CharacterNameText.Text
+msgctxt ",FA9E1B954F766A5A70E3B5A2B7EE8E36"
+msgid "레인저"
+msgstr "Ranger"
 
-#. Key:	376CF73D456FE9CC533D5F9402C3955B
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
-msgctxt ",376CF73D456FE9CC533D5F9402C3955B"
-msgid "방어력:"
-msgstr "Defense:"
+#. Key:	AC887E454DF30420D18DA59AFD148BB1
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.ConfirmButton.ButtonLabel
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.ConfirmButton.ButtonLabel
+msgctxt ",AC887E454DF30420D18DA59AFD148BB1"
+msgid "선택"
+msgstr "Select"
+
+#. Key:	9ECDF473469DE8296CCCBE8F76C519CA
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritChanceText.Text
+msgctxt ",9ECDF473469DE8296CCCBE8F76C519CA"
+msgid "30%"
+msgstr "30%"
+
+#. Key:	09C1D80A4C3FDE38D58A9E873274627E
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CritDamageText.Text
+msgctxt ",09C1D80A4C3FDE38D58A9E873274627E"
+msgid "170%"
+msgstr "170%"
+
+#. Key:	84DCC3D24DB4898AABA939AA7F23439A
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_BaseDamageLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_BaseDamageLabel.Text
+msgctxt ",84DCC3D24DB4898AABA939AA7F23439A"
+msgid "기본 공격력"
+msgstr "Base Damage"
+
+#. Key:	91C23FC34E2733739EB0658B29F2B44B
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_CritChanceLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_CritChanceLabel.Text
+msgctxt ",91C23FC34E2733739EB0658B29F2B44B"
+msgid "치명타 확률"
+msgstr "Critical Chance"
+
+#. Key:	F7E7E1584487E02B79A39B8CA9E0F00A
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_CritDamageLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_CritDamageLabel.Text
+msgctxt ",F7E7E1584487E02B79A39B8CA9E0F00A"
+msgid "치명타 피해"
+msgstr "Critical Damage"
+
+#. Key:	05AEBD174071BA53AD459D85F16976C4
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_DefenseLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_DefenseLabel.Text
+msgctxt ",05AEBD174071BA53AD459D85F16976C4"
+msgid "방어력"
+msgstr "Defense"
+
+#. Key:	F9A2E7734401C3792694E387F7CFC7F4
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_HeaderTitle.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_HeaderTitle.Text
+msgctxt ",F9A2E7734401C3792694E387F7CFC7F4"
+msgid "캐릭터 선택"
+msgstr "Character Selection"
+
+#. Key:	12B9DCD740D17ECBE37AA190C6F28D10
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MaxHealthLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MaxHealthLabel.Text
+msgctxt ",12B9DCD740D17ECBE37AA190C6F28D10"
+msgid "체력"
+msgstr "Health"
+
+#. Key:	41FCB45E4CF3D623614967B004955C92
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MaxShieldLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MaxShieldLabel.Text
+msgctxt ",41FCB45E4CF3D623614967B004955C92"
+msgid "보호막"
+msgstr "Shield"
+
+#. Key:	ED70681C44757997F5DAA8BC0C934380
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MoveSpeedLabel.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.CT_MoveSpeedLabel.Text
+msgctxt ",ED70681C44757997F5DAA8BC0C934380"
+msgid "이동 속도"
+msgstr "Move Speed"
+
+#. Key:	7C0BF9D149965B12193F57A69404249D
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.DefenseText.Text
+msgctxt ",7C0BF9D149965B12193F57A69404249D"
+msgid "10"
+msgstr "10"
 
 #. Key:	307C223E4810A8708E0B3286854F09FE
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxHealthText.Text
 msgctxt ",307C223E4810A8708E0B3286854F09FE"
-msgid "체력:"
-msgstr "Health:"
+msgid "150"
+msgstr "150"
 
 #. Key:	5824807644DC04B1EAFAA58407FA1DF0
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MaxShieldText.Text
 msgctxt ",5824807644DC04B1EAFAA58407FA1DF0"
-msgid "보호막:"
-msgstr "Shield:"
+msgid "50"
+msgstr "50"
 
-#. Key:	D5BBFE114414917FE1D79ABACE8EA8AD
-#. SourceLocation:	/Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
-#: /Game/NeoSanctum/UI/Character/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
-msgctxt ",D5BBFE114414917FE1D79ABACE8EA8AD"
-msgid "이동속도:"
-msgstr "Move Speed:"
+#. Key:	16A077E546504C3A220ECEB2CB7FA15B
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.MoveSpeedText.Text
+msgctxt ",16A077E546504C3A220ECEB2CB7FA15B"
+msgid "600"
+msgstr "600"
+
+#. Key:	D0CC60D24648EA717186D3A23E2F8730
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.NextButton.ButtonLabel
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.NextButton.ButtonLabel
+msgctxt ",D0CC60D24648EA717186D3A23E2F8730"
+msgid "다음 캐릭터"
+msgstr "Next Character"
+
+#. Key:	6A12E75F4879619C7DCAECB687B9A019
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.SkillDetailDescriptionText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.SkillDetailDescriptionText.Text
+msgctxt ",6A12E75F4879619C7DCAECB687B9A019"
+msgid "연발 펄스 라이플을 발사합니다."
+msgstr "Fires a fully automatic pulse rifle."
+
+#. Key:	864C39DD46BE3D661D1E3B87E885CEE6
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.SkillDetailNameText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelect.WBP_CharacterSelect_C:WidgetTree.SkillDetailNameText.Text
+msgctxt ",864C39DD46BE3D661D1E3B87E885CEE6"
+msgid "펄스 라이플"
+msgstr "Pulse Rifle"
+
+#. Key:	B5937ECB43AB38679A1154947C0E75CB
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelectSkillStatRow.WBP_CharacterSelectSkillStatRow_C:WidgetTree.SkillStatNameText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelectSkillStatRow.WBP_CharacterSelectSkillStatRow_C:WidgetTree.SkillStatNameText.Text
+msgctxt ",B5937ECB43AB38679A1154947C0E75CB"
+msgid "쿨다운"
+msgstr "Cooldown"
+
+#. Key:	C71ADF2C4D28E7CC4B06FE9688A194C4
+#. SourceLocation:	/Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelectSkillStatRow.WBP_CharacterSelectSkillStatRow_C:WidgetTree.SkillStatValueText.Text
+#: /Game/NeoSanctum/UI/CharacterSelect/WBP_CharacterSelectSkillStatRow.WBP_CharacterSelectSkillStatRow_C:WidgetTree.SkillStatValueText.Text
+msgctxt ",C71ADF2C4D28E7CC4B06FE9688A194C4"
+msgid "6초"
+msgstr "6 sec"
+
+#. Key:	0A2D84C644A46AC520FCA98D1F29D4DB
+#. SourceLocation:	/Game/NeoSanctum/UI/Common/Character_Select/WBP_CharacterSelectButton.Default__WBP_CharacterSelectButton_C.ButtonLabel
+#: /Game/NeoSanctum/UI/Common/Character_Select/WBP_CharacterSelectButton.Default__WBP_CharacterSelectButton_C.ButtonLabel
+msgctxt ",0A2D84C644A46AC520FCA98D1F29D4DB"
+msgid "이전 캐릭터"
+msgstr "Previous Character"
+
+#. Key:	E873C0B2443E740128064E99BDADA078
+#. SourceLocation:	/Game/NeoSanctum/UI/Common/Character_Select/WBP_CharacterSelectButton.WBP_CharacterSelectButton_C:WidgetTree.ButtonLabelText.Text
+#: /Game/NeoSanctum/UI/Common/Character_Select/WBP_CharacterSelectButton.WBP_CharacterSelectButton_C:WidgetTree.ButtonLabelText.Text
+msgctxt ",E873C0B2443E740128064E99BDADA078"
+msgid "이전 캐릭터"
+msgstr "Previous Character"
 
 #. Key:	C59ADC53438CCEDDB73ADF8025F97248
 #. SourceLocation:	/Game/NeoSanctum/UI/Common/RunEnd/WBP_NextStageButton.WBP_NextStageButton_C:WidgetTree.TextBlock_37.Text
@@ -2372,6 +3016,132 @@ msgctxt ",412DFA794E74F52B431F8BBE05323433"
 msgid "Tab"
 msgstr "Tab"
 
+#. Key:	973E0A2049CAF27108D3D8BBDF738E02
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.BaseDamageText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.BaseDamageText.Text
+msgctxt ",973E0A2049CAF27108D3D8BBDF738E02"
+msgid "50"
+msgstr "50"
+
+#. Key:	4D04DE5D4054E4DCA3918D9366416988
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CritChanceText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CritChanceText.Text
+msgctxt ",4D04DE5D4054E4DCA3918D9366416988"
+msgid "30%"
+msgstr "30%"
+
+#. Key:	485E25804172C814A71DF2B3EF70500D
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CritDamageText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CritDamageText.Text
+msgctxt ",485E25804172C814A71DF2B3EF70500D"
+msgid "170%"
+msgstr "170%"
+
+#. Key:	05BA58DF4EDF2D16633C0081EB871950
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_BaseDamageLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_BaseDamageLabel.Text
+msgctxt ",05BA58DF4EDF2D16633C0081EB871950"
+msgid "공격력"
+msgstr "Attack Damage"
+
+#. Key:	915AA41543D00308E31D17AA2F4EB7F2
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_CritChanceLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_CritChanceLabel.Text
+msgctxt ",915AA41543D00308E31D17AA2F4EB7F2"
+msgid "치명타 확률"
+msgstr "Critical Chance"
+
+#. Key:	914794B14D2AA51548EE09BCAC0C30C6
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_CritDamageLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_CritDamageLabel.Text
+msgctxt ",914794B14D2AA51548EE09BCAC0C30C6"
+msgid "치명타 피해"
+msgstr "Critical Damage"
+
+#. Key:	6376BF8D443B914F5326308720363C71
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_DefenseLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_DefenseLabel.Text
+msgctxt ",6376BF8D443B914F5326308720363C71"
+msgid "방어력"
+msgstr "Defense"
+
+#. Key:	A747EBAE4FF2412AD1B0EFA587C21024
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MaxHealthLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MaxHealthLabel.Text
+msgctxt ",A747EBAE4FF2412AD1B0EFA587C21024"
+msgid "체력"
+msgstr "Health"
+
+#. Key:	C47F039C4C7D70325093EF808052CECC
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MaxShieldLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MaxShieldLabel.Text
+msgctxt ",C47F039C4C7D70325093EF808052CECC"
+msgid "보호막"
+msgstr "Shield"
+
+#. Key:	B653CDFC4B19BDA35B4FF89307479F59
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MoveSpeedLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_MoveSpeedLabel.Text
+msgctxt ",B653CDFC4B19BDA35B4FF89307479F59"
+msgid "이동속도"
+msgstr "Move Speed"
+
+#. Key:	2212885E4D34A916D8DE37A2E29D56B9
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_ShieldRegenCooldownLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_ShieldRegenCooldownLabel.Text
+msgctxt ",2212885E4D34A916D8DE37A2E29D56B9"
+msgid "보호막 재생 대기시간"
+msgstr "Shield Recharge Delay"
+
+#. Key:	CA004F2B42CD47DC25718B9CA254FF99
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_ShieldRegenRateLabel.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.CT_ShieldRegenRateLabel.Text
+msgctxt ",CA004F2B42CD47DC25718B9CA254FF99"
+msgid "보호막 재생량"
+msgstr "Shield Regeneration"
+
+#. Key:	9C39B03E4A8D532C5EE96FA554A91F05
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.DefenseText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.DefenseText.Text
+msgctxt ",9C39B03E4A8D532C5EE96FA554A91F05"
+msgid "10"
+msgstr "10"
+
+#. Key:	D6563F284738DD8D8AC86290F482B31D
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MaxHealthText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MaxHealthText.Text
+msgctxt ",D6563F284738DD8D8AC86290F482B31D"
+msgid "150"
+msgstr "150"
+
+#. Key:	4C9CEC8E45294163D48A4BBD89C34005
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MaxShieldText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MaxShieldText.Text
+msgctxt ",4C9CEC8E45294163D48A4BBD89C34005"
+msgid "50"
+msgstr "50"
+
+#. Key:	2E92927E41400F2C4CDCB299A4807168
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MoveSpeedText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.MoveSpeedText.Text
+msgctxt ",2E92927E41400F2C4CDCB299A4807168"
+msgid "600"
+msgstr "600"
+
+#. Key:	E3CDA04044A7A6F0364A22AEFA5FF07D
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.ShieldRegenCooldownText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.ShieldRegenCooldownText.Text
+msgctxt ",E3CDA04044A7A6F0364A22AEFA5FF07D"
+msgid "50"
+msgstr "50"
+
+#. Key:	4A391B4644933598357546A4A111FC4C
+#. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.ShieldRegenRateText.Text
+#: /Game/NeoSanctum/UI/HUD/WBP_CharacterStatsWidget.WBP_CharacterStatsWidget_C:WidgetTree.ShieldRegenRateText.Text
+msgctxt ",4A391B4644933598357546A4A111FC4C"
+msgid "50"
+msgstr "50"
+
 #. Key:	969FE50C4D4D9F6BABB841B8D13D59A2
 #. SourceLocation:	/Game/NeoSanctum/UI/HUD/WBP_DifficultyTimer.WBP_DifficultyTimer_C:WidgetTree.StageLabelText.Text
 #: /Game/NeoSanctum/UI/HUD/WBP_DifficultyTimer.WBP_DifficultyTimer_C:WidgetTree.StageLabelText.Text
@@ -2484,12 +3254,12 @@ msgctxt ",CA4654A94520EEA6A1CD80A1042E4490"
 msgid "목표 달성"
 msgstr "Objective Complete"
 
-#. Key:	72AA6CC04A7C4FC75AD51DAD792429F4
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.EquipButtonText.Text
-#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.EquipButtonText.Text
-msgctxt ",72AA6CC04A7C4FC75AD51DAD792429F4"
-msgid "장착"
-msgstr "Equip"
+#. Key:	4EAAA24F470D8B7692357CA45DB880CB
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.CommonCurrencyText.Text
+#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.CommonCurrencyText.Text
+msgctxt ",4EAAA24F470D8B7692357CA45DB880CB"
+msgid "0"
+msgstr "0"
 
 #. Key:	E015CD37465982F72109F79DD9493AEF
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_353.Text
@@ -2512,13 +3282,6 @@ msgctxt ",ABA9CE79441D128322F710B4F5483712"
 msgid "레그"
 msgstr "Legs"
 
-#. Key:	050B4CC24A1B64DF8FD5FBA5C11A4710
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_79.Text
-#: /Game/NeoSanctum/UI/Interaction/Parts/WBP_PartEquip.WBP_PartEquip_C:WidgetTree.TextBlock_79.Text
-msgctxt ",050B4CC24A1B64DF8FD5FBA5C11A4710"
-msgid "장착중"
-msgstr "Equipped"
-
 #. Key:	5C19DE20495F148CD5C45998E89F0E0F
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.ActionText.Text
 #: /Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.ActionText.Text
@@ -2533,19 +3296,61 @@ msgctxt ",FB21A01C456185B702F8FB9339913921"
 msgid "F"
 msgstr "F"
 
-#. Key:	7B3D53EE4ECFB925A8057AB51B1D8F98
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.Button_154.ToolTipText
-#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.Button_154.ToolTipText
-msgctxt ",7B3D53EE4ECFB925A8057AB51B1D8F98"
-msgid "닫기"
-msgstr "Close"
+#. Key:	1578F62A43FCE110201F918D5EC94892
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.BottomGuideText.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.BottomGuideText.Text
+msgctxt ",1578F62A43FCE110201F918D5EC94892"
+msgid "노드를 선택하여 펫을 강화하세요."
+msgstr "Select a node to upgrade your pet."
 
-#. Key:	1730B36A4F55337B854AA6A271D390E6
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_67.Text
-#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_67.Text
-msgctxt ",1730B36A4F55337B854AA6A271D390E6"
-msgid "닫기"
-msgstr "Close"
+#. Key:	EAA0CD5842599C1B97037DB70E75E658
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.CurrencyText.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.CurrencyText.Text
+msgctxt ",EAA0CD5842599C1B97037DB70E75E658"
+msgid "25000"
+msgstr "25000"
+
+#. Key:	88BC446B48E42E23B35AF4B66AA9F00B
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.Text.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.Text.Text
+msgctxt ",88BC446B48E42E23B35AF4B66AA9F00B"
+msgid "선택중인 펫 :"
+msgstr "Selected Pet:"
+
+#. Key:	03D6799E4CF505E97D7E98852A9AA90D
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock.Text
+msgctxt ",03D6799E4CF505E97D7E98852A9AA90D"
+msgid "방어드론"
+msgstr "Defense Drone"
+
+#. Key:	D712B85A4B6649C2119AEF8A6DAEF3EE
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_1.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_1.Text
+msgctxt ",D712B85A4B6649C2119AEF8A6DAEF3EE"
+msgid "패치예정"
+msgstr "Coming Soon"
+
+#. Key:	ADCD455348642CA485ECE98BD15E36A2
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_3.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_3.Text
+msgctxt ",ADCD455348642CA485ECE98BD15E36A2"
+msgid "버프드론"
+msgstr "Buff Drone"
+
+#. Key:	077996824C8C6BBE8F0061A1A151F946
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_54.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_54.Text
+msgctxt ",077996824C8C6BBE8F0061A1A151F946"
+msgid "펫 업그레이드"
+msgstr "Pet Upgrade"
+
+#. Key:	CCB300904A7FE0F5D1566EBDF47276B0
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_594.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_PetUpgrade.WBP_PetUpgrade_C:WidgetTree.TextBlock_594.Text
+msgctxt ",CCB300904A7FE0F5D1566EBDF47276B0"
+msgid "공격드론"
+msgstr "Attack Drone"
 
 #. Key:	86B7112A4080C7989B4AA2B47AE17C7A
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.OperationSubtitleText.Text
@@ -2574,6 +3379,13 @@ msgstr "Gameplay"
 msgctxt ",5EAE45B8466D4F7C94033FB2B7BE4F7C"
 msgid "ApplyCustomColorText"
 msgstr "ApplyCustomColorText"
+
+#. Key:	0E84AB6B449EEB335B263DA76ABA03FA
+#. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.MouseSensitivityValueText.Text
+#: /Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.MouseSensitivityValueText.Text
+msgctxt ",0E84AB6B449EEB335B263DA76ABA03FA"
+msgid "1.00"
+msgstr "1.00"
 
 #. Key:	6998E79942C0DDA9649ECB9B1F1FCFB9
 #. SourceLocation:	/Game/NeoSanctum/UI/Options/Gameplay/WBP_GameplaySetting.WBP_GameplaySetting_C:WidgetTree.TextBlock.Text
@@ -2799,82 +3611,61 @@ msgctxt ",C817DFD64F17BA86EFF662BA2B176B6A"
 msgid "옵션"
 msgstr "Options"
 
-#. Key:	56342AFA40F6485985DF658CC81B736C
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.EquipButtonText.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.EquipButtonText.Text
-msgctxt ",56342AFA40F6485985DF658CC81B736C"
-msgid "구매/장착"
-msgstr "Purchase / Equip"
+#. Key:	7E191AB84B90EB119651E7957B918E90
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonText.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonText.Text
+msgctxt ",7E191AB84B90EB119651E7957B918E90"
+msgid "업그레이드"
+msgstr "Upgrade"
 
-#. Key:	F209B5A54CE2DDF6BBF011AA11F7344A
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.HeaderText.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.HeaderText.Text
-msgctxt ",F209B5A54CE2DDF6BBF011AA11F7344A"
-msgid "장착 중"
-msgstr "Equipped"
-
-#. Key:	2E11E74044353E8B68909F8F0166D0E5
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock.Text
-msgctxt ",2E11E74044353E8B68909F8F0166D0E5"
-msgid "장착 중"
-msgstr "Equipped"
-
-#. Key:	6AC76F134CB6FF259430F08418225544
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1026.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1026.Text
-msgctxt ",6AC76F134CB6FF259430F08418225544"
-msgid "업그레이드/리롤"
+#. Key:	39F6400A4CFA06EC5C5982882AA02D1F
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock.Text
+msgctxt ",39F6400A4CFA06EC5C5982882AA02D1F"
+msgid "업그레이드 / 리롤"
 msgstr "Upgrade / Reroll"
 
-#. Key:	0C4A05B749CAFAA459236E9635E6C6D8
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1145.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1145.Text
-msgctxt ",0C4A05B749CAFAA459236E9635E6C6D8"
-msgid "X"
-msgstr "X"
-
-#. Key:	234D1ACA48394332EB4521A93D7297EB
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1259.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1259.Text
-msgctxt ",234D1ACA48394332EB4521A93D7297EB"
-msgid "이전 화면"
-msgstr "Previous Screen"
-
-#. Key:	75B2E8894A54B2CD5663579BCBE20F48
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1446.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_1446.Text
-msgctxt ",75B2E8894A54B2CD5663579BCBE20F48"
-msgid "이전 화면"
-msgstr "Previous Screen"
-
-#. Key:	D83DBB464FA7B0D4A62D80BF1D6E879E
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2437.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2437.Text
-msgctxt ",D83DBB464FA7B0D4A62D80BF1D6E879E"
+#. Key:	48BF3C74480F05D90566459439CD3588
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_1.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_1.Text
+msgctxt ",48BF3C74480F05D90566459439CD3588"
 msgid "리롤"
 msgstr "Reroll"
 
-#. Key:	82E20FE248C907748DBF319027200488
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2826.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2826.Text
-msgctxt ",82E20FE248C907748DBF319027200488"
+#. Key:	B9455E8E45C8860B85BBFB9A2D137EDF
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_161.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_161.Text
+msgctxt ",B9455E8E45C8860B85BBFB9A2D137EDF"
+msgid "업그레이드"
+msgstr "Upgrade"
+
+#. Key:	B71F793B47002604B0832A8744F9750D
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_331.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommonTextBlock_331.Text
+msgctxt ",B71F793B47002604B0832A8744F9750D"
+msgid "파츠 구매"
+msgstr "Purchase Part"
+
+#. Key:	486B578B4326C1D96DCB2994B6CFB79F
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommontText.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.CommontText.Text
+msgctxt ",486B578B4326C1D96DCB2994B6CFB79F"
 msgid "리롤"
 msgstr "Reroll"
 
-#. Key:	7FF8CF9641D4CB89CE0AD5B5468EC7FB
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2960.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_2960.Text
-msgctxt ",7FF8CF9641D4CB89CE0AD5B5468EC7FB"
-msgid "업그레이드"
-msgstr "Upgrade"
+#. Key:	5C1B885C4F90FF0C4B19C0814D330CE8
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.EquipButtonText.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.EquipButtonText.Text
+msgctxt ",5C1B885C4F90FF0C4B19C0814D330CE8"
+msgid "구매/장착"
+msgstr "Purchase/Equip"
 
-#. Key:	39ED948E413EB169B464069477C951C4
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_3466.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_3466.Text
-msgctxt ",39ED948E413EB169B464069477C951C4"
-msgid "업그레이드"
-msgstr "Upgrade"
+#. Key:	0564ACF34A3A39A3C70D468E762F7712
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TempBalanceText.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TempBalanceText.Text
+msgctxt ",0564ACF34A3A39A3C70D468E762F7712"
+msgid "0"
+msgstr "0"
 
 #. Key:	997179D747AD34EFAE3001937F1FCE45
 #. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_353.Text
@@ -2897,26 +3688,12 @@ msgctxt ",9BD85D98467526C32D156CB559F679B1"
 msgid "레그"
 msgstr "Leg"
 
-#. Key:	B0E332EE45086B2164E5CDAF906054C6
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_905.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.TextBlock_905.Text
-msgctxt ",B0E332EE45086B2164E5CDAF906054C6"
-msgid "파츠 구매"
-msgstr "Purchase Part"
-
-#. Key:	6608031A4E8391B6703A3C9A58F18E37
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.Upg_Cen_HeaderText.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.Upg_Cen_HeaderText.Text
-msgctxt ",6608031A4E8391B6703A3C9A58F18E37"
-msgid "선택한 파츠 설명"
-msgstr "Selected part description"
-
-#. Key:	B16305074EE11D0BC150CD9F240528ED
-#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.Upg_HeaderText.Text
-#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.Upg_HeaderText.Text
-msgctxt ",B16305074EE11D0BC150CD9F240528ED"
-msgid "장착중인 파츠 설명"
-msgstr "Equipped part description"
+#. Key:	C0CAC7BC42A0B6DF3EBDD2BBF139ECF7
+#. SourceLocation:	/Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.UpgradeBalanceText.Text
+#: /Game/NeoSanctum/UI/Part/InRun/WBP_PartUpgrade.WBP_PartUpgrade_C:WidgetTree.UpgradeBalanceText.Text
+msgctxt ",C0CAC7BC42A0B6DF3EBDD2BBF139ECF7"
+msgid "0"
+msgstr "0"
 
 #. Key:	A355004C48C2CC22FDC1039F03A3B33A
 #. SourceLocation:	/Game/NeoSanctum/UI/PauseMenu/Buttons/WBP_MainMenuButton.WBP_MainMenuButton_C:WidgetTree.TextBlock_213.Text
@@ -2946,6 +3723,62 @@ msgctxt ",43A9E5624FBBAA56EA693985FD793548"
 msgid "시스템 메뉴"
 msgstr "System Menu"
 
+#. Key:	777492334899C35778B32DA9CD4AC0B9
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.CostText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.CostText.Text
+msgctxt ",777492334899C35778B32DA9CD4AC0B9"
+msgid "200"
+msgstr "200"
+
+#. Key:	5C9309DA41F39E9BAEF7EB8E949317C2
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.CurrentGradeLabelText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.CurrentGradeLabelText.Text
+msgctxt ",5C9309DA41F39E9BAEF7EB8E949317C2"
+msgid "업그레이드 시 증가량"
+msgstr "Increase per Upgrade"
+
+#. Key:	6693939D457D8E8472B333822B8639B5
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.DescriptionText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.DescriptionText.Text
+msgctxt ",6693939D457D8E8472B333822B8639B5"
+msgid "최대 체력이 영구적으로 증가합니다."
+msgstr "Permanently increases maximum health."
+
+#. Key:	41C1421E476DFEEA5BD174BA4B3E5468
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.IncreaseText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.IncreaseText.Text
+msgctxt ",41C1421E476DFEEA5BD174BA4B3E5468"
+msgid "+20"
+msgstr "+20"
+
+#. Key:	76EABC2C461808130A2E01B504CBC00E
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.PurchaseLabelText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.PurchaseLabelText.Text
+msgctxt ",76EABC2C461808130A2E01B504CBC00E"
+msgid "업그레이드 비용"
+msgstr "Upgrade Cost"
+
+#. Key:	440FB620489B02A69EEF7E92E9C5A557
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.TitleText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_Companion_UpgradeNodeDetail.WBP_Companion_UpgradeNodeDetail_C:WidgetTree.TitleText.Text
+msgctxt ",440FB620489B02A69EEF7E92E9C5A557"
+msgid "최대 체력 증가"
+msgstr "Maximum Health Increase"
+
+#. Key:	C6ACA97A40F9B7931C1078AD067C3EFF
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_CompanionUpgradeNode.WBP_CompanionUpgradeNode_C:WidgetTree.CostText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_CompanionUpgradeNode.WBP_CompanionUpgradeNode_C:WidgetTree.CostText.Text
+msgctxt ",C6ACA97A40F9B7931C1078AD067C3EFF"
+msgid "75"
+msgstr "75"
+
+#. Key:	7BA0E56342EEAE64DFA90DBD98710E78
+#. SourceLocation:	/Game/NeoSanctum/UI/PetUpgrade/WBP_CompanionUpgradeNode.WBP_CompanionUpgradeNode_C:WidgetTree.LevelText.Text
+#: /Game/NeoSanctum/UI/PetUpgrade/WBP_CompanionUpgradeNode.WBP_CompanionUpgradeNode_C:WidgetTree.LevelText.Text
+msgctxt ",7BA0E56342EEAE64DFA90DBD98710E78"
+msgid "0 / 0"
+msgstr "0 / 0"
+
 #. Key:	8378B22A45A98D91E7A2189FD199A93C
 #. SourceLocation:	/Game/NeoSanctum/UI/Prologue/WBP_NSPrologueWidget.WBP_NSPrologueWidget_C:WidgetTree.SkipText.Text
 #: /Game/NeoSanctum/UI/Prologue/WBP_NSPrologueWidget.WBP_NSPrologueWidget_C:WidgetTree.SkipText.Text
@@ -2954,8 +3787,8 @@ msgid "ESC 길게 눌러 건너뛰기"
 msgstr "Hold ESC to skip"
 
 #. Key:	00AF3E0B49CB63C08FA06199F6184096
-#. SourceLocation:	/Game/NeoSanctum/UI/Result/WBP_RunEnd.WBP_RunEnd_C:WidgetTree.Text_ResultSubtitle.Text
-#: /Game/NeoSanctum/UI/Result/WBP_RunEnd.WBP_RunEnd_C:WidgetTree.Text_ResultSubtitle.Text
+#. SourceLocation:	/Game/NeoSanctum/UI/Result/WBP_RunEnd.WBP_RunEnd_C:WidgetTree.StageInfoText.Text
+#: /Game/NeoSanctum/UI/Result/WBP_RunEnd.WBP_RunEnd_C:WidgetTree.StageInfoText.Text
 msgctxt ",00AF3E0B49CB63C08FA06199F6184096"
 msgid "작전 결과"
 msgstr "Mission Results"
@@ -3058,54 +3891,82 @@ msgctxt "ReadyStartActor,PromptText"
 msgid "Ready / Start"
 msgstr "Ready / Start"
 
-#. Key:	MaxHealthFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(207)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(207)
-msgctxt "CharacterSelect,MaxHealthFormat"
-msgid "체력: {0}"
-msgstr "Health: {0}"
+#. Key:	StatUnitPercent
+#. SourceLocation:	Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(180)
+#: Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(180)
+msgctxt "PartUtils,StatUnitPercent"
+msgid "{0}%"
+msgstr "{0}%"
 
-#. Key:	BaseDamageFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(214)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(214)
-msgctxt "CharacterSelect,BaseDamageFormat"
-msgid "공격력: {0}"
-msgstr "Attack: {0}"
+#. Key:	StatUnitSeconds
+#. SourceLocation:	Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(182)
+#: Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(182)
+msgctxt "PartUtils,StatUnitSeconds"
+msgid "{0}초"
+msgstr "{0} sec"
 
-#. Key:	DefenseFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(221)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(221)
-msgctxt "CharacterSelect,DefenseFormat"
-msgid "방어력: {0}"
-msgstr "Defense: {0}"
+#. Key:	StatDirectionIncrease
+#. SourceLocation:	Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(192)
+#: Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(192)
+msgctxt "PartUtils,StatDirectionIncrease"
+msgid "{0} 증가"
+msgstr "{0} Increase"
 
-#. Key:	MoveSpeedFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(228)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(228)
-msgctxt "CharacterSelect,MoveSpeedFormat"
-msgid "이동속도: {0}"
-msgstr "Move Speed: {0}"
+#. Key:	StatDirectionDecrease
+#. SourceLocation:	Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(193)
+#: Source/NeoSanctum/Progression/Part/NSPartUtils.cpp(193)
+msgctxt "PartUtils,StatDirectionDecrease"
+msgid "{0} 감소"
+msgstr "{0} Decrease"
 
-#. Key:	CritChanceFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(235)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(235)
-msgctxt "CharacterSelect,CritChanceFormat"
-msgid "치명타 확률: {0}%"
-msgstr "Critical Chance: {0}%"
+#. Key:	SkillStatPercentage
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(36)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(36)
+msgctxt "CharacterSelect,SkillStatPercentage"
+msgid "{0}%"
+msgstr "{0}%"
 
-#. Key:	CritDamageFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(242)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(242)
-msgctxt "CharacterSelect,CritDamageFormat"
-msgid "치명타 피해: {0}%"
-msgstr "Critical Damage: {0}%"
+#. Key:	SkillStatSeconds
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(39)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(39)
+msgctxt "CharacterSelect,SkillStatSeconds"
+msgid "{0}초"
+msgstr "{0} sec"
 
-#. Key:	MaxShieldFormat
-#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(249)
-#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(249)
-msgctxt "CharacterSelect,MaxShieldFormat"
-msgid "보호막: {0}"
-msgstr "Shield: {0}"
+#. Key:	SkillStatShotsPerSecond
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(42)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(42)
+msgctxt "CharacterSelect,SkillStatShotsPerSecond"
+msgid "초당 {0}발"
+msgstr "{0} shots/sec"
+
+#. Key:	SkillStatMeters
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(45)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(45)
+msgctxt "CharacterSelect,SkillStatMeters"
+msgid "{0} m"
+msgstr "{0} m"
+
+#. Key:	MissingSkillStatValue
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(533)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(533)
+msgctxt "CharacterSelect,MissingSkillStatValue"
+msgid "-"
+msgstr "-"
+
+#. Key:	CritChanceValueFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(704)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(704)
+msgctxt "CharacterSelect,CritChanceValueFormat"
+msgid "{0}%"
+msgstr "{0}%"
+
+#. Key:	CritDamageValueFormat
+#. SourceLocation:	Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(711)
+#: Source/NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.cpp(711)
+msgctxt "CharacterSelect,CritDamageValueFormat"
+msgid "{0}%"
+msgstr "{0}%"
 
 #. Key:	CategoryFormat
 #. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeNodeDetailWidget.cpp(14)
@@ -3150,29 +4011,29 @@ msgid "MAX"
 msgstr "MAX"
 
 #. Key:	InvalidNode
-#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(358)
-#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(358)
+#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(356)
+#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(356)
 msgctxt "CommonUpgrade,InvalidNode"
 msgid "존재하지 않는 노드입니다."
 msgstr "This node does not exist."
 
 #. Key:	MaxLevelReached
-#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(367)
-#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(367)
+#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(365)
+#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(365)
 msgctxt "CommonUpgrade,MaxLevelReached"
 msgid "이미 최대 레벨입니다."
 msgstr "Already at max level."
 
 #. Key:	NotEnoughCurrency
-#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(378)
-#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(378)
+#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(376)
+#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(376)
 msgctxt "CommonUpgrade,NotEnoughCurrency"
 msgid "재화가 부족합니다."
 msgstr "Not enough currency."
 
 #. Key:	UpgradeFailed
-#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(392)
-#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(392)
+#. SourceLocation:	Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(390)
+#: Source/NeoSanctum/UI/CommonUpgrade/NSCommonUpgradeWidget.cpp(390)
 msgctxt "CommonUpgrade,UpgradeFailed"
 msgid "구매에 실패했습니다."
 msgstr "Purchase failed."
@@ -3216,29 +4077,29 @@ msgstr "Max Health"
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(53)
 #: Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(53)
 msgctxt "CharacterStats,MaxShield"
-msgid "최대 실드"
+msgid "최대 보호막"
 msgstr "Max Shield"
 
 #. Key:	ShieldRechargeRate
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(60)
 #: Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(60)
 msgctxt "CharacterStats,ShieldRechargeRate"
-msgid "실드 재생량"
+msgid "보호막 재생량"
 msgstr "Shield Regeneration"
 
 #. Key:	ShieldRechargeCooldown
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(67)
 #: Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(67)
 msgctxt "CharacterStats,ShieldRechargeCooldown"
-msgid "실드 재사용 대기시간"
+msgid "보호막 재생 대기시간"
 msgstr "Shield Recharge Delay"
 
 #. Key:	BaseDamage
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(74)
 #: Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(74)
 msgctxt "CharacterStats,BaseDamage"
-msgid "공격력"
-msgstr "Attack Damage"
+msgid "기본 공격력"
+msgstr "Base Damage"
 
 #. Key:	Defense
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(81)
@@ -3251,8 +4112,8 @@ msgstr "Defense"
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(88)
 #: Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(88)
 msgctxt "CharacterStats,MoveSpeed"
-msgid "이동속도"
-msgstr "Movement Speed"
+msgid "이동 속도"
+msgstr "Move Speed"
 
 #. Key:	CritChance
 #. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.cpp(95)
@@ -3261,16 +4122,30 @@ msgctxt "CharacterStats,CritChance"
 msgid "치명타 확률"
 msgstr "Critical Chance"
 
+#. Key:	PercentFormat
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsWidget.cpp(103)
+#: Source/NeoSanctum/UI/HUD/NSCharacterStatsWidget.cpp(103)
+msgctxt "CharacterStats,PercentFormat"
+msgid "{0}%"
+msgstr "{0}%"
+
+#. Key:	SecondsFormat
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSCharacterStatsWidget.cpp(113)
+#: Source/NeoSanctum/UI/HUD/NSCharacterStatsWidget.cpp(113)
+msgctxt "CharacterStats,SecondsFormat"
+msgid "{0}초"
+msgstr "{0} sec"
+
 #. Key:	ReloadingText
-#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(217)
-#: Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(217)
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(230)
+#: Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(230)
 msgctxt "PlayerStatus,ReloadingText"
 msgid "Reload"
 msgstr "Reload"
 
 #. Key:	AmmoFormat
-#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(227)
-#: Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(227)
+#. SourceLocation:	Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(240)
+#: Source/NeoSanctum/UI/HUD/NSHPShieldWidget.cpp(240)
 msgctxt "PlayerStatus,AmmoFormat"
 msgid "{0} / {1}"
 msgstr "{0} / {1}"
@@ -3366,6 +4241,34 @@ msgctxt "TeammateStatus,ShieldFormat"
 msgid "{0}/{1}"
 msgstr "{0}/{1}"
 
+#. Key:	Inc
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(24)
+#: Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(24)
+msgctxt "Pet,Inc"
+msgid "+ {0}"
+msgstr "+ {0}"
+
+#. Key:	Max
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(37)
+#: Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(37)
+msgctxt "Pet,Max"
+msgid "MAX"
+msgstr "MAX"
+
+#. Key:	Cost
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(38)
+#: Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(38)
+msgctxt "Pet,Cost"
+msgid "업그레이드 비용 : {0}"
+msgstr "Upgrade Cost: {0}"
+
+#. Key:	StatRow
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(54)
+#: Source/NeoSanctum/UI/Interaction/NSCompanionUpgradeDetailWidget.cpp(54)
+msgctxt "Pet,StatRow"
+msgid "{0} : {1}"
+msgstr "{0} : {1}"
+
 #. Key:	StatCompareFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSInteractionPromptWidget.cpp(111)
 #: Source/NeoSanctum/UI/Interaction/NSInteractionPromptWidget.cpp(111)
@@ -3373,131 +4276,152 @@ msgctxt "InteractionPrompt,StatCompareFormat"
 msgid "{0} : {1} -> {2}"
 msgstr "{0}: {1} -> {2}"
 
+#. Key:	Saving
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(367)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(367)
+msgctxt "PartEquip,Saving"
+msgid "저장하는 중..."
+msgstr "Saving..."
+
 #. Key:	UnlockSlot
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(462)
-#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(462)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(565)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(565)
 msgctxt "PartEquip,UnlockSlot"
 msgid "슬롯 해금"
 msgstr "Unlock Slot"
 
 #. Key:	Unequip
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(470)
-#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(470)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(573)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(573)
 msgctxt "PartEquip,Unequip"
 msgid "해제"
 msgstr "Unequip"
 
 #. Key:	SlotUnlockRequired
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(480)
-#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(480)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(583)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(583)
 msgctxt "PartEquip,SlotUnlockRequired"
 msgid "슬롯 해금 필요"
 msgstr "Slot Unlock Required"
 
 #. Key:	Buy
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(490)
-#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(490)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(593)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(593)
 msgctxt "PartEquip,Buy"
 msgid "구매"
 msgstr "Buy"
 
 #. Key:	Equip
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(499)
-#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(499)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(602)
+#: Source/NeoSanctum/UI/Interaction/NSPartEquipWidget.cpp(602)
 msgctxt "PartEquip,Equip"
 msgid "장착"
 msgstr "Equip"
 
-#. Key:	SlotBody
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(301)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(301)
-msgctxt "PartUpgrade,SlotBody"
-msgid "바디"
-msgstr "Body"
-
-#. Key:	SlotArm
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(302)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(302)
-msgctxt "PartUpgrade,SlotArm"
-msgid "암"
-msgstr "Arm"
-
-#. Key:	SlotLeg
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(303)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(303)
-msgctxt "PartUpgrade,SlotLeg"
-msgid "레그"
-msgstr "Leg"
-
-#. Key:	SlotEmptyLine
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(312)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(312)
-msgctxt "PartUpgrade,SlotEmptyLine"
-msgid "{0} : 미장착"
-msgstr "{0}: Not Equipped"
-
-#. Key:	SlotSummaryLine
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(318)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(318)
-msgctxt "PartUpgrade,SlotSummaryLine"
-msgid "{0} : {1} ({2}) 효과 {3}"
-msgstr "{0}: {1} ({2}) Effect {3}"
-
 #. Key:	RerollRange
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(583)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(583)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(578)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(578)
 msgctxt "PartUpgrade,RerollRange"
 msgid "스텟 변동폭 : {0} ~ {1}"
 msgstr "Stat Range: {0} ~ {1}"
 
 #. Key:	RerollCost
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(590)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(590)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(586)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(586)
 msgctxt "PartUpgrade,RerollCost"
 msgid "리롤 비용 : {0}"
 msgstr "Reroll Cost: {0}"
 
+#. Key:	RerollCurrentValue
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(593)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(593)
+msgctxt "PartUpgrade,RerollCurrentValue"
+msgid "기존 수치 : {0}"
+msgstr "Previous Value: {0}"
+
 #. Key:	MaxRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(608)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(608)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(611)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(611)
 msgctxt "PartUpgrade,MaxRarity"
 msgid "최고 등급"
 msgstr "Max Grade"
 
 #. Key:	RarityChange
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(614)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(614)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(617)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(617)
 msgctxt "PartUpgrade,RarityChange"
 msgid "변동 : {0} → {1}"
 msgstr "Change: {0} → {1}"
 
 #. Key:	ValueChange
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(620)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(620)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(626)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(626)
 msgctxt "PartUpgrade,ValueChange"
 msgid "스텟 : {0} → {1} ~ {2}"
 msgstr "Stat: {0} → {1} ~ {2}"
 
 #. Key:	UpgradePreview
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(624)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(624)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(632)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(632)
 msgctxt "PartUpgrade,UpgradePreview"
 msgid "{0}\n{1}"
 msgstr "{0}\n{1}"
 
 #. Key:	UpgradeChance
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(630)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(630)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(638)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(638)
 msgctxt "PartUpgrade,UpgradeChance"
 msgid "확률 : {0}"
 msgstr "Chance: {0}"
 
 #. Key:	UpgradeCost
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(636)
-#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(636)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(644)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(644)
 msgctxt "PartUpgrade,UpgradeCost"
 msgid "업그레이드 비용 : {0}"
 msgstr "Upgrade Cost: {0}"
+
+#. Key:	ToastUpgradeSuccess
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(691)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(691)
+msgctxt "PartUpgrade,ToastUpgradeSuccess"
+msgid "업그레이드 성공!"
+msgstr "Upgrade Successful!"
+
+#. Key:	ToastUpgradeFail
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(694)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(694)
+msgctxt "PartUpgrade,ToastUpgradeFail"
+msgid "업그레이드 실패"
+msgstr "Upgrade Failed"
+
+#. Key:	ToastRerollDone
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(697)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(697)
+msgctxt "PartUpgrade,ToastRerollDone"
+msgid "리롤 완료"
+msgstr "Reroll Complete"
+
+#. Key:	ToastPurchaseDone
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(700)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(700)
+msgctxt "PartUpgrade,ToastPurchaseDone"
+msgid "구매 완료"
+msgstr "Purchase Complete"
+
+#. Key:	ToastNotEnoughCurrency
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(703)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(703)
+msgctxt "PartUpgrade,ToastNotEnoughCurrency"
+msgid "재화가 부족합니다"
+msgstr "Not Enough Currency"
+
+#. Key:	ToastSoldOut
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(706)
+#: Source/NeoSanctum/UI/Interaction/NSPartUpgradeWidget.cpp(706)
+msgctxt "PartUpgrade,ToastSoldOut"
+msgid "품절된 상품입니다"
+msgstr "Sold Out"
 
 #. Key:	CancelReady
 #. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(164)
@@ -3521,312 +4445,333 @@ msgid "시작"
 msgstr "Start"
 
 #. Key:	ApplyCrosshairColor
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(409)
-#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(409)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(517)
+#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(517)
 msgctxt "GameplaySettings,ApplyCrosshairColor"
 msgid "적용"
 msgstr "Apply"
 
 #. Key:	AppliedCrosshairColor
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(413)
-#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(413)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(521)
+#: Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(521)
 msgctxt "GameplaySettings,AppliedCrosshairColor"
 msgid "적용됨"
 msgstr "Applied"
 
 #. Key:	Fullscreen
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(182)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(182)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(205)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(205)
 msgctxt "GraphicSettings,Fullscreen"
 msgid "전체 화면"
 msgstr "Fullscreen"
 
 #. Key:	BorderlessFullscreen
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(188)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(188)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(211)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(211)
 msgctxt "GraphicSettings,BorderlessFullscreen"
 msgid "테두리 없는 전체 화면"
 msgstr "Borderless Fullscreen"
 
 #. Key:	Windowed
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(194)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(194)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(217)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(217)
 msgctxt "GraphicSettings,Windowed"
 msgid "창 모드"
 msgstr "Windowed"
 
 #. Key:	UnlimitedFrameRate
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(218)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(218)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(241)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(241)
 msgctxt "GraphicSettings,UnlimitedFrameRate"
 msgid "제한 없음"
 msgstr "Unlimited"
 
 #. Key:	QualityLow
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(229)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(229)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(252)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(252)
 msgctxt "GraphicSettings,QualityLow"
 msgid "낮음"
 msgstr "Low"
 
 #. Key:	QualityMedium
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(235)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(235)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(258)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(258)
 msgctxt "GraphicSettings,QualityMedium"
 msgid "중간"
 msgstr "Medium"
 
 #. Key:	QualityHigh
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(241)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(241)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(264)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(264)
 msgctxt "GraphicSettings,QualityHigh"
 msgid "높음"
 msgstr "High"
 
 #. Key:	QualityEpic
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(247)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(247)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(270)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(270)
 msgctxt "GraphicSettings,QualityEpic"
 msgid "최상"
 msgstr "Epic"
 
 #. Key:	AntiAliasingLow
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(263)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(263)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(286)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(286)
 msgctxt "GraphicSettings,AntiAliasingLow"
 msgid "낮음"
 msgstr "Low"
 
 #. Key:	AntiAliasingMedium
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(269)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(269)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(292)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(292)
 msgctxt "GraphicSettings,AntiAliasingMedium"
 msgid "중간"
 msgstr "Medium"
 
 #. Key:	AntiAliasingHigh
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(275)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(275)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(298)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(298)
 msgctxt "GraphicSettings,AntiAliasingHigh"
 msgid "높음"
 msgstr "High"
 
 #. Key:	AntiAliasingEpic
-#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(281)
-#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(281)
+#. SourceLocation:	Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(304)
+#: Source/NeoSanctum/UI/Options/GraphicSetting/NSGraphicSettingWidget.cpp(304)
 msgctxt "GraphicSettings,AntiAliasingEpic"
 msgid "최상"
 msgstr "Epic"
 
+#. Key:	PartStatValueFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(164)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(164)
+msgctxt "PartSlotButton,PartStatValueFormat"
+msgid "{0} {1}"
+msgstr "{0} {1}"
+
+#. Key:	PartValueFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(172)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(172)
+msgctxt "PartSlotButton,PartValueFormat"
+msgid "{0} {1}"
+msgstr "{0} {1}"
+
 #. Key:	CommonRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(152)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(152)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(254)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(254)
 msgctxt "PartSlotButton,CommonRarity"
 msgid "Common"
 msgstr "Common"
 
 #. Key:	RareRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(154)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(154)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(256)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(256)
 msgctxt "PartSlotButton,RareRarity"
 msgid "Rare"
 msgstr "Rare"
 
 #. Key:	EpicRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(156)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(156)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(258)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(258)
 msgctxt "PartSlotButton,EpicRarity"
 msgid "Epic"
 msgstr "Epic"
 
 #. Key:	LegendaryRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(158)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(158)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(260)
+#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(260)
 msgctxt "PartSlotButton,LegendaryRarity"
 msgid "Legendary"
 msgstr "Legendary"
 
-#. Key:	PartValueFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(77)
-#: Source/NeoSanctum/UI/Part/Button/NSPartSlotButton.cpp(77)
-msgctxt "PartSlotButton,PartValueFormat"
-msgid "{0} {1}"
-msgstr "{0} {1}"
-
 #. Key:	RarityLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(104)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(104)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(105)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(105)
 msgctxt "PartDetail,RarityLabel"
 msgid "등급 : {0}"
 msgstr "Rarity: {0}"
 
-#. Key:	EffectLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(107)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(107)
-msgctxt "PartDetail,EffectLabel"
-msgid "효과 : {0}"
-msgstr "Effect: {0}"
-
 #. Key:	SlotLockNameLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(135)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(135)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(180)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(180)
 msgctxt "PartDetail,SlotLockNameLabel"
 msgid "슬롯 : {0}"
 msgstr "Slot: {0}"
 
 #. Key:	UnlockCostLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(140)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(140)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(185)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(185)
 msgctxt "PartDetail,UnlockCostLabel"
 msgid "해금 비용 : {0}"
 msgstr "Unlock Cost: {0}"
 
 #. Key:	CommonRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(17)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(17)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
 msgctxt "PartDetail,CommonRarity"
 msgid "Common"
 msgstr "Common"
 
 #. Key:	RareRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(19)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
 msgctxt "PartDetail,RareRarity"
 msgid "Rare"
 msgstr "Rare"
 
 #. Key:	EpicRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(21)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
 msgctxt "PartDetail,EpicRarity"
 msgid "Epic"
 msgstr "Epic"
 
 #. Key:	LegendaryRarity
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(23)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(25)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(25)
 msgctxt "PartDetail,LegendaryRarity"
 msgid "Legendary"
 msgstr "Legendary"
 
+#. Key:	EffectLabel
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(63)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(63)
+msgctxt "PartDetail,EffectLabel"
+msgid "효과 : {0}"
+msgstr "Effect: {0}"
+
+#. Key:	EffectLabelWithStat
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(64)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(64)
+msgctxt "PartDetail,EffectLabelWithStat"
+msgid "효과 : {0} {1}"
+msgstr "Effect: {0} {1}"
+
 #. Key:	NameLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(79)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(79)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(93)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(93)
 msgctxt "PartDetail,NameLabel"
 msgid "이름 : {0}"
 msgstr "Name: {0}"
 
 #. Key:	SlotLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(81)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(81)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(95)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(95)
 msgctxt "PartDetail,SlotLabel"
 msgid "슬롯 : {0}"
 msgstr "Slot: {0}"
 
 #. Key:	CostLabel
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(84)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(84)
+#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(98)
+#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(98)
 msgctxt "PartDetail,CostLabel"
 msgid "비용 : {0}"
 msgstr "Cost: {0}"
-
-#. Key:	CanReroll
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(88)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(88)
-msgctxt "PartDetail,CanReroll"
-msgid "리롤 : 가능"
-msgstr "Reroll: Available"
-
-#. Key:	NoReroll
-#. SourceLocation:	Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(89)
-#: Source/NeoSanctum/UI/Part/NSPartDetailWidget.cpp(89)
-msgctxt "PartDetail,NoReroll"
-msgid "리롤 : 불가"
-msgstr "Reroll: Unavailable"
 
 #. Key:	NodeLevelFormat
 #. SourceLocation:	Source/NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.cpp(21)
 #: Source/NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.cpp(21)
 msgctxt "PetUpgrade,NodeLevelFormat"
-msgid "{0}/{1}"
-msgstr "{0}/{1}"
+msgid "{0} / {1}"
+msgstr "{0} / {1}"
+
+#. Key:	Max
+#. SourceLocation:	Source/NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.cpp(30)
+#: Source/NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.cpp(30)
+msgctxt "CompanionUpgrade,Max"
+msgid "MAX"
+msgstr "MAX"
+
+#. Key:	DamageFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(108)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(108)
+msgctxt "RunResult,DamageFormat"
+msgid "가한 피해량 : {0}"
+msgstr "Damage Dealt: {0}"
+
+#. Key:	AccuracyFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(126)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(126)
+msgctxt "RunResult,AccuracyFormat"
+msgid "주무기 명중률 : {0}%"
+msgstr "Primary Weapon Accuracy: {0}%"
+
+#. Key:	NextVotesFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(147)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(147)
+msgctxt "RunResult,NextVotesFormat"
+msgid "다음 스테이지 : {0}"
+msgstr "Next Stage: {0}"
 
 #. Key:	HubVotesFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(109)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(109)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(157)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(157)
 msgctxt "RunResult,HubVotesFormat"
 msgid "거점 복귀 : {0}"
 msgstr "Return to Base: {0}"
 
 #. Key:	TimerFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(230)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(230)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(296)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(296)
 msgctxt "RunResult,TimerFormat"
 msgid "{0}"
 msgstr "{0}"
 
-#. Key:	NextStageVotersTitle
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(251)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(251)
-msgctxt "RunResult,NextStageVotersTitle"
-msgid "다음 스테이지\n"
-msgstr "Next Stage\n"
-
-#. Key:	HubVotersTitle
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(257)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(257)
-msgctxt "RunResult,HubVotersTitle"
-msgid "거점 복귀\n"
-msgstr "Return to Base\n"
-
 #. Key:	ClearTitle
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(27)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(27)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(30)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(30)
 msgctxt "RunResult,ClearTitle"
 msgid "작전 성공"
 msgstr "Mission Complete"
 
 #. Key:	FailedTitle
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(28)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(28)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(31)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(31)
 msgctxt "RunResult,FailedTitle"
 msgid "작전 실패"
 msgstr "Mission Failed"
 
+#. Key:	VoteCountFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(406)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(406)
+msgctxt "RunResult,VoteCountFormat"
+msgid "투표 참여 {0} / {1}"
+msgstr "Votes: {0} / {1}"
+
+#. Key:	StageInfoFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(47)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(47)
+msgctxt "RunResult,StageInfoFormat"
+msgid "스테이지 {0}"
+msgstr "Stage {0}"
+
 #. Key:	EarnedGoodsFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(34)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(34)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(54)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(54)
 msgctxt "RunResult,EarnedGoodsFormat"
-msgid "임시 재화 : {0}"
-msgstr "Temporary Currency: {0}"
+msgid "보급 코인 : {0}"
+msgstr "Supply Coins: {0}"
 
 #. Key:	RunTimeFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(41)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(41)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(61)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(61)
 msgctxt "RunResult,RunTimeFormat"
 msgid "진행 시간 : {0}"
 msgstr "Run Time: {0}"
 
 #. Key:	KillCountFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(52)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(52)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(72)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(72)
 msgctxt "RunResult,KillCountFormat"
 msgid "처치 수 : {0}"
 msgstr "Kills: {0}"
 
 #. Key:	CommonGoodsFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(59)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(59)
+#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(79)
+#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(79)
 msgctxt "RunResult,CommonGoodsFormat"
-msgid "영구 재화 : {0}"
-msgstr "Permanent Currency: {0}"
-
-#. Key:	NextVotesFormat
-#. SourceLocation:	Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(99)
-#: Source/NeoSanctum/UI/Result/NSRunResultWidget.cpp(99)
-msgctxt "RunResult,NextVotesFormat"
-msgid "다음 스테이지 : {0}"
-msgstr "Next Stage: {0}"
+msgid "네오 크리스털 : {0}"
+msgstr "Neo Crystals: {0}"
 
 #. Key:	SpectatingNameFormat
 #. SourceLocation:	Source/NeoSanctum/UI/Spectator/NSSpectatorWidget.cpp(15)
