@@ -43,6 +43,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_Impact, "GameplayCue.Engineer.ShotgunFire.Impact");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_ShotgunFire_BulletTrail, "GameplayCue.Engineer.ShotgunFire.BulletTrail");
 	
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Deploy, "GameplayCue.Engineer.SpawnTurret.Deploy");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Deactivate, "GameplayCue.Engineer.SpawnTurret.Deactivate");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_MuzzleFire, "GameplayCue.Engineer.SpawnTurret.MuzzleFire");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpawnTurret_Impact, "GameplayCue.Engineer.SpawnTurret.Impact");

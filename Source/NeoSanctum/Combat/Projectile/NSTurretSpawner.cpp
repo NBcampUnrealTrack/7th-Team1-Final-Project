@@ -2,9 +2,12 @@
 
 #include "NSTurretSpawner.h"
 
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 
 ANSTurretSpawner::ANSTurretSpawner()
 {
@@ -125,5 +128,33 @@ void ANSTurretSpawner::SpawnTurret(const FHitResult& ImpactResult)
 			GetSetByCallerMagnitudes(),
 			GetRuntimeStatMagnitudes()
 		);
+
+		ExecuteDeployCue(Turret, ImpactResult.ImpactNormal.GetSafeNormal());
 	}
+}
+
+void ANSTurretSpawner::ExecuteDeployCue(const ANSTurret* Turret, const FVector& SurfaceNormal) const
+{
+	if (!Turret)
+	{
+		return;
+	}
+
+	UAbilitySystemComponent* SourceASC =
+		UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(GetOwningPawn());
+	if (!SourceASC)
+	{
+		return;
+	}
+
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = GetOwningPawn();
+	CueParameters.Location = Turret->GetActorLocation();
+	CueParameters.Normal = SurfaceNormal.IsNearlyZero() ? FVector::UpVector : SurfaceNormal;
+
+	// 설치 완료 위치에서 모든 클라이언트에 연출 실행
+	SourceASC->ExecuteGameplayCue(
+		NSGameplayTags::GameplayCue_Engineer_SpawnTurret_Deploy,
+		CueParameters
+	);
 }
