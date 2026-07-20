@@ -445,7 +445,7 @@ void UNSInputBinderComponent::Input_Interact()
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)
 {
 	// 아웃런 조작법 안내 — 대시 입력 발동 알림
-	if (InputTag == NSGameplayTags::Ability_Common_Dash)
+	if (InputTag == NSGameplayTags::Input_Ability_Dash)
 	{
 		if (UNSOutRunGuideSubsystem* GuideSubsystem =
 			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
