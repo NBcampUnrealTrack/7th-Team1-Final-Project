@@ -8,6 +8,7 @@
 #include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "Net/UnrealNetwork.h"
 #include "Perception/AISense_Damage.h"
@@ -342,6 +343,23 @@ void UNSMonsterAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModC
 	{
 		ExecuteDamageFlashCueAfterDamage(Data, PreviousHealth);
 		HandleHitGaugeAfterDamage(EnemyState, PreviousHealth);
+		
+		// 가한 피해를 가해자 PlayerState에 누적
+		const float AppliedHealthDamage = FMath::Max(PreviousHealth - GetHealth(), 0.0f);
+		if (AppliedHealthDamage > KINDA_SMALL_NUMBER)
+		{
+			const int64 DamageToAdd =
+				static_cast<int64>(FMath::RoundToInt(AppliedHealthDamage));
+
+			AActor* InstigatorActor = Data.EffectSpec.GetEffectContext().GetInstigator();
+			if (AController* Attacker = ResolveKillerController(InstigatorActor))
+			{
+				if (ANSPlayerState* PS = Attacker->GetPlayerState<ANSPlayerState>())
+				{
+					PS->AddDamageDealt(DamageToAdd);
+				}
+			}
+		}
 	}
 
 	HandleDeathAfterEffect(EnemyState, Data);
