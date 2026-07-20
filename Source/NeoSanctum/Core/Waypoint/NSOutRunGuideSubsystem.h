@@ -12,6 +12,7 @@ class UNSPermanentSaveGame;
  * 아웃런(거점) 목표 안내 — 플레이어별 로컬
  * 영구 세이브의 안내 진행 상태를 읽어 대상 액터의 로컬 마커와
  * HUD 우측 상단 안내 텍스트를 켜고 끈다
+ * 조작법(이동/점프/대시) 안내가 목적지 안내보다 먼저 진행된다
  */
 UCLASS()
 class NEOSANCTUM_API UNSOutRunGuideSubsystem : public UWorldSubsystem
@@ -21,6 +22,15 @@ class NEOSANCTUM_API UNSOutRunGuideSubsystem : public UWorldSubsystem
 public:
 	// 아웃런 진입 시 PlayerController가 호출 —> 세이브 기준으로 안내 시작
 	void StartGuide();
+
+	// 이동 입력 발동 (NSInputBinderComponent::Input_Move에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
+	void NotifyMoveInput();
+
+	// 점프 입력 발동 (NSInputBinderComponent::Input_Jump에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
+	void NotifyJumpInput();
+
+	// 대시 어빌리티 입력 발동 (NSInputBinderComponent::Input_AbilityPressed에서 호출) —> DT의 AutoAdvanceSeconds 경과 후 완료
+	void NotifyDashInput();
 
 	// 캐릭터 선택 콘솔과 첫 상호작용 (NSCharacterSelectNPC::OnInteract에서 호출)
 	void NotifyCharacterConsoleUsed();
@@ -38,6 +48,14 @@ private:
 	// 세이브 상태 기준으로 대상 액터 마커/HUD 텍스트 전체 갱신
 	void RefreshGuide();
 
+	// 이동/점프/대시 단계 완료 처리 (StartStageTimeout의 타이머 만료 시 호출)
+	void CompleteMoveGuide();
+	void CompleteJumpGuide();
+	void CompleteDashGuide();
+
+	// 입력을 받은 시점부터 DT_GuideText의 AutoAdvanceSeconds만큼 대기 후 완료 처리 (이미 대기 중이면 무시 —> 반복 입력에 재시작되지 않음)
+	void StartStageTimeout(FName RowName, void (UNSOutRunGuideSubsystem::* CompleteFunc)());
+
 	// 세이브 캐시가 아직 없을 때 로드 완료를 기다렸다가 갱신
 	void HandlePermanentDataLoaded(UNSPermanentSaveGame* Data);
 
@@ -54,15 +72,21 @@ private:
 	// 대상 액터의 마커 컴포넌트를 찾아 로컬 토글 (컴포넌트 없으면 무시)
 	static void SetActorMarkerLocal(AActor* TargetActor, bool bActive);
 
-	// 현재 우선순위에 맞는 안내 텍스트를 HUD에 표시 (전부 완료면 숨김)
+	// 현재 우선순위에 맞는 안내 텍스트를 HUD에 표시 (전부 완료면 숨김). 조작법 단계는 AutoAdvanceSeconds 타임아웃도 함께 관리
 	void UpdateGuideText(
+		bool bNeedMoveGuide,
+		bool bNeedJumpGuide,
+		bool bNeedDashGuide,
 		bool bNeedCharacterGuide,
 		bool bNeedReadyGuide,
-		bool bNeedNPCGuide) const;
+		bool bNeedNPCGuide);
 
 	// StartGuide 호출 여부 —> 인런 등 다른 레벨에서 Notify가 와도 무시하기 위한 게이트
 	bool bGuideStarted = false;
 
 	// 세이브 로드 대기 델리게이트 핸들
 	FDelegateHandle DataLoadedHandle;
+
+	// 조작법 단계 타임아웃 타이머 핸들 (단계 전환 시 취소됨)
+	FTimerHandle GuideTimeoutHandle;
 };

@@ -18,6 +18,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -239,6 +240,16 @@ void UNSInputBinderComponent::Input_Move(const FInputActionValue& Value)
 
 	OwnerPawn->AddMovementInput(ForwardDirection, MoveValue.Y);
 	OwnerPawn->AddMovementInput(RightDirection, MoveValue.X);
+
+	// 아웃런 조작법 안내 — 이동 입력 발동 알림 (인런 등 다른 월드에서는 서브시스템 내부 게이트로 무시됨)
+	if (!MoveValue.IsNearlyZero())
+	{
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyMoveInput();
+		}
+	}
 }
 
 void UNSInputBinderComponent::Input_Look(const FInputActionValue& Value)
@@ -294,6 +305,13 @@ void UNSInputBinderComponent::Input_Jump()
 {
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
+		// 아웃런 조작법 안내 — 점프 입력 발동 알림
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyJumpInput();
+		}
+
 		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Character))
 		{
 			if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
@@ -426,6 +444,16 @@ void UNSInputBinderComponent::Input_Interact()
 
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)
 {
+	// 아웃런 조작법 안내 — 대시 입력 발동 알림
+	if (InputTag == NSGameplayTags::Input_Ability_Dash)
+	{
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyDashInput();
+		}
+	}
+
 	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetOwner()))
 	{
 		if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))

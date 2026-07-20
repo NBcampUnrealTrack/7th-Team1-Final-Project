@@ -13,6 +13,7 @@
 #include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGuideTextData.h"
+#include "TimerManager.h"
 
 void UNSOutRunGuideSubsystem::StartGuide()
 {
@@ -34,6 +35,80 @@ void UNSOutRunGuideSubsystem::StartGuide()
 	}
 
 	RefreshGuide();
+}
+
+void UNSOutRunGuideSubsystem::CompleteMoveGuide()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!Save || Save->bMoveGuideDone)
+	{
+		return;
+	}
+
+	Save->bMoveGuideDone = true;
+	SaveGuideState();
+	RefreshGuide();
+}
+
+void UNSOutRunGuideSubsystem::CompleteJumpGuide()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!Save || Save->bJumpGuideDone)
+	{
+		return;
+	}
+
+	Save->bJumpGuideDone = true;
+	SaveGuideState();
+	RefreshGuide();
+}
+
+void UNSOutRunGuideSubsystem::CompleteDashGuide()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!Save || Save->bDashGuideDone)
+	{
+		return;
+	}
+
+	Save->bDashGuideDone = true;
+	SaveGuideState();
+	RefreshGuide();
+}
+
+void UNSOutRunGuideSubsystem::NotifyMoveInput()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!bGuideStarted || !Save || Save->bMoveGuideDone)
+	{
+		return;
+	}
+
+	StartStageTimeout(TEXT("MoveInput"), &UNSOutRunGuideSubsystem::CompleteMoveGuide);
+}
+
+void UNSOutRunGuideSubsystem::NotifyJumpInput()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!bGuideStarted || !Save
+		|| !Save->bMoveGuideDone || Save->bJumpGuideDone)
+	{
+		return;
+	}
+
+	StartStageTimeout(TEXT("JumpInput"), &UNSOutRunGuideSubsystem::CompleteJumpGuide);
+}
+
+void UNSOutRunGuideSubsystem::NotifyDashInput()
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!bGuideStarted || !Save
+		|| !Save->bMoveGuideDone || !Save->bJumpGuideDone || Save->bDashGuideDone)
+	{
+		return;
+	}
+
+	StartStageTimeout(TEXT("DashInput"), &UNSOutRunGuideSubsystem::CompleteDashGuide);
 }
 
 void UNSOutRunGuideSubsystem::NotifyCharacterConsoleUsed()
@@ -104,15 +179,26 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 		return;
 	}
 
-	// 안내 필요 여부 판정 —> 게임시작 콘솔 안내는 캐릭터 콘솔 안내 완료 후에만
-	const bool bNeedCharacterGuide = !Save->bCharacterConsoleGuideDone;
-	const bool bNeedReadyGuide =
-		!bNeedCharacterGuide && !Save->bReadyConsoleGuideDone;
+	// 안내 필요 여부 판정 —> 이동→점프→대시→캐릭터 콘솔→게임시작 콘솔 순서로 이전 단계가 끝나야 다음 단계가 활성화
+	const bool bNeedMoveGuide = !Save->bMoveGuideDone;
+	const bool bMoveStageDone = !bNeedMoveGuide;
 
-	// 캐릭터 선택 콘솔 마커
+	const bool bNeedJumpGuide = bMoveStageDone && !Save->bJumpGuideDone;
+	const bool bJumpStageDone = bMoveStageDone && !bNeedJumpGuide;
+
+	const bool bNeedDashGuide = bJumpStageDone && !Save->bDashGuideDone;
+	const bool bDashStageDone = bJumpStageDone && !bNeedDashGuide;
+
+	const bool bNeedCharacterGuide = bDashStageDone && !Save->bCharacterConsoleGuideDone;
+	const bool bCharacterStageDone = bDashStageDone && !bNeedCharacterGuide;
+
+	const bool bNeedReadyGuide = bCharacterStageDone && !Save->bReadyConsoleGuideDone;
+
+	// 캐릭터 선택 콘솔 마커 —> 같은 BP가 여러 곳에 배치되므로, 레벨에서 "GuideTutorial" 태그를 붙인 인스턴스(게임 시작 옆)만 튜토리얼 대상
 	for (TActorIterator<ANSCharacterSelectNPC> It(GetWorld()); It; ++It)
 	{
-		SetActorMarkerLocal(*It, bNeedCharacterGuide);
+		const bool bIsTutorialConsole = It->ActorHasTag(TEXT("GuideTutorial"));
+		SetActorMarkerLocal(*It, bNeedCharacterGuide && bIsTutorialConsole);
 	}
 
 	// 게임시작 콘솔 마커
@@ -142,7 +228,9 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 		bNeedNPCGuide |= bNeedGuide;
 	}
 
-	UpdateGuideText(bNeedCharacterGuide, bNeedReadyGuide, bNeedNPCGuide);
+	UpdateGuideText(
+		bNeedMoveGuide, bNeedJumpGuide, bNeedDashGuide,
+		bNeedCharacterGuide, bNeedReadyGuide, bNeedNPCGuide);
 }
 
 void UNSOutRunGuideSubsystem::HandleCommonDataReady()
@@ -218,9 +306,12 @@ void UNSOutRunGuideSubsystem::SetActorMarkerLocal(AActor* TargetActor, bool bAct
 }
 
 void UNSOutRunGuideSubsystem::UpdateGuideText(
+	bool bNeedMoveGuide,
+	bool bNeedJumpGuide,
+	bool bNeedDashGuide,
 	bool bNeedCharacterGuide,
 	bool bNeedReadyGuide,
-	bool bNeedNPCGuide) const
+	bool bNeedNPCGuide)
 {
 	UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(GetWorld());
 	UNSHUDWidget* HUDWidget = UIManager ? UIManager->GetHUDWidget() : nullptr;
@@ -231,7 +322,19 @@ void UNSOutRunGuideSubsystem::UpdateGuideText(
 
 	// 텍스트는 한 줄이므로 우선순위대로 하나만 표시, RowName은 DT_GuideText 기준
 	FName RowName = NAME_None;
-	if (bNeedCharacterGuide)
+	if (bNeedMoveGuide)
+	{
+		RowName = TEXT("MoveInput");
+	}
+	else if (bNeedJumpGuide)
+	{
+		RowName = TEXT("JumpInput");
+	}
+	else if (bNeedDashGuide)
+	{
+		RowName = TEXT("DashInput");
+	}
+	else if (bNeedCharacterGuide)
 	{
 		RowName = TEXT("CharacterSelectConsole");
 	}
@@ -265,4 +368,34 @@ void UNSOutRunGuideSubsystem::UpdateGuideText(
 	}
 
 	HUDWidget->ShowGuideText(Row->GuideText);
+}
+
+void UNSOutRunGuideSubsystem::StartStageTimeout(FName RowName, void (UNSOutRunGuideSubsystem::* CompleteFunc)())
+{
+	// 이미 대기 중이면 재시작하지 않음 —> 같은 단계에서 반복 입력이 들어와도 카운트다운 유지
+	if (GetWorld()->GetTimerManager().IsTimerActive(GuideTimeoutHandle))
+	{
+		return;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* GuideTextTable =
+		DataSubsystem ? DataSubsystem->GetCommonGuideTextDataTable() : nullptr;
+	const FNSGuideTextData* Row =
+		GuideTextTable
+			? GuideTextTable->FindRow<FNSGuideTextData>(RowName, TEXT("StartStageTimeout"))
+			: nullptr;
+	const float DelaySeconds = Row ? Row->AutoAdvanceSeconds : 0.0f;
+
+	if (DelaySeconds <= 0.0f)
+	{
+		(this->*CompleteFunc)();
+		return;
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(
+		GuideTimeoutHandle,
+		FTimerDelegate::CreateUObject(this, CompleteFunc),
+		DelaySeconds,
+		false);
 }
