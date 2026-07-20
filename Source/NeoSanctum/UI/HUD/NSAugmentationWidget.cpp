@@ -74,6 +74,9 @@ void UNSAugmentationWidget::ShowCardSection()
 
 void UNSAugmentationWidget::HideCardSection()
 {
+	// 카드 제거 전에 선택 애니메이션 상태를 초기화
+	ClearSelectionAnimationTimer();
+	
 	if (ChoiceRootCanvas)
 	{
 		ChoiceRootCanvas->ClearChildren();
@@ -110,6 +113,9 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 		return;
 	}
 
+	// 새 카드를 만들기 전에 이전 선택 연출 상태를 초기화
+	ClearSelectionAnimationTimer();
+
 	ChoiceRootCanvas->ClearChildren();
 	AugmentCardWidgets.Empty();
 
@@ -135,6 +141,9 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 			continue;
 		}
 
+		// 새로 만든 카드를 기본 선택 연출 상태로 초기화
+		NewCard->ResetSelectionVisual();
+
 		AugmentCardWidgets.Add(NewCard);
 
 		NewCard->SetAugmentName(TEXT("Loading"));
@@ -158,14 +167,16 @@ void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 
 void UNSAugmentationWidget::RefreshChoiceGuideVisibility()
 {
-	const bool bSelectionOpen =
+	// 선택 애니메이션 중에는 선택 가이드를 숨김
+	const bool bSelectionGuideVisible =
 		bPanelOpen &&
-		!CurrentOfferCards.IsEmpty();
+		!CurrentOfferCards.IsEmpty() &&
+		!bSelectionAnimationPlaying;
 
 	if (ChoiceGuide3Root)
 	{
 		ChoiceGuide3Root->SetVisibility(
-			bSelectionOpen && ChoiceCount == 3
+			bSelectionGuideVisible && ChoiceCount == 3
 				? ESlateVisibility::HitTestInvisible
 				: ESlateVisibility::Collapsed);
 	}
@@ -173,7 +184,7 @@ void UNSAugmentationWidget::RefreshChoiceGuideVisibility()
 	if (ChoiceGuide4Root)
 	{
 		ChoiceGuide4Root->SetVisibility(
-			bSelectionOpen && ChoiceCount == 4
+			bSelectionGuideVisible && ChoiceCount == 4
 				? ESlateVisibility::HitTestInvisible
 				: ESlateVisibility::Collapsed);
 	}
@@ -428,13 +439,20 @@ void UNSAugmentationWidget::HandleDeferredChoiceCardPositionRefresh()
 
 void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 {
-	// 잘못된 번호가 입력되면 선택하지 않음
+	// 선택 애니메이션 중에는 추가 선택 입력을 무시
+	if (bSelectionAnimationPlaying)
+	{
+		return;
+	}
+
+	// 유효하지 않은 카드 번호는 무시
 	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
 	{
 		return;
 	}
 
-	ConfirmAugmentSelection(CardIndex);
+	// 서버 선택 요청 전에 카드 선택 연출을 시작
+	BeginCardSelection(CardIndex);
 }
 
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
@@ -463,8 +481,8 @@ void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 
 void UNSAugmentationWidget::RequestRerollAugment()
 {
-	// 이미 요청을 보내놨거나, 지금 오퍼에서 리롤이 안되는 상태면 무시
-	if (bRerollRequestPending || !bCanRerollCurrentOffer)
+	// 선택 애니메이션 중이거나 리롤 불가 상태면 리롤 요청을 막음
+	if (bSelectionAnimationPlaying || bRerollRequestPending || !bCanRerollCurrentOffer)
 	{
 		return;
 	}
@@ -491,14 +509,23 @@ bool UNSAugmentationWidget::CanAffordReroll()
 
 bool UNSAugmentationWidget::IsRerollAvailable()
 {
-	return !bRerollRequestPending && CanAffordReroll();
+	// 선택 애니메이션 중에는 리롤을 비활성화
+	return
+		!bSelectionAnimationPlaying &&
+		!bRerollRequestPending &&
+		bCanRerollCurrentOffer &&
+		CanAffordReroll();
 }
 
 void UNSAugmentationWidget::RefreshRerollControls()
 {
 	const bool bSelectionOpen = bPanelOpen && !CurrentOfferCards.IsEmpty();
 
-	const bool bShouldShowReroll = bSelectionOpen && bCanRerollCurrentOffer;
+	// 선택 애니메이션 중에는 리롤 UI를 숨김
+	const bool bShouldShowReroll =
+		bSelectionOpen &&
+		bCanRerollCurrentOffer &&
+		!bSelectionAnimationPlaying;
 
 	const ESlateVisibility ButtonVisibility =
 		bShouldShowReroll
@@ -731,9 +758,20 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 	const bool bHasAugmentPrompt = bHasPendingAugment || bHasOfferCards;
 
-	const bool bSelectionOpen = bPanelOpen && bHasOfferCards;
+	// 선택 카드 캔버스는 선택 애니메이션 중에도 계속 표시
+	const bool bChoiceCardsVisible =
+		bPanelOpen &&
+		bHasOfferCards;
 
-	const bool bShouldShowAugmentWidget = bPanelOpen || bOwnedListRequested || bHasAugmentPrompt;
+	// 선택 가이드와 리롤 UI는 선택 애니메이션 중에 숨김
+	const bool bSelectionControlsVisible =
+		bChoiceCardsVisible &&
+		!bSelectionAnimationPlaying;
+
+	const bool bShouldShowAugmentWidget =
+		bPanelOpen ||
+		bOwnedListRequested ||
+		bHasAugmentPrompt;
 
 	if (!bShouldShowAugmentWidget)
 	{
@@ -746,10 +784,7 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 
 		if (ChoiceRootCanvas)
 		{
-			ChoiceRootCanvas->SetVisibility(
-				bSelectionOpen
-					? ESlateVisibility::Visible
-					: ESlateVisibility::Collapsed);
+			ChoiceRootCanvas->SetVisibility(ESlateVisibility::Collapsed);
 		}
 
 		if (CenterControlRoot)
@@ -785,7 +820,7 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 	if (ChoiceRootCanvas)
 	{
 		ChoiceRootCanvas->SetVisibility(
-			bSelectionOpen
+			bChoiceCardsVisible
 				? ESlateVisibility::Visible
 				: ESlateVisibility::Collapsed);
 	}
@@ -801,7 +836,7 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 	if (TabButton)
 	{
 		TabButton->SetVisibility(
-			bHasAugmentPrompt && !bSelectionOpen
+			bHasAugmentPrompt && !bChoiceCardsVisible
 				? ESlateVisibility::HitTestInvisible
 				: ESlateVisibility::Collapsed);
 	}
@@ -819,7 +854,7 @@ void UNSAugmentationWidget::RefreshAugmentPanelState()
 	RefreshRerollControls();
 	RefreshChoiceGuideVisibility();
 
-	if (bSelectionOpen)
+	if (bSelectionControlsVisible)
 	{
 		QueueChoiceCardPositionRefresh();
 	}
@@ -889,6 +924,9 @@ void UNSAugmentationWidget::NativeConstruct()
 
 void UNSAugmentationWidget::NativeDestruct()
 {
+	// 위젯 제거 전에 선택 애니메이션 타이머를 정리
+	ClearSelectionAnimationTimer();
+	
 	// 진행 중인 비동기 로드 취소
 	if (IconLoadHandle.IsValid())
 	{
@@ -907,7 +945,8 @@ void UNSAugmentationWidget::NativeDestruct()
 	{
 		SelectionComponent->OnOfferPresented.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelectionComponent->OnOfferClosed.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
-		SelectionComponent->OnPendingCountChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+		SelectionComponent->OnPendingCountChanged.
+		                    RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
 		SelectionComponent->OnRerollResult.RemoveDynamic(this, &UNSAugmentationWidget::HandleRerollResult);
 	}
 
@@ -983,6 +1022,9 @@ void UNSAugmentationWidget::HandleOfferPresented(
 {
 	const bool bWasRerollRequest = bRerollRequestPending;
 	bRerollRequestPending = false;
+	
+	// 새 오퍼가 오면 이전 선택 애니메이션 상태를 초기화
+	ClearSelectionAnimationTimer();
 
 	CurrentOfferRevision = OfferRevision;
 	CurrentRerollCost = RerollCost;
@@ -1094,6 +1136,9 @@ void UNSAugmentationWidget::PopulateOfferCards()
 
 void UNSAugmentationWidget::HandleOfferClosed()
 {
+	// 오퍼가 닫힐 때 지연 선택 요청을 취소
+	ClearSelectionAnimationTimer();
+	
 	if (IconLoadHandle.IsValid())
 	{
 		IconLoadHandle->CancelHandle();
@@ -1271,4 +1316,121 @@ UWrapBox* UNSAugmentationWidget::GetOwnedAugmentWrapBox(
 	default:
 		return nullptr;
 	}
+}
+
+void UNSAugmentationWidget::BeginCardSelection(int32 CardIndex)
+{
+	// 유효하지 않은 카드 선택이면 연출을 시작하지 않음
+	if (!CurrentOfferCards.IsValidIndex(CardIndex) ||
+		!AugmentCardWidgets.IsValidIndex(CardIndex))
+	{
+		return;
+	}
+
+	// 선택 애니메이션 중복 입력을 막음
+	bSelectionAnimationPlaying = true;
+
+	// 애니메이션 종료 후 선택 요청을 보낼 카드 번호를 저장
+	PendingSelectedCardIndex = CardIndex;
+
+	// 기존 하이라이트 인덱스를 선택 카드로 갱신
+	HighlightedCardIndex = CardIndex;
+
+	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
+	{
+		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
+		if (!Card)
+		{
+			continue;
+		}
+
+		// 이전 선택 연출 상태를 먼저 초기화
+		Card->ResetSelectionVisual();
+
+		if (Index == CardIndex)
+		{
+			// 선택된 카드만 하이라이트와 선택 애니메이션을 적용
+			Card->SetHighLighted(true);
+			Card->PlaySelectAnimation();
+		}
+		else
+		{
+			// 선택되지 않은 카드는 하이라이트를 끄고 흐리게 만듦
+			Card->SetHighLighted(false);
+			Card->SetDeselectedVisual(DeselectedChoiceCardOpacity);
+		}
+	}
+
+	// 선택 연출 중에는 가이드와 리롤 UI를 갱신해 숨김
+	RefreshChoiceGuideVisibility();
+	RefreshRerollControls();
+
+	// 선택 애니메이션이 끝난 뒤 실제 서버 선택 요청
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SelectionAnimationTimerHandle);
+		World->GetTimerManager().SetTimer(
+			SelectionAnimationTimerHandle,
+			this,
+			&UNSAugmentationWidget::FinishPendingCardSelection,
+			SelectionAnimationDelay,
+			false);
+		return;
+	}
+
+	// 월드 타이머를 사용할 수 없으면 즉시 선택 요청
+	FinishPendingCardSelection();
+}
+
+void UNSAugmentationWidget::FinishPendingCardSelection()
+{
+	// 선택 요청에 사용할 카드 인덱스를 임시 저장
+	const int32 CardIndex = PendingSelectedCardIndex;
+
+	// 선택 대기 상태를 해제
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
+
+	// 애니메이션 중 오퍼가 바뀌었다면 선택 연출만 초기화
+	if (!CurrentOfferCards.IsValidIndex(CardIndex))
+	{
+		ResetChoiceCardSelectionVisuals();
+		RefreshChoiceGuideVisibility();
+		RefreshRerollControls();
+		return;
+	}
+
+	// 선택 애니메이션이 끝난 뒤 실제 서버 선택 요청
+	ConfirmAugmentSelection(CardIndex);
+}
+
+void UNSAugmentationWidget::ResetChoiceCardSelectionVisuals()
+{
+	// 선택 대기 상태를 초기화
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
+
+	for (UNSAugmentCardWidget* Card : AugmentCardWidgets)
+	{
+		if (!Card)
+		{
+			continue;
+		}
+
+		// 각 카드의 선택 연출 상태를 기본값으로 되돌림
+		Card->ResetSelectionVisual();
+	}
+}
+
+void UNSAugmentationWidget::ClearSelectionAnimationTimer()
+{
+	// 지연 선택 타이머가 있으면 해제
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SelectionAnimationTimerHandle);
+	}
+
+	// 선택 대기 상태를 초기화
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
 }

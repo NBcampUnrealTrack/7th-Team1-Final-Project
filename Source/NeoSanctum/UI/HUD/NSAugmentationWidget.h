@@ -8,6 +8,7 @@
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Type/NSAugmentDisplayTypes.h"
+#include "TimerManager.h"
 #include "NSAugmentationWidget.generated.h"
 
 class UButton;
@@ -320,6 +321,18 @@ private:
 	void RefreshOwnedAugmentSectionVisibility();
 
 	UWrapBox* GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const;
+	
+	// 선택 카드의 시각 연출을 시작
+	void BeginCardSelection(int32 CardIndex);
+
+	// 선택 애니메이션이 끝난 뒤 실제 선택 요청
+	void FinishPendingCardSelection();
+
+	// 모든 선택 카드의 선택 연출 상태를 초기화
+	void ResetChoiceCardSelectionVisuals();
+
+	// 지연 선택 타이머와 선택 대기 상태를 초기화
+	void ClearSelectionAnimationTimer();
 
 protected:
 	virtual void NativeConstruct() override;
@@ -341,4 +354,21 @@ protected:
 	FVector2D ChoiceCardSize = FVector2D(330.f, 118.f);
 	
 	bool bChoiceCardPositionRefreshQueued = false;
+	
+	// 선택 애니메이션 종료 후 서버 선택 요청을 보내기 위한 타이머
+	FTimerHandle SelectionAnimationTimerHandle;
+
+	// 애니메이션 종료 후 선택 요청을 보낼 카드 인덱스
+	int32 PendingSelectedCardIndex = INDEX_NONE;
+
+	// 선택 애니메이션이 재생 중인지 나타냄
+	bool bSelectionAnimationPlaying = false;
+
+	// 선택 애니메이션 후 실제 선택 요청까지 기다릴 시간
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Selection")
+	float SelectionAnimationDelay = 0.5f;
+
+	// 선택되지 않은 카드에 적용할 투명도
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Selection")
+	float DeselectedChoiceCardOpacity = 0.35f;
 };

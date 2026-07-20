@@ -12,6 +12,7 @@ class UTextBlock;
 class UTexture2D;
 class USizeBox;
 class UWidget;
+class UWidgetAnimation;
 
 /**
  * 증강 카드 한 장의 표시 전용 위젯입니다.
@@ -47,6 +48,15 @@ public:
 	// Bridge가 완성한 ViewData를 카드 UI에 적용
 	UFUNCTION(BlueprintCallable, Category = "UI|Augment")
 	void ApplyViewData(const FNSAugmentCardViewData& ViewData);
+	
+	// 선택 카드 애니메이션을 재생합니다.
+	void PlaySelectAnimation();
+
+	// 카드 선택 연출 상태를 기본값으로 되돌립니다.
+	void ResetSelectionVisual();
+
+	// 선택되지 않은 카드의 투명도를 낮춥니다.
+	void SetDeselectedVisual(float InOpacity);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -59,6 +69,12 @@ private:
 	UTexture2D* GetCardTextureForCurrentState() const;
 	
 	void EnsureCardContentVisible();
+	
+	// 현재 희귀도에 맞는 선택 텍스처를 적용
+	void RefreshSelectedCardVisual();
+
+	// 현재 희귀도에 사용할 선택 텍스처를 반환
+	UTexture2D* GetSelectedCardTextureForCurrentRarity() const;
 
 	// 현재 카드에 적용된 희귀도
 	ENSAugmentRarity CurrentRarity = ENSAugmentRarity::Common;
@@ -111,6 +127,30 @@ private:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UWidget> CardContentHorizontalBox;
+	
+	// 선택 연출 중 표시할 선택 텍스처 이미지
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> CardSelectedBackground;
+	
+	// 커먼 카드 선택 텍스처
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Card Texture|Selected")
+	TObjectPtr<UTexture2D> CommonSelectedCardTexture;
+
+	// 레어 카드 선택 텍스처
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Card Texture|Selected")
+	TObjectPtr<UTexture2D> RareSelectedCardTexture;
+
+	// 에픽 카드 선택 텍스처
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Card Texture|Selected")
+	TObjectPtr<UTexture2D> EpicSelectedCardTexture;
+
+	// 레전더리 카드 선택 텍스처
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Card Texture|Selected")
+	TObjectPtr<UTexture2D> LegendarySelectedCardTexture;
+
+	// 카드 선택 시 재생할 UMG 애니메이션
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	TObjectPtr<UWidgetAnimation> Anim_SelectCard;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment")
 	FVector2D CardDisplaySize = FVector2D(330.f, 118.f);
