@@ -3,8 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
+
 #include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSCommonUpgradeNodeWidget.generated.h"
 
 struct FStreamableHandle;
@@ -24,7 +25,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSCommonUpgradeNodeSignature, FName
  * 비용 계산은 상위 위젯이 담당하고, 이 위젯은 전달받은 다음 비용을 표시만 함.
  */
 UCLASS()
-class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UCommonButtonBase
+class NEOSANCTUM_API UNSCommonUpgradeNodeWidget : public UNSButtonBase
 {
 	GENERATED_BODY()
 
@@ -36,6 +37,9 @@ public:
 		int64 NextCost
 	);
 
+	// 구매 후 같은 위치에 다시 만들어졌을 때 첫 호버음만 건너뜀.
+	void SuppressNextHoverSound();
+
 	FNSCommonUpgradeNodeHoveredSignature OnNodeHovered;
 	FNSCommonUpgradeNodeSignature OnNodeUnhovered;
 
@@ -43,6 +47,7 @@ public:
 	FNSCommonUpgradeNodeSignature OnUpgradeRequested;
 
 protected:
+	virtual void NativeOnHovered() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
@@ -70,6 +75,8 @@ private:
 	void HandlePressed();
 	void HandleReleased();
 	void HandleClicked();
+
+	bool bSuppressNextHoverSound = false;
 
 	FName BoundNodeId;
 	TSharedPtr<FStreamableHandle> IconLoadHandle;

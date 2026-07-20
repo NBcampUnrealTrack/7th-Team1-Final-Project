@@ -81,7 +81,7 @@ void UNSCommonUpgradeWidget::HandleCloseButtonClicked()
 	NSPC->CloseInteractionWidget();
 }
 
-void UNSCommonUpgradeWidget::BuildNodeCatalog()
+void UNSCommonUpgradeWidget::BuildNodeCatalog(FName HoverSoundSuppressionNodeId)
 {
 	if (IsValid(CombatListContainer))
 	{
@@ -155,6 +155,11 @@ void UNSCommonUpgradeWidget::BuildNodeCatalog()
 		Entry->OnNodeHovered.AddUniqueDynamic(this, &ThisClass::HandleNodeHovered);
 		Entry->OnNodeUnhovered.AddUniqueDynamic(this, &ThisClass::HandleNodeUnhovered);
 		Entry->OnUpgradeRequested.AddUniqueDynamic(this, &ThisClass::HandleNodeUpgradeRequested);
+
+		if (Pair.Key == HoverSoundSuppressionNodeId)
+		{
+			Entry->SuppressNextHoverSound();
+		}
 
 		Container->AddChild(Entry);
 	}
@@ -391,7 +396,7 @@ void UNSCommonUpgradeWidget::TryPurchase(FName NodeId)
 		return;
 	}
 
-	BuildNodeCatalog();
+	BuildNodeCatalog(NodeId);
 
 	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
 	{

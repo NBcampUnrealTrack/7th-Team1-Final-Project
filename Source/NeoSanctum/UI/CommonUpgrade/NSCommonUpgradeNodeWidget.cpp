@@ -70,6 +70,25 @@ void UNSCommonUpgradeNodeWidget::SetupEntry(
 	}
 }
 
+void UNSCommonUpgradeNodeWidget::SuppressNextHoverSound()
+{
+	bSuppressNextHoverSound = true;
+}
+
+void UNSCommonUpgradeNodeWidget::NativeOnHovered()
+{
+	if (bSuppressNextHoverSound)
+	{
+		bSuppressNextHoverSound = false;
+
+		// NSButtonBase의 사운드만 건너뛰고 기존 Hover이벤트는 그대로 보냄.
+		UCommonButtonBase::NativeOnHovered();
+		return;
+	}
+
+	Super::NativeOnHovered();
+}
+
 void UNSCommonUpgradeNodeWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
