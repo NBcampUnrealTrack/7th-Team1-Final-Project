@@ -3,6 +3,7 @@
 
 #include "NSStageObjectiveWidget.h"
 #include "CommonTextBlock.h"
+#include "Components/Overlay.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 
 #define LOCTEXT_NAMESPACE "StageObjectiveWidget"
@@ -121,7 +122,7 @@ void UNSStageObjectiveWidget::UpdateTransitionCountdown()
 void UNSStageObjectiveWidget::RefreshStageObjective()
 {
 	if (!IsValid(CachedRunGameState)
-		|| !ObjectivePanel
+		|| !ObjectiveOverlay
 		|| !ObjectiveMessageText
 		|| !ObjectiveProgressText)
 	{
@@ -131,14 +132,14 @@ void UNSStageObjectiveWidget::RefreshStageObjective()
 	if (CachedRunGameState->StagePhase
 		== ENSStagePhase::BossFight)
 	{
-		ObjectivePanel->SetVisibility(
+		ObjectiveOverlay->SetVisibility(
 			ESlateVisibility::Collapsed);
 
 		RefreshBossGate();
 		return;
 	}
 
-	ObjectivePanel->SetVisibility(
+	ObjectiveOverlay->SetVisibility(
 		ESlateVisibility::HitTestInvisible);
 
 	const FNSStageObjectiveState& State =
@@ -208,7 +209,7 @@ void UNSStageObjectiveWidget::RefreshStageObjective()
 void UNSStageObjectiveWidget::RefreshBossGate()
 {
 	if (!IsValid(CachedRunGameState)
-		|| !TransitionPanel
+		|| !TransitionOverlay
 		|| !TransitionMessageText
 		|| !TransitionCountdownText)
 	{
@@ -218,12 +219,12 @@ void UNSStageObjectiveWidget::RefreshBossGate()
 	if (CachedRunGameState->StagePhase
 		!= ENSStagePhase::BossReady)
 	{
-		TransitionPanel->SetVisibility(
+		TransitionOverlay->SetVisibility(
 			ESlateVisibility::Collapsed);
 		return;
 	}
 
-	TransitionPanel->SetVisibility(
+	TransitionOverlay->SetVisibility(
 		ESlateVisibility::HitTestInvisible);
 
 	const float RemainingTime =

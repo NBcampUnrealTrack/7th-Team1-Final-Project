@@ -6,9 +6,9 @@
 #include "CommonUserWidget.h"
 #include "NSStageObjectiveWidget.generated.h"
 
+class UOverlay;
 class ANSRunGameState;
 class UCommonTextBlock;
-class UWidget;
 
 /**
  *  현재 스테이지 목표 진행도와 다음 행동을 표시하는 위젯
@@ -38,7 +38,7 @@ private:
 	void RefreshBossGate();
 	
 	UPROPERTY(meta =(BindWidget))
-	TObjectPtr<UWidget> ObjectivePanel;
+	TObjectPtr<UOverlay> ObjectiveOverlay;
 
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonTextBlock> ObjectiveMessageText;
@@ -47,7 +47,7 @@ private:
 	TObjectPtr<UCommonTextBlock> ObjectiveProgressText;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UWidget> TransitionPanel;
+	TObjectPtr<UOverlay> TransitionOverlay;
 	
 	UPROPERTY(meta =(BindWidget))
 	TObjectPtr<UCommonTextBlock> TransitionMessageText;
