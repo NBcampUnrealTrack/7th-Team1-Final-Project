@@ -50,28 +50,28 @@ void UNSCharacterStatsBridgeSubsystem::BroadcastCharacterStats(APlayerController
 		ASC,
 		UNSPlayerAttributeSet::GetMaxShieldAttribute(),
 		NSGameplayTags::CombatStat_MaxShield,
-		NSLOCTEXT("CharacterStats", "MaxShield", "최대 실드"));
+		NSLOCTEXT("CharacterStats", "MaxShield", "최대 보호막"));
 
 	AddAttributeStat(
 		Message.Stats,
 		ASC,
 		UNSPlayerAttributeSet::GetShieldRechargeRateAttribute(),
 		NSGameplayTags::CombatStat_ShieldRechargeRate,
-		NSLOCTEXT("CharacterStats", "ShieldRechargeRate", "실드 재생량"));
+		NSLOCTEXT("CharacterStats", "ShieldRechargeRate", "보호막 재생량"));
 
 		AddAttributeStat(
 			Message.Stats,
 			ASC,
 			UNSPlayerAttributeSet::GetShieldRechargeCooldownAttribute(),
 			NSGameplayTags::CombatStat_ShieldRechargeCooldown,
-			NSLOCTEXT("CharacterStats", "ShieldRechargeCooldown", "실드 재사용 대기시간"),
+			NSLOCTEXT("CharacterStats", "ShieldRechargeCooldown", "보호막 재생 대기시간"),
 			ENSCharacterStatDisplayType::Seconds);
 			
 	AddAttributeStat(Message.Stats,
 		ASC,
 		UNSBaseAttributeSet::GetBaseDamageAttribute(),
 		NSGameplayTags::CombatStat_Damage,
-		NSLOCTEXT("CharacterStats", "BaseDamage", "공격력"));
+		NSLOCTEXT("CharacterStats", "BaseDamage", "기본 공격력"));
 	
 	AddAttributeStat(
 		Message.Stats,
@@ -85,7 +85,7 @@ void UNSCharacterStatsBridgeSubsystem::BroadcastCharacterStats(APlayerController
 		ASC,
 		UNSBaseAttributeSet::GetMoveSpeedAttribute(),
 		NSGameplayTags::CombatStat_MoveSpeed,
-		NSLOCTEXT("CharacterStats", "MoveSpeed", "이동속도"));
+		NSLOCTEXT("CharacterStats", "MoveSpeed", "이동 속도"));
 
 		AddAttributeStat(
 			Message.Stats,

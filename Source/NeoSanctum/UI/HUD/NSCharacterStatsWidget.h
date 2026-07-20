@@ -24,7 +24,67 @@ protected:
 	
 private:
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UTextBlock> StatsText;
+	TObjectPtr<UTextBlock> CT_MaxHealthLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MaxHealthText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_MaxShieldLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MaxShieldText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_ShieldRegenRateLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ShieldRegenRateText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_ShieldRegenCooldownLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> ShieldRegenCooldownText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_BaseDamageLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> BaseDamageText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_DefenseLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> DefenseText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_MoveSpeedLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> MoveSpeedText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_CritChanceLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CritChanceText;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CT_CritDamageLabel;
+
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UTextBlock> CritDamageText;
+
+	void ApplyStatToWidgets(
+		const FNSCharacterStatViewData& Stat,
+		UTextBlock* LabelWidget,
+		UTextBlock* ValueWidget) const;
+
+	FText FormatStatValue(
+		float Value,
+		ENSCharacterStatDisplayType DisplayType) const;
 	
 	void HandleCharacterStatsSnapshot(
 		FGameplayTag Channel,
