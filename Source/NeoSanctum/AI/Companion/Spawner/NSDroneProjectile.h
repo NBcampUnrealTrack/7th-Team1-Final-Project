@@ -52,4 +52,8 @@ protected:
 	UPROPERTY(ReplicatedUsing=OnRep_InitialSpeed)
 	float InitialSpeed = 0.f;
 	
+	// 헤더: FVector_NetQuantizeNormal 또는 복제되는 방향 저장
+	UPROPERTY(ReplicatedUsing=OnRep_InitialSpeed)
+	FVector_NetQuantizeNormal FireDirection;
+	
 };

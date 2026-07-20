@@ -45,6 +45,12 @@ void UGA_MotherShipCloakDeployRun::ActivateAbility(const FGameplayAbilitySpecHan
 		return;
 	}
 	
+	// ★ 추가: 이 패턴 동안 지형 관통 허용
+	if (ANSBossMotherShip* Boss = GetBossMotherShip())
+	{
+		Boss->SetTerrainCollisionIgnored(true);
+	}
+	
 	EnterCloak();
 	BeginLeg(ECloakDeployLeg::CloakAscend);
 }
@@ -73,6 +79,7 @@ void UGA_MotherShipCloakDeployRun::EndAbility(const FGameplayAbilitySpecHandle H
 		{
 			Flying->EndScriptedMove();
 		}
+		Boss->SetTerrainCollisionIgnored(false);
 	}
 	
 	ExitCloak();

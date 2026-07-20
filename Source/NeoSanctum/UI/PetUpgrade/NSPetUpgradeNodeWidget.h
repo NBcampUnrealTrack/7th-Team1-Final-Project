@@ -1,7 +1,7 @@
 #pragma once
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
 #include "NeoSanctum/Type/NSPetUpgradeMessageTypes.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSPetUpgradeNodeWidget.generated.h"
 
 struct FStreamableHandle;
@@ -17,7 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FNSPetNodeHoveredSignature, const F
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSPetNodeUnhoveredSignature, FGameplayTag, NodeTag);
 
 UCLASS()
-class NEOSANCTUM_API UNSPetUpgradeNodeWidget : public UCommonButtonBase
+class NEOSANCTUM_API UNSPetUpgradeNodeWidget : public UNSButtonBase
 {
 	GENERATED_BODY()
 

@@ -40,7 +40,7 @@ ANSDroneProjectile::ANSDroneProjectile()
 	ProjectileMovementComp->ProjectileGravityScale = 0.f;
 	
 	bReplicates = true;
-	SetReplicateMovement(false);
+	SetReplicateMovement(true);
 	InitialLifeSpan = 3.f;
 }
 
@@ -51,6 +51,7 @@ void ANSDroneProjectile::InitProjectile(const FVector& Direction, APawn* InInsti
 	
 	DamageSpecHandle = InDamageSpec;
 	InitialSpeed = ProjectileSpeed;
+	FireDirection = Direction;
 	
 	SetInstigator(InInstigator);
 	SetOwner(InInstigator);
@@ -112,7 +113,7 @@ void ANSDroneProjectile::OnRep_InitialSpeed()
 void ANSDroneProjectile::ApplyVelocity()
 {
 	if (!ProjectileMovementComp) return;
-	ProjectileMovementComp->Velocity = GetActorForwardVector() * InitialSpeed;
+	ProjectileMovementComp->Velocity = FireDirection * InitialSpeed; // 회전 의존 제거
 }
 
 

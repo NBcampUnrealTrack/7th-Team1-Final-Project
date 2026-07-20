@@ -47,6 +47,13 @@ void UGA_MotherShipBombingRun::ActivateAbility(const FGameplayAbilitySpecHandle 
 		return;
 	}
 	
+	// ★ 추가: 이 패턴 동안 지형 관통 허용
+	if (ANSBossMotherShip* Boss = GetBossMotherShip())
+	{
+		Boss->SetTerrainCollisionIgnored(true);
+	}
+
+	
 	BeginLeg(EBombingRunLeg::Ascend);
 }
 
@@ -73,6 +80,7 @@ void UGA_MotherShipBombingRun::EndAbility(const FGameplayAbilitySpecHandle Handl
 		{
 			FlyingLocomotionComponent->EndScriptedMove();
 		}
+		Boss->SetTerrainCollisionIgnored(false);
 	}
 	CachedAttackRow = nullptr;
 	CachedArenaBounds = nullptr;

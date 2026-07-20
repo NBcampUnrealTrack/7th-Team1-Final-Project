@@ -3,6 +3,7 @@
 
 #include "NSBossMotherShip.h"
 
+#include "Components/CapsuleComponent.h"
 #include "AbilitySystemComponent.h"
 #include "EngineUtils.h"
 #include "NSEnemyDrone.h"
@@ -73,6 +74,39 @@ UNSFlyingLocomotionComponent* ANSBossMotherShip::GetFlyingLocomotion() const
 }
 
 #pragma region SpawnDronePattern
+
+void ANSBossMotherShip::SetTerrainCollisionIgnored(bool bIgnore)
+{
+	UCapsuleComponent* Capsule = GetCollisionComponent();
+	if (!Capsule)
+	{
+		return;
+	}
+
+	// 이미 원하는 상태면 아무것도 안 함 (조기 종료/취소 경로에서의 이중 호출 방지)
+	if (bIgnore == bTerrainCollisionIgnored)
+	{
+		return;
+	}
+
+	if (bIgnore)
+	{
+		// 원래 응답을 캐시한 뒤 두 채널만 Ignore
+		CachedWorldStaticResponse  = Capsule->GetCollisionResponseToChannel(ECC_WorldStatic);
+		CachedWorldDynamicResponse = Capsule->GetCollisionResponseToChannel(ECC_WorldDynamic);
+
+		Capsule->SetCollisionResponseToChannel(ECC_WorldStatic,  ECR_Ignore);
+		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Ignore);
+	}
+	else
+	{
+		// 캐시한 원래 응답으로 복원 (PlayerWeaponTrace 등 다른 채널은 건드리지 않음)
+		Capsule->SetCollisionResponseToChannel(ECC_WorldStatic,  CachedWorldStaticResponse);
+		Capsule->SetCollisionResponseToChannel(ECC_WorldDynamic, CachedWorldDynamicResponse);
+	}
+
+	bTerrainCollisionIgnored = bIgnore;
+}
 
 void ANSBossMotherShip::StartDronePattern()
 {
