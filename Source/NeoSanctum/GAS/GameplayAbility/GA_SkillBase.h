@@ -50,6 +50,10 @@ protected:
 	
 	ANSPlayerState* GetNSPlayerState() const;
 	
+	// 발사/명중을 소유 PlayerState에 기록
+	void ReportShotsFired(int32 Count = 1);
+	void ReportShotsHit(int32 Count = 1);
+	
 protected:
 	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,
