@@ -29,15 +29,13 @@ void UNSPetUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	Interactor->SetInputMode(InputMode);
 }
 
-void UNSPetUpgradeWidget::CloseWidget()
+void UNSPetUpgradeWidget::OnCloseWidget()
 {
 	if (APlayerController* PC = OwningController.Get())
 	{
 		PC->SetShowMouseCursor(false);
 		PC->SetInputMode(FInputModeGameOnly());
 	}
-
-	RemoveFromParent();
 }
 void UNSPetUpgradeWidget::CacheNodeWidgets()
 {

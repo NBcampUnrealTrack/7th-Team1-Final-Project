@@ -389,7 +389,7 @@ void UNSPartEquipWidget::HandleSaveComplete(bool bSuccess)
 	CloseWidget();
 }
 
-void UNSPartEquipWidget::CloseWidget()
+void UNSPartEquipWidget::OnCloseWidget()
 {
 	if (APlayerController* PC = OwningController.Get())
 	{
@@ -408,14 +408,6 @@ void UNSPartEquipWidget::CloseWidget()
 		PreviewStage->Destroy();
 		PreviewStage = nullptr;
 	}
-
-	// X버튼/ESC 등 위젯 자체 경로로 닫혀도 이동 매핑 복원 + ActiveInteractionWidget 정리가 되도록 통지
-	if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(OwningController.Get()))
-	{
-		NSPC->NotifyInteractionWidgetClosed(this);
-	}
-
-	RemoveFromParent();
 }
 
 UPanelWidget* UNSPartEquipWidget::GetCatalogContainerForSlot(FGameplayTag SlotTag) const
