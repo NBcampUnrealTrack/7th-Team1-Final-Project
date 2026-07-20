@@ -8,8 +8,11 @@
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
 #include "NSPetUpgradeWidget.generated.h"
 
-
+class UNSCompanionUpgradeDetailWidget;
 class UNSPetUpgradeNodeWidget;
+class UCommonButtonBase;
+class UImage;
+class UTextBlock;
 
 /**
  * 펫 강화 UI (최소 구현)
@@ -23,8 +26,13 @@ class NEOSANCTUM_API UNSPetUpgradeWidget : public UNSNPCInteractionWidgetBase
 public:
 	virtual void OpenForInteractor(APlayerController* Interactor) override;
 
-protected:
+	UFUNCTION(BlueprintCallable, Category = "Pet")
 	virtual void OnCloseWidget() override;
+
+	UFUNCTION()
+	void HandleNodeHovered(const FNSPetUpgradeNodeViewData& NodeData, UNSPetUpgradeNodeWidget* HoveredNode);
+	UFUNCTION()
+	void HandleNodeUnhovered(FGameplayTag NodeTag);
 
 private:
 	//현재 선택된 펫의 강화 상태를 요청
@@ -59,7 +67,19 @@ private:
 		FGameplayTag CompanionTag,
 		FGameplayTag NodeTag);
 	
+	// @민재 추가
+	// 자식 드론 노드의 선택 요청 처리
+	UFUNCTION()
+	void HandleNodeSelectRequested(FGameplayTag CompanionTag);
+
+	// 선택한 드론을 GMS로 요청
+	void RequestDroneSelect(FGameplayTag CompanionTag);
+
+	// 드론 선택 요청 결과 처리
+	void HandleSelectResultMessage(FGameplayTag Channel, const FNSPetUpgradeResultMessage& Message);
+
 private:
+	TWeakObjectPtr<APlayerController> OwningController;
 	// 펫 강화 Snapshot 메시지 리스너
 	FGameplayMessageListenerHandle SnapshotListenerHandle;
 	// 현재 Snapshot 요청 식별자
@@ -75,8 +95,30 @@ private:
 	UPROPERTY(Transient)
 	TMap<FGameplayTag, TObjectPtr<UNSPetUpgradeNodeWidget>>
 		NodeWidgetMap;
-	
+
+	// @민재 추가
+	// 현재 진행 중인 드론 선택 요청 식별
+	FGuid PendingSelectRequestId;
+	// 드론 선택 결과 메시지 리스너
+	FGameplayMessageListenerHandle SelectResultListenerHandle;
+
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	
+	// 닫기 버튼 (WBP에서 이름 일치 필요)
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	TObjectPtr<UCommonButtonBase> CloseButton;
+	
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UImage> SelectedDroneIcon;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> SelectedDroneName;
+	
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> CurrencyText;
+	
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSCompanionUpgradeDetailWidget> DetailWidget;
 };

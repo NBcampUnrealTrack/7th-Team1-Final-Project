@@ -10,7 +10,10 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Companion.h"
+#include "GameplayEffect.h"
 #include "Subsystems/SubsystemCollection.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -39,6 +42,13 @@ void UNSPetUpgradeBridgeSubsystem::Initialize(FSubsystemCollectionBase& Collecti
 			NSGameplayTags::Message_UI_PetUpgrade_Upgrade_Request,
 			this,
 			&ThisClass::HandleUpgradeRequestMessage);
+	
+	// @민재 추가
+	SelectRequestListenerHandle =
+	MessageSubsystem.RegisterListener<FNSPetUpgradeSelectRequestMessage>(
+		NSGameplayTags::Message_UI_PetUpgrade_Select_Request,
+		this,
+		&ThisClass::HandleSelectRequestMessage);
 }
 
 void UNSPetUpgradeBridgeSubsystem::Deinitialize()
@@ -47,7 +57,32 @@ void UNSPetUpgradeBridgeSubsystem::Deinitialize()
 	QueryListenerHandle.Unregister();
 	UpgradeRequestListenerHandle.Unregister();
 	
+	// @민재 추가
+	SelectRequestListenerHandle.Unregister();
+	
 	Super::Deinitialize();
+}
+
+static TArray<FNSCompanionStatEntry> ReadDroneBaseStats(const UNSCompanionDefinition* Def)
+{
+	TArray<FNSCompanionStatEntry> Out;
+	if (!Def || !Def->TypeStatsEffect) { return Out; }
+
+	const UGameplayEffect* GE = Def->TypeStatsEffect->GetDefaultObject<UGameplayEffect>();
+	if (!GE) { return Out; }
+
+	for (const FGameplayModifierInfo& Mod : GE->Modifiers)
+	{
+		float Value = 0.f;
+		// 기본 스탯 GE는 보통 ScalableFloat라 정적 값 읽기 가능
+		Mod.ModifierMagnitude.GetStaticMagnitudeIfPossible(1.f, Value);
+
+		FNSCompanionStatEntry Entry;
+		Entry.Name  = FText::FromString(Mod.Attribute.GetName());
+		Entry.Value = Value;
+		Out.Add(Entry);
+	}
+	return Out;
 }
 
 void UNSPetUpgradeBridgeSubsystem::HandleQueryMessage(FGameplayTag Channel, const FNSPetUpgradeQueryMessage& Message)
@@ -110,31 +145,75 @@ void UNSPetUpgradeBridgeSubsystem::HandleQueryMessage(FGameplayTag Channel, cons
 
 	if (CompanionCatalog)
 	{
-		// 선택된 펫 하나가 아니라 Catalog의 전체 펫 Definition을 순회
-		for (const TObjectPtr<UNSCompanionDefinition>& Definition
-			: CompanionCatalog->Companions)
+		// 실제 선택된 드론(저장 기준). 조회 대상(Snapshot.CompanionTag)과 분리한다.
+		// 저장값이 없으면 기본 드론(GetCurrentCompanionDefinition의 폴백)으로 간주.
+		FGameplayTag SelectedTag = ProgressionSubsystem->GetSelectedCompanion();
+		if (!SelectedTag.IsValid() && CompanionDefinition)
+		{
+			SelectedTag = CompanionDefinition->CompanionTag;
+		}
+
+		if (const UNSCompanionDefinition* SelectedDef = CompanionCatalog->FindByTag(SelectedTag))
+		{
+			Snapshot.SelectedDisplayName = SelectedDef->DisplayName;
+			Snapshot.SelectedIcon        = SelectedDef->Icon;
+		}
+		
+		for (const TObjectPtr<UNSCompanionDefinition>& Definition : CompanionCatalog->Companions)
 		{
 			if (!IsValid(Definition))
 			{
 				continue;
 			}
-			// 각 Definition이 보유한 모든 강화 노드를 UI ViewData로 변환
-			for (const FNSCompanionUpgradeNode& UpgradeNode
-				: Definition->UpgradeNodes)
+
+			// 이 드론의 해금 여부 = 선행 드론의 모든 노드가 Max인지
+			const UNSCompanionDefinition* RequiredDrone =
+				CompanionCatalog->FindByTag(Definition->RequiredCompanionTag);
+			const bool bUnlocked = ProgressionSubsystem->CanSelectCompanion(RequiredDrone);
+			const bool bSelected = (Definition->CompanionTag == SelectedTag);
+
+			// (1) 드론 선택 노드 (Definition 파생)
 			{
-				FNSPetUpgradeNodeViewData& NodeViewData =
-					Snapshot.Nodes.AddDefaulted_GetRef();
-				// 강화 요청 시 올바른 펫 Definition을 찾기 위한 소유 태그
-				NodeViewData.CompanionTag =
-					Definition->CompanionTag;
-				NodeViewData.NodeTag =
-					UpgradeNode.NodeTag;
-				// 저장된 현재 레벨과 Definition의 최대 레벨을 조합
-				NodeViewData.CurrentLevel =
-					ProgressionSubsystem->GetCompanionNodeLevel(
-						UpgradeNode.NodeTag);
-				NodeViewData.MaxLevel =
-					UpgradeNode.MaxLevel;
+				FNSPetUpgradeNodeViewData& DroneView = Snapshot.Nodes.AddDefaulted_GetRef();
+				DroneView.CompanionTag       = Definition->CompanionTag;
+				DroneView.NodeTag            = Definition->CompanionTag; // 선택 노드 식별자 = 드론 태그
+				DroneView.bIsDroneSelectNode = true;
+				DroneView.DisplayName        = Definition->DisplayName;
+				DroneView.Icon               = Definition->Icon;
+				DroneView.DroneStats = ReadDroneBaseStats(Definition);
+				DroneView.Description = Definition->Description;
+				
+				// 해금을 1레벨 업그레이드로 취급 → 0/1 표시
+				const bool bDroneUnlocked = ProgressionSubsystem->IsCompanionUnlocked(Definition->CompanionTag);
+				DroneView.MaxLevel     = 1;
+				DroneView.CurrentLevel = bDroneUnlocked ? 1 : 0;
+				DroneView.UpgradeCost  = bDroneUnlocked ? 0 : Definition->UnlockCost;
+				
+				DroneView.StateTag =
+					bSelected  ? NSGameplayTags::UI_PetUpgrade_State_Selected
+					: bUnlocked ? NSGameplayTags::UI_PetUpgrade_State_Selectable
+					:             NSGameplayTags::UI_PetUpgrade_State_Locked;
+			}
+
+			// (2) 스탯 노드들
+			for (const FNSCompanionUpgradeNode& UpgradeNode : Definition->UpgradeNodes)
+			{
+				FNSPetUpgradeNodeViewData& NodeView = Snapshot.Nodes.AddDefaulted_GetRef();
+				NodeView.CompanionTag       = Definition->CompanionTag;
+				NodeView.NodeTag            = UpgradeNode.NodeTag;
+				NodeView.bIsDroneSelectNode = false;
+				NodeView.CurrentLevel       = ProgressionSubsystem->GetCompanionNodeLevel(
+					Definition->CompanionTag, UpgradeNode.NodeTag, UpgradeNode.bSharedAcrossDrones);
+				NodeView.MaxLevel           = UpgradeNode.MaxLevel;
+				NodeView.IncreasePerLevel = UpgradeNode.MagnitudePerLevel;
+				NodeView.DisplayName = UpgradeNode.DisplayName;
+				NodeView.Description = UpgradeNode.Description;
+				NodeView.UpgradeCost = UpgradeNode.BaseCost + UpgradeNode.CostPerLevel * NodeView.CurrentLevel;
+				NodeView.Icon     = UpgradeNode.Icon; 
+				NodeView.StateTag =
+					!bUnlocked                                  ? NSGameplayTags::UI_PetUpgrade_State_Locked
+					: (NodeView.CurrentLevel >= NodeView.MaxLevel) ? NSGameplayTags::UI_PetUpgrade_State_Maxed
+					:                                             NSGameplayTags::UI_PetUpgrade_State_Upgradable;
 			}
 		}
 	}
@@ -202,26 +281,79 @@ void UNSPetUpgradeBridgeSubsystem::HandleUpgradeRequestMessage(FGameplayTag Chan
 	if (ProgressionSubsystem && Definition && UpgradeNode)
 	{
 		// UI 표시 상태를 신뢰하지 않고 기존 진행도 시스템에서 해금조건 재검사
-		const bool bConditionMet =
-			ProgressionSubsystem->CanSelectCompanion(
-				Definition->RequiredCompanionTag,
-				Definition->RequiredUpgradeCount);
+		const UNSCompanionDefinition* RequiredDrone =
+	CompanionCatalog ? CompanionCatalog->FindByTag(Definition->RequiredCompanionTag) : nullptr;
 
+		const bool bConditionMet = ProgressionSubsystem->CanSelectCompanion(RequiredDrone);
 		if (bConditionMet)
 		{
-			// 현재 기획은 무료 강화이므로 비용으로 0 전달
-			// 최대 레벨 확인과 영구 저장은 ProgressionSubsystem이 처리
-			Result.bSuccess =
-				ProgressionSubsystem->UpgradeCompanionNode(
-					Message.CompanionTag,
-					Message.NodeTag,
-					UpgradeNode->MaxLevel,
-					0);
+			const int32 CurLevel = ProgressionSubsystem->GetCompanionNodeLevel(
+			Message.CompanionTag, Message.NodeTag, UpgradeNode->bSharedAcrossDrones);
+			const int64 Cost = UpgradeNode->BaseCost + UpgradeNode->CostPerLevel * CurLevel;
+
+			Result.bSuccess = ProgressionSubsystem->UpgradeCompanionNode(
+				Message.CompanionTag,
+				Message.NodeTag,
+				UpgradeNode->bSharedAcrossDrones,
+				UpgradeNode->MaxLevel,
+				Cost);
 		}
 	}
 
+	if (Result.bSuccess)
+	{
+		if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(PlayerController))
+		{
+			NSPC->UploadLocalProgress(NSPC->GetActiveCharacterIdForUpload());
+		}
+	}
+	
 	// 강화 성공 여부를 요청한 UI에 전달
 	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
 		NSGameplayTags::Message_UI_PetUpgrade_Upgrade_Result,
 		Result);
 }
+
+void UNSPetUpgradeBridgeSubsystem::HandleSelectRequestMessage(FGameplayTag Channel,
+	const FNSPetUpgradeSelectRequestMessage& Message)
+{
+	FNSPetUpgradeResultMessage Result;
+	Result.RequestId    = Message.RequestId;
+	Result.CompanionTag = Message.CompanionTag;
+
+	UGameInstance* GameInstance = GetGameInstance();
+	const UWorld* World = GetWorld();
+	APlayerController* PlayerController = World ? World->GetFirstPlayerController() : nullptr;
+	ANSPlayerState* PlayerState = PlayerController ? PlayerController->GetPlayerState<ANSPlayerState>() : nullptr;
+	UNSCompanionProgressionComponent* CompanionComponent =
+		PlayerState ? PlayerState->GetCompanionProgressionComponent() : nullptr;
+	const UNSCompanionCatalog* CompanionCatalog =
+		CompanionComponent ? CompanionComponent->Catalog : nullptr;
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GameInstance ? GameInstance->GetSubsystem<UNSProgressionSubsystem>() : nullptr;
+
+	UNSCompanionDefinition* Definition =
+		CompanionCatalog ? CompanionCatalog->FindByTag(Message.CompanionTag) : nullptr;
+
+	if (ProgressionSubsystem && Definition)
+	{
+		// 선행 드론(전 노드 Max 조건)을 넘겨 게이트 재검사 후 선택
+		const UNSCompanionDefinition* RequiredDrone =
+			CompanionCatalog->FindByTag(Definition->RequiredCompanionTag);
+		Result.bSuccess = ProgressionSubsystem->SelectCompanion(Message.CompanionTag, RequiredDrone, Definition->UnlockCost);
+	}
+
+	// 성공 시 아웃게임(허브) 드론에 즉시 반영
+	if (Result.bSuccess)
+	{
+		if (ANSPlayerController* NSPC = Cast<ANSPlayerController>(PlayerController))
+		{
+			NSPC->UploadLocalProgress(NSPC->GetActiveCharacterIdForUpload());
+		}
+	}
+	
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_PetUpgrade_Select_Result, Result);
+}
+
+

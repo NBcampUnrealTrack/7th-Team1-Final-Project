@@ -5,12 +5,20 @@
 #include "NSPetUpgradeMessageTypes.generated.h"
 
 class UTexture2D;
-
+struct FNSCompanionStatEntry;
 
 /**
  * 펫 강화 화면이 현재 펫의 전체 강화 상태를 요청할 때 사용하는 메시지입니다.
  * UI는 CompanionTag만 전달하며 실제 데이터 조회는 Bridge가 처리합니다.
  */
+
+USTRUCT(BlueprintType)
+struct FNSCompanionStatEntry
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) FText  Name;   // 예: AttackDamage
+	UPROPERTY(BlueprintReadOnly) float  Value = 0.f;
+};
 
 USTRUCT(BlueprintType)
 struct FNSPetUpgradeQueryMessage
@@ -83,6 +91,10 @@ struct FNSPetUpgradeNodeViewData
 	UPROPERTY(BlueprintReadOnly)
 	TSoftObjectPtr<UTexture2D> Icon;
 
+	//스탯 노드가 아니라 드론 선택 노드인지 여부 (true면 클릭 시 선택 변경)
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsDroneSelectNode = false;
+	
 	//저장 데이터에서 조회한 현재 강화 레벨
 	UPROPERTY(BlueprintReadOnly)
 	int32 CurrentLevel = 0;
@@ -94,6 +106,13 @@ struct FNSPetUpgradeNodeViewData
 	//다음 강화에 필요한 비용, 무료 강화라면 0
 	UPROPERTY(BlueprintReadOnly)
 	int64 UpgradeCost = 0;
+	
+	// 스탯 노드: 레벨당 증가량 (MagnitudePerLevel)
+	UPROPERTY(BlueprintReadOnly)
+	float IncreasePerLevel = 0.f;
+	
+	UPROPERTY(BlueprintReadOnly)
+	TArray<FNSCompanionStatEntry> DroneStats;
 };
 
 /**
@@ -121,6 +140,14 @@ struct FNSPetUpgradeSnapshotMessage
 	//화면에 표시할 전체 강화 노드 목록
 	UPROPERTY(BlueprintReadOnly)
 	TArray<FNSPetUpgradeNodeViewData> Nodes;
+	
+	//현재 선택된 드론의 표시 이름
+	UPROPERTY(BlueprintReadOnly)
+	FText SelectedDisplayName;
+
+	//현재 선택된 드론의 아이콘
+	UPROPERTY(BlueprintReadOnly)
+	TSoftObjectPtr<UTexture2D> SelectedIcon;
 };
 
 /**
@@ -153,3 +180,22 @@ struct FNSPetUpgradeResultMessage
 	UPROPERTY(BlueprintReadOnly)
 	bool bSuccess = false;
 };
+
+/**
+ * 플레이어가 드론(종류) 선택 변경을 요청할 때 사용하는 메시지입니다.
+ */
+USTRUCT(BlueprintType)
+struct FNSPetUpgradeSelectRequestMessage
+{
+	GENERATED_BODY()
+
+	//결과를 요청자와 연결하기 위한 고유 식별자
+	UPROPERTY(BlueprintReadOnly)
+	FGuid RequestId;
+
+	//선택하려는 드론 태그
+	UPROPERTY(BlueprintReadOnly)
+	FGameplayTag CompanionTag;
+};
+
+
