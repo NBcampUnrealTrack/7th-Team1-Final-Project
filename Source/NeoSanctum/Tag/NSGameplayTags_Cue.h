@@ -52,6 +52,7 @@ namespace NSGameplayTags
 	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_BuffRangePulse);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_Barrier_Deploy);
 	
 	//Enemy MotherShip
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning01);

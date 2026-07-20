@@ -50,6 +50,7 @@ namespace NSGameplayTags
 	
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_SpeedBuff, "GameplayCue.Engineer.SpeedBuff");
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_BuffRangePulse, "GameplayCue.Engineer.BuffRangePulse");
+	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_Engineer_Barrier_Deploy, "GameplayCue.Engineer.Barrier.Deploy");
 	
 	//Enemy MotherShip
 	UE_DEFINE_GAMEPLAY_TAG(GameplayCue_MotherShip_BombingRun_Warning01, "GameplayCue.MotherShip.BombingRun.Warning1");
