@@ -65,23 +65,45 @@ void UNSDeathSpectatorComponent::SpectateNextPlayer()
 void UNSDeathSpectatorComponent::ApplyConfirmedSpectatorTarget(ANSPlayerCharacterBase* TargetCharacter)
 {
 	ANSPlayerController* OwnerPlayerController = GetOwnerPlayerController();
-	if (!OwnerPlayerController || !OwnerPlayerController->IsLocalController() || !TargetCharacter)
+	if (!OwnerPlayerController
+		|| !OwnerPlayerController->IsLocalController()
+		|| !TargetCharacter)
 	{
 		return;
 	}
 
-	ANSPlayerState* TargetPlayerState = TargetCharacter->GetPlayerState<ANSPlayerState>();
+	ANSPlayerState* TargetPlayerState =
+		TargetCharacter->GetPlayerState<ANSPlayerState>();
+
 	SpectatingPlayerState = TargetPlayerState;
 
-	// 서버에서 확정한 관전 대상 Pawn을 실제 ViewTarget으로 적용
-	if (ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(OwnerPlayerController->GetPawn()))
+	// 서버가 확정한 관전 대상 Pawn을 실제 ViewTarget으로 적용
+	if (ANSDeathSpectatorPawn* DeathSpectatorPawn =
+		Cast<ANSDeathSpectatorPawn>(OwnerPlayerController->GetPawn()))
 	{
-		OwnerPlayerController->SetViewTargetWithBlend(DeathSpectatorPawn, DeathSpectatorViewBlendTime);
+		OwnerPlayerController->SetViewTargetWithBlend(
+			DeathSpectatorPawn,
+			DeathSpectatorViewBlendTime);
 	}
 
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	FString SpectatingPlayerName;
+
+	if (TargetPlayerState)
 	{
-		UIManager->ShowSpectator(TargetPlayerState ? TargetPlayerState->GetPlayerName() : TargetCharacter->GetName());
+		SpectatingPlayerName =
+			TargetPlayerState->GetPlayerName().TrimStartAndEnd();
+	}
+
+	// PlayerState는 있지만 이름 복제가 아직 완료되지 않은 경우 방어
+	if (SpectatingPlayerName.IsEmpty())
+	{
+		SpectatingPlayerName = TargetCharacter->GetName();
+	}
+
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->ShowSpectator(SpectatingPlayerName);
 	}
 }
 
@@ -94,24 +116,44 @@ bool UNSDeathSpectatorComponent::HandleClientRestart(APawn* NewPawn)
 	}
 
 	ClearDeathSpectatorModeTimer();
-	const bool bIsDeathSpectatorRestart = NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>();
+
+	const bool bIsDeathSpectatorRestart =
+		NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>();
+
 	if (!bIsDeathSpectatorRestart)
 	{
 		SpectatingPlayerState = nullptr;
 		return false;
 	}
 
-	// 사망 직후 첫 관전 대상을 결정하고 해당 화면 View를 볼 수 있게 수동으로 NextPlayer를 호출해줘야함
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	// 관전자 UI만 먼저 생성합니다.
+	// 아직 이름이 확정되지 않았으므로 빈 문자열로 표시하지 않습니다.
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->CreateSpectator(OwnerPlayerController);
-		UIManager->ShowSpectator(TEXT(""));
 	}
+
 	OwnerPlayerController->SetViewTarget(NewPawn);
-	if (ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(NewPawn))
+
+	if (ANSDeathSpectatorPawn* DeathSpectatorPawn =
+		Cast<ANSDeathSpectatorPawn>(NewPawn))
 	{
-		DeathSpectatorPawn->RefreshSpectatorTargetView();
+		// 관전 대상이 UI보다 먼저 복제된 경우
+		// 이미 가지고 있는 관전 대상으로 UI를 강제 갱신합니다.
+		if (ANSPlayerCharacterBase* TargetCharacter =
+			DeathSpectatorPawn->GetSpectatorTarget())
+		{
+			ApplyConfirmedSpectatorTarget(TargetCharacter);
+		}
+		else
+		{
+			// 아직 대상이 복제되지 않았다면
+			// 이후 OnRep_SpectatorTarget에서 다시 적용됩니다.
+			DeathSpectatorPawn->RefreshSpectatorTargetView();
+		}
 	}
+
 	return true;
 }
 

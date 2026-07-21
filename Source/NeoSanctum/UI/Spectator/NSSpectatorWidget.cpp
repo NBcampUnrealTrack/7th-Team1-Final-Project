@@ -12,6 +12,6 @@ void UNSSpectatorWidget::SetSpectatingPlayerName(const FString& PlayerName)
 	}
 
 	SpectatingNameText->SetText(FText::Format(
-		NSLOCTEXT("SpectatorWidget", "SpectatingNameFormat", "관전자 : {0}"),
+		NSLOCTEXT("SpectatorWidget", "SpectatingNameFormat", "관전 중 : {0}"),
 		FText::FromString(PlayerName)));
 }
