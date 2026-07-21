@@ -81,13 +81,26 @@ void ANSCompanionDroneAI::SetCurrentState(ECompanionState NewState)
 
 	if (NewState == ECompanionState::Collect)
 	{
-		// 재화 수집 진입 → 지상 가까이 하강 (이동/회피는 그대로 살아있음)
+		// 재화 수집 진입 → 지상 가까이 하강 + 회피/콜리전 비활성 (장애물 통과 직진)
 		FlyingMovementComponent->SetAltitude(CollectAltitude);
+		FlyingMovementComponent->SetAvoidanceDisabled(true);
+
+		if (IsValid(SphereComponent))
+		{
+			CachedCollisionEnabled = SphereComponent->GetCollisionEnabled();
+			SphereComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
 	}
 	else if (PrevState == ECompanionState::Collect)
 	{
-		// 재화 수집 이탈 → 평상 고도로 복귀
+		// 재화 수집 이탈 → 평상 고도 + 회피/콜리전 원복
 		FlyingMovementComponent->SetAltitude(DefaultAltitude);
+		FlyingMovementComponent->SetAvoidanceDisabled(false);
+
+		if (IsValid(SphereComponent))
+		{
+			SphereComponent->SetCollisionEnabled(CachedCollisionEnabled);
+		}
 	}
 }
 
@@ -212,13 +225,16 @@ void ANSCompanionDroneAI::TeleportToOwner()
 	// 서버 및 오너 존재 체크
 	if (!HasAuthority() || !OwnerPlayer) return;
 	
-	// 목표 지점
-	const FVector Target = OwnerPlayer->GetActorLocation();
-	
-	// 텔레포트 적용
+	// 오너 위치 그대로면 캡슐 안(낮은 Z)에 박혀 빠져나올 때까지 굳으므로,
+	// 평상 유지 고도만큼 위로(+약간 뒤) 오프셋해 캡슐 밖 hover 고도에 놓는다.
+	const FVector OwnerLoc  = OwnerPlayer->GetActorLocation();
+	const FVector BehindDir = (-OwnerPlayer->GetActorForwardVector()).GetSafeNormal2D();
+	const FVector Target = OwnerLoc
+		+ FVector(0.f, 0.f, DefaultAltitude)   // hover 고도로 올림 (캡슐 상단 확실히 통과)
+		+ BehindDir * TeleportBackOffset;       // 시야 밖 살짝 뒤 (선택)
+
 	SetActorLocation(Target, false, nullptr, ETeleportType::TeleportPhysics);
-	
-	// 로코모션 컴포넌트에 텔포 통지 (velocity 리셋 + 지형 재감지 유도)
+
 	if (IsValid(FlyingMovementComponent))
 	{
 		FlyingMovementComponent->ResetLocomotionState();

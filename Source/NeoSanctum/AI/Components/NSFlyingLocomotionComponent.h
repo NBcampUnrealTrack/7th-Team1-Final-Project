@@ -136,6 +136,11 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Locomotion|Altitude")
 	float MaxDescendSpeed = 150.f;
+	
+	// 바로 아래 지면이 낮아도, 주변 최고 지형 위로 최소한 유지할 여유 높이.
+	// Altitude보다 작게 둬야 평지 복귀 시 실제 지면까지 내려옴 (경사면 고도 달라붙음 방지).
+	UPROPERTY(EditAnywhere, Category="Locomotion|Altitude")
+	float MinAltitudeClearance = 100.f;
 
 	// @민재 : 지면 트레이스 채널 (Drone_Ground)
 	UPROPERTY(EditAnywhere, Category="Locomotion|Altitude")
@@ -269,8 +274,14 @@ public:
 	// @민재 : 스티어링 입력(RequestMoveTowards) 차단 여부 설정. 기본 false(차단 해제) → 드론 등 다른 사용자는 영향 없음
 	void SetSteeringInputLocked(bool bLocked) { bSteeringInputLocked = bLocked; }
 
+	// @민재 : 재화 수집처럼 장애물을 무시하고 목표로 직진할 때 회피(스티어링/후퇴) 비활성
+	void SetAvoidanceDisabled(bool bDisabled) { bAvoidanceDisabled = bDisabled; }
+
 private:
 	bool bSteeringInputLocked = false;
+	
+	bool bAvoidanceDisabled = false;
+	
 #pragma endregion
 	
 private:
