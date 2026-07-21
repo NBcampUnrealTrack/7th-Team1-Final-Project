@@ -627,6 +627,11 @@ void UNSSessionSubsystem::JoinResolvedSession(const FOnlineSessionSearchResult& 
 		return;
 	}
 
+	PendingResolvedInviteCode.Empty();
+	SearchResult.Session.SessionSettings.Get(
+		NS_INVITE_CODE_KEY,
+		PendingResolvedInviteCode);
+
 	bIsJoining = true;
 	JoinSessionDelegateHandle =
 		SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(
@@ -647,6 +652,7 @@ void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessi
 
 	if (Result != EOnJoinSessionCompleteResult::Success)
 	{
+		PendingResolvedInviteCode.Empty();
 		UE_LOG(LogTemp, Warning, TEXT("JoinSession 실패: %d"), (int32)Result);
 		OnJoinSessionComplete.Broadcast(false);
 		ReturnToTitle();
@@ -657,6 +663,7 @@ void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessi
 	FString ConnectString;
 	if (!SessionInterface->GetResolvedConnectString(NAME_GameSession, ConnectString))
 	{
+		PendingResolvedInviteCode.Empty();
 		UE_LOG(LogTemp, Error, TEXT("연결 문자열 해석 실패"));
 		OnJoinSessionComplete.Broadcast(false);
 		ReturnToTitle();
@@ -669,15 +676,36 @@ void UNSSessionSubsystem::OnJoinSessionCompleted(FName SessionName, EOnJoinSessi
 		GetGameInstance() ? GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
 	if (!PC)
 	{
+		PendingResolvedInviteCode.Empty();
 		OnJoinSessionComplete.Broadcast(false);
 		ReturnToTitle();
 		return;
 	}
 
+	if (PendingResolvedInviteCode.IsEmpty())
+	{
+		if (const FNamedOnlineSession* JoinedSession =
+			SessionInterface->GetNamedSession(NAME_GameSession))
+		{
+			JoinedSession->SessionSettings.Get(
+				NS_INVITE_CODE_KEY,
+				PendingResolvedInviteCode);
+		}
+	}
+
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 		UIManager->ShowTravelLoadingScreen(PC);
 
+	CurrentInviteCode = PendingResolvedInviteCode;
+	PendingResolvedInviteCode.Empty();
+
+	if (!CurrentInviteCode.IsEmpty())
+	{
+		OnInviteCodeReady.Broadcast(CurrentInviteCode);
+	}
+
 	OnJoinSessionComplete.Broadcast(true);
+
 	PC->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
 }
 
