@@ -9,6 +9,7 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NSPartEquipWidget.generated.h"
 
+class UNSButtonBase;
 class UNSPartDefinition;
 class UNSPartCatalogEntryWidget;
 class UNSPartDetailWidget;
@@ -161,7 +162,7 @@ protected:
 
 	// 종료(X) 버튼 — ESC와 동일하게 RequestClose 경유 (저장 진행 표시 포함)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> CloseButton;
+	TObjectPtr<UNSButtonBase> EquipCloseButton;
 
 	// 에디터 Class Defaults에서 WBP_PartCatalogEntry 지정
 	UPROPERTY(EditDefaultsOnly, Category = "Part")

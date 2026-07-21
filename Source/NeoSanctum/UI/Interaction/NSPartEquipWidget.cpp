@@ -16,6 +16,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
@@ -52,10 +53,10 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	{
 		LegEquippedButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnLegEquippedClicked);
 	}
-	if (IsValid(CloseButton))
+	if (IsValid(EquipCloseButton))
 	{
 		// ESC와 동일 경로 — 변경사항 있으면 저장 진행 표시 후 닫힘
-		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::RequestClose);
+		EquipCloseButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::RequestClose);
 	}
 	if (IsValid(EquipButton))
 	{
