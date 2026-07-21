@@ -52,6 +52,24 @@ void UNSBaseAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribute
 	}
 }
 
+void UNSBaseAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+	Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+	/**
+	 * PostAttributeChange는 GE 적용/제거(Infinite GE 해제) 양쪽 모두에서 호출되므로
+	 * 파츠/증강 등으로 MaxHealth가 줄어드는 모든 경로에서 현재 Health를 새 최대치로 클램프
+	 * (MaxHealth가 늘어날 때는 현재 Health를 그대로 두고 최대치만 확장)
+	 */
+	if (Attribute == GetMaxHealthAttribute())
+	{
+		if (GetHealth() > NewValue)
+		{
+			SetHealth(NewValue);
+		}
+	}
+}
+
 void UNSBaseAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
