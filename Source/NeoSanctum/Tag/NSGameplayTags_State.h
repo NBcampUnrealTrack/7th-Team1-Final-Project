@@ -21,6 +21,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_BarrierAttackWindow);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ChargingDashAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ComboInputWindow);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ThrowBarrierField);
 	
 	// Shield Regen
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Broken);

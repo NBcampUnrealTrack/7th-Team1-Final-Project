@@ -19,6 +19,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_BarrierAttackWindow, "State.Vanguard.BarrierAttackWindow");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ChargingDashAttack, "State.Vanguard.ChargingDashAttack");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ComboInputWindow, "State.Vanguard.ComboInputWindow");
+	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_ThrowBarrierField, "State.Vanguard.ThrowBarrierField");
 	
 	// Shield Regen
 	UE_DEFINE_GAMEPLAY_TAG(State_Shield_Broken, "State.Shield.Broken");
