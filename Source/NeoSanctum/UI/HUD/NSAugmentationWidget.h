@@ -70,7 +70,7 @@ public:
 	void SetOwnedAugmentListVisible(bool bVisible);
 
 	void OpenSelectionPanel();
-	
+
 	// 1/2/3/4 카드 선택 키 입력이 실제로 수락됐을 때 선택 사운드를 재생
 	void PlayAugmentSelectSound() const;
 
@@ -98,7 +98,7 @@ private:
 
 	// 카드 인덱스에 대응하는 카드 위치를 계산
 	FVector2D GetChoiceCardPosition(int32 Index) const;
-	
+
 	// Canvas Panel 좌표계에서 위젯의 TopLeft/Size를 조회
 	bool TryGetWidgetCanvasRect(
 		const UWidget* Widget,
@@ -107,7 +107,31 @@ private:
 
 	// 현재 ChoiceCount와 카드 인덱스에 맞는 입력 아이콘 박스를 반환
 	USizeBox* GetChoiceGuideInputIconBox(int32 CardIndex) const;
-	
+
+	// 현재 오퍼에서 실제 선택 가능한 카드 수를 반환합니다.
+	int32 GetSelectableChoiceCount() const;
+
+	// 입력 슬롯 인덱스에 맞는 WBP 입력 아이콘 박스를 반환합니다.
+	USizeBox* GetChoiceGuideInputIconBoxBySlotIndex(int32 SlotIndex) const;
+
+	// 입력 슬롯 인덱스 기준으로 카드 위치를 계산합니다.
+	FVector2D GetChoiceCardPositionBySlotIndex(int32 SlotIndex) const;
+
+	// 생성된 실제 선택 카드 위젯을 모두 제거합니다.
+	void ClearChoiceCardWidgets();
+
+	// 카드 인덱스를 현재 ChoiceGuide의 입력 슬롯 인덱스로 변환
+	int32 GetChoiceGuideSlotIndexForCardIndex(int32 CardIndex) const;
+
+	// 전체 남은 카드 수를 고정된 전체 슬롯에 균등 분배합니다.
+	// 분배 결과가 0인 슬롯은 계산 이후 비활성화합니다.
+	TArray<int32> CalculateCardsPerSlot(
+		int32 TotalRemainingCardCount) const;
+
+	// 논리적인 카드 스택과 실제 오퍼 카드가 모두 존재하는 슬롯인지 확인합니다.
+	bool IsChoiceGuideSlotActive(
+		int32 SlotIndex) const;
+
 	void QueueChoiceCardPositionRefresh();
 	void HandleDeferredChoiceCardPositionRefresh();
 
@@ -223,6 +247,9 @@ private:
 	// 기본 증강 선택지 개수
 	int32 ChoiceCount = 3;
 
+	// 서버가 확정한 최대 선택 슬롯 수
+	int32 ChoiceGuideSlotCount = 3;
+
 	// 현재 하이라이트된 카드 인덱스
 	int32 HighlightedCardIndex = INDEX_NONE;
 
@@ -239,6 +266,9 @@ private:
 
 	// 현재 오퍼의 증강 ID 목록
 	TArray<FNSAugmentSelectionCard> CurrentOfferCards;
+
+	// 서버가 전달한 현재 전체 선택 가능 후보 수
+	int32 CurrentAvailableCardCount = 0;
 
 	// 마지막으로 받은 오퍼 번호
 	int32 CurrentOfferRevision = 0;
@@ -295,8 +325,9 @@ private:
 		const TArray<FNSAugmentSelectionCard>& Cards,
 		int64 RerollCost,
 		bool bCanReroll,
-		int32 OfferRevision
-	);
+		int32 OfferRevision,
+		int32 MaxChoiceCount,
+		int32 AvailableCardCount);
 
 	// 리롤 실패 결과 수신 -> 잠금 해제 + 문구 갱신
 	UFUNCTION()
@@ -333,7 +364,7 @@ private:
 	void RefreshOwnedAugmentSectionVisibility();
 
 	UWrapBox* GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const;
-	
+
 	// 선택 카드의 시각 연출을 시작
 	void BeginCardSelection(int32 CardIndex);
 
@@ -345,9 +376,18 @@ private:
 
 	// 지연 선택 타이머와 선택 대기 상태를 초기화
 	void ClearSelectionAnimationTimer();
-	
+
 	// 전달된 DT_SoundDataTable RowName으로 증강 UI 2D 사운드를 재생
 	void PlayAugmentSound(FName SoundID) const;
+
+	// 최대 선택 슬롯 수를 WBP에서 지원하는 3/4 슬롯 값으로 정규화
+	int32 NormalizeChoiceGuideSlotCount(int32 MaxChoiceCount) const;
+
+	// 실제 카드가 없는 키 슬롯을 레이아웃 공간 유지 상태로 숨김
+	void RefreshChoiceGuideSlotVisibility();
+
+	// 개별 키 슬롯을 표시하거나 공간만 유지한 채 숨김
+	void SetChoiceGuideSlotVisible(UWidget* SlotWidget, bool bVisible) const;
 
 protected:
 	virtual void NativeConstruct() override;
@@ -355,7 +395,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UNSAugmentCardWidget> AugmentCardWidgetClass;
-	
+
 	// 1/2/3/4 카드 선택 키 입력에 사용할 DT_SoundDataTable RowName
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Sound")
 	FName AugmentSelectSoundID = NAME_None;
@@ -383,9 +423,30 @@ protected:
 	// 선택 카드의 실제 표시 크기
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment")
 	FVector2D ChoiceCardSize = FVector2D(330.f, 118.f);
-	
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice3Slot1GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice3Slot2GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice3Slot3GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice4Slot1GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice4Slot2GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice4Slot3GuideRoot;
+
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> Choice4Slot4GuideRoot;
+
 	bool bChoiceCardPositionRefreshQueued = false;
-	
+
 	// 선택 애니메이션 종료 후 서버 선택 요청을 보내기 위한 타이머
 	FTimerHandle SelectionAnimationTimerHandle;
 
@@ -402,4 +463,9 @@ protected:
 	// 선택되지 않은 카드에 적용할 투명도
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Selection")
 	float DeselectedChoiceCardOpacity = 0.35f;
+
+	// 현재 사용 가능한 전체 카드를 활성 슬롯별로 균등 분배한 결과.
+	// 실제 스택 위젯을 생성하지 않고 논리 상태로만 유지합니다.
+	UPROPERTY(Transient)
+	TArray<int32> CurrentCardsPerSlot;
 };
