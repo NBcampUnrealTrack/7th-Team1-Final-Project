@@ -113,6 +113,59 @@ void UNSPlayerAttributeSet::PreAttributeChange(const FGameplayAttribute& Attribu
 	}
 }
 
+void UNSPlayerAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue)
+{
+	Super::PostAttributeChange(Attribute, OldValue, NewValue);
+
+	/**
+	 * PostAttributeChange는 GE 적용/제거(Infinite GE 해제)로 인한 CurrentValue 재계산에도 호출되므로
+	 * PostGameplayEffectExecute가 타지 않는 파츠/증강 해제 경로에서도 Max 감소 시 현재값을 클램프
+	 * (Max가 늘어날 때는 현재값을 그대로 두고 최대치만 확장)
+	 */
+	if (Attribute == GetMaxShieldAttribute())
+	{
+		if (GetShield() > NewValue)
+		{
+			SetShield(NewValue);
+		}
+	}
+	else if (Attribute == GetMaxAmmoAttribute())
+	{
+		if (GetAmmo() > NewValue)
+		{
+			SetAmmo(NewValue);
+		}
+	}
+	else if (Attribute == GetMaxDashCountAttribute())
+	{
+		if (GetDashCount() > NewValue)
+		{
+			SetDashCount(NewValue);
+		}
+	}
+	else if (Attribute == GetMaxSkill1CountAttribute())
+	{
+		if (GetSkill1Count() > NewValue)
+		{
+			SetSkill1Count(NewValue);
+		}
+	}
+	else if (Attribute == GetMaxSkill2CountAttribute())
+	{
+		if (GetSkill2Count() > NewValue)
+		{
+			SetSkill2Count(NewValue);
+		}
+	}
+	else if (Attribute == GetMaxSkill3CountAttribute())
+	{
+		if (GetSkill3Count() > NewValue)
+		{
+			SetSkill3Count(NewValue);
+		}
+	}
+}
+
 void UNSPlayerAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
 {
 	Super::PostGameplayEffectExecute(Data);
