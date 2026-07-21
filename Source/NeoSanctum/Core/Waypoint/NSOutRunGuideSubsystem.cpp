@@ -7,108 +7,92 @@
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/Interaction/Prop/NSReadyStartActor.h"
 #include "NeoSanctum/Progression/Save/NSPermanentSaveGame.h"
-#include "NeoSanctum/System/NSSaveGameSubsystem.h"
-#include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
-#include "NeoSanctum/UI/HUD/NSHUDWidget.h"
 #include "NeoSanctum/Core/Waypoint/NSWaypointMarkerComponent.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGuideTextData.h"
-#include "TimerManager.h"
 
-void UNSOutRunGuideSubsystem::StartGuide()
+bool UNSOutRunGuideSubsystem::IsMoveStageComplete() const
 {
-	bGuideStarted = true;
-
-	// 세이브 캐시가 아직 로드 전이면 로드 완료 시점에 갱신 (중복 구독 방지)
-	if (!GetPermanentData())
+	const UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!Save)
 	{
-		UNSSaveGameSubsystem* SaveSubsystem =
-			GetWorld()->GetGameInstance()
-				? GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>()
-				: nullptr;
-		if (SaveSubsystem && !DataLoadedHandle.IsValid())
+		return false;
+	}
+
+	// 구 단일 플래그(기존 세이브)거나, 4방향 세부 플래그가 전부 완료면 이동 단계 완료
+	return Save->bMoveGuideDone
+		|| (Save->bMoveGuideDone_W && Save->bMoveGuideDone_A
+			&& Save->bMoveGuideDone_S && Save->bMoveGuideDone_D);
+}
+
+void UNSOutRunGuideSubsystem::NotifyMoveInput(FVector2D Direction)
+{
+	UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!bGuideStarted || !Save || IsMoveStageComplete())
+	{
+		return;
+	}
+
+	/**
+	 * 아날로그 드리프트를 걸러내기 위한 임계값
+	 * X = 좌(-)/우(+), Y = 후진(-)/전진(+). 대각선이면 두 방향 모두 완료 처리
+	 */
+	const float Threshold = 0.5f;
+	bool bChanged = false;
+
+	// 방향별로 아직 완료 안 된 것만 플래그 세팅 + 해당 줄 완료 애니메이션 재생
+	auto TryComplete = [&](bool bActive, bool& Flag, const TCHAR* ItemId)
+	{
+		if (!bActive || Flag)
 		{
-			DataLoadedHandle = SaveSubsystem->OnPermanentDataLoaded.AddUObject(
-				this, &UNSOutRunGuideSubsystem::HandlePermanentDataLoaded);
+			return;
 		}
-		return;
-	}
+		Flag = true;
+		bChanged = true;
+		CompleteItem(FName(ItemId));
+	};
 
-	RefreshGuide();
-}
+	TryComplete(Direction.Y > Threshold, Save->bMoveGuideDone_W, TEXT("MoveW"));
+	TryComplete(Direction.Y < -Threshold, Save->bMoveGuideDone_S, TEXT("MoveS"));
+	TryComplete(Direction.X > Threshold, Save->bMoveGuideDone_D, TEXT("MoveD"));
+	TryComplete(Direction.X < -Threshold, Save->bMoveGuideDone_A, TEXT("MoveA"));
 
-void UNSOutRunGuideSubsystem::CompleteMoveGuide()
-{
-	UNSPermanentSaveGame* Save = GetPermanentData();
-	if (!Save || Save->bMoveGuideDone)
+	// 단계 전환은 컨테이너가 비워질 때 NotifyChecklistEmptied로 처리 → 여기선 저장만
+	if (bChanged)
 	{
-		return;
+		SaveGuideState();
 	}
-
-	Save->bMoveGuideDone = true;
-	SaveGuideState();
-	RefreshGuide();
-}
-
-void UNSOutRunGuideSubsystem::CompleteJumpGuide()
-{
-	UNSPermanentSaveGame* Save = GetPermanentData();
-	if (!Save || Save->bJumpGuideDone)
-	{
-		return;
-	}
-
-	Save->bJumpGuideDone = true;
-	SaveGuideState();
-	RefreshGuide();
-}
-
-void UNSOutRunGuideSubsystem::CompleteDashGuide()
-{
-	UNSPermanentSaveGame* Save = GetPermanentData();
-	if (!Save || Save->bDashGuideDone)
-	{
-		return;
-	}
-
-	Save->bDashGuideDone = true;
-	SaveGuideState();
-	RefreshGuide();
-}
-
-void UNSOutRunGuideSubsystem::NotifyMoveInput()
-{
-	UNSPermanentSaveGame* Save = GetPermanentData();
-	if (!bGuideStarted || !Save || Save->bMoveGuideDone)
-	{
-		return;
-	}
-
-	StartStageTimeout(TEXT("MoveInput"), &UNSOutRunGuideSubsystem::CompleteMoveGuide);
 }
 
 void UNSOutRunGuideSubsystem::NotifyJumpInput()
 {
 	UNSPermanentSaveGame* Save = GetPermanentData();
 	if (!bGuideStarted || !Save
-		|| !Save->bMoveGuideDone || Save->bJumpGuideDone)
+		|| !IsMoveStageComplete() || Save->bJumpGuideDone)
 	{
 		return;
 	}
 
-	StartStageTimeout(TEXT("JumpInput"), &UNSOutRunGuideSubsystem::CompleteJumpGuide);
+	Save->bJumpGuideDone = true;
+	SaveGuideState();
+
+	// 점프 줄 완료 애니메이션 재생 (다음 단계는 컨테이너 empty 시 전환)
+	CompleteItem(TEXT("Jump"));
 }
 
 void UNSOutRunGuideSubsystem::NotifyDashInput()
 {
 	UNSPermanentSaveGame* Save = GetPermanentData();
 	if (!bGuideStarted || !Save
-		|| !Save->bMoveGuideDone || !Save->bJumpGuideDone || Save->bDashGuideDone)
+		|| !IsMoveStageComplete() || !Save->bJumpGuideDone || Save->bDashGuideDone)
 	{
 		return;
 	}
 
-	StartStageTimeout(TEXT("DashInput"), &UNSOutRunGuideSubsystem::CompleteDashGuide);
+	Save->bDashGuideDone = true;
+	SaveGuideState();
+
+	CompleteItem(TEXT("Dash"));
 }
 
 void UNSOutRunGuideSubsystem::NotifyCharacterConsoleUsed()
@@ -121,7 +105,10 @@ void UNSOutRunGuideSubsystem::NotifyCharacterConsoleUsed()
 
 	Save->bCharacterConsoleGuideDone = true;
 	SaveGuideState();
-	RefreshGuide();
+
+	// 콘솔 마커를 즉시 끄고(다음 마커 켬), 콘솔 줄 완료 애니메이션 재생
+	RefreshVisuals();
+	CompleteItem(TEXT("CharacterConsole"));
 }
 
 void UNSOutRunGuideSubsystem::NotifyReadyConsoleUsed()
@@ -134,7 +121,9 @@ void UNSOutRunGuideSubsystem::NotifyReadyConsoleUsed()
 
 	Save->bReadyConsoleGuideDone = true;
 	SaveGuideState();
-	RefreshGuide();
+
+	RefreshVisuals();
+	CompleteItem(TEXT("ReadyConsole"));
 }
 
 void UNSOutRunGuideSubsystem::NotifyNPCInteracted(FName NPCId)
@@ -148,19 +137,12 @@ void UNSOutRunGuideSubsystem::NotifyNPCInteracted(FName NPCId)
 
 	Save->GuidedNPCIds.Add(NPCId);
 	SaveGuideState();
-	RefreshGuide();
+
+	RefreshVisuals();
+	CompleteItem(TEXT("NPC"));
 }
 
-void UNSOutRunGuideSubsystem::RefreshGuideForHUD()
-{
-	// 안내가 시작된 월드(아웃런)에서만 의미 있음 —> 인런 HUD 생성 시엔 무시
-	if (bGuideStarted)
-	{
-		RefreshGuide();
-	}
-}
-
-void UNSOutRunGuideSubsystem::RefreshGuide()
+void UNSOutRunGuideSubsystem::RefreshVisuals()
 {
 	UNSPermanentSaveGame* Save = GetPermanentData();
 	if (!Save)
@@ -168,33 +150,20 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 		return;
 	}
 
-	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-	if (!DataSubsystem || !DataSubsystem->IsCommonReady())
-	{
-		if (DataSubsystem)
-		{
-			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
-			DataSubsystem->OnCommonDataReady.AddDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
-		}
-		return;
-	}
-
-	// 안내 필요 여부 판정 —> 이동→점프→대시→캐릭터 콘솔→게임시작 콘솔 순서로 이전 단계가 끝나야 다음 단계가 활성화
-	const bool bNeedMoveGuide = !Save->bMoveGuideDone;
-	const bool bMoveStageDone = !bNeedMoveGuide;
-
-	const bool bNeedJumpGuide = bMoveStageDone && !Save->bJumpGuideDone;
-	const bool bJumpStageDone = bMoveStageDone && !bNeedJumpGuide;
-
-	const bool bNeedDashGuide = bJumpStageDone && !Save->bDashGuideDone;
-	const bool bDashStageDone = bJumpStageDone && !bNeedDashGuide;
+	/**
+	 * 단계 우선순위: 이동→점프→대시→캐릭터 콘솔→게임시작 콘솔→NPC.
+	 * 마커가 필요한 단계(콘솔/NPC)만 실제로 켜고 끈다.
+	 */
+	const bool bMoveStageDone = IsMoveStageComplete();
+	const bool bJumpStageDone = bMoveStageDone && Save->bJumpGuideDone;
+	const bool bDashStageDone = bJumpStageDone && Save->bDashGuideDone;
 
 	const bool bNeedCharacterGuide = bDashStageDone && !Save->bCharacterConsoleGuideDone;
 	const bool bCharacterStageDone = bDashStageDone && !bNeedCharacterGuide;
 
 	const bool bNeedReadyGuide = bCharacterStageDone && !Save->bReadyConsoleGuideDone;
 
-	// 캐릭터 선택 콘솔 마커 —> 같은 BP가 여러 곳에 배치되므로, 레벨에서 "GuideTutorial" 태그를 붙인 인스턴스(게임 시작 옆)만 튜토리얼 대상
+	// 캐릭터 선택 콘솔 마커 → "GuideTutorial" 태그가 붙은 인스턴스(게임 시작 옆)만 튜토리얼 대상
 	for (TActorIterator<ANSCharacterSelectNPC> It(GetWorld()); It; ++It)
 	{
 		const bool bIsTutorialConsole = It->ActorHasTag(TEXT("GuideTutorial"));
@@ -208,7 +177,6 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 	}
 
 	// 해금됐지만 아직 첫 방문 안 한 허브 NPC 마커
-	bool bNeedNPCGuide = false;
 	for (TActorIterator<ANSInteractableNPCBase> It(GetWorld()); It; ++It)
 	{
 		if (Cast<ANSCharacterSelectNPC>(*It))
@@ -225,69 +193,100 @@ void UNSOutRunGuideSubsystem::RefreshGuide()
 		const bool bNeedGuide = Save->UnlockedNPCIds.Contains(NPCId)
 			&& !Save->GuidedNPCIds.Contains(NPCId);
 		SetActorMarkerLocal(*It, bNeedGuide);
-		bNeedNPCGuide |= bNeedGuide;
-	}
-
-	UpdateGuideText(
-		bNeedMoveGuide, bNeedJumpGuide, bNeedDashGuide,
-		bNeedCharacterGuide, bNeedReadyGuide, bNeedNPCGuide);
-}
-
-void UNSOutRunGuideSubsystem::HandleCommonDataReady()
-{
-	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
-	{
-		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &UNSOutRunGuideSubsystem::HandleCommonDataReady);
-	}
-
-	if (bGuideStarted)
-	{
-		RefreshGuide();
 	}
 }
 
-void UNSOutRunGuideSubsystem::HandlePermanentDataLoaded(UNSPermanentSaveGame* Data)
+FName UNSOutRunGuideSubsystem::GetActiveStageRowName() const
 {
-	// 1회성 대기 —> 구독 해제 후 갱신
-	if (UNSSaveGameSubsystem* SaveSubsystem =
-		GetWorld()->GetGameInstance()
-			? GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>()
-			: nullptr)
+	const UNSPermanentSaveGame* Save = GetPermanentData();
+	if (!Save)
 	{
-		SaveSubsystem->OnPermanentDataLoaded.Remove(DataLoadedHandle);
+		return NAME_None;
 	}
-	DataLoadedHandle.Reset();
 
-	if (bGuideStarted)
+	// 이동→점프→대시→캐릭터 콘솔→게임시작 콘솔→NPC 순서로 첫 미완료 단계
+	if (!IsMoveStageComplete())
 	{
-		RefreshGuide();
+		return TEXT("MoveInput");
 	}
+	if (!Save->bJumpGuideDone)
+	{
+		return TEXT("JumpInput");
+	}
+	if (!Save->bDashGuideDone)
+	{
+		return TEXT("DashInput");
+	}
+	if (!Save->bCharacterConsoleGuideDone)
+	{
+		return TEXT("CharacterSelectConsole");
+	}
+	if (!Save->bReadyConsoleGuideDone)
+	{
+		return TEXT("NSReadyStartActor");
+	}
+
+	// 해금됐지만 아직 방문 안 한 NPC가 하나라도 있으면 NPC 단계 (Phase 3)
+	for (TActorIterator<ANSInteractableNPCBase> It(GetWorld()); It; ++It)
+	{
+		if (Cast<ANSCharacterSelectNPC>(*It))
+		{
+			continue;
+		}
+		const FName NPCId = It->GetNPCId();
+		if (NPCId.IsNone())
+		{
+			continue;
+		}
+		if (Save->UnlockedNPCIds.Contains(NPCId) && !Save->GuidedNPCIds.Contains(NPCId))
+		{
+			return TEXT("NewNPC");
+		}
+	}
+
+	return NAME_None;
 }
 
-void UNSOutRunGuideSubsystem::SaveGuideState()
+void UNSOutRunGuideSubsystem::BuildStageEntries(FName RowName, TArray<FNSGuideChecklistEntry>& OutEntries) const
 {
-	UNSSaveGameSubsystem* SaveSubsystem =
-		GetWorld()->GetGameInstance()
-			? GetWorld()->GetGameInstance()->GetSubsystem<UNSSaveGameSubsystem>()
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* GuideTextTable =
+		DataSubsystem ? DataSubsystem->GetCommonGuideTextDataTable() : nullptr;
+	const FNSGuideTextData* Row =
+		GuideTextTable
+			? GuideTextTable->FindRow<FNSGuideTextData>(RowName, TEXT("BuildStageEntries"))
 			: nullptr;
-	if (!SaveSubsystem)
+	if (!Row)
 	{
 		return;
 	}
 
-	// 캐시를 직접 수정했으므로 그대로 영구 저장
-	SaveSubsystem->SavePermanent(
-		SaveSubsystem->GetCachedPermanentData(), FNSSaveComplete());
-}
+	// 이동 단계는 아직 완료 안 된 방향만 표시 (HUD 재생성 중간 복원 시 이미 누른 방향은 제외)
+	if (RowName == TEXT("MoveInput"))
+	{
+		const UNSPermanentSaveGame* Save = GetPermanentData();
+		if (!Save)
+		{
+			return;
+		}
 
-UNSPermanentSaveGame* UNSOutRunGuideSubsystem::GetPermanentData() const
-{
-	const UGameInstance* GameInstance =
-		GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
-	UNSSaveGameSubsystem* SaveSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
+		for (const FNSGuideChecklistEntry& Entry : Row->Items)
+		{
+			const bool bDone =
+				(Entry.ItemId == TEXT("MoveW") && Save->bMoveGuideDone_W)
+				|| (Entry.ItemId == TEXT("MoveA") && Save->bMoveGuideDone_A)
+				|| (Entry.ItemId == TEXT("MoveS") && Save->bMoveGuideDone_S)
+				|| (Entry.ItemId == TEXT("MoveD") && Save->bMoveGuideDone_D);
+			if (!bDone)
+			{
+				OutEntries.Add(Entry);
+			}
+		}
+		return;
+	}
 
-	return SaveSubsystem ? SaveSubsystem->GetCachedPermanentData() : nullptr;
+	// 그 외 단계는 항목이 하나뿐이고 단계 자체가 미완료이므로 전부 표시
+	OutEntries = Row->Items;
 }
 
 void UNSOutRunGuideSubsystem::SetActorMarkerLocal(AActor* TargetActor, bool bActive)
@@ -303,99 +302,4 @@ void UNSOutRunGuideSubsystem::SetActorMarkerLocal(AActor* TargetActor, bool bAct
 	{
 		Marker->SetMarkerActiveLocal(bActive);
 	}
-}
-
-void UNSOutRunGuideSubsystem::UpdateGuideText(
-	bool bNeedMoveGuide,
-	bool bNeedJumpGuide,
-	bool bNeedDashGuide,
-	bool bNeedCharacterGuide,
-	bool bNeedReadyGuide,
-	bool bNeedNPCGuide)
-{
-	UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(GetWorld());
-	UNSHUDWidget* HUDWidget = UIManager ? UIManager->GetHUDWidget() : nullptr;
-	if (!HUDWidget)
-	{
-		return;
-	}
-
-	// 텍스트는 한 줄이므로 우선순위대로 하나만 표시, RowName은 DT_GuideText 기준
-	FName RowName = NAME_None;
-	if (bNeedMoveGuide)
-	{
-		RowName = TEXT("MoveInput");
-	}
-	else if (bNeedJumpGuide)
-	{
-		RowName = TEXT("JumpInput");
-	}
-	else if (bNeedDashGuide)
-	{
-		RowName = TEXT("DashInput");
-	}
-	else if (bNeedCharacterGuide)
-	{
-		RowName = TEXT("CharacterSelectConsole");
-	}
-	else if (bNeedReadyGuide)
-	{
-		RowName = TEXT("NSReadyStartActor");
-	}
-	else if (bNeedNPCGuide)
-	{
-		RowName = TEXT("NewNPC");
-	}
-
-	if (RowName.IsNone())
-	{
-		HUDWidget->HideGuideText();
-		return;
-	}
-
-	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-	const UDataTable* GuideTextTable =
-		DataSubsystem ? DataSubsystem->GetCommonGuideTextDataTable() : nullptr;
-	const FNSGuideTextData* Row =
-		GuideTextTable
-			? GuideTextTable->FindRow<FNSGuideTextData>(RowName, TEXT("UpdateGuideText"))
-			: nullptr;
-
-	if (!Row)
-	{
-		HUDWidget->HideGuideText();
-		return;
-	}
-
-	HUDWidget->ShowGuideText(Row->GuideText);
-}
-
-void UNSOutRunGuideSubsystem::StartStageTimeout(FName RowName, void (UNSOutRunGuideSubsystem::* CompleteFunc)())
-{
-	// 이미 대기 중이면 재시작하지 않음 —> 같은 단계에서 반복 입력이 들어와도 카운트다운 유지
-	if (GetWorld()->GetTimerManager().IsTimerActive(GuideTimeoutHandle))
-	{
-		return;
-	}
-
-	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
-	const UDataTable* GuideTextTable =
-		DataSubsystem ? DataSubsystem->GetCommonGuideTextDataTable() : nullptr;
-	const FNSGuideTextData* Row =
-		GuideTextTable
-			? GuideTextTable->FindRow<FNSGuideTextData>(RowName, TEXT("StartStageTimeout"))
-			: nullptr;
-	const float DelaySeconds = Row ? Row->AutoAdvanceSeconds : 0.0f;
-
-	if (DelaySeconds <= 0.0f)
-	{
-		(this->*CompleteFunc)();
-		return;
-	}
-
-	GetWorld()->GetTimerManager().SetTimer(
-		GuideTimeoutHandle,
-		FTimerDelegate::CreateUObject(this, CompleteFunc),
-		DelaySeconds,
-		false);
 }
