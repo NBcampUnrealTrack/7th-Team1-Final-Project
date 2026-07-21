@@ -11,6 +11,7 @@ namespace NSGameplayTags
 	UE_DEFINE_GAMEPLAY_TAG(State_Reloading, "State.Reloading");
 	UE_DEFINE_GAMEPLAY_TAG(State_Deactivate_HandIK, "State.Deactivate.HandIK");
 	UE_DEFINE_GAMEPLAY_TAG(State_DashAttackWindow, "State.DashAttackWindow");
+	UE_DEFINE_GAMEPLAY_TAG(State_ThrowProjectile_Active, "State.ThrowProjectile.Active");
 	UE_DEFINE_GAMEPLAY_TAG(State_ThrowProjectile_Releasing, "State.ThrowProjectile.Releasing");
 	UE_DEFINE_GAMEPLAY_TAG(State_Input_BlockInputMove, "State.Input.BlockInputMove");
 	UE_DEFINE_GAMEPLAY_TAG(State_Vanguard_Attacking, "State.Vanguard.Attacking");
