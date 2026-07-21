@@ -132,9 +132,9 @@ void UNSReadyStartWidget::NativeConstruct()
 			&UNSReadyStartWidget::HandleInviteCodeReady);
 
 		const FString ExistingCode = Session->GetCurrentInviteCode();
-		if (!ExistingCode.IsEmpty() && InviteCodeText)
+		if (!ExistingCode.IsEmpty())
 		{
-			InviteCodeText->SetText(FText::FromString(ExistingCode));
+			HandleInviteCodeReady(ExistingCode);
 		}
 
 		Session->OnFriendsListUpdated.RemoveDynamic(
@@ -321,9 +321,18 @@ void UNSReadyStartWidget::HandleInviteCodeReady(const FString& InviteCode)
 
 void UNSReadyStartWidget::OnClickedCopyCode()
 {
-	if (!CurrentInviteCode.IsEmpty())
+	FString InviteCode = CurrentInviteCode;
+
+	if (UNSSessionSubsystem* Session =
+		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr)
 	{
-		FPlatformApplicationMisc::ClipboardCopy(*CurrentInviteCode);
+		InviteCode = Session->GetCurrentInviteCode();
+		HandleInviteCodeReady(InviteCode);
+	}
+
+	if (!InviteCode.IsEmpty())
+	{
+		FPlatformApplicationMisc::ClipboardCopy(*InviteCode);
 	}
 }
 
