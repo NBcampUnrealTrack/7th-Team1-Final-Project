@@ -9,6 +9,7 @@
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NSPartUpgradeWidget.generated.h"
 
+class UNSButtonBase;
 class UButton;
 class UPanelWidget;
 class UTextBlock;
@@ -74,7 +75,7 @@ protected:
 	// ---- Page 0: 허브 ----
 	// 허브 페이지 우상단 종료(X) 버튼
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> HubCloseButton;
+	TObjectPtr<UNSButtonBase> HubCloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UButton> HubPurchaseButton;
@@ -98,7 +99,7 @@ protected:
 
 	// ---- Page 1: 구매 ----
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> PurchaseBackButton;
+	TObjectPtr<UNSButtonBase> PurchaseBackButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UPanelWidget> BodyStockContainer;
@@ -139,11 +140,7 @@ protected:
 
 	// ---- Page 2: 업그레이드/리롤 ----
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> UpgradeBackButton;
-
-	// 업그레이드 페이지 전용 종료 버튼 (구매 페이지의 CloseButton과 별개)
-	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> UpgradeCloseButton;
+	TObjectPtr<UNSButtonBase> UpgradeBackButton;
 
 	// 상단 슬롯 선택 버튼 3개
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))

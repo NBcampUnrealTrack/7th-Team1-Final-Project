@@ -16,6 +16,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
@@ -52,18 +53,18 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	{
 		LegEquippedButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnLegEquippedClicked);
 	}
-	if (IsValid(CloseButton))
+	if (IsValid(EquipCloseButton))
 	{
 		// ESC와 동일 경로 — 변경사항 있으면 저장 진행 표시 후 닫힘
-		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::RequestClose);
+		EquipCloseButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::RequestClose);
 	}
 	if (IsValid(EquipButton))
 	{
-		EquipButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonClicked);
-		EquipButton->OnHovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonHovered);
-		EquipButton->OnUnhovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonUnhovered);
-		EquipButton->OnPressed.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonPressed);
-		EquipButton->OnReleased.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonReleased);
+		EquipButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonClicked);
+		EquipButton->OnHovered().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonHovered);
+		EquipButton->OnUnhovered().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonUnhovered);
+		EquipButton->OnPressed().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonPressed);
+		EquipButton->OnReleased().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonReleased);
 	}
 
 	if (IsValid(EquipButtonHoverHighlight))
