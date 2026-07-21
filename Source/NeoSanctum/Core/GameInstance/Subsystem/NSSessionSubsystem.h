@@ -197,6 +197,9 @@ private:
 	
 	// 검색 시 대조할 코드 보관
 	FString PendingJoinCode;
+
+	// 참가할 세션 검색 결과에서 읽은 초대 코드. Join 성공 후 CurrentInviteCode로 확정한다.
+	FString PendingResolvedInviteCode;
 	
 	// 세션 생성 완료 후 초대할 친구 목록 보관용(여러 사람에게 초대 연타 방지용)
 	TArray<FString> PendingInviteFriendNetIds;
