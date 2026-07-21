@@ -82,15 +82,6 @@ void ANSDroneProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 	if (!HasAuthority()) return;
 	if (OtherActor == nullptr) return;
 	if (OtherActor == GetInstigator()) return;
-
-	DrawDebugSphere(
-		GetWorld(),
-		Hit.ImpactPoint,
-		5.f,
-		16,
-		FColor::Green,
-		false,
-		2.f);
 	
 	UAbilitySystemComponent* EnemyASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(OtherActor);
 	if (!EnemyASC) return;
