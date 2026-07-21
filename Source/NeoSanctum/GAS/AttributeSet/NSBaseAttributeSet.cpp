@@ -56,6 +56,13 @@ void UNSBaseAttributeSet::PostAttributeChange(const FGameplayAttribute& Attribut
 {
 	Super::PostAttributeChange(Attribute, OldValue, NewValue);
 
+	// 클램프를 서버 권위에서만 수행
+	UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+	if (!ASC || !ASC->IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+
 	/**
 	 * PostAttributeChange는 GE 적용/제거(Infinite GE 해제) 양쪽 모두에서 호출되므로
 	 * 파츠/증강 등으로 MaxHealth가 줄어드는 모든 경로에서 현재 Health를 새 최대치로 클램프
