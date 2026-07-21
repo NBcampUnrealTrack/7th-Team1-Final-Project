@@ -8,6 +8,7 @@
 #include "NSFriendEntryWidget.h"
 #include "NSReadyPlayerEntry.h"
 #include "HAL/PlatformApplicationMisc.h"
+#include "InputCoreTypes.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Image.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -20,6 +21,21 @@
 void UNSReadyStartWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+
+	APlayerController* PlayerController = GetOwningPlayer();
+	if (PlayerController)
+	{
+		// UI Only에서는 PlayerController의 ESC 입력도 차단되므로 이 위젯이 직접 키 입력을 받는다.
+		SetIsFocusable(true);
+		PlayerController->SetShowMouseCursor(true);
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		PlayerController->SetInputMode(InputMode);
+
+		SetFocus();
+	}
 	
 	ANSPlayerController* NSPlayerController =
 	Cast<ANSPlayerController>(GetOwningPlayer());
@@ -190,6 +206,19 @@ void UNSReadyStartWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+FReply UNSReadyStartWidget::NativeOnKeyDown(
+	const FGeometry& InGeometry,
+	const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey() == EKeys::Escape)
+	{
+		CloseWidget();
+		return FReply::Handled();
+	}
+
+	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
+}
+
 void UNSReadyStartWidget::HandleReadyClicked()
 {
 	ANSPlayerController* NSPlayerController =
@@ -230,6 +259,13 @@ void UNSReadyStartWidget::HandleCloseClicked()
 
 void UNSReadyStartWidget::CloseWidget()
 {
+	if (bIsClosing)
+	{
+		return;
+	}
+
+	bIsClosing = true;
+
 	APlayerController* PlayerController = GetOwningPlayer();
 	if (PlayerController)
 	{
@@ -240,6 +276,7 @@ void UNSReadyStartWidget::CloseWidget()
 	}
 
 	RemoveFromParent();
+	OnWidgetClosed.Broadcast(this, PlayerController);
 }
 
 void UNSReadyStartWidget::RefreshReadyButtonText()

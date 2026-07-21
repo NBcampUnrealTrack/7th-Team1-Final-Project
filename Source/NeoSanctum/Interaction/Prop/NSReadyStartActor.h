@@ -63,4 +63,7 @@ private:
 
 	// 같은 플레이어가 F를 다시 눌렀을 때 열린 위젯을 닫고 입력 모드를 복구한다.
 	void CloseOpenedWidget(APlayerController* Interactor);
+	void HandleReadyStartWidgetClosed(
+		UNSReadyStartWidget* ClosedWidget,
+		APlayerController* Interactor);
 };
