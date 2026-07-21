@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NeoSanctum/UI/Monster/NSMonsterUIHost.h"
 #include "NeoSanctum/UI/Player/NSPlayerWorldStatusHost.h"
+#include "NeoSanctum/Data/UI/NSGuideTextData.h"
 #include "NSHUDWidget.generated.h"
 
 class UNSHPShieldWidget;
@@ -23,7 +24,8 @@ class UNSMinimapWidget;
 class UNSDashStackWidget;
 class UHorizontalBox;
 class UPanelWidget;
-class UNSGuideTextWidget;
+class UNSGuideChecklistWidget;
+struct FNSGuideChecklistEntry;
 
 
 /**
@@ -123,12 +125,14 @@ public:
 	// 플레이어 월드 상태 위젯을 배치할 패널을 반환하는 함수
 	virtual UPanelWidget* GetPlayerWorldStatusLayer() const override;
 
-	// 우측 상단 목표 안내 텍스트 표시 (지속형 — HideGuideText 호출까지 유지)
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void ShowGuideText(const FText& InText);
-	// 목표 안내 텍스트 숨김
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void HideGuideText();
+	// 안내 체크리스트 전체 스폰 (단계 진입 시)
+	void ShowGuideChecklist(const TArray<FNSGuideChecklistEntry>& Entries);
+	// 안내 체크리스트 한 줄 완료 애니메이션 재생
+	void CompleteGuideChecklistItem(FName ItemId);
+	// 안내 체크리스트 한 줄 완료 애니메이션 재생 후, 그 애니메이션이 끝나면 다른 미완료 항목과 무관하게 전체 숨김
+	void CompleteGuideChecklistItemAndHide(FName ItemId);
+	// 안내 체크리스트 전체 숨김 (모든 안내 완료 시)
+	void HideGuideChecklist();
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -186,9 +190,9 @@ private:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UPanelWidget> PlayerWorldStatusLayer;
 
-	// 우측 상단 목표 안내 텍스트 위젯 (WBP_HUD에서 배치, 없으면 안내 기능만 비활성)
+	// 우측 상단 목표 안내 체크리스트 위젯 (WBP_HUD에서 배치, 없으면 안내 기능만 비활성)
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UNSGuideTextWidget> GuideTextWidget;
+	TObjectPtr<UNSGuideChecklistWidget> GuideChecklistWidget;
 
 	void RefreshHudDimBackground();
 protected:
