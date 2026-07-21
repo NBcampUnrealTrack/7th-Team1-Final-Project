@@ -16,6 +16,7 @@
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/Progression/Part/NSPartPreviewStage.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
 #include "NeoSanctum/UI/Part/NSPartCatalogEntryWidget.h"
 #include "NeoSanctum/UI/Part/NSPartDetailWidget.h"
@@ -47,13 +48,9 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	{
 		CloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
 	}
-	if (IsValid(UpgradeCloseButton))
-	{
-		UpgradeCloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
-	}
 	if (IsValid(HubCloseButton))
 	{
-		HubCloseButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnCloseClicked);
+		HubCloseButton->OnClicked().AddUObject(this, &UNSPartUpgradeWidget::OnCloseClicked);
 	}
 	if (IsValid(HubPurchaseButton))
 	{
@@ -65,11 +62,11 @@ void UNSPartUpgradeWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 	if (IsValid(PurchaseBackButton))
 	{
-		PurchaseBackButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnBackClicked);
+		PurchaseBackButton->OnClicked().AddUObject(this, &UNSPartUpgradeWidget::OnBackClicked);
 	}
 	if (IsValid(UpgradeBackButton))
 	{
-		UpgradeBackButton->OnClicked.AddUniqueDynamic(this, &UNSPartUpgradeWidget::OnBackClicked);
+		UpgradeBackButton->OnClicked().AddUObject(this, &UNSPartUpgradeWidget::OnBackClicked);
 	}
 	if (IsValid(BuyButton))
 	{
@@ -150,7 +147,16 @@ FReply UNSPartUpgradeWidget::NativeOnKeyDown(const FGeometry& InGeometry, const 
 {
 	if (InKeyEvent.GetKey() == EKeys::Escape)
 	{
-		CloseWidget();
+		// Hub에서는 상점 자체를 닫고, 하위 페이지에서는 Back 버튼과 동일하게 Hub로 돌아간다.
+		if (IsValid(PageSwitcher) && PageSwitcher->GetActiveWidgetIndex() != PageIndexHub)
+		{
+			OnBackClicked();
+		}
+		else
+		{
+			OnCloseClicked();
+		}
+
 		return FReply::Handled();
 	}
 
