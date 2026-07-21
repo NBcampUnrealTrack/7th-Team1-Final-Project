@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
 #include "NSPartSlotButton.generated.h"
@@ -16,7 +16,7 @@ class UNSPartDefinition;
  * 창착된 파츠 하나를 표시하는 슬롯 버튼
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class NEOSANCTUM_API UNSPartSlotButton : public UCommonButtonBase
+class NEOSANCTUM_API UNSPartSlotButton : public UNSButtonBase
 {
 	GENERATED_BODY()
 	

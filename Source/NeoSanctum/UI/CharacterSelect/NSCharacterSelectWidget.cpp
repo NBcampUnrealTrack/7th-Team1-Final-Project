@@ -2,7 +2,7 @@
 
 #include "NSCharacterSelectWidget.h"
 #include "CommonAnimatedSwitcher.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "CommonTextBlock.h"
 #include "NSCharacterSelectSkillStatRowWidget.h"
 #include "GameFramework/PlayerController.h"

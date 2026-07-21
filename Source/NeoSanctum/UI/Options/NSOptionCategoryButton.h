@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSOptionCategoryButton.generated.h"
 
 class UImage;
@@ -13,7 +13,7 @@ class UTexture2D;
  * 옵션 카테고리의 선택 상태에 따라 배경 이미지를 변경하는 버튼
  */
 UCLASS(Abstract, Blueprintable)
-class NEOSANCTUM_API UNSOptionCategoryButton : public UCommonButtonBase
+class NEOSANCTUM_API UNSOptionCategoryButton : public UNSButtonBase
 {
 	GENERATED_BODY()
 public:

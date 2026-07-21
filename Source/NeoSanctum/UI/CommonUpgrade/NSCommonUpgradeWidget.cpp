@@ -3,7 +3,7 @@
 
 #include "NSCommonUpgradeWidget.h"
 
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSCommonUpgradeNodeDetailWidget.h"
 #include "NSCommonUpgradeNodeWidget.h"
 #include "Components/CanvasPanelSlot.h"

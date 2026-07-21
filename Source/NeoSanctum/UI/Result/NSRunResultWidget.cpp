@@ -4,7 +4,7 @@
 #include "NSRunResultWidget.h"
 #include "CommonTextBlock.h"
 #include "Components/TextBlock.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
