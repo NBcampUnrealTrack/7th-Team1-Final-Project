@@ -1935,11 +1935,7 @@ void ANSPlayerController::ApplyConfirmedSpectatorTarget(ANSPlayerCharacterBase* 
 void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-
-	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
-	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
-	// 디버그: k키로 런 클리어 화면 확인, TODO: 테스트 종료 후 제거
-	InputComponent->BindKey(EKeys::K, IE_Pressed, this, &ANSPlayerController::Debug_ForceRunClear);
+	
 	// esc키로 퍼즈메뉴 띄우기
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ANSPlayerController::TogglePauseMenu);
 }
