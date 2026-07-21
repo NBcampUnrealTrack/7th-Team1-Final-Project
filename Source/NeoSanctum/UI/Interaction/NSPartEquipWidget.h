@@ -143,7 +143,7 @@ protected:
 
 	// 중앙 "장착 버튼" (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UButton> EquipButton;
+	TObjectPtr<UNSButtonBase> EquipButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
 	TObjectPtr<UTextBlock> EquipButtonText;

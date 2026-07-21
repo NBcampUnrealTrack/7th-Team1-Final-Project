@@ -60,11 +60,11 @@ void UNSPartEquipWidget::OpenForInteractor(APlayerController* Interactor)
 	}
 	if (IsValid(EquipButton))
 	{
-		EquipButton->OnClicked.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonClicked);
-		EquipButton->OnHovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonHovered);
-		EquipButton->OnUnhovered.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonUnhovered);
-		EquipButton->OnPressed.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonPressed);
-		EquipButton->OnReleased.AddUniqueDynamic(this, &UNSPartEquipWidget::OnEquipButtonReleased);
+		EquipButton->OnClicked().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonClicked);
+		EquipButton->OnHovered().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonHovered);
+		EquipButton->OnUnhovered().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonUnhovered);
+		EquipButton->OnPressed().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonPressed);
+		EquipButton->OnReleased().AddUObject(this, &UNSPartEquipWidget::OnEquipButtonReleased);
 	}
 
 	if (IsValid(EquipButtonHoverHighlight))
