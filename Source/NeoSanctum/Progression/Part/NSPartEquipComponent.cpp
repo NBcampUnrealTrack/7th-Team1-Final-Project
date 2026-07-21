@@ -109,8 +109,19 @@ void UNSPartEquipComponent::ClearAll()
 	TArray<FGameplayTag> ClearedSlots;
 	for (const FNSPartData& Part : EquippedParts)
 	{
-		RemovePartEffects(Part.Slot);
 		ClearedSlots.Add(Part.Slot);
+	}
+
+	// EquippedParts에서 이미 빠진 슬롯이라도 핸들이 남아있으면 (교체 시 ASC 실패 등으로 인한 잔존) 함께 정리
+	TArray<FGameplayTag> HandleSlots;
+	ActiveGEHandles.GetKeys(HandleSlots);
+	for (const FGameplayTag& Slot : HandleSlots)
+	{
+		RemovePartEffects(Slot);
+	}
+	for (const FGameplayTag& Slot : ClearedSlots)
+	{
+		RemovePartEffects(Slot);
 	}
 	EquippedParts.Empty();
 
@@ -278,10 +289,13 @@ void UNSPartEquipComponent::RemoveGEForSlot(FGameplayTag Slot)
 		return;
 	}
 
-	if (UAbilitySystemComponent* ASC = GetOwnerASC())
+	UAbilitySystemComponent* ASC = GetOwnerASC();
+	if (!ASC)
 	{
-		ASC->RemoveActiveGameplayEffect(*Handle);
+		return;
 	}
+
+	ASC->RemoveActiveGameplayEffect(*Handle);
 	ActiveGEHandles.Remove(Slot);
 }
 
