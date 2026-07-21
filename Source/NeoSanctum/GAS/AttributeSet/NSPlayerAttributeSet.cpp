@@ -117,6 +117,13 @@ void UNSPlayerAttributeSet::PostAttributeChange(const FGameplayAttribute& Attrib
 {
 	Super::PostAttributeChange(Attribute, OldValue, NewValue);
 
+	// 클램프를 서버 권위에서만 수행
+	UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+	if (!ASC || !ASC->IsOwnerActorAuthoritative())
+	{
+		return;
+	}
+
 	/**
 	 * PostAttributeChange는 GE 적용/제거(Infinite GE 해제)로 인한 CurrentValue 재계산에도 호출되므로
 	 * PostGameplayEffectExecute가 타지 않는 파츠/증강 해제 경로에서도 Max 감소 시 현재값을 클램프
