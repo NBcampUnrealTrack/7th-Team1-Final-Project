@@ -11,6 +11,7 @@
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
 #include "NeoSanctum/Data/Config/NSLevelCatalog.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "Online/OnlineSessionNames.h"
 
 // AppID 오염 방지용 키(후에 자체 AppID 발급받으면 제거 가능)
@@ -68,7 +69,8 @@ void UNSSessionSubsystem::Deinitialize()
 		GEngine->OnNetworkFailure().RemoveAll(this);
 		GEngine->OnTravelFailure().RemoveAll(this);
 	}
-
+	
+	ClearPendingHubTravel();
 	ClearCreateSessionDelegate();
 	ClearDestroySessionDelegate();
 	
@@ -110,6 +112,16 @@ void UNSSessionSubsystem::Deinitialize()
 
 void UNSSessionSubsystem::StartGameToHub()
 {
+	// 시작 버튼 중복 입력 방지
+	if (bHubTravelPending)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("[Session] Hub travel is already pending."));
+		return;
+	}
+	
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -126,6 +138,18 @@ void UNSSessionSubsystem::StartGameToHub()
 		UE_LOG(LogTemp, Error, TEXT("허브 레벨을 찾지 못해 게임 시작 불가"));
 		return;
 	}
+	
+	UNSDataSubsystem* DataSubsystem =
+	 UNSDataSubsystem::Get(this);
+
+	if (!IsValid(DataSubsystem))
+	{
+		return;
+	}
+
+	bHubTravelPending = true;
+	PendingHubPackageName = HubPackage;
+	PendingHubSourceWorld = World;
 
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
@@ -135,12 +159,20 @@ void UNSSessionSubsystem::StartGameToHub()
 		}
 	}
 
-	// 세션은 열지않고 리슨 서버로만 오픈
-	UGameplayStatics::OpenLevel(
-		World,
-		FName(*HubPackage),
-		true,
-		TEXT("listen"));
+	// 반드시 Preload 호출보다 먼저 바인딩
+	DataSubsystem->OnOutGameDataReady.AddUniqueDynamic(
+		this,
+		&ThisClass::HandleHubOutGameDataReady);
+
+	// 이미 준비된 스타트에서는 즉시 이동
+	if (DataSubsystem->IsOutGameReady())
+	{
+		HandleHubOutGameDataReady();
+		return;
+	}
+
+	// Common → OutGame 순서를 내부적으로 처리
+	DataSubsystem->PreloadOutGameData();
 }
 
 void UNSSessionSubsystem::CreateSession()
@@ -762,6 +794,103 @@ void UNSSessionSubsystem::SendInviteToFriendInternal(const FString& FriendNetIdS
 		*LP->GetPreferredUniqueNetId(), NAME_GameSession, *FriendId);
 	UE_LOG(LogTemp, Log, TEXT("세션 초대 전송(%s): %s"),
 		bSent ? TEXT("성공") : TEXT("실패"), *FriendNetIdString);
+}
+
+void UNSSessionSubsystem::HandleHubOutGameDataReady()
+{
+	if (!bHubTravelPending)
+	{
+		return;
+	}
+
+	UNSDataSubsystem* DataSubsystem =
+		UNSDataSubsystem::Get(this);
+
+	if (!IsValid(DataSubsystem))
+	{
+		AbortPendingHubTravel();
+		return;
+	}
+
+	// 잘못된 수동 호출 또는 향후 delegate 의미 변경 대비
+	if (!DataSubsystem->IsOutGameReady())
+	{
+		return;
+	}
+
+	TravelToHubAfterDataReady();
+}
+
+void UNSSessionSubsystem::TravelToHubAfterDataReady()
+{
+	if (!bHubTravelPending)
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+
+	const bool bSameWorld =
+		IsValid(World) &&
+		PendingHubSourceWorld.IsValid() &&
+		PendingHubSourceWorld.Get() == World;
+
+	if (!bSameWorld || PendingHubPackageName.IsEmpty())
+	{
+		AbortPendingHubTravel();
+		return;
+	}
+
+	const FString HubPackage = PendingHubPackageName;
+
+	// OpenLevel 전에 delegate 및 대기 상태 제거
+	ClearPendingHubTravel();
+
+	UGameplayStatics::OpenLevel(
+		World,
+		FName(*HubPackage),
+		true,
+		TEXT("listen"));
+}
+
+void UNSSessionSubsystem::ClearPendingHubTravel()
+{
+	if (UNSDataSubsystem* DataSubsystem =
+		  UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnOutGameDataReady.RemoveDynamic(
+			this,
+			&ThisClass::HandleHubOutGameDataReady);
+	}
+
+	bHubTravelPending = false;
+	PendingHubPackageName.Reset();
+	PendingHubSourceWorld.Reset();
+}
+
+void UNSSessionSubsystem::AbortPendingHubTravel()
+{
+	// ClearPendingHubTravel()에서 false로 바뀌기 전에 저장
+	const bool bWasHubTravelPending = bHubTravelPending;
+
+	// 데이터 준비 완료 delegate 해제
+	// pending 상태 및 저장된 World/Package 초기화
+	ClearPendingHubTravel();
+
+	// 이 Hub 이동 요청이 실제 pending 상태에 들어갔을 때만 로딩화면 제거
+	if (bWasHubTravelPending)
+	{
+		if (UNSUIManagerSubsystem* UIManager =
+				UNSUIManagerSubsystem::Get(this))
+		{
+			UIManager->HideTravelLoadingScreen();
+		}
+	}
+
+	UE_LOG(
+		LogTemp,
+		Error,
+		TEXT("[Session][HubTravel] Hub travel preparation was aborted."));
 }
 
 void UNSSessionSubsystem::HandleNetworkFailure(

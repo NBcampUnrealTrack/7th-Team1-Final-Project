@@ -16,6 +16,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnDestroySessionComplete, bool, b
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnInviteCodeReady, const FString&, InviteCode);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FNSOnFriendsListUpdated);
 
+class UWorld;
 
 // 세션 생성, 참가, 종료 담당 클래스
 // 타이틀 화면에서의 연결 로직 처리용
@@ -136,6 +137,23 @@ private:
 	
 	// 실제 스팀 세션 초대 전송 (세션이 있는 상태에서 호출)
 	void SendInviteToFriendInternal(const FString& FriendNetIdString);
+	
+#pragma region Data section
+	
+	UFUNCTION()
+	void HandleHubOutGameDataReady();
+
+	void TravelToHubAfterDataReady();
+	void ClearPendingHubTravel();
+	void AbortPendingHubTravel();
+
+	bool bHubTravelPending = false;
+
+	FString PendingHubPackageName;
+
+	TWeakObjectPtr<UWorld> PendingHubSourceWorld;
+
+#pragma endregion Data section
 
 	IOnlineSessionPtr SessionInterface;
 
