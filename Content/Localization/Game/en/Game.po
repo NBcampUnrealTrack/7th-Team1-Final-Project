@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-07-21 20:57\n"
-"PO-Revision-Date: 2026-07-21 20:57\n"
+"POT-Creation-Date: 2026-07-21 21:36\n"
+"PO-Revision-Date: 2026-07-21 21:36\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -2733,8 +2733,8 @@ msgstr "Previous Character"
 #. SourceLocation:	/Game/NeoSanctum/UI/Common/RunEnd/WBP_NextStageButton.WBP_NextStageButton_C:WidgetTree.TextBlock_37.Text
 #: /Game/NeoSanctum/UI/Common/RunEnd/WBP_NextStageButton.WBP_NextStageButton_C:WidgetTree.TextBlock_37.Text
 msgctxt ",C59ADC53438CCEDDB73ADF8025F97248"
-msgid "Next Stage"
-msgstr "Next Stage"
+msgid "다음 지역"
+msgstr "Next Area"
 
 #. Key:	054821D74DE4154138305BBAA91A7957
 #. SourceLocation:	/Game/NeoSanctum/UI/Common/RunEnd/WBP_ReturnToHubButton.WBP_ReturnToHubButton_C:WidgetTree.TextBlock_40.Text
@@ -3387,6 +3387,55 @@ msgctxt ",ABA9CE79441D128322F710B4F5483712"
 msgid "레그"
 msgstr "Legs"
 
+#. Key:	FACC6E0F47AABB4DD2566996CA72C4A6
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CloseButton.WBP_CloseButton_C:WidgetTree.TextBlock_175.Text
+#: /Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CloseButton.WBP_CloseButton_C:WidgetTree.TextBlock_175.Text
+msgctxt ",FACC6E0F47AABB4DD2566996CA72C4A6"
+msgid "닫기"
+msgstr "Close"
+
+#. Key:	DD7437914C29033C34DC07BCFB436276
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CopyCodeButton.WBP_CopyCodeButton_C:WidgetTree.TextBlock_175.Text
+#: /Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CopyCodeButton.WBP_CopyCodeButton_C:WidgetTree.TextBlock_175.Text
+msgctxt ",DD7437914C29033C34DC07BCFB436276"
+msgid "코드 복사"
+msgstr "Copy Code"
+
+#. Key:	569A99404428249A722BB98A5988A5D2
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CreateSessionButton.WBP_CreateSessionButton_C:WidgetTree.TextBlock_175.Text
+#: /Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_CreateSessionButton.WBP_CreateSessionButton_C:WidgetTree.TextBlock_175.Text
+msgctxt ",569A99404428249A722BB98A5988A5D2"
+msgid "세션 생성"
+msgstr "Create Session"
+
+#. Key:	39E9558B465EF69693E98093195447F6
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_InviteButton.WBP_InviteButton_C:WidgetTree.TextBlock_175.Text
+#: /Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_InviteButton.WBP_InviteButton_C:WidgetTree.TextBlock_175.Text
+msgctxt ",39E9558B465EF69693E98093195447F6"
+msgid "초대"
+msgstr "Invite"
+
+#. Key:	37ED670E4541D780DAFBEAB0DEEF5613
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_JoinByCodeButton.WBP_JoinByCodeButton_C:WidgetTree.TextBlock_175.Text
+#: /Game/NeoSanctum/UI/Interaction/PartyConsoleButton/WBP_JoinByCodeButton.WBP_JoinByCodeButton_C:WidgetTree.TextBlock_175.Text
+msgctxt ",37ED670E4541D780DAFBEAB0DEEF5613"
+msgid "세션 참가"
+msgstr "Join Session"
+
+#. Key:	6E986EF34B51AD611740009D4B478AE9
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_FriendEntry.WBP_FriendEntry_C:WidgetTree.FriendNameText.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_FriendEntry.WBP_FriendEntry_C:WidgetTree.FriendNameText.Text
+msgctxt ",6E986EF34B51AD611740009D4B478AE9"
+msgid "친구 이름"
+msgstr "Friend Name"
+
+#. Key:	0B0A60C84D348ACC49E5D9BEDEB9565B
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_FriendEntry.WBP_FriendEntry_C:WidgetTree.StatusText.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_FriendEntry.WBP_FriendEntry_C:WidgetTree.StatusText.Text
+msgctxt ",0B0A60C84D348ACC49E5D9BEDEB9565B"
+msgid "접속 상태"
+msgstr "Online Status"
+
 #. Key:	5C19DE20495F148CD5C45998E89F0E0F
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.ActionText.Text
 #: /Game/NeoSanctum/UI/Interaction/WBP_PartInteractionPrompt.WBP_PartInteractionPrompt_C:WidgetTree.ActionText.Text
@@ -3457,12 +3506,61 @@ msgctxt ",CCB300904A7FE0F5D1566EBDF47276B0"
 msgid "공격드론"
 msgstr "Attack Drone"
 
-#. Key:	86B7112A4080C7989B4AA2B47AE17C7A
-#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.OperationSubtitleText.Text
-#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.OperationSubtitleText.Text
-msgctxt ",86B7112A4080C7989B4AA2B47AE17C7A"
-msgid "허브 - 런 준비"
-msgstr "Hub - Run Preparation"
+#. Key:	C473E84941DB2C4341F466A3359FBB90
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CodeInputBox.HintText
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CodeInputBox.HintText
+msgctxt ",C473E84941DB2C4341F466A3359FBB90"
+msgid "코드를 입력하세요."
+msgstr "Enter the code."
+
+#. Key:	1762F503494FF51BE46957983644629B
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_108.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_108.Text
+msgctxt ",1762F503494FF51BE46957983644629B"
+msgid "세션 코드"
+msgstr "Session Code"
+
+#. Key:	EB4D73F34850FAFC37D9F5B1EBC95E9D
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_166.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_166.Text
+msgctxt ",EB4D73F34850FAFC37D9F5B1EBC95E9D"
+msgid "분대 현황"
+msgstr "Squad Status"
+
+#. Key:	A0B06F804523257F5FCB51A443090B3D
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_185.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_185.Text
+msgctxt ",A0B06F804523257F5FCB51A443090B3D"
+msgid "세션 관리"
+msgstr "Session Management"
+
+#. Key:	BD246876472E403889EAD9AC8DD32E40
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_539.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_539.Text
+msgctxt ",BD246876472E403889EAD9AC8DD32E40"
+msgid "참가 코드 입력"
+msgstr "Enter Session Code"
+
+#. Key:	8F2298AA4587A2AE626778BA104EF366
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_669.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_669.Text
+msgctxt ",8F2298AA4587A2AE626778BA104EF366"
+msgid "친구 목록"
+msgstr "Friends List"
+
+#. Key:	6AE43FD849CC29595DE54CBD9CC38380
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_897.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.CommonTextBlock_897.Text
+msgctxt ",6AE43FD849CC29595DE54CBD9CC38380"
+msgid "모든 분대원이 준비하면 출격합니다."
+msgstr "Deployment begins when all squad members are ready."
+
+#. Key:	F63AE85D4FBE4C0AD7402BB98629A76F
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.FriendSearchBox.HintText
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.FriendSearchBox.HintText
+msgctxt ",F63AE85D4FBE4C0AD7402BB98629A76F"
+msgid "플레이어 검색"
+msgstr "Search Players"
 
 #. Key:	DA16649C44F80B36875D7895924A12A7
 #. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.OperationTitleText.Text
@@ -3470,6 +3568,13 @@ msgstr "Hub - Run Preparation"
 msgctxt ",DA16649C44F80B36875D7895924A12A7"
 msgid "작전 준비"
 msgstr "Mission Preparation"
+
+#. Key:	96508F91470A02673329E9A0BB819160
+#. SourceLocation:	/Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.Text_Explain.Text
+#: /Game/NeoSanctum/UI/Interaction/WBP_ReadyStartWidget.WBP_ReadyStartWidget_C:WidgetTree.Text_Explain.Text
+msgctxt ",96508F91470A02673329E9A0BB819160"
+msgid "분대 출격 준비"
+msgstr "Squad Deployment Preparation"
 
 #. Key:	6487F7BF4BE416A2F7E4EBAB2CE332CF
 #. SourceLocation:	/Game/NeoSanctum/UI/Menu/WBP_Title.WBP_Title_C:WidgetTree.JoinButton.MenuLabelText
@@ -4598,26 +4703,47 @@ msgctxt "PartUpgrade,ToastSoldOut"
 msgid "품절된 상품입니다"
 msgstr "Sold Out"
 
+#. Key:	Ready
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyPlayerEntry.cpp(35)
+#: Source/NeoSanctum/UI/Interaction/NSReadyPlayerEntry.cpp(35)
+msgctxt "ReadyEntry,Ready"
+msgid "준비 완료"
+msgstr "Ready"
+
+#. Key:	Waiting
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyPlayerEntry.cpp(36)
+#: Source/NeoSanctum/UI/Interaction/NSReadyPlayerEntry.cpp(36)
+msgctxt "ReadyEntry,Waiting"
+msgid "준비 중"
+msgstr "Waiting"
+
 #. Key:	CancelReady
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(164)
-#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(164)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(291)
+#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(291)
 msgctxt "ReadyStartWidget,CancelReady"
 msgid "취소"
 msgstr "Cancel"
 
 #. Key:	Ready
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(165)
-#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(165)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(292)
+#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(292)
 msgctxt "ReadyStartWidget,Ready"
 msgid "준비"
 msgstr "Ready"
 
 #. Key:	Start
-#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(173)
-#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(173)
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(300)
+#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(300)
 msgctxt "ReadyStartWidget,Start"
 msgid "시작"
 msgstr "Start"
+
+#. Key:	ReadyCountFormat
+#. SourceLocation:	Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(587)
+#: Source/NeoSanctum/UI/Interaction/NSReadyStartWidget.cpp(587)
+msgctxt "ReadyStartWidget,ReadyCountFormat"
+msgid "분대 준비 {0} / {1}"
+msgstr "Squad Ready {0} / {1}"
 
 #. Key:	ApplyCrosshairColor
 #. SourceLocation:	Source/NeoSanctum/UI/Options/GameplaySetting/NSGameplaySettingWidget.cpp(517)
