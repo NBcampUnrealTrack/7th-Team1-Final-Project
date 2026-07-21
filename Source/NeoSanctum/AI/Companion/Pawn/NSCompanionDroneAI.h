@@ -5,12 +5,14 @@
 #include "CoreMinimal.h"
 #include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
 #include "NeoSanctum/AI/Companion/State/NSCompanionTypes.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NSCompanionDroneAI.generated.h"
 
 class UNSCompanionAttributeSet;
 
 UCLASS()
-class NEOSANCTUM_API ANSCompanionDroneAI : public ANSBaseDroneAI
+class NEOSANCTUM_API ANSCompanionDroneAI : public ANSBaseDroneAI,
+											public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
@@ -19,6 +21,9 @@ public:
 
 	virtual void PossessedBy(AController* NewController) override;
 
+	// 드론 공격은 플레이어 히트/킬 피드백(사운드·크로스헤어 마커)을 발생시키지 않음 (터렛과 동일)
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return false; }
+	
 protected:
 	// @민재 : 베이스의 데이터 초기화 훅 오버라이드. Definition 유효성 확인 후 적용
 	virtual void InitializeFromData() override;
@@ -30,6 +35,9 @@ public:
 
 private:
 	ECompanionState CurrentState = ECompanionState::Follow;
+	
+	// Collect 진입 시 끈 콜리전을 이탈 시 되돌리기 위한 캐시
+	ECollisionEnabled::Type CachedCollisionEnabled = ECollisionEnabled::QueryOnly;
 
 #pragma region Upgrades
 public:
@@ -74,6 +82,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="DroneAI")
 	float MaxDistance = 500.f;
 
+	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
+	float TeleportBackOffset = 150.f;
+	
 private:
 	UPROPERTY(EditAnywhere, Category="DroneAI|Leash")
 	float HardLeashDistance = 4000.f;

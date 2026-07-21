@@ -181,6 +181,14 @@ void UNSFlyingLocomotionComponent::RequestMoveTowards(const FVector& TargetLocat
 	// 도착 반경 안이면 이동 입력 없음
 	if (TargetPosition.SizeSquared() < FMath::Square(ArrivalRadius)) return;
 
+	// 회피 비활성(재화 수집 등): 위험 판정 없이 목표로 직진
+	if (bAvoidanceDisabled)
+	{
+		OwnerPawn->AddMovementInput(TargetPosition.GetSafeNormal(), 1.0f);
+		bIsRetreating = false;   // 후퇴 락 잔상 제거
+		return;
+	}
+	
 	// 컨텍스트 스티어링 계산
 	const FVector TargetDirection = TargetPosition.GetSafeNormal();
 	BuildInterestMap(TargetDirection);
@@ -286,15 +294,36 @@ void UNSFlyingLocomotionComponent::MaintainAltitude(float DeltaSeconds)
 	APawn* OwnerPawn = GetPawnOwner();
 	if (!IsValid(OwnerPawn)) return;
 
-	// 지형 샘플링 실패 시 조기 종료
-	float OutZ;
-	if (!SampleHighestGround(OutZ))
+	// 상승/안티클립용: 주변 최고 지형 (룩어헤드 + 원형 링)
+	float HighestZ;
+	const bool bHasHighest = SampleHighestGround(HighestZ);
+
+	// 하강/유지용: 드론 바로 아래 지면 한 점
+	float BelowZ;
+	const bool bHasBelow = TraceGroundAt(OwnerPawn->GetActorLocation(), BelowZ);
+
+	// 두 기준을 분리 채택:
+	//  - 유지 고도는 '바로 아래 지면 + Altitude'를 따라가 평지로 내려올 수 있게 함
+	//  - 주변 최고 지형에는 'MinClearance'만큼만 하한을 둬 지형에 박히지 않게 보장
+	float RawTarget;
+	if (bHasBelow && bHasHighest)
 	{
+		RawTarget = FMath::Max(BelowZ + Altitude, HighestZ + MinAltitudeClearance);
+	}
+	else if (bHasBelow)
+	{
+		RawTarget = BelowZ + Altitude;
+	}
+	else if (bHasHighest)
+	{
+		// 바로 아래 트레이스 실패(급경사/파고듦) 시 기존 안전 동작으로 폴백
+		RawTarget = HighestZ + Altitude;
+	}
+	else
+	{
+		// 지면 정보 전무 → 현재 고도 유지
 		return;
 	}
-	
-	// 원하는 목표 높이 (지형 + 유지 고도)
-	const float RawTarget = OutZ + Altitude;
 
 	// 첫 감지면 즉시 세팅, 이후엔 상승/하강 속도 클램프
 	if (!bHasValidGround)
