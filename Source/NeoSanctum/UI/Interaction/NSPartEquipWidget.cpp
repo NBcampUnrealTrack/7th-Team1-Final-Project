@@ -136,16 +136,33 @@ FReply UNSPartEquipWidget::NativeOnKeyDown(const FGeometry& InGeometry, const FK
 
 bool UNSPartEquipWidget::RequestUnlockSlot(FGameplayTag PartSlot)
 {
-	UNSProgressionSubsystem* SS = GetProgressionSS(this);
-	if (!SS)
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GetProgressionSS(this);
+
+	if (!ProgressionSubsystem)
 	{
 		return false;
 	}
-	const bool bSuccess = SS->UnlockSlot(SS->GetLastSelectedCharacterId(), PartSlot);
+
+	const FName CharacterId =
+		ProgressionSubsystem->GetLastSelectedCharacterId();
+
+	const bool bSuccess =
+		ProgressionSubsystem->UnlockSlot(
+			CharacterId,
+			PartSlot);
+
 	if (bSuccess)
 	{
 		bDirty = true;
+
+		if (ANSPlayerController* PlayerController =
+			Cast<ANSPlayerController>(OwningController.Get()))
+		{
+			PlayerController->UploadLocalProgress(CharacterId);
+		}
 	}
+
 	return bSuccess;
 }
 
@@ -191,19 +208,47 @@ TArray<FNSPartSlotRow> UNSPartEquipWidget::GetAllSlotRows() const
 
 bool UNSPartEquipWidget::RequestUnlockPart(TSoftObjectPtr<UNSPartDefinition> Definition)
 {
-	UNSProgressionSubsystem* SS = GetProgressionSS(this);
-	if (!SS)
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GetProgressionSS(this);
+
+	if (!ProgressionSubsystem)
 	{
-		NS_LOG(LogNS, Warning, "[Equip] RequestUnlockPart 실패: ProgressionSubsystem이 없습니다.");
+		NS_LOG(
+			LogNS,
+			Warning,
+			"[Equip] RequestUnlockPart 실패: "
+			"ProgressionSubsystem이 없습니다.");
+
 		return false;
 	}
-	const bool bSuccess = SS->PurchasePart(SS->GetLastSelectedCharacterId(), Definition, ENSPartRarity::Common);
-	NS_LOG(LogNS, Log, "[Equip] PurchasePart 결과: {Success} ({Definition})",
-		("Success", bSuccess), ("Definition", Definition.ToString()));
+
+	const FName CharacterId =
+		ProgressionSubsystem->GetLastSelectedCharacterId();
+
+	const bool bSuccess =
+		ProgressionSubsystem->PurchasePart(
+			CharacterId,
+			Definition,
+			ENSPartRarity::Common);
+
+	NS_LOG(
+		LogNS,
+		Log,
+		"[Equip] PurchasePart 결과: {Success} ({Definition})",
+		("Success", bSuccess),
+		("Definition", Definition.ToString()));
+
 	if (bSuccess)
 	{
 		bDirty = true;
+
+		if (ANSPlayerController* PlayerController =
+			Cast<ANSPlayerController>(OwningController.Get()))
+		{
+			PlayerController->UploadLocalProgress(CharacterId);
+		}
 	}
+
 	return bSuccess;
 }
 

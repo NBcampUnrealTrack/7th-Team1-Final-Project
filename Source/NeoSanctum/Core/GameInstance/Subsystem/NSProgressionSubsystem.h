@@ -12,6 +12,8 @@ class UNSSaveGameSubsystem;
 class UNSPermanentSaveGame;
 class UNSCompanionDefinition;
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnCommonCurrencyChanged,int64);
+
 /**
  *	아웃게임 진행도 쓰는 용도의 서브시스템
  *	각 로컬은 CachedData 수정, 즉시 저장
@@ -23,6 +25,9 @@ class NEOSANCTUM_API UNSProgressionSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
+	
+	FNSOnCommonCurrencyChanged OnCommonCurrencyChanged;
+	
 	// 공용 스킬 강화
 	UFUNCTION(BlueprintCallable, Category = "Progression|Upgrade")
 	bool UpgradeCommonSkill(FName NodeId, int32 NewLevel, int64 Cost);
@@ -121,4 +126,6 @@ private:
 	UNSSaveGameSubsystem* GetSaveSubsystem() const;
 	UNSPermanentSaveGame* GetSaveData() const;
 	void SaveNow();
+	
+	void NotifyCommonCurrencyChanged();
 };

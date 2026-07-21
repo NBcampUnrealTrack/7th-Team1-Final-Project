@@ -34,6 +34,7 @@ bool UNSProgressionSubsystem::UpgradeCommonSkill(FName NodeId, int32 NewLevel, i
 	Save->CommonCurrency -= Cost;
 	Save->CommonSkillLevels.Add(NodeId, NewLevel);
 	SaveNow();
+	NotifyCommonCurrencyChanged();
 	
 	return true;
 }
@@ -105,6 +106,7 @@ bool UNSProgressionSubsystem::UpgradePet(FName PetNodeId, int32 NewLevel, int64 
 	Save->CommonCurrency -= Cost;
 	Save->PetUpgradeLevels.Add(PetNodeId, NewLevel);
 	SaveNow();
+	NotifyCommonCurrencyChanged();
 	
 	return true;
 }
@@ -283,6 +285,8 @@ bool UNSProgressionSubsystem::UnlockSlot(FName CharacterId, FGameplayTag Slot)
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->Characters.FindOrAdd(CharacterId).UnlockedSlots.Add(Slot);
 	SaveNow();
+	NotifyCommonCurrencyChanged();
+	
 	NS_LOG(LogNS, Log, "[SlotUnlock] 성공: Slot={Slot}, 잔여재화={Currency}",
 		("Slot", Slot.ToString()), ("Currency", Save->CommonCurrency));
 	return true;
@@ -387,6 +391,7 @@ bool UNSProgressionSubsystem::PurchasePart(FName CharacterId, TSoftObjectPtr<UNS
 	Save->CommonCurrency -= Row->UnlockCost;
 	Save->OwnedParts.Add(New);
 	SaveNow();
+	NotifyCommonCurrencyChanged();
 	return true;
 }
 
@@ -434,6 +439,7 @@ bool UNSProgressionSubsystem::UpgradeCompanionNode(FGameplayTag CompanionTag, FG
 	Save->CommonCurrency -= Cost;
 	Save->Companion.SetNodeLevel(CompanionTag, NodeTag, bShared, NewLevel);
 	SaveNow();
+	NotifyCommonCurrencyChanged();
 	return true;
 }
 
@@ -453,6 +459,8 @@ bool UNSProgressionSubsystem::SelectCompanion(FGameplayTag CompanionTag, const U
 
 	const bool bAlreadyUnlocked = Save->Companion.UnlockedCompanions.Contains(CompanionTag);
 
+	bool bCommonCurrencyChanged = false;
+	
 	if (!bAlreadyUnlocked)
 	{
 		// 최초 해금: 선행 게이트 + 재화 검사
@@ -461,11 +469,16 @@ bool UNSProgressionSubsystem::SelectCompanion(FGameplayTag CompanionTag, const U
 
 		Save->CommonCurrency -= UnlockCost;
 		Save->Companion.UnlockedCompanions.Add(CompanionTag);
+		bCommonCurrencyChanged = true;
 	}
 	// 이미 해금된 드론은 무료·게이트 없이 전환
 
 	Save->Companion.SelectedCompanionTag = CompanionTag;
 	SaveNow();
+	if (bCommonCurrencyChanged)
+	{
+		NotifyCommonCurrencyChanged();
+	}
 	return true;
 }
 
@@ -543,6 +556,11 @@ UNSPermanentSaveGame* UNSProgressionSubsystem::GetSaveData() const
 void UNSProgressionSubsystem::SaveNow()
 {
 	FlushSave(FNSSaveComplete());
+}
+
+void UNSProgressionSubsystem::NotifyCommonCurrencyChanged()
+{
+	OnCommonCurrencyChanged.Broadcast(GetCommonCurrency());
 }
 
 void UNSProgressionSubsystem::FlushSave(FNSSaveComplete OnComplete)

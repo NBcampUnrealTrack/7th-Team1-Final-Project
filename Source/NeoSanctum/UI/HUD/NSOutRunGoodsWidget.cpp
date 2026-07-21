@@ -9,37 +9,40 @@
 #include "Components/Image.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/UI/NSGoodsUIData.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSProgressionSubsystem.h"
 
 void UNSOutRunGoodsWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
 	ApplyGoodsUIData();
-	RefreshGoods();
 
-	if (APlayerController* PlayerController = GetOwningPlayer())
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>()
+		: nullptr;
+
+	if (ProgressionSubsystem)
 	{
-		if (ANSPlayerState* NSPlayerState = PlayerController->GetPlayerState<ANSPlayerState>())
-		{
-			if (UNSPlayerProgressComponent* ProgressComponent = NSPlayerState->GetProgressComponent())
-			{
-				ProgressComponent->OnCurrencyChanged.AddUObject(this, &ThisClass::HandleCurrencyChanged);
-			}
-		}
+		ProgressionSubsystem->OnCommonCurrencyChanged.RemoveAll(this);
+		ProgressionSubsystem->OnCommonCurrencyChanged.AddUObject(
+			this,
+			&ThisClass::HandleCurrencyChanged);
 	}
+
+	RefreshGoods();
 }
 
 void UNSOutRunGoodsWidget::NativeDestruct()
 {
-	if (APlayerController* PlayerController = GetOwningPlayer())
+	UNSProgressionSubsystem* ProgressionSubsystem =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>()
+		: nullptr;
+
+	if (ProgressionSubsystem)
 	{
-		if (ANSPlayerState* NSPlayerState = PlayerController->GetPlayerState<ANSPlayerState>())
-		{
-			if (UNSPlayerProgressComponent* ProgressComponent = NSPlayerState->GetProgressComponent())
-			{
-				ProgressComponent->OnCurrencyChanged.RemoveAll(this);
-			}
-		}
+		ProgressionSubsystem->OnCommonCurrencyChanged.RemoveAll(this);
 	}
 
 	Super::NativeDestruct();
@@ -72,30 +75,28 @@ void UNSOutRunGoodsWidget::ApplyGoodsUIData()
 
 void UNSOutRunGoodsWidget::RefreshGoods()
 {
-	APlayerController* PlayerController = GetOwningPlayer();
-	if (!IsValid(PlayerController))
+	const UNSProgressionSubsystem* ProgressionSubsystem =
+		GetGameInstance()
+		? GetGameInstance()->GetSubsystem<UNSProgressionSubsystem>()
+		: nullptr;
+
+	if (!ProgressionSubsystem)
 	{
 		return;
 	}
 
-	ANSPlayerState* NSPlayerState =
-		PlayerController->GetPlayerState<ANSPlayerState>();
-	if (!IsValid(NSPlayerState))
-	{
-		return;
-	}
+	const int64 CommonCurrency =
+		ProgressionSubsystem->GetCommonCurrency();
 
-	UNSPlayerProgressComponent* ProgressComponent =
-		NSPlayerState->GetProgressComponent();
-	if (!IsValid(ProgressComponent))
-	{
-		return;
-	}
-	UE_LOG(LogTemp, Log, TEXT("[OutRunGoods] Common=%lld"),	ProgressComponent->GetCommonCurrency());
-	SetCommonGoodsAmount(ProgressComponent->GetCommonCurrency());
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[OutRunGoods] Common=%lld"),
+		CommonCurrency);
+
+	SetCommonGoodsAmount(CommonCurrency);
 }
-
-void UNSOutRunGoodsWidget::SetCommonGoodsAmount(int32 NewAmount)
+void UNSOutRunGoodsWidget::SetCommonGoodsAmount(int64 NewAmount)
 {
 	if (!CommonGoodsText)
 	{
@@ -103,5 +104,6 @@ void UNSOutRunGoodsWidget::SetCommonGoodsAmount(int32 NewAmount)
 	}
 
 	CommonGoodsText->SetText(
-		FText::AsNumber(FMath::Max(NewAmount, 0)));
+		FText::AsNumber(
+			FMath::Max<int64>(NewAmount, 0)));
 }
