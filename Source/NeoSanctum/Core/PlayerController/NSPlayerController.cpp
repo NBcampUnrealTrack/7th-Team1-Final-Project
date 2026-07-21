@@ -28,6 +28,7 @@
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
 #include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSInRunGuideSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
@@ -1080,7 +1081,14 @@ void ANSPlayerController::BeginPlay()
 		UIManager->ShowHUD();
 		UIManager->ResetRunResultStats();
 		UIManager->ShowInRunGoods();
-			
+
+		// 인런 최초 진입 증강 튜토리얼 안내 시작 (Phase 2)
+		if (UNSInRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSInRunGuideSubsystem>())
+		{
+			GuideSubsystem->StartGuide();
+		}
+
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
@@ -2424,6 +2432,54 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 	else
 	{
 		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Reward_Trigger_EliteKill);
+	}
+}
+
+void ANSPlayerController::RequestTutorialAugmentGrant()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	// 인런(런 데이터 준비 완료)에서만 지급
+	if (!Data || !Data->IsRunReady())
+	{
+		return;
+	}
+
+	// 서버 권한이면 바로, 아니면 서버 RPC 경유
+	if (HasAuthority())
+	{
+		GrantTutorialAugmentAndCurrency();
+	}
+	else
+	{
+		Server_GrantTutorialAugment();
+	}
+}
+
+void ANSPlayerController::Server_GrantTutorialAugment_Implementation()
+{
+	GrantTutorialAugmentAndCurrency();
+}
+
+void ANSPlayerController::GrantTutorialAugmentAndCurrency()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 일반풀(레벨업 트리거) 증강 오퍼 1개 적재 → 이후 Tab으로 패널을 열면 표시됨
+	if (AugmentSelectionComponent)
+	{
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Reward_Trigger_LevelUp);
+	}
+
+	// 리롤용 임시재화 지급
+	if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		if (UNSCurrencyComponent* Currency = PS->GetCurrencyComponent())
+		{
+			Currency->AddTemp(0, 50);
+		}
 	}
 }
 
