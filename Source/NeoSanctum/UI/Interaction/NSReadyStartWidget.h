@@ -6,6 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NSReadyStartWidget.generated.h"
 
+class UCommonButtonBase;
 class UNSButtonBase;
 class UCommonTextBlock;
 class UImage;
