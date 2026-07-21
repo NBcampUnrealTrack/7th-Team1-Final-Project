@@ -16,7 +16,7 @@
 #include "NeoSanctum/UI/HUD/NSCharacterStatsWidget.h"
 #include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 #include "NeoSanctum/UI/HUD/NSDashStackWidget.h"
-#include "NeoSanctum/UI/HUD/NSGuideTextWidget.h"
+#include "NeoSanctum/UI/HUD/NSGuideChecklistWidget.h"
 
 
 void UNSHUDWidget::UpdateHealthAndShield(
@@ -307,25 +307,45 @@ void UNSHUDWidget::NativeConstruct()
 	}
 }
 
-void UNSHUDWidget::ShowGuideText(const FText& InText)
+void UNSHUDWidget::ShowGuideChecklist(const TArray<FNSGuideChecklistEntry>& Entries)
 {
-	// WBP에 GuideTextWidget이 배치되지 않았으면 안내 기능 없이 동작
-	if (!GuideTextWidget)
+	// WBP에 체크리스트 위젯이 배치되지 않았으면 안내 기능 없이 동작
+	if (!GuideChecklistWidget)
 	{
 		return;
 	}
 
-	GuideTextWidget->ShowGuideText(InText);
+	GuideChecklistWidget->ShowChecklist(Entries);
 }
 
-void UNSHUDWidget::HideGuideText()
+void UNSHUDWidget::CompleteGuideChecklistItem(FName ItemId)
 {
-	if (!GuideTextWidget)
+	if (!GuideChecklistWidget)
 	{
 		return;
 	}
 
-	GuideTextWidget->HideGuideText();
+	GuideChecklistWidget->CompleteChecklistItem(ItemId);
+}
+
+void UNSHUDWidget::CompleteGuideChecklistItemAndHide(FName ItemId)
+{
+	if (!GuideChecklistWidget)
+	{
+		return;
+	}
+
+	GuideChecklistWidget->CompleteChecklistItemAndHide(ItemId);
+}
+
+void UNSHUDWidget::HideGuideChecklist()
+{
+	if (!GuideChecklistWidget)
+	{
+		return;
+	}
+
+	GuideChecklistWidget->HideChecklist();
 }
 
 void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)

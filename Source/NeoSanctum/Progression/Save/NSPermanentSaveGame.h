@@ -114,12 +114,26 @@ public:
 	// 펫 관련 데이터
 	UPROPERTY(SaveGame)
 	FNSCompanionSaveData Companion;
-
-	// 아웃런 목표 안내(웨이포인트 마커 + 텍스트) 진행 상태 —> 전부 영구 1회성
-
-	// 이동 입력을 한 번이라도 발동했는지
+	
+	/**
+	 * 아웃런 목표 안내(웨이포인트 마커 + 텍스트) 진행 상태 —> 전부 영구 1회성
+	 * 전부 하드코딩 
+	 */
+	// 이동 입력을 한 번이라도 발동했는지 (구 단일 플래그 — 삭제 금지, 기존 세이브 호환용)
 	UPROPERTY(SaveGame)
 	bool bMoveGuideDone = false;
+	// 전진(W) 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bMoveGuideDone_W = false;
+	// 좌(A) 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bMoveGuideDone_A = false;
+	// 후진(S) 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bMoveGuideDone_S = false;
+	// 우(D) 입력을 한 번이라도 발동했는지
+	UPROPERTY(SaveGame)
+	bool bMoveGuideDone_D = false;
 	// 점프 입력을 한 번이라도 발동했는지
 	UPROPERTY(SaveGame)
 	bool bJumpGuideDone = false;
@@ -135,6 +149,12 @@ public:
 	// 해금 후 첫 상호작용(안내 완료)까지 마친 NPC 집합
 	UPROPERTY(SaveGame)
 	TSet<FName> GuidedNPCIds;
+	// 인런 안내(Phase 2): 캐릭터 스탯 확인(C)을 마쳤는지 — 서버 그랜트 1회 게이트 겸용
+	UPROPERTY(SaveGame)
+	bool bInRunStatGuideDone = false;
+	// 인런 안내(Phase 2): 증강 튜토리얼(카드 선택까지)을 마쳤는지 — true면 인런 안내 전체 완료
+	UPROPERTY(SaveGame)
+	bool bInRunAugmentGuideDone = false;
 
 	// 직업 단위
 	// Key : 캐릭터 FName, Value : 세이브 데이터

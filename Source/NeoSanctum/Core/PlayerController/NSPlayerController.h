@@ -53,6 +53,10 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugAddTempCurrency();
 
+	// 튜토리얼 그랜트를 서버에서 수행 (원격 클라가 요청할 때)
+	UFUNCTION(Server, Reliable)
+	void Server_GrantTutorialAugment();
+
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
 	void RequestReady(); 
@@ -98,6 +102,9 @@ public:
 	void ToggleAugmentationPanel();
 	// C키 : 파츠 인벤토리 및 캐릭터 스텟 패널 토글 (InputBinderComponent에서 호출)
 	void TogglePartInventoryPanel();
+
+	// 인런 튜토리얼용: 일반풀 증강 오퍼 1개 + 리롤용 임시재화를 서버 권한으로 1회 지급하는 로컬 진입점
+	void RequestTutorialAugmentGrant();
 	
 	// UI 나올때 플레이어 인풋 제어용
 	UFUNCTION(BlueprintCallable, Category="RunEnd")
@@ -360,6 +367,9 @@ protected:
 	void Debug_EnqueueAugmentOffer();
 
 private:
+	// 서버 권한에서 실제로 오퍼/재화를 지급 (RequestTutorialAugmentGrant / Server_GrantTutorialAugment가 호출)
+	void GrantTutorialAugmentAndCurrency();
+
 	void UnbindAttributeFromHUD();
 	void RebindHUDRuntimeState();
 

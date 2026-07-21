@@ -19,6 +19,7 @@
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
 #include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSInRunGuideSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -247,7 +248,7 @@ void UNSInputBinderComponent::Input_Move(const FInputActionValue& Value)
 		if (UNSOutRunGuideSubsystem* GuideSubsystem =
 			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
 		{
-			GuideSubsystem->NotifyMoveInput();
+			GuideSubsystem->NotifyMoveInput(MoveValue);
 		}
 	}
 }
@@ -363,7 +364,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	{
 		return;
 	}
-	
+
+	// 인런 안내(Phase 2)용 — 없거나 미시작이면 알림은 내부에서 무시됨
+	UNSInRunGuideSubsystem* InRunGuide = World->GetSubsystem<UNSInRunGuideSubsystem>();
+
 	if (InputTag == NSGameplayTags::Input_Augment_TogglePanel)
 	{
 		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
@@ -372,9 +376,13 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 		{
 			PlayerController->ToggleAugmentationPanel();
 		}
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyAugmentPanelOpened();
+		}
 		return;
 	}
-	
+
 	if (InputTag == NSGameplayTags::Input_Augment_TogglePartInventory)
 	{
 		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
@@ -387,10 +395,14 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 		{
 			PlayerController->TogglePartInventoryPanel();
 		}
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyStatPanelOpened();
+		}
 
 		return;
 	}
-	
+
 	// 증강 패널이 닫혀있으면 1/2/3/T 입력 무시
 	if (!UIManager->IsAugmentationPanelOpen())
 	{
@@ -400,6 +412,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	if (InputTag == NSGameplayTags::Input_Augment_Reroll)
 	{
 		UIManager->RequestRerollAugment();
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyReroll();
+		}
 		return;
 	}
 
@@ -428,6 +444,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	}
 
 	UIManager->SelectAugmentCardByIndex(CardIndex);
+	if (InRunGuide)
+	{
+		InRunGuide->NotifyCardSelected();
+	}
 }
 
 void UNSInputBinderComponent::Input_Interact()
