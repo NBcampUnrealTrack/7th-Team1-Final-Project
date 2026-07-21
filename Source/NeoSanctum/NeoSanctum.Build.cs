@@ -12,7 +12,7 @@ public class NeoSanctum : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			// Core
-			"Core", "CoreUObject", "Engine", "OnlineSubsystem", "OnlineSubsystemUtils", "NetCore",
+			"Core", "CoreUObject", "Engine", "NetCore",
 
 			// Settings
 			"DeveloperSettings",
@@ -66,6 +66,11 @@ public class NeoSanctum : ModuleRules
 			"MediaAssets",
 			"MoviePlayer",
 			"AudioMixer",
+			
+			// 세션 관련 설정
+			"OnlineSubsystem",
+			"OnlineSubsystemUtils",
+			"Steamworks",
 		});
 
 		// Uncomment if you are using Slate UI
