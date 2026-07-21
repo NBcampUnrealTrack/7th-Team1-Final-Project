@@ -1102,7 +1102,7 @@ void UNSSessionSubsystem::StartCreateSession()
 
 	LastSessionSettings = MakeShared<FOnlineSessionSettings>();
 	LastSessionSettings->NumPublicConnections = 4;
-	LastSessionSettings->bAllowJoinInProgress = false;
+	LastSessionSettings->bAllowJoinInProgress = true;
 	LastSessionSettings->bShouldAdvertise = true;
 
 	if (bUsingSteam)
