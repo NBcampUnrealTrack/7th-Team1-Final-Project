@@ -7,6 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "NeoSanctum/Core/GameFlow/NSSessionType.h"
 #include "Engine/EngineBaseTypes.h"
+#include "steam/steam_api.h"
 #include "NSSessionSubsystem.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNSOnCreateSessionComplete, bool, bWasSuccessful);
@@ -106,6 +107,8 @@ private:
 	// DestroySession 엔진 델리게이트 핸들 해제
 	void ClearDestroySessionDelegate();
 	
+	STEAM_CALLBACK(UNSSessionSubsystem, OnSteamAvatarLoaded, AvatarImageLoaded_t);
+
 	// 세션 생성 완료 콜백 (성공 시 허브로 ServerTravel)
 	void OnCreateSessionCompleted(FName SessionName, bool bWasSuccessful);
 	// 세션 제거 완료 콜백

@@ -1284,3 +1284,9 @@ void UNSSessionSubsystem::ClearDestroySessionDelegate()
 
 	DestroySessionDelegateHandle.Reset();
 }
+
+void UNSSessionSubsystem::OnSteamAvatarLoaded(AvatarImageLoaded_t* Callback)
+{
+	// 어떤 친구의 아바타가 로드되면 목록 다시 그리게 알림
+	OnFriendsListUpdated.Broadcast();
+}
