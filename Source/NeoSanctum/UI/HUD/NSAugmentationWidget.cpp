@@ -640,6 +640,10 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 	{
 		return;
 	}
+	
+	const UObject* RiaSansFontObject = LoadObject<UObject>(
+		nullptr,
+		TEXT("/Game/NeoSanctum/UI/Asset/Font/CF_RiaSans.CF_RiaSans"));
 
 	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
 	{
@@ -688,17 +692,18 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 
 		if (StackCount > 1)
 		{
-			UBorder* CountBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-
 			UTextBlock* CountText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 
-			if (CountBadge && CountText)
+			if (CountText)
 			{
-				CountBadge->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.85f));
-				CountBadge->SetPadding(FMargin(4.f, 1.f));
-
 				FSlateFontInfo FontInfo = CountText->GetFont();
-				FontInfo.Size = 14;
+				if (RiaSansFontObject)
+				{
+					FontInfo.FontObject = RiaSansFontObject;
+				}
+				FontInfo.Size = 12;
+				FontInfo.OutlineSettings.OutlineSize = 1;
+				FontInfo.OutlineSettings.OutlineColor = FLinearColor(0.f, 0.03f, 0.08f, 1.f);
 				CountText->SetFont(FontInfo);
 
 				CountText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
@@ -706,15 +711,13 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 					NSLOCTEXT("AugmentationWidget", "OwnedAugmentCount", "{0}"),
 					FText::AsNumber(StackCount)));
 
-				CountBadge->AddChild(CountText);
-
-				UOverlaySlot* BadgeSlot =
-					Overlay->AddChildToOverlay(CountBadge);
+				UOverlaySlot* BadgeSlot = Overlay->AddChildToOverlay(CountText);
 
 				if (BadgeSlot)
 				{
 					BadgeSlot->SetHorizontalAlignment(HAlign_Right);
 					BadgeSlot->SetVerticalAlignment(VAlign_Top);
+					BadgeSlot->SetPadding(FMargin(0.f));
 				}
 			}
 		}
