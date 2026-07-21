@@ -21,6 +21,14 @@ class NEOSANCTUM_API UNSReadyStartWidget : public UCommonUserWidget
 {
 	GENERATED_BODY()
 
+public:
+	DECLARE_MULTICAST_DELEGATE_TwoParams(
+		FOnReadyStartWidgetClosed,
+		UNSReadyStartWidget*,
+		APlayerController*);
+
+	FOnReadyStartWidgetClosed OnWidgetClosed;
+
 	
 private:
 	UPROPERTY(meta = (BindWidget))
@@ -137,10 +145,12 @@ private:
 	// 버튼 텍스트는 로컬 입력 즉시 반응해야 하므로,
 	// 서버 복제 전에도 현재 플레이어의 예상 Ready 상태를 들고 있다.
 	bool bLocalReadySelected = false;
+	bool bIsClosing = false;
 	
 	FString CurrentInviteCode;
 	FString CurrentFriendFilter;
 protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 };
