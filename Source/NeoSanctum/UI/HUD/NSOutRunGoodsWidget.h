@@ -24,7 +24,7 @@ public:
 
 	//영구재화 표시
 	UFUNCTION(BlueprintCallable, Category = "UI|Goods")
-	void SetCommonGoodsAmount(int32 NewAmount);
+	void SetCommonGoodsAmount(int64 NewAmount);
 
 private:
 	//아웃런 영구재화 텍스트
