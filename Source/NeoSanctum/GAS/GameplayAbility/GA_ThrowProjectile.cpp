@@ -23,6 +23,7 @@
 UGA_ThrowProjectile::UGA_ThrowProjectile()
 {
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	ActivationOwnedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Active);
 }
 
 void UGA_ThrowProjectile::ActivateAbility(

@@ -13,6 +13,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Reloading);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Deactivate_HandIK);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_DashAttackWindow);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_ThrowProjectile_Active);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_ThrowProjectile_Releasing);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Input_BlockInputMove);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_Attacking);
@@ -21,6 +22,7 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_BarrierAttackWindow);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ChargingDashAttack);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ComboInputWindow);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Vanguard_ThrowBarrierField);
 	
 	// Shield Regen
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Shield_Broken);
