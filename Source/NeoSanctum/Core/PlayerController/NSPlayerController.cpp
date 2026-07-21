@@ -1747,6 +1747,7 @@ void ANSPlayerController::ToggleAugmentationPanel()
 			UIManager->ClosePartPanel();
 		}
 		UIManager->OpenAugmentationPanel();
+		UIManager->PlayAugmentationTabSound();
 		
 		if (AugmentSelectionComponent)
 		{

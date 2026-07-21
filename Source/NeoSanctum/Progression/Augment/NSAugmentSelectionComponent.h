@@ -32,13 +32,24 @@ struct FNSAugmentCandidate
 	bool bCountsAsLegendarySlot = false;
 };
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnAugmentOfferPresented,
-	const TArray<FNSAugmentSelectionCard>&, Cards, int64, RerollCost, bool, bCanReroll, int32, OfferRevision);
+// 현재 오퍼 카드와 남은 보상 카드 수를 함께 UI로 전달합니다.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(
+	FOnAugmentOfferPresented,
+	const TArray<FNSAugmentSelectionCard>&, Cards,
+	int64, RerollCost,
+	bool, bCanReroll,
+	int32, OfferRevision,
+	int32, MaxChoiceCount,
+	int32, AvailableCardCount);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnAugmentRerollResult,
-	ENSAugmentRerollResult, Result, int64, RequiredCost, int64, HaveCurrency,
-	int32, RequestRevision, int32, CurrentOfferRevision);
+                                              ENSAugmentRerollResult, Result, int64, RequiredCost, int64, HaveCurrency,
+                                              int32, RequestRevision, int32, CurrentOfferRevision);
+
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSAugmentSelectionComponent : public UActorComponent
@@ -96,13 +107,15 @@ protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 private:
+	// 클라이언트 UI가 실제 카드 수와 최대 선택 슬롯 수를 분리해서 배치하도록 전달
 	UFUNCTION(Client, Reliable)
 	void Client_PresentOffer(
 		const TArray<FNSAugmentSelectionCard>& Cards,
 		int64 RerollCost,
 		bool bCanReroll,
-		int32 PresentedOfferRevision
-	);
+		int32 PresentedOfferRevision,
+		int32 MaxChoiceCount,
+		int32 AvailableCardCount);
 
 	UFUNCTION(Client, Reliable)
 	void Client_CloseOffer();
@@ -126,22 +139,22 @@ private:
 
 	// 서버에서 대기 카운트 변경 + (호스트용) 즉시 브로드캐스트
 	void SetPendingCount(int32 NewCount);
-	
+
 	// Queue Front를 카드로 제시. 후보가 없으면 해당 트리거를 소비하고 다음 Front를 계속 확인.
 	void PresentFront();
-	
+
 	/**
 	 * 현재 Front 오퍼를 소비하고 카드 추첨 상태를 초기화.
 	 * 카드 선택 완료 또는 현재 트리거에서 후보를 만들 수 없을 때 호출.
 	 */
 	void ConsumeFrontOffer();
-	
+
 	// 같은 AugmentTag 그룹의 공통 선택 메타데이터와 Definition 식별자 ↔ AugmentTag 연결 무결성을 검사.
 	void ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const;
 
 	bool TryFindRarityRule(
 		UNSDataSubsystem* Data,
-		const FGameplayTag& RewardTriggerTag, 
+		const FGameplayTag& RewardTriggerTag,
 		FNSAugmentRarityRule& OutRule
 	) const;
 
@@ -172,7 +185,10 @@ private:
 	int32 GetEffectiveCardsCount() const;
 
 	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
-	TArray<FNSAugmentSelectionCard> RollCards(const FNSAugmentRarityRule& RarityRule, int32 N) const;
+	TArray<FNSAugmentSelectionCard> RollCards(
+		const FNSAugmentRarityRule& RarityRule,
+		int32 N,
+		int32& OutAvailableCardCount) const;
 
 	/**
  	 * 직전 오퍼(PreviousDefIds)와 DefId 구성이 다른 완전한 N장 오퍼를 생성.
@@ -184,16 +200,16 @@ private:
 		const FNSAugmentRarityRule& RarityRule,
 		int32 N,
 		const TSet<FPrimaryAssetId>& PreviousDefIds,
-		bool& bOutDifferentPossible
-	) const;
+		bool& bOutDifferentPossible,
+		int32& OutAvailableCardCount) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,
 		const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const;
-	
+
 	// Pawn 대신 PlayerState의 CharacterData를 기준으로 현재 런에서 선택한 캐릭터 태그를 가져옴.
 	bool TryGetOwnerCharacterTag(FGameplayTag& OutCharacterTag) const;
-	
+
 	/**
  	 * DT Row를 카드 후보 생성과 보유 증강 판정에 사용할 런타임 후보 데이터로 변환.
  	 *
@@ -204,8 +220,8 @@ private:
 		const FNSAugmentDefinitionRow& Row,
 		FNSAugmentCandidate& OutCandidate
 	) const;
-	
- 	// 기존 DefId 기반 보유 데이터를 DT 후보 메타 정보에 연결.
+
+	// 기존 DefId 기반 보유 데이터를 DT 후보 메타 정보에 연결.
 	bool TryFindCandidateByDefinitionId(
 		UNSDataSubsystem* Data,
 		const FPrimaryAssetId& DefId,
@@ -232,6 +248,12 @@ private:
 		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity
 	) const;
 
+	int32 CountSelectableCandidates(
+		const FNSAugmentRarityRule& RarityRule,
+		const TMap<
+			ENSAugmentRarity,
+			TArray<FNSAugmentCandidate>>& ByRarity) const;
+
 	/**
  	 * 카드 슬롯마다 희귀도와 후보를 독립적으로 선택.
  	 *
@@ -243,7 +265,7 @@ private:
 		const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
 		int32 N
 	) const;
-	
+
 	// 서버 전용: 보상 트리거 FIFO 큐, Front는 카드 선택 완료 또는 선택 가능한 후보가 없을 때 소비.
 	TArray<FGameplayTag> RewardTriggerQueue;
 
@@ -251,6 +273,9 @@ private:
 	bool bFrontRolled = false;
 
 	TArray<FNSAugmentSelectionCard> PendingOffer;
+
+	// 현재 Front 오퍼를 생성할 때 확인된 전체 선택 가능 후보 수
+	int32 CurrentAvailableCardCount = 0;
 
 	int32 CurrentOfferRerollCount = 0;
 
@@ -262,7 +287,7 @@ private:
 	// 대기 중인 증강 선택권 수 (오너에게만 레플리케이션, UI 뱃지용)
 	UPROPERTY(ReplicatedUsing = OnRep_PendingCount)
 	int32 PendingCount = 0;
-	
+
 	// 현재 런에서 증강 정의 그룹 무결성을 검사 했는지 여부.
 	bool bHasValidatedAugmentDefinitionGroups = false;
 };

@@ -1,7 +1,8 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSAugmentationWidget.h"
-#include "Components/CanvasPanelSlot.h"
+
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -13,25 +14,28 @@
 #include "Engine/AssetManager.h"
 #include "Engine/GameInstance.h"
 #include "Blueprint/WidgetTree.h"
-#include "Components/CanvasPanel.h"
-#include "Components/SizeBox.h"
-#include "Components/WrapBox.h"
-#include "Components/Image.h"
-#include "Components/TextBlock.h"
-#include "Components/ScaleBox.h"
-#include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/PanelWidget.h"
+#include "Components/ScaleBox.h"
+#include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
+#include "Components/Widget.h"
+#include "Components/WrapBox.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
+#include "TimerManager.h"
 
 
 void UNSAugmentationWidget::OpenPanel()
 {
-	// 순수 UI 표시만 담당 (보유 아이콘 갱신)
+	// 전체 증강 패널 표시
 	bPanelOpen = true;
 	SetVisibility(ESlateVisibility::Visible);
 	SetOwnedAugmentListVisible(true);
@@ -42,17 +46,19 @@ void UNSAugmentationWidget::OpenPanel()
 void UNSAugmentationWidget::ClosePanel()
 {
 	bPanelOpen = false;
-	
+
 	if (IconLoadHandle.IsValid())
 	{
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
+
 	if (OwnedIconLoadHandle.IsValid())
 	{
 		OwnedIconLoadHandle->CancelHandle();
 		OwnedIconLoadHandle.Reset();
 	}
+
 	SetOwnedAugmentListVisible(false);
 	RefreshAugmentPanelState();
 }
@@ -63,127 +69,488 @@ void UNSAugmentationWidget::ShowCardSection()
 	{
 		CardSectionRoot->SetVisibility(ESlateVisibility::Visible);
 	}
+
+	RefreshChoiceGuideVisibility();
 }
 
 void UNSAugmentationWidget::HideCardSection()
 {
-	if (ChoiceRootCanvas)
-	{
-		ChoiceRootCanvas->ClearChildren();
-	}
-	AugmentCardWidgets.Empty();
+	ClearSelectionAnimationTimer();
+
+	ClearChoiceCardWidgets();
+
 	CurrentOfferCards.Reset();
+	CurrentOfferViewData.Reset();
+	CurrentCardsPerSlot.Reset();
+
+	ChoiceCount = 0;
+	ChoiceGuideSlotCount = 0;
+	CurrentAvailableCardCount = 0;
+	HighlightedCardIndex = INDEX_NONE;
 
 	if (CardSectionRoot)
 	{
 		CardSectionRoot->SetVisibility(ESlateVisibility::Collapsed);
 	}
+
+	RefreshChoiceGuideVisibility();
 }
 
 void UNSAugmentationWidget::CreateChoiceCard(int32 NewChoiceCount)
 {
-	//카드가 들어갈 박스가 없으면 생성 불가
 	if (!ChoiceRootCanvas)
 	{
 		return;
 	}
 
-	// 스코프 초과 방어: 3/4장만 지원. 서버/데이터 문제를 조용히 숨기지 않고 Warning으로 드러냄.
-	if (NewChoiceCount > 4)
+	ClearSelectionAnimationTimer();
+	ClearChoiceCardWidgets();
+
+	ChoiceCount = FMath::Clamp(NewChoiceCount, 0, ChoiceGuideSlotCount);
+
+	if (!AugmentCardWidgetClass || ChoiceCount <= 0)
 	{
-		NS_OBJ_LOG(LogNS, Warning,
-			"[AugmentationWidget] 지원하지 않는 카드 수라 생성하지 않습니다. Count={Count}",
-			("Count", NewChoiceCount)
-		);
+		ChoiceCount = 0;
+		RefreshChoiceGuideVisibility();
 		return;
 	}
 
-	//기존 가드 제거
-	ChoiceRootCanvas->ClearChildren();
-	AugmentCardWidgets.Empty();
-	
-	ChoiceCount = NewChoiceCount;
-	//생성할 카드위젯이 없으면 선택지가 생기지 않는다
-	if (!AugmentCardWidgetClass)
-	{
-		return;
-	}
-	
 	for (int32 Index = 0; Index < ChoiceCount; ++Index)
 	{
-		//증강 카드 위젯 생성
 		UNSAugmentCardWidget* NewCard =
-			CreateWidget<UNSAugmentCardWidget>(
-				this,
-				AugmentCardWidgetClass);
+			CreateWidget<UNSAugmentCardWidget>(this, AugmentCardWidgetClass);
+
 		if (!NewCard)
 		{
 			continue;
 		}
-		AugmentCardWidgets.Add(NewCard);
-		
-			NewCard->SetShortcutNumber(Index + 1);
-			NewCard->SetAugmentName(TEXT(""));
-    		NewCard->SetAugmentDescription(TEXT(""));
-    		NewCard->SetAugmentIcon(nullptr);
-    
-    		UCanvasPanelSlot* CardSlot =
-    			ChoiceRootCanvas->AddChildToCanvas(NewCard);
 
+		NewCard->ResetSelectionVisual();
+		AugmentCardWidgets.Add(NewCard);
+
+		NewCard->SetAugmentName(TEXT("Loading"));
+		NewCard->SetAugmentDescription(TEXT("Waiting ViewData"));
+		NewCard->SetAugmentIcon(nullptr);
+
+		UCanvasPanelSlot* CardSlot = ChoiceRootCanvas->AddChildToCanvas(NewCard);
 		if (CardSlot)
 		{
-			//증강 카드의 중심점을 기준으로 위치를 잡는다
-			CardSlot->SetAutoSize(true);
+			CardSlot->SetAutoSize(false);
+			CardSlot->SetSize(ChoiceCardSize);
 			CardSlot->SetAlignment(FVector2D(0.5f, 0.5f));
-
-			CardSlot->SetPosition(GetChoiceCardPosition(Index));
+			CardSlot->SetZOrder(1000 - Index);
 		}
+	}
+
+	RefreshChoiceGuideVisibility();
+	QueueChoiceCardPositionRefresh();
+}
+
+void UNSAugmentationWidget::RefreshChoiceGuideVisibility()
+{
+	// 선택 애니메이션 중에는 선택 가이드를 숨김
+	const bool bSelectionGuideVisible =
+		bPanelOpen &&
+		!CurrentOfferCards.IsEmpty() &&
+		ChoiceCount > 0 &&
+		!bSelectionAnimationPlaying;
+
+	if (ChoiceGuide3Root)
+	{
+		ChoiceGuide3Root->SetVisibility(
+			bSelectionGuideVisible && ChoiceGuideSlotCount == 3
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+	}
+
+	if (ChoiceGuide4Root)
+	{
+		ChoiceGuide4Root->SetVisibility(
+			bSelectionGuideVisible && ChoiceGuideSlotCount == 4
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+	}
+
+	RefreshChoiceGuideSlotVisibility();
+}
+
+void UNSAugmentationWidget::RefreshChoiceCardPositions()
+{
+	ForceLayoutPrepass();
+
+	for (int32 Index = 0;
+	     Index < AugmentCardWidgets.Num();
+	     ++Index)
+	{
+		UNSAugmentCardWidget* Card =
+			AugmentCardWidgets[Index];
+
+		if (!Card)
+		{
+			continue;
+		}
+
+		UCanvasPanelSlot* CardSlot =
+			Cast<UCanvasPanelSlot>(Card->Slot);
+
+		if (!CardSlot)
+		{
+			continue;
+		}
+
+		CardSlot->SetAutoSize(false);
+		CardSlot->SetSize(ChoiceCardSize);
+		CardSlot->SetAlignment(
+			FVector2D(0.5f, 0.5f));
+
+		CardSlot->SetPosition(
+			GetChoiceCardPosition(Index));
 	}
 }
 
 FVector2D UNSAugmentationWidget::GetChoiceCardPosition(int32 Index) const
 {
-	if (ChoiceCount == 4)
+	return GetChoiceCardPositionBySlotIndex(
+		GetChoiceGuideSlotIndexForCardIndex(Index));
+}
+
+bool UNSAugmentationWidget::TryGetWidgetCanvasRect(
+	const UWidget* Widget,
+	FVector2D& OutTopLeft,
+	FVector2D& OutSize) const
+{
+	OutTopLeft = FVector2D::ZeroVector;
+	OutSize = FVector2D::ZeroVector;
+
+	if (!Widget || !ChoiceRootCanvas)
 	{
-		switch (Index)
+		return false;
+	}
+
+	const UWidget* RootCanvasWidget = ChoiceRootCanvas.Get();
+
+	const FGeometry WidgetGeometry = Widget->GetCachedGeometry();
+	const FGeometry RootCanvasGeometry = RootCanvasWidget->GetCachedGeometry();
+
+	FVector2D LocalSize = WidgetGeometry.GetLocalSize();
+
+	if (LocalSize.IsNearlyZero())
+	{
+		LocalSize = Widget->GetDesiredSize();
+	}
+
+	if (LocalSize.IsNearlyZero())
+	{
+		if (const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Widget->Slot))
 		{
-		case 0: return LeftCardPosition;
-		case 1: return FourCardCenterLeftPosition;
-		case 2: return FourCardCenterRightPosition;
-		case 3: return RightCardPosition;
-		default: return FVector2D::ZeroVector;
+			LocalSize = CanvasSlot->GetSize();
 		}
 	}
 
-	switch (Index)
+	if (LocalSize.IsNearlyZero())
 	{
-	case 0: return LeftCardPosition;
-	case 1: return ThreeCardCenterPosition;
-	case 2: return RightCardPosition;
-	default: return FVector2D::ZeroVector;
+		return false;
+	}
+
+	const FVector2D AbsoluteTopLeft = WidgetGeometry.LocalToAbsolute(FVector2D::ZeroVector);
+	const FVector2D RootLocalTopLeft = RootCanvasGeometry.AbsoluteToLocal(AbsoluteTopLeft);
+
+	OutTopLeft = RootLocalTopLeft;
+	OutSize = LocalSize;
+
+	return true;
+}
+
+int32 UNSAugmentationWidget::GetSelectableChoiceCount() const
+{
+	return FMath::Clamp(CurrentOfferCards.Num(), 0, FMath::Max(ChoiceGuideSlotCount, 0));
+}
+
+USizeBox* UNSAugmentationWidget::GetChoiceGuideInputIconBoxBySlotIndex(int32 SlotIndex) const
+{
+	if (ChoiceGuideSlotCount == 4)
+	{
+		switch (SlotIndex)
+		{
+		case 0: return Choice4InputIcon1Box.Get();
+		case 1: return Choice4InputIcon2Box.Get();
+		case 2: return Choice4InputIcon3Box.Get();
+		case 3: return Choice4InputIcon4Box.Get();
+		default: return nullptr;
+		}
+	}
+
+	if (ChoiceGuideSlotCount == 3)
+	{
+		switch (SlotIndex)
+		{
+		case 0: return Choice3InputIcon1Box.Get();
+		case 1: return Choice3InputIcon2Box.Get();
+		case 2: return Choice3InputIcon3Box.Get();
+		default: return nullptr;
+		}
+	}
+
+	return nullptr;
+}
+
+USizeBox* UNSAugmentationWidget::GetChoiceGuideInputIconBox(int32 CardIndex) const
+{
+	return GetChoiceGuideInputIconBoxBySlotIndex(
+		GetChoiceGuideSlotIndexForCardIndex(CardIndex));
+}
+
+FVector2D UNSAugmentationWidget::GetChoiceCardPositionBySlotIndex(int32 SlotIndex) const
+{
+	const USizeBox* IconBox = GetChoiceGuideInputIconBoxBySlotIndex(SlotIndex);
+	if (!IconBox)
+	{
+		return FVector2D::ZeroVector;
+	}
+
+	FVector2D IconTopLeft = FVector2D::ZeroVector;
+	FVector2D IconSize = FVector2D::ZeroVector;
+
+	if (!TryGetWidgetCanvasRect(IconBox, IconTopLeft, IconSize))
+	{
+		return FVector2D::ZeroVector;
+	}
+
+	const FVector2D IconCenter = IconTopLeft + IconSize * 0.5f;
+
+	if (ChoiceGuideSlotCount == 3)
+	{
+		switch (SlotIndex)
+		{
+		case 0:
+			return FVector2D(
+				IconTopLeft.X - ChoiceCardGuideGap - ChoiceCardSize.X * 0.5f,
+				IconCenter.Y);
+
+		case 1:
+			return FVector2D(
+				IconCenter.X,
+				IconTopLeft.Y - ChoiceCardGuideGap - ChoiceCardSize.Y * 0.5f);
+
+		case 2:
+			return FVector2D(
+				IconTopLeft.X + IconSize.X + ChoiceCardGuideGap + ChoiceCardSize.X * 0.5f,
+				IconCenter.Y);
+
+		default:
+			return FVector2D::ZeroVector;
+		}
+	}
+
+	if (ChoiceGuideSlotCount == 4)
+	{
+		switch (SlotIndex)
+		{
+		case 0:
+		case 1:
+			return FVector2D(
+				IconTopLeft.X - ChoiceCardGuideGap - ChoiceCardSize.X * 0.5f,
+				IconCenter.Y);
+
+		case 2:
+		case 3:
+			return FVector2D(
+				IconTopLeft.X + IconSize.X + ChoiceCardGuideGap + ChoiceCardSize.X * 0.5f,
+				IconCenter.Y);
+
+		default:
+			return FVector2D::ZeroVector;
+		}
+	}
+
+	return FVector2D::ZeroVector;
+}
+
+void UNSAugmentationWidget::ClearChoiceCardWidgets()
+{
+	for (UNSAugmentCardWidget* ExistingCard :
+	     AugmentCardWidgets)
+	{
+		if (ExistingCard)
+		{
+			ExistingCard->RemoveFromParent();
+		}
+	}
+
+	AugmentCardWidgets.Reset();
+}
+
+int32 UNSAugmentationWidget::GetChoiceGuideSlotIndexForCardIndex(
+	int32 CardIndex) const
+{
+	const int32 SelectableChoiceCount =
+		GetSelectableChoiceCount();
+
+	if (CardIndex < 0 ||
+		CardIndex >= SelectableChoiceCount ||
+		CardIndex >= ChoiceGuideSlotCount)
+	{
+		return INDEX_NONE;
+	}
+
+	return CardIndex;
+}
+
+TArray<int32>
+UNSAugmentationWidget::CalculateCardsPerSlot(
+	int32 TotalRemainingCardCount) const
+{
+	const int32 SlotCount =
+		FMath::Clamp(
+			ChoiceGuideSlotCount,
+			0,
+			4);
+
+	TArray<int32> CardsPerSlot;
+	CardsPerSlot.Init(
+		0,
+		SlotCount);
+
+	if (SlotCount <= 0 ||
+		TotalRemainingCardCount <= 0)
+	{
+		return CardsPerSlot;
+	}
+
+	const int32 SafeRemainingCardCount =
+		FMath::Max(
+			TotalRemainingCardCount,
+			0);
+
+	const int32 BaseCount =
+		SafeRemainingCardCount /
+		SlotCount;
+
+	const int32 Remainder =
+		SafeRemainingCardCount %
+		SlotCount;
+
+	for (int32 SlotIndex = 0;
+	     SlotIndex < SlotCount;
+	     ++SlotIndex)
+	{
+		// 나머지는 1번, 2번, 3번, 4번 순으로 배치합니다.
+		CardsPerSlot[SlotIndex] =
+			BaseCount +
+			(SlotIndex < Remainder ? 1 : 0);
+	}
+
+	return CardsPerSlot;
+}
+
+bool UNSAugmentationWidget::IsChoiceGuideSlotActive(
+	int32 SlotIndex) const
+{
+	return
+		SlotIndex >= 0 &&
+		SlotIndex < ChoiceGuideSlotCount &&
+		CurrentCardsPerSlot.IsValidIndex(
+			SlotIndex) &&
+		CurrentCardsPerSlot[SlotIndex] > 0;
+}
+
+void UNSAugmentationWidget::QueueChoiceCardPositionRefresh()
+{
+	if (!ChoiceRootCanvas)
+	{
+		return;
+	}
+
+	const bool bSelectionOpen = bPanelOpen && !CurrentOfferCards.IsEmpty();
+
+	// 선택 패널이 아직 열리지 않은 상태에서는 가이드 Geometry가 유효하지 않을 수 있습니다.
+	// Tab으로 선택 패널이 열린 뒤 RefreshAugmentPanelState에서 다시 예약됩니다.
+	if (!bSelectionOpen)
+	{
+		ChoiceRootCanvas->SetRenderOpacity(1.f);
+		return;
+	}
+
+	if (bChoiceCardPositionRefreshQueued)
+	{
+		return;
+	}
+
+	bChoiceCardPositionRefreshQueued = true;
+
+	// 첫 프레임에 잘못된 좌표가 잠깐 보이는 것을 막습니다.
+	ChoiceRootCanvas->SetRenderOpacity(0.f);
+
+	if (UWorld* World = GetWorld())
+	{
+		FTimerDelegate Delegate;
+		Delegate.BindUObject(
+			this,
+			&UNSAugmentationWidget::HandleDeferredChoiceCardPositionRefresh);
+
+		World->GetTimerManager().SetTimerForNextTick(Delegate);
+		return;
+	}
+
+	HandleDeferredChoiceCardPositionRefresh();
+}
+
+void UNSAugmentationWidget::HandleDeferredChoiceCardPositionRefresh()
+{
+	bChoiceCardPositionRefreshQueued = false;
+
+	const bool bSelectionOpen =
+		bPanelOpen &&
+		!CurrentOfferCards.IsEmpty();
+
+	if (!bSelectionOpen)
+	{
+		if (ChoiceRootCanvas)
+		{
+			ChoiceRootCanvas->SetRenderOpacity(1.f);
+		}
+		return;
+	}
+
+	RefreshChoiceGuideVisibility();
+	ForceLayoutPrepass();
+	RefreshChoiceCardPositions();
+
+	if (ChoiceRootCanvas)
+	{
+		ChoiceRootCanvas->SetRenderOpacity(1.f);
 	}
 }
 
 void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 {
-	//잘못된 번호가 입력되면 선택 x
-	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
+	// 선택 애니메이션 중에는 추가 선택 입력을 무시
+	if (bSelectionAnimationPlaying)
 	{
 		return;
 	}
 
-	ConfirmAugmentSelection(CardIndex);
+	// 유효하지 않은 카드 번호는 무시
+	if (!CurrentOfferCards.IsValidIndex(CardIndex) ||
+		!AugmentCardWidgets.IsValidIndex(CardIndex))
+	{
+		return;
+	}
+
+	// 서버 선택 요청 전에 카드 선택 연출을 시작
+	PlayAugmentSelectSound();
+	BeginCardSelection(CardIndex);
 }
 
 void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 {
-	// 리롤 응답을 기다리는 중이면 카드 선택도 막음.
+	// 리롤 응답을 기다리는 중이면 카드 선택을 막음
 	if (bRerollRequestPending)
 	{
 		return;
 	}
 
-	//현재 오퍼 범위 밖이면 무시
+	// 현재 오퍼 범위 밖이면 무시
 	if (!CurrentOfferCards.IsValidIndex(CardIndex))
 	{
 		return;
@@ -195,14 +562,17 @@ void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 		return;
 	}
 
-	//서버 권한에서 증강 적용. UI 숨김은 서버의 Client_CloseOffer -> OnOfferClosed가 처리
+	// 서버 권한에서 증강 적용. UI 숨김은 서버의 Client_CloseOffer -> OnOfferClosed가 처리
 	SelComp->Server_Choose(CardIndex, CurrentOfferRevision);
 }
 
 void UNSAugmentationWidget::RequestRerollAugment()
 {
-	// 이미 요청을 보내놨거나, 지금 오퍼에서 리롤이 안되는 상태면 무시 (버튼 숨김만으로는 T키를 못 막으니 여기서도 막음)
-	if (bRerollRequestPending || !bCanRerollCurrentOffer)
+	// 선택 애니메이션 중이거나 리롤 불가 상태면 리롤 요청을 막음
+	if (bSelectionAnimationPlaying ||
+		bRerollRequestPending ||
+		!bCanRerollCurrentOffer ||
+		CurrentOfferCards.IsEmpty())
 	{
 		return;
 	}
@@ -217,7 +587,7 @@ void UNSAugmentationWidget::RequestRerollAugment()
 	SetRerollStatusMessage(FText::FromString(TEXT("리롤 중입니다.")));
 	RefreshRerollControls();
 
-	//서버에 전체 리롤 요청 → Client_PresentOffer → HandleOfferPresented로 카드 갱신
+	// 서버에 전체 리롤 요청 -> Client_PresentOffer -> HandleOfferPresented로 카드 갱신
 	SelComp->Server_RerollCard(CurrentOfferRevision);
 }
 
@@ -229,22 +599,47 @@ bool UNSAugmentationWidget::CanAffordReroll()
 
 bool UNSAugmentationWidget::IsRerollAvailable()
 {
-	return !bRerollRequestPending && CanAffordReroll();
+	// 선택 애니메이션 중에는 리롤을 비활성화
+	return
+		!bSelectionAnimationPlaying &&
+		!bRerollRequestPending &&
+		bCanRerollCurrentOffer &&
+		CanAffordReroll();
 }
 
 void UNSAugmentationWidget::RefreshRerollControls()
 {
-	const ESlateVisibility RerollVisibility =
-		bCanRerollCurrentOffer ? ESlateVisibility::Visible : ESlateVisibility::Collapsed;
+	const bool bSelectionOpen = bPanelOpen && !CurrentOfferCards.IsEmpty();
+
+	// 선택 애니메이션 중에는 리롤 UI를 숨김
+	const bool bShouldShowReroll =
+		bSelectionOpen &&
+		bCanRerollCurrentOffer &&
+		!bSelectionAnimationPlaying;
+
+	const ESlateVisibility ButtonVisibility =
+		bShouldShowReroll
+			? ESlateVisibility::Visible
+			: ESlateVisibility::Collapsed;
+
+	const ESlateVisibility DisplayVisibility =
+		bShouldShowReroll
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed;
 
 	if (RerollButton)
 	{
-		RerollButton->SetVisibility(RerollVisibility);
+		RerollButton->SetVisibility(ButtonVisibility);
+	}
+
+	if (RerollInputIcon)
+	{
+		RerollInputIcon->SetVisibility(DisplayVisibility);
 	}
 
 	if (RerollCostText)
 	{
-		RerollCostText->SetVisibility(RerollVisibility);
+		RerollCostText->SetVisibility(DisplayVisibility);
 		RerollCostText->SetText(FText::AsNumber(CurrentRerollCost));
 	}
 }
@@ -257,7 +652,10 @@ void UNSAugmentationWidget::SetRerollStatusMessage(const FText& Message)
 	}
 
 	RerollStatusText->SetText(Message);
-	RerollStatusText->SetVisibility(Message.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	RerollStatusText->SetVisibility(
+		Message.IsEmpty()
+			? ESlateVisibility::Collapsed
+			: ESlateVisibility::Visible);
 }
 
 void UNSAugmentationWidget::RefreshOwnedAugmentList()
@@ -266,7 +664,7 @@ void UNSAugmentationWidget::RefreshOwnedAugmentList()
 	{
 		return;
 	}
-	
+
 	ClearOwnedAugmentLists();
 	RefreshOwnedAugmentSectionVisibility();
 
@@ -277,31 +675,36 @@ void UNSAugmentationWidget::RefreshOwnedAugmentList()
 		return;
 	}
 
-	// 보유 증강 아이콘 소프트포인터 수집
+	// 보유 증강 아이콘 소프트 오브젝트 경로 수집
 	TArray<FSoftObjectPath> PathsToLoad;
 	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
 	{
-		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+		const UNSAugmentDefinition* Def =
+			Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+
 		if (Def && !Def->Icon.IsNull())
 		{
 			PathsToLoad.Add(Def->Icon.ToSoftObjectPath());
 		}
 	}
+
 	if (PathsToLoad.Num() == 0)
 	{
 		return;
 	}
 
-	// 이전 로드 취소 후 비동기 로드
 	if (OwnedIconLoadHandle.IsValid())
 	{
 		OwnedIconLoadHandle->CancelHandle();
 		OwnedIconLoadHandle.Reset();
 	}
-	OwnedIconLoadHandle = UAssetManager::GetStreamableManager().RequestAsyncLoad(
-		PathsToLoad,
-		FStreamableDelegate::CreateUObject(this, &UNSAugmentationWidget::OnOwnedIconsLoaded)
-	);
+
+	OwnedIconLoadHandle =
+		UAssetManager::GetStreamableManager().RequestAsyncLoad(
+			PathsToLoad,
+			FStreamableDelegate::CreateUObject(
+				this,
+				&UNSAugmentationWidget::OnOwnedIconsLoaded));
 }
 
 void UNSAugmentationWidget::OnOwnedIconsLoaded()
@@ -310,7 +713,7 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 	{
 		return;
 	}
-	
+
 	ClearOwnedAugmentLists();
 	RefreshOwnedAugmentSectionVisibility();
 
@@ -320,10 +723,16 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 	{
 		return;
 	}
-	
+
+	const UObject* RiaSansFontObject = LoadObject<UObject>(
+		nullptr,
+		TEXT("/Game/NeoSanctum/UI/Asset/Font/CF_RiaSans.CF_RiaSans"));
+
 	for (const FNSAugmentInstance& Inst : Inv->GetOwned())
 	{
-		const UNSAugmentDefinition* Def = Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+		const UNSAugmentDefinition* Def =
+			Data->GetData<UNSAugmentDefinition>(Inst.DefId);
+
 		if (!Def)
 		{
 			continue;
@@ -336,7 +745,7 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 		}
 
 		const int32 StackCount = Inv->GetStackCount(Inst.DefId);
-		// SizeBox로 감싸서 텍스처 원본 해상도와 무관하게 일정한 크기로 표시
+
 		USizeBox* SizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 		UOverlay* Overlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		UScaleBox* ScaleBox = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
@@ -346,14 +755,13 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 		{
 			continue;
 		}
+
 		SizeBox->SetWidthOverride(OwnedIconSize.X);
 		SizeBox->SetHeightOverride(OwnedIconSize.Y);
 
 		ScaleBox->SetStretch(EStretch::ScaleToFit);
 		ScaleBox->SetStretchDirection(EStretchDirection::Both);
 
-
-		// SetBrushFromTexture 후 원하는 표시 크기로 재지정
 		IconImage->SetBrushFromTexture(Texture, true);
 
 		ScaleBox->AddChild(IconImage);
@@ -367,34 +775,36 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 
 		if (StackCount > 1)
 		{
-			UBorder* CountBadge = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
 			UTextBlock* CountText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 
-			if (CountBadge && CountText)
+			if (CountText)
 			{
-				CountBadge->SetBrushColor(FLinearColor(0.f, 0.f, 0.f, 0.85f));
-				CountBadge->SetPadding(FMargin(4.f, 1.f));
-
 				FSlateFontInfo FontInfo = CountText->GetFont();
-				FontInfo.Size = 14;
+				if (RiaSansFontObject)
+				{
+					FontInfo.FontObject = RiaSansFontObject;
+				}
+				FontInfo.Size = 12;
+				FontInfo.OutlineSettings.OutlineSize = 1;
+				FontInfo.OutlineSettings.OutlineColor = FLinearColor(0.f, 0.03f, 0.08f, 1.f);
 				CountText->SetFont(FontInfo);
 
 				CountText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 				CountText->SetText(FText::Format(
 					NSLOCTEXT("AugmentationWidget", "OwnedAugmentCount", "{0}"),
-					FText::AsNumber(StackCount)
-				));
+					FText::AsNumber(StackCount)));
 
-				CountBadge->AddChild(CountText);
+				UOverlaySlot* BadgeSlot = Overlay->AddChildToOverlay(CountText);
 
-				UOverlaySlot* BadgeSlot = Overlay->AddChildToOverlay(CountBadge);
 				if (BadgeSlot)
 				{
 					BadgeSlot->SetHorizontalAlignment(HAlign_Right);
 					BadgeSlot->SetVerticalAlignment(VAlign_Top);
+					BadgeSlot->SetPadding(FMargin(0.f));
 				}
 			}
 		}
+
 		UWrapBox* TargetWrapBox = GetOwnedAugmentWrapBox(Inst.Rarity);
 		if (!TargetWrapBox)
 		{
@@ -404,152 +814,212 @@ void UNSAugmentationWidget::OnOwnedIconsLoaded()
 		SizeBox->AddChild(Overlay);
 		TargetWrapBox->AddChildToWrapBox(SizeBox);
 	}
+
 	RefreshOwnedAugmentSectionVisibility();
 }
 
 void UNSAugmentationWidget::HighLightCard(int32 CardIndex)
 {
-
-	//잘못된 인덱스가 들어온경우 처리 x
 	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
 	{
 		return;
 	}
-	HighlightedCardIndex= CardIndex;
+
+	HighlightedCardIndex = CardIndex;
+
 	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
 	{
 		if (!AugmentCardWidgets[Index])
 		{
 			continue;
 		}
-		//선택한 카드만 강조
+
 		AugmentCardWidgets[Index]->SetHighLighted(Index == HighlightedCardIndex);
 	}
 }
 
 void UNSAugmentationWidget::RefreshAugmentPanelState()
 {
-	const UNSAugmentSelectionComponent* SelectionComp =
-		SelectionComponent.Get();
+	const UNSAugmentSelectionComponent* SelectionComp = SelectionComponent.Get();
 
-	const int32 PendingCount =
-		SelectionComp
-			? SelectionComp->GetPendingCount()
-			: 0;
+	const int32 PendingCount = SelectionComp
+		                           ? SelectionComp->GetPendingCount()
+		                           : 0;
 
 	const bool bHasPendingAugment = PendingCount > 0;
 	const bool bHasOfferCards = !CurrentOfferCards.IsEmpty();
 
-	// 위젯 자체는 다음 중 하나라도 해당하면 유지한다.
-	// Tab 또는 자동 선택으로 증강 패널이 열린 상태
-	// C 입력으로 보유 증강 목록을 표시하는 상태
-	// 아직 처리하지 않은 증강이 있는 상태
-	// 실제 선택 카드 데이터가 존재하는 상태
+	const bool bHasAugmentPrompt = bHasPendingAugment || bHasOfferCards;
+
+	// 선택 카드 캔버스는 선택 애니메이션 중에도 계속 표시
+	const bool bChoiceCardsVisible =
+		bPanelOpen &&
+		bHasOfferCards;
+
+	// 선택 가이드와 리롤 UI는 선택 애니메이션 중에 숨김
+	const bool bSelectionControlsVisible =
+		bChoiceCardsVisible &&
+		!bSelectionAnimationPlaying;
+
 	const bool bShouldShowAugmentWidget =
 		bPanelOpen ||
 		bOwnedListRequested ||
-		bHasPendingAugment ||
-		bHasOfferCards;
-
-	// Tab 안내, 안내 텍스트, 리롤 비용은
-	// 실제 선택 가능한 카드가 있을 때 기본 화면에서도 표시한다.
-	const bool bShouldShowCenterControl =
-		bHasOfferCards;
-
-	// 실제 증강 선택 카드는 선택 패널이 열린 상태에서만 표시한다.
-	const bool bShouldShowCardSection =
-		bPanelOpen &&
-		bHasOfferCards;
+		bHasAugmentPrompt;
 
 	if (!bShouldShowAugmentWidget)
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
-		HideCardSection();
+
+		if (CardSectionRoot)
+		{
+			CardSectionRoot->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		if (ChoiceRootCanvas)
+		{
+			ChoiceRootCanvas->SetVisibility(ESlateVisibility::Collapsed);
+		}
 
 		if (CenterControlRoot)
 		{
-			CenterControlRoot->SetVisibility(
-				ESlateVisibility::Collapsed);
+			CenterControlRoot->SetVisibility(ESlateVisibility::Collapsed);
 		}
 
+		if (TabButton)
+		{
+			TabButton->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		if (RemainingAugmentCountText)
+		{
+			RemainingAugmentCountText->SetVisibility(ESlateVisibility::Collapsed);
+		}
+
+		RefreshRerollControls();
+		RefreshChoiceGuideVisibility();
 		return;
 	}
 
 	SetVisibility(ESlateVisibility::Visible);
 
-	if (CenterControlRoot)
-	{
-		CenterControlRoot->SetVisibility(
-			bShouldShowCenterControl
-				? ESlateVisibility::Visible
-				: ESlateVisibility::Collapsed);
-	}
-
 	if (CardSectionRoot)
 	{
 		CardSectionRoot->SetVisibility(
-			bShouldShowCardSection
+			bHasAugmentPrompt
 				? ESlateVisibility::Visible
 				: ESlateVisibility::Collapsed);
 	}
 
-	if (PendingCountText)
+	if (ChoiceRootCanvas)
 	{
-		PendingCountText->SetText(
-			FText::AsNumber(PendingCount));
+		ChoiceRootCanvas->SetVisibility(
+			bChoiceCardsVisible
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+
+	if (CenterControlRoot)
+	{
+		CenterControlRoot->SetVisibility(
+			bHasAugmentPrompt
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
+
+	if (TabButton)
+	{
+		TabButton->SetVisibility(
+			bHasAugmentPrompt && !bChoiceCardsVisible
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
 
 	if (RemainingAugmentCountText)
 	{
-		RemainingAugmentCountText->SetText(
-			FText::AsNumber(PendingCount));
+		RemainingAugmentCountText->SetVisibility(
+			bHasAugmentPrompt
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
+
+		RemainingAugmentCountText->SetText(FText::AsNumber(PendingCount));
+	}
+
+	RefreshRerollControls();
+	RefreshChoiceGuideVisibility();
+
+	if (bSelectionControlsVisible)
+	{
+		QueueChoiceCardPositionRefresh();
 	}
 }
 
 void UNSAugmentationWidget::SetOwnedAugmentListVisible(bool bVisible)
 {
 	bOwnedListRequested = bVisible;
-	
+
 	if (OwnedAugmentPanelRoot)
 	{
-		OwnedAugmentPanelRoot->SetVisibility(bVisible
-			? ESlateVisibility::HitTestInvisible
-			: ESlateVisibility::Collapsed);
+		OwnedAugmentPanelRoot->SetVisibility(
+			bVisible
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
-	
+
 	RefreshAugmentPanelState();
 }
 
 void UNSAugmentationWidget::OpenSelectionPanel()
 {
 	bPanelOpen = true;
-	
+
 	SetVisibility(ESlateVisibility::Visible);
 	SetOwnedAugmentListVisible(false);
 	RefreshAugmentPanelState();
 }
 
+void UNSAugmentationWidget::PlayAugmentSelectSound() const
+{
+	PlayAugmentSound(AugmentSelectSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentRerollSuccessSound() const
+{
+	PlayAugmentSound(AugmentRerollSuccessSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentRerollFailSound() const
+{
+	PlayAugmentSound(AugmentRerollFailSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentTabSound() const
+{
+	PlayAugmentSound(AugmentTabSoundID);
+}
+
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
-	//기본상태에서는 패널 숨김 + 카드 영역 숨김
+
+	// 기본상태에서는 패널 숨김 + 카드 영역 숨김
 	bPanelOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
 	HideCardSection();
 	SetOwnedAugmentListVisible(false);
 
-	//오너 PC의 선택 컴포넌트 델리게이트 구독
+	// 오너 PC의 선택 컴포넌트 델리게이트 구독
 	if (UNSAugmentSelectionComponent* SelComp = GetSelectionComponent())
 	{
 		SelComp->OnOfferPresented.AddDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelComp->OnOfferClosed.AddDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
 		SelComp->OnPendingCountChanged.AddDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
 		SelComp->OnRerollResult.AddDynamic(this, &UNSAugmentationWidget::HandleRerollResult);
-		//현재 대기 카운트로 뱃지 초기화
+
+		// 현재 대기 카운트로 뱃지 초기화
 		HandlePendingCountChanged(SelComp->GetPendingCount());
 	}
 
-	//보유 증강 변경 구독
+	// 보유 증강 변경 구독
 	if (UNSAugmentInventoryComponent* Inv = GetInventoryComponent())
 	{
 		Inv->OnInventoryChanged.AddDynamic(this, &UNSAugmentationWidget::HandleInventoryChanged);
@@ -562,33 +1032,42 @@ void UNSAugmentationWidget::NativeConstruct()
 
 	RefreshRerollControls();
 	SetRerollStatusMessage(FText::GetEmpty());
+	RefreshChoiceGuideVisibility();
 }
 
 void UNSAugmentationWidget::NativeDestruct()
 {
-	//진행 중인 비동기 로드 취소
+	// 위젯 제거 전에 선택 애니메이션 타이머를 정리
+	ClearSelectionAnimationTimer();
+
+	// 진행 중인 비동기 로드 취소
 	if (IconLoadHandle.IsValid())
 	{
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
+
 	if (OwnedIconLoadHandle.IsValid())
 	{
 		OwnedIconLoadHandle->CancelHandle();
 		OwnedIconLoadHandle.Reset();
 	}
-	//구독 해제
+
+	// 구독 해제
 	if (SelectionComponent.IsValid())
 	{
 		SelectionComponent->OnOfferPresented.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferPresented);
 		SelectionComponent->OnOfferClosed.RemoveDynamic(this, &UNSAugmentationWidget::HandleOfferClosed);
-		SelectionComponent->OnPendingCountChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
+		SelectionComponent->OnPendingCountChanged.
+		                    RemoveDynamic(this, &UNSAugmentationWidget::HandlePendingCountChanged);
 		SelectionComponent->OnRerollResult.RemoveDynamic(this, &UNSAugmentationWidget::HandleRerollResult);
 	}
+
 	if (InventoryComponent.IsValid())
 	{
 		InventoryComponent->OnInventoryChanged.RemoveDynamic(this, &UNSAugmentationWidget::HandleInventoryChanged);
 	}
+
 	Super::NativeDestruct();
 }
 
@@ -606,6 +1085,7 @@ UNSAugmentSelectionComponent* UNSAugmentationWidget::GetSelectionComponent()
 	}
 
 	SelectionComponent = PC->FindComponentByClass<UNSAugmentSelectionComponent>();
+
 	return SelectionComponent.Get();
 }
 
@@ -624,6 +1104,7 @@ UNSAugmentInventoryComponent* UNSAugmentationWidget::GetInventoryComponent()
 	}
 
 	InventoryComponent = PS->FindComponentByClass<UNSAugmentInventoryComponent>();
+
 	return InventoryComponent.Get();
 }
 
@@ -642,6 +1123,7 @@ UNSCurrencyComponent* UNSAugmentationWidget::GetCurrencyComponent()
 	}
 
 	CurrencyComponent = PS->FindComponentByClass<UNSCurrencyComponent>();
+
 	return CurrencyComponent.Get();
 }
 
@@ -649,24 +1131,94 @@ void UNSAugmentationWidget::HandleOfferPresented(
 	const TArray<FNSAugmentSelectionCard>& Cards,
 	int64 RerollCost,
 	bool bCanReroll,
-	int32 OfferRevision)
+	int32 OfferRevision,
+	int32 MaxChoiceCount,
+	int32 AvailableCardCount)
 {
-	// 지금 잠겨있던 것이 리롤 요청이었는지 먼저 기억해두고 바로 품 (리롤 완료 문구 표시용)
-	const bool bWasRerollRequest = bRerollRequestPending;
+	const bool bWasRerollRequest =
+		bRerollRequestPending;
+
 	bRerollRequestPending = false;
+
+	ClearSelectionAnimationTimer();
 
 	CurrentOfferRevision = OfferRevision;
 	CurrentRerollCost = RerollCost;
-	bCanRerollCurrentOffer = bCanReroll;
 
-	SetRerollStatusMessage(bWasRerollRequest ? FText::FromString(TEXT("리롤 완료")) : FText::GetEmpty());
-	RefreshRerollControls();
+	ChoiceGuideSlotCount =
+		NormalizeChoiceGuideSlotCount(
+			MaxChoiceCount);
+
+	CurrentAvailableCardCount =
+		FMath::Max(
+			AvailableCardCount,
+			0);
 
 	CurrentOfferCards = Cards;
-	CurrentOfferViewData.Reset();
-	CurrentOfferViewData.SetNum(Cards.Num());
 
-	CreateChoiceCard(Cards.Num());
+	// 서버 오류 방어용. 정상 흐름에서는 초과하지 않아야 함.
+	if (CurrentOfferCards.Num() >
+		ChoiceGuideSlotCount)
+	{
+		CurrentOfferCards.SetNum(
+			ChoiceGuideSlotCount);
+	}
+
+	const int32 SelectableChoiceCount =
+		GetSelectableChoiceCount();
+
+	const int32 ExpectedChoiceCount =
+		FMath::Min(
+			CurrentAvailableCardCount,
+			ChoiceGuideSlotCount);
+
+	const bool bHasExpectedChoiceCount =
+		SelectableChoiceCount ==
+		ExpectedChoiceCount;
+
+	if (!bHasExpectedChoiceCount)
+	{
+		NS_OBJ_LOG(
+			LogNS,
+			Warning,
+			"Received augment card count does not match the available candidate count. Expected={Expected}, Actual={Actual}, Available={Available}, MaxChoice={MaxChoice}",
+			("Expected", ExpectedChoiceCount),
+			("Actual", SelectableChoiceCount),
+			("Available",
+				CurrentAvailableCardCount),
+			("MaxChoice",
+				ChoiceGuideSlotCount));
+	}
+
+	bCanRerollCurrentOffer =
+		bCanReroll &&
+		bHasExpectedChoiceCount &&
+		SelectableChoiceCount > 0;
+
+	SetRerollStatusMessage(
+		bWasRerollRequest
+			? FText::FromString(
+				TEXT("Reroll Complete"))
+			: FText::GetEmpty());
+
+	if (bWasRerollRequest &&
+		SelectableChoiceCount > 0)
+	{
+		PlayAugmentRerollSuccessSound();
+	}
+
+	RefreshRerollControls();
+
+	CurrentOfferViewData.Reset();
+	CurrentOfferViewData.SetNum(
+		SelectableChoiceCount);
+
+	CurrentCardsPerSlot =
+		CalculateCardsPerSlot(
+			CurrentAvailableCardCount);
+
+	CreateChoiceCard(
+		SelectableChoiceCount);
 
 	TArray<FSoftObjectPath> PathsToLoad;
 
@@ -681,9 +1233,18 @@ void UNSAugmentationWidget::HandleOfferPresented(
 
 	if (DisplayBridge)
 	{
-		for (int32 Index = 0; Index < Cards.Num(); ++Index)
+		for (int32 Index = 0;
+		     Index < SelectableChoiceCount;
+		     ++Index)
 		{
-			const FNSAugmentSelectionCard& CardData = Cards[Index];
+			if (!CurrentOfferCards.IsValidIndex(Index) ||
+				!CurrentOfferViewData.IsValidIndex(Index))
+			{
+				continue;
+			}
+
+			const FNSAugmentSelectionCard& CardData =
+				CurrentOfferCards[Index];
 
 			const int32 CurrentStack =
 				Inventory
@@ -719,7 +1280,8 @@ void UNSAugmentationWidget::HandleOfferPresented(
 	if (!PathsToLoad.IsEmpty())
 	{
 		IconLoadHandle =
-			UAssetManager::GetStreamableManager().RequestAsyncLoad(
+			UAssetManager::GetStreamableManager().
+			RequestAsyncLoad(
 				PathsToLoad,
 				FStreamableDelegate::CreateUObject(
 					this,
@@ -741,20 +1303,17 @@ void UNSAugmentationWidget::OnIconsLoaded()
 void UNSAugmentationWidget::PopulateOfferCards()
 {
 	for (int32 Index = 0;
-		Index < AugmentCardWidgets.Num();
-		++Index)
+	     Index < AugmentCardWidgets.Num();
+	     ++Index)
 	{
-		UNSAugmentCardWidget* Card =
-			AugmentCardWidgets[Index];
+		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
 
-		if (!Card ||
-			!CurrentOfferViewData.IsValidIndex(Index))
+		if (!Card || !CurrentOfferViewData.IsValidIndex(Index))
 		{
 			continue;
 		}
 
-		const FNSAugmentCardViewData& ViewData =
-			CurrentOfferViewData[Index];
+		const FNSAugmentCardViewData& ViewData = CurrentOfferViewData[Index];
 
 		if (!ViewData.DefId.IsValid())
 		{
@@ -763,20 +1322,24 @@ void UNSAugmentationWidget::PopulateOfferCards()
 
 		Card->ApplyViewData(ViewData);
 	}
+
+	QueueChoiceCardPositionRefresh();
 }
 
 void UNSAugmentationWidget::HandleOfferClosed()
 {
-	//오퍼 종료 시 아이콘 로드 핸들 해제 (자산 반환)
+	// 오퍼가 닫힐 때 지연 선택 요청을 취소
+	ClearSelectionAnimationTimer();
+
 	if (IconLoadHandle.IsValid())
 	{
 		IconLoadHandle->CancelHandle();
 		IconLoadHandle.Reset();
 	}
-	//카드 영역만 닫음. 패널 전체(보유 아이콘)는 유지 → 대기 0개면 보유 목록만 표시됨
+
 	HideCardSection();
-	if (UNSUIManagerSubsystem* UIManager =
-		UNSUIManagerSubsystem::Get(this))
+
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->CloseAugmentationPanel();
 	}
@@ -814,7 +1377,6 @@ void UNSAugmentationWidget::HandleRerollResult(
 {
 	bRerollRequestPending = false;
 
-	// 응답이 내가 보낸 요청 기준이 아니면(그 사이 오퍼가 이미 바뀌었으면) 문구는 안띄우고 잠금만 품
 	if (RequestRevision != CurrentOfferRevision)
 	{
 		SetRerollStatusMessage(FText::GetEmpty());
@@ -829,17 +1391,23 @@ void UNSAugmentationWidget::HandleRerollResult(
 	{
 	case ENSAugmentRerollResult::NotEnoughCurrency:
 		Message = FText::FromString(FString::Printf(
-			TEXT("임시 재화가 부족합니다. (보유 %lld / 필요 %lld)"), HaveCurrency, RequiredCost)
-		);
+			TEXT("임시 재화가 부족합니다. (보유 %lld / 필요 %lld)"),
+			HaveCurrency,
+			RequiredCost));
 		break;
 
 	case ENSAugmentRerollResult::NoDifferentOffer:
-		Message = FText::FromString(TEXT("현재 조건에서 새로운 증강 카드를 만들 수 없습니다."));
+		Message = FText::FromString(
+			TEXT("현재 조건에서 새로운 증강 카드를 만들 수 없습니다."));
 		break;
 
 	default:
-		// InvalidRequest/NoActiveOffer/StaleRevision은 사용자가 딱히 알 필요 없는 상황이라 조용히 잠금만 풀어줌.
 		break;
+	}
+
+	if (!Message.IsEmpty())
+	{
+		PlayAugmentRerollFailSound();
 	}
 
 	SetRerollStatusMessage(Message);
@@ -848,14 +1416,13 @@ void UNSAugmentationWidget::HandleRerollResult(
 
 void UNSAugmentationWidget::HandleInventoryChanged()
 {
-	//패널이 열려 있을 때만 보유 아이콘 갱신 (닫혀 있으면 다음 OpenPanel에서 갱신)
 	if (bPanelOpen)
 	{
 		RefreshOwnedAugmentList();
 	}
-	
+
 	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
-	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
 	{
 		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
 	}
@@ -864,15 +1431,15 @@ void UNSAugmentationWidget::HandleInventoryChanged()
 bool UNSAugmentationWidget::AreOwnedAugmentListReady() const
 {
 	return
-	OwnedAugmentListRoot &&
+		OwnedAugmentListRoot &&
 		CommonAugmentSectionRoot &&
-			RareAugmentSectionRoot &&
-				EpicAugmentSectionRoot &&
-					LegendaryAugmentSectionRoot &&
-						CommonAugmentWrapBox &&
-							RareAugmentWrapBox &&
-								EpicAugmentWrapBox &&
-									LegendaryAugmentWrapBox;
+		RareAugmentSectionRoot &&
+		EpicAugmentSectionRoot &&
+		LegendaryAugmentSectionRoot &&
+		CommonAugmentWrapBox &&
+		RareAugmentWrapBox &&
+		EpicAugmentWrapBox &&
+		LegendaryAugmentWrapBox;
 }
 
 void UNSAugmentationWidget::ClearOwnedAugmentLists()
@@ -881,17 +1448,17 @@ void UNSAugmentationWidget::ClearOwnedAugmentLists()
 	{
 		CommonAugmentWrapBox->ClearChildren();
 	}
-	
+
 	if (RareAugmentWrapBox)
 	{
 		RareAugmentWrapBox->ClearChildren();
 	}
-	
+
 	if (EpicAugmentWrapBox)
 	{
 		EpicAugmentWrapBox->ClearChildren();
 	}
-	
+
 	if (LegendaryAugmentWrapBox)
 	{
 		LegendaryAugmentWrapBox->ClearChildren();
@@ -904,37 +1471,239 @@ void UNSAugmentationWidget::RefreshOwnedAugmentSectionVisibility()
 	{
 		return;
 	}
-	
-	CommonAugmentSectionRoot->SetVisibility(CommonAugmentWrapBox->GetChildrenCount() > 0
-		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	
-	RareAugmentSectionRoot->SetVisibility(RareAugmentWrapBox->GetChildrenCount() > 0
-		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	
-	EpicAugmentSectionRoot->SetVisibility(EpicAugmentWrapBox->GetChildrenCount() > 0
-		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-	
-	LegendaryAugmentSectionRoot->SetVisibility(LegendaryAugmentWrapBox->GetChildrenCount() > 0
-		? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
+	CommonAugmentSectionRoot->SetVisibility(
+		CommonAugmentWrapBox->GetChildrenCount() > 0
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+
+	RareAugmentSectionRoot->SetVisibility(
+		RareAugmentWrapBox->GetChildrenCount() > 0
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+
+	EpicAugmentSectionRoot->SetVisibility(
+		EpicAugmentWrapBox->GetChildrenCount() > 0
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+
+	LegendaryAugmentSectionRoot->SetVisibility(
+		LegendaryAugmentWrapBox->GetChildrenCount() > 0
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
 }
 
-UWrapBox* UNSAugmentationWidget::GetOwnedAugmentWrapBox(ENSAugmentRarity Rarity) const
+UWrapBox* UNSAugmentationWidget::GetOwnedAugmentWrapBox(
+	ENSAugmentRarity Rarity) const
 {
 	switch (Rarity)
 	{
 	case ENSAugmentRarity::Common:
 		return CommonAugmentWrapBox;
-		
+
 	case ENSAugmentRarity::Rare:
 		return RareAugmentWrapBox;
-		
+
 	case ENSAugmentRarity::Epic:
 		return EpicAugmentWrapBox;
-		
+
 	case ENSAugmentRarity::Legendary:
 		return LegendaryAugmentWrapBox;
-		
+
 	default:
 		return nullptr;
 	}
+}
+
+void UNSAugmentationWidget::BeginCardSelection(int32 CardIndex)
+{
+	// 유효하지 않은 카드 선택이면 연출을 시작하지 않음
+	if (!CurrentOfferCards.IsValidIndex(CardIndex) ||
+		!AugmentCardWidgets.IsValidIndex(CardIndex))
+	{
+		return;
+	}
+
+	// 선택 애니메이션 중복 입력을 막음
+	bSelectionAnimationPlaying = true;
+
+	// 애니메이션 종료 후 선택 요청을 보낼 카드 번호를 저장
+	PendingSelectedCardIndex = CardIndex;
+
+	// 기존 하이라이트 인덱스를 선택 카드로 갱신
+	HighlightedCardIndex = CardIndex;
+
+	for (int32 Index = 0; Index < AugmentCardWidgets.Num(); ++Index)
+	{
+		UNSAugmentCardWidget* Card = AugmentCardWidgets[Index];
+		if (!Card)
+		{
+			continue;
+		}
+
+		// 이전 선택 연출 상태를 먼저 초기화
+		Card->ResetSelectionVisual();
+
+		if (Index == CardIndex)
+		{
+			// 선택된 카드만 하이라이트와 선택 애니메이션을 적용
+			Card->SetHighLighted(true);
+			Card->PlaySelectAnimation();
+		}
+		else
+		{
+			// 선택되지 않은 카드는 하이라이트를 끄고 흐리게 만듦
+			Card->SetHighLighted(false);
+			Card->SetDeselectedVisual(DeselectedChoiceCardOpacity);
+		}
+	}
+
+	// 선택 연출 중에는 가이드와 리롤 UI를 갱신해 숨김
+	RefreshChoiceGuideVisibility();
+	RefreshRerollControls();
+
+	// 선택 애니메이션이 끝난 뒤 실제 서버 선택 요청
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SelectionAnimationTimerHandle);
+		World->GetTimerManager().SetTimer(
+			SelectionAnimationTimerHandle,
+			this,
+			&UNSAugmentationWidget::FinishPendingCardSelection,
+			SelectionAnimationDelay,
+			false);
+		return;
+	}
+
+	// 월드 타이머를 사용할 수 없으면 즉시 선택 요청
+	FinishPendingCardSelection();
+}
+
+void UNSAugmentationWidget::FinishPendingCardSelection()
+{
+	// 선택 요청에 사용할 카드 인덱스를 임시 저장
+	const int32 CardIndex = PendingSelectedCardIndex;
+
+	// 선택 대기 상태를 해제
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
+
+	// 애니메이션 중 오퍼가 바뀌었다면 선택 연출만 초기화
+	if (!CurrentOfferCards.IsValidIndex(CardIndex))
+	{
+		ResetChoiceCardSelectionVisuals();
+		RefreshChoiceGuideVisibility();
+		RefreshRerollControls();
+		return;
+	}
+
+	// 선택 애니메이션이 끝난 뒤 실제 서버 선택 요청
+	ConfirmAugmentSelection(CardIndex);
+}
+
+void UNSAugmentationWidget::ResetChoiceCardSelectionVisuals()
+{
+	// 선택 대기 상태를 초기화
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
+
+	for (UNSAugmentCardWidget* Card : AugmentCardWidgets)
+	{
+		if (!Card)
+		{
+			continue;
+		}
+
+		// 각 카드의 선택 연출 상태를 기본값으로 되돌림
+		Card->ResetSelectionVisual();
+	}
+}
+
+void UNSAugmentationWidget::ClearSelectionAnimationTimer()
+{
+	// 지연 선택 타이머가 있으면 해제
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SelectionAnimationTimerHandle);
+	}
+
+	// 선택 대기 상태를 초기화
+	PendingSelectedCardIndex = INDEX_NONE;
+	bSelectionAnimationPlaying = false;
+}
+
+void UNSAugmentationWidget::PlayAugmentSound(FName SoundID) const
+{
+	if (SoundID.IsNone())
+	{
+		return;
+	}
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		SoundSubsystem->PlaySound2D(SoundID);
+	}
+}
+
+int32 UNSAugmentationWidget::NormalizeChoiceGuideSlotCount(int32 MaxChoiceCount) const
+{
+	return MaxChoiceCount >= 4 ? 4 : 3;
+}
+
+void UNSAugmentationWidget::
+RefreshChoiceGuideSlotVisibility()
+{
+	const bool bUseThreeGuide =
+		ChoiceGuideSlotCount == 3;
+
+	const bool bUseFourGuide =
+		ChoiceGuideSlotCount == 4;
+
+	SetChoiceGuideSlotVisible(
+		Choice3Slot1GuideRoot.Get(),
+		bUseThreeGuide &&
+		IsChoiceGuideSlotActive(0));
+
+	SetChoiceGuideSlotVisible(
+		Choice3Slot2GuideRoot.Get(),
+		bUseThreeGuide &&
+		IsChoiceGuideSlotActive(1));
+
+	SetChoiceGuideSlotVisible(
+		Choice3Slot3GuideRoot.Get(),
+		bUseThreeGuide &&
+		IsChoiceGuideSlotActive(2));
+
+	SetChoiceGuideSlotVisible(
+		Choice4Slot1GuideRoot.Get(),
+		bUseFourGuide &&
+		IsChoiceGuideSlotActive(0));
+
+	SetChoiceGuideSlotVisible(
+		Choice4Slot2GuideRoot.Get(),
+		bUseFourGuide &&
+		IsChoiceGuideSlotActive(1));
+
+	SetChoiceGuideSlotVisible(
+		Choice4Slot3GuideRoot.Get(),
+		bUseFourGuide &&
+		IsChoiceGuideSlotActive(2));
+
+	SetChoiceGuideSlotVisible(
+		Choice4Slot4GuideRoot.Get(),
+		bUseFourGuide &&
+		IsChoiceGuideSlotActive(3));
+}
+
+void UNSAugmentationWidget::SetChoiceGuideSlotVisible(UWidget* SlotWidget, bool bVisible) const
+{
+	if (!SlotWidget)
+	{
+		return;
+	}
+
+	SlotWidget->SetVisibility(
+		bVisible
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Hidden);
 }

@@ -203,6 +203,9 @@ public:
 	
 	// 트래블 중 새 월드가 로드될 때마다 로딩 위젯을 재확인
 	void HandlePostLoadMap(UWorld* LoadedWorld);
+	
+	// HUD의 WBP_Augmentation을 통해 Tab 증강 패널 토글 사운드를 재생
+	void PlayAugmentationTabSound() const;
 
 	// @원종 추가
 private:

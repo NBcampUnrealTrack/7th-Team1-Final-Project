@@ -264,6 +264,16 @@ void UNSUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
 	ShowLoadingScreen();
 }
 
+void UNSUIManagerSubsystem::PlayAugmentationTabSound() const
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	HUDWidget->PlayAugmentationTabSound();
+}
+
 void UNSUIManagerSubsystem::HandleCommonDataReady()
 {
 	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))

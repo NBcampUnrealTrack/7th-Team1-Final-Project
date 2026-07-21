@@ -348,6 +348,16 @@ void UNSHUDWidget::HideGuideChecklist()
 	GuideChecklistWidget->HideChecklist();
 }
 
+void UNSHUDWidget::PlayAugmentationTabSound() const
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+
+	AugmentationWidget->PlayAugmentTabSound();
+}
+
 void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
 {
 	if (!HPShieldWidget)
