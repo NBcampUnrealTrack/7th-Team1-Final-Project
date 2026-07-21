@@ -186,6 +186,20 @@ private:
 	// 클라이언트 인런 데이터 로드가 끝난 뒤 HUD와 인런 UI를 표시.
 	UFUNCTION()
 	void HandleClientRunDataReady();
+	
+	bool TryInitializeLocalProgress();
+
+	void BindInitialProgressReadiness();
+	void UnbindInitialProgressReadiness();
+
+	UFUNCTION()
+	void HandleOutGameDataReadyForInitialProgress();
+
+	// 동일 PlayerState에 초기 데이터를 여러번 받지 않기 위한 추적용
+	TWeakObjectPtr<ANSPlayerState> InitialProgressUploadedPlayerState;
+
+	// 리스폰된 새 Pawn에는 외형을 다시 적용
+	TWeakObjectPtr<APawn> InitialCharacterAppliedPawn;
 
 private:
 	UFUNCTION(NetMulticast, Reliable)

@@ -1061,7 +1061,7 @@ void ANSPlayerController::BeginPlay()
 		UIManager->ShowOutRunGoods();
 
 		// 클라이언트가 거점에 도착하면 거점용 OutGameData를 미리 준비
-		EnsureOutGameDataLoaded();
+		BindInitialProgressReadiness();
 
 		// 아웃런 목표 안내 시작 (로컬 마커 + 우측 상단 텍스트)
 		if (UNSOutRunGuideSubsystem* GuideSubsystem =
@@ -1115,6 +1115,11 @@ void ANSPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		UIManager->OnTravelLoadingFinished.Remove(TravelLoadingFinishedHandle);
 	}
 	TravelLoadingFinishedHandle.Reset();
+	
+	UnbindInitialProgressReadiness();
+
+	InitialProgressUploadedPlayerState.Reset();
+	InitialCharacterAppliedPawn.Reset();
 
 	Super::EndPlay(EndPlayReason);
 }
@@ -1248,7 +1253,8 @@ bool ANSPlayerController::IsInRunTravelURL(const FString& PendingURL) const
 	return bIsInRun;
 }
 
-void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
+void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn)
+{
 	Super::ClientRestart_Implementation(NewPawn);
 
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
@@ -1331,7 +1337,7 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		UIManager->MarkTravelViewReady();
 
 		// Seamless Travel 이후 로컬 클라이언트의 OutGameData 캐시가 비어있을 수 있으므로 미리 로드.
-		EnsureOutGameDataLoaded();
+		BindInitialProgressReadiness();
 
 		// PlayerState 초기화가 한 프레임 늦는 경우를 대비해서 다음 틱에 한 번 더 적용한다.
 		GetWorldTimerManager().SetTimerForNextTick(
@@ -1390,43 +1396,12 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 				&ANSPlayerController::UpdateSkillUIFromCurrentCharacter);
 		}
 	}
-	if (MapName.Contains(TEXT("HideOut")))
-	{
-		// 클라가 CachedData 읽어 ChangeCharacterData로 적용
-		UNSSaveGameSubsystem* SaveSubsystem =
-		GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
-		if (SaveSubsystem)
-		{
-			if (SaveSubsystem->GetCachedPermanentData())
-			{
-				// 로드가 완료되었다면 즉시 복원
-				RestoreLastSelectedCharacter();
-			}
-			else if (!PermanentDataLoadedHandle.IsValid())
-			{
-				// 로드가 아직 안되었다면 완료 후 복원되도록 바인딩
-				PermanentDataLoadedHandle = SaveSubsystem->OnPermanentDataLoaded.AddUObject(
-					this, &ANSPlayerController::HandlePermanentDataLoaded);
-			}
-		}
-		// OutGame 에셋 로드 보장
-		EnsureOutGameDataLoaded();
-	}
 }
 
 void ANSPlayerController::HandlePermanentDataLoaded(UNSPermanentSaveGame* Data)
 {
-	// 로드 완료 후 1회만 복원하고 바인딩 해제
-	if (UGameInstance* GameInstance = GetGameInstance())
-	{
-		if (UNSSaveGameSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UNSSaveGameSubsystem>())
-		{
-			SaveSubsystem->OnPermanentDataLoaded.Remove(PermanentDataLoadedHandle);
-		}
-	}
-	PermanentDataLoadedHandle.Reset();
-
-	RestoreLastSelectedCharacter();
+	// PlayerState/Pawn/Data가 아직 미준비라면 다른 이벤트에서 다시 시도
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::Server_RequestStartRun_Implementation()
@@ -1548,6 +1523,251 @@ void ANSPlayerController::HandleClientRunDataReady()
 	{
 		PlayerAudioFlowComponent->HandleClientRunDataReady();
 	}
+}
+
+bool ANSPlayerController::TryInitializeLocalProgress()
+{
+	 // 로컬 SaveGame은 소유 클라이언트만 읽음
+    if (!IsLocalController())
+    {
+        return false;
+    }
+
+    UWorld* World = GetWorld();
+    if (!IsValid(World))
+    {
+        return false;
+    }
+	
+    if (!World->GetName().Contains(TEXT("HideOut")))
+    {
+        return false;
+    }
+
+    // OutGame 데이터 준비 확인
+    UNSDataSubsystem* DataSubsystem =
+        UNSDataSubsystem::Get(this);
+
+    if (!IsValid(DataSubsystem) || !DataSubsystem->IsOutGameReady())
+    {
+        return false;
+    }
+
+    // 로컬 영구 SaveGame 준비 확인
+    UGameInstance* GameInstance = GetGameInstance();
+
+    UNSSaveGameSubsystem* SaveSubsystem =
+        GameInstance
+            ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>()
+            : nullptr;
+
+    if (!IsValid(SaveSubsystem))
+    {
+        return false;
+    }
+
+    UNSPermanentSaveGame* PermanentSave =
+        SaveSubsystem->GetCachedPermanentData();
+
+    if (!IsValid(PermanentSave))
+    {
+        // 아직 비동기 로드 중
+        return false;
+    }
+
+    // 네트워크 PlayerState 준비 확인
+    ANSPlayerState* NSPlayerState =
+        GetPlayerState<ANSPlayerState>();
+
+    if (!IsValid(NSPlayerState))
+    {
+        return false;
+    }
+
+    // 실제 플레이어 Pawn 준비 확인
+    ANSPlayerCharacterBase* PlayerCharacter =
+        Cast<ANSPlayerCharacterBase>(GetPawn());
+
+    if (!IsValid(PlayerCharacter))
+    {
+        return false;
+    }
+
+    const FName SelectedCharacterId =
+        PermanentSave->LastSelectedCharacterId;
+
+   
+	// 신규 유저라면 바로 초기화
+    if (SelectedCharacterId.IsNone())
+    {
+        InitialProgressUploadedPlayerState = NSPlayerState;
+
+        InitialCharacterAppliedPawn = PlayerCharacter;
+
+        UnbindInitialProgressReadiness();
+        return true;
+    }
+
+    // 저장된 FName으로 Character Primary Asset 검색
+    const FPrimaryAssetType CharacterType =
+        NSPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
+
+    const FPrimaryAssetId RestoredId(
+        CharacterType,
+        SelectedCharacterId);
+
+    const FSoftObjectPath DataPath =
+        UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
+
+    if (!DataPath.IsValid())
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[ProgressInit] Invalid character asset: %s"),
+            *SelectedCharacterId.ToString());
+
+        return false;
+    }
+
+    UNSCharacterData* RestoredData =
+        Cast<UNSCharacterData>(DataPath.TryLoad());
+
+    if (!IsValid(RestoredData))
+    {
+        return false;
+    }
+
+  
+	
+    if (InitialCharacterAppliedPawn.Get() != PlayerCharacter)
+    {
+        PlayerCharacter->ChangeCharacterData(RestoredData);
+
+        if (UNSUIManagerSubsystem* UIManager =
+                UNSUIManagerSubsystem::Get(this))
+        {
+            UIManager->ApplyCharacterSkillUISet(
+                RestoredData
+                    ->CharacterTag
+                    .GetTagName());
+        }
+
+        InitialCharacterAppliedPawn = PlayerCharacter;
+    }
+
+    if (InitialProgressUploadedPlayerState.Get() != NSPlayerState)
+    {
+        InitialProgressUploadedPlayerState = NSPlayerState;
+
+        UploadLocalProgress(SelectedCharacterId);
+
+      
+        StartSkillUIApplyRetry();
+    }
+
+    UnbindInitialProgressReadiness();
+	
+    return true;
+}
+
+void ANSPlayerController::BindInitialProgressReadiness()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World ||
+		!World->GetName().Contains(TEXT("HideOut")))
+	{
+		return;
+	}
+
+	// SaveGame 준비 이벤트
+	if (UGameInstance* GameInstance =
+			GetGameInstance())
+	{
+		if (UNSSaveGameSubsystem* SaveSubsystem =
+				GameInstance
+					->GetSubsystem<
+						UNSSaveGameSubsystem>())
+		{
+			if (!SaveSubsystem
+					->GetCachedPermanentData() &&
+				!PermanentDataLoadedHandle.IsValid())
+			{
+				PermanentDataLoadedHandle =
+					SaveSubsystem
+						->OnPermanentDataLoaded
+						.AddUObject(
+							this,
+							&ThisClass::HandlePermanentDataLoaded);
+			}
+		}
+	}
+
+	// OutGame 데이터 준비 이벤트
+	if (UNSDataSubsystem* DataSubsystem =
+		UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem
+			->OnOutGameDataReady
+			.AddUniqueDynamic(
+				this,
+				&ThisClass::HandleOutGameDataReadyForInitialProgress);
+	}
+
+	// OutGame 데이터 로드와 Travel LevelReady는 기존 helper
+	EnsureOutGameDataLoaded();
+	// 현재 시점에 필요한 객체들이 이미 준비되어 있으면 즉시 적용
+	TryInitializeLocalProgress();
+}
+
+void ANSPlayerController::UnbindInitialProgressReadiness()
+{
+	if (UNSDataSubsystem* DataSubsystem =
+			UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem
+			->OnOutGameDataReady
+			.RemoveDynamic(
+				this,
+				&ThisClass::HandleOutGameDataReadyForInitialProgress);
+
+		
+		//  기존 EnsureOutGameDataLoaded()가
+		//  Common 완료를 기다리던 중일 수 있으므로 방어적으로 제거
+		DataSubsystem
+			->OnCommonDataReady
+			.RemoveDynamic(
+				this,
+				&ThisClass::HandleOutGamePreloadCommonDataReady);
+	}
+
+	if (PermanentDataLoadedHandle.IsValid())
+	{
+		if (UGameInstance* GameInstance =
+				GetGameInstance())
+		{
+			if (UNSSaveGameSubsystem* SaveSubsystem =
+					GameInstance
+						->GetSubsystem<UNSSaveGameSubsystem>())
+			{
+				SaveSubsystem
+					->OnPermanentDataLoaded
+					.Remove(PermanentDataLoadedHandle);
+			}
+		}
+
+		PermanentDataLoadedHandle.Reset();
+	}
+}
+
+void ANSPlayerController::HandleOutGameDataReadyForInitialProgress()
+{
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::Client_NotifyReturnToHub_Implementation()
@@ -2224,74 +2444,7 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 
 void ANSPlayerController::RestoreLastSelectedCharacter()
 {
-	UGameInstance* GameInstance = GetGameInstance();
-	UNSSaveGameSubsystem* SaveSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
-	if (!SaveSubsystem)
-	{
-		return;
-	}
-
-	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
-	if (!PermanentSave || PermanentSave->LastSelectedCharacterId.IsNone())
-	{
-		return;
-	}
-	
-	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
-	if (!OwningPlayerState)
-	{
-		return;
-	}
-
-	// FName -> FPrimaryAssetId
-	const FPrimaryAssetType CharacterType =
-		OwningPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
-	const FPrimaryAssetId RestoredId(CharacterType, PermanentSave->LastSelectedCharacterId);
-	
-	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Restore LastSel=%s PS.CurrentId=%s"),
-	*PermanentSave->LastSelectedCharacterId.ToString(),
-	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
-
-	const FSoftObjectPath DataPath = UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
-	if (!DataPath.IsValid())
-	{
-
-		return;
-	}
-
-	UNSCharacterData* RestoredData = Cast<UNSCharacterData>(DataPath.TryLoad());
-	if (!RestoredData)
-	{
-
-		return;
-	}
-
-	// 동일 커밋 경로 재사용
-	CommitCharacterSelection(RestoredData);
-	
-	if (IsLocalController())
-	{
-		const FGameplayTag RestoredCharacterTag =
-			RestoredData->CharacterTag;
-
-		GetWorldTimerManager().SetTimerForNextTick(
-			FTimerDelegate::CreateWeakLambda(
-				this,
-				[this, RestoredCharacterTag]()
-				{
-					if (!RestoredCharacterTag.IsValid())
-					{
-						return;
-					}
-
-					if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-					{
-						UIManager->ApplyCharacterSkillUISet(
-							RestoredCharacterTag.GetTagName());
-					}
-				}));
-	}
+	BindInitialProgressReadiness();
 }
 
 void ANSPlayerController::EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
@@ -2550,12 +2703,14 @@ void ANSPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	RebindHUDRuntimeState();
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::BeginPlayingState()
 {
 	Super::BeginPlayingState();
 	RebindHUDRuntimeState();
+	TryInitializeLocalProgress();
 }
 
 #pragma region CompanionCheat
