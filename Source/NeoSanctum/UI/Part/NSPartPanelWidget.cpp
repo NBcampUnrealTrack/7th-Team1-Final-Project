@@ -2,6 +2,7 @@
 
 #include "NSPartPanelWidget.h"
 #include "Components/PanelWidget.h"
+#include "Components/VerticalBoxSlot.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
@@ -115,6 +116,10 @@ void UNSPartPanelWidget::BuildSlotButtons()
 		return;
 	}
 
+	// NativeConstruct/DataReady가 다시 호출되어도 슬롯 버튼이 중복 생성되지 않도록 초기화한다.
+	SlotButtonContainer->ClearChildren();
+	SlotButtonMap.Reset();
+
 	// TMap 순회 순서는 보장되지 않으므로 DT의 SortOrder 기준으로 정렬 후 생성 (바디 > 암 > 레그)
 	TArray<TPair<FGameplayTag, FNSPartSlotRow>> SortedRows;
 	for (const auto& Pair : DataSS->GetAllSlotRows())
@@ -133,7 +138,17 @@ void UNSPartPanelWidget::BuildSlotButtons()
 		{
 			continue;
 		}
-		SlotButtonContainer->AddChild(Btn);
+		UPanelSlot* AddedSlot = SlotButtonContainer->AddChild(Btn);
+		if (UVerticalBoxSlot* VerticalBoxSlot = Cast<UVerticalBoxSlot>(AddedSlot))
+		{
+			FSlateChildSize FillSize;
+			FillSize.SizeRule = ESlateSizeRule::Fill;
+			FillSize.Value = 1.0f;
+
+			VerticalBoxSlot->SetSize(FillSize);
+			VerticalBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+			VerticalBoxSlot->SetVerticalAlignment(VAlign_Fill);
+		}
 		SlotButtonMap.Add(Pair.Key, Btn);
 	}
 }
