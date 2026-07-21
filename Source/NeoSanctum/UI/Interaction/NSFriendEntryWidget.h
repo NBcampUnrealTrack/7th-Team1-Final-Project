@@ -9,7 +9,7 @@
 
 class UTextBlock;
 class UCommonButtonBase;
-
+class UImage;
 
 UCLASS()
 class NEOSANCTUM_API UNSFriendEntryWidget : public UCommonUserWidget
@@ -31,9 +31,19 @@ protected:
 	// 초대 버튼 (온라인일 때만 활성화)
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonButtonBase> InviteButton;
+	
+	// 스팀 프로필 사진
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UImage> AvatarImage;  
+	
+	// SteamID 문자열로 아바타 텍스처를 만들어 반환 (없으면 nullptr)
+	UTexture2D* BuildSteamAvatarTexture(const FString& SteamIdString) const;
 
 	UFUNCTION()
 	void OnClickedInvite();
+	
+	// 현재 친구의 아바타를 조회해 AvatarImage에 유효할 때만 적용
+	void ApplyAvatar();
 
 private:
 	// 이 친구의 NetId (초대 전송용)
