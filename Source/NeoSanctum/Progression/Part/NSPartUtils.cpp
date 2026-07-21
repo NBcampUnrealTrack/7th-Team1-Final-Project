@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Part.h"
 
 UNSPartDefinition* NSPartUtils::ResolvePartDefinition(const UObject* WorldContextObject, const TSoftObjectPtr<UNSPartDefinition>& DefinitionPtr)
@@ -154,10 +155,13 @@ TArray<FGameplayTag> NSPartUtils::FilterStatTagsByRarity(
 FText NSPartUtils::FormatStatValueText(
 	const UObject* WorldContextObject, const FGameplayTag& StatTag, float Value, bool bShowDirection)
 {
+	// 보호막 재충전 쿨다운은 내림 대신 소수점까지 그대로 노출
+	const bool bIsShieldStat = StatTag == NSGameplayTags::CombatStat_ShieldRechargeCooldown;
+
 	FNumberFormattingOptions Options;
-	Options.MaximumFractionalDigits = 0;
+	Options.MaximumFractionalDigits = bIsShieldStat ? 2 : 0;
 	Options.MinimumFractionalDigits = 0;
-	Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
+	Options.RoundingMode = bIsShieldStat ? ERoundingMode::HalfFromZero : ERoundingMode::ToNegativeInfinity;
 
 	ENSStatDisplayUnit Unit = ENSStatDisplayUnit::None;
 	if (StatTag.IsValid())
