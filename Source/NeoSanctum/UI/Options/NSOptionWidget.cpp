@@ -3,7 +3,7 @@
 
 #include "NSOptionWidget.h"
 
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "Components/WidgetSwitcher.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "SoundSetting/SoundSettingWidget.h"
@@ -88,7 +88,7 @@ void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
 	OptionSwitcher->SetActiveWidget(OptionWidget);
 }
 
-void UNSOptionWidget::UpdateCategorySelection(UCommonButtonBase* SelectedButton)
+void UNSOptionWidget::UpdateCategorySelection(UNSButtonBase* SelectedButton)
 {
 	if (SoundCategoryButton)
 	{

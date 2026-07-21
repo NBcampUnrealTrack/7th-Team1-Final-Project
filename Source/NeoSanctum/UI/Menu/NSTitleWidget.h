@@ -6,7 +6,7 @@
 #include "CommonActivatableWidget.h"
 #include "NSTitleWidget.generated.h"
 
-class UCommonButtonBase;
+class UNSButtonBase;
 class UEditableTextBox;
 class UTextBlock;
 class UWidget;
@@ -46,16 +46,16 @@ public:
 private:
 	//방생성 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> HostButton;
+	TObjectPtr<UNSButtonBase> HostButton;
 	//방참여 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> JoinButton;
+	TObjectPtr<UNSButtonBase> JoinButton;
 	//설정 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> OptionButton;
+	TObjectPtr<UNSButtonBase> OptionButton;
 	//게임 종료 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> QuitButton;
+	TObjectPtr<UNSButtonBase> QuitButton;
 	//IP 입력 패널
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UWidget> JoinPanel;
@@ -64,10 +64,10 @@ private:
 	TObjectPtr<UEditableTextBox> IPTextBox;
 	//참가 확인 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> ConfirmJoinButton;
+	TObjectPtr<UNSButtonBase> ConfirmJoinButton;
 	//참가 취소 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> CancelJoinButton;
+	TObjectPtr<UNSButtonBase> CancelJoinButton;
 
 
 	

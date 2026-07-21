@@ -10,7 +10,7 @@
 
 class UNSCompanionUpgradeDetailWidget;
 class UNSPetUpgradeNodeWidget;
-class UCommonButtonBase;
+class UNSButtonBase;
 class UImage;
 class UTextBlock;
 
@@ -107,7 +107,7 @@ protected:
 	
 	// 닫기 버튼 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UCommonButtonBase> CloseButton;
+	TObjectPtr<UNSButtonBase> CloseButton;
 	
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UImage> SelectedDroneIcon;

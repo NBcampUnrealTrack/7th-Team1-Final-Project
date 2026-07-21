@@ -6,7 +6,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Type/NSPetUpgradeMessageTypes.h"
 #include "NeoSanctum/UI/PetUpgrade/NSPetUpgradeNodeWidget.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSCompanionUpgradeDetailWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"

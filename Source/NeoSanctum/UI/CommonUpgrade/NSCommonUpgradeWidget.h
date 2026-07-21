@@ -12,7 +12,7 @@ class UPanelWidget;
 class UTextBlock;
 class UWidget;
 class UNSCommonUpgradeNodeWidget;
-class UCommonButtonBase;
+class UNSButtonBase;
 
 /**
  * 공용 업그레이드 콘솔 UI.
@@ -40,7 +40,7 @@ protected:
 
 	// 닫기 버튼 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
-	TObjectPtr<UCommonButtonBase> CloseButton;
+	TObjectPtr<UNSButtonBase> CloseButton;
 
 	// 전투/생존/유틸 카테고리별 노드 컨테이너 (WBP에서 이름 일치 필요)
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))

@@ -7,7 +7,7 @@
 #include "Components/ComboBoxString.h"
 #include "NSGraphicSettingWidget.generated.h"
 
-class UCommonButtonBase;
+class UNSButtonBase;
 class UCheckBox;
 class UComboBoxString;
 class UGameUserSettings;
@@ -74,9 +74,9 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCheckBox> VSyncCheckBox;
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> ApplyButton;
+	TObjectPtr<UNSButtonBase> ApplyButton;
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> ResetButton;
+	TObjectPtr<UNSButtonBase> ResetButton;
 	// 안티앨리어싱 품질 선택 ComboBox
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UComboBoxString> AntiAliasingQualityComboBox;

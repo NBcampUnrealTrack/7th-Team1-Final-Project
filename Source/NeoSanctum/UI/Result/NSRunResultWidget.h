@@ -9,7 +9,7 @@
 
 class UCommonTextBlock;
 class UTextBlock;
-class UCommonButtonBase;
+class UNSButtonBase;
 class UCommonButtonStyle;
 class UNSVoterEntry;
 class UWidget;
@@ -66,11 +66,11 @@ private:
 	
 	//다음 스테이지 버튼
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonButtonBase> NextStageButton;
+	TObjectPtr<UNSButtonBase> NextStageButton;
 	
 	//거점 복귀 버튼
 	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonButtonBase> ReturnToHubButton;
+	TObjectPtr<UNSButtonBase> ReturnToHubButton;
 	
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> NextVotesText;

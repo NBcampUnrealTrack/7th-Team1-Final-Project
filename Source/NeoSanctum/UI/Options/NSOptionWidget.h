@@ -7,7 +7,7 @@
 #include "NSOptionWidget.generated.h"
 
 class USoundSettingWidget;
-class UCommonButtonBase;
+class UNSButtonBase;
 class UWidgetSwitcher;
 class UNSGameplaySettingWidget;
 
@@ -38,7 +38,7 @@ private:
 	void ShowOptionCategoryWidget(UWidget* OptionWidget);
 	
 	// 선택한 카테고리 버튼만 선택 상태로 유지한다.
-	void UpdateCategorySelection(UCommonButtonBase* SelectedButton);
+	void UpdateCategorySelection(UNSButtonBase* SelectedButton);
 	
 private:
 	// 활성화 위젯을 변경하는 Switcher
@@ -48,19 +48,19 @@ private:
 private:
 	// 사운드 카테고리를 선택하기 위한 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> SoundCategoryButton;
+	TObjectPtr<UNSButtonBase> SoundCategoryButton;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> GraphicCategoryButton;
+	TObjectPtr<UNSButtonBase> GraphicCategoryButton;
 	
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> GameplayCategoryButton;
+	TObjectPtr<UNSButtonBase> GameplayCategoryButton;
 	
 	// TODO : 앞으로 다양한 Option Button들이 생기면 여기에 추가
 	
 	// (이용호 추가) 옵션창 닫는 버튼
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> CloseButton;
+	TObjectPtr<UNSButtonBase> CloseButton;
 	
 private:
 	// 사용하는 사운드 세팅 위젯

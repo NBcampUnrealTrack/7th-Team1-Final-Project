@@ -6,7 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NSReadyStartWidget.generated.h"
 
-class UCommonButtonBase;
+class UNSButtonBase;
 class UCommonTextBlock;
 
 /**
@@ -20,13 +20,13 @@ class NEOSANCTUM_API UNSReadyStartWidget : public UCommonUserWidget
 	
 private:
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> ReadyButton;
+	TObjectPtr<UNSButtonBase> ReadyButton;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase> StartButton;
+	TObjectPtr<UNSButtonBase> StartButton;
 	
 	UPROPERTY(meta = (BindWidget))
-    TObjectPtr<UCommonButtonBase> CloseButton;
+    TObjectPtr<UNSButtonBase> CloseButton;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UCommonTextBlock> ReadyButtonText;

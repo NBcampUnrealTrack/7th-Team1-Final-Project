@@ -13,7 +13,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 	FOnCharacterSelectionConfirmed, UNSCharacterData*, ConfirmedCharacterData);
 
 class UCommonAnimatedSwitcher;
-class UCommonButtonBase;
+class UNSButtonBase;
 class UCommonTextBlock;
 class UNSCharacterSlotWidget;
 class UImage;
@@ -47,17 +47,17 @@ protected:
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
-	TObjectPtr<UCommonButtonBase> NextButton;
+	TObjectPtr<UNSButtonBase> NextButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
-	TObjectPtr<UCommonButtonBase> PrevButton;
+	TObjectPtr<UNSButtonBase> PrevButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
-	TObjectPtr<UCommonButtonBase> ConfirmButton;
+	TObjectPtr<UNSButtonBase> ConfirmButton;
 
 	// WBP에 닫기 버튼이 없어도 ESC 닫기는 동작하도록 Optional로 연결함.
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
-	TObjectPtr<UCommonButtonBase> CloseButton;
+	TObjectPtr<UNSButtonBase> CloseButton;
 
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidget), Category = "UI")
 	TObjectPtr<UCommonTextBlock> CharacterNameText;

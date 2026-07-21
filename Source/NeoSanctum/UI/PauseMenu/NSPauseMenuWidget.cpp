@@ -2,7 +2,7 @@
 
 
 #include "NSPauseMenuWidget.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"

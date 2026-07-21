@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CommonButtonBase.h"
 #include "Engine/StreamableManager.h"
 #include "NeoSanctum/Data/Part/NSPartTypes.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "NSPartCatalogEntryWidget.generated.h"
 
 class UImage;
@@ -14,7 +14,7 @@ class UNSPartEquipWidget;
 DECLARE_DELEGATE_TwoParams(FNSOnCatalogEntryClicked, const FNSPartDefinitionRow&, UNSPartCatalogEntryWidget*);
 
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class NEOSANCTUM_API UNSPartCatalogEntryWidget : public UCommonButtonBase
+class NEOSANCTUM_API UNSPartCatalogEntryWidget : public UNSButtonBase
 {
 	GENERATED_BODY()
 
@@ -25,8 +25,6 @@ public:
 
 	// 소유 위젯 타입에 묶이지 않는 범용 진입점 (인런 상점 등에서 사용)
 	void SetupEntry(const FNSPartDefinitionRow& Row, FNSOnCatalogEntryClicked InClickHandler);
-
-	// 선택 상태는 UCommonButtonBase::SetIsSelected(bool)/GetSelected()를 그대로 사용한다
 
 protected:
 	virtual void NativeConstruct() override;

@@ -1,7 +1,7 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSReadyStartWidget.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "CommonTextBlock.h"
