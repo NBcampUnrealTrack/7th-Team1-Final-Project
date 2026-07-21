@@ -133,6 +133,16 @@ public:
 	void CompleteGuideChecklistItemAndHide(FName ItemId);
 	// 안내 체크리스트 전체 숨김 (모든 안내 완료 시)
 	void HideGuideChecklist();
+	// 우측 상단 목표 안내 텍스트 표시 (지속형 — HideGuideText 호출까지 유지)
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void ShowGuideText(const FText& InText);
+	
+	// 목표 안내 텍스트 숨김
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideGuideText();
+	
+	// WBP_Augmentation에 설정된 Tab 증강 패널 토글 사운드를 재생
+	void PlayAugmentationTabSound() const;
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))

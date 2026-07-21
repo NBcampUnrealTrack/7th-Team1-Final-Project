@@ -70,6 +70,18 @@ public:
 	void SetOwnedAugmentListVisible(bool bVisible);
 
 	void OpenSelectionPanel();
+	
+	// 1/2/3/4 카드 선택 키 입력이 실제로 수락됐을 때 선택 사운드를 재생
+	void PlayAugmentSelectSound() const;
+
+	// T 리롤 성공 응답을 받았을 때 성공 사운드를 재생
+	void PlayAugmentRerollSuccessSound() const;
+
+	// T 리롤 실패 응답을 받았을 때 실패 사운드를 재생
+	void PlayAugmentRerollFailSound() const;
+
+	// Tab 증강 패널 토글 키 입력이 실제로 수락됐을 때 탭 사운드를 재생
+	void PlayAugmentTabSound() const;
 
 private:
 	// 카드 영역 표시
@@ -78,22 +90,22 @@ private:
 	// 카드 영역 숨김
 	void HideCardSection();
 
-	// 현재 선택지 개수와 패널 상태에 맞춰 3장/4장 입력 가이드 표시를 갱신합니다.
+	// 현재 선택지 개수와 패널 상태에 맞춰 3장/4장 입력 가이드 표시를 갱신
 	void RefreshChoiceGuideVisibility();
 
-	// WBP에 배치된 입력 아이콘 박스 위치를 기준으로 카드 위치를 갱신합니다.
+	// WBP에 배치된 입력 아이콘 박스 위치를 기준으로 카드 위치를 갱신
 	void RefreshChoiceCardPositions();
 
-	// 카드 인덱스에 대응하는 카드 위치를 계산합니다.
+	// 카드 인덱스에 대응하는 카드 위치를 계산
 	FVector2D GetChoiceCardPosition(int32 Index) const;
 	
-	// Canvas Panel 좌표계에서 위젯의 TopLeft/Size를 조회합니다.
+	// Canvas Panel 좌표계에서 위젯의 TopLeft/Size를 조회
 	bool TryGetWidgetCanvasRect(
 		const UWidget* Widget,
 		FVector2D& OutTopLeft,
 		FVector2D& OutSize) const;
 
-	// 현재 ChoiceCount와 카드 인덱스에 맞는 입력 아이콘 박스를 반환합니다.
+	// 현재 ChoiceCount와 카드 인덱스에 맞는 입력 아이콘 박스를 반환
 	USizeBox* GetChoiceGuideInputIconBox(int32 CardIndex) const;
 	
 	void QueueChoiceCardPositionRefresh();
@@ -333,6 +345,9 @@ private:
 
 	// 지연 선택 타이머와 선택 대기 상태를 초기화
 	void ClearSelectionAnimationTimer();
+	
+	// 전달된 DT_SoundDataTable RowName으로 증강 UI 2D 사운드를 재생
+	void PlayAugmentSound(FName SoundID) const;
 
 protected:
 	virtual void NativeConstruct() override;
@@ -340,6 +355,22 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UNSAugmentCardWidget> AugmentCardWidgetClass;
+	
+	// 1/2/3/4 카드 선택 키 입력에 사용할 DT_SoundDataTable RowName
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Sound")
+	FName AugmentSelectSoundID = NAME_None;
+
+	// Tab 증강 패널 토글 키 입력에 사용할 DT_SoundDataTable RowName
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Sound")
+	FName AugmentTabSoundID = NAME_None;
+
+	// T 리롤 성공 시 사용할 DT_SoundDataTable RowName
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Sound")
+	FName AugmentRerollSuccessSoundID = NAME_None;
+
+	// T 리롤 실패 시 사용할 DT_SoundDataTable RowName
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Augment|Sound")
+	FName AugmentRerollFailSoundID = NAME_None;
 
 	// 보유 증강 아이콘 크기
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

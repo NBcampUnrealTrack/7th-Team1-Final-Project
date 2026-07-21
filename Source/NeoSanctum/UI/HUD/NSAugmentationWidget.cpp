@@ -2,6 +2,7 @@
 
 #include "NSAugmentationWidget.h"
 
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
 #include "NeoSanctum/UI/HUD/NSAugmentCardWidget.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -31,6 +32,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "TimerManager.h"
+
 
 void UNSAugmentationWidget::OpenPanel()
 {
@@ -446,12 +448,14 @@ void UNSAugmentationWidget::SelectCardByIndex(int32 CardIndex)
 	}
 
 	// 유효하지 않은 카드 번호는 무시
-	if (!AugmentCardWidgets.IsValidIndex(CardIndex))
+	if (!CurrentOfferCards.IsValidIndex(CardIndex) ||
+		!AugmentCardWidgets.IsValidIndex(CardIndex))
 	{
 		return;
 	}
 
 	// 서버 선택 요청 전에 카드 선택 연출을 시작
+	PlayAugmentSelectSound();
 	BeginCardSelection(CardIndex);
 }
 
@@ -482,7 +486,10 @@ void UNSAugmentationWidget::ConfirmAugmentSelection(int32 CardIndex)
 void UNSAugmentationWidget::RequestRerollAugment()
 {
 	// 선택 애니메이션 중이거나 리롤 불가 상태면 리롤 요청을 막음
-	if (bSelectionAnimationPlaying || bRerollRequestPending || !bCanRerollCurrentOffer)
+	if (bSelectionAnimationPlaying ||
+		bRerollRequestPending ||
+		!bCanRerollCurrentOffer ||
+		CurrentOfferCards.IsEmpty())
 	{
 		return;
 	}
@@ -884,6 +891,26 @@ void UNSAugmentationWidget::OpenSelectionPanel()
 	RefreshAugmentPanelState();
 }
 
+void UNSAugmentationWidget::PlayAugmentSelectSound() const
+{
+	PlayAugmentSound(AugmentSelectSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentRerollSuccessSound() const
+{
+	PlayAugmentSound(AugmentRerollSuccessSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentRerollFailSound() const
+{
+	PlayAugmentSound(AugmentRerollFailSoundID);
+}
+
+void UNSAugmentationWidget::PlayAugmentTabSound() const
+{
+	PlayAugmentSound(AugmentTabSoundID);
+}
+
 void UNSAugmentationWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -1035,6 +1062,11 @@ void UNSAugmentationWidget::HandleOfferPresented(
 			? FText::FromString(TEXT("리롤 완료"))
 			: FText::GetEmpty());
 
+	if (bWasRerollRequest)
+	{
+		PlayAugmentRerollSuccessSound();
+	}
+	
 	RefreshRerollControls();
 
 	CurrentOfferCards = Cards;
@@ -1211,6 +1243,11 @@ void UNSAugmentationWidget::HandleRerollResult(
 
 	default:
 		break;
+	}
+
+	if (!Message.IsEmpty())
+	{
+		PlayAugmentRerollFailSound();
 	}
 
 	SetRerollStatusMessage(Message);
@@ -1434,3 +1471,17 @@ void UNSAugmentationWidget::ClearSelectionAnimationTimer()
 	PendingSelectedCardIndex = INDEX_NONE;
 	bSelectionAnimationPlaying = false;
 }
+
+void UNSAugmentationWidget::PlayAugmentSound(FName SoundID) const
+{
+	if (SoundID.IsNone())
+	{
+		return;
+	}
+
+	if (UNSSoundSubsystem* SoundSubsystem = UNSSoundSubsystem::Get(this))
+	{
+		SoundSubsystem->PlaySound2D(SoundID);
+	}
+}
+
