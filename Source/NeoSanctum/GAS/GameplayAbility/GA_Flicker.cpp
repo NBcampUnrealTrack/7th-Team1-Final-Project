@@ -69,8 +69,6 @@ void UGA_Flicker::ActivateAbility(
 
 	// Flicker Ability 전체 수명 동안 이동 입력 차단
 	AddFlickeringState();
-	ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
-	bInvincibilityStateAdded = true;
 	ASC->AddLooseGameplayTag(NSGameplayTags::State_Input_BlockInputMove);
 
 	// AutoFire/ShotgunFire 계열과 동일한 ActivationPredictionKey 기반 TargetData 수신 Delegate 등록
@@ -1016,9 +1014,15 @@ bool UGA_Flicker::IsWaitingForRemoteClientTargetData() const
 
 bool UGA_Flicker::StartFlickerFromSelectedTargets()
 {
-	// 검증 완료 타겟 체인 준비 이후 이동 상태와 Cue 시작
+	// 검증 완료 타겟 체인 준비 이후 실제 돌진/공격 구간의 상태와 Cue 시작
 	AddFlickerGameplayCue();
 	bDashStarted = true;
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+		bInvincibilityStateAdded = true;
+	}
 
 	CurrentTargetIndex = 0;
 	if (!StartCurrentTargetMove())
@@ -1324,13 +1328,16 @@ bool UGA_Flicker::StartFlickerMove(const FVector& AttackLocation)
 
 	const float FinalMoveDuration = FMath::Max(MoveDuration, 0.01f);
 
+	// 이동 모드는 Flicker가 직접 관리
+	MovementComponent->SetMovementMode(MOVE_Flying);
+
 	// 높이 차이를 허용하는 Flying RootMotion 이동
 	MoveTask = UAbilityTask_ApplyRootMotionMoveToForce::ApplyRootMotionMoveToForce(
 		this,
 		TEXT("FlickerMove"),
 		AttackLocation,
 		FinalMoveDuration,
-		true,
+		false,
 		MOVE_Flying,
 		true,
 		nullptr,
