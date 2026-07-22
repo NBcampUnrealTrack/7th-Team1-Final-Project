@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NSThrowProjectileBase.generated.h"
 
@@ -11,12 +12,17 @@ class UProjectileMovementComponent;
 class USphereComponent;
 
 UCLASS(Abstract)
-class NEOSANCTUM_API ANSThrowProjectileBase : public AActor
+class NEOSANCTUM_API ANSThrowProjectileBase : public AActor,
+                                              public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	ANSThrowProjectileBase();
+
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return bGrantPlayerAttackFeedback; }
+
+	virtual FGuid GetPlayerAttackFeedbackGroupId() const override { return AttackFeedbackGroupId; }
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Projectile")
@@ -32,6 +38,10 @@ public:
 protected:
 	APawn* GetOwningPawn() const { return OwningPawn; }
 	AController* GetOwningController() const { return OwningController; }
+
+	// 이 투사체에서 발생한 공격 피드백 묶음을 완료.
+	void CompletePlayerAttackFeedbackGroup() const;
+
 	// 자식 투척물이 Turret 등에 전달할 payload
 	const TArray<FNSSetByCallerMagnitude>& GetSetByCallerMagnitudes() const { return SetByCallerMagnitudes; }
 	const TArray<FNSCombatStatMagnitude>& GetRuntimeStatMagnitudes() const { return RuntimeStatMagnitudes; }
@@ -56,7 +66,7 @@ protected:
 protected:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
 	TObjectPtr<APawn> OwningPawn;
-	
+
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Owner")
 	TObjectPtr<AController> OwningController;
 
@@ -67,4 +77,10 @@ protected:
 	// 투척물 로직용 runtime payload
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|RuntimeStats")
 	TArray<FNSCombatStatMagnitude> RuntimeStatMagnitudes;
+
+	UPROPERTY(Transient, BlueprintReadOnly, Category = "Projectile|Feedback")
+	FGuid AttackFeedbackGroupId;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Projectile|Feedback")
+	bool bGrantPlayerAttackFeedback = true;
 };

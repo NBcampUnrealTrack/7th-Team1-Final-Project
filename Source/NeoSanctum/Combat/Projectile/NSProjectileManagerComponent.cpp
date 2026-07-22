@@ -8,8 +8,8 @@
 #include "GameplayEffect.h"
 #include "GenericTeamAgentInterface.h"
 #include "NSProjectileReplicationProxy.h"
-#include "NSProjectileTypes.h"
 #include "GameFramework/GameStateBase.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 
 
 UNSProjectileManagerComponent::UNSProjectileManagerComponent()
@@ -68,6 +68,7 @@ int32 UNSProjectileManagerComponent::FireProjectile(const FNSProjectileFireReque
 	Projectile.TraceChannel = Request.TraceChannel;
 	Projectile.SourceActor = Request.SourceActor;
 	Projectile.DamageEffectClass = Request.DamageEffectClass;
+	Projectile.Damage = Request.Damage;
 
 	const AGameStateBase* GameState = World->GetGameState();
 	Projectile.ServerFireTime = GameState
@@ -307,6 +308,13 @@ bool UNSProjectileManagerComponent::TryApplyProjectileDamage(
 		!SpecHandle.Data.IsValid())
 	{
 		return false;
+	}
+	
+	if (Projectile.Damage >= 0.0f)
+	{
+		SpecHandle.Data->SetSetByCallerMagnitude(
+			NSGameplayTags::Effect_Damage_Base,
+			Projectile.Damage);
 	}
 
 	// 서버에서 Source ASC가 Target ASC에 Effect 적용

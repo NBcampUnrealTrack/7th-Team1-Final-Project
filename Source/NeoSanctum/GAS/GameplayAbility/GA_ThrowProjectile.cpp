@@ -16,12 +16,14 @@
 #include "NeoSanctum/Combat/Projectile/NSGrenade.h"
 #include "NeoSanctum/Combat/Projectile/NSThrowProjectileBase.h"
 #include "NeoSanctum/Combat/Projectile/NSTurretSpawner.h"
+#include "NeoSanctum/Combat/Projectile/NSVanguardBarrierFieldProjectile.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_ThrowProjectile::UGA_ThrowProjectile()
 {
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	ActivationOwnedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Active);
 }
 
 void UGA_ThrowProjectile::ActivateAbility(
@@ -55,18 +57,9 @@ void UGA_ThrowProjectile::ActivateAbility(
 		return;
 	}
 
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
 	// Ability가 새로 활성화될 때 이전 입력/Notify 처리 상태를 초기화
 	bReleaseRequested = false;
 	bProjectileThrown = false;
-
-	// 투척물에 전달할 CombatStat payload 생성
-	RebuildCombatStatPayloads();
 
 	OnTargetDataReadyCallbackDelegateHandle = ASC->AbilityTargetDataSetDelegate(
 		Handle,
@@ -99,6 +92,7 @@ void UGA_ThrowProjectile::ActivateAbility(
 	StartGameplayEventTasks();
 	
 	ThrowMontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
+	ThrowMontageTask->OnBlendOut.AddDynamic(this, &ThisClass::OnThrowMontageCompleted);
 	ThrowMontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
 	ThrowMontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnThrowMontageInterrupted);
 	AddDeactivateHandIKTag();
@@ -123,21 +117,9 @@ void UGA_ThrowProjectile::InputReleased(
 		return;
 	}
 
-	if (ActorInfo && ActorInfo->IsLocallyControlled())
+	if (!TryBeginReleasePhase())
 	{
-		const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-		USkeletalMeshComponent* MeshComponent = Character ? Character->GetMesh() : nullptr;
-		UAnimInstance* AnimInstance = MeshComponent ? MeshComponent->GetAnimInstance() : nullptr;
-
-		if (AnimInstance && AnimMontage && AnimInstance->Montage_IsPlaying(AnimMontage))
-		{
-			bReleaseRequested = true;
-			AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
-		}
-		else
-		{
-			EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		}
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 	}
 }
 
@@ -151,6 +133,7 @@ void UGA_ThrowProjectile::EndAbility(
 	// TODO : 프리뷰 종료
 	DestroyHeldMesh();
 	RemoveDeactivateHandIKTag();
+	RemoveThrowReleaseLockTag();
 
 	// Ability 종료 시 다음 활성화를 위해 입력/투척 게이트를 정리
 	bReleaseRequested = false;
@@ -195,24 +178,12 @@ void UGA_ThrowProjectile::EndAbility(
 
 void UGA_ThrowProjectile::OnThrowMontageCompleted()
 {
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		false
-	);
+	FinishThrowProjectileAbility(false);
 }
 
 void UGA_ThrowProjectile::OnThrowMontageInterrupted()
 {
-	EndAbility(
-		GetCurrentAbilitySpecHandle(),
-		GetCurrentActorInfo(),
-		GetCurrentActivationInfo(),
-		true,
-		true
-	);
+	FinishThrowProjectileAbility(true);
 }
 
 void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Payload)
@@ -222,6 +193,11 @@ void UGA_ThrowProjectile::OnAttachProjectileEventReceived(FGameplayEventData Pay
 
 void UGA_ThrowProjectile::OnThrowProjectileEventReceived(FGameplayEventData Payload)
 {
+	if (!bReleaseRequested)
+	{
+		return;
+	}
+	
 	// Release AnimNotify가 중복 발생해도 한 번의 Ability 활성화에서 Projectile은 한 번만 던짐
 	if (bProjectileThrown)
 	{
@@ -280,6 +256,81 @@ void UGA_ThrowProjectile::StartGameplayEventTasks()
 		ThrowProjectileEventTask->EventReceived.AddDynamic(this, &ThisClass::OnThrowProjectileEventReceived);
 		ThrowProjectileEventTask->ReadyForActivation();
 	}
+}
+
+bool UGA_ThrowProjectile::TryBeginReleasePhase()
+{
+	if (bReleaseRequested)
+	{
+		return true;
+	}
+
+	if (!CanJumpToReleaseSection())
+	{
+		return false;
+	}
+
+	if (!CommitAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo()))
+	{
+		return false;
+	}
+
+	// 투척 확정 시점의 CombatStat payload 생성
+	RebuildCombatStatPayloads();
+	AddThrowReleaseLockTag();
+
+	bReleaseRequested = true;
+
+	if (!TryJumpToReleaseSection())
+	{
+		RemoveThrowReleaseLockTag();
+		bReleaseRequested = false;
+		return false;
+	}
+
+	return true;
+}
+
+bool UGA_ThrowProjectile::CanJumpToReleaseSection() const
+{
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
+	if (!AnimInstance || !AnimMontage || ReleaseSectionName.IsNone())
+	{
+		return false;
+	}
+
+	return AnimInstance->Montage_IsPlaying(AnimMontage);
+}
+
+bool UGA_ThrowProjectile::TryJumpToReleaseSection() const
+{
+	if (!CanJumpToReleaseSection())
+	{
+		return false;
+	}
+
+	const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo ? ActorInfo->GetAnimInstance() : nullptr;
+
+	AnimInstance->Montage_JumpToSection(ReleaseSectionName, AnimMontage);
+	return true;
+}
+
+void UGA_ThrowProjectile::FinishThrowProjectileAbility(bool bWasCancelled)
+{
+	if (!IsActive())
+	{
+		return;
+	}
+
+	EndAbility(
+		GetCurrentAbilitySpecHandle(),
+		GetCurrentActorInfo(),
+		GetCurrentActivationInfo(),
+		true,
+		bWasCancelled
+	);
 }
 
 void UGA_ThrowProjectile::AttachHeldMesh()
@@ -373,6 +424,16 @@ void UGA_ThrowProjectile::SpawnProjectileAtAimPoint(const FVector& AimPoint)
 			if (ANSTurretSpawner* TurretSpawner = Cast<ANSTurretSpawner>(Projectile))
 			{
 				TurretSpawner->InitializeTurretSpawner(ProjectileAbilityConfig.TurretSpawnerTypeConfig);
+			}
+		}
+		else if (ProjectileAbilityConfig.ProjectileType == EProjectileType::BarrierField)
+		{
+			if (ANSVanguardBarrierFieldProjectile* BarrierFieldProjectile =
+				Cast<ANSVanguardBarrierFieldProjectile>(Projectile))
+			{
+				BarrierFieldProjectile->InitializeBarrierFieldProjectile(
+					ProjectileAbilityConfig.ShieldFieldTypeConfig
+				);
 			}
 		}
 	}
@@ -529,6 +590,16 @@ void UGA_ThrowProjectile::OnThrowProjectileTargetDataReady(const FGameplayAbilit
 		return;
 	}
 
+	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo();
+		ActorInfo && ActorInfo->IsNetAuthority() && !ActorInfo->IsLocallyControlled() && !bReleaseRequested)
+	{
+		if (!TryBeginReleasePhase())
+		{
+			FinishThrowProjectileAbility(true);
+			return;
+		}
+	}
+
 	SpawnProjectileAtAimPoint(AimPoint);
 }
 
@@ -590,7 +661,14 @@ void UGA_ThrowProjectile::RebuildSetByCallerMagnitudes(const FGameplayTag& Abili
 		}
 
 		float Magnitude = 0.0f;
-		if (!TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude))
+
+		// DamageCoefficient는 일반 CombatStat 조회가 아니라 PlayerBaseDamage x 계수로 계산
+		const bool bIsDamageCoefficient = Mapping.CombatStatTag == NSGameplayTags::CombatStat_DamageCoefficient;
+		const bool bMagnitudeResolved = bIsDamageCoefficient
+			? TryGetFinalSkillDamage(AbilityTag, Magnitude)
+			: TryGetFinalAbilityStat(AbilityTag, Mapping.CombatStatTag, Magnitude);
+
+		if (!bMagnitudeResolved)
 		{
 			continue;
 		}
@@ -652,4 +730,33 @@ void UGA_ThrowProjectile::RemoveDeactivateHandIKTag()
 	}
 
 	bDeactivateHandIKTagAdded = false;
+}
+
+void UGA_ThrowProjectile::AddThrowReleaseLockTag()
+{
+	if (bThrowReleaseLockTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_ThrowProjectile_Releasing, 1);
+		bThrowReleaseLockTagAdded = true;
+	}
+}
+
+void UGA_ThrowProjectile::RemoveThrowReleaseLockTag()
+{
+	if (!bThrowReleaseLockTagAdded)
+	{
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
+	{
+		ASC->SetLooseGameplayTagCount(NSGameplayTags::State_ThrowProjectile_Releasing, 0);
+	}
+
+	bThrowReleaseLockTagAdded = false;
 }

@@ -3,6 +3,7 @@
 
 #include "NSCombatStatComponent.h"
 
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
@@ -18,16 +19,124 @@ UNSCombatStatComponent::UNSCombatStatComponent()
 void UNSCombatStatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	RebuildBaseStatCache();
 	
-	// Modifier DataTable은 먼저 원본 기준으로 캐싱
-	RebuildModifierSourceCache();
+	if (TryResolveAbilityBaseStatTableFromDataSubsystem())
+	{
+		RebuildBaseStatCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (!DataSubsystem->IsCommonReady())
+		{
+			// CommonData가 비동기로 아직 준비되지 않은 경우 완료 시점에 기본 스탯 캐시를 생성.
+			DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+			DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+		}
+		else
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning, "CommonData는 준비됐지만 스킬 기본 스탯 DataTable을 찾지 못했습니다.");
+		}
+	}
+	else
+	{
+		NS_OBJ_LOG(LogNSGAS, Warning, "DataSubsystem을 찾지 못해 스킬 기본 스탯 DataTable을 조회할 수 없습니다.");
+	}
+	
+	if (TryResolveAugmentDefinitionTableFromDataSubsystem())
+	{
+		RebuildAugmentSourceCache();
+	}
+	else if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		if (DataSubsystem->IsRunReady())
+		{
+			RebuildAugmentSourceCache();
+		}
+		else
+		{
+			// 인런 데이터가 아직 준비되지 않은 경우 완료 시점에 증강 Modifier 캐시를 생성.
+			DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+			DataSubsystem->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleRunGameDataReady);
+		}
+	}
+	else
+	{
+		RebuildAugmentSourceCache();
+	}
 	
 	// AugmentInventory 변경 이벤트를 받아 Active Modifier를 갱신
 	BindAugmentInventory();
 	
 	// 이미 보유 중인 증강이 있다면 현재 상태 기준으로 한 번 갱신
+	RebuildActiveModifierCache();
+}
+
+void UNSCombatStatComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+	}
+	
+	Super::EndPlay(EndPlayReason);
+}
+
+bool UNSCombatStatComponent::TryResolveAbilityBaseStatTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady())
+	{
+		return false;
+	}
+
+	UDataTable* LoadedTable = DataSubsystem->GetCommonAbilityBaseStatTable();
+	if (!IsValid(LoadedTable))
+	{
+		return false;
+	}
+
+	AbilityBaseStatTable = LoadedTable;
+	return true;
+}
+
+void UNSCombatStatComponent::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	TryResolveAbilityBaseStatTableFromDataSubsystem();
+	RebuildBaseStatCache();
+}
+
+bool UNSCombatStatComponent::TryResolveAugmentDefinitionTableFromDataSubsystem()
+{
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return AugmentDefinitionTable != nullptr;
+	}
+	
+	if (UDataTable* LoadedTable = DataSubsystem->GetCurrentAugmentDefinitionTable())
+	{
+		AugmentDefinitionTable = LoadedTable;
+		return true;
+	}
+	
+	return DataSubsystem->IsRunReady() && AugmentDefinitionTable != nullptr;
+}
+
+void UNSCombatStatComponent::HandleRunGameDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleRunGameDataReady);
+	}
+	
+	TryResolveAugmentDefinitionTableFromDataSubsystem();
+	RebuildAugmentSourceCache();
 	RebuildActiveModifierCache();
 }
 
@@ -37,8 +146,7 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 	
 	if (!AbilityBaseStatTable)
 	{
-		NS_OBJ_LOG(LogNSGAS, Warning, "스킬 기본 스탯 DataTable이 설정되지 않았습니다.");
-		
+		NS_OBJ_LOG(LogNSGAS, Warning, "CommonDataConfig의 스킬 기본 스탯 DataTable이 로드되지 않았습니다.");
 		return;
 	}
 	
@@ -48,7 +156,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 			"스킬 기본 스탯 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
 			("Table", AbilityBaseStatTable->GetName())
 		);
-		
 		return;
 	}
 	
@@ -72,7 +179,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		
@@ -88,7 +194,6 @@ void UNSCombatStatComponent::RebuildBaseStatCache()
 				("AbilityTag", Row->AbilityTag.ToString()),
 				("StatTag", Row->StatTag.ToString())
 			);
-
 			continue;
 		}
 		
@@ -160,37 +265,28 @@ bool UNSCombatStatComponent::TryGetFinalAbilityStat(
 		return false;
 	}
 	
-	const TMap<FGameplayTag, FNSCombatStatModifierSum>* StatMap = ActiveModifiersByAbility.Find(AbilityTag);
+	// 증강과 Temporary Buff의 Add / Multiply%를 먼저 합산한 뒤 최종 배율을 한 번만 적용.
+	FNSCombatStatModifierSum CombinedModifierSum;
 	
-	if (!StatMap)
+	if (const TMap<FGameplayTag, FNSCombatStatModifierSum>* StatMap =
+		ActiveModifiersByAbility.Find(AbilityTag))
 	{
-		OutValue = BaseValue;
-		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
+		if (const FNSCombatStatModifierSum* ActiveModifierSum = StatMap->Find(StatTag))
 		{
-			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
+			CombinedModifierSum.AddValue += ActiveModifierSum->AddValue;
+			CombinedModifierSum.MultiplyPercent += ActiveModifierSum->MultiplyPercent;
 		}
-		return true;
 	}
 	
-	const FNSCombatStatModifierSum* ModifierSum = StatMap->Find(StatTag);
-	
-	if (!ModifierSum)
+	if (const FNSCombatStatModifierSum* TemporaryModifierSum =
+		FindTemporaryModifierSum(AbilityTag, StatTag))
 	{
-		OutValue = BaseValue;
-		if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
-		{
-			ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
-		}
-		return true;
+		CombinedModifierSum.AddValue += TemporaryModifierSum->AddValue;
+		CombinedModifierSum.MultiplyPercent += TemporaryModifierSum->MultiplyPercent;
 	}
 	
-	// 최종 스탯은 Add 보정을 먼저 더한 뒤 Multiply 보정을 곱함
-	OutValue = (BaseValue + ModifierSum->AddValue) * ModifierSum->MultiplyValue;
-	if (const FNSCombatStatModifierSum* TemporaryModifierSum = FindTemporaryModifierSum(AbilityTag, StatTag))
-	{
-		ApplyTemporaryModifierToFinalValue(*TemporaryModifierSum, OutValue);
-	}
-
+	const float Multiplier = 1.0f + (CombinedModifierSum.MultiplyPercent * 0.01f);
+	OutValue = (BaseValue + CombinedModifierSum.AddValue) * Multiplier;
 	return true;
 }
 
@@ -211,7 +307,7 @@ FGuid UNSCombatStatComponent::AddTemporaryCombatStatModifier(
 		return FGuid();
 	}
 
-	if (Operation == ENSCombatStatModifierOperation::Multiply && Value <= 0.0f)
+	if (Operation == ENSCombatStatModifierOperation::Multiply && Value <= -100.0f)
 	{
 		return FGuid();
 	}
@@ -263,6 +359,26 @@ void UNSCombatStatComponent::RemoveTemporaryCombatStatModifier(FGuid Handle)
 	RebuildTemporaryModifierCache();
 }
 
+void UNSCombatStatComponent::ClearTemporaryCombatStatModifiers()
+{
+	// BuffAbility가 타이머로 등록한 Modifier가 캐릭터 교체 후 남지 않도록 정리
+	if (TemporaryModifiersByHandle.IsEmpty())
+	{
+		return;
+	}
+
+	if (UWorld* World = GetWorld())
+	{
+		for (TPair<FGuid, FNSTemporaryCombatStatModifier>& Pair : TemporaryModifiersByHandle)
+		{
+			World->GetTimerManager().ClearTimer(Pair.Value.ExpireTimerHandle);
+		}
+	}
+
+	TemporaryModifiersByHandle.Reset();
+	RebuildTemporaryModifierCache();
+}
+
 void UNSCombatStatComponent::BindAugmentInventory()
 {
 	ANSPlayerState* NSPlayerState = Cast<ANSPlayerState>(GetOwner());
@@ -295,76 +411,103 @@ void UNSCombatStatComponent::HandleAugmentInventoryChanged()
 	RebuildActiveModifierCache();
 }
 
-void UNSCombatStatComponent::RebuildModifierSourceCache()
+void UNSCombatStatComponent::RebuildAugmentSourceCache()
 {
-	CachedModifierRowsBySource.Reset();
+	CachedModifierRowsByDefId.Reset();
 	
-	if (!CombatStatModifierTable)
+	if (!AugmentDefinitionTable)
 	{
-		NS_OBJ_LOG(LogNSGAS, Warning, "CombatStat Modifier DataTable이 설정되지 않았습니다.");
-		
+		NS_OBJ_LOG(LogNSGAS, Warning, "증강 효과 정의 DataTable이 설정되지 않았습니다.");
 		return;
 	}
 	
-	if (CombatStatModifierTable->GetRowStruct() != FNSCombatStatModifierRow::StaticStruct())
+	if (AugmentDefinitionTable->GetRowStruct() != FNSAugmentDefinitionRow::StaticStruct())
 	{
 		NS_OBJ_LOG(LogNSGAS, Warning,
-			"CombatStat Modifier DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
-			("Table", CombatStatModifierTable->GetName())
+			"증강 효과 정의 DataTable의 Row Struct가 올바르지 않습니다. Table={Table}",
+			("Table", AugmentDefinitionTable->GetName())
 		);
-		
 		return;
 	}
 	
-	const FString ContextString = TEXT("CombatStatModifierCache");
+	const FString ContextString = TEXT("AugmentModifierCache");
 	
-	for (const FName& RowName : CombatStatModifierTable->GetRowNames())
+	for (const FName& RowName : AugmentDefinitionTable->GetRowNames())
 	{
-		const FNSCombatStatModifierRow* Row =
-			CombatStatModifierTable->FindRow<FNSCombatStatModifierRow>(RowName, ContextString, false);
+		const FNSAugmentDefinitionRow* Row =
+			AugmentDefinitionTable->FindRow<FNSAugmentDefinitionRow>(RowName, ContextString, false);
 		
-		if (!Row)
+		if (!Row || !Row->bEnabled)
 		{
 			continue;
 		}
 		
-		if (!Row->bEnabled)
-		{
-			continue;
-		}
-		
-		if (!Row->SourceDefId.IsValid() || !Row->TargetAbilityTag.IsValid() || !Row->StatTag.IsValid())
+		if (!Row->AugmentTag.IsValid()
+			|| !Row->OwnerCharacterTag.IsValid()
+			|| Row->Definition.IsNull()
+			|| !Row->StatTag.IsValid())
 		{
 			NS_OBJ_LOG(LogNSGAS, Warning,
-				"유효하지 않은 CombatStat Modifier Row입니다. RowName={RowName}, SourceDefId={SourceDefId}, AbilityTag={AbilityTag}, StatTag={StatTag}",
+				"유효하지 않은 증강 효과 정의 Row입니다. RowName={RowName}, AugmentTag={AugmentTag}",
 				("RowName", RowName.ToString()),
-				("SourceDefId", Row->SourceDefId.ToString()),
-				("AbilityTag", Row->TargetAbilityTag.ToString()),
-				("StatTag", Row->StatTag.ToString())
+				("AugmentTag", Row->AugmentTag.ToString())
 			);
-			
 			continue;
 		}
-		
-		if (Row->Operation == ENSCombatStatModifierOperation::Multiply && Row->Value <= 0.0f)
-		{
-			NS_OBJ_LOG(LogNSGAS, Warning,
-				"유효하지 않은 CombatStat Multiply Modifier Row입니다. RowName={RowName}, SourceDefId={SourceDefId}, Value={Value}",
-				("RowName", RowName.ToString()),
-				("SourceDefId", Row->SourceDefId.ToString()),
-				("Value", Row->Value)
-			);
 
+		if (!Row->TargetAbilityTag.IsValid())
+		{
+			if (!UNSAugmentInventoryComponent::IsAttributeStatTag(Row->StatTag))
+			{
+				// Attribute 대상이 아닌데 TargetAbilityTag가 비어 있으면 스킬 지정을 빠뜨린 데이터 오류일 가능성이 높음.
+				NS_OBJ_LOG(LogNSGAS, Warning,
+					"스킬 대상 증강 Row에 TargetAbilityTag가 비어 있습니다. RowName={RowName}, AugmentTag={AugmentTag}, StatTag={StatTag}",
+					("RowName", RowName.ToString()),
+					("AugmentTag", Row->AugmentTag.ToString()),
+					("StatTag", Row->StatTag.ToString())
+				);
+			}
+
+			// Attribute Row든 방금 경고한 잘못된 Row든, 이 캐시는 스킬별 Modifier 전용이라 대상이 아님
 			continue;
 		}
 		
-		// SourceDefId로 보유 증강과 빠르게 매칭하기 위한 원본 캐시
-		CachedModifierRowsBySource.FindOrAdd(Row->SourceDefId).Add(*Row);
+		if (Row->Operation == ENSCombatStatModifierOperation::Multiply)
+		{
+			const float MaxStackMultiplier =
+				NSAugment::CalculateStackedMultiplyPercent(Row->ValuePerStack, Row->MaxStack);
+
+			if (MaxStackMultiplier <= 0.0f)
+			{
+				NS_OBJ_LOG(LogNSGAS, Warning,
+					"증강 Multiply Modifier의 최대 스택 배율이 0 이하입니다. RowName={RowName}, Value={Value}, MaxStack={MaxStack}, FinalMultiplier={FinalMultiplier}",
+					("RowName", RowName.ToString()),
+					("Value", Row->ValuePerStack),
+					("MaxStack", Row->MaxStack),
+					("FinalMultiplier", MaxStackMultiplier)
+				);
+				continue;
+			}
+		}
+		
+		// Inventory는 DefId를 저장하므로 Definition SoftPtr의 에셋 이름을 같은 DefId로 변환.
+		const FPrimaryAssetId DefId(UNSDataSubsystem::AugmentAssetType, FName(*Row->Definition.GetAssetName()));
+		
+		if (!DefId.IsValid())
+		{
+			NS_OBJ_LOG(LogNSGAS, Warning,
+				"증강 Definition에서 유효한 DefId를 만들지 못했습니다. RowName={RowName}",
+				("RowName", RowName.ToString())
+			);
+			continue;
+		}
+		
+		CachedModifierRowsByDefId.FindOrAdd(DefId).Add(*Row);
 	}
 	
 	NS_OBJ_LOG(LogNSGAS, Log,
-		"CombatStat Modifier 캐시 생성 완료. SourceCount={SourceCount}",
-		("SourceCount", CachedModifierRowsBySource.Num())
+		"증강 CombatStat Modifier 캐시 생성 완료. DefinitionCount={DefinitionCount}",
+		("DefinitionCount", CachedModifierRowsByDefId.Num())
 	);
 }
 
@@ -381,15 +524,15 @@ void UNSCombatStatComponent::RebuildActiveModifierCache()
 	
 	for (const FNSAugmentInstance& OwnedAugment : AugmentInventory->GetOwned())
 	{
-		const TArray<FNSCombatStatModifierRow>* ModifierRows =
-			CachedModifierRowsBySource.Find(OwnedAugment.DefId);
+		const TArray<FNSAugmentDefinitionRow>* ModifierRows =
+			CachedModifierRowsByDefId.Find(OwnedAugment.DefId);
 		
 		if (!ModifierRows)
 		{
 			continue;
 		}
 		
-		for (const FNSCombatStatModifierRow& ModifierRow : *ModifierRows)
+		for (const FNSAugmentDefinitionRow& ModifierRow : *ModifierRows)
 		{
 			// 보유 증강의 현재 스택 수를 반영해 활성 Modifier를 누적
 			ApplyModifierRow(ModifierRow, OwnedAugment.Stacks);
@@ -402,7 +545,7 @@ void UNSCombatStatComponent::RebuildActiveModifierCache()
 	);
 }
 
-void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& ModifierRow, int32 Stacks)
+void UNSCombatStatComponent::ApplyModifierRow(const FNSAugmentDefinitionRow& ModifierRow, int32 Stacks)
 {
 	if (Stacks <= 0)
 	{
@@ -423,12 +566,11 @@ void UNSCombatStatComponent::ApplyModifierRow(const FNSCombatStatModifierRow& Mo
 	{
 	case ENSCombatStatModifierOperation::Add:
 		// Add는 스택 수만큼 단순 누적
-		ModifierSum.AddValue += ModifierRow.Value * static_cast<float>(Stacks);
+		ModifierSum.AddValue += ModifierRow.ValuePerStack * static_cast<float>(Stacks);
 		break;
 		
 	case ENSCombatStatModifierOperation::Multiply:
-		// Multiply는 스택마다 같은 배율을 반복 적용
-		ModifierSum.MultiplyValue *= FMath::Pow(ModifierRow.Value, static_cast<float>(Stacks));
+		ModifierSum.MultiplyPercent += ModifierRow.ValuePerStack * static_cast<float>(Stacks);
 		break;
 		
 	default:
@@ -455,7 +597,7 @@ void UNSCombatStatComponent::RebuildTemporaryModifierCache()
 			ModifierSum.AddValue += TemporaryModifier.Value;
 			break;
 		case ENSCombatStatModifierOperation::Multiply:
-			ModifierSum.MultiplyValue *= TemporaryModifier.Value;
+			ModifierSum.MultiplyPercent += TemporaryModifier.Value;
 			break;
 		default:
 			break;
@@ -475,12 +617,4 @@ const FNSCombatStatModifierSum* UNSCombatStatComponent::FindTemporaryModifierSum
 	}
 
 	return StatMap->Find(StatTag);
-}
-
-void UNSCombatStatComponent::ApplyTemporaryModifierToFinalValue(
-	const FNSCombatStatModifierSum& ModifierSum,
-	float& InOutValue) const
-{
-	// 기존 Final 값 위에 TemporaryModifier 보정 적용
-	InOutValue = (InOutValue + ModifierSum.AddValue) * ModifierSum.MultiplyValue;
 }

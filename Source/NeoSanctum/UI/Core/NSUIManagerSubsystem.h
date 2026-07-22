@@ -12,6 +12,9 @@ class APlayerController;
 class UUserWidget;
 class UNSRunResultWidget;
 class UNSSpectatorWidget;
+class ANSRunGameState;
+
+DECLARE_MULTICAST_DELEGATE(FNSTravelLoadingFinished);
 
 
 /**
@@ -24,6 +27,11 @@ class NEOSANCTUM_API UNSUIManagerSubsystem : public UGameInstanceSubsystem
 	
 public:
 	static UNSUIManagerSubsystem* Get(const UObject* WorldContext);
+
+	// @원종
+	void Initialize(FSubsystemCollectionBase& Collection) override;
+	// @원종
+	void Deinitialize() override;
 
 	//HUD 위젯 생성
 	void CreateHUD(APlayerController* OwningPlayer);
@@ -49,8 +57,17 @@ public:
 		float MaxHealth,
 		float CurrentShield,
 		float MaxShield);
+	//본인 경험치 HUD 전달
+	void UpdateExperience(
+		float CurrentExperience,
+		float RequiredExperience);
 	//증강 패널 열기 (Tab 토글 / 자동 오픈)
 	void OpenAugmentationPanel();
+	void OpenAugmentSelectionPanel();
+	bool IsFullAugmentationPanelOpen() const
+	{
+		return bFullAugmentationPanelOpen;
+	}
 	//증강 패널 닫기 (Tab 토글)
 	void CloseAugmentationPanel();
 	//증강 패널 열림 여부 (InputBinder 게이팅용)
@@ -65,6 +82,11 @@ public:
 	
 	//HUD 위젯 반환
 	UNSHUDWidget* GetHUDWidget() const;
+	
+	// 캐시된 UI 위젯 클래스를 RowName으로 조회하는 함수
+	TSubclassOf<UUserWidget> GetCachedWidgetClass(FName RowName) const;
+	
+	bool bFullAugmentationPanelOpen = false;
 	
 	//(이용호 추가) Title 위젯 전용
 	void CreateTitle(APlayerController* OwningPlayer);
@@ -92,11 +114,12 @@ public:
 	//(정주현 추가) Loading 위젯 전용
 	void CreateLoadingScreen(APlayerController* OwningPlayer);
 	void ShowLoadingScreen();
-	void HideLoadingScreen();
-	void ShowTravelLoadingScreen(APlayerController* OwningPlayer);
+	void ShowTravelLoadingScreen(APlayerController* OwningPlayer, bool bIsInRunTravel = false);
 	void RestoreTravelLoadingScreen(APlayerController* OwningPlayer);
 	void HideTravelLoadingScreen();
 	bool IsTravelLoadingScreenActive() const { return bTravelLoadingScreenActive; }
+	
+	FNSTravelLoadingFinished OnTravelLoadingFinished;
 	
 	//파츠 패널 열기
 	void OpenPartPanel();
@@ -128,7 +151,6 @@ public:
 	//런 종료 투표 수를 결과창 위젯에 전달
 	void UpdateRunEndVotes(int32 NextVotes, int32 HubVotes);
 
-	int32 GetRunResultGoods() const { return RunResultGoods; }
 	int32 GetRunResultKillCount() const { return RunResultKillCount; }
 	float GetRunResultTimeSeconds() const;
 	
@@ -141,9 +163,8 @@ public:
 	//리로드 상태 UI 갱신
 	void SetReloading(bool bReloading);
 	
-	//인런 스킬 재화 UI 갱신
-	void UpdateRunSkillGoods(int32 NewGoodsAmount);
-	
+	void UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount);
+
 	//인런 재화 UI 표시
 	void ShowInRunGoods();
 
@@ -153,14 +174,10 @@ public:
 	void RefreshOutRunGoods();
 
 	int32 GetRunResultCommonGoods() const { return RunResultCommonGoods; }
-	int32 GetRunResultSkillGoods() const { return RunResultSkillGoods; }
 	
 	//런 결과창에 표시할 영구재화 획득량 갱신
 	void UpdateRunResultCommonGoods(int32 NewAmount);
 
-	//런 결과창에 표시할 스킬재화 획득량 갱신
-	void UpdateRunResultSkillGoods(int32 NewAmount);
-	
 	//캐릭터별 스킬 슬롯 UI 적용
 	void ApplyCharacterSkillUISet(FName CharacterId);
 	
@@ -176,7 +193,31 @@ public:
 	//관전자 위젯 제거
 	void ClearSpectator();
 	
-	UNSUIManagerSubsystem();
+	void UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState);
+	
+	// 이용호 추가
+	void MarkTravelPawnReady();    // 실제 플레이어 캐릭터 빙의됨
+	void MarkTravelLevelReady();   // 도착 레벨용 데이터 로드 완료
+	void MarkTravelViewReady();
+	void MarkTravelPrewarmReady();
+	
+	// 트래블 중 새 월드가 로드될 때마다 로딩 위젯을 재확인
+	void HandlePostLoadMap(UWorld* LoadedWorld);
+	
+	// HUD의 WBP_Augmentation을 통해 Tab 증강 패널 토글 사운드를 재생
+	void PlayAugmentationTabSound() const;
+
+	// @원종 추가
+private:
+	UFUNCTION()
+	void HandleCommonDataReady();
+
+	// CommonData에서 받은 DT_UIWidget을 RowName -> WidgetClass 캐시로 변환.
+	void RebuildWidgetClassCache();
+
+	// CommonDataReady 전에 실패했던 Title 생성을 UI 위젯 캐시 구축 후 재시도.
+	void RetryPendingTitleCreation();
+
 private:
 	//생성된 HUD 보관
 	UPROPERTY()
@@ -186,6 +227,11 @@ private:
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> TitleWidget;
+
+
+	// @원종: CommonDataReady 전에 Title 생성이 요청되면 로딩 완료 후 같은 PlayerController로 재시도하기 위해 보관.
+	TWeakObjectPtr<APlayerController> PendingTitleOwningPlayer;
+	bool bPendingTitleCreation = false;
 	
 	UPROPERTY()
 	TObjectPtr<UUserWidget> RunEndWidget;
@@ -205,12 +251,19 @@ private:
 	// 로딩스크린을 계속 Active할 것인가에 대한 판단을 위한 bool 변수
 	bool bTravelLoadingScreenActive = false;
 	
+	// (이용호 추가) 심리스 트래블에도 유지되도록 뷰포트에 직접 올릴 Slate 핸들 캐시
+	TSharedPtr<SWidget> LoadingScreenSlate;
+	
 	//DataTable에서 RowName에 해당되는 위젯 조회
 	TSubclassOf<UUserWidget> GetWidgetClassFromTable(
 		FName RowName)const;
+
 	//UI 위젯 정보 테이블
 	UPROPERTY()
 	TObjectPtr<UDataTable> UIWidgetDataTable;
+
+	UPROPERTY()
+	TMap<FName, TSubclassOf<UUserWidget>> WidgetClassCache;
 	
 	bool bPartPanelOpen = false;
 	
@@ -234,12 +287,16 @@ private:
 	//런 결과창에 표시할 공통 영구재화 획득량
 	int32 RunResultCommonGoods = 0;
 
-	//런 결과창에 표시할 스킬재화 획득량
-	int32 RunResultSkillGoods = 0;
-	
 	//관전자 상태 UI위젯
 	UPROPERTY()
 	TObjectPtr<UNSSpectatorWidget> SpectatorWidget;
+	
+	// (이용호 추가) 로딩스크린 Hide 시도용
+	void TryFinishTravelLoading();
+	bool bTravelPawnReady = false;
+	bool bTravelLevelReady = false;
+	bool bTravelViewReady = false;
+	bool bTravelPrewarmReady = false; 
 protected:
 	//HUD 위젯 블루프린트
 	UPROPERTY(EditDefaultsOnly, Category = "UI")

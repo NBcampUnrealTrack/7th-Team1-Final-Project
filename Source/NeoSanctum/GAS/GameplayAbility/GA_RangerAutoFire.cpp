@@ -216,6 +216,28 @@ bool UGA_RangerAutoFire::TryGetFinalFireInterval(float& OutFireInterval)
 	return true;
 }
 
+bool UGA_RangerAutoFire::TryGetFinalFireRange(float& OutFireRange) const
+{
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		NSGameplayTags::CombatStat_FireRange,
+		FinalFireRange))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire FireRange CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
+			("StatTag", NSGameplayTags::CombatStat_FireRange.GetTag().ToString())
+		);
+
+		return false;
+	}
+
+	OutFireRange = FMath::Max(FinalFireRange, 0.0f);
+	return true;
+}
+
 void UGA_RangerAutoFire::FireOnce()
 {
 	// 로컬 Trace는 TargetData 생성용.
@@ -469,6 +491,8 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 	
+	ReportShotsFired(1); 
+	
 	// 조준 Trace가 빗나가도 서버 기준 TraceEnd까지 총구 막힘 검사는 수행.
 	const FVector AimPoint = bServerAimHit ? FVector(ServerHitResult.ImpactPoint) : ServerTraceEnd;
 	const AActor* AimTargetActor = bServerAimHit ? ServerHitResult.GetActor() : nullptr;
@@ -480,7 +504,14 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		AimTargetActor,
 		MuzzleObstructionHitResult))
 	{
-		ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
+		// BackTrace로 늘어난 구간은 실제 명중 거리에서 제외.
+		const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+		const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
+
+		if (ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance))
+		{
+			ReportShotsHit(1);
+		}
 		ExecuteImpactCue(MuzzleObstructionHitResult);
 		return;
 	}
@@ -490,15 +521,24 @@ void UGA_RangerAutoFire::ProcessTargetDataForDamage(const FGameplayAbilityTarget
 		return;
 	}
 
-	ApplyDamageToActor(ServerHitResult.GetActor());
+	if (ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance))
+	{
+		ReportShotsHit(1);
+	}
 	ExecuteImpactCue(ServerHitResult);
 }
 
-void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
+bool  UGA_RangerAutoFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
 {
+	AActor* TargetActor = HitResult.GetActor();
 	if (!TargetActor || !DamageEffectClass)
 	{
-		return;
+		return false;
+	}
+	
+	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+	{
+		return false;
 	}
 	
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
@@ -506,20 +546,39 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	
 	if (!SourceASC || !TargetASC)
 	{
-		return;
+		return false;
 	}
 
 	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
 	{
-		return;
+		return false;
 	}
 	
 	float FinalDamage = 0.0f;
 	
 	if (!TryGetFinalDamage(FinalDamage))
 	{
-		return;
+		return false;
 	}
+
+	float DamageFalloffMultiplier = 1.0f;
+
+	if (!TryCalculateDamageFalloffMultiplier(
+		NSGameplayTags::Ability_Ranger_AutoFire,
+		HitDistance,
+		DamageFalloffMultiplier))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+			"AutoFire 거리 감쇠 계산 실패. HitDistance={HitDistance}",
+			("HitDistance", HitDistance)
+		);
+
+		return false;
+	}
+
+	// 감쇠된 값을 기존 Effect.Damage.Base 흐름으로 전달.
+	FinalDamage *= DamageFalloffMultiplier;
+	FinalDamage *= NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
 	
 	// Attribute를 직접 변경하지 않고 GameplayEffect Spec으로 데미지를 전달.
 	// Damage 값은 SetByCaller로 설정하고, 대상 ASC에 서버 권한으로 적용.
@@ -528,38 +587,33 @@ void UGA_RangerAutoFire::ApplyDamageToActor(AActor* TargetActor)
 	
 	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
 	{
-		return;
+		return false;
 	}
 	
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
+	DamageSpecHandle.Data->GetContext().AddHitResult(HitResult, true);
 	
 	// 데미지 감지 가해자 지정
 	AssignDamageInstigator(DamageSpecHandle);
 	
 	// GE_Damage -> GEC_DamageExecution -> Damage Meta Attribute 흐름으로 데미지 전달
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+	
+	return true;
 }
 
 bool UGA_RangerAutoFire::TryGetFinalDamage(float& OutDamage)
 {
-	float FinalDamage = 0.0f;
-	
-	if (!TryGetFinalAbilityStat(
-		NSGameplayTags::Ability_Ranger_AutoFire,
-		NSGameplayTags::CombatStat_Damage,
-		FinalDamage))
+	if (!TryGetFinalSkillDamage(NSGameplayTags::Ability_Ranger_AutoFire, OutDamage))
 	{
 		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
-			"AutoFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
-			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString()),
-			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+			"AutoFire 스킬 데미지 계산 실패. AbilityTag={AbilityTag}",
+			("AbilityTag", NSGameplayTags::Ability_Ranger_AutoFire.GetTag().ToString())
 		);
-		
+
 		return false;
 	}
-	
-	OutDamage = FMath::Max(FinalDamage, 0.0f);
-	
+
 	return true;
 }
 
@@ -779,9 +833,15 @@ bool UGA_RangerAutoFire::TryBuildHitscanTrace(
 		return false;
 	}
 
-	// 서버 검증에서 같은 최대 사거리를 사용할 수 있도록
-	// 조준 방향과 TraceRange로 끝점을 명시적으로 구성.
-	OutTraceEnd = OutTraceStart + TraceDirection * TraceRange;
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 클라이언트도 CombatStat에서 가져온 최대 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + TraceDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(AvatarActor);
@@ -827,8 +887,16 @@ bool UGA_RangerAutoFire::TryBuildServerAimTrace(
 	{
 		return false;
 	}
-	
-	OutTraceEnd = OutTraceStart + ServerAimDirection * TraceRange;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	// 서버 판정도 클라이언트와 같은 CombatStat 사정거리를 사용.
+	OutTraceEnd = OutTraceStart + ServerAimDirection * FinalFireRange;
 	
 	FCollisionQueryParams QueryParams(
 		SCENE_QUERY_STAT(RangerAutoFireServerAimTrace), false);
@@ -1105,8 +1173,15 @@ bool UGA_RangerAutoFire::IsTargetDataTraceValid(
 	{
 		return false;
 	}
-	
-	const float MaxTraceDistance = TraceRange + ServerHitLocationTolerance;
+
+	float FinalFireRange = 0.0f;
+
+	if (!TryGetFinalFireRange(FinalFireRange) || FinalFireRange <= 0.0f)
+	{
+		return false;
+	}
+
+	const float MaxTraceDistance = FinalFireRange + ServerHitLocationTolerance;
 	
 	if (FVector::DistSquared(ClientTraceStart, ClientTraceEnd) > FMath::Square(MaxTraceDistance))
 	{

@@ -9,7 +9,7 @@ ANSWeaponBase::ANSWeaponBase()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bNetUseOwnerRelevancy = true;
-	SetReplicates(true);
+	bReplicates = true;
 	
 	WeaponRoot = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponRoot"));
 	SetRootComponent(WeaponRoot);

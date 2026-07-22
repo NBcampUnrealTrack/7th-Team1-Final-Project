@@ -13,6 +13,7 @@
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 {
@@ -21,6 +22,8 @@ UGA_RangerProjectileShot::UGA_RangerProjectileShot()
 	SetAssetTags(AssetTags);
 
 	ActivationPolicy = ENSAbilityActivationPolicy::OnInputTriggered;
+	
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_ThrowProjectile_Releasing);
 }
 
 void UGA_RangerProjectileShot::ActivateAbility(
@@ -446,11 +449,9 @@ bool UGA_RangerProjectileShot::TrySpawnProjectileAtAimPoint(const FVector& AimPo
 
 	if (ASC)
 	{
-		const float SplashDamage = GetFinalAbilityStatOrDefault(
-			SkillAbilityTag,
-			NSGameplayTags::CombatStat_Damage,
-			DefaultSplashDamage
-		);
+		float SplashDamage = DefaultSplashDamage;
+		// 실패 시 DefaultSplashDamage를 그대로 사용하는 폴백 설계
+		TryGetFinalSkillDamage(SkillAbilityTag, SplashDamage);
 		
 		const float ExplosionRadius = GetFinalAbilityStatOrDefault(
 			SkillAbilityTag,

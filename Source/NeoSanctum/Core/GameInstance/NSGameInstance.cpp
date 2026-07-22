@@ -2,6 +2,7 @@
 
 
 #include "NSGameInstance.h"
+
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
@@ -28,7 +29,6 @@ void UNSGameInstance::Init()
 	SeamlessTravelStartHandle = FWorldDelegates::OnSeamlessTravelStart.AddUObject(
 		this,
 		&UNSGameInstance::OnSeamlessTravelStart);
-	
 }
 
 void UNSGameInstance::Shutdown()
@@ -117,3 +117,4 @@ void UNSGameInstance::OnSeamlessTravelStart(UWorld* CurrentWorld, const FString&
 	UE_LOG(LogTemp, Log, TEXT("SeamlessTravel 시작: %s"), *LevelName);
 	ShowLoadingScreen();
 }
+

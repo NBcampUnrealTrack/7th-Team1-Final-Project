@@ -116,6 +116,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Dungeon Graph", meta = (CompactNodeTitle = "Count"))
 	int32 Count() const { return Rooms.Num(); }
 
+	// Removes a room and all of its connections from the generated graph.
+	// Only call this during Prune Dungeon, before the rooms are initialized and loaded.
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Dungeon Graph")
+	bool RemoveRoom(URoom* Room);
+
+	// Removes multiple rooms and all of their connections in a single batch.
+	// Only call this during Prune Dungeon, before the rooms are initialized and loaded.
+	// Returns the number of rooms that were removed.
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "Dungeon Graph")
+	int32 RemoveRooms(const TArray<URoom*>& RoomsToRemove);
+
 	// Returns true if a specific RoomData is already in the dungeon
 	UFUNCTION(BlueprintPure, Category = "Dungeon Graph")
 	bool HasAlreadyRoomData(const URoomData* RoomData) const;

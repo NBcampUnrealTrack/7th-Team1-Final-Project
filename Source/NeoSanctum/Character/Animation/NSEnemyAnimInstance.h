@@ -8,6 +8,7 @@
 
 class ANSEnemyCharacterBase;
 class UCharacterMovementComponent;
+class UNSEnemyPartComponent;
 
 UCLASS()
 class NEOSANCTUM_API UNSEnemyAnimInstance : public UAnimInstance
@@ -31,7 +32,7 @@ protected:
 	// 이동 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsMoving = false;
-	
+
 	// 체공 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsInAir = false;
@@ -39,13 +40,33 @@ protected:
 	// 상승/낙하 구분을 위한 Z축 속도
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float VerticalVelocity = 0.0f;
-	
+
 	// 후퇴 여부
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	bool bIsRetreating = false;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
 	float LocalForwardSpeed = 0.0f;
+	
+	// 점프 시작 애니메이션을 재생할지
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	bool bShouldUseJumpState = false;
+
+	// 체공/낙하 루프 애니메이션을 재생할지
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	bool bShouldUseFallingState = false;
+
+	// 공중에 떠 있는 시간
+	UPROPERTY(BlueprintReadOnly, Category = "Locomotion")
+	float AirTime = 0.0f;
+
+	// 이 시간 이후에는 Jump 시작 모션에서 Falling 루프로 넘김
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
+	float FallingStateMinAirTime = 0.25f;
+
+	// 이 값 이하의 Z 속도면 낙하/체공 상태로 판단
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
+	float FallingStateVerticalVelocityThreshold = 0.0f;
 
 	// 이동 기준 속도
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Locomotion|Config")
@@ -87,16 +108,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float MuzzleYawErrorDeadZone = 0.75f;
-	
+
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	FRotator AimBoneRotation = FRotator::ZeroRotator;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimYawScale = 1.0f;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Animation|Aim")
 	float AimPitchScale = -1.0f;
-	
+
 	UPROPERTY(BlueprintReadOnly, Category = "Animation|Aim")
 	FRotator Spine01AimRotation;
 
@@ -118,4 +139,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UCharacterMovementComponent> MovementComponent;
+
+	UPROPERTY()
+	TObjectPtr<UNSEnemyPartComponent> PartComponent;
 };

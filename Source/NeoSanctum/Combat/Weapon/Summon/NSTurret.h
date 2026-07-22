@@ -7,10 +7,12 @@
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Actor.h"
 #include "GameplayEffectTypes.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "NSTurret.generated.h"
 
+class UNSCombatStatComponent;
 class UAbilitySystemComponent;
 class UCapsuleComponent;
 class UGameplayEffect;
@@ -23,11 +25,14 @@ struct FOnAttributeChangeData;
 class AController;
 class APawn;
 class UNSMeleeAttackReservationComponent;
+class UNSHitReactionComponent;
+class UNSDamageFlashComponent;
 
 UCLASS()
 class NEOSANCTUM_API ANSTurret : public AActor,
                                  public IAbilitySystemInterface,
-                                 public IGenericTeamAgentInterface
+                                 public IGenericTeamAgentInterface,
+                                 public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
@@ -36,6 +41,7 @@ public:
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return false; }
 
 	// Turret 설정과 초기화 payload 전달
 	void InitializeTurret(
@@ -94,6 +100,10 @@ private:
 private:
 	void InitializeAbilityActorInfo();
 	void ApplyInitialAttributeEffect();
+
+	// 설치 중 무적 GameplayEffect를 서버에서 적용.
+	void ApplyDeploymentInvincibilityEffect();
+
 	// 초기화 GE에 SetByCaller payload 적용
 	void ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const;
 
@@ -116,6 +126,9 @@ private:
 	void TryFire();
 	bool CanFireToCurrentTarget() const;
 	void FireHitscan();
+	// 터렛 자체 Attribute에는 크리티컬 스탯이 없으므로, 소환자의 현재 CritChance/CritDamage를
+	// Damage GE Spec에 SetByCaller로 전달해 발사 시점 기준 크리티컬이 적용되게 함.
+	void ApplyCritOverrideToSpec(FGameplayEffectSpecHandle& SpecHandle) const;
 	void ReportFireNoise(const FVector& NoiseLocation);
 	FTransform GetMuzzleTransform() const;
 	FTransform GetTraceSocketTransform() const;
@@ -130,6 +143,8 @@ private:
 	void StartDeathPresentation();
 	void StartLifetimeTimer();
 	bool TryGetRuntimeStatMagnitude(const FGameplayTag& CombatStatTag, float& OutMagnitude) const;
+	// 발사 판정마다 소환자 CombatStatComponent에서 FireRate를 라이브 조회. 실패 시 소환 시점 스냅샷으로 대체.
+	float GetCurrentFireRate() const;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
@@ -137,6 +152,14 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UNSTurretAttributeSet> AttributeSet;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UNSCombatStatComponent> OwningCombatStatComponent;
+
+	FGameplayTag SourceAbilityTag;
+
+	// 터렛 전용 GE가 만든 배율을 계산할 때 기준으로 쓸 소환 시점 공속.
+	float BaseFireRateAtSpawn = 0.0f;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
@@ -165,6 +188,14 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
 	TObjectPtr<UNSDissolveComponent> DissolveComponent;
+
+	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
+
+	// 피격 시 머티리얼 플래시를 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Turret|Components")
+	TObjectPtr<UNSDamageFlashComponent> DamageFlashComponent;
 	
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Combat")
@@ -201,6 +232,10 @@ protected:
 	// Attribute 초기화 GE
 	UPROPERTY(Transient)
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
+
+	// 터렛 설치가 끝날 때까지 무적 상태를 부여하는 GE.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Deployment")
+	TSubclassOf<UGameplayEffect> DeploymentInvincibilityEffectClass;
 
 	// Turret을 소환한 캐릭터 Pawn
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "Turret|Owner")

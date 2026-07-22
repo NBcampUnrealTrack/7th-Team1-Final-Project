@@ -148,6 +148,9 @@ void ANSGrenade::ExplodeAt(
 	FilterOccludedExplosionTargets(OcclusionTraceStart, TargetActors);
 	ApplyExplosionDamage(ExplosionLocation, TargetActors);
 
+	// 폭발 대상의 GE 적용이 전부 끝났으니 피드백 묶음을 완료.
+	CompletePlayerAttackFeedbackGroup();
+
 	Destroy();
 }
 
@@ -198,6 +201,8 @@ void ANSGrenade::ExecuteExplosionCue(const FVector& ExplosionLocation, const FVe
 	CueParameters.EffectCauser = this;
 	CueParameters.Location = ExplosionLocation;
 	CueParameters.Normal = ExplosionNormal;
+	// RuntimeStat에 들어 있는 최종 폭발 반경을 Cue에 넘겨줌.
+	CueParameters.RawMagnitude = GetExplosionRadius();
 
 	SourceASC->ExecuteGameplayCue(ExplosionCueTag, CueParameters);
 }

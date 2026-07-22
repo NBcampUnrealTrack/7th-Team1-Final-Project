@@ -11,16 +11,16 @@
 UNSInteractionPromptWidget::UNSInteractionPromptWidget()
 {
 	// 등급별 기본 색상
-	CommonStyle.BackgroundColor    = FLinearColor(0.10f, 0.10f, 0.12f, 0.90f);
+	CommonStyle.BackgroundColor    = FLinearColor(0.10f, 0.10f, 0.12f, 0.50f);
 	CommonStyle.AccentColor        = FLinearColor(0.50f, 0.50f, 0.50f, 1.0f);
 
-	RareStyle.BackgroundColor      = FLinearColor(0.04f, 0.12f, 0.06f, 0.90f);
+	RareStyle.BackgroundColor      = FLinearColor(0.04f, 0.12f, 0.06f, 0.50f);
 	RareStyle.AccentColor          = FLinearColor(0.10f, 0.80f, 0.20f, 1.0f);
 
-	EpicStyle.BackgroundColor      = FLinearColor(0.10f, 0.04f, 0.14f, 0.90f);
+	EpicStyle.BackgroundColor      = FLinearColor(0.10f, 0.04f, 0.14f, 0.50f);
 	EpicStyle.AccentColor          = FLinearColor(0.60f, 0.10f, 0.90f, 1.0f);
 
-	LegendaryStyle.BackgroundColor = FLinearColor(0.14f, 0.10f, 0.02f, 0.90f);
+	LegendaryStyle.BackgroundColor = FLinearColor(0.14f, 0.10f, 0.02f, 0.50f);
 	LegendaryStyle.AccentColor     = FLinearColor(1.00f, 0.70f, 0.10f, 1.0f);
 }
 
@@ -93,6 +93,96 @@ void UNSInteractionPromptWidget::SetPartName(const FText& InName)
 		return;
 	}
 	PartNameText->SetText(InName);
+}
+
+void UNSInteractionPromptWidget::ApplyStatComparisonLine(
+	UTextBlock* CompareText, UImage* UpImage, UImage* DownImage,
+	const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+{
+	if (CompareText)
+	{
+		// 소수점은 버리고 정수로만 표시. 반올림이면 3.8이 4로 보여 실제보다 좋아 보이므로 내림 고정
+		FNumberFormattingOptions Options;
+		Options.MaximumFractionalDigits = 0;
+		Options.MinimumFractionalDigits = 0;
+		Options.RoundingMode = ERoundingMode::ToNegativeInfinity;
+
+		CompareText->SetText(FText::Format(
+			NSLOCTEXT("InteractionPrompt", "StatCompareFormat", "{0} : {1} -> {2}"),
+			StatName,
+			FText::AsNumber(OldValue, &Options),
+			FText::AsNumber(NewValue, &Options)));
+		CompareText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	// 값이 그대로면 화살표 둘 다 숨김, 아니면 좋아짐/나빠짐에 해당하는 이미지만 표시
+	const bool bChanged = !FMath::IsNearlyEqual(OldValue, NewValue);
+	const bool bImproved = bChanged && (bHigherIsBetter ? (NewValue > OldValue) : (NewValue < OldValue));
+
+	if (UpImage)
+	{
+		UpImage->SetVisibility(
+			(bChanged && bImproved) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+
+	if (DownImage)
+	{
+		DownImage->SetVisibility(
+			(bChanged && !bImproved) ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSInteractionPromptWidget::SetStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+{
+	ApplyStatComparisonLine(StatCompareText, StatArrowUpImage, StatArrowDownImage,
+		StatName, OldValue, NewValue, bHigherIsBetter);
+}
+
+void UNSInteractionPromptWidget::SetSecondaryStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter)
+{
+	ApplyStatComparisonLine(StatCompareText2, StatArrowUpImage2, StatArrowDownImage2,
+		StatName, OldValue, NewValue, bHigherIsBetter);
+}
+
+void UNSInteractionPromptWidget::ClearSecondaryStatComparison()
+{
+	if (StatCompareText2)
+	{
+		StatCompareText2->SetText(FText::GetEmpty());
+		StatCompareText2->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowUpImage2)
+	{
+		StatArrowUpImage2->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowDownImage2)
+	{
+		StatArrowDownImage2->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UNSInteractionPromptWidget::ClearStatComparison()
+{
+	if (StatCompareText)
+	{
+		StatCompareText->SetText(FText::GetEmpty());
+		StatCompareText->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowUpImage)
+	{
+		StatArrowUpImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (StatArrowDownImage)
+	{
+		StatArrowDownImage->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	// 비교 UI 전체를 접는 경로에서는 두 번째 라인도 함께 숨김
+	ClearSecondaryStatComparison();
 }
 
 void UNSInteractionPromptWidget::SetRarityStyle(int32 RarityIndex)

@@ -5,21 +5,21 @@
 
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
-#include "NavigationSystem.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "EnvironmentQuery/EnvQuery.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Collision/NSCollisionChannels.h"
-#include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPhaseComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Interaction/Prop/NSDestructibleObjectBase.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Perception/AIPerceptionComponent.h"
-#include "Perception/AISense_Damage.h"
-#include "Perception/AISense_Hearing.h"
-#include "Perception/AISense_Sight.h"
+#include "NeoSanctum/AI/Enemy/Controller/NSEnemyControllerBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyAttackComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyMeleeComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyMoveComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyTargetComponent.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
+#include "NeoSanctum/Type/NSBBTypes.h"
 
 
 ANSEnemyAIController::ANSEnemyAIController()
@@ -35,7 +35,7 @@ ANSEnemyAIController::ANSEnemyAIController()
 void ANSEnemyAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -43,54 +43,84 @@ void ANSEnemyAIController::Tick(float DeltaTime)
 	}
 
 	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	const bool bIsTraversingNavLink = Enemy && Enemy->IsTraversingNavLink();
+
+	UpdateEnemyPhase();
+
+	if (IsPhasePatternLocked())
+	{
+		StopMovement();
+
+		ClearAttackBB();
+		ClearRetreatBB();
+
+		return;
+	}
 
 	if (Enemy && Enemy->IsHitReacting())
 	{
 		StopMovement();
 
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-			CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		}
+		ClearAttackBB();
+		ClearRetreatBB();
 
 		return;
 	}
-	
-	const double CurrentTime = World->GetTimeSeconds();
 
-	if (CurrentTime >= NextTargetEvaluationTime)
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 	{
-		UpdateTargetSelection();
-		UpdateMeleeReservationState();
+		if (IsAttackingBB() || bIsTraversingNavLink)
+		{
+			MoveComponent->ResetNavigationRecovery();
+		}
+		else
+		{
+			MoveComponent->UpdateNavigationRecovery(this, DeltaTime);
+		}
+	}
 
-		NextTargetEvaluationTime = CurrentTime + TargetEvaluationInterval;
+	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
+	{
+		if (ThreatComponent->CanEvaluateTarget())
+		{
+			UpdateTargetSelection();
+			UpdateMeleeReservationState();
+
+			ThreatComponent->ScheduleNextEvaluation();
+		}
 	}
 
 	AActor* TargetActor = GetCurrentTargetActor();
 
+	if (bIsTraversingNavLink)
+	{
+		ClearResolvedTargetMoveBlackboard();
+		ClearRetreatBB();
+		SetCanAttackBB(false);
+		SetAttackActorBlackboard(nullptr);
+		return;
+	}
+
 	if (IsValidLivingTarget(TargetActor))
 	{
-		if (Enemy)
-		{
-			UpdateRetreatState(Enemy, TargetActor);
-			UpdateFacingMode(Enemy, TargetActor);
-		}
+		UpdateResolvedTargetMoveBlackboard(TargetActor);
+		UpdateRetreatState(TargetActor);
+		UpdateFacingMode(TargetActor);
 	}
 	else
 	{
-		ApplyFacingMode(Enemy, nullptr, false);
+		ResetResolvedTargetMoveState();
 
-		if (Enemy)
+		if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 		{
-			Enemy->SetRetreating(false);
+			MoveComponent->ApplyFacing(this, nullptr, nullptr, false);
+			MoveComponent->ClearRetreat();
 		}
-		
+
 		if (CachedBBComp)
 		{
-			CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-			CachedBBComp->ClearValue(RetreatLocationKey);
+			CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+			CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
 		}
 	}
 
@@ -121,141 +151,183 @@ ETeamAttitude::Type ANSEnemyAIController::GetTeamAttitudeTo(const AActor& Other)
 
 bool ANSEnemyAIController::CanUseAnyAttackByDistance()
 {
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	UpdateEnemyPhase();
 
-	if (Enemy && Enemy->IsHitReacting())
+	if (IsPhasePatternLocked())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return false;
 	}
-	
-	const FNSEnemyAttackDefinition* UsableAttack = FindAttackDefinitionByDistance(false);
 
-	if (CachedBBComp)
+	if (IsControlledEnemyHitReacting())
 	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), UsableAttack != nullptr);
+		SetCanAttackBB(false);
+		return false;
 	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
+	{
+		SetCanAttackBB(false);
+		return false;
+	}
+
+	const FNSEnemyAttackRow* UsableAttack = FindAttackRowByDistance(false);
+
+	SetCanAttackBB(UsableAttack != nullptr);
 
 	return UsableAttack != nullptr;
 }
 
-void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackDefinition& AttackDefinition)
+void ANSEnemyAIController::RecordAttackUsed(const FNSEnemyAttackRow& AttackRow)
 {
 	NotifyAttackStarted();
-	
-	if (AttackDefinition.Cooldown <= 0.0f || AttackDefinition.AttackId.IsNone())
-	{
-		return;
-	}
 
-	const UWorld* World = GetWorld();
-	if (!World)
+	if (UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent())
 	{
-		return;
+		AttackComponent->RecordAttackUsed(AttackRow);
 	}
-
-	LastAttackTimeById.FindOrAdd(AttackDefinition.AttackId) = World->GetTimeSeconds();
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyAIController::GetAttackDefinitionByDistance()
+const FNSEnemyAttackRow* ANSEnemyAIController::GetAttackRowByDistance()
 {
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	UpdateEnemyPhase();
 
-	if (Enemy && Enemy->IsHitReacting())
+	if (IsPhasePatternLocked())
 	{
-		if (CachedBBComp)
-		{
-			CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		}
-
+		SetCanAttackBB(false);
 		return nullptr;
 	}
-	
-	const FNSEnemyAttackDefinition* SelectedAttack = FindAttackDefinitionByDistance(true);
 
-	if (CachedBBComp)
+	if (IsControlledEnemyHitReacting())
 	{
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), SelectedAttack != nullptr);
+		SetCanAttackBB(false);
+		return nullptr;
 	}
+
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
+	{
+		SetCanAttackBB(false);
+		SetAttackActorBlackboard(nullptr);
+		return nullptr;
+	}
+
+	const FNSEnemyAttackRow* SelectedAttack = FindAttackRowByDistance(true);
+
+	SetCanAttackBB(SelectedAttack != nullptr);
 
 	return SelectedAttack;
 }
 
 AActor* ANSEnemyAIController::GetCurrentTargetActor() const
 {
-	return CurrentCombatTarget.Get();
+	const UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent();
+	return ThreatComponent ? ThreatComponent->GetCurrentTarget() : nullptr;
 }
 
 void ANSEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	
-	// 쿨다운 시간 초기화
-	LastAttackTimeById.Reset();
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(InPawn);
-	if (!Enemy) return;
-
-	UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-	if (!EnemyData) return;
-
-	if (EnemyData->BehaviorTree)
+	if (UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent())
 	{
-		RunBehaviorTree(EnemyData->BehaviorTree);
-		CachedBBComp = GetBlackboardComponent();
-		
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
-
-		ResetTargetingState();
-		InitializeMeleeEQSBlackboard(EnemyData);
+		AttackComponent->ResetAttackState();
 	}
+
+	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
+	{
+		PhaseComponent->ResetPhaseState();
+	}
+
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
+	{
+		MeleeComponent->ResetMeleeState();
+	}
+
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(InPawn);
+	if (!EnemyAgent)
+	{
+		return;
+	}
+
+	UNSEnemyData* EnemyData = EnemyAgent->GetEnemyData();
+	if (!EnemyData)
+	{
+		return;
+	}
+	
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetNavigationRecovery();
+	}
+
+	StartEnemyBrain(EnemyData);
+
+	InitBBState();
+	ResetTargetingState();
+	InitializeMeleeEQSBlackboard(EnemyData);
 }
 
 void ANSEnemyAIController::OnUnPossess()
 {
+	StopEnemyBrain(TEXT("UnPossess"));
 	ResetTargetingState();
 	InitializeMeleeEQSBlackboard(nullptr);
-	
+
 	CachedBBComp = nullptr;
+
+	if (UNSEnemyPhaseComponent* PhaseComponent = GetEnemyPhaseComponent())
+	{
+		PhaseComponent->ResetPhaseState();
+	}
 	
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetNavigationRecovery();
+	}
+
 	Super::OnUnPossess();
 }
 
 void ANSEnemyAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
-	// 타깃이 존재하지 않으면 반환
 	if (!Actor)
 	{
 		return;
 	}
 
-	// 타깃 액터가 아군 혹은 중립인 경우 반환
 	if (GetTeamAttitudeTo(*Actor) != ETeamAttitude::Hostile)
 	{
 		return;
 	}
 
-	// 타깃이 될 수 없으면 반환
+	UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent();
+	if (!ThreatComponent)
+	{
+		return;
+	}
+
 	if (!IsValidLivingTarget(Actor))
 	{
-		ThreatRecords.Remove(Actor);
+		const bool bWasCurrentTarget = GetCurrentTargetActor() == Actor;
 
-		if (CurrentCombatTarget == Actor)
+		ThreatComponent->RemoveTarget(Actor, false);
+
+		if (bWasCurrentTarget)
 		{
 			ClearCurrentCombatTarget(false);
+		}
+		else
+		{
+			UpdateCurrentTargetBlackboard();
 		}
 
 		return;
 	}
 
-	// 시각·청각·피해 감지 결과를 해당 타깃의 Threat 기록에 반영
-	UpdateThreatFromStimulus(Actor, Stimulus);
+	ThreatComponent->UpdateThreatFromStimulus(Actor, Stimulus);
 
-	// 새로 감지된 타깃은 다음 Tick까지 기다리지 않고 평가
 	UpdateTargetSelection();
 }
 
@@ -300,45 +372,47 @@ bool ANSEnemyAIController::IsValidLivingTarget(const AActor* Target) const
 	return true;
 }
 
-const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDistance(bool bSelectWeightedAttack)
+const FNSEnemyAttackRow* ANSEnemyAIController::FindAttackRowByDistance(bool bSelectWeightedAttack)
 {
 	if (!CachedBBComp)
 	{
+		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	AActor* TargetActor = Cast<AActor>(CachedBBComp->GetValueAsObject(TargetActorKey));
+	AActor* TargetActor = GetTargetActorBB();
 
 	APawn* AIPawn = GetPawn();
 	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
-		CachedBBComp->SetValueAsObject(TargetActorKey, nullptr);
+		SetTargetActorBB(nullptr);
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn);
-	if (!Enemy)
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(AIPawn);
+	if (!EnemyAgent || EnemyAgent->IsHitReacting())
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-	if (!EnemyData)
+	UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+	if (!AttackComponent)
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const FVector ToTarget = (TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+	const FVector ToTarget =
+		(TargetActor->GetActorLocation() - AIPawn->GetActorLocation()).GetSafeNormal2D();
+
 	const FVector Forward = AIPawn->GetActorForwardVector().GetSafeNormal2D();
 
 	const float FacingDot = FVector::DotProduct(Forward, ToTarget);
 	const float RequiredDot = FMath::Cos(FMath::DegreesToRadians(AttackFacingAngleDegrees));
 
-	const bool bFacingTarget = FacingDot >= RequiredDot;
-	if (!bFacingTarget)
+	if (FacingDot < RequiredDot)
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
@@ -347,671 +421,158 @@ const FNSEnemyAttackDefinition* ANSEnemyAIController::FindAttackDefinitionByDist
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	const float Distance = FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
-
-	TArray<const FNSEnemyAttackDefinition*> Candidates;
-	int32 BestPriority = TNumericLimits<int32>::Lowest();
-
-	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
-	{
-		if (!CanUseAttackDefinition(AttackDefinition, TargetActor, AttackActor, Distance, bHasDirectLineOfSight))
-		{
-			continue;
-		}
-
-		if (!bSelectWeightedAttack)
-		{
-			SetAttackActorBlackboard(AttackActor);
-			return &AttackDefinition;
-		}
-
-		if (AttackDefinition.Priority > BestPriority)
-		{
-			BestPriority = AttackDefinition.Priority;
-			Candidates.Reset();
-		}
-
-		if (AttackDefinition.Priority == BestPriority)
-		{
-			Candidates.Add(&AttackDefinition);
-		}
-	}
-
-	if (Candidates.IsEmpty())
+	if (!IsValid(AttackActor))
 	{
 		SetAttackActorBlackboard(nullptr);
 		return nullptr;
 	}
 
-	const FNSEnemyAttackDefinition* SelectedAttack = nullptr;
+	const float Distance =
+		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
 
-	float TotalWeight = 0.0f;
-	for (const FNSEnemyAttackDefinition* Candidate : Candidates)
-	{
-		TotalWeight += FMath::Max(Candidate->Weight, 0.0f);
-	}
+	const FNSEnemyAttackRow* SelectedAttack = AttackComponent->SelectAttack(
+		TargetActor,
+		AttackActor,
+		Distance,
+		bHasDirectLineOfSight,
+		bSelectWeightedAttack
+	);
 
-	if (TotalWeight <= 0.0f)
-	{
-		SelectedAttack = Candidates[0];
-	}
-	else
-	{
-		float Pick = FMath::FRandRange(0.0f, TotalWeight);
+	SetAttackActorBlackboard(SelectedAttack ? AttackActor : nullptr);
 
-		for (const FNSEnemyAttackDefinition* Candidate : Candidates)
-		{
-			Pick -= FMath::Max(Candidate->Weight, 0.0f);
-
-			if (Pick <= 0.0f)
-			{
-				SelectedAttack = Candidate;
-				break;
-			}
-		}
-
-		if (!SelectedAttack)
-		{
-			SelectedAttack = Candidates.Last();
-		}
-	}
-
-	SetAttackActorBlackboard(AttackActor);
 	return SelectedAttack;
 }
 
-bool ANSEnemyAIController::CanUseAttackDefinition(
-	const FNSEnemyAttackDefinition& AttackDefinition,
-	const AActor* TargetActor,
-	const AActor* AttackActor,
-	float Distance,
-	bool bHasDirectLineOfSight) const
+UNSEnemyAttackComponent* ANSEnemyAIController::GetEnemyAttackComponent() const
 {
-	if (!IsValidLivingTarget(TargetActor) || !IsValid(AttackActor))
-	{
-		return false;
-	}
-	if (!AttackDefinition.AbilityClass)
-	{
-		return false;
-	}
-
-	if (Distance < AttackDefinition.Condition.MinRange ||
-		Distance > AttackDefinition.Condition.MaxRange)
-	{
-		return false;
-	}
-
-	if (AttackDefinition.Condition.bRequireLineOfSight &&
-		!bHasDirectLineOfSight &&
-		!CanUseDestructibleCoverAttack(AttackDefinition, TargetActor, AttackActor, bHasDirectLineOfSight))
-	{
-		return false;
-	}
-	if (AttackDefinition.Cooldown > 0.0f)
-	{
-		if (AttackDefinition.AttackId.IsNone())
-		{
-			return false;
-		}
-
-		const float* LastAttackTime = LastAttackTimeById.Find(AttackDefinition.AttackId);
-		if (LastAttackTime)
-		{
-			const UWorld* World = GetWorld();
-			if (!World)
-			{
-				return false;
-			}
-
-			const float ElapsedTime = World->GetTimeSeconds() - *LastAttackTime;
-			if (ElapsedTime < AttackDefinition.Cooldown)
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
+	const APawn* ControlledPawn = GetPawn();
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyAttackComponent>()
+		       : nullptr;
 }
 
-void ANSEnemyAIController::UpdateRetreatState(ANSEnemyCharacterBase* Enemy, const AActor* TargetActor)
+void ANSEnemyAIController::UpdateRetreatState(AActor* TargetActor)
 {
-	if (!CachedBBComp || !Enemy || !IsValid(TargetActor))
+	if (!CachedBBComp)
 	{
 		return;
 	}
 
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-	const float MinRange = GetMinimumAttackRange(EnemyData);
+	UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent();
 
-	// Melee Attack인 경우
-	if (MinRange <= 0.0f)
+	if (!MoveComponent || !IsValid(TargetActor))
 	{
-		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-		CachedBBComp->ClearValue(RetreatLocationKey);
-		Enemy->SetRetreating(false);
-		return;
-	}
-
-	const FVector EnemyLocation = Enemy->GetActorLocation();
-	const FVector TargetLocation = TargetActor->GetActorLocation();
-
-	const float Distance = FVector::Dist(
-		EnemyLocation,
-		TargetLocation);
-
-	const bool bWasRetreating = CachedBBComp->GetValueAsBool(ShouldRetreatKey);
-
-	// 경계에서 전진/후퇴 반복 방지
-	const float ExitRange = MinRange + RetreatExitBuffer;
-
-	const bool bShouldRetreat = bWasRetreating
-		? Distance < ExitRange
-		: Distance < MinRange;
-
-	CachedBBComp->SetValueAsBool(ShouldRetreatKey, bShouldRetreat);
-	
-	Enemy->SetRetreating(bShouldRetreat);
-
-	if (!bShouldRetreat)
-	{
-		CachedBBComp->ClearValue(RetreatLocationKey);
-		return;
-	}
-
-	const FVector CurrentDestination = CachedBBComp->GetValueAsVector(RetreatLocationKey);
-
-	const bool bDestinationReached = FVector::DistSquared2D(
-			EnemyLocation,
-			CurrentDestination) <= FMath::Square(RetreatDestinationAcceptanceRadius);
-	
-	const bool bHasRetreatDestination = CachedBBComp->IsVectorValueSet(RetreatLocationKey);
-	
-	// 처음 후퇴 시 / 기존 후퇴 지점 도착 시
-	if (bWasRetreating && bHasRetreatDestination && !bDestinationReached)
-	{
-		return;
-	}
-
-	FVector AwayDirection = (EnemyLocation - TargetLocation).GetSafeNormal2D();
-
-	if (AwayDirection.IsNearlyZero())
-	{
-		AwayDirection = -Enemy->GetActorForwardVector().GetSafeNormal2D();
-	}
-
-	const float RequiredDistance = FMath::Max(
-	ExitRange - Distance,
-	RetreatStepDistance);
-
-	const FVector DesiredLocation = EnemyLocation + AwayDirection * RequiredDistance;
-
-	UNavigationSystemV1* NavigationSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
-
-	FNavLocation ProjectedLocation;
-
-	if (NavigationSystem &&
-		NavigationSystem->ProjectPointToNavigation(DesiredLocation, ProjectedLocation))
-	{
-		CachedBBComp->SetValueAsVector(RetreatLocationKey, ProjectedLocation.Location);
-	}
-}
-
-float ANSEnemyAIController::GetMinimumAttackRange(const UNSEnemyData* EnemyData) const
-{
-	if (!EnemyData)
-	{
-		return 0.0f;
-	}
-
-	float MinimumRange = TNumericLimits<float>::Max();
-	bool bFoundAttack = false;
-
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
-	{
-		if (!Attack.AbilityClass)
+		if (MoveComponent)
 		{
-			continue;
+			MoveComponent->ClearRetreat();
 		}
 
-		bFoundAttack = true;
-		MinimumRange = FMath::Min(MinimumRange, Attack.Condition.MinRange);
+		CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+		CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
+		return;
 	}
 
-	return bFoundAttack ? MinimumRange : 0.0f;
-}
+	const bool bWasRetreating =
+		CachedBBComp->GetValueAsBool(NSBB::Movement::ShouldRetreat);
 
+	const bool bHasRetreatLocation =
+		CachedBBComp->IsVectorValueSet(NSBB::Movement::RetreatLocation);
+
+	const FVector CurrentRetreatLocation =
+		CachedBBComp->GetValueAsVector(NSBB::Movement::RetreatLocation);
+
+	const FNSRetreatResult Result = MoveComponent->UpdateRetreat(
+		TargetActor,
+		bWasRetreating,
+		bHasRetreatLocation,
+		CurrentRetreatLocation
+	);
+
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, Result.bShouldRetreat);
+
+	if (Result.bShouldRetreat && Result.bHasLocation)
+	{
+		CachedBBComp->SetValueAsVector(NSBB::Movement::RetreatLocation, Result.Location);
+	}
+	else
+	{
+		CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
+	}
+}
 
 void ANSEnemyAIController::NotifyAttackStarted()
 {
-	if (!CurrentCombatTarget.IsValid() || !GetWorld())
-	{
-		return;
-	}
+	Super::NotifyAttackStarted();
 
-	bAttackStartedOnCurrentTarget = true;
-	LastCombatProgressTime = GetWorld()->GetTimeSeconds();
+	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
+	{
+		ThreatComponent->NotifyAttackStarted();
+	}
+}
+
+void ANSEnemyAIController::NotifyAttackFinished()
+{
+	Super::NotifyAttackFinished();
+
+	ClearAttackBB();
 }
 
 void ANSEnemyAIController::UpdateTargetSelection()
 {
-	UWorld* World = GetWorld();
-	if (!World)
+	UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent();
+	if (!ThreatComponent)
 	{
 		return;
 	}
 
-	const double CurrentTime = World->GetTimeSeconds();
+	AActor* CurrentTarget = ThreatComponent->GetCurrentTarget();
 
-	PruneThreatRecords(CurrentTime);
+	const bool bIsAttacking = IsAttackingBB();
 
-	AActor* CurrentTarget = CurrentCombatTarget.Get();
+	const bool bCanMaintainCurrentTarget =
+		CurrentTarget && CanMaintainCoverAttackTarget(CurrentTarget);
 
-	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
+	const FNSEnemyThreatUpdateResult Result =
+		ThreatComponent->UpdateTarget(
+			bIsAttacking,
+			bCanMaintainCurrentTarget
+		);
 
-	if (CurrentTarget && !IsValidLivingTarget(CurrentTarget))
-	{
-		ClearCurrentCombatTarget(false);
-		CurrentTarget = nullptr;
-	}
-
-	const bool bCanMaintainCoverAttackTarget = CurrentTarget && CanMaintainCoverAttackTarget(CurrentTarget);
-
-	if (CurrentTarget && bCanMaintainCoverAttackTarget)
-	{
-		LastCombatProgressTime = CurrentTime;
-	}
-
-	if (CurrentTarget && bIsAttacking)
-	{
-		UpdateCurrentTargetBlackboard();
-		return;
-	}
-
-	if (CurrentTarget &&
-		!bCanMaintainCoverAttackTarget &&
-		CurrentTime - LastCombatProgressTime >= MaxPursuitWithoutAttackDuration)
-	{
-		ClearCurrentCombatTarget(true);
-		CurrentTarget = nullptr;
-	}
-
-	if (CurrentTarget &&
-		!bCanMaintainCoverAttackTarget &&
-		!ThreatRecords.Contains(CurrentTarget))
-	{
-		ClearCurrentCombatTarget(false);
-		CurrentTarget = nullptr;
-	}
-
-	AActor* BestTarget = FindBestTarget(CurrentTime);
-
-	if (!CurrentTarget)
-	{
-		if (BestTarget)
-		{
-			SetCurrentCombatTarget(BestTarget);
-		}
-
-		return;
-	}
-
-	if (BestTarget && ShouldSwitchTarget(BestTarget, CurrentTime))
-	{
-		SetCurrentCombatTarget(BestTarget);
-		return;
-	}
-
-	UpdateCurrentTargetBlackboard();
-}
-
-void ANSEnemyAIController::UpdateThreatFromStimulus(AActor* Actor, const FAIStimulus& Stimulus)
-{
-	// 월드 혹은 타깃이 존재하지 않으면 반환
-	UWorld* World = GetWorld();
-	if (!World || !Actor)
-	{
-		return;
-	}
-
-	const double CurrentTime = World->GetTimeSeconds();
-	FNSTargetThreatRecord& Record = ThreatRecords.FindOrAdd(Actor);
-	Record.TargetActor = Actor;
-
-	const FAISenseID SightID = UAISense::GetSenseID<UAISense_Sight>();
-	const FAISenseID HearingID = UAISense::GetSenseID<UAISense_Hearing>();
-	const FAISenseID DamageID = UAISense::GetSenseID<UAISense_Damage>();
-
-	if (Stimulus.Type == SightID)
-	{
-		Record.bCurrentlyVisible = Stimulus.WasSuccessfullySensed();
-
-		if (Stimulus.WasSuccessfullySensed())
-		{
-			Record.LastSeenTime = CurrentTime;
-			Record.LastKnownLocation = Actor->GetActorLocation();
-		}
-	}
-	else if (Stimulus.Type == HearingID)
-	{
-		if (Stimulus.WasSuccessfullySensed())
-		{
-			Record.LastStimulusTime = CurrentTime;
-			Record.LastKnownLocation = Actor->GetActorLocation();
-		}
-	}
-	else if (Stimulus.Type == DamageID)
-	{
-		if (Stimulus.WasSuccessfullySensed())
-		{
-			Record.LastStimulusTime = CurrentTime;
-			Record.LastKnownLocation = Actor->GetActorLocation();
-
-			FNSThreatDamageSample& DamageSample = Record.DamageSamples.AddDefaulted_GetRef();
-
-			DamageSample.Timestamp = CurrentTime;
-			DamageSample.Damage = FMath::Max(Stimulus.Strength, 0.0f);
-		}
-	}
-}
-
-void ANSEnemyAIController::PruneThreatRecords(double CurrentTime)
-{
-	for (auto It = ThreatRecords.CreateIterator(); It; ++It)
-	{
-		FNSTargetThreatRecord& Record = It.Value();
-		AActor* TargetActor = Record.TargetActor.Get();
-
-		if (!IsValidLivingTarget(TargetActor))
-		{
-			It.RemoveCurrent();
-			continue;
-		}
-
-		const double DamageCutoff = CurrentTime - DamageThreatWindow;
-
-		Record.DamageSamples.RemoveAll(
-			[DamageCutoff](const FNSThreatDamageSample& Sample)
-			{
-				return Sample.Timestamp < DamageCutoff;
-			});
-
-		if (!IsThreatRecordRelevant(Record, CurrentTime))
-		{
-			if (TargetActor == CurrentCombatTarget.Get() && CanMaintainCoverAttackTarget(TargetActor))
-			{
-				Record.LastKnownLocation = TargetActor->GetActorLocation();
-				continue;
-			}
-
-			It.RemoveCurrent();
-		}
-	}
-
-	for (auto It = ReacquireBlockedUntil.CreateIterator(); It; ++It)
-	{
-		if (!It.Key().IsValid() ||
-			It.Value() <= CurrentTime)
-		{
-			It.RemoveCurrent();
-		}
-	}
-}
-
-AActor* ANSEnemyAIController::FindBestTarget(double CurrentTime) const
-{
-	const APawn* EnemyPawn = GetPawn();
-	if (!EnemyPawn)
-	{
-		return nullptr;
-	}
-
-	AActor* BestDamageTarget = nullptr;
-	float BestDamageThreat = 0.0f;
-	float BestDamageTargetDistanceSq = TNumericLimits<float>::Max();
-
-	AActor* NearestTarget = nullptr;
-	float NearestDistanceSq = TNumericLimits<float>::Max();
-
-	for (const auto& Pair : ThreatRecords)
-	{
-		AActor* TargetActor = Pair.Key.Get();
-		const FNSTargetThreatRecord& Record = Pair.Value;
-
-		if (!IsValidLivingTarget(TargetActor) || !IsThreatRecordRelevant(Record, CurrentTime))
-		{
-			continue;
-		}
-
-		if (const double* BlockedUntil = ReacquireBlockedUntil.Find(Pair.Key))
-		{
-			if (*BlockedUntil > CurrentTime)
-			{
-				continue;
-			}
-		}
-
-		const float DistanceSq = FVector::DistSquared(EnemyPawn->GetActorLocation(), TargetActor->GetActorLocation());
-		const float DamageThreat = GetRecentDamageThreat(Record, CurrentTime);
-
-		if (DamageThreat > BestDamageThreat ||
-			(FMath::IsNearlyEqual(DamageThreat, BestDamageThreat) &&
-			 DistanceSq < BestDamageTargetDistanceSq))
-		{
-			BestDamageThreat = DamageThreat;
-			BestDamageTarget = TargetActor;
-			BestDamageTargetDistanceSq = DistanceSq;
-		}
-
-		if (DistanceSq < NearestDistanceSq)
-		{
-			NearestTarget = TargetActor;
-			NearestDistanceSq = DistanceSq;
-		}
-	}
-
-	return BestDamageThreat > 0.0f ? BestDamageTarget : NearestTarget;
-}
-
-float ANSEnemyAIController::GetRecentDamageThreat(const FNSTargetThreatRecord& Record, double CurrentTime) const
-{
-	const double DamageCutoff = CurrentTime - DamageThreatWindow;
-
-	float TotalDamage = 0.0f;
-
-	for (const FNSThreatDamageSample& Sample : Record.DamageSamples)
-	{
-		if (Sample.Timestamp >= DamageCutoff)
-		{
-			TotalDamage += Sample.Damage;
-		}
-	}
-
-	return TotalDamage;
-}
-
-bool ANSEnemyAIController::IsThreatRecordRelevant(const FNSTargetThreatRecord& Record, double CurrentTime) const
-{
-	if (!Record.TargetActor.IsValid())
-	{
-		return false;
-	}
-
-	if (Record.bCurrentlyVisible)
-	{
-		return true;
-	}
-
-	if (Record.LastSeenTime >= 0.0 &&
-		CurrentTime - Record.LastSeenTime <= SightMemoryDuration)
-	{
-		return true;
-	}
-
-	if (Record.LastStimulusTime >= 0.0 &&
-		CurrentTime - Record.LastStimulusTime <= StimulusMemoryDuration)
-	{
-		return true;
-	}
-
-	return !Record.DamageSamples.IsEmpty();
-}
-
-bool ANSEnemyAIController::ShouldSwitchTarget(AActor* CandidateTarget, double CurrentTime) const
-{
-	AActor* CurrentTarget = CurrentCombatTarget.Get();
-
-	if (!CandidateTarget || CandidateTarget == CurrentTarget)
-	{
-		return false;
-	}
-
-	if (!IsValidLivingTarget(CurrentTarget))
-	{
-		return true;
-	}
-
-	if (CurrentTime - LastTargetSwitchTime < TargetSwitchCooldown)
-	{
-		return false;
-	}
-
-	const bool bInitialLockFinished = bAttackStartedOnCurrentTarget ||
-		CurrentTime - CurrentTargetSelectedTime >= InitialTargetLockDuration;
-
-	if (!bInitialLockFinished)
-	{
-		return false;
-	}
-
-	const FNSTargetThreatRecord* CurrentRecord = ThreatRecords.Find(CurrentTarget);
-	const FNSTargetThreatRecord* CandidateRecord = ThreatRecords.Find(CandidateTarget);
-
-	if (!CandidateRecord)
-	{
-		return false;
-	}
-
-	if (!CurrentRecord)
-	{
-		return true;
-	}
-
-	const float CurrentDamage = GetRecentDamageThreat(*CurrentRecord, CurrentTime);
-	const float CandidateDamage = GetRecentDamageThreat(*CandidateRecord, CurrentTime);
-
-	if (CandidateDamage > 0.0f)
-	{
-		if (CurrentDamage <= 0.0f)
-		{
-			return true;
-		}
-
-		return CandidateDamage >= CurrentDamage * DamageThreatSwitchRatio;
-	}
-
-	if (CurrentDamage > 0.0f)
-	{
-		return false;
-	}
-
-	const APawn* EnemyPawn = GetPawn();
-	if (!EnemyPawn)
-	{
-		return false;
-	}
-
-	const float CurrentDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CurrentTarget->GetActorLocation());
-	const float CandidateDistance = FVector::Dist(EnemyPawn->GetActorLocation(), CandidateTarget->GetActorLocation());
-
-	return CandidateDistance <= CurrentDistance * DistanceSwitchRatio;
-}
-
-void ANSEnemyAIController::SetCurrentCombatTarget(AActor* NewTarget)
-{
-	if (!IsValidLivingTarget(NewTarget) || CurrentCombatTarget == NewTarget)
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-	
-	if (CurrentCombatTarget.IsValid() && CurrentCombatTarget.Get() != NewTarget)
+	if (Result.bTargetChanged)
 	{
 		CancelMeleeReservationRequest(false);
+		ResetMeleeEQSForCurrentTarget();
+		ResetResolvedTargetMoveState();
 	}
 
-	CurrentCombatTarget = NewTarget;
-
-	const double CurrentTime = World->GetTimeSeconds();
-
-	CurrentTargetSelectedTime = CurrentTime;
-	LastTargetSwitchTime = CurrentTime;
-	LastCombatProgressTime = CurrentTime;
-
-	bAttackStartedOnCurrentTarget = false;
-
 	UpdateCurrentTargetBlackboard();
-	ResetMeleeEQSForCurrentTarget();
 }
 
 void ANSEnemyAIController::ClearCurrentCombatTarget(bool bBlockReacquisition)
 {
-	AActor* PreviousTarget = CurrentCombatTarget.Get();
-
-	if (bBlockReacquisition && PreviousTarget && GetWorld())
+	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
-		ReacquireBlockedUntil.FindOrAdd(PreviousTarget) = GetWorld()->GetTimeSeconds() + TargetReacquireCooldown;
+		ThreatComponent->ClearCurrentTarget(bBlockReacquisition);
 	}
-	
-	CancelMeleeReservationRequest(false);
 
-	CurrentCombatTarget.Reset();
-	bAttackStartedOnCurrentTarget = false;
-	
+	CancelMeleeReservationRequest(false);
 	ResetMeleeEQSForCurrentTarget();
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	}
+	ClearTargetBB(true);
 }
 
 void ANSEnemyAIController::ResetTargetingState()
 {
 	CancelMeleeReservationRequest(false);
-	
-	ThreatRecords.Reset();
-	ReacquireBlockedUntil.Reset();
-	CurrentCombatTarget.Reset();
-	
+
+	if (UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
+	{
+		ThreatComponent->ResetThreatState();
+	}
+
 	ResetMeleeEQSForCurrentTarget();
 
-	CurrentTargetSelectedTime = 0.0;
-	LastTargetSwitchTime = 0.0;
-	LastCombatProgressTime = 0.0;
-	NextTargetEvaluationTime = 0.0;
-
-	bAttackStartedOnCurrentTarget = false;
-
-	if (CachedBBComp)
-	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
-	}
+	ClearTargetBB(true);
 }
 
 void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
@@ -1021,50 +582,133 @@ void ANSEnemyAIController::UpdateCurrentTargetBlackboard()
 		return;
 	}
 
-	AActor* TargetActor = CurrentCombatTarget.Get();
+	AActor* TargetActor = GetCurrentTargetActor();
 
 	if (!IsValidLivingTarget(TargetActor))
 	{
-		CachedBBComp->ClearValue(TargetActorKey);
-		CachedBBComp->ClearValue(AttackActorKey);
-		CachedBBComp->ClearValue(TargetLastKnownLocationKey);
-		CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, false);
+		ClearTargetBB(false);
 		return;
 	}
 
-	CachedBBComp->SetValueAsObject(TargetActorKey, TargetActor);
+	SetTargetActorBB(TargetActor);
 
-	if (const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor))
+	FVector LastKnownLocation = TargetActor->GetActorLocation();
+
+	if (const UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent())
 	{
-		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, Record->LastKnownLocation);
+		ThreatComponent->TryGetLastKnownLocation(TargetActor, LastKnownLocation);
 	}
-	else
-	{
-		CachedBBComp->SetValueAsVector(TargetLastKnownLocationKey, TargetActor->GetActorLocation());
-	}
+
+	SetTargetLastKnownLocationBB(LastKnownLocation);
 
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
 	SetAttackActorBlackboard(AttackActor);
-	CachedBBComp->SetValueAsBool(HasTargetLineOfSightKey, bHasDirectLineOfSight);
+	SetHasTargetLineOfSightBB(bHasDirectLineOfSight);
+}
+
+void ANSEnemyAIController::UpdateResolvedTargetMoveBlackboard(AActor* TargetActor)
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent();
+	if (!MoveComponent || !IsValidLivingTarget(TargetActor))
+	{
+		ClearResolvedTargetMoveBlackboard();
+		return;
+	}
+
+	const FNSResolvedTargetMoveResult Result =
+		MoveComponent->ResolveTargetMoveLocation(TargetActor, this);
+
+	CachedBBComp->SetValueAsVector(
+		NSBB::Target::ActualLocation,
+		Result.ActualLocation);
+
+	CachedBBComp->SetValueAsEnum(
+		NSBB::Target::MoveResolveType,
+		static_cast<uint8>(Result.ResolveType));
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Target::IsAirborne,
+		Result.bTargetAirborne);
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Movement::HasResolvedTargetMoveLocation,
+		Result.bHasMoveLocation);
+
+	CachedBBComp->SetValueAsBool(
+		NSBB::Movement::ArrivedBelowAirborneTarget,
+		Result.bArrivedBelowAirborneTarget);
+
+	if (Result.bHasMoveLocation)
+	{
+		CachedBBComp->SetValueAsVector(
+			NSBB::Movement::ResolvedTargetMoveLocation,
+			Result.MoveLocation);
+	}
+	else
+	{
+		CachedBBComp->ClearValue(
+			NSBB::Movement::ResolvedTargetMoveLocation);
+	}
+}
+
+void ANSEnemyAIController::ClearResolvedTargetMoveBlackboard()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->ClearValue(NSBB::Target::ActualLocation);
+
+	CachedBBComp->SetValueAsEnum(
+		NSBB::Target::MoveResolveType,
+		static_cast<uint8>(ENSTargetMoveResolveType::Invalid));
+
+	CachedBBComp->SetValueAsBool(NSBB::Target::IsAirborne, false);
+
+	CachedBBComp->ClearValue(NSBB::Movement::ResolvedTargetMoveLocation);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::HasResolvedTargetMoveLocation, false);
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ArrivedBelowAirborneTarget, false);
+}
+
+void ANSEnemyAIController::ResetResolvedTargetMoveState()
+{
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
+	{
+		MoveComponent->ResetTargetMoveResolveState();
+	}
+
+	ClearResolvedTargetMoveBlackboard();
 }
 
 bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) const
 {
-	if (!bAttackDestructibleCover || !IsValidLivingTarget(TargetActor))
+	if (!IsValid(TargetActor))
 	{
 		return false;
 	}
 
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-	if (!Enemy)
+	const APawn* AIPawn = GetPawn();
+	if (!AIPawn || !IsValidLivingTarget(TargetActor))
 	{
 		return false;
 	}
 
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
+	const UNSEnemyData* EnemyData = GetControlledEnemyData();
 	if (!EnemyData)
+	{
+		return false;
+	}
+
+	const UNSEnemyAttackComponent* AttackComponent = GetEnemyAttackComponent();
+	if (!AttackComponent)
 	{
 		return false;
 	}
@@ -1072,36 +716,43 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 	bool bHasDirectLineOfSight = false;
 	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
 
-	if (bHasDirectLineOfSight ||
-		!IsValidLivingTarget(AttackActor) ||
-		AttackActor == TargetActor ||
-		!AttackActor->IsA<ANSDestructibleObjectBase>())
+	if (bHasDirectLineOfSight)
 	{
 		return false;
 	}
 
-	const float Distance = FVector::Dist(
-		Enemy->GetActorLocation(),
-		TargetActor->GetActorLocation());
-
-	for (const FNSEnemyAttackDefinition& AttackDefinition : EnemyData->AttackList)
+	if (!IsValidLivingTarget(AttackActor))
 	{
-		if (!AttackDefinition.AbilityClass)
+		return false;
+	}
+
+	if (AttackActor == TargetActor)
+	{
+		return false;
+	}
+
+	if (!AttackActor->IsA<ANSDestructibleObjectBase>())
+	{
+		return false;
+	}
+
+	const float Distance =
+		FVector::Dist(AIPawn->GetActorLocation(), TargetActor->GetActorLocation());
+
+	for (const FNSEnemyAttackRow* AttackRow : EnemyData->GetAttackRows())
+	{
+		if (!AttackRow)
 		{
 			continue;
 		}
 
-		if (Distance < AttackDefinition.Condition.MinRange ||
-			Distance > AttackDefinition.Condition.MaxRange)
-		{
-			continue;
-		}
-
-		if (CanUseDestructibleCoverAttack(
-			AttackDefinition,
+		if (AttackComponent->CanUseAttack(
+			*AttackRow,
 			TargetActor,
 			AttackActor,
-			bHasDirectLineOfSight))
+			Distance,
+			bHasDirectLineOfSight
+		))
 		{
 			return true;
 		}
@@ -1112,213 +763,99 @@ bool ANSEnemyAIController::CanMaintainCoverAttackTarget(AActor* TargetActor) con
 
 bool ANSEnemyAIController::RequestMeleeAttackReservation()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	if (!Enemy || !TargetActor || !UsesMeleeAttackReservation())
+	UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	if (!MeleeComponent)
 	{
+		SetMeleeReservationBlackboard(false, true);
 		return false;
 	}
 
-	UNSMeleeAttackReservationComponent* Component = 
-		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>();
+	const FNSMeleeState State = MeleeComponent->RequestReservation(
+		GetCurrentTargetActor(),
+		GetLatestDamageTimeFromCurrentTarget()
+	);
 
-	// 컴포넌트 없는 타깃은 EQS만 적용하고 접근 허용
-	if (!Component)
-	{
-		CancelMeleeReservationRequest(false);
-		SetMeleeReservationBlackboard(false, true);
-		return true;
-	}
+	SetMeleeReservationBlackboard(State.bHasReservation, State.bCanApproach);
 
-	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != TargetActor)
-	{
-		CancelMeleeReservationRequest(false);
-	}
-
-	MeleeReservationTarget = TargetActor;
-
-	const ENSMeleeReservationRequestResult Result = 
-		Component->RequestReservation(Enemy, GetLatestDamageTimeFromCurrentTarget());
-
-	const bool bReserved = Result == ENSMeleeReservationRequestResult::Reserved;
-
-	SetMeleeReservationBlackboard(bReserved, bReserved);
-
-	return Result != ENSMeleeReservationRequestResult::Rejected;
+	return State.bAccepted;
 }
 
 bool ANSEnemyAIController::HasMeleeAttackReservation() const
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* ReservedTarget = MeleeReservationTarget.Get();
-
-	if (!Enemy || !ReservedTarget)
-	{
-		return false;
-	}
-
-	UNSMeleeAttackReservationComponent* Component = 
-		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
-
-	return Component && Component->HasReservation(Enemy);
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	return MeleeComponent && MeleeComponent->HasReservation();
 }
 
 bool ANSEnemyAIController::CanApproachMeleeTarget() const
 {
-	if (!UsesMeleeAttackReservation())
-	{
-		return true;
-	}
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
 
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	if (!TargetActor)
-	{
-		return false;
-	}
-
-	const bool bReservationRequired = 
-		TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
-
-	return !bReservationRequired || this->HasMeleeAttackReservation();
+	return MeleeComponent
+		       ? MeleeComponent->CanApproachTarget(GetCurrentTargetActor())
+		       : true;
 }
 
 bool ANSEnemyAIController::CurrentTargetRequiresMeleeReservation() const
 {
-	if (!UsesMeleeAttackReservation())
-	{
-		return false;
-	}
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
 
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	return TargetActor && TargetActor->FindComponentByClass<UNSMeleeAttackReservationComponent>() != nullptr;
+	return MeleeComponent &&
+		MeleeComponent->TargetRequiresReservation(GetCurrentTargetActor());
 }
 
 void ANSEnemyAIController::NotifyMeleeReservationAttackStarted()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	AActor* ReservedTarget = MeleeReservationTarget.Get();
-
-	if (!Enemy || !ReservedTarget)
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		return;
-	}
-
-	if (UNSMeleeAttackReservationComponent* Component =
-		ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-	{
-		Component->MarkAttackStarted(Enemy);
+		MeleeComponent->NotifyAttackStarted();
 	}
 }
 
 void ANSEnemyAIController::ReleaseMeleeAttackReservation(bool bStartReacquireCooldown)
 {
 	CancelMeleeReservationRequest(bStartReacquireCooldown);
-	
+
 	ResetMeleeEQSForCurrentTarget();
 }
 
 void ANSEnemyAIController::UpdateMeleeReservationState()
 {
-	if (!UsesMeleeAttackReservation())
+	UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+
+	if (!MeleeComponent)
 	{
 		SetMeleeReservationBlackboard(false, true);
 		return;
 	}
 
-	AActor* CurrentTarget = GetCurrentTargetActor();
-	if (!CurrentTarget)
-	{
-		CancelMeleeReservationRequest(false);
-		return;
-	}
+	const FNSMeleeState State =
+		MeleeComponent->UpdateState(GetCurrentTargetActor());
 
-	UNSMeleeAttackReservationComponent* Component =
-		CurrentTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>();
-	if (!Component)
-	{
-		if (MeleeReservationTarget.IsValid())
-		{
-			CancelMeleeReservationRequest(false);
-		}
-
-		SetMeleeReservationBlackboard(false, true);
-		return;
-	}
-
-	if (MeleeReservationTarget.IsValid() && MeleeReservationTarget.Get() != CurrentTarget)
-	{
-		CancelMeleeReservationRequest(false);
-		return;
-	}
-
-	const bool bReserved = HasMeleeAttackReservation();
-	SetMeleeReservationBlackboard(bReserved, bReserved);
+	SetMeleeReservationBlackboard(State.bHasReservation, State.bCanApproach);
 }
 
 void ANSEnemyAIController::CancelMeleeReservationRequest(bool bStartReacquireCooldown)
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		if (UNSMeleeAttackReservationComponent* Component =
-				ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-		{
-			Component->ReleaseReservation(Enemy, bStartReacquireCooldown);
-		}
+		MeleeComponent->ReleaseReservation(bStartReacquireCooldown);
 	}
 
-	MeleeReservationTarget.Reset();
 	SetMeleeReservationBlackboard(false, false);
 }
 
 bool ANSEnemyAIController::UsesMeleeAttackReservation() const
 {
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	const UNSEnemyData* EnemyData = Enemy ? Enemy->GetEnemyData() : nullptr;
-
-	if (!EnemyData)
-	{
-		return false;
-	}
-
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
-	{
-		if (Attack.AttackType == ENSEnemyAttackType::MeleeSweep)
-		{
-			return true;
-		}
-	}
-
-	return false;
+	const UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent();
+	return MeleeComponent && MeleeComponent->UsesReservation();
 }
 
 double ANSEnemyAIController::GetLatestDamageTimeFromCurrentTarget() const
 {
-	AActor* TargetActor = GetCurrentTargetActor();
-
-	const FNSTargetThreatRecord* Record = ThreatRecords.Find(TargetActor);
-
-	if (!Record)
-	{
-		return -1.0;
-	}
-
-	double LatestTime = -1.0;
-
-	for (const FNSThreatDamageSample& Sample : Record->DamageSamples)
-	{
-		LatestTime = FMath::Max(LatestTime, Sample.Timestamp);
-	}
-
-	return LatestTime;
+	const UNSEnemyThreatComponent* ThreatComponent = GetEnemyThreatComponent();
+	return ThreatComponent
+		       ? ThreatComponent->GetLatestDamageTime(GetCurrentTargetActor())
+		       : -1.0;
 }
 
 void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, bool bCanApproach)
@@ -1328,8 +865,8 @@ void ANSEnemyAIController::SetMeleeReservationBlackboard(bool bHasReservation, b
 		return;
 	}
 
-	CachedBBComp->SetValueAsBool(HasMeleeAttackReservationKey, bHasReservation);
-	CachedBBComp->SetValueAsBool(CanApproachMeleeTargetKey, bCanApproach);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::HasAttackReservation, bHasReservation);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::CanApproachTarget, bCanApproach);
 }
 
 void ANSEnemyAIController::InitializeMeleeEQSBlackboard(const UNSEnemyData* EnemyData)
@@ -1339,17 +876,16 @@ void ANSEnemyAIController::InitializeMeleeEQSBlackboard(const UNSEnemyData* Enem
 		return;
 	}
 
-	CachedBBComp->ClearValue(MeleeApproachLocationKey);
-
-	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, false);
+	CachedBBComp->ClearValue(NSBB::Melee::ApproachLocation);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::EQSNeedsRefresh, false);
 
 	if (EnemyData && EnemyData->EQSQuery)
 	{
-		CachedBBComp->SetValueAsObject(MeleeEQSQueryKey, EnemyData->EQSQuery);
+		CachedBBComp->SetValueAsObject(NSBB::Melee::EQSQuery, EnemyData->EQSQuery);
 	}
 	else
 	{
-		CachedBBComp->ClearValue(MeleeEQSQueryKey);
+		CachedBBComp->ClearValue(NSBB::Melee::EQSQuery);
 	}
 }
 
@@ -1360,286 +896,195 @@ void ANSEnemyAIController::ResetMeleeEQSForCurrentTarget()
 		return;
 	}
 
-	CachedBBComp->ClearValue(MeleeApproachLocationKey);
+	CachedBBComp->ClearValue(NSBB::Melee::ApproachLocation);
 
-	UObject* QueryTemplate = CachedBBComp->GetValueAsObject(MeleeEQSQueryKey);
+	UObject* QueryTemplate = CachedBBComp->GetValueAsObject(NSBB::Melee::EQSQuery);
 
 	const bool bCanRunMeleeEQS =
-		CurrentCombatTarget.IsValid() &&
+		IsValid(GetCurrentTargetActor()) &&
 		UsesMeleeAttackReservation() &&
 		IsValid(QueryTemplate);
 
-	CachedBBComp->SetValueAsBool(MeleeEQSNeedsRefreshKey, bCanRunMeleeEQS);
+	CachedBBComp->SetValueAsBool(NSBB::Melee::EQSNeedsRefresh, bCanRunMeleeEQS);
 }
 
 void ANSEnemyAIController::HandleHitReactionStarted()
 {
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
-
-	if (!Enemy)
-	{
-		return;
-	}
-
 	StopMovement();
 	ClearFocus(EAIFocusPriority::Gameplay);
 
-	Enemy->ClearCombatAimTarget();
-	Enemy->SetRetreating(false);
-	
-	if (UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement())
+	if (UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent())
 	{
-		Movement->bOrientRotationToMovement = true;
-		Movement->bUseControllerDesiredRotation = false;
+		MoveComponent->ApplyFacing(this, nullptr, nullptr, false);
+		MoveComponent->ClearRetreat();
 	}
 
-	// 근접 예약은 반환하지 않고 공격 중에서 접근 중 상태로 되돌림
-	if (AActor* ReservedTarget = MeleeReservationTarget.Get())
+	if (UNSEnemyMeleeComponent* MeleeComponent = GetEnemyMeleeComponent())
 	{
-		if (UNSMeleeAttackReservationComponent* Component =
-			ReservedTarget->FindComponentByClass<UNSMeleeAttackReservationComponent>())
-		{
-			Component->MarkAttackInterrupted(Enemy);
-		}
+		MeleeComponent->MarkAttackInterrupted();
 	}
 
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, true);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-		CachedBBComp->SetValueAsBool(TEXT("bIsAttacking"), false);
-		CachedBBComp->SetValueAsBool(ShouldRetreatKey, false);
-	}
+	SetHitReactingBB(true);
+	ClearAttackBB();
+	ClearRetreatBB();
 }
 
 void ANSEnemyAIController::HandleHitReactionFinished()
 {
-	if (CachedBBComp)
-	{
-		CachedBBComp->SetValueAsBool(IsHitReactingKey, false);
-		CachedBBComp->SetValueAsBool(TEXT("bCanAttack"), false);
-	}
+	SetHitReactingBB(false);
+	SetCanAttackBB(false);
 
 	UpdateMeleeReservationState();
 }
 
-void ANSEnemyAIController::UpdateFacingMode(
-	ANSEnemyCharacterBase* Enemy,
-	AActor* TargetActor)
+void ANSEnemyAIController::UpdateFacingMode(AActor* TargetActor)
 {
-	if (!Enemy || !IsValidLivingTarget(TargetActor))
-	{
-		ApplyFacingMode(Enemy, nullptr, false);
-		return;
-	}
-
-	const bool bIsAttacking = CachedBBComp && CachedBBComp->GetValueAsBool(TEXT("bIsAttacking"));
-	const bool bShouldRetreat = CachedBBComp && CachedBBComp->GetValueAsBool(ShouldRetreatKey);
-	const bool bPreparingAttack = IsWithinPotentialAttackRange(Enemy, TargetActor);
-	const bool bFaceTarget = bIsAttacking || bShouldRetreat || bPreparingAttack;
-
-	ApplyFacingMode(Enemy, TargetActor, bFaceTarget);
-}
-
-bool ANSEnemyAIController::IsWithinPotentialAttackRange(
-	const ANSEnemyCharacterBase* Enemy,
-	AActor* TargetActor) const
-{
-	if (!Enemy || !IsValidLivingTarget(TargetActor))
-	{
-		return false;
-	}
-
-	const UNSEnemyData* EnemyData = Enemy->GetEnemyData();
-
-	if (!EnemyData)
-	{
-		return false;
-	}
-
-	bool bHasDirectLineOfSight = false;
-	AActor* AttackActor = ResolveAttackActor(TargetActor, bHasDirectLineOfSight);
-
-	const float Distance = FVector::Dist(Enemy->GetActorLocation(), TargetActor->GetActorLocation());
-
-	for (const FNSEnemyAttackDefinition& Attack : EnemyData->AttackList)
-	{
-		if (CanUseAttackDefinition(
-			Attack,
-			TargetActor,
-			AttackActor,
-			Distance,
-			bHasDirectLineOfSight))
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
-
-void ANSEnemyAIController::ApplyFacingMode(
-	ANSEnemyCharacterBase* Enemy,
-	AActor* TargetActor,
-	bool bFaceTarget)
-{
-	if (!Enemy)
+	UNSEnemyMoveComponent* MoveComponent = GetEnemyMoveComponent();
+	if (!MoveComponent)
 	{
 		return;
 	}
 
-	UCharacterMovementComponent* Movement = Enemy->GetCharacterMovement();
-
-	if (!Movement)
+	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetPawn());
+	if (Enemy && Enemy->IsTraversingNavLink())
 	{
-		return;
-	}
-
-	if (bFaceTarget && IsValid(TargetActor))
-	{
-		AActor* AimActor = GetCurrentAttackActor();
-		if (!IsValid(AimActor))
-		{
-			AimActor = TargetActor;
-		}
-
-		Movement->bOrientRotationToMovement = false;
-		Movement->bUseControllerDesiredRotation = true;
-
-		SetFocus(AimActor, EAIFocusPriority::Gameplay);
-
-		Enemy->UpdateCombatAimTarget(AimActor);
-	}
-	else
-	{
-		Movement->bOrientRotationToMovement = true;
-		Movement->bUseControllerDesiredRotation = false;
-
 		ClearFocus(EAIFocusPriority::Gameplay);
-		Enemy->ClearCombatAimTarget();
+		return;
 	}
+
+	if (!IsValidLivingTarget(TargetActor))
+	{
+		MoveComponent->ApplyFacing(this, nullptr, nullptr, false);
+		return;
+	}
+
+	const bool bIsAttacking = IsAttackingBB();
+
+	const bool bShouldRetreat =
+		CachedBBComp && CachedBBComp->GetValueAsBool(NSBB::Movement::ShouldRetreat);
+
+	const bool bPreparingAttack =
+		MoveComponent->IsWithinAttackRange(TargetActor);
+
+	const bool bFaceTarget =
+		bIsAttacking || bShouldRetreat || bPreparingAttack;
+
+	AActor* AimActor = GetCurrentAttackActor();
+	if (!IsValid(AimActor))
+	{
+		AimActor = TargetActor;
+	}
+
+	MoveComponent->ApplyFacing(this, TargetActor, AimActor, bFaceTarget);
 }
 
 AActor* ANSEnemyAIController::GetCurrentAttackActor() const
 {
-	return CachedBBComp ? Cast<AActor>(CachedBBComp->GetValueAsObject(AttackActorKey)) : nullptr;
+	return GetAttackActorBB();
 }
 
 void ANSEnemyAIController::SetAttackActorBlackboard(AActor* AttackActor)
 {
-	if (!CachedBBComp) return;
-
-	if (IsValid(AttackActor))
-	{
-		CachedBBComp->SetValueAsObject(AttackActorKey, AttackActor);
-	}
-	else
-	{
-		CachedBBComp->ClearValue(AttackActorKey);
-	}
+	SetAttackActorBB(AttackActor);
 }
 
-FVector ANSEnemyAIController::GetAttackAimLocation(const AActor* Actor) const
+void ANSEnemyAIController::InitBBState()
 {
-	if (!IsValid(Actor)) return FVector::ZeroVector;
-
-	FVector Origin = Actor->GetActorLocation();
-	FVector Extent = FVector::ZeroVector;
-
-	if (const UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(Actor->GetRootComponent()))
+	if (!CachedBBComp)
 	{
-		Origin = Primitive->Bounds.Origin;
-		Extent = Primitive->Bounds.BoxExtent;
+		return;
 	}
 
-	return Origin + FVector::UpVector * (Extent.Z * CoverAttackAimZOffsetRatio);
+	SetHitReactingBB(false);
+	ClearAttackBB();
+	ClearRetreatBB();
+	ClearTargetBB(false);
+	SetMeleeReservationBlackboard(false, false);
+
+	CachedBBComp->SetValueAsBool(NSBB::Phase::PhasePatternLocked, false);
+	CachedBBComp->SetValueAsName(NSBB::Phase::CurrentPhaseId, NAME_None);
 }
 
-FVector ANSEnemyAIController::GetCoverAttackTraceStart() const
+void ANSEnemyAIController::ClearAttackBB()
 {
-	const APawn* AIPawn = GetPawn();
-	if (!AIPawn) return FVector::ZeroVector;
-
-	if (const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(AIPawn))
+	if (!CachedBBComp)
 	{
-		if (const ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon())
-		{
-			FTransform MuzzleTransform;
-			if (Weapon->TryGetMuzzleTransform(MuzzleTransform))
-			{
-				return MuzzleTransform.GetLocation();
-			}
-		}
+		return;
 	}
 
-	return AIPawn->GetPawnViewLocation();
+	SetCanAttackBB(false);
+	SetIsAttackingBB(false);
+	SetAttackActorBlackboard(nullptr);
 }
 
-AActor* ANSEnemyAIController::ResolveAttackActor(AActor* TargetActor, bool& bOutHasDirectLineOfSight) const
+void ANSEnemyAIController::ClearTargetBB(bool bClearCanAttack)
+{
+	ClearCommonTargetBB(bClearCanAttack);
+	ResetResolvedTargetMoveState();
+}
+
+void ANSEnemyAIController::ClearRetreatBB()
+{
+	if (!CachedBBComp)
+	{
+		return;
+	}
+
+	CachedBBComp->SetValueAsBool(NSBB::Movement::ShouldRetreat, false);
+	CachedBBComp->ClearValue(NSBB::Movement::RetreatLocation);
+}
+
+AActor* ANSEnemyAIController::ResolveAttackActor(
+	AActor* TargetActor,
+	bool& bOutHasDirectLineOfSight
+) const
 {
 	bOutHasDirectLineOfSight = false;
 
-	if (!IsValidLivingTarget(TargetActor) || !GetWorld())
+	const UNSEnemyTargetComponent* TargetComponent = GetEnemyTargetComponent();
+	if (!TargetComponent)
 	{
 		return nullptr;
 	}
 
-	const APawn* AIPawn = GetPawn();
-	if (!AIPawn)
-	{
-		return nullptr;
-	}
-
-	FHitResult HitResult;
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(EnemyCoverAttackTrace), false, AIPawn);
-	QueryParams.AddIgnoredActor(AIPawn);
-
-	const bool bHit = GetWorld()->LineTraceSingleByChannel(
-		HitResult,
-		GetCoverAttackTraceStart(),
-		GetAttackAimLocation(TargetActor),
-		NSCollisionChannels::CombatSight,
-		QueryParams);
-
-	if (!bHit || HitResult.GetActor() == TargetActor)
-	{
-		bOutHasDirectLineOfSight = true;
-		return const_cast<AActor*>(TargetActor);
-	}
-
-	if (!bAttackDestructibleCover)
-	{
-		return nullptr;
-	}
-
-	AActor* HitActor = HitResult.GetActor();
-	if (IsValid(HitActor) && HitActor->IsA<ANSDestructibleObjectBase>())
-	{
-		return HitActor;
-	}
-
-	return nullptr;
+	return TargetComponent->ResolveAttackActor(
+		TargetActor,
+		bOutHasDirectLineOfSight
+	);
 }
 
-bool ANSEnemyAIController::CanUseDestructibleCoverAttack(
-	const FNSEnemyAttackDefinition& AttackDefinition,
-	const AActor* TargetActor,
-	const AActor* AttackActor,
-	bool bHasDirectLineOfSight) const
+UNSEnemyTargetComponent* ANSEnemyAIController::GetEnemyTargetComponent() const
 {
-	if (bHasDirectLineOfSight ||
-		!IsValidLivingTarget(TargetActor) ||
-		!IsValidLivingTarget(AttackActor) ||
-		AttackActor == TargetActor)
-	{
-		return false;
-	}
+	const APawn* ControlledPawn = GetPawn();
 
-	if (!AttackActor->IsA<ANSDestructibleObjectBase>())
-	{
-		return false;
-	}
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyTargetComponent>()
+		       : nullptr;
+}
 
-	return AttackDefinition.AttackType == ENSEnemyAttackType::Projectile ||
-		AttackDefinition.AttackType == ENSEnemyAttackType::Hitscan;
+UNSEnemyThreatComponent* ANSEnemyAIController::GetEnemyThreatComponent() const
+{
+	const APawn* ControlledPawn = GetPawn();
+
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyThreatComponent>()
+		       : nullptr;
+}
+
+UNSEnemyMeleeComponent* ANSEnemyAIController::GetEnemyMeleeComponent() const
+{
+	const APawn* ControlledPawn = GetPawn();
+
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyMeleeComponent>()
+		       : nullptr;
+}
+
+UNSEnemyMoveComponent* ANSEnemyAIController::GetEnemyMoveComponent() const
+{
+	const APawn* ControlledPawn = GetPawn();
+
+	return ControlledPawn
+		       ? ControlledPawn->FindComponentByClass<UNSEnemyMoveComponent>()
+		       : nullptr;
 }

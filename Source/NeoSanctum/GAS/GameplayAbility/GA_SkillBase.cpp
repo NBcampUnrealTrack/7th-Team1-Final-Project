@@ -5,6 +5,7 @@
 
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
@@ -130,6 +131,95 @@ float UGA_SkillBase::GetBaseAbilityStatOrDefault(
 	return Value;
 }
 
+bool UGA_SkillBase::TryGetFinalSkillDamage(const FGameplayTag& AbilityTag, float& OutDamage) const
+{
+	float CoefficientPercent = 0.0f;
+
+	if (!TryGetFinalAbilityStat(AbilityTag, NSGameplayTags::CombatStat_DamageCoefficient, CoefficientPercent))
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (!ASC)
+	{
+		return false;
+	}
+
+	const float PlayerBaseDamage = ASC->GetNumericAttribute(UNSBaseAttributeSet::GetBaseDamageAttribute());
+
+	// 계수는 % 단위 (30 = 30%)로 입력받으므로 0.01을 곱해 배율로 변환
+	OutDamage = FMath::Max(PlayerBaseDamage * CoefficientPercent * 0.01f, 0.0f);
+
+	return true;
+}
+
+bool UGA_SkillBase::TryCalculateDamageFalloffMultiplier(
+	const FGameplayTag& AbilityTag,
+	float HitDistance,
+	float& OutDamageMultiplier) const
+{
+	OutDamageMultiplier = 1.0f;
+
+	float FalloffStartDistance = 0.0f;
+	float FalloffEndDistance = 0.0f;
+	float MinimumDamageMultiplier = 0.0f;
+
+	if (!TryGetFinalAbilityStat(
+	AbilityTag,
+	NSGameplayTags::CombatStat_DamageFalloffStartDistance,
+	FalloffStartDistance))
+	{
+		return false;
+	}
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_DamageFalloffEndDistance,
+		FalloffEndDistance))
+	{
+		return false;
+	}
+
+	if (!TryGetFinalAbilityStat(
+		AbilityTag,
+		NSGameplayTags::CombatStat_DamageFalloffMinimumMultiplier,
+		MinimumDamageMultiplier))
+	{
+		return false;
+	}
+
+	// 감쇠 구간과 최소 배율이 올바르지 않으면 잘못된 데미지를 적용하지 않음.
+	if (FalloffStartDistance < 0.0f || FalloffEndDistance <= FalloffStartDistance ||
+		MinimumDamageMultiplier < 0.0f || MinimumDamageMultiplier > 1.0f)
+	{
+		return false;
+	}
+
+	const float ClampedHitDistance = FMath::Max(HitDistance, 0.0f);
+
+	if (ClampedHitDistance <= FalloffStartDistance)
+	{
+		OutDamageMultiplier = 1.0f;
+		return true;
+	}
+
+	if (ClampedHitDistance >= FalloffEndDistance)
+	{
+		// 종료 거리 이후에는 최소 배율을 그대로 유지.
+		OutDamageMultiplier = MinimumDamageMultiplier;
+		return true;
+	}
+
+	const float FalloffAlpha = FMath::GetRangePct(
+		FalloffStartDistance, FalloffEndDistance, ClampedHitDistance);
+
+	OutDamageMultiplier = FMath::Lerp(1.0f, MinimumDamageMultiplier, FalloffAlpha);
+
+	return true;
+}
+
 bool UGA_SkillBase::TryReportAbilityNoise(
 	const FGameplayTag& AbilityTag,
 	const FGameplayTag& LoudnessStatTag,
@@ -213,6 +303,30 @@ UNSAbilitySystemComponent* UGA_SkillBase::GetNSAbilitySystemComponent() const
 ANSPlayerState* UGA_SkillBase::GetNSPlayerState() const
 {
 	return Cast<ANSPlayerState>(GetOwningActorFromActorInfo());
+}
+
+void UGA_SkillBase::ReportShotsFired(int32 Count)
+{
+	if (!HasAuthority(&CurrentActivationInfo))
+	{
+		return;
+	}
+	if (ANSPlayerState* NSPS = GetNSPlayerState())
+	{
+		NSPS->AddShotsFired(Count);
+	}
+}
+
+void UGA_SkillBase::ReportShotsHit(int32 Count)
+{
+	if (!HasAuthority(&CurrentActivationInfo))
+	{
+		return;
+	}
+	if (ANSPlayerState* NSPS = GetNSPlayerState())
+	{
+		NSPS->AddShotsHit(Count);
+	}
 }
 
 FString UGA_SkillBase::GetCurrentPredictionKeyStatus()

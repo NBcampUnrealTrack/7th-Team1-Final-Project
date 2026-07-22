@@ -9,7 +9,9 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentInventoryChanged);
 
+class UGameplayEffect;
 class UNSAugmentDefinition;
+class UNSDataSubsystem;
 class UAbilitySystemComponent;
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
@@ -34,6 +36,7 @@ public:
 
 	// 서버 권한, 새 ASC에 보유 증강의 GE/GA를 재적용하고 핸들을 갱신
 	void ReapplyAll();
+
 	
 public:
 	UFUNCTION(BlueprintPure, Category="NS|Augment")
@@ -52,21 +55,54 @@ public:
 	int32 GetMaxLegendarySlots() const { return MaxLegendarySlots; }
 	
 	UAbilitySystemComponent* GetOwnerASC() const;
+
+	// StatTag가 공용 Attribute GE로 처리되는 항목인지 여부.
+	// CombatStatComponent 등 다른 시스템에서 TargetAbilityTag 검증 기준으로 사용.
+	static bool IsAttributeStatTag(const FGameplayTag& StatTag);
+
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="NS|Augment", meta=(ClampMin="0"))
 	int32 MaxLegendarySlots = 3;
+
+	// Attribute 변경 증강들이 공유하는 GE.
+	// GE에는 지원할 Attribute/Operation별 Modifier와 SetByCaller 태그가 미리 정의되어 있어야 함.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Augment|Effect")
+	TSubclassOf<UGameplayEffect> SharedAttributeStackEffectClass;
 	
 private:
 	UFUNCTION()
 	void OnRep_Owned();
 	
-	// 스택형 GE 적용
-	void ApplyStackEffect(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC);
+	// Attribute 변경 Row가 있는 증강에 공용 GE를 적용하고, DefinitionRows 기반 SetByCaller payload를 구성.
+	void ApplyStackEffect(
+		FNSAugmentInstance& Inst,
+		const TArray<FNSAugmentDefinitionRow>& DefinitionRows,
+		UAbilitySystemComponent* ASC,
+		bool bAdjustResourceCurrentByMaxDelta
+	);
+	
+	static bool TryCalculateStackEffectMagnitude(
+		const FNSAugmentDefinitionRow& DefinitionRow,
+		int32 Stacks,
+		float& OutMagnitude
+	);
 
 	// 기믹 Legendary GA 부여
 	void GrantMechanicAbility(FNSAugmentInstance& Inst, UNSAugmentDefinition* Def, UAbilitySystemComponent* ASC);
+
+	/**
+ 	 * Inventory가 보유하는 DefId에 대응하는 모든 증강 정의 Row를 찾습니다.
+ 	 *
+ 	 * 같은 Definition을 공유하는 여러 Modifier Row를 모두 반환하며,
+ 	 * 대표 메타데이터는 호출부에서 첫 Row를 기준으로 사용합니다.
+ 	 */
+	bool TryFindDefinitionRows(
+		UNSDataSubsystem* Data,
+		const FPrimaryAssetId& DefId, 
+		TArray<FNSAugmentDefinitionRow>& OutRows
+	) const;
 	
 	UPROPERTY(ReplicatedUsing=OnRep_Owned)
 	TArray<FNSAugmentInstance> Owned;

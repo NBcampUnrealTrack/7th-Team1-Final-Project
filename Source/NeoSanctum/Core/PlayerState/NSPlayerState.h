@@ -7,9 +7,11 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/PlayerState.h"
 #include "NeoSanctum/Core/GameFlow/NSRunFlowType.h"
+#include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "UObject/PrimaryAssetId.h"
 #include "NSPlayerState.generated.h"
 
+class UNSExperienceComponent;
 class UNSCompanionDefinition;
 class UNSCompanionProgressionComponent;
 class UNSCombatStatComponent;
@@ -48,10 +50,15 @@ public:
 	// 클라에서 재화 액터에 오버랩 시 호출
 	UFUNCTION(Server, Reliable)
 	void Server_CollectCurrency(int32 DropId);
+                                                                                                      
+	// 클라에서 회복 아이템 픽업에 오버랩 시 호출
+	UFUNCTION(Server, Reliable)
+	void Server_CollectHeal(int32 DropId);
 	
 	UNSPlayerProgressComponent* GetProgressComponent() const { return ProgressComponent; }
 	UNSCurrencyComponent* GetCurrencyComponent() const { return CurrencyComponent; }
 	UNSPartEquipComponent* GetPartEquipComponent() const { return PartEquipComponent; }
+	UNSExperienceComponent* GetExperienceComponent() const { return ExperienceComponent; }
 
 	UNSAugmentInventoryComponent* GetAugmentInventory() const { return AugmentInventory; }
 
@@ -70,7 +77,7 @@ public:
 	FPrimaryAssetId GetCurrentCharacterDataId() const { return CurrentCharacterDataId; }
 	
 	// 기존 캐릭터 id 받아오는 용
-	FPrimaryAssetId GetDefaultCharacterDataId() const { return DefaultCharacterDataId; }
+	FPrimaryAssetId GetDefaultCharacterDataId() const;
 
 	// 캐릭터 데이터 Getter
 	UFUNCTION(BlueprintPure, Category = "Character|Data")
@@ -83,6 +90,10 @@ public:
 	UFUNCTION()
 	UNSCompanionProgressionComponent* GetCompanionProgressionComponent() const {return CompanionProgressionComponent;}
 	
+	// PlayerIndex 번호 관련 get,set 함수
+	int32 GetPlayerSlotIndex() const { return PlayerSlotIndex; }
+	void SetPlayerSlotIndex(int32 InIndex);
+	
 public:
 	// 플레이어의 진행 투표 확인용 (기본값: 거점 복귀)
 	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
@@ -90,7 +101,20 @@ public:
 	// 투표 후 확인 버튼을 눌렀는지 확인용
 	UPROPERTY(ReplicatedUsing = OnRep_RunEndVoteState, BlueprintReadOnly, Category="RunEnd")
 	bool bVoteConfirmed = false;
-
+	
+	// 결과창에 관련된 데이터 표시용
+	int32 GetNormalKillCount() const { return NormalKillCount; }
+	int32 GetEliteKillCount() const { return EliteKillCount; }
+	int32 GetBossKillCount() const { return BossKillCount; }
+	int32 GetShotsFired() const { return ShotsFired; }
+	int64 GetShotsHit() const { return ShotsHit; }
+	float GetTotalDamageDealt() const { return TotalDamageDealt; }
+	
+	// 죽은 적의 랭크에 따라 해당 카운트 증가
+	void AddKill(ENSEnemyRank Rank);
+	void AddShotsFired(int32 Count);
+	void AddShotsHit(int32 Count);
+	void AddDamageDealt(int64 Amount);
 protected:
 	virtual void BeginPlay() override;
 
@@ -114,14 +138,17 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Currency")
 	TObjectPtr<UNSCurrencyComponent> CurrencyComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UNSExperienceComponent> ExperienceComponent;
 	
 	// @민재 : Companion업그레이드 관련 Component
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Progression")
 	TObjectPtr<UNSCompanionProgressionComponent> CompanionProgressionComponent;
 	
-	// 기본 캐릭터 데이터 ID : 기본적으로 Ranger Data를 쓰고 있음
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
-	FPrimaryAssetId DefaultCharacterDataId;
+	// // 기본 캐릭터 데이터. 에디터에서는 실제 UNSCharacterData 에셋을 직접 지정하고 런타임에서는 PrimaryAssetId로 변환.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data", meta = (AllowedTypes = "NSCharacterData"))
+	TSoftObjectPtr<UNSCharacterData> DefaultCharacterData;
 	
 	// @민재 기본 Companion 데이터 ID : 기본 스캔 드론
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Data")
@@ -148,6 +175,28 @@ private:
 	// @민재 : companion 데이터 ID
 	UPROPERTY(Replicated, BlueprintReadOnly, Category = "Character|Data", meta = (AllowPrivateAccess = "true"))
 	FGameplayTag CurrentCompanionDefinitionTag;
+	
+	// 플레이어별 고정 스폰 슬롯
+	UPROPERTY(Replicated)
+	int32 PlayerSlotIndex = INDEX_NONE;
+	
+	UPROPERTY(Replicated)
+	int32 NormalKillCount = 0;
+
+	UPROPERTY(Replicated)
+	int32 EliteKillCount = 0;
+
+	UPROPERTY(Replicated)
+	int32 BossKillCount = 0;
+	
+	UPROPERTY(Replicated)
+	int32 ShotsFired = 0;
+
+	UPROPERTY(Replicated)
+	int32 ShotsHit = 0;
+	
+	UPROPERTY(Replicated)
+	int64 TotalDamageDealt = 0.0f;
 	
 	UFUNCTION()
 	void OnRep_bIsReady();

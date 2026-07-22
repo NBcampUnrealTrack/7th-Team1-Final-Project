@@ -43,6 +43,16 @@ struct FNSCurrencyWallet : public FFastArraySerializer
 	}
 };
 
+// 이게 없으면 NetDeltaSerialize가 호출되지 않아 PostReplicatedAdd/Change 콜백이 클라에서 발동하지 않음
+template<>
+struct TStructOpsTypeTraits<FNSCurrencyWallet> : public TStructOpsTypeTraitsBase2<FNSCurrencyWallet>
+{
+	enum
+	{
+		WithNetDeltaSerializer = true,
+	};
+};
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnTempChanged, int64 /* Amount */ );
 DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnPermanentChanged, FGameplayTag /* Type */, int64 /* Amount */);
 
@@ -67,11 +77,13 @@ public:
 	// 서버 전용 API
 	// ================================================================
 	
-	// 임시 재화 습득
+	// 임시 재화 습득. 공용 업그레이드 재화 획득량 보너스가 무조건 적용되므로,
+	// 보상 획득이 아닌 호출(환불 등)을 추가할 땐 별도 검토 필요.
 	void AddTemp(int32 Grade, int64 Amount);
 	// 임시 재화 사용
 	bool TrySpendTemp(int64 Amount);
-	// 영구재화 획득 -> 버킷 
+	// 공용 재화 습득. 공용 업그레이드 재화 획득량 보너스가 무조건 적용되므로,
+	// 보상 획득이 아닌 호출(환불 등)을 추가할 땐 별도 검토 필요.
 	void AddRunPermanent(FGameplayTag Type, int64 Amount);
 	// 스테이지 보상 -> 버킷
 	void AddPermanentDirect(FGameplayTag Type, int64 Amount);
@@ -85,8 +97,8 @@ public:
 	int64 GetAmount(FGameplayTag Type) const;
 	
 	FNSOnTempChanged OnTempChanged;
-	FNSOnPermanentChanged OnPermanenetChanged;
-	
+	FNSOnPermanentChanged OnPermanentChanged;
+
 	// FastArray 콜백이 부르는 전파 함수
 	void NotifyWalletEntryChanged(const FNSCurrencyEntry& Entry);
 	
@@ -95,7 +107,10 @@ public:
 private:
 	// 지갑에 추가
 	void AddToWallet(FGameplayTag Type, int64 Amount);
-	
+
+	// 공용 업그레이드 재화 획득량 유틸 노드를 적용한 최종 지급량 계산 (Row 없음/레벨 0 이면 원본 그대로)
+	int64 ApplyCurrencyGainBoost(FName UtilityNodeId, int64 BaseAmount) const;
+
 	UPROPERTY(Replicated)
 	FNSCurrencyWallet Wallet;
 	

@@ -6,6 +6,7 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "GameFramework/PlayerController.h"
 #include "NeoSanctum/UI/Interaction/NSReadyStartWidget.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 #include "Blueprint/UserWidget.h"
 
 ANSReadyStartActor::ANSReadyStartActor()
@@ -54,7 +55,7 @@ bool ANSReadyStartActor::OnInteract_Implementation(APlayerController* Interactor
 	// F 입력을 토글처럼 처리해서 위젯을 닫는다.
 	if (TObjectPtr<UNSReadyStartWidget>* FoundWidget = OpenedWidgetsByPlayer.Find(Interactor))
 	{
-		if (IsValid(*FoundWidget))
+		if (IsValid(*FoundWidget) && (*FoundWidget)->IsInViewport())
 		{
 			CloseOpenedWidget(Interactor);
 			return true;
@@ -72,17 +73,20 @@ bool ANSReadyStartActor::OnInteract_Implementation(APlayerController* Interactor
 		return false;
 	}
 
+	ReadyStartWidget->OnWidgetClosed.AddUObject(
+		this,
+		&ANSReadyStartActor::HandleReadyStartWidgetClosed);
+
 	OpenedWidgetsByPlayer.Add(Interactor, ReadyStartWidget);
 
 	ReadyStartWidget->AddToViewport();
 
-	Interactor->SetShowMouseCursor(true);
-
-	FInputModeGameAndUI InputMode;
-	InputMode.SetWidgetToFocus(ReadyStartWidget->TakeWidget());
-	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	InputMode.SetHideCursorDuringCapture(false);
-	Interactor->SetInputMode(InputMode);
+	// 첫 상호작용 → 안내 완료 처리 (이 함수는 상호작용한 플레이어의 클라에서 실행됨)
+	if (UNSOutRunGuideSubsystem* GuideSubsystem =
+		GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+	{
+		GuideSubsystem->NotifyReadyConsoleUsed();
+	}
 
 	return true;
 }
@@ -122,4 +126,22 @@ void ANSReadyStartActor::CloseOpenedWidget(APlayerController* Interactor)
 
 	FInputModeGameOnly InputMode;
 	Interactor->SetInputMode(InputMode);
+}
+
+void ANSReadyStartActor::HandleReadyStartWidgetClosed(
+	UNSReadyStartWidget* ClosedWidget,
+	APlayerController* Interactor)
+{
+	if (!Interactor)
+	{
+		return;
+	}
+
+	const TObjectPtr<UNSReadyStartWidget>* FoundWidget =
+		OpenedWidgetsByPlayer.Find(Interactor);
+
+	if (FoundWidget && FoundWidget->Get() == ClosedWidget)
+	{
+		OpenedWidgetsByPlayer.Remove(Interactor);
+	}
 }

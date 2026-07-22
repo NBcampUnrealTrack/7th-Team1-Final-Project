@@ -9,10 +9,15 @@
 #include "NeoSanctum/Core/PlayerState/NSProgressTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSPlayerController.generated.h"
 
-class ANSDeathSpectatorPawn;
+class UNSRunConfig;
+class UNSLevelConfig;
+class ANSPlayerCharacterBase;
 class ANSPlayerState;
+class UNSDeathSpectatorComponent;
+class UNSPlayerAudioFlowComponent;
 class UNSAugmentSelectionComponent;
 class UNSCharacterSelectWidget;
 class UNSPermanentSaveGame;
@@ -20,6 +25,7 @@ class ANSRunGameState;
 class UNSCurrencyComponent;
 class ANSInteractableNPCBase;
 class UNSNPCInteractionWidgetBase;
+class UNSExperienceComponent;
 struct FNSSkillCooldownMessage;
 
 UCLASS()
@@ -43,11 +49,13 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_DebugCommitPermanent();
 
-	// ===== 테스트용 임시 코드 — 인런 구출 NPC(M3) 구현 후 삭제 =====
-	// 콘솔(`) 열고 DebugUnlockAllNPCs 입력 → 월드의 모든 거점 NPC를 로컬 진행도에 해금.
-	UFUNCTION(Exec)
-	void Debug_UnlockAllNPCs();
-	// ===== 테스트용 임시 코드 끝 =====
+	// 테스트용 임시 코드 (인런 파츠 상점 테스트 — 드롭/줍기 없이 서버 권한에서 임시재화 즉시 지급)
+	UFUNCTION(Server, Reliable)
+	void Server_DebugAddTempCurrency();
+
+	// 튜토리얼 그랜트를 서버에서 수행 (원격 클라가 요청할 때)
+	UFUNCTION(Server, Reliable)
+	void Server_GrantTutorialAugment();
 
 	// 거점 레디 UI가 호출해야할 함수
 	UFUNCTION(BlueprintCallable, Category="Run")
@@ -58,14 +66,16 @@ public:
 	void Server_RequestStartRun();
 	
 	void ExitSpectatorAndRespawn();
-
-	// 클라이언트에 인런 데이터 로드 지시
-	UFUNCTION(Client, Reliable)
-	void Client_NotifyRunStarted();
-
+	
 	// 클라이언트에 인런 데이터 언로드 및 아웃런 데이터 재로드 지시
 	UFUNCTION(Client, Reliable)
 	void Client_NotifyReturnToHub();
+	
+	// 클라이언트에 인런 데이터 로드 지시
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyRunStarted(
+		const TSoftObjectPtr<UNSRunConfig>& RunConfig,
+		const TSoftObjectPtr<UNSLevelConfig>& LevelConfig);
 	
 	// 투표 확정 입력용
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category="RunEnd")
@@ -74,14 +84,27 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "RunEnd")
 	void Server_CancelVote();
 	
+	// 서버 프리워밍 완료 시 각 클라에 로딩 게이트 오픈 통지
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyPrewarmReady();
+	
 public:
 	// 사망 관전자 상태로 진입 요청 : 캐릭터의 사망 로직에서 요청하도록 되어있음
 	void RequestEnterDeathSpectatorMode();
+	// 이전 생존 플레이어를 관전 대상으로 요청
 	void SpectatePreviousPlayer();
+	// 다음 생존 플레이어를 관전 대상으로 요청
 	void SpectateNextPlayer();
+	// 서버가 확정한 관전 대상을 로컬 ViewTarget에 적용
+	void ApplyConfirmedSpectatorTarget(ANSPlayerCharacterBase* TargetCharacter);
 
 	// Tab키 : 증강 패널 토글 (InputBinderComponent에서 호출)
 	void ToggleAugmentationPanel();
+	// C키 : 파츠 인벤토리 및 캐릭터 스텟 패널 토글 (InputBinderComponent에서 호출)
+	void TogglePartInventoryPanel();
+
+	// 인런 튜토리얼용: 일반풀 증강 오퍼 1개 + 리롤용 임시재화를 서버 권한으로 1회 지급하는 로컬 진입점
+	void RequestTutorialAugmentGrant();
 	
 	// UI 나올때 플레이어 인풋 제어용
 	UFUNCTION(BlueprintCallable, Category="RunEnd")
@@ -95,6 +118,9 @@ public:
 	// NPC 상호작용 위젯 열기/닫기 (InteractionComponent가 호출)
 	void OpenInteractionWidget(ANSInteractableNPCBase* NPC);
 	void CloseInteractionWidget();
+
+	// 위젯이 자체 경로(X버튼/위젯 내부 ESC)로 닫힐 때 호출 — 이동 매핑 복원 + ActiveInteractionWidget 정리
+	void NotifyInteractionWidgetClosed(UNSNPCInteractionWidgetBase* Widget);
 	
 	// 세이브 데이터 업로드/ 저장용 RPC 함수
 	UFUNCTION(Server, Reliable)
@@ -112,6 +138,10 @@ public:
 	UFUNCTION(BlueprintCallable,Category="UI")
 	void ShowCharacterSelectWidget();
 
+	// 캐릭터 선택 위젯을 닫고 게임 입력으로 돌아감.
+	UFUNCTION(BlueprintCallable, Category = "UI")
+	void HideCharacterSelectWidget();
+
 	// 거점 입장시 가장 최근 캐릭터 데이터 읽어오는 용도
 	UFUNCTION(BlueprintCallable, Category="CharacterSelect")
 	void RestoreLastSelectedCharacter();
@@ -124,26 +154,52 @@ public:
 	void Client_NotifySkillCooldownChanged(
 		const FNSSkillCooldownMessage& Message);
 
-private:
-	// 실제로 사망 관전자 상태로 진입
-	void EnterDeathSpectatorMode();
-	// Spectator Pawn을 스폰하고 Possess하는 헬퍼
-	void SpawnAndPossessDeathSpectatorPawn();
-	// 진입 타이머 초기화 헬퍼
-	void ClearDeathSpectatorModeTimer();
-	
-	// 관전자 스위칭
-	void SwitchSpectatorTarget(int32 Direction);
-	void SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget);
-	APawn* GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const;
-	
-	// Spectator Pawn을 스폰하고 Posses를 서버 권한에서 해야하기 때문에 서버 RPC로 처리
-	UFUNCTION(Server, Reliable)
-	void Server_EnterDeathSpectatorMode();
-	
-private:
+	// 서버에서 확정된 공격 히트 피드백을 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayAttackHitFeedback(const FNSHitFeedbackContext& Context);
+
+	// 한 공격에서 발생한 모든 피드백 RPC를 보낸 뒤 호출.
+	UFUNCTION(Client, Reliable)
+	void Client_CompleteAttackHitFeedbackGroup(const FGuid& FeedbackGroupId);
+
+	// 서버에서 확정된 피격 피드백을 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayHitTakenFeedback(const FNSHitTakenFeedbackContext& Context);
+
+	// 서버에서 확정된 데미지 숫자 표시 데이터를 클라이언트에 전달하는 Client_RPC
+	UFUNCTION(Client, Reliable)
+	void Client_PlayDamageNumberFeedback(const FNSDamageNumberFeedbackContext& Context);
+
 	const FGameplayTagContainer& GetGameplayInputModeTags() const { return GameplayInputModeTags; }
 	const FGameplayTagContainer& GetDeathSpectatorInputModeTags() const { return DeathSpectatorInputModeTags; }
+	
+private:
+	UFUNCTION()
+	void HandleOutGameLevelReady();
+	// OutGame 월드에 들어온 로컬 클라이언트가 거점 전용 데이터를 미리 로드하도록 보장.
+	void EnsureOutGameDataLoaded();
+
+	// CommonData가 늦게 끝난 경우, 이어서 OutGameData 로드를 시작.
+	UFUNCTION()
+	void HandleOutGamePreloadCommonDataReady();
+
+	// 클라이언트 인런 데이터 로드가 끝난 뒤 HUD와 인런 UI를 표시.
+	UFUNCTION()
+	void HandleClientRunDataReady();
+	
+	bool TryInitializeLocalProgress();
+
+	void BindInitialProgressReadiness();
+	void UnbindInitialProgressReadiness();
+
+	UFUNCTION()
+	void HandleOutGameDataReadyForInitialProgress();
+
+	// 동일 PlayerState에 초기 데이터를 여러번 받지 않기 위한 추적용
+	TWeakObjectPtr<ANSPlayerState> InitialProgressUploadedPlayerState;
+
+	// 리스폰된 새 Pawn에는 외형을 다시 적용
+	TWeakObjectPtr<APawn> InitialCharacterAppliedPawn;
 
 private:
 	UFUNCTION(NetMulticast, Reliable)
@@ -167,12 +223,18 @@ private:
 	//최대 실드 변경시 갱신
 	void OnMaxShieldChanged(const FOnAttributeChangeData& Data);
 	
+	void BindExperienceToHUD();
+	
+	void UpdateHUDExperience();
+	
 	//HUD Attribute Delegate 중복 바인딩 방지
 	bool bHUDAttributeBound = false;
 	
-	// 캐릭터 선택 위젯 닫기
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void HideCharacterSelectWidget();
+	UFUNCTION()
+	void OnExperienceChanged(
+		float CurrentExperience,
+		float RequiredExperience);
+	
 	// 캐릭터 선택 후 핸들러
 	UFUNCTION()
 	void HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData);
@@ -180,17 +242,25 @@ private:
 	//RunGameState의 런 종료 페이즈 변경시 델리게이트 바인딩
 	void BindRunEndPhase();
 	
+	// RunGameState가 데이터 구성을 복제하면 클라이언트 로드 시작.
+	void BindRunDataConfig();
+	
+	UFUNCTION()
+	void HandleRunDataConfigChanged();
+	
 	//런 종료 페이즈가 바뀌었을때 결과창 표시 상태 갱신
 	UFUNCTION()
 	void HandleRunEndPhaseChanged();
 
 	// Travel 호출 직전에 UIManager 로딩창을 띄움
-	void ShowTravelLoadingScreen();
+	void ShowTravelLoadingScreen(bool bIsInRunTravel);
+	// (이용호 추가) 로딩 스크린나올 때 인풋 제어용
+	void HandleTravelLoadingFinished();
+	// 로딩스크린 브로드캐스트 바인딩용
+	void EnsureTravelLoadingBinding();
+	FDelegateHandle TravelLoadingFinishedHandle;
 	// Seamless Travel/ClientRestart 이후 위젯이 사라진 경우에 다시 복원
 	void RestoreTravelLoadingScreenIfRequested();
-	// 현재는 Spectator 단계에서는 유지, 실제 플레이어 캐릭터를 조작할 수 있게 된 뒤에 로딩창을 닫음
-	// 추후에는 추가로 데이터가 다 로딩된 시점에 닫도록 해야하지 않을까 생각함
-	void HideTravelLoadingScreenIfPlayable(APawn* NewPawn);
 	
 	//현재 바인딩한 RunGameState를 캐싱
 	UPROPERTY()
@@ -202,7 +272,7 @@ private:
 	//클라이언트 입력으로 호출된 클리어 테스트를 서버에서 처리한다
 	UFUNCTION(Server, Reliable)
 	void Server_DebugForceRunClear();
-
+	
 	//현재 탄약 값을 읽어 HUD에 반영
 	void UpdateHUDAmmo();
 
@@ -214,6 +284,14 @@ private:
 	
 	//리로드 태그 변경시 탄약 UI 상태 갱신
 	void OnReloadingTagChanged(const FGameplayTag CallbackTag, int32 NewCount);
+	
+	void OnDashCountChanged(
+	const FOnAttributeChangeData& Data);
+
+	void OnMaxDashCountChanged(
+		const FOnAttributeChangeData& Data);
+
+	void UpdateHUDDashStack();
 	
 	//PlayerState의 재화 컴포넌트를 HUD에 연결
 	void BindCurrencyToHUD();
@@ -233,12 +311,19 @@ private:
 	FTimerHandle SkillUIApplyRetryTimerHandle;
 	int32 SkillUIApplyRetryCount = 0;
 	
+	// 클라이언트는 PlayerState와 CommonData 준비 순서가 달라질 수 있으므로,
+	// 스킬 UI 적용을 즉시 시도한 뒤 짧은 시간 재시도합니다.
 	void StartSkillUIApplyRetry();
 	void RetryApplySkillUIFromCurrentCharacter();
 	bool TryApplySkillUIFromCurrentCharacter();
 	void HandleSkillUIApplyRetry();
 	
 	TWeakObjectPtr<UNSCurrencyComponent> CachedCurrencyComponent;
+	
+	TWeakObjectPtr<UNSExperienceComponent> CachedHUDExperienceComponent;
+	
+	// 로딩 중 입력을 막아둔 폰
+	TWeakObjectPtr<APawn> InputBlockedPawn;
 private:
 	//캐릭터 선택 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI|CharacterSelect")
@@ -261,24 +346,16 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 	FGameplayTagContainer DeathSpectatorInputModeTags;
 	
-private:
-	// 사망 후 몇 초 뒤에 Death Spectator 모드로 진입할지 결정
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator", meta = (ClampMin = "0.0"))
-	float DeathSpectatorModeDelay = 2.0f;
-	
-	// 사망 시 Spawn / Possess될 Spectator Pawn
-	UPROPERTY(EditDefaultsOnly, Category = "Spectator")
-	TSubclassOf<ANSDeathSpectatorPawn> DeathSpectatorPawnClass;
-
-	// 관전 대상 PlayerState 캐싱
-	UPROPERTY(Transient)
-	TObjectPtr<ANSPlayerState> SpectatingPlayerState;
-
-	FTimerHandle DeathSpectatorModeTimerHandle;
-
 	// 증강 추첨/선택 로직을 담당하는 컴포넌트
 	UPROPERTY(VisibleAnywhere, Category = "NS|Augment")
 	TObjectPtr<UNSAugmentSelectionComponent> AugmentSelectionComponent;
+
+	// 사망 관전자 전환 로직을 담당하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "NS|Spectator")
+	TObjectPtr<UNSDeathSpectatorComponent> DeathSpectatorComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "NS|Audio")
+	TObjectPtr<UNSPlayerAudioFlowComponent> PlayerAudioFlowComponent;
 
 	// 현재 열린 NPC 상호작용 위젯
 	UPROPERTY()
@@ -289,10 +366,13 @@ private:
 	FDelegateHandle PermanentDataLoadedHandle;
 protected:
 	virtual void BeginPlay() override;
+	void EndPlay(EEndPlayReason::Type EndPlayReason);
+	virtual void GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const override;
 	virtual void ClientRestart_Implementation(class APawn* NewPawn) override;
 	
 	// 클라이언트가 다른 맵/서버로 이동하기 직전에 호출되는 함수로, Loading창을 띄우는 시점을 관리하기 위해 가져왔음
 	virtual void PreClientTravel(const FString& PendingURL, ETravelType TravelType, bool bIsSeamlessTravel) override;
+	bool IsInRunTravelURL(const FString& PendingURL) const;
 	virtual void SeamlessTravelTo(APlayerController* NewPC) override;
 	
 	virtual void SetupInputComponent() override;
@@ -301,6 +381,9 @@ protected:
 	void Debug_EnqueueAugmentOffer();
 
 private:
+	// 서버 권한에서 실제로 오퍼/재화를 지급 (RequestTutorialAugmentGrant / Server_GrantTutorialAugment가 호출)
+	void GrantTutorialAugmentAndCurrency();
+
 	void UnbindAttributeFromHUD();
 	void RebindHUDRuntimeState();
 
@@ -325,4 +408,17 @@ public:
 	// PauseMenu 사용 용도 → 세션 정리 후 타이틀
 	void RequestLeaveToMainMenu();
 	void RestoreGameplayInputMode();
+	
+#pragma region Data Load
+	
+	UFUNCTION() 
+	void HandleCommonThenLoadOutGame();
+	
+#pragma endregion Data Load
+	
+
+public:
+	//보스전 강제 진입 치트용 임시 함수
+	UFUNCTION(Server, Reliable)
+	void Server_DebugForceBossFight();
 };

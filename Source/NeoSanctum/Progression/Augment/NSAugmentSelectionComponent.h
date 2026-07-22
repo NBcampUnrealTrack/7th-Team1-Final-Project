@@ -8,13 +8,48 @@
 #include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NSAugmentSelectionComponent.generated.h"
 
-class UNSAugmentPoolDefinition;
+class UNSPlayerProgressComponent;
+class UNSCurrencyComponent;
+struct FNSAugmentRarityRule;
+struct FNSAugmentRerollRule;
 class UNSAugmentDefinition;
 class UNSDataSubsystem;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAugmentOfferPresented, const TArray<FPrimaryAssetId>&, OfferIds, int32, RerollCost);
+/**
+ * 증강 카드 후보 하나의 런타임 선택 정보.
+ *
+ * 같은 AugmentTag를 가진 여러 증강 효과 행은 하나의 후보로 그룹핑합니다.
+ * DefId는 카드 UI 전달과 Inventory 보유 데이터 식별에 유지합니다.
+ */
+struct FNSAugmentCandidate
+{
+	FPrimaryAssetId DefId;
+	FGameplayTag AugmentTag;
+	FGameplayTag OwnerCharacterTag;
+	ENSAugmentRarity Rarity = ENSAugmentRarity::Common;
+	int32 SelectionWeight = 1;
+	int32 MaxStacks = 1;
+	bool bCountsAsLegendarySlot = false;
+};
+
+// 현재 오퍼 카드와 남은 보상 카드 수를 함께 UI로 전달합니다.
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_SixParams(
+	FOnAugmentOfferPresented,
+	const TArray<FNSAugmentSelectionCard>&, Cards,
+	int64, RerollCost,
+	bool, bCanReroll,
+	int32, OfferRevision,
+	int32, MaxChoiceCount,
+	int32, AvailableCardCount);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnAugmentOfferClosed);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAugmentPendingCountChanged, int32, NewCount);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FiveParams(FOnAugmentRerollResult,
+                                              ENSAugmentRerollResult, Result, int64, RequiredCost, int64, HaveCurrency,
+                                              int32, RequestRevision, int32, CurrentOfferRevision);
+
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSAugmentSelectionComponent : public UActorComponent
@@ -34,13 +69,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "NS|Augment")
 	FOnAugmentPendingCountChanged OnPendingCountChanged;
 
+	// 리롤 실패 통보 (성공은 OnOfferPresented 재수신으로 처리)
+	UPROPERTY(BlueprintAssignable, Category = "NS|Augment")
+	FOnAugmentRerollResult OnRerollResult;
+
 	// 서버 권한 트리거(레벨업/엘리트킬/보스처치)에서 직접 호출 → 대기열에 적재 후 패널 자동 오픈
 	UFUNCTION(BlueprintCallable, Category = "NS|Augment")
-	void EnqueueOffer(FGameplayTag PoolTag);
+	void EnqueueOffer(FGameplayTag RewardTriggerTag);
 
 	// 클라이언트 트리거(보물상자 등)에서 서버로 적재 요청할 때 호출
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_EnqueueOffer(FGameplayTag PoolTag);
+	void Server_EnqueueOffer(FGameplayTag RewardTriggerTag);
 
 	// Tab으로 패널을 열 때 호출 → 대기열 front 오퍼를 클라에 표시
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
@@ -48,11 +87,11 @@ public:
 
 	// 증강 리롤 (카드 3개 전부 새로 추첨)
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_RerollCard();
+	void Server_RerollCard(int32 ClientOfferRevision);
 
 	// 증강 골랐을때
 	UFUNCTION(Server, Reliable, BlueprintCallable, Category = "NS|Augment")
-	void Server_Choose(int32 Index);
+	void Server_Choose(int32 Index, int32 ClientOfferRevision);
 
 	// 현재 대기 중인 증강 선택권 수
 	UFUNCTION(BlueprintPure, Category = "NS|Augment")
@@ -67,15 +106,29 @@ public:
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UPROPERTY(EditDefaultsOnly, Category = "NS|Augment", meta = (ClampMin = "1"))
-	int32 CardsCount = 3;
-
 private:
+	// 클라이언트 UI가 실제 카드 수와 최대 선택 슬롯 수를 분리해서 배치하도록 전달
 	UFUNCTION(Client, Reliable)
-	void Client_PresentOffer(const TArray<FPrimaryAssetId>& OfferIds, int32 RerollCost);
+	void Client_PresentOffer(
+		const TArray<FNSAugmentSelectionCard>& Cards,
+		int64 RerollCost,
+		bool bCanReroll,
+		int32 PresentedOfferRevision,
+		int32 MaxChoiceCount,
+		int32 AvailableCardCount);
 
 	UFUNCTION(Client, Reliable)
 	void Client_CloseOffer();
+
+	// 리롤 실패 결과 통보. 성공 시에는 호출하지 않고 Client_PresentOffer 재수신으로 대체.
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyRerollResult(
+		ENSAugmentRerollResult Result,
+		int64 RequiredCost,
+		int64 HaveCurrency,
+		int32 RequestRevision,
+		int32 CurrentOfferRevision
+	);
 
 	// 대기열에 오퍼가 새로 적재됐을 때 클라이언트 패널 자동 오픈 지시
 	UFUNCTION(Client, Reliable)
@@ -87,54 +140,154 @@ private:
 	// 서버에서 대기 카운트 변경 + (호스트용) 즉시 브로드캐스트
 	void SetPendingCount(int32 NewCount);
 
-	// 대기열 front를 클라에 표시. bReroll=true면 강제 재추첨, 아니면 미추첨 시에만 추첨(캐시 유지)
-	void PresentFront(bool bReroll = false);
+	// Queue Front를 카드로 제시. 후보가 없으면 해당 트리거를 소비하고 다음 Front를 계속 확인.
+	void PresentFront();
 
-	UNSAugmentPoolDefinition* FindPool(const FGameplayTag& PoolTag) const;
+	/**
+	 * 현재 Front 오퍼를 소비하고 카드 추첨 상태를 초기화.
+	 * 카드 선택 완료 또는 현재 트리거에서 후보를 만들 수 없을 때 호출.
+	 */
+	void ConsumeFrontOffer();
 
-	// 증강 Rarity 추첨 -> 해당 Rarity내 나올 수 있는 증강 추첨 (오퍼)
-	TArray<FPrimaryAssetId> RollCards(UNSAugmentPoolDefinition* Pool, int32 N, ENSAugmentRarity& OutRarity) const;
+	// 같은 AugmentTag 그룹의 공통 선택 메타데이터와 Definition 식별자 ↔ AugmentTag 연결 무결성을 검사.
+	void ValidateAugmentDefinitionGroups(UNSDataSubsystem* Data) const;
+
+	bool TryFindRarityRule(
+		UNSDataSubsystem* Data,
+		const FGameplayTag& RewardTriggerTag,
+		FNSAugmentRarityRule& OutRule
+	) const;
+
+	// 실패 시 "규칙 없음(설정 오류)"로 취급 -> Server_RerollCard가 InvalidRequest로 통보.
+	bool TryFindRerollRule(
+		const FGameplayTag& RewardTriggerTag, FNSAugmentRerollRule& OutRule) const;
+
+	// 리롤 비용 계산: ceil(InitialCost * CostMultiplier^Count). overflow/정밀도 안전 상한 포함.
+	static int64 ComputeRerollCost(const FNSAugmentRerollRule& Rule, int32 Count);
+
+	// 위 원가에 공용 업그레이드 리롤 할인까지 적용한 최종 비용. 표시/차감 양쪽에서 반드시 이걸로 통일
+	int64 GetDiscountedRerollCost(const FNSAugmentRerollRule& Rule, int32 Count) const;
+
+	// 두 DefId Set이 원소까지 완전히 같은지 판정(순서 무관).
+	static bool AreDefIdSetsEqual(const TSet<FPrimaryAssetId>& A, const TSet<FPrimaryAssetId>& B);
+
+	// 오너 PlayerController -> PlayerState의 임시 재화 컴포넌트 조회.
+	UNSCurrencyComponent* GetOwnerCurrencyComponent() const;
+
+	// 오너 PlayerController -> PlayerState의 진행도 컴포넌트 조회 (유틸 할인 레벨 확인용).
+	UNSPlayerProgressComponent* GetOwnerProgressComponent() const;
+
+	static constexpr int32 BaseCardsCount = 3;
+	static constexpr int32 MaxCardsCount = 4;
+
+	// 서버 기준 이번 오퍼의 카드 수. Clamp(BaseCardsCount + AugmentChoiceCount 보너스, BaseCardsCount, MaxCardsCount).
+	// 조회 실패/Row 없음/레벨 0은 보너스 0으로 처리되어 자연히 3장이 나옴.
+	int32 GetEffectiveCardsCount() const;
+
+	// 현재 보유 증강 상태를 반영해 선택 가능한 후보를 희귀도별로 구성하고, 카드 슬롯별 선택 결과를 생성.
+	TArray<FNSAugmentSelectionCard> RollCards(
+		const FNSAugmentRarityRule& RarityRule,
+		int32 N,
+		int32& OutAvailableCardCount) const;
+
+	/**
+ 	 * 직전 오퍼(PreviousDefIds)와 DefId 구성이 다른 완전한 N장 오퍼를 생성.
+ 	 *
+ 	 * 기존 카드 일부 재등장은 허용하되, N장 집합 전체가 직전과 동일한 재출현은 허용하지 않는다.
+ 	 * 다른 구성이 실제로 존재하지 않을 때만 bOutDifferentPossible=false와 빈 배열을 반환한다.
+ 	 */
+	TArray<FNSAugmentSelectionCard> RollCardsExcludingComposition(
+		const FNSAugmentRarityRule& RarityRule,
+		int32 N,
+		const TSet<FPrimaryAssetId>& PreviousDefIds,
+		bool& bOutDifferentPossible,
+		int32& OutAvailableCardCount) const;
 
 	UNSAugmentDefinition* ResolveDefinition(
 		UNSDataSubsystem* Data,
 		const TSoftObjectPtr<UNSAugmentDefinition>& SoftDef) const;
 
+	// Pawn 대신 PlayerState의 CharacterData를 기준으로 현재 런에서 선택한 캐릭터 태그를 가져옴.
+	bool TryGetOwnerCharacterTag(FGameplayTag& OutCharacterTag) const;
+
+	/**
+ 	 * DT Row를 카드 후보 생성과 보유 증강 판정에 사용할 런타임 후보 데이터로 변환.
+ 	 *
+ 	 * AugmentTag는 같은 증강의 효과 행을 그룹핑하고, DefId는 Definition DA 조회와 보유 증강 식별에 사용.
+ 	 */
+	bool TryCreateCandidate(
+		UNSDataSubsystem* Data,
+		const FNSAugmentDefinitionRow& Row,
+		FNSAugmentCandidate& OutCandidate
+	) const;
+
+	// 기존 DefId 기반 보유 데이터를 DT 후보 메타 정보에 연결.
+	bool TryFindCandidateByDefinitionId(
+		UNSDataSubsystem* Data,
+		const FPrimaryAssetId& DefId,
+		FNSAugmentCandidate& OutCandidate
+	) const;
+
 	void CollectInventoryFilter(
 		bool& bOutLegendaryFull,
-		TSet<FPrimaryAssetId>& OutOwnedMechanicIds,
+		TSet<FPrimaryAssetId>& OutOwnedLegendarySlotIds,
 		TSet<FPrimaryAssetId>& OutStackFullIds) const;
 
-	// Pool->Entries로부터 Rarity별 후보 버킷(나올 수 있는 후보 목록) 생성, ExcludedIds/StackFullIds에 있는 Def는 제외, 중복 등록 방지
+	/**
+ 	 * DT_AugmentDefinition에서 현재 캐릭터가 선택할 수 있는 증강 후보를 희귀도별로 구성.
+ 	 *
+ 	 * 같은 AugmentTag를 가진 여러 Modifier Row는 하나의 카드 후보로 통합.
+ 	 * DefId는 카드 후보 전송과 보유 증강 식별을 위해 유지.
+ 	 */
 	void BuildRarityBuckets(
 		UNSDataSubsystem* Data,
-		const UNSAugmentPoolDefinition* Pool,
 		bool bLegendaryFull,
-		const TSet<FPrimaryAssetId>& OwnedMechanicIds,
+		const TSet<FPrimaryAssetId>& OwnedLegendarySlotIds,
 		const TSet<FPrimaryAssetId>& StackFullIds,
 		const TSet<FPrimaryAssetId>& ExcludedIds,
-		TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& OutByRarity) const;
+		TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& OutByRarity
+	) const;
 
-	// 가중치 룰렛으로 Rarity 1회 결정 → 해당 버킷에서 N장 균등 추첨 -> OutRarity에 결정된 Rarity 반환
-	TArray<FPrimaryAssetId> DrawCards(
-		const UNSAugmentPoolDefinition* Pool,
-		const TMap<ENSAugmentRarity, TArray<UNSAugmentDefinition*>>& ByRarity,
-		int32 N,
-		ENSAugmentRarity& OutRarity) const;
+	int32 CountSelectableCandidates(
+		const FNSAugmentRarityRule& RarityRule,
+		const TMap<
+			ENSAugmentRarity,
+			TArray<FNSAugmentCandidate>>& ByRarity) const;
 
-	UPROPERTY()
-	TObjectPtr<UNSAugmentPoolDefinition> CurrentPool;
+	/**
+ 	 * 카드 슬롯마다 희귀도와 후보를 독립적으로 선택.
+ 	 *
+ 	 * 카드가 선택될 때마다 해당 후보는 RemainingByRarity에서 제거된다.
+ 	 * 이후 슬롯은 남은 후보가 있는 희귀도만 대상으로 확률을 다시 계산.
+ 	 */
+	TArray<FNSAugmentSelectionCard> DrawCards(
+		const FNSAugmentRarityRule& RarityRule,
+		const TMap<ENSAugmentRarity, TArray<FNSAugmentCandidate>>& ByRarity,
+		int32 N
+	) const;
 
-	// 서버 전용: 추첨 대기 중인 풀 태그 FIFO 큐 (front가 현재 표시 대상, RemoveAt(0)으로 소비)
-	TArray<FGameplayTag> PoolQueue;
+	// 서버 전용: 보상 트리거 FIFO 큐, Front는 카드 선택 완료 또는 선택 가능한 후보가 없을 때 소비.
+	TArray<FGameplayTag> RewardTriggerQueue;
 
 	// front 오퍼가 이미 추첨되어 캐싱됐는지 (패널 재오픈 시 재추첨 방지, 리롤로만 재추첨)
 	bool bFrontRolled = false;
 
-	TArray<FPrimaryAssetId> PendingOffer;
+	TArray<FNSAugmentSelectionCard> PendingOffer;
 
-	int32 CurrentRerollCost = 0;
+	// 현재 Front 오퍼를 생성할 때 확인된 전체 선택 가능 후보 수
+	int32 CurrentAvailableCardCount = 0;
+
+	int32 CurrentOfferRerollCount = 0;
+
+	// 클라이언트가 들고 있는 오퍼가 최신인지 확인하는 버전 번호.
+	// 오퍼 내용이 바뀔 때마다(새로 추첨될 때, 리롤 성공 시) 값이 올라가고,
+	// 오래된 버전 번호로 온 요청은 서버가 거부한다. 그래서 0으로 되돌리는 일은 절대 없다.
+	int32 OfferRevision = 0;
 
 	// 대기 중인 증강 선택권 수 (오너에게만 레플리케이션, UI 뱃지용)
 	UPROPERTY(ReplicatedUsing = OnRep_PendingCount)
 	int32 PendingCount = 0;
+
+	// 현재 런에서 증강 정의 그룹 무결성을 검사 했는지 여부.
+	bool bHasValidatedAugmentDefinitionGroups = false;
 };

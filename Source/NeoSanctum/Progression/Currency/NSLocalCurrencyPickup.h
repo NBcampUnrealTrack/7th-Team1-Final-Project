@@ -35,12 +35,24 @@ public:
 protected:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	
+
 	UFUNCTION()
 	void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 				UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& Sweep);
 
-	
+	// 착지 후 계속 틱을 돌며 MeshComp를 사인파로 위아래 움직임
+	void UpdateBobAnimation(float DeltaSeconds);
+
+	// 바운싱 애니메이션 진폭/속도
+	UPROPERTY(BlueprintReadOnly, Category = "Currency|Visual")
+	float BobAmplitude = 12.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Currency|Visual")
+	float BobSpeed = 2.f;
+
+	// 메시 로드 후 계산한 피벗 보정 Z값 —> 바운싱은 이 값 위에 오프셋을 더함
+	float MeshBaseRelativeZ = 0.f;
+
 private:
 	void StartMeshLoad(const UNSCurrencyVisualData* VisualData);
 	void OnMeshLoaded();

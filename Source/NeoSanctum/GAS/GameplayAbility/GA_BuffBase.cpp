@@ -8,9 +8,11 @@
 #include "Engine/OverlapResult.h"
 #include "GameFramework/Pawn.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
+#include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Combat/Weapon/Summon/NSTurret.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 
 UGA_BuffBase::UGA_BuffBase()
@@ -41,12 +43,22 @@ void UGA_BuffBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle, cons
 		return;
 	}
 
+	if (TargetType == ENSBuffTargetType::Radius)
+	{
+		float Radius = 0.0f;
+		if (TryGetBuffRadius(Radius) && Radius > 0.0f)
+		{
+			ExecuteRangePulseGameplayCue(Radius);
+		}
+	}
+
 	if (!ActorInfo->IsNetAuthority())
 	{
-		if (TargetFilter.bIncludeSelf)
+		AActor* AvatarActor = ActorInfo->AvatarActor.Get();
+		if (TargetFilter.bIncludeSelf && !HasBuffStateTag(AvatarActor))
 		{
 			// LocalPredicted Self 연출도 State/Cue 수명 관리를 동일하게 사용
-			AddTemporaryBuffPresentation(ActorInfo->AvatarActor.Get(), Duration);
+			AddTemporaryBuffPresentation(AvatarActor, Duration);
 		}
 
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
@@ -76,13 +88,24 @@ void UGA_BuffBase::ApplyBuffToTargets(const TArray<AActor*>& Targets, float Dura
 
 bool UGA_BuffBase::TryApplyBuffToTarget(AActor* TargetActor, float Duration)
 {
-	if (!TargetActor || HasBuffStateTag(TargetActor))
+	if (!TargetActor)
 	{
 		return false;
 	}
 
 	const FNSBuffApplyEntry* ApplyEntry = FindBuffApplyEntryForTarget(TargetActor);
 	if (!ApplyEntry)
+	{
+		return false;
+	}
+
+	const bool bHasActiveBuff = HasBuffStateTag(TargetActor);
+	const bool bCanRefreshActiveBuff =
+		bHasActiveBuff &&
+		bRefreshDurationOnReapply &&
+		ApplyEntry->ApplyType == ENSBuffApplyType::CombatStatModifier;
+
+	if (bHasActiveBuff && !bCanRefreshActiveBuff)
 	{
 		return false;
 	}
@@ -148,6 +171,23 @@ bool UGA_BuffBase::ApplyCombatStatModifierBuff(
 		return false;
 	}
 
+	FNSActiveBuffRuntime* ActiveRuntime = nullptr;
+
+	if (bRefreshDurationOnReapply)
+	{
+		const TWeakObjectPtr<UAbilitySystemComponent> TargetASCKey(TargetASC);
+		FNSActiveBuffRuntime& Runtime = ActiveBuffRuntimeByTarget.FindOrAdd(TargetASCKey);
+
+		// 기존 Modifier를 먼저 지워야 두 버프가 겹치지 않음.
+		for (const FGuid& ModifierHandle : Runtime.CombatStatModifierHandles)
+		{
+			TargetASC->RemoveTemporaryCombatStatModifier(ModifierHandle);
+		}
+
+		Runtime.CombatStatModifierHandles.Reset();
+		ActiveRuntime = &Runtime;
+	}
+
 	bool bApplied = false;
 	for (const FNSBuffCombatStatModifier& CombatStatModifier : ApplyEntry.CombatStatModifiers)
 	{
@@ -172,7 +212,16 @@ bool UGA_BuffBase::ApplyCombatStatModifierBuff(
 			Duration
 		);
 
-		bApplied |= ModifierHandle.IsValid();
+		if (ModifierHandle.IsValid())
+		{
+			bApplied = true;
+
+			if (ActiveRuntime)
+			{
+				// 다음 재사용 때 제거할 수 있도록 새 핸들을 기억.
+				ActiveRuntime->CombatStatModifierHandles.Add(ModifierHandle);
+			}
+		}
 	}
 
 	return bApplied;
@@ -245,7 +294,10 @@ void UGA_BuffBase::ApplySetByCallerMappingsToSpec(
 			continue;
 		}
 
-		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, Magnitude);
+		// @원종: CombatStat 퍼센트 값(30 = 30%)을 GE의 MultiplyAdditive Modifier가 기대하는 비율(0.3)로 변환.
+		// GA_BuffBase는 Ranger/Engineer의 버프 스킬만 사용 중이며, SetByCallerMappings는 항상 퍼센트 스탯이라는 전제.
+		// 후에 다른 캐릭터도 이 버프 매커니즘을 사용한다면 주의할 필요가 있음.
+		SpecHandle.Data->SetSetByCallerMagnitude(Mapping.SetByCallerTag, 1.0f + Magnitude * 0.01f);
 	}
 }
 
@@ -263,7 +315,7 @@ bool UGA_BuffBase::HasBuffStateTag(const AActor* TargetActor) const
 	return TargetASC && TargetASC->HasMatchingGameplayTag(BuffStateTag);
 }
 
-void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Duration) const
+void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Duration)
 {
 	if ((!BuffStateTag.IsValid() && !BuffGameplayCueTag.IsValid()) || Duration <= 0.0f)
 	{
@@ -279,27 +331,62 @@ void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Durat
 		return;
 	}
 
-	if (BuffStateTag.IsValid())
+	UWorld* World = TargetASC->GetWorld();
+	if (!World)
 	{
-		TargetASC->AddLooseGameplayTag(BuffStateTag);
+		return;
 	}
 
-	if (BuffGameplayCueTag.IsValid())
+	const TWeakObjectPtr<UAbilitySystemComponent> TargetASCKey(TargetASC);
+	const bool bTrackRuntime = bRefreshDurationOnReapply;
+
+	FTimerHandle LocalTimerHandle;
+	FTimerHandle* TimerHandle = &LocalTimerHandle;
+	bool bPresentationAlreadyActive = false;
+
+	if (bTrackRuntime)
 	{
-		TargetASC->AddGameplayCue(BuffGameplayCueTag);
+		FNSActiveBuffRuntime& Runtime = ActiveBuffRuntimeByTarget.FindOrAdd(TargetASCKey);
+
+		bPresentationAlreadyActive = World->GetTimerManager().IsTimerActive(Runtime.PresentationTimerHandle);
+
+		if (bPresentationAlreadyActive)
+		{
+			// 첫 타이머가 버프를 먼저 끄지 않도록 취소.
+			World->GetTimerManager().ClearTimer(Runtime.PresentationTimerHandle);
+		}
+
+		TimerHandle = &Runtime.PresentationTimerHandle;
 	}
 
-	if (UWorld* World = TargetASC->GetWorld())
+	if (!bPresentationAlreadyActive)
 	{
-		FTimerHandle TimerHandle;
-		TWeakObjectPtr<UAbilitySystemComponent> WeakASC = TargetASC;
-		const FGameplayTag StateTag = BuffStateTag;
-		const FGameplayTag CueTag = BuffGameplayCueTag;
-		World->GetTimerManager().SetTimer(
-			TimerHandle,
-			FTimerDelegate::CreateWeakLambda(TargetASC, [WeakASC, StateTag, CueTag]()
+		// 재적용할 때는 태그와  Cue를 중복으로 쌓지 않음.
+		if (BuffStateTag.IsValid())
+		{
+			TargetASC->AddLooseGameplayTag(BuffStateTag);
+		}
+
+		if (BuffGameplayCueTag.IsValid())
+		{
+			TargetASC->AddGameplayCue(BuffGameplayCueTag);
+		}
+	}
+
+	const TWeakObjectPtr<UGA_BuffBase> WeakAbility(this);
+	const TWeakObjectPtr<UAbilitySystemComponent> WeakASC(TargetASC);
+	const FGameplayTag StateTag = BuffStateTag;
+	const FGameplayTag CueTag = BuffGameplayCueTag;
+
+	World->GetTimerManager().SetTimer(
+		*TimerHandle,
+		FTimerDelegate::CreateWeakLambda(
+			TargetASC,
+			[WeakAbility, WeakASC, TargetASCKey, StateTag, CueTag, bTrackRuntime]()
 			{
-				if (UAbilitySystemComponent* ASC = WeakASC.Get())
+				UAbilitySystemComponent* ASC = WeakASC.Get();
+
+				if (ASC)
 				{
 					if (StateTag.IsValid())
 					{
@@ -311,11 +398,31 @@ void UGA_BuffBase::AddTemporaryBuffPresentation(AActor* TargetActor, float Durat
 						ASC->RemoveGameplayCue(CueTag);
 					}
 				}
-			}),
-			Duration,
-			false
-		);
-	}
+
+				UGA_BuffBase* BuffAbility = WeakAbility.Get();
+				if (!bTrackRuntime || !BuffAbility)
+				{
+					return;
+				}
+
+				if (FNSActiveBuffRuntime* Runtime = BuffAbility->ActiveBuffRuntimeByTarget.Find(TargetASCKey))
+				{
+					if (UNSAbilitySystemComponent* NSASC = Cast<UNSAbilitySystemComponent>(ASC))
+					{
+						// 수치 버프와 연출이 같은 시점에 끝나도록 정리.
+						for (const FGuid& ModifierHandle : Runtime->CombatStatModifierHandles)
+						{
+							NSASC->RemoveTemporaryCombatStatModifier(ModifierHandle);
+						}
+					}
+				}
+
+				BuffAbility->ActiveBuffRuntimeByTarget.Remove(TargetASCKey);
+			}
+		),
+		Duration,
+		false
+	);
 }
 
 bool UGA_BuffBase::TryGetBuffDuration(float& OutDuration) const
@@ -326,6 +433,69 @@ bool UGA_BuffBase::TryGetBuffDuration(float& OutDuration) const
 	}
 
 	return TryGetFinalAbilityStat(SkillAbilityTag, DurationStatTag, OutDuration);
+}
+
+void UGA_BuffBase::ExecuteRangePulseGameplayCue(const float Radius) const
+{
+	if (Radius <= 0.0f)
+	{
+		return;
+	}
+
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	if (!AvatarActor || !ASC)
+	{
+		return;
+	}
+	
+	const FGameplayTag CueTag = RangePulseGameplayCueTag;
+	if (!CueTag.IsValid())
+	{
+		return;
+	}
+	
+	FGameplayCueParameters CueParameters;
+	CueParameters.Instigator = AvatarActor;
+	CueParameters.EffectCauser = AvatarActor;
+	CueParameters.RawMagnitude = Radius;
+	
+	const FVector AvatarLocation = AvatarActor->GetActorLocation();
+	FVector CueLocation = AvatarLocation;
+	FVector CueNormal = FVector::UpVector;
+	
+	if (UWorld* World = AvatarActor->GetWorld())
+	{
+		constexpr float TraceStartOffset = 100.0f;
+		constexpr float TraceDownDistance = 500.0f;
+		constexpr float SurfaceOffset = 2.0f;
+
+		const FVector TraceStart = AvatarLocation + FVector::UpVector * TraceStartOffset;
+		const FVector TraceEnd = AvatarLocation - FVector::UpVector * TraceDownDistance;
+
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(BuffRangePulseGroundTrace), false, AvatarActor);
+		QueryParams.AddIgnoredActor(AvatarActor);
+
+		FHitResult GroundHit;
+		if (World->LineTraceSingleByChannel(GroundHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams)
+			&& GroundHit.bBlockingHit)
+		{
+			CueNormal = GroundHit.ImpactNormal.GetSafeNormal();
+			if (CueNormal.IsNearlyZero())
+			{
+				CueNormal = FVector::UpVector;
+			}
+
+			// 정밀도 문제를 피하기 위해 표면에서 약간 띄움
+			CueLocation = GroundHit.ImpactPoint + CueNormal * SurfaceOffset;
+		}
+	}
+
+	CueParameters.Location = CueLocation;
+	// Decal Renderer의 투영 방향을 유지하도록 회전값 초기화
+	CueParameters.Normal = FVector::ZeroVector;
+
+	ASC->ExecuteGameplayCue(CueTag, CueParameters);
 }
 
 void UGA_BuffBase::CollectBuffTargets(TArray<AActor*>& OutTargets) const
@@ -374,11 +544,12 @@ void UGA_BuffBase::CollectRadiusTargets(TArray<AActor*>& OutTargets) const
 		return;
 	}
 	
-	// Pawn과 WorldDynamic Actor를 후보로 수집
+	// Pawn과 PlayerConstruct Actor를 후보로 수집
+	// 터렛 탐지 Sphere 대신 본체 충돌을 범위 판정에 사용
 	TArray<FOverlapResult> OverlapResults;
 	FCollisionObjectQueryParams ObjectQueryParams;
 	ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
-	ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+	ObjectQueryParams.AddObjectTypesToQuery(NSCollisionChannels::PlayerConstruct);
 	
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(BuffRadiusOverlap), false, AvatarActor);
 	

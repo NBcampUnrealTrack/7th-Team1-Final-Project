@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitFeedbackTypes.h"
 #include "NSBaseAttributeSet.h"
 #include "NSPlayerAttributeSet.generated.h"
 
@@ -18,7 +19,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
-	
+
+	virtual void PostAttributeChange(const FGameplayAttribute& Attribute, float OldValue, float NewValue) override;
+
 	virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data) override;
 	
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Shield, Category = "GAS|Attribute")
@@ -28,6 +31,16 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxShield, Category = "GAS|Attribute")
 	FGameplayAttributeData MaxShield;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxShield);
+
+	// Shield 초당 회복량
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ShieldRechargeRate, Category = "GAS|Attribute")
+	FGameplayAttributeData ShieldRechargeRate;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, ShieldRechargeRate);
+
+	// Shield 파괴 후 회복 시작까지 대기 시간
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_ShieldRechargeCooldown, Category = "GAS|Attribute")
+	FGameplayAttributeData ShieldRechargeCooldown;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, ShieldRechargeCooldown);
 	
 	// 대쉬 횟수
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DashCount, Category = "GAS|Attribute")
@@ -43,7 +56,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_DashRegenRate, Category = "GAS|Attribute")
 	FGameplayAttributeData DashRegenRate;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, DashRegenRate);
-	
+
+	// 치명타 발생 확률(%) / 20 = 20%
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CritChance, Category = "GAS|Attribute")
+	FGameplayAttributeData CritChance;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, CritChance);
+
+	// 치명타 발생 시 데미지 배율(%) / 150 = 150%
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_CritDamage, Category = "GAS|Attribute")
+	FGameplayAttributeData CritDamage;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, CritDamage);
+
 	// 탄약
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Ammo, Category = "GAS|Attribute")
 	FGameplayAttributeData Ammo;
@@ -77,16 +100,40 @@ public:
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Skill3Count, Category = "GAS|Attribute")
 	FGameplayAttributeData Skill3Count;
 	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, Skill3Count);
+
+	// 최대 점프 가능 횟수 (파츠/증강으로 증감, 캐릭터의 실제 JumpMaxCount로 동기화됨)
+	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_MaxJumpCount, Category = "GAS|Attribute")
+	FGameplayAttributeData MaxJumpCount;
+	ATTRIBUTE_ACCESSORS(UNSPlayerAttributeSet, MaxJumpCount);
 protected:
 	// Health 적용 전 Shield로 데미지를 흡수
 	virtual float HandlePreHealthDamage(float DamageAmount, const FGameplayEffectModCallbackData& Data) override;
+
+	virtual void NotifyHitTakenFeedbackAfterHealthDamage(
+		const FGameplayEffectModCallbackData& Data,
+		float PreviousHealth) const override;
 	
 private:
+	
+	void ResetShieldRechargeFlowOnDamage() const;
+	
+	// 실제 Notify를 진행해주는 함수
+	void NotifyHitTakenFeedback(
+		const FGameplayEffectModCallbackData& Data,
+		ENSHitTakenFeedbackType FeedbackType,
+		float DamageAmount) const;
+
 	UFUNCTION()
 	void OnRep_Shield(const FGameplayAttributeData& OldShield);
 	
 	UFUNCTION()
 	void OnRep_MaxShield(const FGameplayAttributeData& OldMaxShield);
+
+	UFUNCTION()
+	void OnRep_ShieldRechargeRate(const FGameplayAttributeData& OldShieldRechargeRate);
+
+	UFUNCTION()
+	void OnRep_ShieldRechargeCooldown(const FGameplayAttributeData& OldShieldRechargeCooldown);
 	
 	UFUNCTION()
 	void OnRep_DashCount(const FGameplayAttributeData& OldDashCount);
@@ -96,6 +143,12 @@ private:
 	
 	UFUNCTION()
 	void OnRep_DashRegenRate(const FGameplayAttributeData& OldDashRegenRate);
+
+	UFUNCTION()
+	void OnRep_CritChance(const FGameplayAttributeData& OldCritChance);
+
+	UFUNCTION()
+	void OnRep_CritDamage(const FGameplayAttributeData& OldCritDamage);
 	
 	UFUNCTION()
 	void OnRep_Ammo(const FGameplayAttributeData& OldAmmo);
@@ -120,4 +173,7 @@ private:
 	
 	UFUNCTION()
 	void OnRep_MaxSkill3Count(const FGameplayAttributeData& OldMaxSkill3Count);
+
+	UFUNCTION()
+	void OnRep_MaxJumpCount(const FGameplayAttributeData& OldMaxJumpCount);
 };

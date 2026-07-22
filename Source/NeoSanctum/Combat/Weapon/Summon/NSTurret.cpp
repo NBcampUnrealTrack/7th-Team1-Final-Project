@@ -13,12 +13,18 @@
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
+#include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/GAS/AttributeSet/NSTurretAttributeSet.h"
 #include "NeoSanctum/GAS/GameplayAbility/GA_ThrowProjectile.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
 #include "NeoSanctum/System/Component/NSDissolveComponent.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/Type/NSTeamTypes.h"
 #include "Net/UnrealNetwork.h"
@@ -75,9 +81,13 @@ ANSTurret::ANSTurret()
 	DetectionSphereComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
 	DetectionSphereComponent->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::Enemy, ECR_Overlap);
+	DetectionSphereComponent->SetCollisionResponseToChannel(NSCollisionChannels::EnemyBoss, ECR_Overlap);
 	DetectionSphereComponent->SetGenerateOverlapEvents(true);
 
 	DissolveComponent = CreateDefaultSubobject<UNSDissolveComponent>(TEXT("DissolveComponent"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Turret);
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
 	
 	MeleeAttackReservationComponent = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
 			TEXT("MeleeAttackReservationComponent"));
@@ -117,6 +127,79 @@ void ANSTurret::InitializeTurret(
 	// 초기 Attribute GE에 사용할 payload 저장
 	SetByCallerMagnitudes = InSetByCallerMagnitudes;
 	RuntimeStatMagnitudes = InRuntimeStatMagnitudes;
+	SourceAbilityTag = InConfig.SourceAbilityTag;
+
+	if (const ANSPlayerState* NSPlayerState = InOwningPawn ? InOwningPawn->GetPlayerState<ANSPlayerState>() : nullptr)
+	{
+		OwningCombatStatComponent = NSPlayerState->GetCombatStatComponent();
+
+		const UNSPlayerAttributeSet* PlayerAttributeSet = NSPlayerState->GetPlayerAttributeSet();
+
+		if (PlayerAttributeSet)
+		{
+			// 전달된 SetByCaller 값을 태그로 찾아서 실제 터렛 Attribute 값으로 바꿔줌.
+			const auto FindSetByCallerMagnitude =
+				[this](const FGameplayTag& SetByCallerTag) -> FNSSetByCallerMagnitude*
+				{
+					return SetByCallerMagnitudes.FindByPredicate(
+					[&SetByCallerTag](const FNSSetByCallerMagnitude& Entry)
+					{
+						return Entry.SetByCallerTag == SetByCallerTag;
+					});
+				};
+
+			FNSSetByCallerMagnitude* MaxHealthMagnitude =
+				FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxHealth);
+
+			if (MaxHealthMagnitude)
+			{
+				// DataTable에서는 50을 50%로 사용.
+				const float MaxHealthRatio = FMath::Max(MaxHealthMagnitude->Magnitude, 0.0f) * 0.01f;
+
+				// 현재 실드가 아니라 증강까지 적용된 최대 체력과 최대 실드의 합을 사용.
+				const float OwnerMaxHealthAndShield =
+					FMath::Max(PlayerAttributeSet->GetMaxHealth(), 0.0f) +
+					FMath::Max(PlayerAttributeSet->GetMaxShield(), 0.0f);
+
+				const float ScaledTurretMaxHealth = FMath::Max(OwnerMaxHealthAndShield * MaxHealthRatio, 0.0f);
+
+				float MinimumTurretHealth = 0.0f;
+
+				if (OwningCombatStatComponent)
+				{
+					// 최소 체력은 증강값이 아니라 DT에 설정된 기본값을 그대로 가져옴.
+					OwningCombatStatComponent->TryGetBaseAbilityStat(
+						SourceAbilityTag,
+						NSGameplayTags::CombatStat_MinHealth,
+						MinimumTurretHealth
+					);
+				}
+
+				// 비율로 계산한 체력이 너무 낮으면 DT의 최소 체력을 보장.
+				const float TurretMaxHealth =
+					FMath::Max(ScaledTurretMaxHealth, FMath::Max(MinimumTurretHealth, 0.0f));
+
+				MaxHealthMagnitude->Magnitude = TurretMaxHealth;
+
+				// 터렛이 계산된 최대 체력만큼 꽉 찬 상태로 소환.
+				if (FNSSetByCallerMagnitude* HealthMagnitude =
+					FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Health))
+				{
+					HealthMagnitude->Magnitude = TurretMaxHealth;
+				}
+			}
+
+			if (FNSSetByCallerMagnitude* DefenseMagnitude =
+				FindSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Defense))
+			{
+				// 방어력도 동일하게 DataTable 값을 백분율로 해석.
+				const float DefenseRatio =
+					FMath::Max(DefenseMagnitude->Magnitude, 0.0f) * 0.01f;
+
+				DefenseMagnitude->Magnitude = FMath::Max(PlayerAttributeSet->GetDefense() * DefenseRatio, 0.0f);
+			}
+		}
+	}
 	
 	if (OwningPawn)
 	{
@@ -134,6 +217,10 @@ void ANSTurret::InitializeTurret(
 	InitializeAbilityActorInfo();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
+
+	// 터렛 전용 공속 버프가 적용되기 전 값을 기준 공속으로 저장.
+	BaseFireRateAtSpawn = AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+
 	StartLifetimeTimer();
 	
 	// 
@@ -173,6 +260,7 @@ void ANSTurret::BeginPlay()
 	Super::BeginPlay();
 
 	InitializeAbilityActorInfo();
+	ApplyDeploymentInvincibilityEffect();
 	BindAttributeChangeDelegates();
 	ApplyInitialAttributeEffect();
 	StartLifetimeTimer();
@@ -348,6 +436,29 @@ void ANSTurret::ApplyInitialAttributeEffect()
 	bInitialAttributeEffectApplied = true;
 	
 	RefreshDetectionRange();
+}
+
+void ANSTurret::ApplyDeploymentInvincibilityEffect()
+{
+	if (!HasAuthority() || !ASC || !DeploymentInvincibilityEffectClass)
+	{
+		return;
+	}
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(
+		DeploymentInvincibilityEffectClass,
+		1.0f,
+		EffectContext
+	);
+
+	if (SpecHandle.IsValid())
+	{
+		// Duration GE가 만료되면 State.Invincible도 자동으로 제거됨.
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+	}
 }
 
 void ANSTurret::ApplySetByCallerMagnitudes(FGameplayEffectSpecHandle& SpecHandle) const
@@ -626,7 +737,7 @@ void ANSTurret::TryFire()
 		return;
 	}
 	
-	const float FireRate = AttributeSet->GetFireRate();
+	const float FireRate = GetCurrentFireRate();
 	if (FireRate <= 0.0f)
 	{
 		return;
@@ -659,7 +770,7 @@ bool ANSTurret::CanFireToCurrentTarget() const
 		return false;
 	}
 
-	const float FireRate = AttributeSet->GetFireRate();
+	const float FireRate = GetCurrentFireRate();
 	const float AttackRange = AttributeSet->GetAttackRange();
 	if (FireRate <= 0.0f || AttackRange <= 0.0f)
 	{
@@ -727,7 +838,9 @@ void ANSTurret::FireHitscan()
 	);
 	
 	// 히트된 대상에 GE Damage 적용
-	if (bHit && CanDamageHitActor(HitResult.GetActor()))
+	if (bHit &&
+		NSDamageRules::IsValidDirectDamageHit(HitResult) &&
+		CanDamageHitActor(HitResult.GetActor()))
 	{
 		AActor* TargetActor = HitResult.GetActor();
 
@@ -740,12 +853,32 @@ void ANSTurret::FireHitscan()
 			{
 				// GE 발생 정보 생성
 				FGameplayEffectContextHandle EffectContext = TurretASC->MakeEffectContext();
+				EffectContext.AddSourceObject(this);
 				EffectContext.AddHitResult(HitResult);
+				// 터렛 피해도 설치한 플레이어 화면에 데미지 숫자를 보여줌.
+				EffectContext.AddInstigator(GetOwningPawn(), this);
 
 				FGameplayEffectSpecHandle NewSpecHandle = TurretASC->MakeOutgoingSpec(
 					DamageEffectClass, 1.0f, EffectContext);
-				if (NewSpecHandle.IsValid())
+				
+				if (NewSpecHandle.IsValid() && NewSpecHandle.Data.IsValid())
 				{
+					const float DirectHitDamageMultiplier =
+						NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
+
+					if (!FMath::IsNearlyEqual(DirectHitDamageMultiplier, 1.0f))
+					{
+						const float FinalBaseDamage =
+							FMath::Max(AttributeSet->GetBaseDamage() * DirectHitDamageMultiplier, 0.0f);
+
+						NewSpecHandle.Data->SetSetByCallerMagnitude(
+							NSGameplayTags::Effect_Damage_Base,
+							FinalBaseDamage);
+					}
+					
+					// 소환자의 현재 CritChance/CritDamage를 전달해 크리티컬이 적용되게 함
+					ApplyCritOverrideToSpec(NewSpecHandle);
+
 					// 타겟 ASC에 GE 적용
 					TurretASC->ApplyGameplayEffectSpecToTarget(*NewSpecHandle.Data.Get(), TargetASC);
 				}
@@ -929,6 +1062,53 @@ bool ANSTurret::TryGetRuntimeStatMagnitude(
 	}
 
 	return false;
+}
+
+float ANSTurret::GetCurrentFireRate() const
+{
+	const float TurretAttributeFireRate = AttributeSet ? FMath::Max(AttributeSet->GetFireRate(), 0.0f) : 0.0f;
+
+	float UpgradedTurretFireRate = 0.0f;
+
+	if (OwningCombatStatComponent && SourceAbilityTag.IsValid() &&
+		OwningCombatStatComponent->TryGetFinalAbilityStat(
+			SourceAbilityTag, NSGameplayTags::CombatStat_FireRate, UpgradedTurretFireRate))
+	{
+		float TurretBuffMultiplier = 1.0f;
+
+		if (BaseFireRateAtSpawn > KINDA_SMALL_NUMBER)
+		{
+			TurretBuffMultiplier = TurretAttributeFireRate / BaseFireRateAtSpawn;
+		}
+
+		// 증강이 반영된 최신 공속에 터렛 전용 버프 배율도 같이 적용.
+		return FMath::Max(UpgradedTurretFireRate * FMath::Max(TurretBuffMultiplier, 0.0f), 0.0f);
+	}
+
+	// 소환자 정보가 없으면 터렛 Attribute 값을 그대로 사용.
+	return TurretAttributeFireRate;
+}
+
+void ANSTurret::ApplyCritOverrideToSpec(FGameplayEffectSpecHandle& SpecHandle) const
+{
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	const ANSPlayerState* NSPlayerState = OwningPawn ? OwningPawn->GetPlayerState<ANSPlayerState>() : nullptr;
+	const UNSPlayerAttributeSet* PlayerAttributeSet = NSPlayerState ? NSPlayerState->GetPlayerAttributeSet() : nullptr;
+
+	// 소환자를 찾지 못하면 GEC 캡처 기본값(크리티컬 없음)이 그대로 적용됨
+	if (!PlayerAttributeSet)
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritChanceOverride, PlayerAttributeSet->GetCritChance());
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_Damage_CritDamageOverride, PlayerAttributeSet->GetCritDamage());
 }
 
 void ANSTurret::StartDeathPresentation()

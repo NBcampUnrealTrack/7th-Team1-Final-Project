@@ -9,6 +9,8 @@
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
+#include "NeoSanctum/Combat/Component/NSEnemyThreatComponent.h"
 
 UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 {
@@ -20,13 +22,13 @@ UGA_EnemyAttackBase::UGA_EnemyAttackBase()
 
 	bServerRespectsRemoteAbilityCancellation = false;
 	bRetriggerInstancedAbility = false;
-	
+
 	FGameplayTagContainer AssetTags = GetAssetTags();
 	AssetTags.AddTag(NSGameplayTags::Ability_Enemy_Attack);
 	SetAssetTags(AssetTags);
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Enemy_HitReacting);
-	
+
 	HitCheckEventTag = NSGameplayTags::Event_Enemy_Hit;
 }
 
@@ -64,6 +66,93 @@ void UGA_EnemyAttackBase::ActivateAbility(
 	}
 }
 
+void UGA_EnemyAttackBase::EndAbility(
+	const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	bool bReplicateEndAbility,
+	bool bWasCancelled)
+{
+	RemovePatternDefenseEffect();
+
+	Super::EndAbility(
+		Handle,
+		ActorInfo,
+		ActivationInfo,
+		bReplicateEndAbility,
+		bWasCancelled);
+}
+
+void UGA_EnemyAttackBase::BeginPatternDefenseWindow(ENSPatternDefenseWindow Window)
+{
+	if (PatternDefenseWindow != Window)
+	{
+		return;
+	}
+
+	ApplyPatternDefenseEffect();
+}
+
+void UGA_EnemyAttackBase::EndPatternDefenseWindow(ENSPatternDefenseWindow Window)
+{
+	if (PatternDefenseWindow != Window)
+	{
+		return;
+	}
+
+	RemovePatternDefenseEffect();
+}
+
+void UGA_EnemyAttackBase::ApplyPatternDefenseEffect()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	AActor* AvatarActor = GetAvatarActorFromActorInfo();
+
+	if (!ASC || !IsValid(AvatarActor) || !AvatarActor->HasAuthority())
+	{
+		return;
+	}
+
+	if (!PatternDefenseEffect || PatternDefenseBonus <= 0.0f)
+	{
+		return;
+	}
+
+	RemovePatternDefenseEffect();
+
+	FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+	EffectContext.AddInstigator(AvatarActor, AvatarActor);
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		ASC->MakeOutgoingSpec(PatternDefenseEffect, GetAbilityLevel(), EffectContext);
+
+	if (!SpecHandle.IsValid() || !SpecHandle.Data.IsValid())
+	{
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(
+		NSGameplayTags::Effect_SetByCaller_Defense_Add,
+		PatternDefenseBonus);
+
+	PatternDefenseEffectHandle =
+		ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+}
+
+void UGA_EnemyAttackBase::RemovePatternDefenseEffect()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+
+	if (ASC && PatternDefenseEffectHandle.IsValid())
+	{
+		ASC->RemoveActiveGameplayEffect(PatternDefenseEffectHandle);
+	}
+
+	PatternDefenseEffectHandle = FActiveGameplayEffectHandle();
+}
+
+
 bool UGA_EnemyAttackBase::PlayAttackMontage()
 {
 	if (!IsValid(AttackMontage))
@@ -90,8 +179,11 @@ bool UGA_EnemyAttackBase::PlayAttackMontage()
 	}
 
 	MontageTask->OnCompleted.AddDynamic(this, &ThisClass::OnMontageCompleted);
+	MontageTask->OnBlendOut.AddDynamic(this, &ThisClass::OnMontageBlendOut);
 	MontageTask->OnInterrupted.AddDynamic(this, &ThisClass::OnMontageInterrupted);
 	MontageTask->OnCancelled.AddDynamic(this, &ThisClass::OnMontageInterrupted);
+
+	BeginPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 
 	MontageTask->ReadyForActivation();
 	return true;
@@ -121,11 +213,18 @@ void UGA_EnemyAttackBase::OnAttackEventReceived(FGameplayEventData Payload)
 
 void UGA_EnemyAttackBase::OnMontageCompleted()
 {
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 	HandleAttackMontageCompleted();
+}
+
+void UGA_EnemyAttackBase::OnMontageBlendOut()
+{
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 }
 
 void UGA_EnemyAttackBase::OnMontageInterrupted()
 {
+	EndPatternDefenseWindow(ENSPatternDefenseWindow::AttackMontage);
 	CancelAttackAbility();
 }
 
@@ -181,7 +280,8 @@ bool UGA_EnemyAttackBase::TryApplyDamageToTarget(AActor* TargetActor, const FHit
 
 	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
 
-	EffectContext.AddSourceObject(SourceActor);
+	EffectContext.AddInstigator(SourceActor, SourceActor);
+	EffectContext.AddSourceObject(this);
 	EffectContext.AddHitResult(HitResult);
 
 	FGameplayEffectSpecHandle SpecHandle = SourceASC->MakeOutgoingSpec(DamageEffectClass, 1.0f, EffectContext);
@@ -199,4 +299,48 @@ bool UGA_EnemyAttackBase::TryApplyDamageToTarget(AActor* TargetActor, const FHit
 	}
 
 	return true;
+}
+
+AActor* UGA_EnemyAttackBase::FindNearestKnownTarget(const APawn* AttackerPawn) const
+{
+	// 공격자 유효성 검사
+	if (!IsValid(AttackerPawn))
+	{
+		return nullptr;
+	}
+
+	// ThreatComponent 찾아서 가져오기
+	UNSEnemyThreatComponent* ThreatComponent = AttackerPawn->FindComponentByClass<UNSEnemyThreatComponent>();
+	if (!ThreatComponent)
+	{
+		return nullptr;
+	}
+
+	// 공격대상 후보 변수 등록
+	TArray<AActor*> Candidates;
+	ThreatComponent->GetKnownTargets(Candidates);
+
+	// 가장 가까운 공격대상을 확정할 변수 추가
+	const FVector PawnLocation = AttackerPawn->GetActorLocation();
+	AActor* NearestTarget = nullptr;
+	float NearestDistSq = TNumericLimits<float>::Max();
+
+	// 후보군들을 돌며 가장 가까운대상 반환
+	for (AActor* Candidate : Candidates)
+	{
+		if (!IsValid(Candidate))
+		{
+			continue;
+		}
+
+		const float DistSq = FVector::DistSquared(PawnLocation, Candidate->GetActorLocation());
+		if (DistSq < NearestDistSq)
+		{
+			NearestDistSq = DistSq;
+			NearestTarget = Candidate;
+		}
+	}
+
+	// 결정된 가장 가까운 대상 리턴
+	return NearestTarget;
 }

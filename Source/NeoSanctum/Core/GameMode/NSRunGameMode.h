@@ -8,6 +8,7 @@
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NSRunGameMode.generated.h"
 
+struct FStreamableHandle;
 class ANSDroppedPart;
 enum class ENSRunChoice : uint8;
 class UNSStageManager;
@@ -18,6 +19,8 @@ class UNSProjectileManagerComponent;
 class ANSProjectileReplicationProxy;
 class ANSCurrencyReplicationProxy;
 class APlayerController;
+class ANSHealReplicationProxy;
+class ANSEnemyPawnBase;
 
 UCLASS()
 class NEOSANCTUM_API ANSRunGameMode :
@@ -30,11 +33,13 @@ public:
 	ANSRunGameMode();
 
 	virtual void BeginPlay() override;
+	virtual void PreLogin(const FString& Options, const FString& Address,
+	  const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 
 	// 인터페이스 구현부 오버라이드
 	virtual void NotifyStageCleared_Implementation() override;
 	virtual void NotifyPlayerDied_Implementation(AController* DeadPlayer) override;
-	virtual void NotifyEnemyKilled_Implementation(ACharacter* DeadEnemy) override;
+	virtual void NotifyEnemyKilled_Implementation(AActor* DeadEnemy, AController* Killer) override;
 	virtual void RequestReturnToHub_Implementation() override;
 	virtual void RequestMoveToNextStage_Implementation() override;
 	virtual void ReturnMonsterToPool_Implementation(ACharacter* Monster) override;
@@ -43,7 +48,15 @@ public:
 		UNSEnemyData* EnemyData,
 		const FVector& Location,
 		const FRotator& Rotation) override;
-
+	virtual void NotifyNPCRescued_Implementation(FName RescuedNPCId) override;
+	// 보스 게이트 도달 처리
+	virtual void NotifyBossGateReached_Implementation() override;
+	// 보스 스폰용
+	virtual ANSEnemyPawnBase* RequestSpawnBoss_Implementation(
+	UClass* BossClass,
+	UNSEnemyData* EnemyData,
+	const FVector& Location,
+	const FRotator& Rotation) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void Logout(AController* Exiting) override;
 	virtual void HandleSeamlessTravelPlayer(AController*& Controller) override;
@@ -51,15 +64,24 @@ public:
 	virtual void SubmitRunChoice_Implementation(APlayerController* Voter, ENSRunChoice Choice) override;
 	virtual void CancelRunChoice_Implementation(APlayerController* PlayerController) override;
 	
-	// 룸 생성 완료시 호출
+	// InitializeStage에서 호출
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void RespawnAllPlayers();
 	
 	// 맵 로딩이 완료되고 블루프린트에서 호출될 함수
 	UFUNCTION(BlueprintCallable, Category = "GameFlow")
 	void SetEnemyCount(int32 Count);
+	
+	// 스테이지 진입할 때 호출될 함수: 목표 랜덤 선택, 초기화
+	UFUNCTION(BlueprintCallable, Category = "GameFlow")
+	void InitializeStage();
+
+	void BeginReturnToHubTravel();
 
 	UNSMonsterPoolManager* GetMonsterPoolManager() const { return NSMonsterPoolManager; }
+
+	// 해당 구출 NPC가 현재 목표의 웨이포인트 마커 대상인지 판정
+	bool ShouldShowRescueMarker(FName InNPCId) const;
 
 	virtual AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 	
@@ -87,13 +109,41 @@ protected:
 	// 인런 진행도 저장용 함수
 	void SaveAllPlayersProgress();
 	
+	// 목표 달성 시 호출용, 보스 진입 페이즈로 전환
+	void HandleObjectiveComplete();
+	
 	// 인런 보상 재화용 변수
 	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
 	int64 StageClearCommonReward = 0;
-	UPROPERTY(EditAnywhere, Category="RunEnd|Reward")
-	int64 StageClearJobReward = 0;
-
+	
 private:
+	// 인런 월드가 열린 뒤, GameFlow가 보관환 데이터 구성을 RunGameState에 복제.
+	void SyncRunDataConfigToGameState();
+	
+	// 현재 목표 진행 상태를 GameState에 복제(UI 표시용)
+	void PushObjectiveStateToGameState();
+	
+	// 목표 풀에서 랜덤 선택 후 StageManager/GameState 초기화
+	void InitializeObjectiveInternal();
+
+	// 목표가 구출형이면 이미 스폰된 대상 RescueNPC들의 마커 활성화
+	void ActivateRescueMarkersIfNeeded();
+	
+	// 인런 데이터 준비 완료 후 목표를 초기화하기 위한 콜백
+	UFUNCTION()
+	void HandleRunDataReadyForObjective();
+	
+	// 보스룸의 보스 전용 스포너를 활성화
+	void ActivateBossSpawners();
+	
+	void StartDifficultyTimerForReadyStage();
+	
+	// 죽은 적이 보스 랭크인지 판정
+	bool IsBossEnemy(const AActor* DeadEnemy) const;
+	
+	// 방금 죽은 보스를 제외하고, 월드에 살아있는 보스가 남았는지 판정
+	bool AreAllBossesDead(const AActor* JustDied) const;
+	
 	UPROPERTY()
 	TObjectPtr<UNSStageManager> NSStageManager;
 	
@@ -115,6 +165,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	TSubclassOf<ANSCurrencyReplicationProxy> CurrencyReplicationProxyClass;
 
+	
+	// PickupClass/HealPotionTable 지정을 위해 BP 서브클래스 
+	UPROPERTY(EditDefaultsOnly, Category = "Heal")
+	TSubclassOf<ANSHealReplicationProxy> HealReplicationProxyClass;
 private:
 	// 프록시 등록 함수
 	void EnsureProjectileProxy(APlayerController* PlayerController);
@@ -133,14 +187,38 @@ private:
 	void DestroyCurrencyProxy(APlayerController* PlayerController);
 	// 런 종료시 재화쪽 저장 및 클리어
 	void CommitAndClearAllWallets(float Multiplier);
+	
+	// 회복 프록시 등록 함수
+	void EnsureHealProxy(APlayerController* PlayerController);
+	// 회복 프록시 제거 함수
+	void DestroyHealProxy(APlayerController* PlayerController);
+	
+	
 
 	// 거점 귀환 시 모든 플레이어의 인런 증강 Clear
 	void ClearAllAugments();
+
+	// 거점 귀환 시 모든 플레이어의 인런 파츠 Clear (세이브의 단일 파츠 A만 복원되도록)
+	void ClearAllParts();
+
+	// 거점 귀환 시 아직 소비되지 않은 증강 선택 큐 초기화.
+	void ResetAugmentSelectionQueues();
 	
 	// 몬스터 사망시 보상 처리
-	void HandleEnemyReward(ACharacter* DeadEnemy);
-	bool TryGetRewardTriggerTagFromEnemy(const ACharacter* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	void HandleEnemyReward(AActor* DeadEnemy);
+	bool TryGetRewardTriggerTagFromEnemy(const AActor* DeadEnemy, FGameplayTag& OutTriggerTag) const;
+	void HandleEnemyExperience(AActor* DeadEnemy);
 	
+	// 플레이어 생존 or 탈주 계산용 헬퍼 함수
+	bool AreAllPlayersDeadOrGone() const;
+	void CheckRunEndAfterLogout();
+	// PlayerArray 내 위치로 이 플레이어의 고정 슬롯 인덱스 결정해주는 헬퍼 함수
+	int32 GetPlayerSlotIndex(AController* Player) const;
+	// 전원을 PlayerBossStart%d로 이동
+	void TeleportAllPlayersToBossRoom();  
+	// 목표방 잔존 적 풀 반환
+	void ReturnStrayEnemiesToPool();
+
 	UPROPERTY(EditDefaultsOnly, Category = "Currency")
 	float ClearMultiplier = 1.0f;
 
@@ -149,6 +227,9 @@ private:
 	
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSCurrencyReplicationProxy>> CurrencyProxies;
+	
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<APlayerController>, TObjectPtr<ANSHealReplicationProxy>> HealProxies;
 	
 	// 몬스터 보상 처리 관련 변수
 	UPROPERTY(EditDefaultsOnly, Category = "NS|Reward")
@@ -160,4 +241,44 @@ private:
 	// 보상 드랍 판정이 매번 같은 결과로 고정되지 않도록 GameMode에서 유지하는 서버 전용 랜덤 스트림
 	UPROPERTY(Transient)
 	FRandomStream RewardRandomStream;
+	
+	UPROPERTY(Transient)
+	bool bReturnToHubTravelStarted = false;
+	
+#pragma region 로딩 때 풀링용
+	
+	void StartPrewarmFlow();
+	void TryStartPrewarm();
+	void TickPrewarmStep();
+	UFUNCTION()
+	void HandleStageSpawnerTablesReadyForPrewarm();
+	UFUNCTION()
+	void HandleRunDataReadyForPrewarm();
+	UFUNCTION()
+	void HandlePrewarmComplete();
+	int32 PrewarmRetryCount = 0;
+
+	// EnemyData 로드 완료 후 랭크별 배분
+	void HandlePrewarmDataLoaded(
+		TArray<TSoftObjectPtr<UNSEnemyData>> UniqueDatas,
+		TMap<TSoftObjectPtr<UNSEnemyData>,
+		TSoftClassPtr<APawn>> DataToClass);
+	void ForcePrewarmGateOpen();
+	
+	void OpenPrewarmGateForAll();
+
+	TSharedPtr<FStreamableHandle> PrewarmLoadHandle;
+	FTimerHandle PrewarmStepTimerHandle;
+	FTimerHandle PrewarmTimeoutHandle;
+
+	// 프리워밍 상한
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmNormalTotal = 190;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmEliteTotal = 10;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	int32 PrewarmPerTick = 10;
+	UPROPERTY(EditDefaultsOnly, Category = "Prewarm")
+	float PrewarmTimeoutSeconds = 10.0f;  
+#pragma endregion 로딩 때 풀링용
 };

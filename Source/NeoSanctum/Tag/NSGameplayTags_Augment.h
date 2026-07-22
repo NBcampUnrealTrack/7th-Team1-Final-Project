@@ -12,4 +12,172 @@ namespace NSGameplayTags
 
 	// 스택 GE의 Magnitude 전달용
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_SetByCaller_Stack);
+	
+	// 증강 카드와 증강 효과 정의 Row를 식별하는 태그
+	
+	//공통
+	//Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_BaseDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_ShieldRegen);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritChance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_Defence);
+	
+	//Rare
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DmgUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DmgUpDefDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DmgUpShdDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DmgUpCritChanDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritChanUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritChanUpShdDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritChanUpDefDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritChanUpDmgDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritDmgUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritDmgUpDmgDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritDmgUpShdDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_CritDmgUpDefDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_HpUpShdDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_HpUpDefDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_ShdUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_ShdUpDefDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_ShdRgnUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_ShdRgnUpDefDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DefUpHpDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DefUpShdDown);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Common_DefUpShdRgnDown);
+	
+	
+	//레인저
+	//Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_AutoFire_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_AutoFire_FireRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_AutoFire_Ammo);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_Damage);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_Grenade_Damage);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_SpeedBuff_BuffPower);
+	
+	//Rare
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_SplashRadius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_Grenade_SplashRadius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_SpeedBuff_Duration);
+	
+	//Epic
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_SpeedBuff_CoolDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_Grenade_CoolDown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_Cooldown);
+	
+	//Legendary
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_ProjectileShot_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_SpeedBuff_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Ranger_Grenade_IncSkillCount);
+	
+	//엔지니어
+	//Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_FireRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_Ammo);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_FireRate);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_Barrier_MaxHealth);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpeedBuff_BuffPower);
+	
+	//Rare
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_DetAtkRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_Accuracy);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_Barrier_Duration);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_Barrier_Radius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpeedBuff_Duration);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpeedBuff_Radius);
+	//Epic
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_Cooldown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_Cooldown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpeedBuff_Cooldown);
+	
+	//Legendary
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_PelletSpread);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_ShotgunFire_PelletCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpawnTurret_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Engineer_SpeedBuff_IncSkillCount);
+	
+	//뱅가드
+	//UE_DEFINE_GAMEPLAY_TAG(Augment_Definition_Vanguard_, "Augment.Definition.Vanguard.");
+	//Common
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_BaseAttack_Damage);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_DashAttack_MinRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_DashAttack_MaxRange);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_Damage);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Guard_MaxHealth);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_BuffPower);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_MaxHealth);
+	
+	//Rare
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_BaseAttack_AttackSpeed);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_DashAttack_RdcChargeTime);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_Radius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Guard_Radius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Duration);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Radius);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Radius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Duration);
+	
+	//Epic
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_DashAttack_DashSpeed);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_Cooldownn);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Guard_Cooldown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_Cooldown);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_Cooldown);
+	
+	//Legendary
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_IncAttackCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_Flicker_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_VanguardBuff_IncSkillCount);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_DamageInterval);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Augment_Definition_Vanguard_ThrowBarrierField_IncSkillCount);
 }

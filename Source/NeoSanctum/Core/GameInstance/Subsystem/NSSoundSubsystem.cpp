@@ -3,6 +3,7 @@
 
 #include "NSSoundSubsystem.h"
 
+#include "NSDataSubsystem.h"
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "NeoSanctum/Core/GameInstance/NSGameInstance.h"
@@ -23,23 +24,63 @@ void UNSSoundSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 
-	if (const UNSGameInstance* GameInstance = UNSGameInstance::Get(GetWorld()))
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		SoundData = GameInstance->SoundData;
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+		
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
 	}
+}
 
-	if (!SoundData)
+void UNSSoundSubsystem::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 	{
-		SoundData = NewObject<UNSSoundData>(this);
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		SoundData = DataSubsystem->GetCommonSoundData();
 	}
-
+	
+	RebuildSoundRowCache();
+	
 	InitializeCategoryVolumes();
 	LoadSoundSettings();
 }
 
+void UNSSoundSubsystem::RebuildSoundRowCache()
+{
+	SoundRowCache.Reset();
+	
+	if (!SoundData || !SoundData->SoundDataTable)
+	{
+		return;
+	}
+	
+	const FString ContextString = TEXT("NSSoundSubsystem");
+	for (const FName& RowName : SoundData->SoundDataTable->GetRowNames())
+	{
+		if (const FNSSoundDataTableRow* Row =
+			SoundData->SoundDataTable->FindRow<FNSSoundDataTableRow>(RowName, ContextString, false))
+		{
+			SoundRowCache.Add(RowName, *Row);
+		}
+	}
+}
+
 void UNSSoundSubsystem::Deinitialize()
 {
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
 	StopAllLoops(0.f);
+	SoundRowCache.Reset();
 	SoundData = nullptr;
 
 	Super::Deinitialize();
@@ -257,12 +298,7 @@ void UNSSoundSubsystem::LoadSoundSettings()
 
 const FNSSoundDataTableRow* UNSSoundSubsystem::FindSoundRow(FName SoundID) const
 {
-	if (!SoundData || !SoundData->SoundDataTable || SoundID.IsNone())
-	{
-		return nullptr;
-	}
-
-	return SoundData->SoundDataTable->FindRow<FNSSoundDataTableRow>(SoundID, TEXT("NSSoundSubsystem"));
+	return SoundID.IsNone() ? nullptr : SoundRowCache.Find(SoundID);
 }
 
 void UNSSoundSubsystem::PlayOneShot2D(const FNSSoundDataTableRow& SoundRow, float PitchMultiplier) const

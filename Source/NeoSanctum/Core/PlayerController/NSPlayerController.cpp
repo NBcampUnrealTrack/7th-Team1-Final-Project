@@ -5,8 +5,8 @@
 #include "AbilitySystemComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
-#include "NeoSanctum/Character/Spectator/NSDeathSpectatorPawn.h"
-#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
+#include "NeoSanctum/Core/Component/NSDeathSpectatorComponent.h"
+#include "NeoSanctum/Core/Component/NSPlayerAudioFlowComponent.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Core/Interface/NSOutGameModeInterface.h"
 #include "NeoSanctum/Core/Interface/NSGameInstanceInterface.h"
@@ -20,13 +20,15 @@
 #include "NeoSanctum/Core/PlayerState/NSPlayerProgressComponent.h"
 #include "NeoSanctum/Interaction/NPC/NSInteractableNPCBase.h"
 #include "NeoSanctum/UI/Interaction/NSNPCInteractionWidgetBase.h"
-#include "EngineUtils.h"
+#include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentSelectionComponent.h"
-#include "NeoSanctum/Tag/NSGameplayTags_Augment.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "NeoSanctum/UI/CharacterSelect/NSCharacterSelectWidget.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSInRunGuideSubsystem.h"
 #include "NeoSanctum/GAS/AttributeSet/NsPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
@@ -34,22 +36,26 @@
 #include "Engine/GameInstance.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
+#include "NeoSanctum/Core/GameMode/NSRunGameMode.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Core/Cheat/NSCheatManager.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSessionSubsystem.h"
+#include "NeoSanctum/Data/Config/NSLevelConfig.h"
 #include "NeoSanctum/System/Subsystem/NSCurrencyDropSubsystem.h"
 #include "NeoSanctum/Progression/Currency/NSCurrencyComponent.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Currency.h"
 #include "NeoSanctum/Data/Progression/Currency/NSCurrencyTypes.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Reward.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSGameFlowSubsystem.h"
 
 
 ANSPlayerController::ANSPlayerController()
 {
 	// 기본 태그 초기화
-	DeathSpectatorPawnClass = ANSDeathSpectatorPawn::StaticClass();
-
 	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
 	CheatClass = UNSCheatManager::StaticClass();
 
@@ -62,6 +68,8 @@ ANSPlayerController::ANSPlayerController()
 
 	// 증강 선택 컴포넌트 생성
 	AugmentSelectionComponent = CreateDefaultSubobject<UNSAugmentSelectionComponent>(TEXT("AugmentSelectionComponent"));
+	DeathSpectatorComponent = CreateDefaultSubobject<UNSDeathSpectatorComponent>(TEXT("DeathSpectatorComponent"));
+	PlayerAudioFlowComponent = CreateDefaultSubobject<UNSPlayerAudioFlowComponent>(TEXT("PlayerAudioFlowComponent"));
 }
 
 void ANSPlayerController::RequestReady()
@@ -160,37 +168,18 @@ void ANSPlayerController::Server_DebugCommitPermanent_Implementation()
 	}
 }
 
-// ===== 테스트용 임시 코드 — 인런 구출 NPC(M3) 구현 후 삭제 =====
-void ANSPlayerController::Debug_UnlockAllNPCs()
+// 테스트용 임시 코드 (인런 파츠 상점 테스트 — 드롭/줍기 없이 서버 권한에서 임시재화 즉시 지급)
+void ANSPlayerController::Server_DebugAddTempCurrency_Implementation()
 {
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
-	if (!PS)
+	UNSCurrencyComponent* Currency = PS ? PS->GetCurrencyComponent() : nullptr;
+	if (!Currency)
 	{
 		return;
 	}
 
-	UNSPlayerProgressComponent* Progress = PS->GetProgressComponent();
-	if (!Progress)
-	{
-		return;
-	}
-
-	int32 Count = 0;
-	for (TActorIterator<ANSInteractableNPCBase> It(World); It; ++It)
-	{
-		Progress->UnlockNPC(It->GetNPCId());
-		++Count;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Debug] 거점 NPC %d개 해금 — 범위 밖으로 나갔다 다시 들어오면 프롬프트 표시"), Count);
+	Currency->AddTemp(0, 10000);
 }
-// ===== 테스트용 임시 코드 끝 =====
 
 void ANSPlayerController::BindAttributeToHUD()
 {
@@ -225,7 +214,6 @@ void ANSPlayerController::BindAttributeToHUD()
 	ASC->GetGameplayAttributeValueChangeDelegate(
 		UNSPlayerAttributeSet::GetMaxShieldAttribute()
 			).AddUObject(this, &ANSPlayerController::OnMaxShieldChanged);
-	
 	ASC->GetGameplayAttributeValueChangeDelegate(
 	UNSPlayerAttributeSet::GetAmmoAttribute()
 ).AddUObject(this, &ANSPlayerController::OnAmmoChanged);
@@ -239,10 +227,24 @@ void ANSPlayerController::BindAttributeToHUD()
 	EGameplayTagEventType::NewOrRemoved
 ).AddUObject(this, &ANSPlayerController::OnReloadingTagChanged);
 	
+	ASC->GetGameplayAttributeValueChangeDelegate(
+	UNSPlayerAttributeSet::GetDashCountAttribute())
+.AddUObject(
+	this,
+	&ThisClass::OnDashCountChanged);
+
+	ASC->GetGameplayAttributeValueChangeDelegate(
+		UNSPlayerAttributeSet::GetMaxDashCountAttribute())
+	.AddUObject(
+		this,
+		&ThisClass::OnMaxDashCountChanged);
+	
 	bHUDAttributeBound = true;
 	
 	UpdateHUDHealthAndShield();
+	BindExperienceToHUD();
 	UpdateHUDAmmo();
+	UpdateHUDDashStack();
 }
 
 void ANSPlayerController::UpdateHUDHealthAndShield()
@@ -308,6 +310,61 @@ void ANSPlayerController::OnMaxShieldChanged(const FOnAttributeChangeData& Data)
 	UpdateHUDHealthAndShield();
 }
 
+void ANSPlayerController::BindExperienceToHUD()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerState* NSPlayerState =
+		GetPlayerState<ANSPlayerState>();
+	
+	UNSExperienceComponent* ExperienceComponent =
+		NSPlayerState
+	? NSPlayerState->GetExperienceComponent()
+	: nullptr;
+	
+	if (!ExperienceComponent)
+	{
+		return;
+	}
+	
+	if (UNSExperienceComponent* CachedComponent =
+		CachedHUDExperienceComponent.Get())
+	{
+		CachedComponent->OnExpChanged.RemoveDynamic(
+			this,
+			&ThisClass::OnExperienceChanged);
+	}
+	ExperienceComponent->OnExpChanged.AddUniqueDynamic(
+		this,
+		&ThisClass::OnExperienceChanged);
+	
+	CachedHUDExperienceComponent =
+		ExperienceComponent;
+	
+	UpdateHUDExperience();
+}
+
+void ANSPlayerController::UpdateHUDExperience()
+{
+	const UNSExperienceComponent* ExperienceComponent =
+		CachedHUDExperienceComponent.Get();
+	
+	const UNSDataSubsystem* DataSubsystem =
+		UNSDataSubsystem::Get(this);
+	
+	if (!ExperienceComponent || !DataSubsystem)
+	{
+		return;
+	}
+	
+	OnExperienceChanged(
+		ExperienceComponent->GetCurrentExp(),
+		DataSubsystem->GetMaxExperience());
+}
+
 void ANSPlayerController::ShowCharacterSelectWidget()
 {
 	if (!IsLocalController())
@@ -359,6 +416,17 @@ void ANSPlayerController::ShowCharacterSelectWidget()
 	SetInputMode(InputMode);
 }
 
+void ANSPlayerController::OnExperienceChanged(float CurrentExperience, float RequiredExperience)
+{
+	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->UpdateExperience(
+			CurrentExperience,
+			RequiredExperience);
+	}
+}
+
 void ANSPlayerController::HideCharacterSelectWidget()
 {
 	if (CharacterSelectWidget)
@@ -376,6 +444,8 @@ void ANSPlayerController::HideCharacterSelectWidget()
 
 void ANSPlayerController::HandleCharacterSelectionConfirmed(UNSCharacterData* ConfirmedCharacterData)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] HandleConfirmed %s"), *GetNameSafe(ConfirmedCharacterData));
+
 	if (!ConfirmedCharacterData)
 	{
 		return;
@@ -412,6 +482,64 @@ void ANSPlayerController::BindRunEndPhase()
 	HandleRunEndPhaseChanged();
 }
 
+void ANSPlayerController::BindRunDataConfig()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	
+	ANSRunGameState* RunGameState = World->GetGameState<ANSRunGameState>();
+	if (!IsValid(RunGameState))
+	{
+		return;
+	}
+	
+	CachedRunGameState = RunGameState;
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->BindRunGameState(RunGameState);
+	}
+	
+	RunGameState->OnRunDataConfigChanged.RemoveDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	RunGameState->OnRunDataConfigChanged.AddDynamic(this, &ThisClass::HandleRunDataConfigChanged);
+	
+	// 이미 복제된 상태에서 바인딩될 수 잇으므로 즉시 한 번 확인.
+	HandleRunDataConfigChanged();
+}
+
+void ANSPlayerController::HandleRunDataConfigChanged()
+{
+	if (!IsLocalController() || !IsValid(CachedRunGameState))
+	{
+		return;
+	}
+	
+	// RunGameState에 아직 데이터 구성이 복제되지 않았다면 클라이언트 로드를 시작 안함.
+	if (!CachedRunGameState->HasRunDataConfig())
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		HandleClientRunDataReady();
+		return;
+	}
+	
+	Data->OnRunGameDataReady.RemoveDynamic(this, &ThisClass::HandleClientRunDataReady);
+	Data->OnRunGameDataReady.AddDynamic(this, &ThisClass::HandleClientRunDataReady);
+	
+	Data->EnterRun(CachedRunGameState->CurrentRunConfig, CachedRunGameState->CurrentLevelConfig);
+}
+
 void ANSPlayerController::HandleRunEndPhaseChanged()
 {
 	if (!IsValid(CachedRunGameState) || !GetGameInstance())
@@ -440,8 +568,7 @@ void ANSPlayerController::HandleRunEndPhaseChanged()
 	case ENSRunEndPhase::Voting:
 	case ENSRunEndPhase::Result:
 		UIManager->CreateRunEnd(this);
-		UIManager->CacheRunResultTime();
-		UIManager->UpdateRunEndResult(CachedRunGameState->bIsClear);
+		UIManager->UpdateRunEndResultFromGameState(CachedRunGameState);
 		UIManager->UpdateRunEndVotes(
 			CachedRunGameState->NextVotes,
 			CachedRunGameState->HubVotes);
@@ -534,6 +661,65 @@ void ANSPlayerController::OnReloadingTagChanged(const FGameplayTag CallbackTag, 
 	}
 }
 
+void ANSPlayerController::OnDashCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDDashStack();
+}
+
+void ANSPlayerController::OnMaxDashCountChanged(const FOnAttributeChangeData& Data)
+{
+	UpdateHUDDashStack();
+}
+
+void ANSPlayerController::UpdateHUDDashStack()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	const ANSPlayerState* NSPlayerState =
+		GetPlayerState<ANSPlayerState>();
+
+	if (!NSPlayerState)
+	{
+		return;
+	}
+
+	const UNSPlayerAttributeSet* AttributeSet =
+		NSPlayerState->GetPlayerAttributeSet();
+
+	if (!AttributeSet)
+	{
+		return;
+	}
+
+	UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this);
+
+	if (!UIManager)
+	{
+		return;
+	}
+
+	const int32 MaxDashCount =
+		FMath::Max(
+			FMath::FloorToInt(
+				AttributeSet->GetMaxDashCount()),
+			0);
+
+	const int32 CurrentDashCount =
+		FMath::Clamp(
+			FMath::FloorToInt(
+				AttributeSet->GetDashCount()),
+			0,
+			MaxDashCount);
+
+	UIManager->UpdateDashStack(
+		CurrentDashCount,
+		MaxDashCount);
+}
+
 void ANSPlayerController::BindCurrencyToHUD()
 {
 	if (!IsLocalController())
@@ -558,13 +744,13 @@ void ANSPlayerController::BindCurrencyToHUD()
 	
 	//중복 방지
 	CurrencyComponent->OnTempChanged.RemoveAll(this);
-	CurrencyComponent->OnPermanenetChanged.RemoveAll(this);
+	CurrencyComponent->OnPermanentChanged.RemoveAll(this);
 
 	CurrencyComponent->OnTempChanged.AddUObject(
 		this,
 		&ANSPlayerController::OnTempCurrencyChanged);
 
-	CurrencyComponent->OnPermanenetChanged.AddUObject(
+	CurrencyComponent->OnPermanentChanged.AddUObject(
 		this,
 		&ANSPlayerController::OnPermanentCurrencyChanged);
 
@@ -612,11 +798,6 @@ void ANSPlayerController::UpdateHUDCurrency()
 	UIManager->UpdateRunOutGoods(
 		static_cast<int32>(CurrencyComponent->GetPermanent(
 			NSGameplayTags::Currency_Common)));
-
-	//이번 런에서 얻은 스킬 재화
-	UIManager->UpdateRunSkillGoods(
-		static_cast<int32>(CurrencyComponent->GetPermanent(
-			NSGameplayTags::Currency_Skill)));
 }
 
 void ANSPlayerController::OnTempCurrencyChanged(int64 Amount)
@@ -651,13 +832,6 @@ void ANSPlayerController::OnPermanentCurrencyChanged(FGameplayTag Type, int64 Am
 		UIManager->UpdateRunResultCommonGoods(static_cast<int32>(Amount));
 		return;
 	}
-
-	if (Type == NSGameplayTags::Currency_Skill)
-	{
-		UIManager->UpdateRunSkillGoods(static_cast<int32>(Amount));
-		UIManager->UpdateRunResultSkillGoods(static_cast<int32>(Amount));
-		return;
-	}
 }
 
 void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
@@ -670,6 +844,11 @@ void ANSPlayerController::ApplyCachedProgressToLocalPlayerState()
 
 	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
 	if (!IsValid(NSPlayerState))
+	{
+		return;
+	}
+	
+	if (NSPlayerState->HasAuthority())
 	{
 		return;
 	}
@@ -724,6 +903,12 @@ bool ANSPlayerController::TryApplySkillUIFromCurrentCharacter()
 	UNSCharacterData* CurrentCharacterData =
 		NSPlayerState->GetCurrentCharacterData();
 	if (!CurrentCharacterData || !CurrentCharacterData->CharacterTag.IsValid())
+	{
+		return false;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem || !DataSubsystem->IsCommonReady() || !DataSubsystem->GetCommonCharacterSkillUISetTable())
 	{
 		return false;
 	}
@@ -810,6 +995,8 @@ void ANSPlayerController::BeginPlay()
 	{
 		return;
 	}
+	
+	EnsureTravelLoadingBinding();
 
 	// 테스트용 임시 코드 (재화 드랍 치트 — 드롭 테이블 연동 후 삭제)
 	// 클라에는 CheatManager가 기본 생성되지 않으므로 강제로 생성
@@ -849,6 +1036,10 @@ void ANSPlayerController::BeginPlay()
 		UIManager->CreateTitle(this);
 		UIManager->ShowTitle();
 		UIManager->HideHUD();
+		if (PlayerAudioFlowComponent)
+		{
+			PlayerAudioFlowComponent->HandleTitleLevelReady();
+		}
 		
 		FInputModeUIOnly InputModeData;          
 		SetInputMode(InputModeData);            
@@ -861,29 +1052,44 @@ void ANSPlayerController::BeginPlay()
 		UIManager->HideTitle();
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+		if (PlayerAudioFlowComponent)
 		{
-			if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
-			{
-				DataSubsystem->ApplyCachedProgressTo(
-				NSPlayerState->GetProgressComponent());
-			}
+			PlayerAudioFlowComponent->HandleOutRunLevelReady();
 		}
+
+		ApplyCachedProgressToLocalPlayerState();
 		UIManager->ShowOutRunGoods();
-			
+
+		// 클라이언트가 거점에 도착하면 거점용 OutGameData를 미리 준비
+		BindInitialProgressReadiness();
+
+		// 아웃런 목표 안내 시작 (로컬 마커 + 우측 상단 텍스트)
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->StartGuide();
+		}
+
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
 	}
 	// 현재 레벨이 인 런일 때
 	else
-	{
+{
 		UIManager->HideTitle();
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
 		UIManager->ResetRunResultStats();
 		UIManager->ShowInRunGoods();
-			
+
+		// 인런 최초 진입 증강 튜토리얼 안내 시작 (Phase 2)
+		if (UNSInRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSInRunGuideSubsystem>())
+		{
+			GuideSubsystem->StartGuide();
+		}
+
 		FInputModeGameOnly InputModeData;
 		SetInputMode(InputModeData);
 		bShowMouseCursor = false;
@@ -896,21 +1102,88 @@ void ANSPlayerController::BeginPlay()
 	BindAttributeToHUD();
 	UpdateHUDHealthAndShield();
 	BindRunEndPhase();
+	BindRunDataConfig();
 	UpdateHUDAmmo();
 	BindCurrencyToHUD();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 }
 
-void ANSPlayerController::ShowTravelLoadingScreen()
+void ANSPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->OnTravelLoadingFinished.Remove(TravelLoadingFinishedHandle);
+	}
+	TravelLoadingFinishedHandle.Reset();
+	
+	UnbindInitialProgressReadiness();
+
+	InitialProgressUploadedPlayerState.Reset();
+	InitialCharacterAppliedPawn.Reset();
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void ANSPlayerController::GetPlayerViewPoint(FVector& Location, FRotator& Rotation) const
+{
+	if (DeathSpectatorComponent && DeathSpectatorComponent->GetSpectatorReplicationViewPoint(Location, Rotation))
+	{
+		return;
+	}
+	
+	// 로컬에서는 적용하지 않음.
+	Super::GetPlayerViewPoint(Location, Rotation);
+}
+
+void ANSPlayerController::ShowTravelLoadingScreen(bool bIsInRunTravel)
 {
 	if (!IsLocalController())
 	{
 		return;
 	}
 	
+	if (APawn* P = GetPawn())
+	{
+		P->DisableInput(this);
+		InputBlockedPawn = P;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show 호출: PreClientTravel(PC) NetMode=%d"),
+	GetWorld() ? (int32)GetWorld()->GetNetMode() : -1);
+	
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
-		UIManager->ShowTravelLoadingScreen(this);
+		UIManager->ShowTravelLoadingScreen(this, bIsInRunTravel);
+	}
+}
+
+void ANSPlayerController::HandleTravelLoadingFinished()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Finished / GetPawn=%s / Blocked=%s"), *GetNameSafe(GetPawn()), *GetNameSafe(InputBlockedPawn.Get()))
+
+	if (APawn* P = InputBlockedPawn.Get())
+	{
+		P->EnableInput(this);
+	}
+	InputBlockedPawn.Reset();
+}
+
+void ANSPlayerController::EnsureTravelLoadingBinding()
+{
+	if (!IsLocalController()) return;
+	
+	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+	{
+		// 중복 방지
+		UIManager->OnTravelLoadingFinished.RemoveAll(this);
+		TravelLoadingFinishedHandle =
+			UIManager->OnTravelLoadingFinished.AddUObject(
+				this, &ANSPlayerController::HandleTravelLoadingFinished);
 	}
 }
 
@@ -920,21 +1193,6 @@ void ANSPlayerController::RestoreTravelLoadingScreenIfRequested()
 	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
 	{
 		UIManager->RestoreTravelLoadingScreen(this);
-	}
-}
-
-void ANSPlayerController::HideTravelLoadingScreenIfPlayable(APawn* NewPawn)
-{
-	// Travel 직후 던전제너레이터 플러그인으로 인해 Spectator Pawn을 반드시 거치게 되므로
-	// 실제 플레이어 캐릭터가 붙기 전에는 로딩창을 유지하는 것이 필요했음
-	if (!IsLocalController() || !Cast<ANSPlayerCharacterBase>(NewPawn))
-	{
-		return;
-	}
-	
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-	{
-		UIManager->HideTravelLoadingScreen();
 	}
 }
 
@@ -957,32 +1215,64 @@ void ANSPlayerController::PreClientTravel(
 	bool bIsSeamlessTravel)
 {
 	// Travel 직전에 로컬 화면에 로딩창을 띄움
-	ShowTravelLoadingScreen();
+	const bool bIsInRun = IsInRunTravelURL(PendingURL);
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PreClientTravel URL=%s InRun=%d Seamless=%d"),
+		*PendingURL, bIsInRun ? 1 : 0, bIsSeamlessTravel ? 1 : 0);
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->HandlePreClientTravel();
+	}
+	ShowTravelLoadingScreen(bIsInRun);
 	Super::PreClientTravel(PendingURL, TravelType, bIsSeamlessTravel);
 }
 
-void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
+bool ANSPlayerController::IsInRunTravelURL(const FString& PendingURL) const
+{
+	// 옵션 제거
+	FString PathPart = PendingURL;
+	int32 QuestionIdx;
+	if (PathPart.FindChar(TEXT('?'), QuestionIdx))
+	{
+		PathPart = PathPart.Left(QuestionIdx);
+	}
+
+	// 맵 이름만 추출
+	FString MapName = PathPart;
+	int32 SlashIdx;
+	if (MapName.FindLastChar(TEXT('/'), SlashIdx))
+	{
+		MapName = MapName.RightChop(SlashIdx + 1);
+	}
+
+	// 순수 맵 이름이 "Play"로 끝나는지
+	const bool bIsInRun = MapName.EndsWith(TEXT("Play"));
+
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] IsInRunTravelURL: URL=%s → MapName=%s → InRun=%d"),
+		*PendingURL, *MapName, bIsInRun ? 1 : 0);
+
+	return bIsInRun;
+}
+
+void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn)
+{
 	Super::ClientRestart_Implementation(NewPawn);
 
 	// 이 함수는 클라이언트 본인 PC에서 실행되므로 IsLocalController()가 완벽하게 작동합니다.
 	if (!IsLocalController()) return;
+	
+	EnsureTravelLoadingBinding();
+	
+	UE_LOG(LogTemp, Warning,
+	TEXT("[TravelLoading] ClientRestart / Map=%s / NewPawn=%s / ViewTarget=%s"),
+	*GetWorld()->GetName(),
+	*GetNameSafe(NewPawn),
+	*GetNameSafe(GetViewTarget()));
 
 	// ClientRestart는 Seamless Travel 이후 다시 호출될 수 있으므로, 로딩창이 유지 중이면 먼저 복구한다.
 	RestoreTravelLoadingScreenIfRequested();
 
-	ClearDeathSpectatorModeTimer();
-	SpectatingPlayerState = nullptr;
-
-	// 사망 직후 첫 관전 대상을 결정하고 해당 화면 View를 볼 수 있게 수동으로 NextPlayer를 호출해줘야함
-	if (NewPawn && NewPawn->IsA<ANSDeathSpectatorPawn>())
+	if (DeathSpectatorComponent && DeathSpectatorComponent->HandleClientRestart(NewPawn))
 	{
-		if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-		{
-			UIManager->CreateSpectator(this);
-			UIManager->ShowSpectator(TEXT(""));
-		}
-		SetViewTarget(NewPawn);
-		SpectateNextPlayer();
 		return;
 	}
 
@@ -1014,11 +1304,27 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 		//청소된 상태이므로 nullptr 검사를 통과하고 새 HUD 위젯이 깔끔하게 생성됩니다.
 		UIManager->CreateHUD(this);
 		UIManager->ShowHUD();
-		
+
+		// 새 HUD는 기존 카드 내용을 모르니 서버의 현재 오퍼를 한 번 다시 보내달라고 요청.
+		if (AugmentSelectionComponent)
+		{
+			AugmentSelectionComponent->Server_OpenPanel();
+		}
+
 		RebindHUDRuntimeState();
 
-	// Spectator가 아니라 실제 플레이어 캐릭터에 붙은 순간부터 플레이 가능 상태로 보고 로딩창을 닫는다.
-	HideTravelLoadingScreenIfPlayable(NewPawn);
+		// 실제 플레이어 캐릭터에 붙은 순간을 게이트에 알림
+		if (Cast<ANSPlayerCharacterBase>(NewPawn))
+		{
+			UIManager->MarkTravelPawnReady();
+			
+			if (UIManager->IsTravelLoadingScreenActive())
+			{
+				// 폰 교체 후에도 차단 유지
+				NewPawn->DisableInput(this); 
+				InputBlockedPawn = NewPawn;
+			}
+		}
 
 	if (MapName.Contains(TEXT("HideOut")))
 	{
@@ -1027,6 +1333,11 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 
 		// 거점에서는 아웃런 재화 UI 표시
 		UIManager->ShowOutRunGoods();
+		
+		UIManager->MarkTravelViewReady();
+
+		// Seamless Travel 이후 로컬 클라이언트의 OutGameData 캐시가 비어있을 수 있으므로 미리 로드.
+		BindInitialProgressReadiness();
 
 		// PlayerState 초기화가 한 프레임 늦는 경우를 대비해서 다음 틱에 한 번 더 적용한다.
 		GetWorldTimerManager().SetTimerForNextTick(
@@ -1049,6 +1360,8 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 	{
 		// 인런에서는 인런 재화 UI 표시
 		UIManager->ShowInRunGoods();
+		
+		UIManager->MarkTravelViewReady();
 	}
 
 	// 마우스 커서 및 입력 모드 제어
@@ -1083,41 +1396,12 @@ void ANSPlayerController::ClientRestart_Implementation(class APawn* NewPawn){
 				&ANSPlayerController::UpdateSkillUIFromCurrentCharacter);
 		}
 	}
-	if (MapName.Contains(TEXT("HideOut")))
-	{
-		// 클라가 CachedData 읽어 ChangeCharacterData로 적용
-		UNSSaveGameSubsystem* SaveSubsystem =
-		GameInstance->GetSubsystem<UNSSaveGameSubsystem>();
-		if (SaveSubsystem)
-		{
-			if (SaveSubsystem->GetCachedPermanentData())
-			{
-				// 로드가 완료되었다면 즉시 복원
-				RestoreLastSelectedCharacter();
-			}
-			else if (!PermanentDataLoadedHandle.IsValid())
-			{
-				// 로드가 아직 안되었다면 완료 후 복원되도록 바인딩
-				PermanentDataLoadedHandle = SaveSubsystem->OnPermanentDataLoaded.AddUObject(
-					this, &ANSPlayerController::HandlePermanentDataLoaded);
-			}
-		}
-	}
 }
 
 void ANSPlayerController::HandlePermanentDataLoaded(UNSPermanentSaveGame* Data)
 {
-	// 로드 완료 후 1회만 복원하고 바인딩 해제
-	if (UGameInstance* GameInstance = GetGameInstance())
-	{
-		if (UNSSaveGameSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UNSSaveGameSubsystem>())
-		{
-			SaveSubsystem->OnPermanentDataLoaded.Remove(PermanentDataLoadedHandle);
-		}
-	}
-	PermanentDataLoadedHandle.Reset();
-
-	RestoreLastSelectedCharacter();
+	// PlayerState/Pawn/Data가 아직 미준비라면 다른 이벤트에서 다시 시도
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::Server_RequestStartRun_Implementation()
@@ -1132,37 +1416,358 @@ void ANSPlayerController::Server_RequestStartRun_Implementation()
 	{
 		INSOutGameInterface::Execute_RequestStartRun(CurrentGameMode);
 	}
-
-	//서버 인런 데이터 로드
-	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
-	{
-		Data->EnterRun();
-	}
-
-	//각 클라이언트에 인런 데이터 로드 지시
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
-	{
-		if (ANSPlayerController* PC = Cast<ANSPlayerController>(It->Get()))
-		{
-			PC->Client_NotifyRunStarted();
-		}
-	}
 }
 
-void ANSPlayerController::Client_NotifyRunStarted_Implementation()
+void ANSPlayerController::Client_NotifyRunStarted_Implementation(
+	const TSoftObjectPtr<UNSRunConfig>& RunConfig,
+	const TSoftObjectPtr<UNSLevelConfig>& LevelConfig)
 {
 	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
 	{
-		Data->EnterRun();
+		// 리슨 서버 호스트는 서버 선로딩으로 이미 Run 데이터가 준비돼 있을 수 있으므로 중복 로드를 피함.
+		if (Data->IsRunReady() && Data->GetCurrentRunLevelConfig() == LevelConfig.Get())
+		{
+			HandleClientRunDataReady();
+			return;
+		}
+		
+		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+		Data->OnRunGameDataReady.AddDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+		Data->EnterRun(RunConfig, LevelConfig);
+		return;
+	}
+	
+	HandleClientRunDataReady();
+}
+
+void ANSPlayerController::HandleOutGameLevelReady()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnOutGameDataReady.RemoveDynamic(
+			this,
+			&ThisClass::HandleOutGameLevelReady);
 	}
 	if (UNSUIManagerSubsystem* UIManager =
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->MarkTravelLevelReady();
+	}
+}
+
+void ANSPlayerController::EnsureOutGameDataLoaded()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	if (DataSubsystem->IsOutGameReady())
+	{
+		if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
+		{
+			UIManager->MarkTravelLevelReady();
+		}
+		return;
+	}
+	
+	// OutGame 데이터 준비 완료 시 게이트에 통지하도록 바인딩
+	DataSubsystem->OnOutGameDataReady.RemoveDynamic(this, &ThisClass::HandleOutGameLevelReady);
+	DataSubsystem->OnOutGameDataReady.AddDynamic(this, &ThisClass::HandleOutGameLevelReady);
+
+	if (!DataSubsystem->IsCommonReady())
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+
+		DataSubsystem->LoadCommonData();
+		return;
+	}
+
+	DataSubsystem->LoadOutGameData();
+}
+
+void ANSPlayerController::HandleOutGamePreloadCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleOutGamePreloadCommonDataReady);
+
+		DataSubsystem->LoadOutGameData();
+	}
+}
+
+void ANSPlayerController::HandleClientRunDataReady()
+{
+	if (UNSDataSubsystem* Data = UNSDataSubsystem::Get(this))
+	{
+		Data->OnRunGameDataReady.RemoveDynamic(this, &ANSPlayerController::HandleClientRunDataReady);
+	}
+	
+	if (UNSUIManagerSubsystem* UIManager = 
 		GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>() : nullptr)
 	{
 		UIManager->ResetRunResultStats();
 		UIManager->ShowHUD();
 		UIManager->ShowInRunGoods();
+		UIManager->MarkTravelLevelReady();
 	}
 
+	if (PlayerAudioFlowComponent)
+	{
+		PlayerAudioFlowComponent->HandleClientRunDataReady();
+	}
+}
+
+bool ANSPlayerController::TryInitializeLocalProgress()
+{
+	 // 로컬 SaveGame은 소유 클라이언트만 읽음
+    if (!IsLocalController())
+    {
+        return false;
+    }
+
+    UWorld* World = GetWorld();
+    if (!IsValid(World))
+    {
+        return false;
+    }
+	
+    if (!World->GetName().Contains(TEXT("HideOut")))
+    {
+        return false;
+    }
+
+    // OutGame 데이터 준비 확인
+    UNSDataSubsystem* DataSubsystem =
+        UNSDataSubsystem::Get(this);
+
+    if (!IsValid(DataSubsystem) || !DataSubsystem->IsOutGameReady())
+    {
+        return false;
+    }
+
+    // 로컬 영구 SaveGame 준비 확인
+    UGameInstance* GameInstance = GetGameInstance();
+
+    UNSSaveGameSubsystem* SaveSubsystem =
+        GameInstance
+            ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>()
+            : nullptr;
+
+    if (!IsValid(SaveSubsystem))
+    {
+        return false;
+    }
+
+    UNSPermanentSaveGame* PermanentSave =
+        SaveSubsystem->GetCachedPermanentData();
+
+    if (!IsValid(PermanentSave))
+    {
+        // 아직 비동기 로드 중
+        return false;
+    }
+
+    // 네트워크 PlayerState 준비 확인
+    ANSPlayerState* NSPlayerState =
+        GetPlayerState<ANSPlayerState>();
+
+    if (!IsValid(NSPlayerState))
+    {
+        return false;
+    }
+
+    // 실제 플레이어 Pawn 준비 확인
+    ANSPlayerCharacterBase* PlayerCharacter =
+        Cast<ANSPlayerCharacterBase>(GetPawn());
+
+    if (!IsValid(PlayerCharacter))
+    {
+        return false;
+    }
+
+    const FName SelectedCharacterId =
+        PermanentSave->LastSelectedCharacterId;
+
+   
+	// 신규 유저라면 바로 초기화
+    if (SelectedCharacterId.IsNone())
+    {
+        InitialProgressUploadedPlayerState = NSPlayerState;
+
+        InitialCharacterAppliedPawn = PlayerCharacter;
+
+        UnbindInitialProgressReadiness();
+        return true;
+    }
+
+    // 저장된 FName으로 Character Primary Asset 검색
+    const FPrimaryAssetType CharacterType =
+        NSPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
+
+    const FPrimaryAssetId RestoredId(
+        CharacterType,
+        SelectedCharacterId);
+
+    const FSoftObjectPath DataPath =
+        UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
+
+    if (!DataPath.IsValid())
+    {
+        UE_LOG(
+            LogTemp,
+            Error,
+            TEXT("[ProgressInit] Invalid character asset: %s"),
+            *SelectedCharacterId.ToString());
+
+        return false;
+    }
+
+    UNSCharacterData* RestoredData =
+        Cast<UNSCharacterData>(DataPath.TryLoad());
+
+    if (!IsValid(RestoredData))
+    {
+        return false;
+    }
+
+  
+	
+    if (InitialCharacterAppliedPawn.Get() != PlayerCharacter)
+    {
+        PlayerCharacter->ChangeCharacterData(RestoredData);
+
+        if (UNSUIManagerSubsystem* UIManager =
+                UNSUIManagerSubsystem::Get(this))
+        {
+            UIManager->ApplyCharacterSkillUISet(
+                RestoredData
+                    ->CharacterTag
+                    .GetTagName());
+        }
+
+        InitialCharacterAppliedPawn = PlayerCharacter;
+    }
+
+    if (InitialProgressUploadedPlayerState.Get() != NSPlayerState)
+    {
+        InitialProgressUploadedPlayerState = NSPlayerState;
+
+        UploadLocalProgress(SelectedCharacterId);
+
+      
+        StartSkillUIApplyRetry();
+    }
+
+    UnbindInitialProgressReadiness();
+	
+    return true;
+}
+
+void ANSPlayerController::BindInitialProgressReadiness()
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World ||
+		!World->GetName().Contains(TEXT("HideOut")))
+	{
+		return;
+	}
+
+	// SaveGame 준비 이벤트
+	if (UGameInstance* GameInstance =
+			GetGameInstance())
+	{
+		if (UNSSaveGameSubsystem* SaveSubsystem =
+				GameInstance
+					->GetSubsystem<
+						UNSSaveGameSubsystem>())
+		{
+			if (!SaveSubsystem
+					->GetCachedPermanentData() &&
+				!PermanentDataLoadedHandle.IsValid())
+			{
+				PermanentDataLoadedHandle =
+					SaveSubsystem
+						->OnPermanentDataLoaded
+						.AddUObject(
+							this,
+							&ThisClass::HandlePermanentDataLoaded);
+			}
+		}
+	}
+
+	// OutGame 데이터 준비 이벤트
+	if (UNSDataSubsystem* DataSubsystem =
+		UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem
+			->OnOutGameDataReady
+			.AddUniqueDynamic(
+				this,
+				&ThisClass::HandleOutGameDataReadyForInitialProgress);
+	}
+
+	// OutGame 데이터 로드와 Travel LevelReady는 기존 helper
+	EnsureOutGameDataLoaded();
+	// 현재 시점에 필요한 객체들이 이미 준비되어 있으면 즉시 적용
+	TryInitializeLocalProgress();
+}
+
+void ANSPlayerController::UnbindInitialProgressReadiness()
+{
+	if (UNSDataSubsystem* DataSubsystem =
+			UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem
+			->OnOutGameDataReady
+			.RemoveDynamic(
+				this,
+				&ThisClass::HandleOutGameDataReadyForInitialProgress);
+
+		
+		//  기존 EnsureOutGameDataLoaded()가
+		//  Common 완료를 기다리던 중일 수 있으므로 방어적으로 제거
+		DataSubsystem
+			->OnCommonDataReady
+			.RemoveDynamic(
+				this,
+				&ThisClass::HandleOutGamePreloadCommonDataReady);
+	}
+
+	if (PermanentDataLoadedHandle.IsValid())
+	{
+		if (UGameInstance* GameInstance =
+				GetGameInstance())
+		{
+			if (UNSSaveGameSubsystem* SaveSubsystem =
+					GameInstance
+						->GetSubsystem<UNSSaveGameSubsystem>())
+			{
+				SaveSubsystem
+					->OnPermanentDataLoaded
+					.Remove(PermanentDataLoadedHandle);
+			}
+		}
+
+		PermanentDataLoadedHandle.Reset();
+	}
+}
+
+void ANSPlayerController::HandleOutGameDataReadyForInitialProgress()
+{
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::Client_NotifyReturnToHub_Implementation()
@@ -1175,8 +1780,10 @@ void ANSPlayerController::Client_NotifyReturnToHub_Implementation()
 
 void ANSPlayerController::ExitSpectatorAndRespawn()
 {
-	ClearDeathSpectatorModeTimer();
-	SpectatingPlayerState = nullptr;
+	if (DeathSpectatorComponent)
+	{
+		DeathSpectatorComponent->ClearSpectatorState();
+	}
 
 	if (!HasAuthority())
 	{
@@ -1203,9 +1810,43 @@ void ANSPlayerController::ExitSpectatorAndRespawn()
 		UE_LOG(LogTemp, Warning, TEXT("폰 스폰 실패"));
 		return;
 	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	if (NSPlayerState)
+	{
+		// 새 캐릭터를 Possess하기 전에 서버의 사망 상태부터 정상 상태로 되돌림.
+		NSPlayerState->SetIsDead(false);
+
+		if (UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent())
+		{
+			// 사망 태그가 여러 번 들어갔더라도 부활 시점에는 0으로.
+			ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Dead, 0);
+		}
+	}
 	
 	Possess(NewPawn);
-	
+
+	if (ANSPlayerCharacterBase* NewPlayerCharacter = Cast<ANSPlayerCharacterBase>(NewPawn))
+	{
+		if (UAbilitySystemComponent* ASC = NewPlayerCharacter->GetAbilitySystemComponent())
+		{
+			const float CurrentShield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
+			const float MaxShield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+			if (MaxShield > 0.0f && CurrentShield + KINDA_SMALL_NUMBER < MaxShield)
+			{
+				// 사망 전에 남아 있던 재생이나 쿨다운이 있으면 먼저 정리.
+				FGameplayTagContainer RechargeTags;
+				RechargeTags.AddTag(NSGameplayTags::State_Shield_Recharging);
+				RechargeTags.AddTag(NSGameplayTags::State_Shield_RechargeCooldown);
+				ASC->RemoveActiveEffectsWithGrantedTags(RechargeTags);
+
+				// 기존 피격 처리와 같은 쿨다운 경로를 다시 시작.
+				NewPlayerCharacter->ApplyReactiveGameplayEffect(NSGameplayTags::Event_Common_DamageTaken);
+			}
+		}
+	}
+
 	// 트래블 전 남아있던 회전값 초기화
 	ClientSetRotation(PlayerStartSpot->GetActorRotation(), true);
 	
@@ -1216,6 +1857,15 @@ void ANSPlayerController::Multicast_NotifyRespawn_Implementation()
 {
 	if (IsLocalController())
 	{
+		if (ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>())
+		{
+			if (UAbilitySystemComponent* ASC = NSPlayerState->GetAbilitySystemComponent())
+			{
+				// 사망 연출 때 클라이언트가 직접 추가한 태그도 같이 비워줌.
+				ASC->SetLooseGameplayTagCount(NSGameplayTags::State_Dead, 0);
+			}
+		}
+
 		// 호스트 클라이언트 리스폰 처리용
 		if (GetPawn())
 		{
@@ -1241,202 +1891,51 @@ void ANSPlayerController::Server_ConfirmVote_Implementation(ENSRunChoice Choice)
 	}
 }
 
+void ANSPlayerController::Client_NotifyPrewarmReady_Implementation()
+{
+	if (UNSUIManagerSubsystem* UIManager = 
+		UNSUIManagerSubsystem::Get(this))
+	{
+		UIManager->MarkTravelPrewarmReady();
+	}
+}
+
 void ANSPlayerController::RequestEnterDeathSpectatorMode()
 {
-	if (!IsLocalController())
+	if (DeathSpectatorComponent)
 	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World)
-	{
-		return;
-	}
-
-	ClearDeathSpectatorModeTimer();
-	
-	if (DeathSpectatorModeDelay <= 0.f)
-	{
-		EnterDeathSpectatorMode();
-		return;
-	}
-
-	// 사망 후 DeathSpectatorModeDelay(기본 2초) 시간 이후에 관전자 모드로 진입
-	World->GetTimerManager().SetTimer(
-		DeathSpectatorModeTimerHandle,
-		this,
-		&ThisClass::EnterDeathSpectatorMode,
-		DeathSpectatorModeDelay,
-		false
-	);
-}
-
-void ANSPlayerController::EnterDeathSpectatorMode()
-{
-	if (!IsLocalController())
-	{
-		return;
-	}
-
-	if (HasAuthority())
-	{
-		SpawnAndPossessDeathSpectatorPawn();
-		SpectateNextPlayer();
-		return;
-	}
-
-	// 사망 관전자 모드 Input 태그에 따라서 InputConfig 안에 있는 IMC를 골라서 교체
-	Server_EnterDeathSpectatorMode();
-	SpectateNextPlayer();
-}
-
-void ANSPlayerController::ClearDeathSpectatorModeTimer()
-{
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(DeathSpectatorModeTimerHandle);
+		DeathSpectatorComponent->RequestEnterDeathSpectatorMode();
 	}
 }
 
 void ANSPlayerController::SpectatePreviousPlayer()
 {
-	SwitchSpectatorTarget(-1);
+	if (DeathSpectatorComponent)
+	{
+		DeathSpectatorComponent->SpectatePreviousPlayer();
+	}
 }
 
 void ANSPlayerController::SpectateNextPlayer()
 {
-	SwitchSpectatorTarget(1);
+	if (DeathSpectatorComponent)
+	{
+		DeathSpectatorComponent->SpectateNextPlayer();
+	}
 }
 
-void ANSPlayerController::SwitchSpectatorTarget(int32 Direction)
+void ANSPlayerController::ApplyConfirmedSpectatorTarget(ANSPlayerCharacterBase* TargetCharacter)
 {
-	if (!IsLocalController())
+	if (DeathSpectatorComponent)
 	{
-		return;
-	}
-	
-	const ANSPlayerState* ViewerPlayerState = GetPlayerState<ANSPlayerState>();
-	const ANSRunGameState* RunGameState = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
-	if (!ViewerPlayerState || !RunGameState)
-	{
-		return;
-	}
-	
-	TArray<ANSPlayerState*> AlivePlayerStates;
-	// GameState에서 PlayerState를 순회해서 살아있는 Player를 찾음
-	RunGameState->GetAlivePlayerStates(AlivePlayerStates, ViewerPlayerState);
-	if (AlivePlayerStates.IsEmpty())
-	{
-		return;
-	}
-	
-	int32 CurrentIndex = AlivePlayerStates.IndexOfByKey(SpectatingPlayerState.Get());
-	if (CurrentIndex == INDEX_NONE)
-	{
-		CurrentIndex = Direction >= 0 ? -1 : 0;
-	}
-	
-	const int32 TargetIndex = (CurrentIndex + Direction + AlivePlayerStates.Num()) % AlivePlayerStates.Num();
-	SetSpectatorTarget(AlivePlayerStates[TargetIndex]);
-}
-
-void ANSPlayerController::SetSpectatorTarget(ANSPlayerState* NewSpectatorTarget)
-{
-	if (!NewSpectatorTarget)
-	{
-		return;
-	}
-
-	SpectatingPlayerState = NewSpectatorTarget;
-	
-	// 관전 대상을 찾은 후라서 해당 TargetCharacter의 SpectatorViewComponent를 보고 카메라 정보를 받아 설정하는 부분
-	ANSDeathSpectatorPawn* DeathSpectatorPawn = Cast<ANSDeathSpectatorPawn>(GetPawn());
-	ANSPlayerCharacterBase* TargetCharacter = Cast<ANSPlayerCharacterBase>(GetPawnFromPlayerState(NewSpectatorTarget));
-	UNSSpectatorViewComponent* TargetSpectatorView =
-		TargetCharacter ? TargetCharacter->GetSpectatorViewComponent() : nullptr;
-	if (DeathSpectatorPawn)
-	{
-		DeathSpectatorPawn->SetSpectatorView(TargetSpectatorView);
-	}
-	UE_LOG(LogTemp, Log, TEXT("관전 대상 : %s"), *NewSpectatorTarget->GetPlayerName());
-	if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-	{
-		UIManager->ShowSpectator(NewSpectatorTarget->GetPlayerName());
+		DeathSpectatorComponent->ApplyConfirmedSpectatorTarget(TargetCharacter);
 	}
 }
 
-APawn* ANSPlayerController::GetPawnFromPlayerState(const ANSPlayerState* TargetPlayerState) const
-{
-	if (!TargetPlayerState)
-	{
-		return nullptr;
-	}
-
-	if (APawn* TargetPawn = TargetPlayerState->GetPawn())
-	{
-		return TargetPawn;
-	}
-
-	const AController* OwningController = Cast<AController>(TargetPlayerState->GetOwner());
-	return OwningController ? OwningController->GetPawn() : nullptr;
-}
-
-void ANSPlayerController::Server_EnterDeathSpectatorMode_Implementation()
-{
-	SpawnAndPossessDeathSpectatorPawn();
-}
-
-void ANSPlayerController::SpawnAndPossessDeathSpectatorPawn()
-{
-	if (!HasAuthority())
-	{
-		return;
-	}
-
-	if (GetPawn() && GetPawn()->IsA<ANSDeathSpectatorPawn>())
-	{
-		return;
-	}
-
-	UWorld* World = GetWorld();
-	if (!World || !DeathSpectatorPawnClass)
-	{
-		return;
-	}
-
-	APawn* PreviousPawn = GetPawn();
-	const FVector SpectatorSpawnLocation = PreviousPawn ? PreviousPawn->GetActorLocation() : FVector::ZeroVector;
-	const FRotator SpectatorSpawnRotation = PreviousPawn ? PreviousPawn->GetActorRotation() : GetControlRotation();
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = PreviousPawn;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	ANSDeathSpectatorPawn* DeathSpectatorPawn = World->SpawnActor<ANSDeathSpectatorPawn>(
-		DeathSpectatorPawnClass,
-		SpectatorSpawnLocation,
-		SpectatorSpawnRotation,
-		SpawnParams
-	);
-	
-	if (!DeathSpectatorPawn)
-	{
-		return;
-	}
-
-	Possess(DeathSpectatorPawn);
-	SetViewTarget(DeathSpectatorPawn);
-}
 void ANSPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-
-	// 디버그 : O키로 풀 적재, TODO : 테스트 끝나면 삭제
-	InputComponent->BindKey(EKeys::O, IE_Pressed, this, &ANSPlayerController::Debug_EnqueueAugmentOffer);
-	// 디버그: k키로 런 클리어 화면 확인, TODO: 테스트 종료 후 제거
-	InputComponent->BindKey(EKeys::K, IE_Pressed, this, &ANSPlayerController::Debug_ForceRunClear);
+	
 	// esc키로 퍼즈메뉴 띄우기
 	InputComponent->BindKey(EKeys::Escape, IE_Pressed, this, &ANSPlayerController::TogglePauseMenu);
 }
@@ -1456,22 +1955,58 @@ void ANSPlayerController::ToggleAugmentationPanel()
 		return;
 	}
 
-	if (UIManager->IsAugmentationPanelOpen())
+	if (UIManager->IsFullAugmentationPanelOpen())
 	{
-		// 열려있으면 닫음 (토글)
 		UIManager->CloseAugmentationPanel();
-		UIManager->ClosePartPanel();
 	}
 	else
 	{
-		// 패널 UI 표시
+		if (UIManager->IsPartPanelOpen())
+		{
+			UIManager->ClosePartPanel();
+		}
 		UIManager->OpenAugmentationPanel();
-		UIManager->OpenPartPanel();
-		// 서버에 대기열 front 오퍼 표시 요청 (대기 있으면 카드가 옴)
+		UIManager->PlayAugmentationTabSound();
+		
 		if (AugmentSelectionComponent)
 		{
 			AugmentSelectionComponent->Server_OpenPanel();
 		}
+	}
+}
+
+void ANSPlayerController::TogglePartInventoryPanel()
+{
+	//인런에서만 사용
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data || !Data->IsRunReady())
+	{
+		return;
+	}
+	
+	UNSUIManagerSubsystem* UIManager =
+		GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
+	: nullptr;
+	
+	if (!UIManager)
+	{
+		return;
+	}
+
+	if (UIManager->IsPartPanelOpen())
+	{
+		UIManager->ClosePartPanel();
+	}
+	else
+	{
+		// 파츠 인벤토리를 열 때 증강 선택창은 닫는다.
+		if (UIManager->IsAugmentationPanelOpen())
+		{
+			UIManager->CloseAugmentationPanel();
+		}
+
+		UIManager->OpenPartPanel();
 	}
 }
 
@@ -1532,14 +2067,54 @@ void ANSPlayerController::OpenInteractionWidget(ANSInteractableNPCBase* NPC)
 
 	ActiveInteractionWidget = Widget;
 	Widget->OpenForInteractor(this);
+	
+	
+	if (ANSPlayerCharacterBase* Char = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder = Char->GetInputBinderComponent())
+		{
+			FGameplayTagContainer UIOnly;
+			UIOnly.AddTag(NSGameplayTags::InputMode_UI);
+			InputBinder->SetActiveInputModeTags(UIOnly);
+		}
+	}
+
+	// 해금 NPC 첫 상호작용 → 안내 완료 처리
+	if (UNSOutRunGuideSubsystem* GuideSubsystem =
+		GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+	{
+		GuideSubsystem->NotifyNPCInteracted(NPC->GetNPCId());
+	}
 }
 
 void ANSPlayerController::CloseInteractionWidget()
 {
-	if (ActiveInteractionWidget)
+	if (!ActiveInteractionWidget)
 	{
-		ActiveInteractionWidget->CloseWidget();
-		ActiveInteractionWidget = nullptr;
+		return;
+	}
+
+	// CloseWidget 내부에서 NotifyInteractionWidgetClosed가 호출되어 매핑 복원/포인터 정리까지 처리된다
+	ActiveInteractionWidget->CloseWidget();
+}
+
+void ANSPlayerController::NotifyInteractionWidgetClosed(UNSNPCInteractionWidgetBase* Widget)
+{
+	// 다른 위젯이 활성인 상태에서 이전 위젯의 늦은 알림이 오면 무시
+	if (ActiveInteractionWidget && ActiveInteractionWidget != Widget)
+	{
+		return;
+	}
+
+	ActiveInteractionWidget = nullptr;
+
+	// OpenInteractionWidget에서 제거한 이동/게임플레이 매핑 복원
+	if (ANSPlayerCharacterBase* Char = Cast<ANSPlayerCharacterBase>(GetPawn()))
+	{
+		if (UNSInputBinderComponent* InputBinder = Char->GetInputBinderComponent())
+		{
+			InputBinder->SetActiveInputModeTags(GetGameplayInputModeTags());
+		}
 	}
 }
 
@@ -1581,6 +2156,10 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 
 	ProgressComponent->ApplyPayload(Payload);
 	
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Upload ActiveId=%s CurrentId=%s"),
+	*Payload.ActiveCharacterId.ToString(),
+	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
+	
 	if (!Payload.ActiveCharacterId.IsNone())
 	{
 		const FPrimaryAssetType CharacterType =
@@ -1595,6 +2174,7 @@ void ANSPlayerController::Server_UploadProgress_Implementation(const FNSProgress
 	if (ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn()))
 	{
 		PlayerCharacter->ApplyEquippedPart();
+		PlayerCharacter->ApplyCommonUpgradeAttributeEffect();
 	}
 	
 	// 컴패니언: 선택 태그 런타임 동기화
@@ -1731,12 +2311,26 @@ void ANSPlayerController::UploadLocalProgress(FName SelectedCharacterId)
 	}
 	
 	Payload.SelectedCompanionTag = PermanentSave->Companion.SelectedCompanionTag;
-	for (const TPair<FGameplayTag, int32>& NodeLevelPair : PermanentSave->Companion.NodeLevels)
+	// 선택 드론의 독립 노드 + 공유 노드를 병합해 런타임 페이로드로
+	auto AddNode = [&Payload](FGameplayTag Tag, int32 Level)
 	{
 		FNSCompanionNodeLevel NodeLevelEntry;
-		NodeLevelEntry.Tag   = NodeLevelPair.Key;
-		NodeLevelEntry.Level = NodeLevelPair.Value;
+		NodeLevelEntry.Tag   = Tag;
+		NodeLevelEntry.Level = Level;
 		Payload.CompanionNodeLevels.Add(NodeLevelEntry);
+	};
+
+	if (const FNSCompanionDroneNodeSaveData* SelectedDrone =
+			PermanentSave->Companion.DroneNodes.Find(PermanentSave->Companion.SelectedCompanionTag))
+	{
+		for (const TPair<FGameplayTag, int32>& Pair : SelectedDrone->NodeLevels)
+		{
+			AddNode(Pair.Key, Pair.Value);
+		}
+	}
+	for (const TPair<FGameplayTag, int32>& Pair : PermanentSave->Companion.SharedNodeLevels)
+	{
+		AddNode(Pair.Key, Pair.Value);
 	}
 
 	// 활성 캐릭터 슬롯
@@ -1789,11 +2383,17 @@ void ANSPlayerController::SaveProgressToOwningClient()
 
 	FNSProgressPayload Payload;
 	ProgressComponent->BuildPayload(Payload);
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] RunEnd BuildPayload ActiveId=%s CurrentId=%s"),
+	*Payload.ActiveCharacterId.ToString(),
+	*OwningPlayerState->GetCurrentCharacterDataId().ToString());
 	Client_SaveProgress(Payload);
 }
 
 void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCharacterData)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[CharSelect] Commit %s pawn=%s"),
+	*GetNameSafe(SelectedCharacterData), *GetNameSafe(GetPawn()));
+	
 	if (!SelectedCharacterData)
 	{
 		return;
@@ -1818,6 +2418,8 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 
 	const FName SelectedKey = SelectedCharacterData->GetPrimaryAssetId().PrimaryAssetName;
 	
+	UE_LOG(LogTemp, Warning, TEXT("[CharTrace] Commit key=%s"), *SelectedKey.ToString());
+	
 	// 최근 선택 캐릭터 로컬 저장
 	UGameInstance* GameInstance = GetGameInstance();
 	UNSSaveGameSubsystem* SaveSubsystem =
@@ -1838,70 +2440,7 @@ void ANSPlayerController::CommitCharacterSelection(UNSCharacterData* SelectedCha
 
 void ANSPlayerController::RestoreLastSelectedCharacter()
 {
-	UGameInstance* GameInstance = GetGameInstance();
-	UNSSaveGameSubsystem* SaveSubsystem =
-		GameInstance ? GameInstance->GetSubsystem<UNSSaveGameSubsystem>() : nullptr;
-	if (!SaveSubsystem)
-	{
-		return;
-	}
-
-	UNSPermanentSaveGame* PermanentSave = SaveSubsystem->GetCachedPermanentData();
-	if (!PermanentSave || PermanentSave->LastSelectedCharacterId.IsNone())
-	{
-		return;
-	}
-	
-	ANSPlayerState* OwningPlayerState = GetPlayerState<ANSPlayerState>();
-	if (!OwningPlayerState)
-	{
-		return;
-	}
-
-	// FName -> FPrimaryAssetId
-	const FPrimaryAssetType CharacterType =
-		OwningPlayerState->GetDefaultCharacterDataId().PrimaryAssetType;
-	const FPrimaryAssetId RestoredId(CharacterType, PermanentSave->LastSelectedCharacterId);
-
-	const FSoftObjectPath DataPath = UAssetManager::Get().GetPrimaryAssetPath(RestoredId);
-	if (!DataPath.IsValid())
-	{
-
-		return;
-	}
-
-	UNSCharacterData* RestoredData = Cast<UNSCharacterData>(DataPath.TryLoad());
-	if (!RestoredData)
-	{
-
-		return;
-	}
-
-	// 동일 커밋 경로 재사용
-	CommitCharacterSelection(RestoredData);
-	
-	if (IsLocalController())
-	{
-		const FGameplayTag RestoredCharacterTag =
-			RestoredData->CharacterTag;
-
-		GetWorldTimerManager().SetTimerForNextTick(
-			FTimerDelegate::CreateWeakLambda(
-				this,
-				[this, RestoredCharacterTag]()
-				{
-					if (!RestoredCharacterTag.IsValid())
-					{
-						return;
-					}
-
-					if (UNSUIManagerSubsystem* UIManager = UNSUIManagerSubsystem::Get(this))
-					{
-						UIManager->ApplyCharacterSkillUISet(
-							RestoredCharacterTag.GetTagName());
-					}
-				}));
-	}
+	BindInitialProgressReadiness();
 }
 
 void ANSPlayerController::EquipPartLive(FName CharacterId, TSoftObjectPtr<UNSPartDefinition> Definition, ENSPartRarity Rarity)
@@ -1934,6 +2473,92 @@ void ANSPlayerController::Client_NotifySkillCooldownChanged_Implementation(
 		Message);
 }
 
+void ANSPlayerController::Client_PlayAttackHitFeedback_Implementation(const FNSHitFeedbackContext& Context)
+{
+	// 로컬 Pawn의 피드백 컴포넌트로 공격 결과를 전달
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+	
+	UNSPlayerAttackFeedbackComponent* FeedbackComponent =
+		PlayerCharacter->GetPlayerAttackFeedbackComponent();
+	if (!FeedbackComponent)
+	{
+		return;
+	}
+	
+	// Context에 따라 Feedback 재생흐름으로 진입
+	FeedbackComponent->HandleAttackHitFeedback(Context);
+}
+
+void ANSPlayerController::Client_CompleteAttackHitFeedbackGroup_Implementation(const FGuid& FeedbackGroupId)
+{
+	if (!IsLocalController() || !FeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	UNSPlayerAttackFeedbackComponent* FeedbackComponent = PlayerCharacter->GetPlayerAttackFeedbackComponent();
+
+	if (FeedbackComponent)
+	{
+		FeedbackComponent->CompleteAttackHitFeedbackGroup(FeedbackGroupId);
+	}
+}
+
+void ANSPlayerController::Client_PlayHitTakenFeedback_Implementation(
+	const FNSHitTakenFeedbackContext& Context)
+{
+	// 로컬 Pawn의 피드백 컴포넌트로 피격 결과를 전달
+	if (!IsLocalController())
+	{
+		return;
+	}
+	
+	ANSPlayerCharacterBase* PlayerCharacter = Cast<ANSPlayerCharacterBase>(GetPawn());
+	if (!PlayerCharacter)
+	{
+		return;
+	}
+
+	UNSPlayerHitTakenFeedbackComponent* FeedbackComponent =
+		PlayerCharacter->GetPlayerHitTakenFeedbackComponent();
+	if (!FeedbackComponent)
+	{
+		return;
+	}
+
+	FeedbackComponent->HandleHitTakenFeedback(Context);
+}
+
+void ANSPlayerController::Client_PlayDamageNumberFeedback_Implementation(const FNSDamageNumberFeedbackContext& Context)
+{
+	if (!IsLocalController())
+	{
+		return;
+	}
+
+	FNSDamageNumberFeedbackMessage Message;
+	Message.Context = Context;
+
+	UGameplayMessageSubsystem::Get(this).BroadcastMessage(
+		NSGameplayTags::Message_UI_DamageNumber,	Message);
+}
+
 void ANSPlayerController::Debug_EnqueueAugmentOffer()
 {
 	if (!AugmentSelectionComponent)
@@ -1955,11 +2580,59 @@ void ANSPlayerController::Debug_EnqueueAugmentOffer()
 	
 	if (HasAuthority())
 	{
-		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Reward_Trigger_EliteKill);
 	}
 	else
 	{
-		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Augment_Pool_HighGrade);
+		AugmentSelectionComponent->Server_EnqueueOffer(NSGameplayTags::Reward_Trigger_EliteKill);
+	}
+}
+
+void ANSPlayerController::RequestTutorialAugmentGrant()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	// 인런(런 데이터 준비 완료)에서만 지급
+	if (!Data || !Data->IsRunReady())
+	{
+		return;
+	}
+
+	// 서버 권한이면 바로, 아니면 서버 RPC 경유
+	if (HasAuthority())
+	{
+		GrantTutorialAugmentAndCurrency();
+	}
+	else
+	{
+		Server_GrantTutorialAugment();
+	}
+}
+
+void ANSPlayerController::Server_GrantTutorialAugment_Implementation()
+{
+	GrantTutorialAugmentAndCurrency();
+}
+
+void ANSPlayerController::GrantTutorialAugmentAndCurrency()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	// 일반풀(레벨업 트리거) 증강 오퍼 1개 적재 → 이후 Tab으로 패널을 열면 표시됨
+	if (AugmentSelectionComponent)
+	{
+		AugmentSelectionComponent->EnqueueOffer(NSGameplayTags::Reward_Trigger_LevelUp);
+	}
+
+	// 리롤용 임시재화 지급
+	if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		if (UNSCurrencyComponent* Currency = PS->GetCurrencyComponent())
+		{
+			Currency->AddTemp(0, 50);
+		}
 	}
 }
 
@@ -1984,7 +2657,15 @@ void ANSPlayerController::UnbindAttributeFromHUD()
 			NSGameplayTags::State_Reloading,
 			EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
 	}
+	if (UNSExperienceComponent* ExperienceComponent =
+		CachedHUDExperienceComponent.Get())
+	{
+		ExperienceComponent->OnExpChanged.RemoveDynamic(
+			this,
+			&ThisClass::OnExperienceChanged);
+	}
 
+	CachedHUDExperienceComponent.Reset();
 	CachedHUDASC.Reset();
 	bHUDAttributeBound = false;
 }
@@ -2004,7 +2685,7 @@ void ANSPlayerController::RebindHUDRuntimeState()
 	UpdateHUDHealthAndShield();
 	UpdateHUDAmmo();
 	UpdateHUDCurrency();
-	//UpdateSkillUIFromCurrentCharacter();
+	StartSkillUIApplyRetry();
 
 	if (UNSUIManagerSubsystem* UIManager = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSUIManagerSubsystem>()
@@ -2018,12 +2699,14 @@ void ANSPlayerController::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	RebindHUDRuntimeState();
+	TryInitializeLocalProgress();
 }
 
 void ANSPlayerController::BeginPlayingState()
 {
 	Super::BeginPlayingState();
 	RebindHUDRuntimeState();
+	TryInitializeLocalProgress();
 }
 
 #pragma region CompanionCheat
@@ -2045,7 +2728,7 @@ void ANSPlayerController::CompanionCheatUpgrade(FGameplayTag NodeTag)
 
 	const FGameplayTag SelectedCompanionTag = Prog->GetSelectedCompanion();
 	// 치트: Max/Cost 게이트 통과용 임의값. NodeTag와 CompanionTag(=선택드론)는 분리해 전달
-	Prog->UpgradeCompanionNode(SelectedCompanionTag, NodeTag, /*MaxLevel*/9999, /*Cost*/0);
+	Prog->UpgradeCompanionNode(SelectedCompanionTag, NodeTag, /*bShared*/false, /*MaxLevel*/9999, /*Cost*/0);
 	UploadLocalProgress(GetActiveCharacterIdForUpload());  
 }
 
@@ -2064,7 +2747,7 @@ void ANSPlayerController::CompanionCheatSelect(FGameplayTag CompanionTag)
 	}
 
 	// 치트: 해금 게이트 무시 위해 RequiredTag 무효 + Count 0
-	Prog->SelectCompanion(CompanionTag, FGameplayTag(), 0);
+	Prog->SelectCompanion(CompanionTag, /*RequiredDrone*/nullptr,/*UnlockCost*/0);
 	UploadLocalProgress(GetActiveCharacterIdForUpload());
 }
 
@@ -2102,6 +2785,12 @@ void ANSPlayerController::TogglePauseMenu()
 		{
 			return;
 		}
+	}
+	
+	if (ActiveInteractionWidget)
+	{
+		CloseInteractionWidget();
+		return;
 	}
 	
 	UNSUIManagerSubsystem* UIManager = GetGameInstance()
@@ -2169,6 +2858,11 @@ void ANSPlayerController::RequestLeaveToMainMenu()
 		UIManager->ClosePauseMenu();
 		UIManager->CloseOptionPanel();
 	}
+	if (UNSGameFlowSubsystem* GameFlow = GetGameInstance()
+	? GetGameInstance()->GetSubsystem<UNSGameFlowSubsystem>() : nullptr)
+	{
+		GameFlow->StopAndResetDifficultyTimer();
+	}
 	// 세션 정리 + 타이틀
 	if (UNSSessionSubsystem* Session = GetGameInstance()
 		? GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr)
@@ -2183,3 +2877,40 @@ void ANSPlayerController::RestoreGameplayInputMode()
 	SetInputMode(InputMode);
 	bShowMouseCursor = false;
 }
+
+void ANSPlayerController::HandleCommonThenLoadOutGame()
+{
+	UNSDataSubsystem* Data = UNSDataSubsystem::Get(this);
+	if (!Data)
+	{
+		return;
+	}
+
+	// 자기 자신 바인딩 해제
+	Data->OnCommonDataReady.RemoveDynamic(
+		this, &ANSPlayerController::HandleCommonThenLoadOutGame);
+
+	// Common이 끝났으니 OutGame 로드
+	Data->LoadOutGameData();
+}
+
+void ANSPlayerController::Server_DebugForceBossFight_Implementation()
+{
+	ANSRunGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ANSRunGameMode>() : nullptr;
+	ANSRunGameState* RunGameState = GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
+	if (!GameMode || !RunGameState)
+	{
+		return;
+	}
+
+	// NotifyBossGateReached는 BossReady 상태에서만 처리되므로, Objective 단계면 먼저 넘겨준다
+	if (RunGameState->StagePhase == ENSStagePhase::Objective)
+	{
+		RunGameState->SetStagePhase(ENSStagePhase::BossReady);
+	}
+
+	INSRunGameModeInterface::Execute_NotifyBossGateReached(GameMode);
+
+	UE_LOG(LogTemp, Log, TEXT("[BossFight Debug] 강제 보스전 진입 요청"));
+}
+

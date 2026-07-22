@@ -4,24 +4,37 @@
 
 #include "CoreMinimal.h"
 #include "CommonUserWidget.h"
+#include "NeoSanctum/UI/Monster/NSMonsterUIHost.h"
+#include "NeoSanctum/UI/Player/NSPlayerWorldStatusHost.h"
+#include "NeoSanctum/Data/UI/NSGuideTextData.h"
 #include "NSHUDWidget.generated.h"
 
 class UNSHPShieldWidget;
 class UNSGoodsWidget;
 class UNSCrosshairWidget;
+class UNSHitTakenFeedbackWidget;
 class UNSAugmentationWidget;
 class UNSPartPanelWidget;
-class UNSAmmoWidget;
 class UNSOutRunGoodsWidget;
 class UNSSkillSlotWidget;
-class UDataTable;
+class UNSDifficultyTimerWidget;
+class UWidget;
+class UNSCharacterStatsWidget;
+class UNSMinimapWidget;
+class UNSDashStackWidget;
+class UHorizontalBox;
+class UPanelWidget;
+class UNSGuideChecklistWidget;
+struct FNSGuideChecklistEntry;
 
 
 /**
  * 인게임 HUD 요소를 묶어서 관리하는 위젯
  */
 UCLASS()
-class NEOSANCTUM_API UNSHUDWidget : public UCommonUserWidget
+class NEOSANCTUM_API UNSHUDWidget : public UCommonUserWidget, 
+                                    public INSMonsterUIHost,
+									public INSPlayerWorldStatusHost
 {
 	GENERATED_BODY()
 	
@@ -52,6 +65,7 @@ public:
 	//조준점 색상 변경
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void SetCrosshairColor(FLinearColor NewColor);
+	void OpenAugmentSelectionPanel();
 	//증강 패널 열기
 	UFUNCTION(BlueprintCallable,Category = "UI")
 	void OpenAugmentationPanel();
@@ -79,10 +93,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void SetReloading(bool bReloading);
 	
-	//인런 스킬 재화 UI 갱신
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	void UpdateRunSkillGoods(int32 NewGoodsAmount);
-	
 	//인런 재화 UI 표시
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ShowInRunGoods();
@@ -95,13 +105,37 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 	void ApplyCharacterSkillUISet(FName CharacterId);
 	
-	//캐릭터별 스킬 UI 세트 테이블
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI|Skill")
-	TObjectPtr<UDataTable> CharacterSkillUISetTable;
+	//본인 경험치 UI 갱신
+	void UpdateExperience(
+		float CurrentExperience,
+		float RequiredExperience);
 	
 	void SelectAugmentCardByIndex(int32 CardIndex);
 
 	void RequestRerollAugment();
+	
+	void UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount);
+	
+	// 일반 몬스터 상태 위젯을 배치할 패널을 반환하는 함수
+	virtual UPanelWidget* GetNormalMonsterLayer() const override;
+
+	// 보스 상태 위젯을 1:1 비율로 배치할 가로 패널을 반환하는 함수
+	virtual UHorizontalBox* GetBossMonsterLayer() const override;
+	
+	// 플레이어 월드 상태 위젯을 배치할 패널을 반환하는 함수
+	virtual UPanelWidget* GetPlayerWorldStatusLayer() const override;
+
+	// 안내 체크리스트 전체 스폰 (단계 진입 시)
+	void ShowGuideChecklist(const TArray<FNSGuideChecklistEntry>& Entries);
+	// 안내 체크리스트 한 줄 완료 애니메이션 재생
+	void CompleteGuideChecklistItem(FName ItemId);
+	// 안내 체크리스트 한 줄 완료 애니메이션 재생 후, 그 애니메이션이 끝나면 다른 미완료 항목과 무관하게 전체 숨김
+	void CompleteGuideChecklistItemAndHide(FName ItemId);
+	// 안내 체크리스트 전체 숨김 (모든 안내 완료 시)
+	void HideGuideChecklist();
+	
+	// WBP_Augmentation에 설정된 Tab 증강 패널 토글 사운드를 재생
+	void PlayAugmentationTabSound() const;
 private:
 	//HP / Shield HUD 위젯
 	UPROPERTY(meta=(BindWidget))
@@ -115,15 +149,18 @@ private:
 	//조준점 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSCrosshairWidget> CrosshairWidget;
+	// 플레이어 피격 반응 HUD 위젯
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UNSHitTakenFeedbackWidget> HitTakenFeedbackWidget;
 	//증강 선택 HUD 위젯
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UNSAugmentationWidget> AugmentationWidget;
 	//파츠 장착 상태 HUD 위젯
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UNSPartPanelWidget> PartPanelWidget;
-	//탄약 HUD 위젯
-	UPROPERTY(meta=(BindWidgetOptional))
-	TObjectPtr<UNSAmmoWidget> AmmoWidget;
+	// Tab 증강 선택 / C 파츠 인벤토리 패널이 열렸을 때 사용하는 공용 어두운 배경
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UWidget> HudDimBackground;
 	//1번 스킬 슬롯
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot1Widget;
@@ -133,7 +170,34 @@ private:
 	//3번 스킬 슬롯
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UNSSkillSlotWidget> SkillSlot3Widget;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSDifficultyTimerWidget> DifficultyTimerWidget;
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSCharacterStatsWidget> CharacterStatsWidget;
 	
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonUserWidget> MinimapWidget;
+	
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSDashStackWidget> DashStackWidget;
+	
+	// 일반 몬스터 상태 위젯을 배치하는 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> NormalMonsterLayer;
+
+	// 보스 상태 위젯을 1:1 비율로 배치하는 가로 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHorizontalBox> BossMonsterLayer;
+	
+	// 플레이어 월드 상태 위젯을 배치하는 패널 변수
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UPanelWidget> PlayerWorldStatusLayer;
+
+	// 우측 상단 목표 안내 체크리스트 위젯 (WBP_HUD에서 배치, 없으면 안내 기능만 비활성)
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UNSGuideChecklistWidget> GuideChecklistWidget;
+
+	void RefreshHudDimBackground();
 protected:
 	virtual void NativeConstruct() override;
 };

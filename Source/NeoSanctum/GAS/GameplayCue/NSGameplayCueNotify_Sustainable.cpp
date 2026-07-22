@@ -7,8 +7,8 @@
 #include "Components/MeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
 #include "NeoSanctum/Core/GameInstance/Subsystem/NSSoundSubsystem.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 
 ANSGameplayCueNotify_Sustainable::ANSGameplayCueNotify_Sustainable()
 {
@@ -25,7 +25,7 @@ bool ANSGameplayCueNotify_Sustainable::OnActive_Implementation(
 	Super::OnActive_Implementation(MyTarget, Parameters);
 	
 	PlaySound(MyTarget, Parameters, StartSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
-	SpawnVFX(MyTarget, Parameters, StartVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName, true);
+	SpawnVFX(MyTarget, Parameters, StartVFXID, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName);
 	
 	LoopPresentation(MyTarget, Parameters);
 	
@@ -67,11 +67,18 @@ bool ANSGameplayCueNotify_Sustainable::OnRemove_Implementation(
 	
 	if (LoopVFXComponent)
 	{
-		LoopVFXComponent->Deactivate();
+		if (bDeactivateLoopVFXImmediately)
+		{
+			LoopVFXComponent->DeactivateImmediate();   // 기존 파티클까지 즉시 클리어
+		}
+		else
+		{
+			LoopVFXComponent->Deactivate();            // 기존 동작 그대로
+		}
 		LoopVFXComponent = nullptr;
 	}
 	
-	SpawnVFX(MyTarget, Parameters, EndVFX, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName, true);
+	SpawnVFX(MyTarget, Parameters, EndVFXID, VFXSpawnMode, VFXAttachComponentName, VFXAttachSocketName);
 	PlaySound(MyTarget, Parameters, EndSoundID, SoundSpawnMode, SoundAttachComponentName, SoundAttachSocketName);
 	
 	return true;
@@ -96,11 +103,10 @@ void ANSGameplayCueNotify_Sustainable::LoopPresentation(AActor* MyTarget, const 
 		LoopVFXComponent = SpawnVFX(
 			MyTarget,
 			Parameters,
-			LoopVFX,
+			LoopVFXID,
 			VFXSpawnMode,
 			VFXAttachComponentName,
-			VFXAttachSocketName,
-			false
+			VFXAttachSocketName
 		);
 	}
 }
@@ -220,14 +226,19 @@ UAudioComponent* ANSGameplayCueNotify_Sustainable::PlaySound(
 UNiagaraComponent* ANSGameplayCueNotify_Sustainable::SpawnVFX(
 	AActor* MyTarget,
 	const FGameplayCueParameters& Parameters,
-	UNiagaraSystem* NiagaraSystem,
+	FName VFXID,
 	ENSGameplayCueSpawnMode SpawnMode,
 	FName ComponentName,
-	FName SocketName,
-	bool bAutoDestroy
+	FName SocketName
 ) const
 {
-	if (!NiagaraSystem)
+	if (VFXID.IsNone())
+	{
+		return nullptr;
+	}
+
+	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(MyTarget);
+	if (!VFXSubsystem)
 	{
 		return nullptr;
 	}
@@ -247,23 +258,18 @@ UNiagaraComponent* ANSGameplayCueNotify_Sustainable::SpawnVFX(
 			return nullptr;
 		}
 
-		return UNiagaraFunctionLibrary::SpawnSystemAttached(
-			NiagaraSystem,
+		return VFXSubsystem->PlayVFXAttached(
+			VFXID,
 			AttachComponent,
 			ResolvedSocketName,
 			FVector::ZeroVector,
 			FRotator::ZeroRotator,
-			EAttachLocation::SnapToTarget,
-			bAutoDestroy
-		);
+			VFXScaleMultiplier);
 	}
 	
-	return UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-		MyTarget,
-		NiagaraSystem,
+	return VFXSubsystem->PlayVFXAtLocation(
+		VFXID,
 		Parameters.Location,
 		Parameters.Normal.Rotation(),
-		FVector::OneVector,
-		bAutoDestroy
-	);
+		VFXScaleMultiplier);
 }

@@ -7,6 +7,7 @@
 #include "Components/ActorComponent.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
 #include "TimerManager.h"
+#include "NeoSanctum/Data/Augment/NSAugmentTypes.h"
 #include "NSCombatStatComponent.generated.h"
 
 class UNSAugmentInventoryComponent;
@@ -23,12 +24,12 @@ struct FNSCachedAbilityBaseStat
 /**
  * 최종 스탯 계산에 사용할 Add / Multiply Modifier 누적값입니다.
  *
- * FinalValue = (BaseValue + AddValue) * MultiplyValue
+ * FinalValue = (BaseValue + AddValue) * (1 + MultiplyPercent * 0.01)
  */
 struct FNSCombatStatModifierSum
 {
 	float AddValue = 0.0f;
-	float MultiplyValue = 1.0f;
+	float MultiplyPercent = 0.0f;
 };
 
 // 일정 시간 동안 적용되는 CombatStat Modifier
@@ -90,8 +91,26 @@ public:
 	// TemporaryModifier 제거
 	void RemoveTemporaryCombatStatModifier(FGuid Handle);
 
+	// 캐릭터 교체 시 남아있는 임시 버프 Modifier를 모두 제거
+	void ClearTemporaryCombatStatModifiers();
+
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
+	// CommonDataConfig에서 공용 AbilityBaseStatTable을 받아옴.
+	// 데이터가 아직 준비되지 않았다면 OnCommonDataReady 이후 다시 시도.
+	bool TryResolveAbilityBaseStatTableFromDataSubsystem();
+	
+	// RunConfig에서 현재 인런 증강 후보 테이블을 받아옴.
+	// 인런 데이터가 아직 준비되지 않았다면 OnRunGameDataReady 이후 다시 시도.
+	bool TryResolveAugmentDefinitionTableFromDataSubsystem();
+	
+	UFUNCTION()
+	void HandleCommonDataReady();
+	
+	UFUNCTION()
+	void HandleRunGameDataReady();
 	
 	// DataTable은 편집용 원본이고, 실제 Ability 실행 중에는 캐시를 조회
 	void RebuildBaseStatCache();
@@ -102,22 +121,22 @@ protected:
 	void HandleAugmentInventoryChanged();
 	
 	/**
-	 * CombatStat Modifier DataTable을 SourceDefId 기준으로 캐싱.
-	 *
-	 * DataTable 전체 순회를 Ability 실행 중에 반복하지 않기 위한 초기화용 캐시.
-	 * 증강 보유 여부와는 무관하게, 사용 가능한 Modifier Row 전체를 원본 기준으로 정리.
-	 */
-	void RebuildModifierSourceCache();
+	  * DT_AugmentDefinition의 Modifier Row를 Definition DA의 DefId 기준으로 캐싱.
+	  *
+	  * 보유 증강은 DefId로 저장되므로, 활성 Modifier 계산 중 DataTable 전체를 순회하지 않도록 함.
+	  */
+	void RebuildAugmentSourceCache();
 	
 	/**
-	 * 현재 보유 중인 증강과 스택 수를 기준으로 활성 Modifier 캐시를 다시 만듬.
-	 *
-	 * AugmentInventory가 변경될 때 호출되며,
-	 * SourceDefId로 Modifier 원본 캐시를 찾아 최종 스탯 계산에 사용할 Add/Multiply 값을 누적한다.
-	 */
+ 	 * 현재 보유 중인 증강과 스택 수를 기준으로 활성 Modifier 캐시를 다시 만듭니다.
+ 	 *
+ 	 * AugmentInventory가 변경될 때 호출되며,
+ 	 * Definition DA의 DefId로 Modifier 원본 캐시를 찾아
+ 	 * 최종 스탯 계산에 사용할 Add/Multiply 값을 누적합니다.
+ 	 */
 	void RebuildActiveModifierCache();
 	
-	void ApplyModifierRow(const FNSCombatStatModifierRow& ModifierRow, int32 Stacks);
+	void ApplyModifierRow(const FNSAugmentDefinitionRow& ModifierRow, int32 Stacks);
 
 	// 활성화 TemporaryModifier 캐시를 갱신하는 메서드
 	void RebuildTemporaryModifierCache();
@@ -128,28 +147,20 @@ protected:
 		const FGameplayTag& StatTag
 	) const;
 
-	/** 
-	 * 기존 Final 값에 TemporaryModifier 보정을 적용 
-	 * 일단 최종값에 적용하도록 만들었으나 밸런스상 위험할 가능성이 있다고 생각함
-	 */
-	void ApplyTemporaryModifierToFinalValue(
-		const FNSCombatStatModifierSum& ModifierSum,
-		float& InOutValue
-	) const;
-	
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSAbilityBaseStatRow"))
+	// CommonDataConfig에서 로드된 공용 스킬 기본 스탯 테이블 캐시.
+	// 에디터에서 직접 지정하지 않고 NSDataSubsystem의 CommonData 로딩 결과를 사용.
+	UPROPERTY(Transient)
 	TObjectPtr<UDataTable> AbilityBaseStatTable;
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|CombatStat",
-		meta = (RequiredAssetDataTags = "RowStructure=/Script/NeoSanctum.NSCombatStatModifierRow"))
-	TObjectPtr<UDataTable> CombatStatModifierTable;
+	// 현재 런에서 사용하는 증강 후보 테이블 캐시. 원본은 NSRunConfig이고 NSDataSubsystem에서 받아옴.
+	UPROPERTY(Transient)
+	TObjectPtr<UDataTable> AugmentDefinitionTable;
 
 private:
 	TMap<FGameplayTag, TMap<FGameplayTag, FNSCachedAbilityBaseStat>> CachedBaseStatsByAbility;
 	
-	TMap<FPrimaryAssetId, TArray<FNSCombatStatModifierRow>> CachedModifierRowsBySource;
+	TMap<FPrimaryAssetId, TArray<FNSAugmentDefinitionRow>> CachedModifierRowsByDefId;
 	
 	TMap<FGameplayTag, TMap<FGameplayTag, FNSCombatStatModifierSum>> ActiveModifiersByAbility;
 

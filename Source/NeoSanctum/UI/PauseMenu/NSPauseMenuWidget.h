@@ -6,7 +6,7 @@
 #include "CommonUserWidget.h"
 #include "NSPauseMenuWidget.generated.h"
 
-class UCommonButtonBase;
+class UNSButtonBase;
 
 
 UCLASS()
@@ -16,13 +16,16 @@ class NEOSANCTUM_API UNSPauseMenuWidget : public UCommonUserWidget
 	
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase>  OptionButton;
+	TObjectPtr<UNSButtonBase>  OptionButton;
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase>  MainMenuButton;
+	TObjectPtr<UNSButtonBase>  MainMenuButton;
 	UPROPERTY(meta = (BindWidget))
-	TObjectPtr<UCommonButtonBase>  QuitButton;
+	TObjectPtr<UNSButtonBase>  QuitButton;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UNSButtonBase>  CloseButton;
 
 	UFUNCTION()
 	void OnOptionClicked();
@@ -30,4 +33,6 @@ protected:
 	void OnMainMenuClicked();
 	UFUNCTION()
 	void OnQuitClicked();
+	UFUNCTION()
+	void OnCloseClicked();
 };

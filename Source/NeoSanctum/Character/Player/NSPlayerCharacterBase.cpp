@@ -4,6 +4,7 @@
 #include "NSPlayerCharacterBase.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/CameraTypes.h"
 #include "CharacterTrajectoryComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -12,18 +13,23 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/GameModeBase.h"
-#include "NeoSanctum/AI/Companion/Base/NSBaseCompanionAI.h"
-#include "NeoSanctum/AI/Companion/Controller/DroneAI/NSDroneAIController.h"
+#include "MotionWarpingComponent.h"
+#include "NeoSanctum/AI/Base/NSBaseDroneAI.h"
+#include "NeoSanctum/AI/Companion/Pawn/NSCompanionDroneAI.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
 #include "NeoSanctum/Character/Component/NSInputBinderComponent.h"
-#include "NeoSanctum/Character/Component/NSSpectatorViewComponent.h"
 #include "NeoSanctum/Character/Component/NSPartVisualComponent.h"
 #include "NeoSanctum/Character/Component/NSGateAccessComponent.h"
 #include "NeoSanctum/Collision/NSCollisionProfiles.h"
 #include "NeoSanctum/Interaction/Component/NSInteractionComponent.h"
 #include "NeoSanctum/Combat/Component/NSMeleeAttackReservationComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSDamageNumberFeedbackComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Combat/HitReaction/NSHitReactionComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerAttackFeedbackComponent.h"
+#include "NeoSanctum/Combat/HitReaction/NSPlayerHitTakenFeedbackComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
 #include "NeoSanctum/Progression/Augment/NSAugmentInventoryComponent.h"
@@ -31,9 +37,17 @@
 #include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Core/Interface/NSRunGameModeInterface.h"
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
+#include "NeoSanctum/Data/Character/NSCharacterBaseStatTypes.h"
 #include "NeoSanctum/Data/Character/NSCharacterData.h"
+#include "NeoSanctum/Data/CommonUpgrade/NSCommonUpgradeTypes.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatAttributeMapping.h"
+#include "NeoSanctum/GAS/Stats/NSCombatStatComponent.h"
+#include "NeoSanctum/System/Component/NSDamageFlashComponent.h"
+#include "NeoSanctum/System/Minimap/NSMinimapIconComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "Net/UnrealNetwork.h"
 
@@ -50,8 +64,8 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	// TPS 카메라를 캐릭터 뒤쪽에 배치하는 SpringArm 기본 설정
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComp"));
 	SpringArmComp->SetupAttachment(RootComponent);
-	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 60.0f));
-	SpringArmComp->TargetArmLength = 165.0f;
+	SpringArmComp->SetRelativeLocation(FVector(0.0f, 40.0f, 70.0f));
+	SpringArmComp->TargetArmLength = 225.0f;
 	SpringArmComp->bUsePawnControlRotation = true;
 	SpringArmComp->SocketOffset = FVector(0.0f, 50.0f, 0.0f);
 	
@@ -67,9 +81,9 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	MovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
 	
 	CharacterTrajectoryComp = CreateDefaultSubobject<UCharacterTrajectoryComponent> (TEXT("CharacterTrajectoryComp"));
+	MotionWarpingComp = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComp"));
 	
 	InputBinderComp = CreateDefaultSubobject<UNSInputBinderComponent>(TEXT("InputBinderComp"));
-	SpectatorViewComp = CreateDefaultSubobject<UNSSpectatorViewComponent>(TEXT("SpectatorViewComp"));
 	PartVisualComp = CreateDefaultSubobject<UNSPartVisualComponent>(TEXT("PartVisualComp"));
 	
 	MeleeAttackReservationComp = CreateDefaultSubobject<UNSMeleeAttackReservationComponent>(
@@ -79,6 +93,16 @@ ANSPlayerCharacterBase::ANSPlayerCharacterBase()
 	InteractionComp = CreateDefaultSubobject<UNSInteractionComponent>(TEXT("InteractionComp"));
 
 	GateAccessComp = CreateDefaultSubobject<UNSGateAccessComponent>(TEXT("GateAccessComp"));
+	PlayerAttackFeedbackComp = CreateDefaultSubobject<UNSPlayerAttackFeedbackComponent>(TEXT("PlayerAttackFeedbackComp"));
+	DamageNumberFeedbackComp = CreateDefaultSubobject<UNSDamageNumberFeedbackComponent>(TEXT("DamageNumberFeedbackComp"));
+	PlayerHitTakenFeedbackComp = CreateDefaultSubobject<UNSPlayerHitTakenFeedbackComponent>(
+		TEXT("PlayerHitTakenFeedbackComp"));
+	HitReactionComponent = CreateDefaultSubobject<UNSHitReactionComponent>(TEXT("HitReactionComponent"));
+	HitReactionComponent->SetTargetType(ENSHitFeedbackTargetType::Player);
+	DamageFlashComponent = CreateDefaultSubobject<UNSDamageFlashComponent>(TEXT("DamageFlashComponent"));
+	DamageFlashComponent->SetTriggerPolicy(ENSDamageFlashTriggerPolicy::Shield);
+	MinimapIconComponent = CreateDefaultSubobject<UNSMinimapIconComponent>(TEXT("MinimapIconComponent"));
+	MinimapIconComponent->SetIconRowName(TEXT("Player"));
 
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -90.0f));
 	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
@@ -94,6 +118,7 @@ void ANSPlayerCharacterBase::Tick(float DeltaSeconds)
 	}
 	
 	UpdateCameraFacingRotation(DeltaSeconds);
+	UpdateSpectatorCameraState(DeltaSeconds);
 }
 
 void ANSPlayerCharacterBase::BeginPlay()
@@ -101,12 +126,33 @@ void ANSPlayerCharacterBase::BeginPlay()
 	Super::BeginPlay();
 	
 	InitializeAbilitySystem();
-	
-	if (SpectatorViewComp)
+}
+
+void ANSPlayerCharacterBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// 접속 종료처럼 캐릭터가 명시적으로 파괴될 때만 서버 소유에서 Actor를 정리.
+	if (HasAuthority() && EndPlayReason == EEndPlayReason::Destroyed)
 	{
-		// 관전자에게 보낼 카메라 정보의 타겟이 되는 카메라 설정
-		SpectatorViewComp->SetSourceCamera(CameraComp);
+		if (IsValid(CurrentWeapon))
+		{
+			CurrentWeapon->Destroy();
+		}
+		CurrentWeapon = nullptr;
+
+		if (IsValid(CurrentLeftHandWeapon))
+		{
+			CurrentLeftHandWeapon->Destroy();
+		}
+		CurrentLeftHandWeapon = nullptr;
+
+		if (CompanionAI.IsValid())
+		{
+			CompanionAI->Destroy();
+		}
+		CompanionAI.Reset();
 	}
+	
+	Super::EndPlay(EndPlayReason);
 }
 
 void ANSPlayerCharacterBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -142,31 +188,23 @@ void ANSPlayerCharacterBase::PossessedBy(AController* EventController)
 		BindPartVisual();
 		// PossessedBy 시점에 캐릭터 데이터 적용
 		ApplyCurrentCharacterData();
-		// 이관된 런타임 파츠가 있으면(스테이지 이동) 재적용, 없으면(허브 최초 진입/리스폰) 저장 파츠 장착
-		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
-		{
-			UNSPartEquipComponent* PartComp = PS->GetPartEquipComponent();
-			if (PartComp && PartComp->HasAnyEquipped())
-			{
-				PartComp->ReapplyAll();
-			}
-			else
-			{
-				ApplyEquippedPart();
-			}
-		}
-		// Seamless Travel로 새 ASC가 생성되었으므로 보유 증강을 재적용
-		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
-		{
-			if (UNSAugmentInventoryComponent* AugmentInventory = PS->GetAugmentInventory())
-			{
-				AugmentInventory->ReapplyAll();
-			}
-		}
 	}
 	
 	// Companion 초기화 및 스폰 시도
 	TryInitializeCompanion();
+	
+	// @민재 추가 : 데이터가 늦게/재로딩되어도 드론을 다시 맞추는 안전망
+	if (HasAuthority())
+	{
+		if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+		{
+			if (UNSPlayerProgressComponent* Progress = PS->GetProgressComponent())
+			{
+				Progress->OnProgressChanged.RemoveAll(this);
+				Progress->OnProgressChanged.AddUObject(this, &ThisClass::HandleCompanionDataReady);
+			}
+		}
+	}
 }
 
 void ANSPlayerCharacterBase::OnRep_PlayerState()
@@ -199,7 +237,29 @@ void ANSPlayerCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty
 
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentCharacterData);
 	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentWeapon);
+	DOREPLIFETIME(ANSPlayerCharacterBase, CurrentLeftHandWeapon);
 	DOREPLIFETIME(ANSPlayerCharacterBase, bDeathPresentationStarted);
+	DOREPLIFETIME(ANSPlayerCharacterBase, SpectatorCameraState);
+}
+
+FRotator ANSPlayerCharacterBase::GetViewRotation() const
+{
+	if (IsLocallyControlled() || !SpectatorCameraState.bHasValidData)
+	{
+		return Super::GetViewRotation();
+	}
+
+	return SpectatorCameraState.ViewRotation;
+}
+
+void ANSPlayerCharacterBase::CalcCamera(float DeltaTime, FMinimalViewInfo& OutResult)
+{
+	Super::CalcCamera(DeltaTime, OutResult);
+
+	if (IsLocallyControlled() || !SpectatorCameraState.bHasValidData)
+	{
+		return;
+	}
 }
 
 UAbilitySystemComponent* ANSPlayerCharacterBase::GetAbilitySystemComponent() const
@@ -257,16 +317,19 @@ void ANSPlayerCharacterBase::InitializeFromCharacterData(const UNSCharacterData*
 	}
 	
 	CurrentCharacterData = InCharacterData;
-	LoadCharacterDataAssets(CurrentCharacterData);
-	
+
+	// CommonData 로딩 단계에서 CharacterData의 Soft Reference까지 선로딩되므로,
+	// 여기서 동기 로딩을 강제하지 않음.
 	ApplyCharacterVisual();
 	
 	// 서버에서 처리할 것들
 	if (HasAuthority())
 	{
 		ApplyInitialAttributeEffect();
+		ApplyCommonUpgradeAttributeEffect();
 		ApplyDefaultGameplayEffects();
 		GiveCharacterDataAbilities();
+		ReapplyPersistentRunGameplayState();
 		SpawnDefaultWeapon();
 		
 		if (NSAbilitySystemComponent)
@@ -436,6 +499,80 @@ void ANSPlayerCharacterBase::UpdateCameraFacingRotation(float DeltaSeconds)
 	SetActorRotation(NewRotation);
 }
 
+void ANSPlayerCharacterBase::UpdateSpectatorCameraState(float DeltaSeconds)
+{
+	if (!IsLocallyControlled())
+	{
+		if (SpectatorCameraState.bHasValidData && CameraComp)
+		{
+			// 원격 캐릭터의 카메라 FOV를 관전자 시점 값에 맞춤
+			CameraComp->SetFieldOfView(SpectatorCameraState.FOV);
+		}
+
+		return;
+	}
+
+	if (!Controller)
+	{
+		return;
+	}
+
+	SpectatorCameraStateSendElapsed += DeltaSeconds;
+	if (SpectatorCameraStateSendElapsed < SpectatorCameraStateSendInterval)
+	{
+		return;
+	}
+	SpectatorCameraStateSendElapsed = 0.f;
+
+	FNSReplicatedSpectatorCameraState NewCameraState;
+	NewCameraState.bHasValidData = true;
+	NewCameraState.ViewRotation = Controller->GetControlRotation();
+	NewCameraState.FOV = CameraComp ? CameraComp->FieldOfView : 90.f;
+
+	// 변화량이 작으면 관전자용 카메라 상태 전송 생략
+	if (!ShouldSendSpectatorCameraState(NewCameraState))
+	{
+		return;
+	}
+
+	LastSentSpectatorCameraState = NewCameraState;
+
+	if (HasAuthority())
+	{
+		// 리슨 서버 로컬 플레이어는 RPC 없이 서버 값 직접 갱신
+		SpectatorCameraState = NewCameraState;
+		return;
+	}
+
+	// 클라이언트 소유 Pawn의 카메라 상태를 서버로 올려 관전자에게 복제
+	Server_UpdateSpectatorCameraState(NewCameraState);
+}
+
+bool ANSPlayerCharacterBase::ShouldSendSpectatorCameraState(const FNSReplicatedSpectatorCameraState& NewCameraState) const
+{
+	if (!LastSentSpectatorCameraState.bHasValidData)
+	{
+		return true;
+	}
+
+	const FRotator RotationDelta = (NewCameraState.ViewRotation - LastSentSpectatorCameraState.ViewRotation).GetNormalized();
+	const bool bRotationChanged =
+		FMath::Abs(RotationDelta.Pitch) >= SpectatorCameraRotationThreshold
+		|| FMath::Abs(RotationDelta.Yaw) >= SpectatorCameraRotationThreshold
+		|| FMath::Abs(RotationDelta.Roll) >= SpectatorCameraRotationThreshold;
+
+	const bool bFOVChanged =
+		FMath::Abs(NewCameraState.FOV - LastSentSpectatorCameraState.FOV) >= SpectatorCameraFOVThreshold;
+
+	return bRotationChanged || bFOVChanged;
+}
+
+void ANSPlayerCharacterBase::Server_UpdateSpectatorCameraState_Implementation(
+	const FNSReplicatedSpectatorCameraState& NewCameraState)
+{
+	SpectatorCameraState = NewCameraState;
+}
+
 #pragma region CompanionSpawn
 
 void ANSPlayerCharacterBase::TryInitializeCompanion()
@@ -465,7 +602,7 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 	FTransform SpawnTransform(GetActorRotation(), SpawnLocation);
 	
 	// SpawnActorDeferred 
-	ANSBaseCompanionAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSBaseCompanionAI>(
+	ANSCompanionDroneAI* SpawnedCompanionAI = GetWorld()->SpawnActorDeferred<ANSCompanionDroneAI>(
 		DroneAIClass,
 		SpawnTransform,
 		this,
@@ -499,53 +636,48 @@ void ANSPlayerCharacterBase::SpawnCompanion(const UNSCompanionDefinition* Defini
 void ANSPlayerCharacterBase::HandleCompanionDataReady()
 {
 	if (!HasAuthority()) return;
-	
+
 	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
 	if (!PS) return;
-	
-	UNSCompanionDefinition* CurrentDefinition = PS->GetCurrentCompanionDefinition();
-	if (!CurrentDefinition) return;
-	
+
+	UNSPlayerProgressComponent* Progress = PS->GetProgressComponent();
+	if (!Progress) return;
+
+	// 선택 드론이 아직 없으면 재적용할 게 없음 (기본 드론 유지가 정상)
+	const FGameplayTag SelectedTag = Progress->GetSelectedCompanion();
+	if (!SelectedTag.IsValid()) return;
+
+	// 스폰이 빈 데이터로 먼저 돌았어도 여기서 선택 태그를 확정 동기화
+	PS->SetCurrentCompanionDefinitionTag(SelectedTag);
+
+	UNSCompanionDefinition* SelectedDefinition = PS->GetCurrentCompanionDefinition();
+	if (!SelectedDefinition) return;
+
+	UNSCompanionProgressionComponent* CompanionProg = PS->GetCompanionProgressionComponent();
+	if (!CompanionProg) return;
+
 	if (CompanionAI.IsValid())
 	{
-		CompanionAI->ApplyDroneDefinition(CurrentDefinition);
+		// 이미 스폰된 드론에 정의+노드 재적용 (기본→선택 드론 스왑 포함)
+		CompanionProg->ApplySelectedAndNodes(SelectedDefinition, Progress->GetCompanionNodeLevels());
 	}
 	else
 	{
+		// 아직 없으면 스폰 (올바른 정의로 생성 + 노드 적용)
 		TryInitializeCompanion();
 	}
 }
 
 #pragma endregion
 
-void ANSPlayerCharacterBase::LoadCharacterDataAssets(const UNSCharacterData* InCharacterData)
-{
-	if (!InCharacterData)
-	{
-		return;
-	}
-	
-	// LoadSynchronous는 임시로 강제로 로딩하기 위함이고, 추후에 비동기로딩 흐름으로 바꿀 예정
-	
-	InCharacterData->SkeletalMesh.LoadSynchronous();
-	InCharacterData->AnimClass.LoadSynchronous();
-	InCharacterData->InitialAttributeEffect.LoadSynchronous();
-	InCharacterData->DefaultWeaponClass.LoadSynchronous();
-	
-	for (const FNSCharacterAbilityData& AbilityData : InCharacterData->DefaultAbilities)
-	{
-		AbilityData.AbilityClass.LoadSynchronous();
-	}
-	
-	for (const TSoftClassPtr<UGameplayEffect>& DefaultEffect : InCharacterData->DefaultGameplayEffects)
-	{
-		DefaultEffect.LoadSynchronous();
-	}
-}
-
 void ANSPlayerCharacterBase::OnRep_CurrentCharacterData()
 {
-	LoadCharacterDataAssets(CurrentCharacterData);
+	if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(GetAbilitySystemComponent()))
+	{
+		// 클라이언트 예측으로 남은 이전 캐릭터의 Buff State 태그만 정리
+		ASC->ClearLocalBuffStateTags();
+	}
+
 	ApplyCharacterVisual();
 }
 
@@ -563,6 +695,20 @@ void ANSPlayerCharacterBase::OnRep_CurrentWeapon()
 	);
 }
 
+void ANSPlayerCharacterBase::OnRep_CurrentLeftHandWeapon()
+{
+	if (!IsValid(CurrentLeftHandWeapon))
+	{
+		return;
+	}
+
+	CurrentLeftHandWeapon->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetIncludingScale,
+		TEXT("Weapon_l")
+	);
+}
+
 void ANSPlayerCharacterBase::BindAttributeDelegates()
 {
 	if (!NSAbilitySystemComponent || !PlayerAttributeSet)
@@ -577,12 +723,52 @@ void ANSPlayerCharacterBase::BindAttributeDelegates()
 	// 중복 바인딩을 피하기 위한 바인딩 제거
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).RemoveAll(this);
-	
+
 	// 바인딩
 	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 		PlayerAttributeSet->GetMoveSpeedAttribute()).AddUObject(this, &ThisClass::OnMoveSpeedChanged);
-	
+
 	// Attribute 초기화 Effect가 들어오기 전까지 주석처리 : ApplyMoveSpeedToCharacter(PlayerAttributeSet->GetMoveSpeed());
+
+	// MaxJumpCount Attribute는 CharacterMovement의 네이티브 JumpMaxCount와 별개라 변경될 때마다 직접 동기화해야 함
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMaxJumpCountAttribute()).RemoveAll(this);
+
+	NSAbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
+		PlayerAttributeSet->GetMaxJumpCountAttribute()).AddUObject(this, &ThisClass::OnMaxJumpCountChanged);
+}
+
+void ANSPlayerCharacterBase::ApplyReactiveGameplayEffect(const FGameplayTag& TriggerTag)
+{
+	if (!HasAuthority() || !CurrentCharacterData || !NSAbilitySystemComponent || !TriggerTag.IsValid())
+	{
+		return;
+	}
+
+	for (const FNSReactiveGameplayEffectData& ReactiveEffect : CurrentCharacterData->ReactiveGameplayEffects)
+	{
+		if (ReactiveEffect.TriggerTag != TriggerTag)
+		{
+			continue;
+		}
+
+		TSubclassOf<UGameplayEffect> EffectClass = ReactiveEffect.EffectClass.Get();
+		if (!EffectClass)
+		{
+			continue;
+		}
+
+		FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		FGameplayEffectSpecHandle SpecHandle =
+			NSAbilitySystemComponent->MakeOutgoingSpec(EffectClass, 1.0f, EffectContext);
+
+		if (SpecHandle.IsValid())
+		{
+			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
+	}
 }
 
 void ANSPlayerCharacterBase::ApplyCharacterVisual()
@@ -592,7 +778,7 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 		return;
 	}
 	
-	USkeletalMesh* LoadedMesh = CurrentCharacterData->SkeletalMesh.Get();
+	USkeletalMesh* LoadedMesh = CurrentCharacterData->BaseLeaderMesh.Get();
 	if (LoadedMesh)
 	{
 		GetMesh()->SetSkeletalMesh(LoadedMesh);
@@ -603,6 +789,17 @@ void ANSPlayerCharacterBase::ApplyCharacterVisual()
 	{
 		GetMesh()->SetAnimInstanceClass(LoadedAnimClass);
 	}
+
+	UClass* LoadedUpperBodyAnimLayerClass = CurrentCharacterData->UpperBodyAnimLayerClass.Get();
+	if (LoadedUpperBodyAnimLayerClass)
+	{
+		GetMesh()->LinkAnimClassLayers(LoadedUpperBodyAnimLayerClass);
+	}
+
+	if (PartVisualComp)
+	{
+		PartVisualComp->SetDefaultVisualParts(CurrentCharacterData->DefaultVisualParts);
+	}
 }
 
 void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
@@ -611,9 +808,26 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	{
 		return;
 	}
-	
-	TSubclassOf<UGameplayEffect> LoadedEffectClass = CurrentCharacterData->InitialAttributeEffect.Get();
-	if (!LoadedEffectClass)
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	const FNSCharacterBaseStatRow* StatRow = DataSubsystem->FindCharacterBaseStatRow(CurrentCharacterData->CharacterTag);
+
+	if (!StatRow)
+	{
+		NS_ACTOR_LOG(this, LogNSGAS, Warning,
+			"캐릭터 기본 스탯 Row를 찾지 못했습니다. CharacterTag={Tag}",
+			("Tag", CurrentCharacterData->CharacterTag.ToString())
+		);
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> InitEffectClass = DataSubsystem->GetCharacterBaseStatInitEffectClass();
+	if (!InitEffectClass)
 	{
 		return;
 	}
@@ -622,16 +836,180 @@ void ANSPlayerCharacterBase::ApplyInitialAttributeEffect()
 	EffectContext.AddSourceObject(this);
 	
 	FGameplayEffectSpecHandle SpecHandle = 
-		NSAbilitySystemComponent->MakeOutgoingSpec(LoadedEffectClass, 1.0f, EffectContext);
+		NSAbilitySystemComponent->MakeOutgoingSpec(InitEffectClass, 1.0f, EffectContext);
 	
-	if (SpecHandle.IsValid())
+	if (!SpecHandle.IsValid())
 	{
-		const FActiveGameplayEffectHandle EffectHandle =
-			NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		if (EffectHandle.IsValid())
+		return;
+	}
+
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxHealth, StatRow->MaxHealth);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Health, StatRow->MaxHealth);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_BaseDamage, StatRow->BaseDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Defense, StatRow->Defense);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MoveSpeed, StatRow->MoveSpeed);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_CritChance, StatRow->CritChance);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_CritDamage, StatRow->CritDamage);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxShield, StatRow->MaxShield);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Shield, StatRow->MaxShield);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_ShieldRechargeRate, StatRow->ShieldRechargeRate);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_ShieldRechargeCooldown, StatRow->ShieldRechargeCooldown);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxDashCount, StatRow->MaxDashCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_DashCount, StatRow->MaxDashCount);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_DashRegenRate, StatRow->DashRegenRate);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxAmmo, StatRow->MaxAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Ammo, StatRow->MaxAmmo);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill1Count, StatRow->MaxSkill1Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill1Count, StatRow->MaxSkill1Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill2Count, StatRow->MaxSkill2Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill2Count, StatRow->MaxSkill2Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxSkill3Count, StatRow->MaxSkill3Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_Skill3Count, StatRow->MaxSkill3Count);
+	SpecHandle.Data->SetSetByCallerMagnitude(NSGameplayTags::Effect_SetByCaller_Init_MaxJumpCount, StatRow->MaxJumpCount);
+
+	const FActiveGameplayEffectHandle EffectHandle =
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+
+	if (EffectHandle.IsValid())
+	{
+		CharacterDataEffectHandles.Add(EffectHandle);
+	}
+}
+
+void ANSPlayerCharacterBase::ApplyCommonUpgradeAttributeEffect()
+{
+	if (!HasAuthority() || !NSAbilitySystemComponent)
+	{
+		return;
+	}
+
+	ANSPlayerState* NSPlayerState = GetPlayerState<ANSPlayerState>();
+	UNSPlayerProgressComponent* ProgressComponent = NSPlayerState ? NSPlayerState->GetProgressComponent() : nullptr;
+
+	if (!ProgressComponent)
+	{
+		return;
+	}
+
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+
+	TSubclassOf<UGameplayEffect> UpgradeEffectClass = DataSubsystem->GetCommonUpgradeInitEffectClass();
+	if (!UpgradeEffectClass)
+	{
+		return;
+	}
+
+	// MaxHealth/MaxShield가 늘어난 만큼 Current도 같이 올리기 위한 사전 스냅샷
+	// 재구매로 재호출될 수 있으므로, 아래에서 이전 이펙트를 제거하기 전(=지금까지 적용된 상태 기준)에
+	// 스냅샷을 찍어야 이번에 새로 늘어난 만큼만 정확히 Current에 반영됨.
+	const float OldMaxHealth =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
+	const float OldMaxShield =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+	// 재구매로 호출될 수 있으므로, 이전에 적용된 공용 업그레이드 효과가 있으면 먼저 제거해 중복 누적을 방지.
+	if (CommonUpgradeEffectHandle.IsValid())
+	{
+		NSAbilitySystemComponent->RemoveActiveGameplayEffect(CommonUpgradeEffectHandle);
+		CommonUpgradeEffectHandle = FActiveGameplayEffectHandle();
+	}
+
+	// NodeId별 레벨을 Attribute 태그 기준으로 합산 (Add는 그대로, Multiply는 %로 누적)
+	TMap<FGameplayTag, float> AddSums;
+	TMap<FGameplayTag, float> MultiplyPercentSums;
+
+	for (const TPair<FName, int32>& Pair : ProgressComponent->GetCommonSkillLevels())
+	{
+		const FNSCommonUpgradeNodeRow* Row = DataSubsystem->GetCommonUpgradeNodeRow(Pair.Key);
+		if (!Row || Pair.Value <= 0)
 		{
-			CharacterDataEffectHandles.Add(EffectHandle);
+			continue;
 		}
+
+		// 유틸 계열은 Attribute GE가 아니라 Currency/Part/Augment 쪽에서
+		// NSCommonUpgradeUtility::GetPercent()로 별도 처리.
+		if (Row->Category == ENSCommonUpgradeCategory::Utility)
+		{
+			continue;
+		}
+
+		const float Contribution = Row->ValuePerLevel * static_cast<float>(Pair.Value);
+
+		if (Row->Operation == ENSCombatStatModifierOperation::Add)
+		{
+			AddSums.FindOrAdd(Row->AttributeTag) += Contribution;
+		}
+		else
+		{
+			MultiplyPercentSums.FindOrAdd(Row->AttributeTag) += Contribution;
+		}
+	}
+
+	FGameplayEffectContextHandle EffectContext = NSAbilitySystemComponent->MakeEffectContext();
+	EffectContext.AddSourceObject(this);
+
+	FGameplayEffectSpecHandle SpecHandle =
+		NSAbilitySystemComponent->MakeOutgoingSpec(UpgradeEffectClass, 1.0f, EffectContext);
+
+	if (!SpecHandle.IsValid())
+	{
+		return;
+	}
+
+	NSCombatStatAttribute::InitializeNeutralSetByCallers(SpecHandle);
+
+	for (const TPair<FGameplayTag, float>& Pair : AddSums)
+	{
+		const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Pair.Key);
+		if (Mapping && Mapping->AddSetByCallerTag.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(Mapping->AddSetByCallerTag, Pair.Value);
+		}
+	}
+
+	for (const TPair<FGameplayTag, float>& Pair : MultiplyPercentSums)
+	{
+		const FNSCombatStatAttributeMapping* Mapping = NSCombatStatAttribute::FindMapping(Pair.Key);
+		if (Mapping && Mapping->MultiplySetByCallerTag.IsValid())
+		{
+			SpecHandle.Data->SetSetByCallerMagnitude(Mapping->MultiplySetByCallerTag, 1.0f + Pair.Value * 0.01f);
+		}
+	}
+
+	const FActiveGameplayEffectHandle EffectHandle =
+		NSAbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+
+	if (EffectHandle.IsValid())
+	{
+		CommonUpgradeEffectHandle = EffectHandle;
+		CharacterDataEffectHandles.Add(EffectHandle);
+	}
+
+	const float NewMaxHealth =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetMaxHealthAttribute());
+	const float NewMaxShield =
+		NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+
+	if (NewMaxHealth != OldMaxHealth)
+	{
+		const float CurrentHealth =
+			NSAbilitySystemComponent->GetNumericAttribute(UNSBaseAttributeSet::GetHealthAttribute());
+		const float AdjustedHealth =
+			FMath::Clamp(CurrentHealth + (NewMaxHealth - OldMaxHealth), 0.0f, NewMaxHealth);
+		NSAbilitySystemComponent->SetNumericAttributeBase(UNSBaseAttributeSet::GetHealthAttribute(), AdjustedHealth);
+	}
+
+	if (NewMaxShield != OldMaxShield)
+	{
+		const float CurrentShield =
+			NSAbilitySystemComponent->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
+		const float AdjustedShield =
+			FMath::Clamp(CurrentShield + (NewMaxShield - OldMaxShield), 0.0f, NewMaxShield);
+		NSAbilitySystemComponent->SetNumericAttributeBase(UNSPlayerAttributeSet::GetShieldAttribute(), AdjustedShield);
 	}
 }
 
@@ -699,6 +1077,40 @@ void ANSPlayerCharacterBase::GiveCharacterDataAbilities()
 	}
 }
 
+void ANSPlayerCharacterBase::ReapplyPersistentRunGameplayState()
+{
+	// 캐릭터 교체로 ASC를 비운 뒤 파츠/증강처럼 런 동안 유지되는 효과를 다시 적용
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	ANSPlayerState* PS = GetPlayerState<ANSPlayerState>();
+	if (!PS)
+	{
+		return;
+	}
+	
+	// 이관된 런타임 파츠가 있으면(스테이지 이동) 재적용, 없으면(허브 최초 진입/리스폰) 저장 파츠 장착
+	if (UNSPartEquipComponent* PartComp = PS->GetPartEquipComponent())
+	{
+		if (PartComp->HasAnyEquipped())
+		{
+			PartComp->ReapplyAll();
+		}
+		else
+		{
+			ApplyEquippedPart();
+		}
+	}
+	
+	// Seamless Travel로 새 ASC가 생성되었으므로 보유 증강을 재적용
+	if (UNSAugmentInventoryComponent* AugmentInventory = PS->GetAugmentInventory())
+	{
+		AugmentInventory->ReapplyAll();
+	}
+}
+
 void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 {
 	if (!HasAuthority() || !CurrentCharacterData)
@@ -707,15 +1119,28 @@ void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 	}
 	
 	TSubclassOf<ANSWeaponBase> LoadedWeaponClass = CurrentCharacterData->DefaultWeaponClass.Get();
-	if (!LoadedWeaponClass)
+	CurrentWeapon = SpawnWeapon(
+		LoadedWeaponClass,
+		LoadedWeaponClass ? LoadedWeaponClass.GetDefaultObject()->GetAttachSocketName() : NAME_None
+	);
+
+	TSubclassOf<ANSWeaponBase> LoadedLeftHandWeaponClass = CurrentCharacterData->DefaultLeftHandWeaponClass.Get();
+	CurrentLeftHandWeapon = SpawnWeapon(LoadedLeftHandWeaponClass, TEXT("Weapon_l"));
+}
+
+ANSWeaponBase* ANSPlayerCharacterBase::SpawnWeapon(
+	TSubclassOf<ANSWeaponBase> WeaponClass,
+	FName AttachSocketName)
+{
+	if (!HasAuthority() || !WeaponClass)
 	{
-		return;
+		return nullptr;
 	}
 	
 	UWorld* World = GetWorld();
 	if (!World)
 	{
-		return;
+		return nullptr;
 	}
 	
 	FActorSpawnParameters SpawnParams;
@@ -724,23 +1149,24 @@ void ANSPlayerCharacterBase::SpawnDefaultWeapon()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	
 	ANSWeaponBase* SpawnedWeapon = World->SpawnActor<ANSWeaponBase>(
-		LoadedWeaponClass,
+		WeaponClass,
 		FTransform::Identity,
 		SpawnParams
 	);
 	
 	if (!IsValid(SpawnedWeapon))
 	{
-		return;
+		return nullptr;
 	}
 	
 	SpawnedWeapon->AttachToComponent(
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetIncludingScale,
-		SpawnedWeapon->GetAttachSocketName()
+		AttachSocketName
 	);
 	
-	CurrentWeapon = SpawnedWeapon;
+
+	return SpawnedWeapon;
 }
 
 void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
@@ -753,29 +1179,22 @@ void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
 	// Ability와 Effect Clear
 	if (NSAbilitySystemComponent)
 	{
-		NSAbilitySystemComponent->ClearAbilityInput();
-
-		for (const FGameplayAbilitySpecHandle& AbilityHandle : CharacterDataAbilityHandles)
-		{
-			if (!AbilityHandle.IsValid())
-			{
-				continue;
-			}
-
-			NSAbilitySystemComponent->CancelAbilityHandle(AbilityHandle);
-			NSAbilitySystemComponent->ClearAbility(AbilityHandle);
-		}
-		CharacterDataAbilityHandles.Reset();
-
-		for (const FActiveGameplayEffectHandle& EffectHandle : CharacterDataEffectHandles)
-		{
-			if (EffectHandle.IsValid())
-			{
-				NSAbilitySystemComponent->RemoveActiveGameplayEffect(EffectHandle);
-			}
-		}
-		CharacterDataEffectHandles.Reset();
+		// 이전 캐릭터의 스킬, Recharge, Buff, Cue, State가 새 캐릭터에 남지 않도록 정리
+		NSAbilitySystemComponent->ResetTransientAvatarState();
 	}
+
+	if (ANSPlayerState* PS = GetPlayerState<ANSPlayerState>())
+	{
+		if (UNSCombatStatComponent* CombatStatComp = PS->GetCombatStatComponent())
+		{
+			// BuffAbility가 CombatStatComponent에 등록한 임시 수치 보정도 함께 제거
+			CombatStatComp->ClearTemporaryCombatStatModifiers();
+		}
+	}
+
+	CharacterDataAbilityHandles.Reset();
+	CharacterDataEffectHandles.Reset();
+	CommonUpgradeEffectHandle = FActiveGameplayEffectHandle();
 	
 	// 무기를 Destroy
 	if (IsValid(CurrentWeapon))
@@ -783,6 +1202,12 @@ void ANSPlayerCharacterBase::ClearCharacterDataRuntimeState()
 		CurrentWeapon->Destroy();
 	}
 	CurrentWeapon = nullptr;
+
+	if (IsValid(CurrentLeftHandWeapon))
+	{
+		CurrentLeftHandWeapon->Destroy();
+	}
+	CurrentLeftHandWeapon = nullptr;
 }
 
 void ANSPlayerCharacterBase::OnMoveSpeedChanged(const FOnAttributeChangeData& Data)
@@ -796,6 +1221,46 @@ void ANSPlayerCharacterBase::ApplyMoveSpeedToCharacter(float MoveSpeed)
 	{
 		Movement->MaxWalkSpeed = MoveSpeed;
 	}
+}
+
+void ANSPlayerCharacterBase::OnMaxJumpCountChanged(const FOnAttributeChangeData& Data)
+{
+	ApplyMaxJumpCountToCharacter(Data.NewValue);
+}
+
+void ANSPlayerCharacterBase::ApplyMaxJumpCountToCharacter(float MaxJumpCount)
+{
+	JumpMaxCount = FMath::Max(FMath::FloorToInt(MaxJumpCount), 0);
+}
+
+bool ANSPlayerCharacterBase::CanJumpInternal_Implementation() const
+{
+	// 첫 점프는 원래 판정 그대로, 다단 점프는 키를 뗐다가 다시 눌러야만 허용
+	if (JumpCurrentCount > 0 && !bHasReleasedJumpKeySinceLastJump)
+	{
+		return false;
+	}
+	return Super::CanJumpInternal_Implementation();
+}
+
+void ANSPlayerCharacterBase::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+	bHasReleasedJumpKeySinceLastJump = false;
+}
+
+void ANSPlayerCharacterBase::ClearJumpInput(float DeltaTime)
+{
+	/**
+	 * 무한점프 방지용
+	 * 이번 이동 프레임에 점프 입력이 없었으면 키가 떨어진 것 -> 다음 점프 허용
+	 * 홀드중에는 착지후 다시 점프
+	 */
+	if (!bPressedJump)
+	{
+		bHasReleasedJumpKeySinceLastJump = true;
+	}
+	Super::ClearJumpInput(DeltaTime);
 }
 
 void ANSPlayerCharacterBase::HandleOutOfHealth()
@@ -847,10 +1312,10 @@ void ANSPlayerCharacterBase::ApplyDeathState()
 		return;
 	}
 
-	// 실행중인 Ability 전부 취소
-	NSAbilitySystemComponent->CancelAbilities();
 	// 임시 : 강제로 Dead 상태 태그 부여 -> 이후 GA_Death로 로직을 빼고 GE에서 변경하도록 할 예정 
 	NSAbilitySystemComponent->AddLooseGameplayTag(NSGameplayTags::State_Dead);
+	// 실행중인 Ability 전부 취소
+	NSAbilitySystemComponent->CancelAbilities();
 }
 
 void ANSPlayerCharacterBase::StartDeathRagdoll()

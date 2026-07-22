@@ -7,10 +7,13 @@
 #include "NeoSanctum/UI/HUD/NSAugmentationWidget.h"
 #include "Engine/DataTable.h"
 #include "Kismet/GameplayStatics.h"
-#include "UObject/ConstructorHelpers.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
 #include "NeoSanctum/Data/UI/NSUIWidgetData.h"
 #include "NeoSanctum/UI/Result/NSRunResultWidget.h"
 #include "NeoSanctum/UI/Spectator/NSSpectatorWidget.h"
+#include "NeoSanctum/UI/Monster/NSMonsterUISubsystem.h"
+#include "NeoSanctum/UI/Player/NSPlayerWorldStatusSubsystem.h"
 
 UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 {
@@ -21,6 +24,56 @@ UNSUIManagerSubsystem* UNSUIManagerSubsystem::Get(const UObject* WorldContext)
 	}
 
 	return GameInstance->GetSubsystem<UNSUIManagerSubsystem>();
+}
+
+void UNSUIManagerSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+	Super::Initialize(Collection);
+
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+
+		if (DataSubsystem->IsCommonReady())
+		{
+			HandleCommonDataReady();
+			return;
+		}
+
+		DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+	
+	FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(
+	  this,
+	  &UNSUIManagerSubsystem::HandlePostLoadMap);
+}
+
+void UNSUIManagerSubsystem::Deinitialize()
+{
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UGameViewportClient* VC = GI->GetGameViewportClient())
+		{
+			if (LoadingScreenSlate.IsValid())
+			{
+				VC->RemoveViewportWidgetContent(LoadingScreenSlate.ToSharedRef());
+			}
+		}
+	}
+	LoadingScreenSlate.Reset();
+	LoadingScreenWidget = nullptr;
+	
+	FCoreUObjectDelegates::PostLoadMapWithWorld.RemoveAll(this);
+	
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+	}
+
+	WidgetClassCache.Reset();
+	UIWidgetDataTable = nullptr;
+
+	Super::Deinitialize();
 }
 
 float UNSUIManagerSubsystem::GetRunResultTimeSeconds() const
@@ -55,11 +108,6 @@ void UNSUIManagerSubsystem::CacheRunResultTime()
 void UNSUIManagerSubsystem::UpdateRunResultCommonGoods(int32 NewAmount)
 {
 	RunResultCommonGoods = FMath::Max(NewAmount, 0);
-}
-
-void UNSUIManagerSubsystem::UpdateRunResultSkillGoods(int32 NewAmount)
-{
-	RunResultSkillGoods = FMath::Max(NewAmount, 0);
 }
 
 void UNSUIManagerSubsystem::ApplyCharacterSkillUISet(FName CharacterId)
@@ -113,7 +161,7 @@ void UNSUIManagerSubsystem::CreateSpectator(APlayerController* OwningPlayer)
 
 void UNSUIManagerSubsystem::ShowSpectator(const FString& SpectatingPlayerName)
 {
-	HideHUD();
+	ShowHUD();
 	
 	if (!SpectatorWidget)
 	{
@@ -145,42 +193,178 @@ void UNSUIManagerSubsystem::ClearSpectator()
 	SpectatorWidget = nullptr;
 }
 
-UNSUIManagerSubsystem::UNSUIManagerSubsystem()
+void UNSUIManagerSubsystem::UpdateRunEndResultFromGameState(const ANSRunGameState* RunGameState)
 {
-	static ConstructorHelpers::FObjectFinder<UDataTable>
-	UIWidgetTableFinder(
-		TEXT("/Game/NeoSanctum/Data/UI/DT_UIWidget.DT_UIWidget"));
-	if (UIWidgetTableFinder.Succeeded())
+	UNSRunResultWidget* RunResultWidget =
+		Cast<UNSRunResultWidget>(RunEndWidget);
+
+	if (!RunResultWidget || !RunGameState)
 	{
-		UIWidgetDataTable = UIWidgetTableFinder.Object;
+		return;
+	}
+
+	const FNSRunResultData& ResultData =
+		RunGameState->RunResultData;
+
+	RunResultWidget->SetRunResult(
+		RunGameState->bIsClear,
+		RunResultGoods,
+		RunResultCommonGoods,
+		ResultData.RunTimeSeconds,
+		ResultData.KillCount);
+}
+
+void UNSUIManagerSubsystem::MarkTravelPawnReady()
+{
+	bTravelPawnReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PawnReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::MarkTravelLevelReady()
+{
+	bTravelLevelReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] LevelReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::MarkTravelViewReady()
+{
+	bTravelViewReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] ViewReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::MarkTravelPrewarmReady()
+{
+	bTravelPrewarmReady = true;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PrewarmReady / World=%s"), *GetNameSafe(GetWorld()));
+	TryFinishTravelLoading();
+}
+
+void UNSUIManagerSubsystem::HandlePostLoadMap(UWorld* LoadedWorld)
+{
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] PostLoadMap / World=%s / Active=%d"),
+	*GetNameSafe(LoadedWorld), bTravelLoadingScreenActive ? 1 : 0);
+
+	// 로딩 트래블이 진행 중일 때만 재확인
+	if (!bTravelLoadingScreenActive || !LoadedWorld)
+	{
+		return;
+	}
+
+	APlayerController* PC = LoadedWorld->GetFirstPlayerController();
+	if (!PC)
+	{
+		return;
+	}
+
+	// !IsInViewport면 재생성 후 표시 (드롭됐던 위젯 복원)
+	CreateLoadingScreen(PC);
+	ShowLoadingScreen();
+}
+
+void UNSUIManagerSubsystem::PlayAugmentationTabSound() const
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+
+	HUDWidget->PlayAugmentationTabSound();
+}
+
+void UNSUIManagerSubsystem::HandleCommonDataReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+		UIWidgetDataTable = DataSubsystem->GetCommonUIWidgetDataTable();
+	}
+
+	RebuildWidgetClassCache();
+	RetryPendingTitleCreation();
+}
+
+void UNSUIManagerSubsystem::RetryPendingTitleCreation()
+{
+	if (!bPendingTitleCreation)
+	{
+		return;
+	}
+
+	bPendingTitleCreation = false;
+
+	APlayerController* OwningPlayer = PendingTitleOwningPlayer.Get();
+	PendingTitleOwningPlayer.Reset();
+
+	if (!OwningPlayer || TitleWidget)
+	{
+		return;
+	}
+
+	CreateTitle(OwningPlayer);
+	ShowTitle();
+}
+
+void UNSUIManagerSubsystem::RebuildWidgetClassCache()
+{
+	WidgetClassCache.Reset();
+
+	if (!UIWidgetDataTable || UIWidgetDataTable->GetRowStruct() != FNSUIWidgetData::StaticStruct())
+	{
+		return;
+	}
+
+	const FString ContextString = TEXT("RebuildWidgetClassCache");
+	for (const FName& RowName : UIWidgetDataTable->GetRowNames())
+	{
+		const FNSUIWidgetData* WidgetData =
+			UIWidgetDataTable->FindRow<FNSUIWidgetData>(RowName, ContextString, false);
+
+		if (!WidgetData || WidgetData->WidgetClass.IsNull())
+		{
+			continue;
+		}
+
+		// NSDataSubsystem에서 CommonDataReady 전에 선로드하므로 여기서는 동기 로드하지 않음.
+		UClass* LoadedWidgetClass = WidgetData->WidgetClass.Get();
+		if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UUserWidget::StaticClass()))
+		{
+			WidgetClassCache.Add(RowName, LoadedWidgetClass);
+		}
 	}
 }
-TSubclassOf<UUserWidget>
-UNSUIManagerSubsystem::GetWidgetClassFromTable(
-	FName RowName) const
+
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetWidgetClassFromTable(FName RowName) const
 {
-	if (!UIWidgetDataTable)
+	if (RowName.IsNone())
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] DT_UIWidget을 찾지 못했습니다."));
 		return nullptr;
 	}
-	const FNSUIWidgetData* WidgetData =
-		UIWidgetDataTable->FindRow<FNSUIWidgetData>(
-			RowName,
-			TEXT("GetWidgetClassFromTable"));
-	if (!WidgetData)
+
+	if (const TSubclassOf<UUserWidget>* CacheWidgetClass = WidgetClassCache.Find(RowName))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("[UI] Row를 찾지 못했습니다: %s"),
-			*RowName.ToString());
-		return nullptr;
+		return *CacheWidgetClass;
 	}
-	return WidgetData->WidgetClass.LoadSynchronous();
+
+	return nullptr;
+}
+
+void UNSUIManagerSubsystem::TryFinishTravelLoading()
+{
+	if (!bTravelLoadingScreenActive)
+	{
+		return;
+	}
+	
+	if (!bTravelPawnReady || !bTravelLevelReady || !bTravelViewReady || !bTravelPrewarmReady)
+	{
+		return;
+	}
+	
+	HideTravelLoadingScreen(); 
+	OnTravelLoadingFinished.Broadcast();
 }
 
 void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
@@ -192,28 +376,34 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 
 	if (HUDWidget)
 	{
+		if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+		{
+			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
+		}
+
+		if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+		{
+			PlayerWorldStatusSubsystem->RegisterHUDHost(HUDWidget);
+		}
+
 		return;
 	}
 
 	TSubclassOf<UNSHUDWidget> WidgetClassToUse = nullptr;
 
-	//데이터테이블에 없을경우 기존 HUD위젯으로
 	TSubclassOf<UUserWidget> LoadedWidgetClass =
 		GetWidgetClassFromTable(TEXT("HUD"));
 
-	//데이터테이블에서 타입을 검증
 	if (LoadedWidgetClass && LoadedWidgetClass->IsChildOf(UNSHUDWidget::StaticClass()))
 	{
 		WidgetClassToUse = *LoadedWidgetClass;
 	}
 
-	//데이터테이블에 없을시 에디터에서 지정한 위젯을 사용
 	if (!WidgetClassToUse)
 	{
 		WidgetClassToUse = HUDWidgetClass;
 	}
 
-	//데이터테이블과 fallback에 없으면 종료
 	if (!WidgetClassToUse)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("[UI Data] HUD 위젯 클래스를 찾지 못했습니다."));
@@ -227,16 +417,17 @@ void UNSUIManagerSubsystem::CreateHUD(APlayerController* OwningPlayer)
 	if (HUDWidget)
 	{
 		HUDWidget->AddToViewport();
-	}
 
-	
-	/*
-	HUDWidget = CreateWidget<UNSHUDWidget>(OwningPlayer, HUDWidgetClass);
-	if (HUDWidget)
-	{
-		HUDWidget->AddToViewport();
+		if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+		{
+			MonsterUISubsystem->RegisterHUDHost(HUDWidget);
+		}
+
+		if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+		{
+			PlayerWorldStatusSubsystem->RegisterHUDHost(HUDWidget);
+		}
 	}
-	*/
 }
 
 void UNSUIManagerSubsystem::ShowHUD()
@@ -273,12 +464,14 @@ void UNSUIManagerSubsystem::UpdateRunInGoods(int32 NewGoodsAmount)
 
 void UNSUIManagerSubsystem::UpdateRunOutGoods(int32 NewGoodsAmount)
 {
-	//TODO(영웅): 영구 재화 데이터 연동
+	RunResultCommonGoods =
+		FMath::Max(NewGoodsAmount, 0);
+	
 	if (!HUDWidget)
 	{
 		return;
 	}
-	HUDWidget->UpdateRunOutGoods(NewGoodsAmount);
+	HUDWidget->UpdateRunOutGoods(RunResultCommonGoods);
 }
 
 void UNSUIManagerSubsystem::ResetRunInGoods()
@@ -339,6 +532,17 @@ void UNSUIManagerSubsystem::UpdateHealthAndShield(
 		MaxShield);
 }
 
+void UNSUIManagerSubsystem::UpdateExperience(float CurrentExperience, float RequiredExperience)
+{
+	if (!HUDWidget)
+	{
+		return;
+	}
+	HUDWidget->UpdateExperience(
+		CurrentExperience,
+		RequiredExperience);
+}
+
 void UNSUIManagerSubsystem::ClearTitle()
 {
 	if (TitleWidget)
@@ -352,10 +556,26 @@ void UNSUIManagerSubsystem::ClearHUD()
 {
 	if (HUDWidget)
 	{
+		if (APlayerController* OwningPlayer = HUDWidget->GetOwningPlayer())
+		{
+			if (UNSMonsterUISubsystem* MonsterUISubsystem = UNSMonsterUISubsystem::Get(OwningPlayer))
+			{
+				MonsterUISubsystem->UnregisterHUDHost(HUDWidget);
+			}
+
+			if (UNSPlayerWorldStatusSubsystem* PlayerWorldStatusSubsystem = UNSPlayerWorldStatusSubsystem::Get(OwningPlayer))
+			{
+				PlayerWorldStatusSubsystem->UnregisterHUDHost(HUDWidget);
+			}
+		}
+
 		HUDWidget->RemoveFromParent();
 		HUDWidget = nullptr;
 	}
+
+	// HUD를 갈아끼울 때 이전 증강창 상태도 같이 정리.
 	bAugmentationPanelOpen = false;
+	bFullAugmentationPanelOpen = false;
 }
 
 void UNSUIManagerSubsystem::SelectAugmentCardByIndex(int32 CardIndex)
@@ -381,25 +601,33 @@ void UNSUIManagerSubsystem::RequestRerollAugment()
 
 void UNSUIManagerSubsystem::OpenAugmentationPanel()
 {
-	if (bAugmentationPanelOpen)
+	if (!HUDWidget || bFullAugmentationPanelOpen)
 	{
 		return;
 	}
-	if (!HUDWidget)
+	
+	bAugmentationPanelOpen = true;
+	bFullAugmentationPanelOpen = true;
+	
+	HUDWidget->OpenAugmentationPanel();
+}
+
+void UNSUIManagerSubsystem::OpenAugmentSelectionPanel()
+{
+	if (!HUDWidget || bFullAugmentationPanelOpen)
 	{
 		return;
 	}
 	bAugmentationPanelOpen = true;
-	HUDWidget->OpenAugmentationPanel();
+	HUDWidget->OpenAugmentSelectionPanel();
 }
 
 void UNSUIManagerSubsystem::CloseAugmentationPanel()
 {
-	if (!bAugmentationPanelOpen)
-	{
-		return;
-	}
+	// 위젯이 없거나 플래그가 어긋나도 다음 입력에서 복구되도록 상태부터 정리.
 	bAugmentationPanelOpen = false;
+	bFullAugmentationPanelOpen = false;
+	
 	if (!HUDWidget)
 	{
 		return;
@@ -412,43 +640,67 @@ UNSHUDWidget* UNSUIManagerSubsystem::GetHUDWidget() const
 	return HUDWidget;
 }
 
+TSubclassOf<UUserWidget> UNSUIManagerSubsystem::GetCachedWidgetClass(FName RowName) const
+{
+	return GetWidgetClassFromTable(RowName);
+}
+
 void UNSUIManagerSubsystem::CreateTitle(APlayerController* OwningPlayer)
 {
-		if (!OwningPlayer)
-		{
-			return;
-		}
+	// @원종: pending 초기화.
+	bPendingTitleCreation = false;
+	PendingTitleOwningPlayer.Reset();
 
-		if (TitleWidget)
-		{
-			return;
-		}
+	if (!OwningPlayer)
+	{
+		return;
+	}
+
+	if (TitleWidget)
+	{
+		return;
+	}
 	
-		//데이터테이블에 없을경우 기존 Title위젯으로
-		TSubclassOf<UUserWidget> WidgetClassToUse =
-			GetWidgetClassFromTable(TEXT("Title"));
+	//데이터테이블에 없을경우 기존 Title위젯으로
+	TSubclassOf<UUserWidget> WidgetClassToUse =
+		GetWidgetClassFromTable(TEXT("Title"));
 
-		//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴 
-		if (!WidgetClassToUse)
+	//데이터테이블에 없을경우 기존에 에디터에서 지정한 위젯 불러옴
+	if (!WidgetClassToUse)
+	{
+		WidgetClassToUse = TitleWidgetClass;
+	}
+
+	//데이터테이블과 fallback 이 모두 없으면 종료
+	if (!WidgetClassToUse)
+	{
+		// @원종: 위젯 클래스가 없으면 pending처리로 넘김
+		if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
 		{
-			WidgetClassToUse = TitleWidgetClass;
+			if (!DataSubsystem->IsCommonReady())
+			{
+				// DT_UIWidget 로딩이 끝나기 전에 Title 생성이 요청된 경우, CommonDataReady 이후 다시 CreateTitle을 호출.
+				PendingTitleOwningPlayer = OwningPlayer;
+				bPendingTitleCreation = true;
+
+				DataSubsystem->OnCommonDataReady.RemoveDynamic(this, &ThisClass::HandleCommonDataReady);
+				DataSubsystem->OnCommonDataReady.AddDynamic(this, &ThisClass::HandleCommonDataReady);
+				return;
+			}
 		}
 
-		//데이터테이블과 fallback 이 모두 없으면 종료
-		if (!WidgetClassToUse)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
-			return;
-		}
+		UE_LOG(LogTemp, Warning, TEXT("[UI Data] Title 위젯 클래스를 찾지 못했습니다."));
+		return;
+	}
 
-		TitleWidget = CreateWidget<UUserWidget>(
-			OwningPlayer,
-			WidgetClassToUse);
+	TitleWidget = CreateWidget<UUserWidget>(
+		OwningPlayer,
+		WidgetClassToUse);
 
-		if (TitleWidget)
-		{
-			TitleWidget->AddToViewport();
-		}	
+	if (TitleWidget)
+	{
+		TitleWidget->AddToViewport();
+	}
 	/*
 	TitleWidget = CreateWidget<UUserWidget>(OwningPlayer, TitleWidgetClass);
 	if (TitleWidget)
@@ -664,35 +916,50 @@ void UNSUIManagerSubsystem::ClearOptionPanel()
 
 void UNSUIManagerSubsystem::CreateLoadingScreen(APlayerController* OwningPlayer)
 {
-	if (!OwningPlayer)
+	UGameInstance* GI = GetGameInstance();
+	if (!GI)
 	{
 		return;
 	}
 	
-	if (LoadingScreenWidget && !LoadingScreenWidget->IsInViewport())
-	{
-		LoadingScreenWidget = nullptr;
-	}
-	
-	if (LoadingScreenWidget)
+	// 이미 유효하게 살아있으면 재생성하지 않음
+	if (LoadingScreenWidget && LoadingScreenSlate.IsValid())
 	{
 		return;
 	}
-	
-	TSubclassOf<UUserWidget> WidgetClassToUse = 
+
+	// 잔재가 남은 경우 정리 후 재생성
+	LoadingScreenWidget = nullptr;
+	LoadingScreenSlate.Reset();
+
+	TSubclassOf<UUserWidget> WidgetClassToUse =
 		GetWidgetClassFromTable(TEXT("LoadingScreen"));
-	
 	if (!WidgetClassToUse)
 	{
 		return;
 	}
-	
-	LoadingScreenWidget = CreateWidget<UUserWidget>(OwningPlayer, WidgetClassToUse);
-	if (LoadingScreenWidget)
+
+	// 오너를 GameInstance로 설정
+	LoadingScreenWidget = CreateWidget<UUserWidget>(GI, WidgetClassToUse);
+	if (!LoadingScreenWidget)
 	{
-		LoadingScreenWidget->AddToViewport(1000);
-		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
+		return;
 	}
+
+	UGameViewportClient* VC = GI->GetGameViewportClient();
+	if (!VC)
+	{
+		// 뷰포트가 아직 없으면 위젯만 생성
+		return;
+	}
+
+	// Slate 핸들을 한 번만 생성해 캐싱
+	LoadingScreenSlate = LoadingScreenWidget->TakeWidget();
+
+	VC->AddViewportWidgetContent(LoadingScreenSlate.ToSharedRef(), 1000 /*ZOrder*/);
+
+	// 숨김 상태로 부착
+	LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
 }
 
 void UNSUIManagerSubsystem::ShowLoadingScreen()
@@ -703,23 +970,38 @@ void UNSUIManagerSubsystem::ShowLoadingScreen()
 	}
 }
 
-void UNSUIManagerSubsystem::HideLoadingScreen()
+void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer, bool bIsInRunTravel)
 {
-	if (LoadingScreenWidget)
-	{
-		LoadingScreenWidget->SetVisibility(ESlateVisibility::Collapsed);
-	}
-}
-
-void UNSUIManagerSubsystem::ShowTravelLoadingScreen(APlayerController* OwningPlayer)
-{
+	const bool bWasActive = bTravelLoadingScreenActive;
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Show / World=%s / InRun=%d / WasActive=%d"),
+		*GetNameSafe(GetWorld()), bIsInRunTravel ? 1 : 0, bWasActive ? 1 : 0);
+	
 	bTravelLoadingScreenActive = true;
+	
+	if (!bWasActive)
+	{
+		// 이 트래블의 첫 Show → 게이트 초기화
+		bTravelPawnReady = false;
+		bTravelLevelReady = false;
+		bTravelViewReady = false;
+
+		bTravelPrewarmReady = !bIsInRunTravel;
+	}
+	else if (bIsInRunTravel)
+	{
+		bTravelPrewarmReady = false;
+	}
+	
 	CreateLoadingScreen(OwningPlayer);
 	ShowLoadingScreen();
 }
 
 void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* OwningPlayer)
 {
+	UE_LOG(LogTemp, Warning, TEXT("[TravelLoading] Restore / World=%s / Active=%d"),
+	*GetNameSafe(GetWorld()),
+	bTravelLoadingScreenActive ? 1 : 0);
+	
 	if (!bTravelLoadingScreenActive)
 	{
 		return;
@@ -731,8 +1013,29 @@ void UNSUIManagerSubsystem::RestoreTravelLoadingScreen(APlayerController* Owning
 
 void UNSUIManagerSubsystem::HideTravelLoadingScreen()
 {
+	UE_LOG(LogTemp, Warning,
+		TEXT("[TravelLoading] Hide / World=%s / PawnReady=%d / LevelReady=%d / ViewReady=%d"),
+		*GetNameSafe(GetWorld()),
+		bTravelPawnReady ? 1 : 0,
+		bTravelLevelReady ? 1 : 0,
+		bTravelViewReady ? 1 : 0);
+	
 	bTravelLoadingScreenActive = false;
-	HideLoadingScreen();
+	// 부착할 때 쓴 Slate 핸들로 제거
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UGameViewportClient* VC = GI->GetGameViewportClient())
+		{
+			if (LoadingScreenSlate.IsValid())
+			{
+				VC->RemoveViewportWidgetContent(LoadingScreenSlate.ToSharedRef());
+			}
+		}
+	}
+
+	LoadingScreenSlate.Reset();
+	// 다음 트래블에 새로 생성
+	LoadingScreenWidget = nullptr; 
 }
 
 void UNSUIManagerSubsystem::OpenPartPanel()
@@ -799,7 +1102,6 @@ void UNSUIManagerSubsystem::ResetRunResultStats()
 	RunResultKillCount = 0;
 	
 	RunResultCommonGoods = 0;
-	RunResultSkillGoods = 0;
 
 	CachedRunResultTimeSeconds = 0.0f;
 	bRunResultTimeCached = false;
@@ -826,7 +1128,6 @@ void UNSUIManagerSubsystem::UpdateRunEndResult(bool bCleared)
 		bCleared,
 		RunResultGoods,
 		RunResultCommonGoods,
-		RunResultSkillGoods,
 		GetRunResultTimeSeconds(),
 		RunResultKillCount);
 }
@@ -863,14 +1164,13 @@ void UNSUIManagerSubsystem::SetReloading(bool bReloading)
 	HUDWidget->SetReloading(bReloading);
 }
 
-void UNSUIManagerSubsystem::UpdateRunSkillGoods(int32 NewGoodsAmount)
+void UNSUIManagerSubsystem::UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount)
 {
-	if (!IsValid(HUDWidget))
+	if (!HUDWidget)
 	{
 		return;
 	}
-
-	HUDWidget->UpdateRunSkillGoods(NewGoodsAmount);
+	HUDWidget->UpdateDashStack(CurrentDashCount, MaxDashCount);
 }
 
 void UNSUIManagerSubsystem::ShowInRunGoods()

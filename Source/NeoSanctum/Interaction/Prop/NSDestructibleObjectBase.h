@@ -11,6 +11,8 @@
 class UAbilitySystemComponent;
 class UNSDestructibleAttributeSet;
 class UGeometryCollectionComponent;
+class UNSHitReactionComponent;
+class ARoomLevel;
 
 /*
  * 파괴가능 오브젝트 베이스 클래스
@@ -31,7 +33,8 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<USceneComponent> Root;
 	
@@ -43,6 +46,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<class UNSDamageFlashComponent> DamageFlashComponent;
+
+	// 실제 Health Damage를 받았을 때 월드 피격 리액션을 재생하는 컴포넌트
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<UNSHitReactionComponent> HitReactionComponent;
 
 	UPROPERTY(VisibleAnywhere, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystem;
@@ -91,6 +98,12 @@ protected:
 	
 	UFUNCTION()
 	void OnRep_Destroyed();
+
+	/** 룸 occlusion 연동 콜백. 복제 액터는 플러그인의 SetActorsVisible 에서 스킵되므로
+	 *  (ActorHiddenInGame 이 복제 프로퍼티라 클라 시야를 덮어씀)
+	 *  비복제 상태인 컴포넌트 visibility 를 직접 토글한다. 머신별(서버/각 클라) 독립 동작. */
+	UFUNCTION()
+	void HandleRoomVisibilityChanged(ARoomLevel* RoomLevel, bool bRoomVisible);
 	
 	/** Health 변화 콜백(서버에서만 바인딩). 0 이 되면 파괴를 개시. */
 	void HandleHealthChanged(const FOnAttributeChangeData& Data);
@@ -108,6 +121,9 @@ protected:
 private:
 	/** 중복 실행 가드(서버 직접 호출 + OnRep 이 겹치지 않도록). */
 	bool bDestructionStarted = false;
+
+	/** occlusion 이벤트를 구독한 룸 레벨(EndPlay 해제용). */
+	TWeakObjectPtr<ARoomLevel> CachedRoomLevel;
 	
 	UPROPERTY(EditAnywhere, Category = "Destruction|Debug")
 	bool bShowImpulseDebug =  false;

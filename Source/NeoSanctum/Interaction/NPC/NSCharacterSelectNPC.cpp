@@ -3,6 +3,7 @@
 
 #include "NSCharacterSelectNPC.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
 
 bool ANSCharacterSelectNPC::CanInteract_Implementation(APlayerController* Interactor) const
 {
@@ -19,5 +20,13 @@ bool ANSCharacterSelectNPC::OnInteract_Implementation(APlayerController* Interac
 	}
 
 	PC->ShowCharacterSelectWidget();
+
+	// 첫 상호작용 → 안내 완료 처리 (이 함수는 상호작용한 플레이어의 클라에서 실행됨)
+	if (UNSOutRunGuideSubsystem* GuideSubsystem =
+		GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+	{
+		GuideSubsystem->NotifyCharacterConsoleUsed();
+	}
+
 	return true;
 }

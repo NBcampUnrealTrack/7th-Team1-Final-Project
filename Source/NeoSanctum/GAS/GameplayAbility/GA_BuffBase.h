@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
 #include "NeoSanctum/Data/Combat/NSCombatStatTypes.h"
+#include "TimerManager.h"
 #include "GA_BuffBase.generated.h"
 
 class UGameplayEffect;
@@ -89,6 +90,12 @@ struct FNSBuffApplyEntry
 	TArray<FNSBuffCombatStatModifier> CombatStatModifiers;
 };
 
+struct FNSActiveBuffRuntime
+{
+	TArray<FGuid> CombatStatModifierHandles;
+	FTimerHandle PresentationTimerHandle;
+};
+
 /**
  * 버프를 줄 수 있는 Ability
  * 
@@ -138,10 +145,12 @@ protected:
 
 	// 버프 State 태그 관리
 	bool HasBuffStateTag(const AActor* TargetActor) const;
-	void AddTemporaryBuffPresentation(AActor* TargetActor, float Duration) const;
+	void AddTemporaryBuffPresentation(AActor* TargetActor, float Duration);
 
 	// 버프 지속시간 조회
 	bool TryGetBuffDuration(float& OutDuration) const;
+	// 버프 범위 시각화 Cue 실행
+	void ExecuteRangePulseGameplayCue(float Radius) const;
 
 protected:
 	// 버프 대상 수집
@@ -169,6 +178,11 @@ protected:
 	// 버프 유지 중 재생할 GameplayCue 태그
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cue")
 	FGameplayTag BuffGameplayCueTag;
+
+	// Radius 타입 버프 범위 시각화 Cue 태그
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Cue",
+		meta = (EditCondition = "TargetType == ENSBuffTargetType::Radius", EditConditionHides))
+	FGameplayTag RangePulseGameplayCueTag;
 	
 	// 버프 대상 수집 방식
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target")
@@ -194,4 +208,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Target",
 		meta = (EditCondition = "TargetType == ENSBuffTargetType::Radius", EditConditionHides))
 	FGameplayTag RadiusStatTag;
+
+	// 활성화된 CombatStat 버프를 중첩하지 않고 새 지속시간으로 갱신.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Buff|Reapply")
+	bool bRefreshDurationOnReapply = false;
+
+	// 대상별 Modifier 핸들과 연출 타이머를 보관.
+	TMap<TWeakObjectPtr<UAbilitySystemComponent>, FNSActiveBuffRuntime> ActiveBuffRuntimeByTarget;
 };

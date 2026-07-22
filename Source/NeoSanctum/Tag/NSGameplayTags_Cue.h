@@ -12,6 +12,17 @@ namespace NSGameplayTags
 	// Damage
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Damage_Flash);
 	
+	// Hit Reaction
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Basic_Ranged);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Basic_Melee);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Barrier_Ranged);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_NormalHit_Barrier_Melee);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_CriticalHit_Basic_Ranged)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_CriticalHit_Basic_Melee)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_CriticalHit_Barrier_Ranged)
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_HitReaction_CriticalHit_Barrier_Melee)	
+	
 	// Ranger
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_AutoFire_MuzzleFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_AutoFire_Impact);
@@ -22,17 +33,55 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_Grenade_Explosion);
 
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Ranger_SpeedBuff);
+
+	// Vanguard
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BaseAttack_Flash);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_VanguardBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BuffRangePulse);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Vanguard_BarrierField_Deploy);
 	
 	// Engineer
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_MuzzleFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_Impact);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_ShotgunFire_BulletTrail);
 	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_Deploy);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_Deactivate)
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_MuzzleFire);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_Impact);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpawnTurret_BulletTrail);
 	
-	
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_SpeedBuff);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_BuffRangePulse);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Engineer_Barrier_Deploy);
+	
+	//Enemy MotherShip
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning01);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning02);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning03);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Warning04);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Missile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Explosion_Sound);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Explosion_Effect);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_BombingRun_Decal);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Cloaking);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Fire);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Explosion);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_HomingMissile_Thrust);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase1Barrier);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Phase2Shield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_Tesla);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_TeslaCoil);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_MotherShip_ControlDevice_PowerOff);
+	
+	// EnemyDrone
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_EnemyDrone_Fire);
+	
+	// CompanionDrone
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(GameplayCue_Companion_BasicFire);
+	
 }

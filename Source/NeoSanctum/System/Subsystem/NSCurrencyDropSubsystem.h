@@ -8,6 +8,7 @@
 #include "NeoSanctum/Data/Progression/Drop/NSDropLaunchData.h"
 #include "NSCurrencyDropSubsystem.generated.h"
 
+class APlayerController;
 class ANSCurrencyReplicationProxy;
 class ANSPlayerState;
 
@@ -23,6 +24,9 @@ class NEOSANCTUM_API UNSCurrencyDropSubsystem : public UWorldSubsystem
 public:
 	void RegisterProxy(ANSCurrencyReplicationProxy* Proxy);
 	void UnregisterProxy(ANSCurrencyReplicationProxy* Proxy);
+
+	// 관전자가 보고 있는 플레이어의 재화 표시 상태로 관전자의 화면을 동기화.
+	void SetProxyViewPlayerState(APlayerController* ViewerController, ANSPlayerState* ViewPlayerState);
 	
 	// 드랍 등록 -> DropId 발급 후 전 플레이어에 스폰 이벤트 전송
 	int32 RegisterDrop(
@@ -43,6 +47,10 @@ private:
 	ANSCurrencyReplicationProxy* FindProxy(const ANSPlayerState* PlayerState) const;
 	FNSCurrencySpawnEvent MakeSpawnEvent(int32 DropId, const FNSCurrencyDropEntry& Entry,
 		float NowSeconds) const;
+
+	ANSPlayerState* ResolveProxyViewPlayerState(ANSCurrencyReplicationProxy* Proxy) const;
+	void SyncProxyCurrencyVisuals(ANSCurrencyReplicationProxy* Proxy);
+	void NotifyCurrencyCollected(int32 DropId, ANSPlayerState* Collector);
 	
 	bool HasServerAuthority() const;
 	float GetWorldSeconds() const;
@@ -54,6 +62,9 @@ private:
 	
 	// 플레이어별 owner_only 프록시
 	TArray<TWeakObjectPtr<ANSCurrencyReplicationProxy>> Proxies;
+
+	// 관전 중인 프록시가 누구의 재화 상태를 보여주는지 기억.
+	TMap<TWeakObjectPtr<ANSCurrencyReplicationProxy>, TWeakObjectPtr<ANSPlayerState>> ProxyViewPlayerState;
 	
 	// 임시 오버랩 위치 검증용
 	static constexpr float CollectDistanceSq = 300.f * 300.f;

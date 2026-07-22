@@ -9,6 +9,8 @@
 
 class UNSSoundData;
 class UNSLevelCatalog;
+class UNSDifficultyConfig;
+class UDataTable;
 
 UCLASS()
 class NEOSANCTUM_API UNSGameInstance :
@@ -25,18 +27,20 @@ public:
 	
 	virtual void HideLoadingScreen_Implementation() override;
 	
-	// SoundData 캐싱
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "DataSet")
-	TObjectPtr<UNSSoundData> SoundData;
-	
 	virtual UNSLevelCatalog* GetLevelCatalog() const override { return LevelCatalog; }
+	virtual UNSDifficultyConfig* GetDifficultyConfig() const override { return DifficultyConfig; }
 
 private:
 	UPROPERTY()
 	TObjectPtr<UUserWidget> LoadingWidget;
 	
+	// 트래블할 레벨 저장용
 	UPROPERTY(EditDefaultsOnly, Category="GameFlow")
 	TObjectPtr<UNSLevelCatalog> LevelCatalog;
+	
+	// 레벨 스케일링용
+	UPROPERTY(EditDefaultsOnly, Category="GameFlow") 
+	TObjectPtr<UNSDifficultyConfig> DifficultyConfig; 
 
 	// 로딩 위젯 클래스
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
@@ -54,7 +58,7 @@ private:
 
 	// 심리스 트래블 전용
 	void OnSeamlessTravelStart(UWorld* CurrentWorld, const FString& LevelName);
-	
+
 	FDelegateHandle PreLoadMapHandle;
 	FDelegateHandle PostLoadMapHandle;
 	FDelegateHandle SeamlessTravelStartHandle;

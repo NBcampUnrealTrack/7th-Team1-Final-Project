@@ -128,7 +128,7 @@ void UNSSkillSlotWidget::SetInputDisplayData(const FNSInputDisplayData& NewInput
 		}
 
 		UTexture2D* LoadedIcon =
-			NewInputDisplayData.InputIcon.LoadSynchronous();
+			NewInputDisplayData.InputIcon.Get();
 
 		if (!LoadedIcon)
 		{
@@ -164,12 +164,8 @@ void UNSSkillSlotWidget::SetSkillUIData(
 	SetInputDisplayData(NewInputDisplayData);
 
 	//캐릭터 변경 직후 이전 스킬의 쿨타임 표시가 남지 않도록 초기화한다.
-	CooldownDuration = 0.0f;
-	RemainingCooldown = 0.0f;
-	bCooldownTickActive = false;
-	
 	ResetCooldown();
-	UpdateChargeDisplay(0, 0);
+	bCooldownTickActive = false;
 }
 
 void UNSSkillSlotWidget::HandleCooldownMessage(
@@ -208,7 +204,7 @@ void UNSSkillSlotWidget::ApplySkillUIData()
 		return;
 	}
 
-	UTexture2D* LoadedSkillIcon = SkillUIData->SkillIcon.LoadSynchronous();
+	UTexture2D* LoadedSkillIcon = SkillUIData->SkillIcon.Get();
 	if (!LoadedSkillIcon)
 	{
 		return;
@@ -385,6 +381,8 @@ void UNSSkillSlotWidget::NativeConstruct()
 			NSGameplayTags::Message_UI_SkillCooldown_Changed,
 			this,
 			&ThisClass::HandleCooldownMessage);
+	
+	UpdateSkillCooldownFromASC();
 }
 
 void UNSSkillSlotWidget::NativeDestruct()

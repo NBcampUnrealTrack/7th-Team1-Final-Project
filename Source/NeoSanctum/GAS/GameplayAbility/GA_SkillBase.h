@@ -50,6 +50,10 @@ protected:
 	
 	ANSPlayerState* GetNSPlayerState() const;
 	
+	// 발사/명중을 소유 PlayerState에 기록
+	void ReportShotsFired(int32 Count = 1);
+	void ReportShotsHit(int32 Count = 1);
+	
 protected:
 	bool TryGetBaseAbilityStat(
 		const FGameplayTag& AbilityTag,
@@ -62,7 +66,7 @@ protected:
 		const FGameplayTag& StatTag,
 		float& OutValue
 	) const;
-	
+
 	float GetFinalAbilityStatOrDefault(
 		const FGameplayTag& AbilityTag,
 		const FGameplayTag& StatTag,
@@ -74,7 +78,18 @@ protected:
 		const FGameplayTag& StatTag,
 		float DefaultValue
 	) const;
-	
+
+	// SkillAbilityTag의 DamageCoefficient(%)와 플레이어 BaseDamage Attribute를 곱해 스킬 기본 데미지를 계산
+	bool TryGetFinalSkillDamage(const FGameplayTag& AbilityTag,	float& OutDamage) const;
+
+	// 서버 HitResult에서 구한 실제 거리를 받아 거리별 데미지 배율을 계산.
+	// 총구 BackTrace 거리 보정은 호출하는 Ability에서 먼저 처리.
+	bool TryCalculateDamageFalloffMultiplier(
+		const FGameplayTag& AbilityTag,
+		float HitDistance,
+		float& OutDamageMultiplier
+	) const;
+
 	// AbilityTag에 연결된 소음 CombatStat을 조회해 서버에서 Avatar Pawn 기준 AI 청각 이벤트를 발생시킴.
 	bool TryReportAbilityNoise(
 		const FGameplayTag& AbilityTag,

@@ -10,7 +10,7 @@
 
 
 DECLARE_MULTICAST_DELEGATE(FNSOnProgressChanged);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FNSOnProgressCurrencyChanged, int64, int64);
+DECLARE_MULTICAST_DELEGATE_OneParam(FNSOnProgressCurrencyChanged, int64);
 
 UCLASS(ClassGroup=(NeoSanctum), meta=(BlueprintSpawnableComponent))
 class NEOSANCTUM_API UNSPlayerProgressComponent : public UActorComponent
@@ -35,6 +35,7 @@ public:
 	int64 GetJobCurrency() const { return JobCurrency; }
 	const FNSPartSaveData& GetEquippedPart() const { return EquippedPart; }
 	const TMap<FName,int32>& GetCommonSkillLevels() const { return CommonSkillLevels; }
+	int32 GetCommonSkillLevel(FName NodeId) const;
 	const TMap<FName,int32>& GetCharacterSkillLevels() const { return CharacterSkillLevels; }
 	const TMap<FName,int32>& GetPetUpgradeLevels() const { return PetUpgradeLevels; }
 	FGameplayTag GetSelectedCompanion() const { return SelectedCompanionTag; }

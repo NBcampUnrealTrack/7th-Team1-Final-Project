@@ -9,13 +9,39 @@ namespace NSGameplayTags
 	// Enemy State
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_Combat);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_HitReacting);
+	
+	// Enemy TitanWalker State
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_Mobile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_Siege);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_ExposedCore);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_TitanWalker_DestroyedLeg);
 
+	// Enemy MotherShip State
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Phase1);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Phase2);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Charge);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Enemy_MotherShip_Stealth);
+	
+	// Enemy MotherShip Action
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_SpawnDrone);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_BombingRun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_HomingMissile);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_CloakDeployRun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_MachineGun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_MotherShip_ChargeShield);
+	
 	// Enemy Action
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_BasicMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_DoubleMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TripleMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_StrongMelee);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_RangerAttack);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_FlyingBurstAttack);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_MachineGun);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Flame);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Bombard);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_TitanWalker_Laser);
 	
 	// Enemy Action - Common
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Enemy_Attack);
@@ -23,4 +49,25 @@ namespace NSGameplayTags
 
 	// Enemy Event
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Enemy_Hit);
+	
+	
+	// Enemy Cosmetic
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_MachineGun_Fire);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Start);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Update);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Flame_Stop);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Prepare);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Launch);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Warning);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Bombard_Impact);
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_ChargeStart);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_ChargeUpdate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamStart);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_BeamUpdate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Laser_Stop);
+	
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Cosmetic_Enemy_TitanWalker_Death_Explosion);
 }

@@ -12,7 +12,13 @@ public class NeoSanctum : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			// Core
-			"Core", "CoreUObject", "Engine", "OnlineSubsystem", "OnlineSubsystemUtils", "NetCore",
+			"Core", "CoreUObject", "Engine", "NetCore",
+
+			// Settings
+			"DeveloperSettings",
+			
+			// 클립보드 복사용
+			"ApplicationCore",
 			
 			// Input
 			"InputCore", "EnhancedInput",
@@ -55,6 +61,16 @@ public class NeoSanctum : ModuleRules
 			// Chaos Destruction
 			"GeometryCollectionEngine",
 			"Chaos",
+			
+			// 인트로 관련 설정
+			"MediaAssets",
+			"MoviePlayer",
+			"AudioMixer",
+			
+			// 세션 관련 설정
+			"OnlineSubsystem",
+			"OnlineSubsystemUtils",
+			"Steamworks",
 		});
 
 		// Uncomment if you are using Slate UI

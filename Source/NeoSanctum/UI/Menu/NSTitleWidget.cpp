@@ -2,7 +2,7 @@
 
 
 #include "NSTitleWidget.h"
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "Components/EditableTextBox.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -21,14 +21,22 @@ void UNSTitleWidget::OnClickedHostButton()
 		return;
 	}
 	//호스트 세션 생성 요청
-	SessionSubsystem->CreateSession();
+	SessionSubsystem->StartGameToHub();
 	UE_LOG(LogTemp, Warning, TEXT("호스트 방 생성 버튼 클릭"));
 }
 
 void UNSTitleWidget::OnClickedJoinButton()
 {
+	// 스팀 세션연동되었는지 확인용 (테스트 후에 지우고 밑의 주석 제거해야함)
+	UNSSessionSubsystem* SessionSubsystem =
+	   GetGameInstance() ? GetGameInstance()->GetSubsystem<UNSSessionSubsystem>() : nullptr;
+	if (!SessionSubsystem) return;
+	
+	UE_LOG(LogTemp, Warning, TEXT("검색 기반 조인 시도"));
+	
 	//TODO(영웅): 호스트가 생성한 방에 들어가는 로직
 	//참가할 IP를 입력할수 있게 패널 표시
+	/*
 	if (JoinPanel)
 	{
 		JoinPanel->SetVisibility(ESlateVisibility::Visible);
@@ -38,6 +46,7 @@ void UNSTitleWidget::OnClickedJoinButton()
 		IPTextBox->SetFocus();
 	}
 	UE_LOG(LogTemp, Warning, TEXT("참가 버튼 클릭"));
+	*/
 }
 
 void UNSTitleWidget::OnClickedOptionButton()
@@ -86,7 +95,7 @@ void UNSTitleWidget::OnClickedConfirmJoinButton()
 		return;
 	}
 	//입력한 IP 주소로 참가 요청
-	SessionSubsystem->JoinSessionByAddress(InputAddress);
+	// SessionSubsystem->JoinSessionByAddress(InputAddress);
 	UE_LOG(LogTemp,Warning,TEXT("참가 : %s"), *InputAddress);
 }
 

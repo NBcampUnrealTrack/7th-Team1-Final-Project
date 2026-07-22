@@ -29,6 +29,7 @@ private:
 private:
 	bool IsSpawnableSurface(const FHitResult& ImpactResult) const;
 	void SpawnTurret(const FHitResult& ImpactResult);
+	void ExecuteDeployCue(const ANSTurret* Turret, const FVector& SurfaceNormal) const;
 	
 private:
 	UPROPERTY(VisibleAnywhere, Category = "TurretSpawner")

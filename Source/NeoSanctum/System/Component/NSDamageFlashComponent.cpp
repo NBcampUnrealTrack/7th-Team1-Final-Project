@@ -4,6 +4,7 @@
 #include "NSDamageFlashComponent.h"
 #include "AbilitySystemInterface.h"
 #include "NeoSanctum/GAS/AttributeSet/NSBaseAttributeSet.h"
+#include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 
 UNSDamageFlashComponent::UNSDamageFlashComponent()
 {
@@ -21,7 +22,7 @@ void UNSDamageFlashComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UNSDamageFlashComponent::PlayFlash()
 {
 	UWorld* World = GetWorld();
-	if (!World || !FlashMaterial || FlashDuration <= 0.0f)
+	if (!World || !FlashMaterial || FlashDuration <= 0.0f || !ShouldPlayFlash())
 	{
 		return;
 	}
@@ -71,6 +72,11 @@ void UNSDamageFlashComponent::CancelFlash()
 		World->GetTimerManager().ClearTimer(FlashTimerHandle);
 	}
 	StopFlash();
+}
+
+void UNSDamageFlashComponent::SetTriggerPolicy(const ENSDamageFlashTriggerPolicy NewTriggerPolicy)
+{
+	TriggerPolicy = NewTriggerPolicy;
 }
 
 void UNSDamageFlashComponent::EnsureDynamicMaterials()
@@ -151,8 +157,64 @@ void UNSDamageFlashComponent::StopFlash()
 	}
 }
 
+bool UNSDamageFlashComponent::ShouldPlayFlash() const
+{
+	switch (TriggerPolicy)
+	{
+	case ENSDamageFlashTriggerPolicy::Shield:
+		return HasActiveShield();
+	case ENSDamageFlashTriggerPolicy::Both:
+	case ENSDamageFlashTriggerPolicy::Health:
+	default:
+		return true;
+	}
+}
+
+bool UNSDamageFlashComponent::HasActiveShield() const
+{
+	float ShieldRatio = 0.0f;
+	return TryGetShieldRatio(ShieldRatio) && ShieldRatio > KINDA_SMALL_NUMBER;
+}
+
+bool UNSDamageFlashComponent::TryGetShieldRatio(float& OutShieldRatio) const
+{
+	OutShieldRatio = 0.0f;
+
+	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetOwner());
+	if (!ASI)
+	{
+		return false;
+	}
+
+	const UAbilitySystemComponent* ASC = ASI->GetAbilitySystemComponent();
+	if (!ASC)
+	{
+		return false;
+	}
+
+	const float MaxShield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetMaxShieldAttribute());
+	if (MaxShield <= 0.0f)
+	{
+		return false;
+	}
+
+	const float Shield = ASC->GetNumericAttribute(UNSPlayerAttributeSet::GetShieldAttribute());
+	OutShieldRatio = FMath::Clamp(Shield / MaxShield, 0.0f, 1.0f);
+	return true;
+}
+
 FLinearColor UNSDamageFlashComponent::ResolveFlashColor() const
 {
+	if (TriggerPolicy == ENSDamageFlashTriggerPolicy::Shield)
+	{
+		return ShieldFlashColor;
+	}
+
+	if (TriggerPolicy == ENSDamageFlashTriggerPolicy::Both && HasActiveShield())
+	{
+		return ShieldFlashColor;
+	}
+
 	const IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetOwner());
 	if (!ASI)
 	{
@@ -207,7 +269,7 @@ void UNSDamageFlashComponent::ClearMaterialFlashTargets()
 bool UNSDamageFlashComponent::TryPlayMaterialFlash(float Strength)
 {
 	UWorld* World = GetWorld();
-	if (!World || MaterialFlashDuration <= 0.0f)
+	if (!World || MaterialFlashDuration <= 0.0f || !ShouldPlayFlash())
 	{
 		return false;
 	}

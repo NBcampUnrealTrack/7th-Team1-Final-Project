@@ -16,12 +16,14 @@ class UStaticMesh;
 class UStaticMeshComponent;
 class ANSThrowProjectileBase;
 class ANSTurret;
+class ANSVanguardBarrierField;
 
 UENUM(BlueprintType)
 enum class EProjectileType : uint8
 {
 	Explosive,
-	TurretSpawner
+	TurretSpawner,
+	BarrierField
 };
 
 USTRUCT(BlueprintType)
@@ -79,6 +81,10 @@ struct FNSTurretConfig
 	// Attribute 초기화 GE
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
 	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
+
+	// 발사 시점마다 CombatStat을 라이브로 조회할 때 사용할 Ability 태그.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Turret|Attribute")
+	FGameplayTag SourceAbilityTag;
 };
 
 USTRUCT(BlueprintType)
@@ -92,6 +98,21 @@ struct FNSTurretSpawnerTypeConfig
 	// 터렛 설정 구조체
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	FNSTurretConfig TurretConfig;
+};
+
+USTRUCT(BlueprintType)
+struct FNSShieldFieldTypeConfig
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField")
+	TSubclassOf<ANSVanguardBarrierField> FieldClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField|Damage")
+	TSubclassOf<UGameplayEffect> DamageEffectClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ShieldField|Attribute")
+	TSubclassOf<UGameplayEffect> InitialAttributeEffectClass;
 };
 
 USTRUCT(BlueprintType)
@@ -116,6 +137,10 @@ struct FNSProjectileAbilityConfig
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|TurretSpawner",
 		meta = (EditCondition = "ProjectileType == EProjectileType::TurretSpawner", EditConditionHides))
 	FNSTurretSpawnerTypeConfig TurretSpawnerTypeConfig;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|ShieldField",
+		meta = (EditCondition = "ProjectileType == EProjectileType::BarrierField", EditConditionHides))
+	FNSShieldFieldTypeConfig ShieldFieldTypeConfig;
 
 	// CombatStat 값을 GameplayEffect SetByCaller 값으로 넘기기 위한 매핑
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "ProjectileAbilityConfig|SetByCaller")
@@ -177,6 +202,10 @@ protected:
 
 protected:
 	void StartGameplayEventTasks();
+	bool TryBeginReleasePhase();
+	bool CanJumpToReleaseSection() const;
+	bool TryJumpToReleaseSection() const;
+	void FinishThrowProjectileAbility(bool bWasCancelled);
 	void AttachHeldMesh();
 	void DestroyHeldMesh();
 	
@@ -207,6 +236,8 @@ protected:
 	
 	void AddDeactivateHandIKTag();
 	void RemoveDeactivateHandIKTag();
+	void AddThrowReleaseLockTag();
+	void RemoveThrowReleaseLockTag();
 	
 protected:
 	// Ability 설정모음
@@ -276,6 +307,7 @@ private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;
 
 	bool bDeactivateHandIKTagAdded = false;
+	bool bThrowReleaseLockTagAdded = false;
 
 	// Release 섹션으로 한 번 진입한 뒤 반복된 입력을 통해 동일한 몽타주 섹션을 재실행하지 않기 위한 플래그
 	bool bReleaseRequested = false;

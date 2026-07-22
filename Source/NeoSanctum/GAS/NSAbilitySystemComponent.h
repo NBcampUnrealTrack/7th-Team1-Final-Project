@@ -29,6 +29,12 @@ public:
 	
 	// 입력 상태를 강제로 비울 때 사용
 	void ClearAbilityInput();
+
+	// Avatar 교체 시 이전 캐릭터의 임시 GAS 상태를 제거
+	void ResetTransientAvatarState();
+
+	// 클라이언트에 남은 로컬 Buff State 태그만 제거
+	void ClearLocalBuffStateTags();
 	
 	// 스킬 슬롯별 재충전 진입점
 	void StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown);
@@ -36,6 +42,9 @@ public:
 	// 슬롯 쿨다운 UI 데이터 조회
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Skill|Cooldown")
 	bool GetSkillCooldownUIData(const FGameplayTag& SkillSlotTag, FSkillCooldownUIData& OutData) const;
+
+	// 최대 충전 수가 바뀐 슬롯의 UI를 바로 갱신.
+	void NotifySkillCountChangedForMaxStat(const FGameplayTag& MaxSkillCountStatTag) const;
 
 public:
 	bool TryGetBaseAbilityStat(

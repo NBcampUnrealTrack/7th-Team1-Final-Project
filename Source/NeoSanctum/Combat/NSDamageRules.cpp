@@ -7,6 +7,7 @@
 #include "AttributeSet.h"
 #include "GenericTeamAgentInterface.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
+#include "NeoSanctum/Character/Enemy/NSEnemyPawnBase.h"
 
 namespace
 {
@@ -80,12 +81,37 @@ bool NSDamageRules::CanApplyDamage(const AActor* SourceActor, const AActor* Targ
 bool NSDamageRules::IsAliveDamageableTarget(const UAbilitySystemComponent* TargetASC)
 {
 	// Dead 태그가 이미 있으면 Health 값과 무관하게 추가적인 데미지를 입힐 수 없도록 false
+	// @민재 : 무적 태그 있는 몬스터 데미지 입힐 수 없도록 추가 State_Invincible
 	if (!IsValid(TargetASC) ||
-		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead))
+		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Dead) ||
+		TargetASC->HasMatchingGameplayTag(NSGameplayTags::State_Invincible))
 	{
 		return false;
 	}
 	
 	// Health Attribute가 있는지 판단
 	return HasHealth(TargetASC);
+}
+
+bool NSDamageRules::IsValidDirectDamageHit(const FHitResult& HitResult)
+{
+	AActor* TargetActor = HitResult.GetActor();
+	if (!IsValid(TargetActor) || !HitResult.bBlockingHit)
+	{
+		return false;
+	}
+
+	const ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(TargetActor);
+	if (!EnemyPawn || !EnemyPawn->UsesPhysicsAssetHurtCollision())
+	{
+		return true;
+	}
+
+	return HitResult.GetComponent() == EnemyPawn->GetEnemyMesh();
+}
+
+float NSDamageRules::ResolveDirectHitDamageMultiplier(const FHitResult& HitResult)
+{
+	const ANSEnemyPawnBase* EnemyPawn = Cast<ANSEnemyPawnBase>(HitResult.GetActor());
+	return EnemyPawn ? EnemyPawn->ResolvePhysicsAssetDamageMultiplier(HitResult) : 1.0f;
 }

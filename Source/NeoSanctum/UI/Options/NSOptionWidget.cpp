@@ -3,10 +3,11 @@
 
 #include "NSOptionWidget.h"
 
-#include "CommonButtonBase.h"
+#include "NeoSanctum/UI/Common/NSButtonBase.h"
 #include "Components/WidgetSwitcher.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
 #include "SoundSetting/SoundSettingWidget.h"
+#include "GameplaySetting/NSGameplaySettingWidget.h"
 
 void UNSOptionWidget::NativeConstruct()
 {
@@ -25,16 +26,56 @@ void UNSOptionWidget::NativeConstruct()
 		CloseButton->OnClicked().AddUObject(this, &UNSOptionWidget::OnClickedCloseButton);
 	}
 	
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->OnClicked().AddUObject(
+			this,
+			&ThisClass::OnClickedGameplayCategoryButton);
+	}
+	ShowOptionCategoryWidget(SoundSettingWidget);
+	UpdateCategorySelection(SoundCategoryButton);
 }
 
+void UNSOptionWidget::NativeDestruct()
+{
+	if (SoundCategoryButton)
+	{
+		SoundCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (GraphicCategoryButton)
+	{
+		GraphicCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->OnClicked().RemoveAll(this);
+	}
+
+	if (CloseButton)
+	{
+		CloseButton->OnClicked().RemoveAll(this);
+	}
+
+	Super::NativeDestruct();
+}
 void UNSOptionWidget::OnClickedSoundCategoryButton()
 {
 	ShowOptionCategoryWidget(SoundSettingWidget);
+	UpdateCategorySelection(SoundCategoryButton);
 }
 
 void UNSOptionWidget::OnClickedGraphicCategoryButton()
 {
 	ShowOptionCategoryWidget(GraphicSettingWidget);
+	UpdateCategorySelection(GraphicCategoryButton);
+}
+
+void UNSOptionWidget::OnClickedGameplayCategoryButton()
+{
+		ShowOptionCategoryWidget(GameplaySettingWidget);
+		UpdateCategorySelection(GameplayCategoryButton);
 }
 
 void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
@@ -45,6 +86,30 @@ void UNSOptionWidget::ShowOptionCategoryWidget(UWidget* OptionWidget)
 	}
 
 	OptionSwitcher->SetActiveWidget(OptionWidget);
+}
+
+void UNSOptionWidget::UpdateCategorySelection(UNSButtonBase* SelectedButton)
+{
+	if (SoundCategoryButton)
+	{
+		SoundCategoryButton->SetIsSelected(
+			SoundCategoryButton == SelectedButton,
+			false);
+	}
+
+	if (GraphicCategoryButton)
+	{
+		GraphicCategoryButton->SetIsSelected(
+			GraphicCategoryButton == SelectedButton,
+			false);
+	}
+
+	if (GameplayCategoryButton)
+	{
+		GameplayCategoryButton->SetIsSelected(
+			GameplayCategoryButton == SelectedButton,
+			false);
+	}
 }
 
 void UNSOptionWidget::OnClickedCloseButton()

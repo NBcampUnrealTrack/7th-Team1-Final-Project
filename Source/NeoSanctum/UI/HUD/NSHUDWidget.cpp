@@ -6,11 +6,17 @@
 #include "NSGoodsWidget.h"
 #include "NSCrosshairWidget.h"
 #include "NSAugmentationWidget.h"
+#include "Components/HorizontalBox.h"
+#include "Components/PanelWidget.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/UI/Part/NSPartPanelWidget.h"
-#include "NeoSanctum/UI/HUD/NSAmmoWidget.h"
 #include "NeoSanctum/UI/HUD/NSOutRunGoodsWidget.h"
 #include "NeoSanctum/UI/HUD/NSSkillSlotWidget.h"
 #include "NeoSanctum/Data/UI/NSCharacterSkillUISet.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsWidget.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
+#include "NeoSanctum/UI/HUD/NSDashStackWidget.h"
+#include "NeoSanctum/UI/HUD/NSGuideChecklistWidget.h"
 
 
 void UNSHUDWidget::UpdateHealthAndShield(
@@ -98,13 +104,26 @@ void UNSHUDWidget::SetCrosshairColor(FLinearColor NewColor)
 	CrosshairWidget->SetCrosshairColor(NewColor);
 }
 
+void UNSHUDWidget::OpenAugmentSelectionPanel()
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+	
+	AugmentationWidget->OpenSelectionPanel();
+	RefreshHudDimBackground();
+}
+
 void UNSHUDWidget::OpenAugmentationPanel()
 {
 	if (!AugmentationWidget)
 	{
 		return;
 	}
+
 	AugmentationWidget->OpenPanel();
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::CloseAugmentationPanel()
@@ -113,7 +132,9 @@ void UNSHUDWidget::CloseAugmentationPanel()
 	{
 		return;
 	}
+
 	AugmentationWidget->ClosePanel();
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::OpenPartPanel()
@@ -125,6 +146,30 @@ void UNSHUDWidget::OpenPartPanel()
 	//패널을 열때 장착상태를 최신상태로 표시
 	PartPanelWidget->RefreshEquippedParts();
 	PartPanelWidget->SetVisibility(ESlateVisibility::Visible);
+	
+	if (CharacterStatsWidget)
+	{
+		CharacterStatsWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+		GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
+	}
+
+	if (AugmentationWidget)
+	{
+		AugmentationWidget->SetOwnedAugmentListVisible(true);
+		AugmentationWidget->RefreshOwnedAugmentList();
+	}
+	
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::ClosePartPanel()
@@ -133,7 +178,31 @@ void UNSHUDWidget::ClosePartPanel()
 	{
 		return;
 	}
+
 	PartPanelWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+	if (AugmentationWidget && !AugmentationWidget->IsPanelOpen())
+	{
+		AugmentationWidget->SetOwnedAugmentListVisible(false);
+	}
+	
+	if (CharacterStatsWidget)
+	{
+		CharacterStatsWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->StopBroadcastCharacterStats();
+	}
+	
+	if (MinimapWidget)
+	{
+		MinimapWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+
+	RefreshHudDimBackground();
 }
 
 void UNSHUDWidget::OpenRunBuildPanel()
@@ -145,6 +214,17 @@ void UNSHUDWidget::CloseRunBuildPanel()
 {
 	CloseAugmentationPanel();
 	ClosePartPanel();
+}
+
+void UNSHUDWidget::UpdateExperience(float CurrentExperience, float RequiredExperience)
+{
+	if (!HPShieldWidget)
+	{
+		return;
+	}
+	HPShieldWidget->SetExperience(
+		CurrentExperience,
+		RequiredExperience);
 }
 
 void UNSHUDWidget::SelectAugmentCardByIndex(int32 CardIndex)
@@ -168,6 +248,49 @@ void UNSHUDWidget::RequestRerollAugment()
 	AugmentationWidget->RequestRerollAugment();
 }
 
+void UNSHUDWidget::UpdateDashStack(int32 CurrentDashCount, int32 MaxDashCount)
+{
+	if (!DashStackWidget)
+	{
+		return;
+	}
+	
+	DashStackWidget->SetDashCount(
+	CurrentDashCount,
+	MaxDashCount);
+}
+
+UPanelWidget* UNSHUDWidget::GetNormalMonsterLayer() const
+{
+	return NormalMonsterLayer;
+}
+
+UHorizontalBox* UNSHUDWidget::GetBossMonsterLayer() const
+{
+	return BossMonsterLayer;
+}
+
+UPanelWidget* UNSHUDWidget::GetPlayerWorldStatusLayer() const
+{
+	return PlayerWorldStatusLayer;
+}
+
+void UNSHUDWidget::RefreshHudDimBackground()
+{
+	if (!HudDimBackground)
+	{
+		return;
+	}
+	const bool bIsPartPanelOpen =
+		IsValid(PartPanelWidget) &&
+		PartPanelWidget->GetVisibility() != ESlateVisibility::Collapsed &&
+		PartPanelWidget->GetVisibility() != ESlateVisibility::Hidden;
+	
+	HudDimBackground->SetVisibility(
+		bIsPartPanelOpen
+		? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+}
+
 void UNSHUDWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -184,34 +307,75 @@ void UNSHUDWidget::NativeConstruct()
 	}
 }
 
-void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+void UNSHUDWidget::ShowGuideChecklist(const TArray<FNSGuideChecklistEntry>& Entries)
 {
-	if (!AmmoWidget)
+	// WBP에 체크리스트 위젯이 배치되지 않았으면 안내 기능 없이 동작
+	if (!GuideChecklistWidget)
 	{
 		return;
 	}
 
-	AmmoWidget->SetAmmo(CurrentAmmo, MaxAmmo);
+	GuideChecklistWidget->ShowChecklist(Entries);
+}
+
+void UNSHUDWidget::CompleteGuideChecklistItem(FName ItemId)
+{
+	if (!GuideChecklistWidget)
+	{
+		return;
+	}
+
+	GuideChecklistWidget->CompleteChecklistItem(ItemId);
+}
+
+void UNSHUDWidget::CompleteGuideChecklistItemAndHide(FName ItemId)
+{
+	if (!GuideChecklistWidget)
+	{
+		return;
+	}
+
+	GuideChecklistWidget->CompleteChecklistItemAndHide(ItemId);
+}
+
+void UNSHUDWidget::HideGuideChecklist()
+{
+	if (!GuideChecklistWidget)
+	{
+		return;
+	}
+
+	GuideChecklistWidget->HideChecklist();
+}
+
+void UNSHUDWidget::PlayAugmentationTabSound() const
+{
+	if (!AugmentationWidget)
+	{
+		return;
+	}
+
+	AugmentationWidget->PlayAugmentTabSound();
+}
+
+void UNSHUDWidget::UpdateAmmo(int32 CurrentAmmo, int32 MaxAmmo)
+{
+	if (!HPShieldWidget)
+	{
+		return;
+	}
+
+	HPShieldWidget->SetAmmo(CurrentAmmo, MaxAmmo);
 }
 
 void UNSHUDWidget::SetReloading(bool bReloading)
 {
-	if (!AmmoWidget)
+	if (!HPShieldWidget)
 	{
 		return;
 	}
 
-	AmmoWidget->SetReloading(bReloading);
-}
-
-void UNSHUDWidget::UpdateRunSkillGoods(int32 NewGoodsAmount)
-{
-	if (!GoodsWidget)
-	{
-		return;
-	}
-
-	GoodsWidget->SetRunSkillGoodsAmount(NewGoodsAmount);
+	HPShieldWidget->SetReloading(bReloading);
 }
 
 void UNSHUDWidget::ShowInRunGoods()
@@ -219,12 +383,19 @@ void UNSHUDWidget::ShowInRunGoods()
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowInRunGoods"));
 	if (GoodsWidget)
 	{
-		GoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		GoodsWidget->SetVisibility(
+			ESlateVisibility::HitTestInvisible);
 	}
 
 	if (OutRunGoodsWidget)
 	{
-		OutRunGoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+		OutRunGoodsWidget->SetVisibility(
+			ESlateVisibility::Collapsed);
+	}
+
+	if (HPShieldWidget)
+	{
+		HPShieldWidget->SetCharacterInputIconVisible(true);
 	}
 }
 
@@ -233,18 +404,29 @@ void UNSHUDWidget::ShowOutRunGoods()
 	UE_LOG(LogTemp, Log, TEXT("[Goods UI] ShowOutRunGoods"));
 	if (GoodsWidget)
 	{
-		GoodsWidget->SetVisibility(ESlateVisibility::Collapsed);
+		GoodsWidget->SetVisibility(
+			ESlateVisibility::Collapsed);
 	}
 
 	if (OutRunGoodsWidget)
 	{
 		OutRunGoodsWidget->RefreshGoods();
-		OutRunGoodsWidget->SetVisibility(ESlateVisibility::HitTestInvisible);
+		OutRunGoodsWidget->SetVisibility(
+			ESlateVisibility::HitTestInvisible);
+	}
+
+	if (HPShieldWidget)
+	{
+		HPShieldWidget->SetCharacterInputIconVisible(false);
 	}
 }
 
 void UNSHUDWidget::ApplyCharacterSkillUISet(FName CharacterId)
 {
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	const UDataTable* CharacterSkillUISetTable =
+		DataSubsystem ? DataSubsystem->GetCommonCharacterSkillUISetTable() : nullptr;
+
 	if (!CharacterSkillUISetTable)
 	{
 		return;

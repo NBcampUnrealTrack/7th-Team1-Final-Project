@@ -8,12 +8,23 @@ namespace NSGameplayTags
 {
 	// 스킬 수치 조회에 사용하는 CombatStat 태그
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Damage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageCoefficient);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Health);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MinHealth);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Shield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxShield);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MoveSpeed);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeCooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Defense);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Cooldown);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Duration);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ChargingTime);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_AttackSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_BuffRadius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_SkillRange);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MinSkillRange);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ExplosionRadius);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_bExplodeOnImpact);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ProjectileSpeed);
@@ -22,7 +33,14 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ReloadSpeed);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ReloadSpeedBuff);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxAmmo);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxDashCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DashRegenRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxJumpCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill1Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill2Count);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSkill3Count);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletCount);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_HitCount);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_PelletSpread);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_FireRange);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DetectionRange);
@@ -31,4 +49,11 @@ namespace NSGameplayTags
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Accuracy);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_MaxSpawnableAngle);
 	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_Radius);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageInterval);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritChance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_CritDamage);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_ShieldRechargeRate);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffStartDistance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffEndDistance);
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(CombatStat_DamageFalloffMinimumMultiplier);
 }

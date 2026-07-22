@@ -10,10 +10,30 @@ UNSPlayerProgressComponent::UNSPlayerProgressComponent()
 	SetIsReplicatedByDefault(true);
 }
 
+int32 UNSPlayerProgressComponent::GetCommonSkillLevel(FName NodeId) const
+{
+	const int32* Level = CommonSkillLevels.Find(NodeId);
+
+	return Level ? *Level : 0;
+}
+
 void UNSPlayerProgressComponent::UnlockNPC(const FName& NPCId)
 {
-	// 계정단위 저장, 서버에서 호출
-	UnlockedNPCIds.Add(NPCId);
+	if (!GetOwner() || !GetOwner()->HasAuthority())
+	{
+		return;
+	}
+	
+	bool bAlreadyUnlocked = false;
+	UnlockedNPCIds.Add(NPCId, &bAlreadyUnlocked);
+	// 이미 있으면 복제 갱신 불필요
+	if (bAlreadyUnlocked)
+	{
+		return;   
+	}
+	
+	SyncReplicatedPayloadFromCurrentState();
+	BroadcastProgressChanged();
 }
 
 void UNSPlayerProgressComponent::AddCommonCurrency(int64 Amount)
@@ -70,7 +90,7 @@ void UNSPlayerProgressComponent::SyncReplicatedPayloadFromCurrentState()
 void UNSPlayerProgressComponent::BroadcastProgressChanged()
 {
 	OnProgressChanged.Broadcast();
-	OnCurrencyChanged.Broadcast(CommonCurrency, JobCurrency);
+	OnCurrencyChanged.Broadcast(CommonCurrency);
 }
 
 namespace

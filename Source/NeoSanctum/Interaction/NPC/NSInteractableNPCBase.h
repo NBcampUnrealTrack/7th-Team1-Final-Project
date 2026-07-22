@@ -9,6 +9,7 @@
 
 class USphereComponent;
 class UNSNPCInteractionWidgetBase;
+class UNSMinimapIconComponent;
 
 UCLASS(Abstract)
 class NEOSANCTUM_API ANSInteractableNPCBase : public ACharacter, public INSInteractable
@@ -27,6 +28,10 @@ public:
 	virtual TSubclassOf<UNSNPCInteractionWidgetBase> GetInteractionWidgetClass() const { return nullptr; }
 
 	FName GetNPCId() const { return NPCId; }
+	UNSMinimapIconComponent* GetMinimapIconComponent() const { return MinimapIconComponent; }
+	
+	// true면 OnInteract 서버에서 실행, false면 기존 로직 그대로 작동
+	virtual bool ShouldHandleOnServer_Implementation() const override { return false; }
 protected:
 	// 상호작용 감지용 콜리전
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
@@ -35,6 +40,9 @@ protected:
 	// 프롬프트 위젯이 뜰 위치 — 에디터에서 원하는 머리 위 지점으로 드래그
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
 	TObjectPtr<USceneComponent> PromptAnchor;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Minimap")
+	TObjectPtr<UNSMinimapIconComponent> MinimapIconComponent;
 
 	// 감지 반경
 	UPROPERTY(EditAnywhere, Category = "Interaction")

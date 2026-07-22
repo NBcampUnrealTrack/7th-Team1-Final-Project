@@ -7,7 +7,6 @@
 #include "NeoSanctum/GAS/GameplayCue/NSGameplayCueTypes.h"
 #include "NSGameplayCueNotify_Instant.generated.h"
 
-class UNiagaraSystem;
 class UAudioComponent;
 class USceneComponent;
 
@@ -49,7 +48,7 @@ protected:
 	void SpawnVFX(
 		AActor* MyTarget,
 		const FGameplayCueParameters& Parameters,
-		UNiagaraSystem* NiagaraSystem,
+		FName VFXID,
 		ENSGameplayCueSpawnMode SpawnMode,
 		FName ComponentName,
 		FName SocketName
@@ -75,10 +74,27 @@ protected:
 
 	// VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
-	TObjectPtr<UNiagaraSystem> ExecuteVFX;
+	FName ExecuteVFXID = NAME_None;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	ENSGameplayCueSpawnMode VFXSpawnMode = ENSGameplayCueSpawnMode::Location;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX", meta = (ClampMin = "0.0"))
+	float VFXScaleMultiplier = 1.0f;
+
+	// true인 GameplayCue만 RawMagnitude를 폭발 반경으로 사용하게 함.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	bool bScaleVFXByEffectRadius = false;
+
+	// 이 반경일 때 기존 이펙트 크기가 1배가 되도록 맞춰줌.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
+		meta = (EditCondition = "bScaleVFXByEffectRadius", ClampMin = "1.0"))
+	float VFXBaseRadius = 300.0f;
+
+	// RawMagnitude를 전달할 Niagara User Float 이름 : None이면 컴포넌트 스케일 사용
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",
+		meta = (EditCondition = "bScaleVFXByEffectRadius", EditConditionHides))
+	FName VFXRadiusUserParameterName = NAME_None;
 
 	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",

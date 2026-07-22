@@ -5,6 +5,7 @@
 
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 
 ANSThrowProjectileBase::ANSThrowProjectileBase()
@@ -38,6 +39,12 @@ void ANSThrowProjectileBase::InitializeThrowActor(
 	OwningPawn = InOwningPawn;
 	OwningController = InOwningController;
 
+	if (HasAuthority())
+	{
+		// 서버 투사체마다 서로 다른 공격 그룹 Id를 만듬
+		AttackFeedbackGroupId = FGuid::NewGuid();
+	}
+
 	if (OwningPawn)
 	{
 		SetOwner(OwningPawn);
@@ -63,6 +70,24 @@ void ANSThrowProjectileBase::InitializeThrowActor(
 		SetActorRotation(NormalizedThrowDirection.Rotation());
 		ProjectileMovementComponent->Velocity = NormalizedThrowDirection * ProjectileMovementComponent->InitialSpeed;
 	}
+}
+
+void ANSThrowProjectileBase::CompletePlayerAttackFeedbackGroup() const
+{
+	if (!HasAuthority() || !AttackFeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	ANSPlayerController* PlayerController = Cast<ANSPlayerController>(OwningController);
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// 대상별 피드백을 모두 전달했으니 대표 피드백을 재생.
+	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
 }
 
 void ANSThrowProjectileBase::SetSetByCallerMagnitudes(

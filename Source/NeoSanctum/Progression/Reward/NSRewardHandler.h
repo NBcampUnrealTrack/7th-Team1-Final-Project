@@ -32,6 +32,9 @@ public:
 		TSubclassOf<ANSDroppedPart> DroppedPartClass,
 		float CurrencyDropDuration
 	);
+
+	// 서버 권한에서 모든 플레이어에게 경험치를 지급하고, 레벨업 발생 시 LevelUp 증강 선택권을 적재
+	static void HandleExperienceRewardEntry(UWorld* World, float BaseExpAmount);
 	
 private:
 	static void HandleRewardEntries(
@@ -63,7 +66,6 @@ private:
 	
 	static void HandleAugmentRewardEntry(
 		UWorld* World,
-		const FNSRewardEntry& RewardEntry,
 		const FGameplayTag& TriggerTag
 	);
 	
@@ -73,6 +75,13 @@ private:
 		const FNSDropLaunchData& LaunchData,
 		float CurrencyDropDuration
 	);
+	
+	static void HandleHealDropResult(
+			  UWorld* World,
+			  const FNSRewardDropResult& DropResult,
+			  const FNSDropLaunchData& LaunchData,
+			  float Duration
+	  );
 	
 	static void HandlePartDropResult(
 		UWorld* World,
@@ -85,5 +94,5 @@ private:
 	static void HandleAugmentDropResult(const FNSRewardDropResult& DropResult);
 	
 	static FNSPartData MakePartDataFromDropResult(
-		const FNSRewardDropResult& DropResult, FRandomStream& RandomStream);
+		UWorld* World, const FNSRewardDropResult& DropResult, FRandomStream& RandomStream);
 };

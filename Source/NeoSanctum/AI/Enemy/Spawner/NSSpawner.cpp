@@ -14,6 +14,11 @@
 #include "Room.h"
 #include "Components/SphereComponent.h"
 #include "DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/GameStateBase.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
+#include "NeoSanctum/Core/GameState/NSRunGameState.h"
+#include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 
 
 ANSSpawner::ANSSpawner()
@@ -93,19 +98,48 @@ void ANSSpawner::EvaluateRelevancy(int32 MinRelevancy)
 
 void ANSSpawner::ActivateSpawner()
 {
-	if (!HasAuthority() || !SpawnDataTable)
+	if (!HasAuthority() || bHasSpawned)
 	{
 		return;
 	}
 	
-	// 이미 스폰된 룸이면 무시
-	if (bHasSpawned) 
+	// 보스 스포너는 BossFight 페이즈에서만 활성화
+	if (bIsBossSpawner)
+	{
+		const ANSRunGameState* RunGameState =
+			GetWorld() ? GetWorld()->GetGameState<ANSRunGameState>() : nullptr;
+		if (!RunGameState || RunGameState->StagePhase != ENSStagePhase::BossFight)
+		{
+			return;
+		}
+	}
+
+	
+	// 인원수 게이트 — 접속 인원이 임계값 미만이면 이 스포너는 켜지 않음
+	const AGameStateBase* GameState = GetWorld() ? GetWorld()->GetGameState() : nullptr;
+	const int32 PlayerCount = GameState ? GameState->PlayerArray.Num() : 1;
+	if (PlayerCount < RequiredPlayerCount)
 	{
 		return;
 	}
+	
+	// 최초 스폰한 상태이고 옵션 켜져있으면 생존 수만큼 복원
+	if (bPersistSurvivors && bInitialSpawnDone)
+	{
+		RestoreSurvivors();
+		return;
+	}
 
+	// 최초 스폰
+	UDataTable* ResolvedSpawnTable = ResolveSpawnDataTable();
+	if (!ResolvedSpawnTable)
+	{
+		RequestStageSpawnerTableLoad();
+		return;
+	}
+	
 	bHasSpawned = true;
-	ProcessSpawnProbability(SpawnDataTable);
+	ProcessSpawnProbability(ResolvedSpawnTable);
 	RequestAsyncLoad();
 }
 
@@ -124,13 +158,47 @@ void ANSSpawner::ReturnMonstersToPool()
 	}
 
 	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
-	if (GameMode && GameMode->Implements<UNSRunGameModeInterface>())
+	const bool bHasRunGM = GameMode && GameMode->Implements<UNSRunGameModeInterface>();
+
+	if (bPersistSurvivors)
+	{
+		// 살아있는 개체만 세서 다음 복원 대상으로 확정
+		int32 Alive = 0;
+		for (ANSEnemyCharacterBase* Monster : SpawnedMonsters)
+		{
+			if (IsValid(Monster) && !Monster->IsDead())
+			{
+				++Alive;
+				UnregisterMonsterDeathTracking(Monster);
+				if (bHasRunGM)
+				{
+					INSRunGameModeInterface::Execute_ReturnMonsterToPool(GameMode, Monster);
+				}
+				UE_LOG(LogTemp, Warning, TEXT("  Monster=%s Valid=%d IsDead=%d IsInPool=%d"),
+				*GetNameSafe(Monster), IsValid(Monster)?1:0,
+				(IsValid(Monster)&&Monster->IsDead())?1:0,
+				(IsValid(Monster)&&Monster->IsInPool())?1:0);
+			}
+		}
+		SurvivorCount = Alive;
+
+		SpawnedMonsters.Empty();
+		bHasSpawned = false;
+		
+		UE_LOG(LogTemp, Warning, TEXT("[Spawner %s] Return: SpawnedNum=%d Alive(Survivor)=%d"),
+	*GetName(), SpawnedMonsters.Num(), SurvivorCount);
+		
+		return;
+	}
+
+	// 기존 풀링 경로
+	if (bHasRunGM)
 	{
 		for (ANSEnemyCharacterBase* Monster : SpawnedMonsters)
 		{
-			// 살아남은 몬스터만 반환
 			if (IsValid(Monster))
 			{
+				UnregisterMonsterDeathTracking(Monster);
 				INSRunGameModeInterface::Execute_ReturnMonsterToPool(GameMode, Monster);
 			}
 		}
@@ -138,6 +206,73 @@ void ANSSpawner::ReturnMonstersToPool()
 
 	SpawnedMonsters.Empty();
 	bHasSpawned = false;
+}
+
+UDataTable* ANSSpawner::ResolveSpawnDataTable() const
+{
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::Manual)
+	{
+		return SpawnDataTable;
+	}
+	
+	const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return nullptr;
+	}
+	
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::StageMelee)
+	{
+		return DataSubsystem->GetCurrentMeleeSpawnerTable();
+	}
+	
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::StageRange)
+	{
+		return DataSubsystem->GetCurrentRangeSpawnerTable();
+	}
+	
+	return nullptr;
+}
+
+void ANSSpawner::RequestStageSpawnerTableLoad()
+{
+	if (SpawnDataTableSource == ENSSpawnDataTableSource::Manual)
+	{
+		return;
+	}
+	
+	UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this);
+	if (!DataSubsystem)
+	{
+		return;
+	}
+	
+	if (DataSubsystem->AreCurrentStageSpawnerTablesLoaded())
+	{
+		const FString SourceName = StaticEnum<ENSSpawnDataTableSource>()->GetNameStringByValue(
+			static_cast<int64>(SpawnDataTableSource));
+		NS_OBJ_LOG(LogNS, Warning,
+			"스테이지 스포너 DT 로드는 완료됐지만 이 스포너가 사용할 테이블을 찾지 못했습니다. Source={Source}",
+			("Source", SourceName)
+		);
+		return;
+	}
+	
+	// 여러 스포너가 동시에 요청해도 DataSubsystem은 한 번만 로드.
+	// 완료 후 각 스포너가 다시 ActivateSpawner()를 시도.
+	DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+	DataSubsystem->OnStageSpawnerTablesReady.AddDynamic(this, &ANSSpawner::HandleStageSpawnerTablesReady);
+	DataSubsystem->LoadCurrentStageSpawnerTables();
+}
+
+void ANSSpawner::HandleStageSpawnerTablesReady()
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+		
+		ActivateSpawner();
+	}
 }
 
 void ANSSpawner::ProcessSpawnProbability(UDataTable* SpawnTable)
@@ -244,28 +379,37 @@ void ANSSpawner::ExecuteFinalSpawn()
 		return;
 	}
 
-	// 스폰 요청(카운트는 게임모드가 스폰 성공했을 때 진행)
-	TArray<FVector> PlacedLocations;
-	PlacedLocations.Reserve(FinalSpawnQuantity);
-
-	for (int32 i = 0; i < FinalSpawnQuantity; ++i)
+	// 보스 스폰
+	if (bIsBossSpawner)
 	{
-		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations);
-		PlacedLocations.Add(SpawnLocation);
-
-		ANSEnemyCharacterBase* Spawned = INSRunGameModeInterface::Execute_RequestSpawnMonster(
-			GameMode,
-			CharacterClass,
-			EnemyData,
-			SpawnLocation,
-			GetActorRotation());
-
-		if (Spawned)
+		
+		const float SpawnZOffset = 
+			ComputeSpawnZOffset(CharacterClass, EnemyData);
+		
+		TArray<FVector> PlacedLocations;
+		PlacedLocations.Reserve(FinalSpawnQuantity);
+		for (int32 i = 0; i < FinalSpawnQuantity; ++i)
 		{
-			SpawnedMonsters.Add(Spawned);
+			FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations, SpawnZOffset);
+			PlacedLocations.Add(SpawnLocation);
+			INSRunGameModeInterface::Execute_RequestSpawnBoss(
+				GameMode, CharacterClass, EnemyData, SpawnLocation, GetActorRotation());
 		}
 	}
+	// 비보스 스폰
+	else
+	{
+		SpawnMonsters(CharacterClass, EnemyData, FinalSpawnQuantity);
 
+		if (bPersistSurvivors)
+		{
+			bInitialSpawnDone = true;
+			CachedCharacterClass = CharacterClass;
+			CachedEnemyData = EnemyData;
+			SurvivorCount = SpawnedMonsters.Num();
+		}
+	}
+	
 	UE_LOG(LogTemp, Log, TEXT("스폰 요청 수량: %d"), FinalSpawnQuantity);
 }
 
@@ -284,7 +428,149 @@ void ANSSpawner::BeginPlay()
 
 }
 
-FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced) const
+void ANSSpawner::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		DataSubsystem->OnStageSpawnerTablesReady.RemoveAll(this);
+	}
+	
+	// 남은 사망 추적 바인딩 정리
+	for (ANSEnemyCharacterBase* Monster : SpawnedMonsters)
+	{
+		UnregisterMonsterDeathTracking(Monster);
+	}
+	DeathDelegateHandles.Empty();
+	
+	Super::EndPlay(EndPlayReason);
+}
+
+void ANSSpawner::RestoreSurvivors()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Spawner %s] Restore: SurvivorCount=%d"), *GetName(), SurvivorCount);
+
+	// 전멸 상태면 복원 X
+	if (SurvivorCount <= 0)
+	{
+		bHasSpawned = false;
+		return;
+	}
+
+	if (!CachedCharacterClass || !CachedEnemyData)
+	{
+		return;
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (!GameMode || !GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		return;
+	}
+
+	SpawnMonsters(CachedCharacterClass, CachedEnemyData, SurvivorCount);
+	bHasSpawned = true;
+}
+
+void ANSSpawner::SpawnMonsters(UClass* InClass, UNSEnemyData* InData, int32 Count)
+{
+	if (!HasAuthority() || !InClass || !InData || Count <= 0)
+	{
+		return;
+	}
+
+	AGameModeBase* GameMode = GetWorld()->GetAuthGameMode();
+	if (!GameMode || !GameMode->Implements<UNSRunGameModeInterface>())
+	{
+		return;
+	}
+
+	const float SpawnZOffset = ComputeSpawnZOffset(InClass, InData);
+
+	TArray<FVector> PlacedLocations;
+	PlacedLocations.Reserve(Count);
+
+	for (int32 i = 0; i < Count; ++i)
+	{
+		FVector SpawnLocation = GetRandomSpawnLocation(PlacedLocations, SpawnZOffset);
+		PlacedLocations.Add(SpawnLocation);
+
+		ANSEnemyCharacterBase* Spawned = INSRunGameModeInterface::Execute_RequestSpawnMonster(
+			GameMode, InClass, InData, SpawnLocation, GetActorRotation());
+		if (Spawned)
+		{
+			SpawnedMonsters.Add(Spawned);
+			// 사망 추적 바인딩
+			RegisterMonsterDeathTracking(Spawned);  
+		}
+	}
+}
+
+float ANSSpawner::ComputeSpawnZOffset(UClass* InClass, const UNSEnemyData* InData) const
+{
+	float ZOffset = 88.0f;
+	if (InClass)
+	{
+		if (const AActor* CDO = InClass->GetDefaultObject<AActor>())
+		{
+			if (const UCapsuleComponent* Capsule = 
+				Cast<UCapsuleComponent>(CDO->GetRootComponent()))
+			{
+				const float ScaleZ = InData ? InData->DrawScale.Z : 1.0f;
+				ZOffset = Capsule->GetScaledCapsuleHalfHeight() * ScaleZ;
+			}
+		}
+	}
+	
+	return ZOffset;
+}
+
+void ANSSpawner::RegisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster)
+{
+	if (!Monster)
+	{
+		return;
+	}
+	UnregisterMonsterDeathTracking(Monster);
+
+	TWeakObjectPtr<ANSEnemyCharacterBase> WeakMonster(Monster);
+
+	FDelegateHandle Handle = Monster->OnEnemyDead.AddWeakLambda(
+		this, [this, WeakMonster]()
+		{
+			ANSEnemyCharacterBase* Dead = WeakMonster.Get();
+			if (!Dead)
+			{
+				return;
+			}
+			// 죽는 순간 이 스포너의 소속 목록에서 제거
+			SpawnedMonsters.Remove(Dead);
+			DeathDelegateHandles.Remove(WeakMonster);
+		});
+
+	DeathDelegateHandles.Add(WeakMonster, Handle);
+}
+
+void ANSSpawner::UnregisterMonsterDeathTracking(ANSEnemyCharacterBase* Monster)
+{
+	if (!Monster)
+	{
+		return;
+	}
+
+	TWeakObjectPtr<ANSEnemyCharacterBase> WeakMonster(Monster);
+	if (const FDelegateHandle* Found = DeathDelegateHandles.Find(WeakMonster))
+	{
+		Monster->OnEnemyDead.Remove(*Found);
+		DeathDelegateHandles.Remove(WeakMonster);
+	}
+}
+
+FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced, float ZOffset) const
 {
 	const FVector Origin = GetActorLocation();
 	UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
@@ -314,10 +600,10 @@ FVector ANSSpawner::GetRandomSpawnLocation(const TArray<FVector>& AlreadyPlaced)
 			}
 			if (!bTooClose)
 			{
-				return NavLoc.Location + FVector(0.0f, 0.0f, 88.0f);
+				return NavLoc.Location + FVector(0.0f, 0.0f, ZOffset);
 			}
 		}
 	}
 	// 실패 시 스포너 위치
-	return Origin + FVector(0.0f, 0.0f, 88.0f);
+	return Origin + FVector(0.0f, 0.0f, ZOffset);
 }

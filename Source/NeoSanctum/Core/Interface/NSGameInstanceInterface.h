@@ -7,6 +7,7 @@
 #include "NSGameInstanceInterface.generated.h"
 
 class UNSLevelCatalog;
+class UNSDifficultyConfig;
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UNSGameInstanceInterface : public UInterface
@@ -23,4 +24,5 @@ public:
 	void HideLoadingScreen();
 	
 	virtual UNSLevelCatalog* GetLevelCatalog() const = 0;
+	virtual UNSDifficultyConfig* GetDifficultyConfig() const = 0;
 };

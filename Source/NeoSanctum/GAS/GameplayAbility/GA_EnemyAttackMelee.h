@@ -17,6 +17,8 @@ class NEOSANCTUM_API UGA_EnemyAttackMelee : public UGA_EnemyAttackBase
 public:
 	UGA_EnemyAttackMelee();
 
+	virtual ENSHitReactionAttackType GetHitReactionAttackType() const override { return ENSHitReactionAttackType::Melee; }
+
 protected:
 	virtual void InitializeAttack() override;
 	virtual void HandleAttackEvent(

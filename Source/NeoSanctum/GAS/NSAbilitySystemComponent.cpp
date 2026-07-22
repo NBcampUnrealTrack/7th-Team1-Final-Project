@@ -11,6 +11,7 @@
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/GAS/AttributeSet/NSPlayerAttributeSet.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
+#include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Message.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Slot.h"
@@ -208,6 +209,43 @@ void UNSAbilitySystemComponent::ClearAbilityInput()
 	InputHeldSpecHandles.Reset();
 }
 
+void UNSAbilitySystemComponent::ResetTransientAvatarState()
+{
+	// 캐릭터 교체 후에도 유지되는 ASC에서 이전 Avatar의 실행 상태를 정리
+	ClearAbilityInput();
+	CancelAllAbilities();
+	RemoveAllGameplayCues();
+	RemoveActiveEffects(FGameplayEffectQuery());
+	ClearAllAbilities();
+	CachedSkillRechargeCooldowns.Reset();
+
+	FGameplayTagContainer OwnedTags;
+	GetOwnedGameplayTags(OwnedTags);
+
+	// Ability가 직접 붙인 State 계열 LooseTag는 GE 제거로 지워지지 않으므로 별도 정리
+	for (const FGameplayTag& OwnedTag : OwnedTags)
+	{
+		if (OwnedTag.ToString().StartsWith(TEXT("State.")))
+		{
+			SetLooseGameplayTagCount(OwnedTag, 0);
+		}
+	}
+}
+
+void UNSAbilitySystemComponent::ClearLocalBuffStateTags()
+{
+	FGameplayTagContainer OwnedTags;
+	GetOwnedGameplayTags(OwnedTags);
+
+	for (const FGameplayTag& OwnedTag : OwnedTags)
+	{
+		if (OwnedTag.ToString().StartsWith(TEXT("State.Buff.")))
+		{
+			SetLooseGameplayTagCount(OwnedTag, 0);
+		}
+	}
+}
+
 void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlotTag, float Cooldown)
 {
 	if (!IsOwnerActorAuthoritative())
@@ -225,6 +263,7 @@ void UNSAbilitySystemComponent::StartSkillRecharge(const FGameplayTag& SkillSlot
 
 	if (IsSkillRechargeActive(SkillSlotTag))
 	{
+		BroadcastSkillCooldownUIData(SkillSlotTag);
 		return;
 	}
 
@@ -480,6 +519,31 @@ void UNSAbilitySystemComponent::FinishSkillRecharge(const FGameplayTag& SkillSlo
 
 	// 아직 최대치가 아니면 다음 충전을 이어서 시작
 	StartSkillRecharge(SkillSlotTag, GetCachedSkillRechargeCooldown(SkillSlotTag));
+}
+
+void UNSAbilitySystemComponent::NotifySkillCountChangedForMaxStat(const FGameplayTag& MaxSkillCountStatTag) const
+{
+	FGameplayTag SkillSlotTag;
+
+	if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill1Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill1;
+	}
+	else if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill2Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill2;
+	}
+	else if (MaxSkillCountStatTag.MatchesTagExact(NSGameplayTags::CombatStat_MaxSkill3Count))
+	{
+		SkillSlotTag = NSGameplayTags::SkillSlot_Skill3;
+	}
+	else
+	{
+		return;
+	}
+
+	// 서버에서 계산한 최신 충전 수를 클리아이언트 UI에 바로 보내줌.
+	BroadcastSkillCooldownUIData(SkillSlotTag);
 }
 
 void UNSAbilitySystemComponent::BroadcastSkillCooldownUIData(const FGameplayTag& SkillSlotTag) const

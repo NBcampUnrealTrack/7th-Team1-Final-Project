@@ -38,6 +38,9 @@ struct FNSProjectileFireRequest
 	
 	// 충돌 대상에게 적용할 GameplayEffect 클래스
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+	
+	// DamageEffect에 Effect.Damage.Base SetByCaller로 전달할 최종 데미지. 0 미만이면 Source BaseDamage 기본 계산 사용
+	float Damage = -1.0f;
 };
 
 /**
@@ -86,6 +89,9 @@ struct FNSServerProjectileData
 
 	// 충돌 대상에게 적용할 GameplayEffect 클래스
 	TSubclassOf<UGameplayEffect> DamageEffectClass;
+	
+	// DamageEffect에 Effect.Damage.Base SetByCaller로 전달할 최종 데미지. 0 미만이면 Source BaseDamage 기본 계산 사용
+	float Damage = -1.0f;
 };
 
 

@@ -7,11 +7,19 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "InputActionValue.h"
+#include "CommonInputSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
 #include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
 #include "NeoSanctum/Input/NSInputComponent.h"
+#include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Input.h"
+#include "NeoSanctum/Tag/NSGameplayTags_State.h"
 #include "NeoSanctum/UI/Core/NSUIManagerSubsystem.h"
+#include "NeoSanctum/UI/Options/NSUISettingsSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSOutRunGuideSubsystem.h"
+#include "NeoSanctum/Core/Waypoint/NSInRunGuideSubsystem.h"
 
 UNSInputBinderComponent::UNSInputBinderComponent()
 {
@@ -214,6 +222,17 @@ void UNSInputBinderComponent::Input_Move(const FInputActionValue& Value)
 		return;
 	}
 
+	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(OwnerPawn))
+	{
+		if (const UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+		{
+			if (ASC->HasMatchingGameplayTag(NSGameplayTags::State_Input_BlockInputMove))
+			{
+				return;
+			}
+		}
+	}
+
 	const FVector2D MoveValue = Value.Get<FVector2D>();
 	const FRotator MoveRotation(0.f, Controller->GetControlRotation().Yaw, 0.f);
 
@@ -222,6 +241,16 @@ void UNSInputBinderComponent::Input_Move(const FInputActionValue& Value)
 
 	OwnerPawn->AddMovementInput(ForwardDirection, MoveValue.Y);
 	OwnerPawn->AddMovementInput(RightDirection, MoveValue.X);
+
+	// 아웃런 조작법 안내 — 이동 입력 발동 알림 (인런 등 다른 월드에서는 서브시스템 내부 게이트로 무시됨)
+	if (!MoveValue.IsNearlyZero())
+	{
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyMoveInput(MoveValue);
+		}
+	}
 }
 
 void UNSInputBinderComponent::Input_Look(const FInputActionValue& Value)
@@ -235,14 +264,68 @@ void UNSInputBinderComponent::Input_Look(const FInputActionValue& Value)
 
 	const FVector2D LookValue = Value.Get<FVector2D>();
 
-	PlayerController->AddYawInput(LookValue.X);
-	PlayerController->AddPitchInput(LookValue.Y);
+	float LookScale = 1.0f;
+
+	ULocalPlayer* LocalPlayer =
+		PlayerController->GetLocalPlayer();
+
+	const UCommonInputSubsystem* CommonInputSubsystem =
+		LocalPlayer
+			? ULocalPlayer::GetSubsystem<UCommonInputSubsystem>(
+				LocalPlayer)
+			: nullptr;
+
+	if (CommonInputSubsystem &&
+		CommonInputSubsystem->GetCurrentInputType() ==
+			ECommonInputType::MouseAndKeyboard)
+	{
+		const UGameInstance* GameInstance =
+			PlayerController->GetGameInstance();
+
+		const UNSUISettingsSubsystem* Settings =
+			GameInstance
+				? GameInstance->GetSubsystem<
+					UNSUISettingsSubsystem>()
+				: nullptr;
+
+		if (Settings)
+		{
+			LookScale =
+				Settings->GetMouseSensitivity();
+		}
+	}
+
+	PlayerController->AddYawInput(
+		LookValue.X * LookScale);
+
+	PlayerController->AddPitchInput(
+		LookValue.Y * LookScale);
 }
 
 void UNSInputBinderComponent::Input_Jump()
 {
 	if (ACharacter* Character = Cast<ACharacter>(GetOwner()))
 	{
+		// 아웃런 조작법 안내 — 점프 입력 발동 알림
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyJumpInput();
+		}
+
+		if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(Character))
+		{
+			if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))
+			{
+				FGameplayTagContainer ParkourAbilityTags;
+				ParkourAbilityTags.AddTag(NSGameplayTags::Ability_Common_Parkour);
+				if (ASC->TryActivateAbilitiesByTag(ParkourAbilityTags))
+				{
+					return;
+				}
+			}
+		}
+
 		Character->Jump();
 	}
 }
@@ -281,7 +364,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	{
 		return;
 	}
-	
+
+	// 인런 안내(Phase 2)용 — 없거나 미시작이면 알림은 내부에서 무시됨
+	UNSInRunGuideSubsystem* InRunGuide = World->GetSubsystem<UNSInRunGuideSubsystem>();
+
 	if (InputTag == NSGameplayTags::Input_Augment_TogglePanel)
 	{
 		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
@@ -290,6 +376,30 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 		{
 			PlayerController->ToggleAugmentationPanel();
 		}
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyAugmentPanelOpened();
+		}
+		return;
+	}
+
+	if (InputTag == NSGameplayTags::Input_Augment_TogglePartInventory)
+	{
+		const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+		ANSPlayerController* PlayerController =
+			OwnerPawn
+				? Cast<ANSPlayerController>(OwnerPawn->GetController())
+				: nullptr;
+
+		if (PlayerController)
+		{
+			PlayerController->TogglePartInventoryPanel();
+		}
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyStatPanelOpened();
+		}
+
 		return;
 	}
 
@@ -302,6 +412,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	if (InputTag == NSGameplayTags::Input_Augment_Reroll)
 	{
 		UIManager->RequestRerollAugment();
+		if (InRunGuide)
+		{
+			InRunGuide->NotifyReroll();
+		}
 		return;
 	}
 
@@ -319,6 +433,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	{
 		CardIndex = 2;
 	}
+	else if (InputTag == NSGameplayTags::Input_Augment_Card4)
+	{
+		CardIndex = 3;
+	}
 
 	if (CardIndex == INDEX_NONE)
 	{
@@ -326,6 +444,10 @@ void UNSInputBinderComponent::Input_AugmentAction(FGameplayTag InputTag)
 	}
 
 	UIManager->SelectAugmentCardByIndex(CardIndex);
+	if (InRunGuide)
+	{
+		InRunGuide->NotifyCardSelected();
+	}
 }
 
 void UNSInputBinderComponent::Input_Interact()
@@ -342,6 +464,16 @@ void UNSInputBinderComponent::Input_Interact()
 
 void UNSInputBinderComponent::Input_AbilityPressed(FGameplayTag InputTag)
 {
+	// 아웃런 조작법 안내 — 대시 입력 발동 알림
+	if (InputTag == NSGameplayTags::Input_Ability_Dash)
+	{
+		if (UNSOutRunGuideSubsystem* GuideSubsystem =
+			GetWorld()->GetSubsystem<UNSOutRunGuideSubsystem>())
+		{
+			GuideSubsystem->NotifyDashInput();
+		}
+	}
+
 	if (IAbilitySystemInterface* ASI = Cast<IAbilitySystemInterface>(GetOwner()))
 	{
 		if (UNSAbilitySystemComponent* ASC = Cast<UNSAbilitySystemComponent>(ASI->GetAbilitySystemComponent()))

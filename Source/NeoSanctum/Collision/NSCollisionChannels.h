@@ -22,4 +22,8 @@ namespace NSCollisionChannels
 	constexpr ECollisionChannel ProjectileTrace = ECC_GameTraceChannel8;
 	constexpr ECollisionChannel ExplosionTrace = ECC_GameTraceChannel9;
 	constexpr ECollisionChannel PlayerWeaponTrace = ECC_GameTraceChannel10;
+	constexpr ECollisionChannel DroneGround = ECC_GameTraceChannel11;
+	constexpr ECollisionChannel DroneAvoid = ECC_GameTraceChannel12;
+	constexpr ECollisionChannel EnemyMissile = ECC_GameTraceChannel13;
+	constexpr ECollisionChannel EnemyBoss = ECC_GameTraceChannel14;
 }

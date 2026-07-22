@@ -12,6 +12,7 @@ class AController;
 class APlayerController;
 class ANSEnemyCharacterBase;
 class UNSEnemyData;
+class ANSEnemyPawnBase; 
 
 UINTERFACE(MinimalAPI, Blueprintable)
 class UNSRunGameModeInterface : public UInterface { GENERATED_BODY() };
@@ -31,7 +32,7 @@ public:
 	
 	// 적 죽었을 때 호출 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
-	void NotifyEnemyKilled(ACharacter* DeadEnemy);
+	void NotifyEnemyKilled(AActor* DeadEnemy, AController* Killer);
 	
 	// 거점 복귀 선택하면 호출될 함수
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
@@ -59,4 +60,17 @@ public:
 	// 투표 취소 입력 함수 요청
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="GameFlow")
 	void CancelRunChoice(APlayerController* Voter);
+	// 스테이지에 있는 npc 구출했을 때 알릴 함수
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyNPCRescued(FName RescuedNPCId);
+	// 보스 진입 볼륨 타이머 시간 완료 시 호출: 전원 텔레포트 + 보스 페이즈 진입
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	void NotifyBossGateReached();
+	// 보스 스폰 요청
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "GameFlow")
+	ANSEnemyPawnBase* RequestSpawnBoss(
+		UClass* BossClass, 
+		UNSEnemyData* EnemyData,
+		const FVector& Location,
+		const FRotator& Rotation);
 };

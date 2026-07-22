@@ -8,13 +8,17 @@
 
 class UGameplayAbility;
 
+/**
+ * 캐릭터가 기본으로 부여받는 Gameplay Ability와 입력 태그, 초기 레벨을 정의.
+ */
 USTRUCT(BlueprintType)
 struct FNSCharacterAbilityData
 {
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability",
+		meta = (AssetBundles = "CommonData"))
 	TSoftClassPtr<UGameplayAbility> AbilityClass;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Character|Ability")

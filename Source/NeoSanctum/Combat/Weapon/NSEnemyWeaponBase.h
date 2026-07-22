@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "NSEnemyWeaponBase.generated.h"
 
@@ -34,8 +33,6 @@ public:
 
 	FORCEINLINE const FWeaponConfig& GetWeaponConfig() const { return WeaponConfig; }
 
-	void StartDissolve();
-
 	bool TryGetLeftHandIKTransform(FTransform& OutTransform) const;
 	
 	bool TryGetMuzzleTransform(FTransform& OutTransform) const;
@@ -54,8 +51,4 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon|Projectile")
 	FName MuzzleSocketName = TEXT("S_Muzzle");
-
-private:
-	UPROPERTY(EditDefaultsOnly, Category = "Components")
-	TObjectPtr<class UNSDissolveComponent> DissolveComponent;
 };

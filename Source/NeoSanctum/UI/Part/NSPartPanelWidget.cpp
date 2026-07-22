@@ -1,33 +1,64 @@
 // Copyright 2026 One Team. All rights reserved.
 
 #include "NSPartPanelWidget.h"
+#include "Components/PanelWidget.h"
+#include "Components/VerticalBoxSlot.h"
 #include "GameFramework/PlayerController.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Core/PlayerState/NSPlayerState.h"
+#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "NeoSanctum/Progression/Part/NSPartUtils.h"
-#include "NeoSanctum/Data/Part/NSPartDefinition.h"
 #include "NeoSanctum/UI/Part/Button/NSPartSlotButton.h"
+#include "NeoSanctum/UI/HUD/NSCharacterStatsBridgeSubsystem.h"
 
 void UNSPartPanelWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	BindPartEquipComponent();
-	RefreshEquippedParts();
+	UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
+	if (!DataSS)
+	{
+		return;
+	}
+
+	if (!DataSS->GetAllSlotRows().IsEmpty())
+	{
+		BuildSlotButtons();
+		BindPartEquipComponent();
+		RefreshEquippedParts();
+	}
+	else
+	{
+		DataSS->OnOutGameDataReady.AddDynamic(this, &UNSPartPanelWidget::OnOutGameDataReady);
+	}
 }
 
 void UNSPartPanelWidget::NativeDestruct()
 {
+	if (UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this))
+	{
+		DataSS->OnOutGameDataReady.RemoveDynamic(this, &UNSPartPanelWidget::OnOutGameDataReady);
+	}
+
 	UnbindPartEquipComponent();
 
 	Super::NativeDestruct();
 }
 
+void UNSPartPanelWidget::OnOutGameDataReady()
+{
+	BuildSlotButtons();
+	BindPartEquipComponent();
+	RefreshEquippedParts();
+}
+
 void UNSPartPanelWidget::RefreshEquippedParts()
 {
-	ApplySlot(ENSPartSlot::Body, BodySlotButton);
-	ApplySlot(ENSPartSlot::Arm, ArmSlotButton);
-	ApplySlot(ENSPartSlot::Leg, LegSlotButton);
+	for (const auto& Pair : SlotButtonMap)
+	{
+		ApplySlot(Pair.Key, Pair.Value);
+	}
 }
 
 UNSPartEquipComponent* UNSPartPanelWidget::GetPartEquipComponent() const
@@ -72,7 +103,57 @@ void UNSPartPanelWidget::UnbindPartEquipComponent()
 	CachedPartEquipComponent.Reset();
 }
 
-void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* SlotButton)
+void UNSPartPanelWidget::BuildSlotButtons()
+{
+	if (!SlotButtonContainer || !SlotButtonTemplate)
+	{
+		return;
+	}
+
+	const UNSDataSubsystem* DataSS = UNSDataSubsystem::Get(this);
+	if (!DataSS)
+	{
+		return;
+	}
+
+	// NativeConstruct/DataReady가 다시 호출되어도 슬롯 버튼이 중복 생성되지 않도록 초기화한다.
+	SlotButtonContainer->ClearChildren();
+	SlotButtonMap.Reset();
+
+	// TMap 순회 순서는 보장되지 않으므로 DT의 SortOrder 기준으로 정렬 후 생성 (바디 > 암 > 레그)
+	TArray<TPair<FGameplayTag, FNSPartSlotRow>> SortedRows;
+	for (const auto& Pair : DataSS->GetAllSlotRows())
+	{
+		SortedRows.Add(Pair);
+	}
+	SortedRows.Sort([](const TPair<FGameplayTag, FNSPartSlotRow>& A, const TPair<FGameplayTag, FNSPartSlotRow>& B)
+	{
+		return A.Value.SortOrder < B.Value.SortOrder;
+	});
+
+	for (const auto& Pair : SortedRows)
+	{
+		UNSPartSlotButton* Btn = CreateWidget<UNSPartSlotButton>(this, SlotButtonTemplate);
+		if (!Btn)
+		{
+			continue;
+		}
+		UPanelSlot* AddedSlot = SlotButtonContainer->AddChild(Btn);
+		if (UVerticalBoxSlot* VerticalBoxSlot = Cast<UVerticalBoxSlot>(AddedSlot))
+		{
+			FSlateChildSize FillSize;
+			FillSize.SizeRule = ESlateSizeRule::Fill;
+			FillSize.Value = 1.0f;
+
+			VerticalBoxSlot->SetSize(FillSize);
+			VerticalBoxSlot->SetHorizontalAlignment(HAlign_Fill);
+			VerticalBoxSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+		SlotButtonMap.Add(Pair.Key, Btn);
+	}
+}
+
+void UNSPartPanelWidget::ApplySlot(FGameplayTag PartSlot, UNSPartSlotButton* SlotButton)
 {
 	if (!IsValid(SlotButton))
 	{
@@ -82,7 +163,7 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	UNSPartEquipComponent* PartEquipComponent = GetPartEquipComponent();
 	if (!IsValid(PartEquipComponent))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: PartEquipComponent 없음 (Slot=%d)"), (int32)PartSlot);
+		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: PartEquipComponent 없음 (Slot=%s)"), *PartSlot.ToString());
 		SlotButton->ClearPart();
 		return;
 	}
@@ -90,6 +171,7 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	const FNSPartData* PartData = PartEquipComponent->GetEquippedPart(PartSlot);
 	if (PartData == nullptr || !PartData->IsValid())
 	{
+		SlotButton->ClearPart();
 		return;
 	}
 
@@ -97,27 +179,25 @@ void UNSPartPanelWidget::ApplySlot(ENSPartSlot PartSlot, UNSPartSlotButton* Slot
 	UNSPartDefinition* PartDefinition = NSPartUtils::ResolvePartDefinition(this, *PartData);
 	if (!IsValid(PartDefinition))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: Definition null → ClearPart (Slot=%d, Def=%s)"),
-			(int32)PartSlot, *PartData->DefinitionPtr.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("[PartPanel] ApplySlot: Definition null → ClearPart (Slot=%s, Def=%s)"),
+			*PartSlot.ToString(), *PartData->DefinitionPtr.ToString());
 		SlotButton->ClearPart();
 		return;
 	}
 	SlotButton->SetPart(*PartData, PartDefinition);
 }
-void UNSPartPanelWidget::HandlePartChanged(ENSPartSlot PartSlot, const FNSPartData& PartData)
+
+void UNSPartPanelWidget::HandlePartChanged(FGameplayTag PartSlot, const FNSPartData& PartData)
 {
-	switch (PartSlot)
+	TObjectPtr<UNSPartSlotButton>* Found = SlotButtonMap.Find(PartSlot);
+	if (Found && IsValid(*Found))
 	{
-	case ENSPartSlot::Body:
-		ApplySlot(PartSlot, BodySlotButton);
-		break;
-	case ENSPartSlot::Arm:
-		ApplySlot(PartSlot, ArmSlotButton);
-		break;
-	case ENSPartSlot::Leg:
-		ApplySlot(PartSlot, LegSlotButton);
-		break;
-	default:
-		break;
+		ApplySlot(PartSlot, *Found);
+	}
+	
+	if (UNSCharacterStatsBridgeSubsystem* StatsBridge =
+	GetGameInstance()->GetSubsystem<UNSCharacterStatsBridgeSubsystem>())
+	{
+		StatsBridge->BroadcastCharacterStats(GetOwningPlayer());
 	}
 }

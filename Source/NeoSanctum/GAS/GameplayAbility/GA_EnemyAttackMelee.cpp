@@ -3,9 +3,9 @@
 
 #include "GA_EnemyAttackMelee.h"
 
+#include "NeoSanctum/AI/Enemy/Interface/NSEnemyAgent.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
-#include "NeoSanctum/Character/Enemy/NSEnemyCharacterBase.h"
-#include "NeoSanctum/Combat/Weapon/NSEnemyWeaponBase.h"
+#include "NeoSanctum/Combat/Component/NSEnemyPartComponent.h"
 #include "NeoSanctum/Data/AI/NSEnemyData.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Enemy.h"
 #include "NeoSanctum/Tag/NSGameplayTags_State.h"
@@ -25,19 +25,23 @@ UGA_EnemyAttackMelee::UGA_EnemyAttackMelee()
 void UGA_EnemyAttackMelee::InitializeAttack()
 {
 	DamagedTraceWindowIds.Reset();
-	
-	const ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
 
-	if (!IsValid(Enemy))
+	const AActor* EnemyActor = GetAvatarActorFromActorInfo();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(EnemyActor);
+
+	if (!IsValid(EnemyActor) || !EnemyAgent)
 	{
 		return;
 	}
 
-	if (const FNSEnemyAttackDefinition* CurrentAttackDefinition = Enemy->GetCurrentAttackDefinition())
+	const FNSEnemyAttackRow* CurrentAttackRow = EnemyAgent->GetCurrentAttackRow();
+	if (!CurrentAttackRow)
 	{
-		AttackTraceDistance = CurrentAttackDefinition->Condition.MaxRange;
-		AttackTraceRadius = CurrentAttackDefinition->MeleeTraceRadius;
+		return;
 	}
+
+	AttackTraceDistance = CurrentAttackRow->Condition.MaxRange;
+	AttackTraceRadius = CurrentAttackRow->MeleeTraceRadius;
 }
 
 void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
@@ -49,41 +53,50 @@ void UGA_EnemyAttackMelee::HandleAttackEvent(const FGameplayEventData& Payload)
 	{
 		return;
 	}
-	
-	ANSEnemyCharacterBase* Enemy = Cast<ANSEnemyCharacterBase>(GetAvatarActorFromActorInfo());
+
+	AActor* EnemyActor = GetAvatarActorFromActorInfo();
+	const INSEnemyAgent* EnemyAgent = Cast<INSEnemyAgent>(EnemyActor);
 
 	UWorld* World = GetWorld();
 
-	if (!IsValid(Enemy) || !IsValid(World))
+	if (!IsValid(EnemyActor) || !EnemyAgent || !IsValid(World))
 	{
 		return;
 	}
 
-	FVector Start = Enemy->GetActorLocation();
-	FVector End = Start +
-		Enemy->GetActorForwardVector() * AttackTraceDistance;
+	FVector Start = EnemyActor->GetActorLocation();
+	FVector End = Start + EnemyActor->GetActorForwardVector() * AttackTraceDistance;
 
-	ANSEnemyWeaponBase* Weapon = Enemy->GetCurrentWeapon();
+	const FNSEnemyAttackRow* CurrentAttackRow = EnemyAgent->GetCurrentAttackRow();
+	const UNSEnemyPartComponent* PartComponent = EnemyActor->FindComponentByClass<UNSEnemyPartComponent>();
 
-	if (IsValid(Weapon))
+	if (CurrentAttackRow && PartComponent)
 	{
-		USkeletalMeshComponent* WeaponMesh = Weapon->GetComponentByClass<USkeletalMeshComponent>();
-
-		if (IsValid(WeaponMesh) &&
-			WeaponMesh->DoesSocketExist(TEXT("TraceStart")) &&
-			WeaponMesh->DoesSocketExist(TEXT("TraceEnd")))
-		{
-			Start = WeaponMesh->GetSocketLocation(TEXT("TraceStart"));
-			End = WeaponMesh->GetSocketLocation(TEXT("TraceEnd"));
-		}
+		PartComponent->TryGetTraceSegmentByAttackId(
+			CurrentAttackRow->AttackId,
+			AttackTraceDistance,
+			EnemyActor->GetActorForwardVector(),
+			Start,
+			End);
 	}
 
 	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(Enemy);
+	QueryParams.AddIgnoredActor(EnemyActor);
 
-	if (IsValid(Weapon))
+	if (CurrentAttackRow && PartComponent)
 	{
-		QueryParams.AddIgnoredActor(Weapon);
+		TArray<AActor*> IgnoredPartActors;
+		PartComponent->GetSpawnedPartActorsByAttackId(
+			CurrentAttackRow->AttackId,
+			IgnoredPartActors);
+
+		for (AActor* IgnoredActor : IgnoredPartActors)
+		{
+			if (IsValid(IgnoredActor))
+			{
+				QueryParams.AddIgnoredActor(IgnoredActor);
+			}
+		}
 	}
 
 	FHitResult HitResult;

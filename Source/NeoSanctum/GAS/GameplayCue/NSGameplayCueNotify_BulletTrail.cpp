@@ -4,7 +4,7 @@
 #include "NeoSanctum/GAS/GameplayCue/NSGameplayCueNotify_BulletTrail.h"
 
 #include "NiagaraComponent.h"
-#include "NiagaraFunctionLibrary.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSVFXSubsystem.h"
 
 bool UNSGameplayCueNotify_BulletTrail::OnExecute_Implementation(
 	AActor* MyTarget,
@@ -13,7 +13,7 @@ bool UNSGameplayCueNotify_BulletTrail::OnExecute_Implementation(
 {
 	Super::OnExecute_Implementation(MyTarget, Parameters);
 	
-	if (!MyTarget || !BulletTrailVFX)
+	if (!MyTarget || BulletTrailVFXID.IsNone())
 	{
 		return false;
 	}
@@ -31,15 +31,18 @@ bool UNSGameplayCueNotify_BulletTrail::OnExecute_Implementation(
 	const FVector EndLocation = StartLocation + TrailDirection * TrailDistance;
 	
 	
-	UNiagaraComponent* NiagaraComponent = UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-		MyTarget,
-		BulletTrailVFX,
+	UNSVFXSubsystem* VFXSubsystem = UNSVFXSubsystem::Get(MyTarget);
+	if (!VFXSubsystem)
+	{
+		return false;
+	}
+
+	UNiagaraComponent* NiagaraComponent = VFXSubsystem->SpawnVFXAtLocation(
+		BulletTrailVFXID,
 		StartLocation,
 		TrailDirection.Rotation(),
-		FVector::OneVector,
-		true,
-		false
-	);
+		VFXScaleMultiplier,
+		false);
 	
 	if (!NiagaraComponent)
 	{

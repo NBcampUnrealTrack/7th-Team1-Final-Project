@@ -7,6 +7,7 @@
 #include "NeoSanctum/Progression/Part/NSPartEquipComponent.h"
 #include "Engine/AssetManager.h"
 #include "NeoSanctum/Character/Component/NSCompanionProgressionComponent.h"
+#include "NeoSanctum/Core/GameInstance/Subsystem/NSDataSubsystem.h"
 #include "NeoSanctum/Data/AI/NSCompanionCatalog.h"
 #include "Net/UnrealNetwork.h"
 #include "NeoSanctum/GAS/NSAbilitySystemComponent.h"
@@ -19,6 +20,8 @@
 #include "NeoSanctum/Data/AI/NSCompanionDefinition.h"
 #include "NeoSanctum/Core/GameState/NSOutGameState.h"
 #include "NeoSanctum/Core/GameState/NSRunGameState.h"
+#include "NeoSanctum/Progression/Experience/NSExperienceComponent.h"
+#include "NeoSanctum/System/Subsystem/NSHealDropSubsystem.h"
 
 ANSPlayerState::ANSPlayerState()
 {
@@ -46,9 +49,70 @@ ANSPlayerState::ANSPlayerState()
 	// 인런 증강 보유 컴포넌트 (인런 종료 시 RunGameMode가 Clear)
 	AugmentInventory = CreateDefaultSubobject<UNSAugmentInventoryComponent>(TEXT("AugmentInventory"));
 	CurrencyComponent = CreateDefaultSubobject<UNSCurrencyComponent>(TEXT("CurrencyComponent"));
+	ExperienceComponent = CreateDefaultSubobject<UNSExperienceComponent>(TEXT("ExperienceComponent"));
 	
 	bIsReady = false;
 	bIsDead = false;
+}
+
+void ANSPlayerState::AddKill(ENSEnemyRank Rank)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	switch (Rank)
+	{
+	case ENSEnemyRank::Normal:
+		++NormalKillCount;
+		break;
+	case ENSEnemyRank::Elite:
+		++EliteKillCount;
+		break;
+	case ENSEnemyRank::Boss:
+		++BossKillCount;
+		break;
+	// 혹시 모를 예외처리	
+	default:
+		return;  
+	}
+
+	// 즉시 복제
+	ForceNetUpdate(); 
+}
+
+void ANSPlayerState::AddShotsFired(int32 Count)
+{
+	if (!HasAuthority() || Count <= 0)
+	{
+		return;
+	}
+	
+	ShotsFired += Count;
+	ForceNetUpdate();
+}
+
+void ANSPlayerState::AddShotsHit(int32 Count)
+{
+	if (!HasAuthority() || Count <= 0)
+	{
+		return;
+	}
+	
+	ShotsHit += Count;
+	ForceNetUpdate();
+}
+
+void ANSPlayerState::AddDamageDealt(int64 Amount)
+{
+	if (!HasAuthority() || Amount <= 0.0f)
+	{
+		return;
+	}
+	
+	TotalDamageDealt += Amount;
+	ForceNetUpdate();
 }
 
 void ANSPlayerState::BeginPlay()
@@ -67,6 +131,13 @@ void ANSPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME(ANSPlayerState, bVoteConfirmed);
 	DOREPLIFETIME(ANSPlayerState, CurrentCharacterDataId);
 	DOREPLIFETIME(ANSPlayerState, CurrentCompanionDefinitionTag);
+	DOREPLIFETIME(ANSPlayerState, PlayerSlotIndex);
+	DOREPLIFETIME(ANSPlayerState, NormalKillCount);
+	DOREPLIFETIME(ANSPlayerState, EliteKillCount);
+	DOREPLIFETIME(ANSPlayerState, BossKillCount);
+	DOREPLIFETIME(ANSPlayerState, ShotsFired);
+	DOREPLIFETIME(ANSPlayerState, ShotsHit);
+	DOREPLIFETIME(ANSPlayerState, TotalDamageDealt);
 }
 
 void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
@@ -77,6 +148,7 @@ void ANSPlayerState::CopyProperties(APlayerState* PlayerState)
 	{
 		NewPlayerState->CurrentCharacterDataId = CurrentCharacterDataId;
 		NewPlayerState->CurrentCompanionDefinitionTag = CurrentCompanionDefinitionTag;
+		NewPlayerState->PlayerSlotIndex = PlayerSlotIndex; 
 		
 		UNSPlayerProgressComponent* OldProgress = ProgressComponent;
 		UNSPlayerProgressComponent* NewProgress = NewPlayerState->GetProgressComponent();
@@ -151,7 +223,19 @@ void ANSPlayerState::Server_CollectCurrency_Implementation(int32 DropId)
 	{
 		DropSys->TryCollect(DropId, this);
 	}
+}
 
+void ANSPlayerState::Server_CollectHeal_Implementation(int32 DropId)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	if (UNSHealDropSubsystem* DropSys = World->GetSubsystem<UNSHealDropSubsystem>())
+	{
+		DropSys->TryCollect(DropId, this);
+	}
 }
 
 void ANSPlayerState::SetIsDead(bool bNewIsDead)
@@ -181,6 +265,13 @@ void ANSPlayerState::SetCurrentCharacterDataId(FPrimaryAssetId InCharacterDataId
 	ForceNetUpdate();
 }
 
+FPrimaryAssetId ANSPlayerState::GetDefaultCharacterDataId() const
+{
+	return DefaultCharacterData.IsNull()
+		? FPrimaryAssetId()
+		: FPrimaryAssetId(UNSDataSubsystem::CharacterAssetType, FName(*DefaultCharacterData.GetAssetName()));
+}
+
 UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
 {
 	if (CurrentCharacterDataId.IsValid())
@@ -191,7 +282,7 @@ UNSCharacterData* ANSPlayerState::GetCurrentCharacterData() const
 		}
 	}
 
-	return LoadCharacterData(DefaultCharacterDataId);
+	return LoadCharacterData(GetDefaultCharacterDataId());
 }
 
 UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDataId) const
@@ -199,6 +290,15 @@ UNSCharacterData* ANSPlayerState::LoadCharacterData(FPrimaryAssetId CharacterDat
 	if (!CharacterDataId.IsValid())
 	{
 		return nullptr;
+	}
+
+	if (const UNSDataSubsystem* DataSubsystem = UNSDataSubsystem::Get(this))
+	{
+		// CommonData에서 선로딩한 캐릭터 데이터가 있으면 동기 로드 없이 재사용한다.
+		if (UNSCharacterData* LoadedData = DataSubsystem->GetData<UNSCharacterData>(CharacterDataId))
+		{
+			return LoadedData;
+		}
 	}
 
 	const FSoftObjectPath CharacterDataPath = UAssetManager::Get().GetPrimaryAssetPath(CharacterDataId);
@@ -232,6 +332,17 @@ UNSCompanionDefinition* ANSPlayerState::GetCurrentCompanionDefinition() const
 	}
 	// 기본값 폴백
 	return LoadCompanionDefinition(DefaultCompanionDefinitionTag);
+}
+
+void ANSPlayerState::SetPlayerSlotIndex(int32 InIndex)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	
+	PlayerSlotIndex = InIndex;
+	ForceNetUpdate();
 }
 
 UNSCompanionDefinition* ANSPlayerState::LoadCompanionDefinition(FGameplayTag CompanionTag) const

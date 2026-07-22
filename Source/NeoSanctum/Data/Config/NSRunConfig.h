@@ -1,0 +1,97 @@
+// Copyright 2026 One Team. All rights reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "Engine/DataAsset.h"
+#include "NSRunConfig.generated.h"
+
+class UNSAugmentRarityRuleSet;
+class UNSDifficultyConfig;
+class UDataTable;
+class UGameplayEffect;
+
+/**
+ * 트리거별 증강 리롤 비용 규칙.
+ */
+USTRUCT(BlueprintType)
+struct FNSAugmentRerollRule
+{
+	GENERATED_BODY()
+
+	// 이규칙이 적용될 증강 보상 트리거
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll",
+		meta = (Categories = "Reward.Trigger"))
+	FGameplayTag RewardTriggerTag;
+
+	// 첫 리롤(카운트 0) 비용. TrySpendTemp(0)이 항상 실패하므로 최소 1.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll", meta = (ClampMin = "1"))
+	int64 InitialCost = 100;
+
+	// 리롤마다 곱해지는 비용 배율. 1.0 이상만 허용.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment|Reroll", meta = (ClampMin = "1.0"))
+	float CostMultiplier = 1.25f;
+};
+
+/**
+ * 인런 전체가 유지되는 동안 공통으로 사용하는 데이터 설정.
+ * 
+ * 증강 후보, 몬스터 기본 스탯, 난이도 계산 등 스테이지가 바뀌어도
+ * 다시 로드할 필요가 없는 런 단위 데이터를 정의.
+ */
+UCLASS(BlueprintType)
+class NEOSANCTUM_API UNSRunConfig : public UPrimaryDataAsset
+{
+	GENERATED_BODY()
+	
+public:
+	virtual FPrimaryAssetId GetPrimaryAssetId() const override;
+
+#if WITH_EDITOR
+	virtual EDataValidationResult IsDataValid(FDataValidationContext& Context) const override;
+#endif
+
+	// 이번 런에서 사용할 증강 후보 목록. Definition DA 목록은 이 DT에서 수집.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UDataTable> AugmentDefinitionTable;
+
+	// 이번 런에서 사용할 증강 희귀도/가중치 규칙.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UNSAugmentRarityRuleSet> AugmentRarityRuleSet;
+
+	// 트리거별 증강 리롤 비용 규칙. 이 배열에 없는 트리거는 리롤 불가로 취급.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Augment",
+		meta = (TitleProperty = "RewardTriggerTag"))
+	TArray<FNSAugmentRerollRule> AugmentRerollRules;
+
+	// 몬스터의 기본 스탯 테이블. 난이도 배율 적용 전 기준값으로 사용.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Monster",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UDataTable> MonsterAttributeTable;
+
+	// 시간, 스테이지, 플레이어 수에 따른 몬스터 난이도 배율 설정.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Difficulty",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UNSDifficultyConfig> DifficultyConfig;
+
+	// GEC에서 사용하는 방어력 감소 배율 공식(y = k / (k + Defense))에 사용하는 상수 k.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Combat")
+	float DefenseMitigationConstant = 100.0f;
+
+	// 레벨업(증강 지급)에 필요한 경험치 통 크기.
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Combat")
+	float MaxExperience = 100.0f;
+
+	// 회복 아이템 픽업 시 SetByCaller로 회복량을 주입하는 즉시 회복 GE
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Progression",
+		meta = (AssetBundles = "InRunData"))
+	TSoftClassPtr<UGameplayEffect> InstantHealEffectClass;
+
+	// 회복 포션 정의 테이블
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "NS|Run|Progression",
+		meta = (AssetBundles = "InRunData"))
+	TSoftObjectPtr<UDataTable> HealPotionTable;
+};

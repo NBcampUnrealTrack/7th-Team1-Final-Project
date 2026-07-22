@@ -4,7 +4,7 @@
 
 FPrimaryAssetId UNSCharacterData::GetPrimaryAssetId() const
 {
-	static const FPrimaryAssetType CharacterDataType = TEXT("CharacterData");
+	static const FPrimaryAssetType CharacterDataType = TEXT("NSCharacterData");
 	
 	return FPrimaryAssetId(CharacterDataType, GetFName());
 }

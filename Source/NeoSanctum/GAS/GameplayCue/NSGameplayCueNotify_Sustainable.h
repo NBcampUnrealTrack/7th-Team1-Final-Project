@@ -9,7 +9,6 @@
 
 class UAudioComponent;
 class UNiagaraComponent;
-class UNiagaraSystem;
 class USceneComponent;
 
 /**
@@ -58,11 +57,10 @@ protected:
 	UNiagaraComponent* SpawnVFX(
 		AActor* MyTarget,
 		const FGameplayCueParameters& Parameters,
-		UNiagaraSystem* NiagaraSystem,
+		FName VFXID,
 		ENSGameplayCueSpawnMode SpawnMode,
 		FName ComponentName,
-		FName SocketName,
-		bool bAutoDestroy
+		FName SocketName
 	) const;
 	void LoopPresentation(AActor* MyTarget, const FGameplayCueParameters& Parameters);
 
@@ -98,18 +96,27 @@ protected:
 protected:
 	// Cue가 Add되는 시점에 1회 재생할 VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
-	TObjectPtr<UNiagaraSystem> StartVFX;
+	FName StartVFXID = NAME_None;
 
 	// End 시점까지 계속 재생할 루프 VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
-	TObjectPtr<UNiagaraSystem> LoopVFX;
+	FName LoopVFXID = NAME_None;
 
 	// Cue가 End되는 시점에 1회 재생할 VFX
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
-	TObjectPtr<UNiagaraSystem> EndVFX;
+	FName EndVFXID = NAME_None;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
 	ENSGameplayCueSpawnMode VFXSpawnMode = ENSGameplayCueSpawnMode::Location;
+
+	// OnRemove 시 루프 VFX 정리 방식.
+	// false(기본)=Deactivate로 자연 소멸(기존 큐 동작 유지)
+	// true=즉시 제거(무한/장수명 파티클 돔처럼 Deactivate로 안 사라지는 것)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX")
+	bool bDeactivateLoopVFXImmediately = false;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX", meta = (ClampMin = "0.0"))
+	float VFXScaleMultiplier = 1.0f;
 
 	// VFX를 붙힐 메쉬 : None으로 설정해도 소켓 이름을 설정했다면 메쉬를 모두 탐색함
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "CustomCue|VFX",

@@ -20,7 +20,7 @@ struct FNSRarityPromptStyle
 
 	// 카드 전체 배경색
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
-	FLinearColor BackgroundColor = FLinearColor(0.10f, 0.10f, 0.12f, 0.90f);
+	FLinearColor BackgroundColor = FLinearColor(0.10f, 0.10f, 0.12f, 0.50f);
 
 	// 상단/좌측 강조선 색
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
@@ -47,6 +47,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void SetPartName(const FText& InName);
 
+	// 파츠 교체 시 스탯 비교 표시: "{StatName} : {OldValue} -> {NewValue}" + 좋아짐/나빠짐 화살표
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void SetStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter);
+
+	// 두 번째 비교 라인: 교체로 버려지는 기존 파츠의 스탯 하락 예상치 표시 (새 파츠와 스탯이 다를 때만)
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void SetSecondaryStatComparison(const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter);
+
+	// 두 번째 비교 라인만 숨김 (기존 파츠가 없거나 새 파츠와 같은 스탯이라 첫 줄로 충분할 때)
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void ClearSecondaryStatComparison();
+
+	// 비교할 스탯 정보가 없을 때 (StatTag 매칭 실패 등) 비교 UI 숨김 — 두 번째 라인도 함께 숨김
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void ClearStatComparison();
+
 	// 등급 인덱스로 배경/강조 색 적용 (-1 = 기본)
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void SetRarityStyle(int32 RarityIndex);
@@ -56,6 +72,11 @@ protected:
 
 	// 등급 인덱스 → 해당 스타일 반환 (0/그 외=Common, 1=Rare, 2=Epic, 3=Legendary)
 	const FNSRarityPromptStyle& GetRarityStyle(int32 RarityIndex) const;
+
+	// 비교 라인 하나(텍스트 + 화살표 쌍)에 값/화살표 표시를 공통 적용 (첫 줄/둘째 줄이 같은 규칙 공유)
+	void ApplyStatComparisonLine(
+		UTextBlock* CompareText, UImage* UpImage, UImage* DownImage,
+		const FText& StatName, float OldValue, float NewValue, bool bHigherIsBetter);
 
 	// ===== 등급별 색상 (에디터에서 조절 가능) =====
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Rarity")
@@ -91,6 +112,29 @@ protected:
 	// 카드 상단,좌측 강조선 Image —> 등급별 강조색 적용 대상
 	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
 	TObjectPtr<UImage> RarityAccentImage;
+
+	// 스탯 비교 텍스트: "{StatName} : {OldValue} -> {NewValue}"
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UTextBlock> StatCompareText;
+
+	// 좋아짐 화살표 이미지 — 위젯 블루프린트에서 원하는 브러시(색/모양)를 직접 지정
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowUpImage;
+
+	// 나빠짐 화살표 이미지 — 위젯 블루프린트에서 원하는 브러시(색/모양)를 직접 지정
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowDownImage;
+
+	// ===== 두 번째 비교 라인 (교체로 버려지는 기존 파츠의 스탯 하락 표시, WBP에 없으면 기능 자체가 조용히 비활성) =====
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UTextBlock> StatCompareText2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowUpImage2;
+
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional), Category = "UI")
+	TObjectPtr<UImage> StatArrowDownImage2;
+
 private:
 	//진행 중인 아이콘 비동기 로드 핸들
 	TSharedPtr<FStreamableHandle> IconLoadHandle;

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GA_SkillBase.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
+#include "NeoSanctum/Core/Interface/NSPlayerAttackFeedbackSourceInterface.h"
 #include "GA_EngineerShotgunFire.generated.h"
 
 class UAnimMontage;
@@ -16,12 +17,16 @@ class UGameplayEffect;
  * 한 번의 발사에서 여러 펠릿 Trace를 생성하는 형태로 추가
  */
 UCLASS()
-class NEOSANCTUM_API UGA_EngineerShotgunFire : public UGA_SkillBase
+class NEOSANCTUM_API UGA_EngineerShotgunFire : public UGA_SkillBase, public INSPlayerAttackFeedbackSourceInterface
 {
 	GENERATED_BODY()
 
 public:
 	UGA_EngineerShotgunFire();
+
+	virtual bool ShouldTriggerPlayerAttackFeedback() const override { return true; }
+
+	virtual FGuid GetPlayerAttackFeedbackGroupId() const override { return AttackFeedbackGroupId; }
 
 protected:
 	virtual void ActivateAbility(
@@ -107,8 +112,11 @@ private:
 	// 서버에서 펠릿별 TargetData를 검증하고 대미지를 적용
 	void ProcessTargetDataForDamage(const FGameplayAbilityTargetDataHandle& TargetDataHandle);
 
+	// 이번 발사에서 쌓인 피드백을 재생하도록 클라이언트에 알림.
+	void CompleteAttackFeedbackGroup() const;
+
 	// 대상 Actor에게 GameplayEffect 대미지를 적용
-	void ApplyDamageToActor(AActor* TargetActor);
+	bool ApplyDamageToActor(const FHitResult& HitResult, float HitDistance);
 
 	// Damage GameplayEffect의 SetByCaller 값을 설정
 	void ApplyDamageSetByCaller(FGameplayEffectSpecHandle& InSpecHandle, float InDamage) const;
@@ -215,6 +223,10 @@ protected:
 	/// 클라이언트 예측키 확인용
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS|Debug")
 	bool bLogPredictionKey = false;
+
+	// 서버에서 한 번의 샷건 발사를 구분할 때 사용.
+	UPROPERTY(Transient)
+	FGuid AttackFeedbackGroupId;
 
 private:
 	FDelegateHandle OnTargetDataReadyCallbackDelegateHandle;

@@ -11,6 +11,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "NeoSanctum/Collision/NSCollisionChannels.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Cue.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Effect.h"
@@ -63,11 +64,11 @@ void ANSRangerProjectile::InitializeProjectile(
 	ExplosionRadius = FMath::Max(InExplosionRadius, 0.0f);
 	ExplosionNoiseLoudness = FMath::Max(InExplosionNoiseLoudness, 0.0f);
 	
-	NS_ACTOR_LOG(this, LogNSGAS, Log,
-		"Projectile 초기화 완료. Damage={Damage}, Radius={Radius}",
-		("Damage", SplashDamage),
-		("Radius", ExplosionRadius)
-	);
+	if (HasAuthority())
+	{
+		// 서버 투사체마다 서로 다른 스플래시 그룹을 만듬.
+		AttackFeedbackGroupId = FGuid::NewGuid();
+	}
 }
 
 void ANSRangerProjectile::BeginPlay()
@@ -119,6 +120,27 @@ void ANSRangerProjectile::IgnoreSourceActorCollision()
 	{
 		CollisionComponent->IgnoreActorWhenMoving(InstigatorPawn, true);
 	}
+}
+
+void ANSRangerProjectile::CompletePlayerAttackFeedbackGroup() const
+{
+	if (!HasAuthority() || !AttackFeedbackGroupId.IsValid())
+	{
+		return;
+	}
+
+	const APawn* InstigatorPawn = GetInstigator();
+
+	ANSPlayerController* PlayerController = InstigatorPawn
+		? Cast<ANSPlayerController>(InstigatorPawn->GetController()) : nullptr;
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// 모든 스플래시 대상의 피드백 후보를 보낸 뒤 재생을 요청.
+	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
 }
 
 void ANSRangerProjectile::FindSplashTargetActors(
@@ -341,7 +363,10 @@ void ANSRangerProjectile::OnProjectileHit(
 	);
 	
 	ApplySplashDamage(ExplosionLocation, SplashTargetActors);
-	
+
+	// 모든 스플래시 대상의 GE 적용이 끝났으니 그룹을 완료.
+	CompletePlayerAttackFeedbackGroup();
+
 	Destroy();
 }
 
@@ -374,6 +399,8 @@ void ANSRangerProjectile::ExecuteImpactCue(const FHitResult& HitResult)
 	CueParameters.EffectCauser = this;
 	CueParameters.Location = HitResult.ImpactPoint;
 	CueParameters.Normal = HitResult.ImpactNormal;
+	// 이미 증강까지 적용된 실제 폭발 반경을 Cue에 넘겨줌.
+	CueParameters.RawMagnitude = ExplosionRadius;
 	
 	SourceASC->ExecuteGameplayCue(NSGameplayTags::GameplayCue_Ranger_ProjectileShot_Impact, CueParameters);
 }
@@ -399,6 +426,7 @@ void ANSRangerProjectile::ApplySplashDamage(const FVector& ExplosionLocation, co
 	FGameplayEffectContextHandle EffectContext = SourceASC->MakeEffectContext();
 	EffectContext.AddSourceObject(this);
 	EffectContext.AddOrigin(ExplosionLocation);
+	EffectContext.AddInstigator(SourceASC->GetAvatarActor(), const_cast<ANSRangerProjectile*>(this));
 	
 	const FGameplayEffectSpecHandle DamageSpecHandle =
 		SourceASC->MakeOutgoingSpec(

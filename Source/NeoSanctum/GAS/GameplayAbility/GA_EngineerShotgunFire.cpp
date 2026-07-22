@@ -10,6 +10,7 @@
 #include "NeoSanctum/Character/Player/NSPlayerCharacterBase.h"
 #include "NeoSanctum/Combat/NSDamageRules.h"
 #include "NeoSanctum/Combat/Weapon/NSWeaponBase.h"
+#include "NeoSanctum/Core/PlayerController/NSPlayerController.h"
 #include "NeoSanctum/Debug/Logging/NSLogMacros.h"
 #include "NeoSanctum/Tag/NSGameplayTags_Ability.h"
 #include "NeoSanctum/Tag/NSGameplayTags_CombatStat.h"
@@ -65,6 +66,9 @@ void UGA_EngineerShotgunFire::ActivateAbility(
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
+
+	// 서버에서 실제 데미지를 처리할 때만 발사 그룹 ID 필요.
+	AttackFeedbackGroupId = ActorInfo->IsNetAuthority() ? FGuid::NewGuid() : FGuid();
 
 	PlayFireMontage();
 
@@ -270,23 +274,16 @@ void UGA_EngineerShotgunFire::FinishFireCycle()
 
 bool UGA_EngineerShotgunFire::TryGetFinalDamage(float& OutDamage)
 {
-	float FinalDamage = 0.0f;
-
-	if (!TryGetFinalAbilityStat(
-		NSGameplayTags::Ability_Engineer_ShotgunFire,
-		NSGameplayTags::CombatStat_Damage,
-		FinalDamage))
+	if (!TryGetFinalSkillDamage(NSGameplayTags::Ability_Engineer_ShotgunFire, OutDamage))
 	{
 		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
-			"EngineerShotgunFire Damage CombatStat 조회 실패. AbilityTag={AbilityTag}, StatTag={StatTag}",
-			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString()),
-			("StatTag", NSGameplayTags::CombatStat_Damage.GetTag().ToString())
+			"ShotgunFire 스킬 데미지 계산 실패. AbilityTag={AbilityTag}",
+			("AbilityTag", NSGameplayTags::Ability_Engineer_ShotgunFire.GetTag().ToString())
 		);
 
 		return false;
 	}
 
-	OutDamage = FMath::Max(FinalDamage, 0.0f);
 	return true;
 }
 
@@ -652,7 +649,9 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 	{
 		return;
 	}
-
+	
+	ReportShotsFired(TargetDataHandle.Num());
+	int32 PelletHitCount = 0;
 	for (int32 Idx = 0; Idx < TargetDataHandle.Num(); ++Idx)
 	{
 		const FGameplayAbilityTargetData* TargetData = TargetDataHandle.Get(Idx);
@@ -704,7 +703,14 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 
 		if (IsMuzzleObstructed(AimPoint, AimTargetActor, MuzzleObstructionHitResult))
 		{
-			ApplyDamageToActor(MuzzleObstructionHitResult.GetActor());
+			// BackTrace로 늘어난 구간은 실제 명중 거리에서 제외.
+			const float BackTraceDistance = FMath::Max(MuzzleObstructionBackTraceDistance, 0.0f);
+			const float HitDistance = FMath::Max(MuzzleObstructionHitResult.Distance - BackTraceDistance, 0.0f);
+
+			if (ApplyDamageToActor(MuzzleObstructionHitResult, HitDistance))
+			{
+				++PelletHitCount;
+			}
 			ExecuteImpactCue(MuzzleObstructionHitResult);
 			continue;
 		}
@@ -714,16 +720,50 @@ void UGA_EngineerShotgunFire::ProcessTargetDataForDamage(
 			continue;
 		}
 
-		ApplyDamageToActor(ServerHitResult.GetActor());
+		if (ApplyDamageToActor(ServerHitResult, ServerHitResult.Distance))
+		{
+			++PelletHitCount;
+		}
 		ExecuteImpactCue(ServerHitResult);
 	}
+	
+	ReportShotsHit(PelletHitCount);
+	// 모든 펠릿 GE 적용이 끝난 다음에 완료 신호를 보냄.
+	CompleteAttackFeedbackGroup();
 }
 
-void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
+void UGA_EngineerShotgunFire::CompleteAttackFeedbackGroup() const
 {
-	if (!TargetActor || !DamageEffectClass)
+	if (!AttackFeedbackGroupId.IsValid())
 	{
 		return;
+	}
+
+	const APawn* AvatarPawn = Cast<APawn>(GetAvatarActorFromActorInfo());
+
+	ANSPlayerController* PlayerController = AvatarPawn
+		? Cast<ANSPlayerController>(AvatarPawn->GetController()) : nullptr;
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	// 대상별 피드백 RPC를 모두 보낸 뒤 대표 피드백 재생을 요청.
+	PlayerController->Client_CompleteAttackHitFeedbackGroup(AttackFeedbackGroupId);
+}
+
+bool UGA_EngineerShotgunFire::ApplyDamageToActor(const FHitResult& HitResult, float HitDistance)
+{
+	AActor* TargetActor = HitResult.GetActor();
+	if (!TargetActor || !DamageEffectClass)
+	{
+		return false;
+	}
+	
+	if (!NSDamageRules::IsValidDirectDamageHit(HitResult))
+	{
+		return false;
 	}
 
 	UAbilitySystemComponent* SourceASC = GetAbilitySystemComponentFromActorInfo();
@@ -731,33 +771,62 @@ void UGA_EngineerShotgunFire::ApplyDamageToActor(AActor* TargetActor)
 
 	if (!SourceASC || !TargetASC)
 	{
-		return;
+		return false;
 	}
 
 	if (!NSDamageRules::CanApplyDamage(GetAvatarActorFromActorInfo(), TargetActor))
 	{
-		return;
+		return false;
 	}
 
 	float FinalDamage = 0.0f;
 
 	if (!TryGetFinalDamage(FinalDamage))
 	{
-		return;
+		return false;
 	}
+
+	float DamageFalloffMultiplier = 1.0f;
+
+	if (!TryCalculateDamageFalloffMultiplier(
+		NSGameplayTags::Ability_Engineer_ShotgunFire,
+		HitDistance,
+		DamageFalloffMultiplier))
+	{
+		NS_ACTOR_LOG(GetAvatarActorFromActorInfo(), LogNSGAS, Warning,
+		"Shotgun 거리 감쇠 계산에 실패했습니다. HitDistance={HitDistance}",
+		("HitDistance", HitDistance)
+	);
+
+		return false;
+	}
+
+	// 펠릿의 실제 충돌 거리에 맞춰 최종 데미지를 감쇠.
+	FinalDamage *= DamageFalloffMultiplier;
+	
+	// Physics Asset Body / BoneName 기반 부위 데미지 배율을 최종 데미지에 반영.
+	FinalDamage *= NSDamageRules::ResolveDirectHitDamageMultiplier(HitResult);
 
 	FGameplayEffectSpecHandle DamageSpecHandle =
 		MakeOutgoingGameplayEffectSpec(DamageEffectClass, GetAbilityLevel());
 
 	if (!DamageSpecHandle.IsValid() || !DamageSpecHandle.Data.IsValid())
 	{
-		return;
+		return false;
 	}
+
+	FGameplayEffectContextHandle EffectContext = DamageSpecHandle.Data->GetContext();
+
+	// AttributeSet이 이번 발사의 그룹 ID를 Ability에서 찾을 수 있게 함.
+	EffectContext.AddSourceObject(this);
+	EffectContext.AddHitResult(HitResult, true);
 
 	ApplyDamageSetByCaller(DamageSpecHandle, FinalDamage);
 	AssignDamageInstigator(DamageSpecHandle);
 
 	SourceASC->ApplyGameplayEffectSpecToTarget(*DamageSpecHandle.Data.Get(), TargetASC);
+	
+	return true;
 }
 
 void UGA_EngineerShotgunFire::ApplyDamageSetByCaller(

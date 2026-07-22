@@ -26,6 +26,7 @@ UGA_Dash::UGA_Dash()
 
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dead);
 	ActivationBlockedTags.AddTag(NSGameplayTags::State_Dashing);
+	ActivationBlockedTags.AddTag(NSGameplayTags::State_Vanguard_Flickering);
 }
 
 void UGA_Dash::ActivateAbility(
@@ -35,6 +36,8 @@ void UGA_Dash::ActivateAbility(
 	const FGameplayEventData* TriggerEventData
 )
 {
+	bInvincibilityStateAdded = false;
+
 	if (!ActorInfo || !ActorInfo->AvatarActor.IsValid())
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
@@ -103,6 +106,13 @@ void UGA_Dash::ActivateAbility(
 	if (ASC)
 	{
 		ASC->AddLooseGameplayTag(NSGameplayTags::State_Dashing);
+		ASC->AddLooseGameplayTag(NSGameplayTags::State_Invincible);
+		bInvincibilityStateAdded = true;
+
+		// 대쉬 성공 시 Vanguard 기본공격 중단
+		FGameplayTagContainer CancelTags;
+		CancelTags.AddTag(NSGameplayTags::Ability_Vanguard_BaseAttack);
+		ASC->CancelAbilities(&CancelTags, nullptr, this);
 	}
 
 	// 대쉬 속도 = 거리 / 지속시간
@@ -151,7 +161,18 @@ void UGA_Dash::EndAbility(
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo())
 	{
 		ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Dashing);
+		if (bInvincibilityStateAdded)
+		{
+			ASC->RemoveLooseGameplayTag(NSGameplayTags::State_Invincible);
+			bInvincibilityStateAdded = false;
+		}
 		ASC->RemoveGameplayCue(NSGameplayTags::GameplayCue_Common_Dash);
+	}
+
+	if (!bWasCancelled)
+	{
+		// 정상 종료 대쉬만 후속 대쉬공격으로 연결
+		AddDashAttackWindow();
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
@@ -180,3 +201,37 @@ void UGA_Dash::OnDashFinished()
 {
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, false);
 }
+
+void UGA_Dash::AddDashAttackWindow()
+{
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
+	UWorld* World = GetWorld();
+
+	if (!ASC || !World || DashAttackWindowDuration <= 0.0f)
+	{
+		return;
+	}
+
+	// 연속 대쉬로 태그 카운트가 누적되지 않도록 1로 고정
+	ASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 1);
+
+	// 타이머 종료 시점에 대쉬 Ability가 종료되면서 타이머가 Dash Ability 객체에 의존하는 함수를 호출한다면 문제가 발생함
+	// 따라서 람다로 WeakASC를 캡처해두고 이를 이용해서 태그 카운트를 0으로 만들어서 타이머를 작동하는 방식
+	const TWeakObjectPtr<UAbilitySystemComponent> WeakASC = ASC;
+	FTimerDelegate RemoveWindowDelegate;
+	RemoveWindowDelegate.BindLambda([WeakASC]()
+	{
+		if (UAbilitySystemComponent* TempASC = WeakASC.Get())
+		{
+			TempASC->SetLooseGameplayTagCount(NSGameplayTags::State_DashAttackWindow, 0);
+		}
+	});
+
+	World->GetTimerManager().ClearTimer(DashAttackWindowTimerHandle);
+	World->GetTimerManager().SetTimer(
+		DashAttackWindowTimerHandle,
+		RemoveWindowDelegate,
+		DashAttackWindowDuration,
+		false);
+}
+
